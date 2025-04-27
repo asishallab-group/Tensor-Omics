@@ -19,17 +19,23 @@ let datapointDiv = document.getElementById("datapoint");
 /***************************************************************
  * Function: configureCanvas
  * Purpose: Retrieve and configure the canvas element.
+ * - Sets focus to the canvas on page load to enable keyboard controls immediately.
  * - Throws an error if the canvas element is not found.
- * - The styling is handled via CSS.
  ***************************************************************/
 function configureCanvas() {
-  // Retrieve the canvas element by its id "view"
+  // Retrieve the canvas element by its id "view".
   let canvas = document.getElementById("view");
   if (!canvas) {
     throw new Error("Canvas element with id 'view' not found.");
   }
+
+  // Set focus to the canvas element to enable keyboard controls on load.
+  canvas.tabIndex = 1; // Ensure the canvas is focusable.
+  canvas.focus();
+
   return canvas;
 }
+
 
 /***************************************************************
  * Function: initializeEngine
@@ -40,7 +46,7 @@ function configureCanvas() {
  ***************************************************************/
 async function initializeEngine(canvas) {
   // Check if the browser supports WebGPU. navigator.gpu is defined only if WebGPU is available.
-  if (!navigator.gpu) {
+  if (!navigator.gpu || typeof BABYLON === "undefined") {
     throw new Error("WebGPU is not supported on this browser.");
   }
   // Create a new WebGPU engine.
@@ -118,12 +124,15 @@ function setupCamera(scene, canvas) {
 function setupScene(engine, canvas) {
   // Create a new Babylon scene.
   let scene = new BABYLON.Scene(engine);
+  create3DGrid(scene);
   setupCamera(scene, canvas);
 
   // Create a basic hemispheric light to illuminate the scene.
   let light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.8;
   
+  showPositionOverlay(scene, camera);
+
   // Update the global view state every frame. This ensures reproducibility of the view.
   scene.registerBeforeRender(() => {
     currentViewState.position = {
@@ -140,6 +149,69 @@ function setupScene(engine, canvas) {
   });
 
   return scene;
+}
+
+/**
+ * Function: create3DGrid
+ * Purpose: Creates a 3D grid with customizable size and density.
+ * - Useful for visualizing spatial boundaries in a 3D plot.
+ * @param {BABYLON.Scene} scene - The Babylon.js scene where the grid will be added.
+ * @param {number} size - The total size of the grid (length of each axis).
+ * @param {number} step - The spacing between grid lines.
+ */
+function create3DGrid(scene, size = 100, step = 10) {
+  // Create a parent node to group all grid lines for easy management.
+  let gridParent = new BABYLON.TransformNode("gridParent", scene);
+
+  // Helper function to create a single line.
+  function createLine(start, end, color) {
+    let line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
+    let material = new BABYLON.StandardMaterial("lineMat", scene);
+    material.emissiveColor = color; // Use emissive color to make lines bright.
+    material.disableLighting = true; // Lines are unaffected by scene lighting.
+    material.alpha = 0.2;
+    line.material = material;
+    line.parent = gridParent; // Attach the line to the parent node.
+  }
+
+  // Create grid lines parallel to each axis.
+  let halfSize = size / 2;
+  let color = BABYLON.Color3.Gray(); // Default color for grid lines.
+
+  // Lines along the X-axis.
+  for (let z = -halfSize; z <= halfSize; z += step) {
+    for (let y = -halfSize; y <= halfSize; y += step) {
+      createLine(
+        new BABYLON.Vector3(-halfSize, y, z), // Start point
+        new BABYLON.Vector3(halfSize, y, z),  // End point
+        color
+      );
+    }
+  }
+
+  // Lines along the Y-axis.
+  for (let x = -halfSize; x <= halfSize; x += step) {
+    for (let z = -halfSize; z <= halfSize; z += step) {
+      createLine(
+        new BABYLON.Vector3(x, -halfSize, z), // Start point
+        new BABYLON.Vector3(x, halfSize, z),  // End point
+        color
+      );
+    }
+  }
+
+  // Lines along the Z-axis.
+  for (let x = -halfSize; x <= halfSize; x += step) {
+    for (let y = -halfSize; y <= halfSize; y += step) {
+      createLine(
+        new BABYLON.Vector3(x, y, -halfSize), // Start point
+        new BABYLON.Vector3(x, y, halfSize),  // End point
+        color
+      );
+    }
+  }
+
+  return gridParent; // Return the parent node containing all grid lines.
 }
 
 /***************************************************************
@@ -235,44 +307,6 @@ function plotData(scene, data) {
       })
     );
   }
-
-  // Helper function to create an axis arrow.
-  // Each arrow is created by combining a cylinder (shaft) and a cone (head).
-  function createArrow(axis, color, length) {
-    // Create a parent transform node to group the arrow's parts.
-    let arrow = new BABYLON.TransformNode("arrow_" + axis, scene);
-
-    // Create the shaft of the arrow as a cylinder.
-    let shaft = BABYLON.MeshBuilder.CreateCylinder("shaft_" + axis, { diameter: 0.2, height: length }, scene);
-    let shaftMat = new BABYLON.StandardMaterial("shaftMat_" + axis, scene);
-    shaftMat.diffuseColor = color;
-    shaft.material = shaftMat;
-    shaft.parent = arrow;
-    // Position the shaft so that its base is at the origin.
-    shaft.position.y = length / 2;
-    
-    // Create the head of the arrow as a cone (a cylinder with diameterTop = 0).
-    let head = BABYLON.MeshBuilder.CreateCylinder("head_" + axis, { diameterTop: 0, diameterBottom: 0.5, height: 1.5, tessellation: 20 }, scene);
-    let headMat = new BABYLON.StandardMaterial("headMat_" + axis, scene);
-    headMat.diffuseColor = color;
-    head.material = headMat;
-    head.parent = arrow;
-    // Position the head on top of the shaft.
-    head.position.y = length + .75;
-    
-    // Rotate the arrow so that it points in the correct axis direction.
-    if (axis === "x") {
-      arrow.rotation.z = -Math.PI / 2; // Point along the X-axis.
-    } else if (axis === "z") {
-      arrow.rotation.x = Math.PI / 2;  // Point along the Z-axis.
-    }
-    return arrow;
-  }
-  
-  // Create the three coordinate axes arrows in black.
-  createArrow("x", new BABYLON.Color3(0, 0, 0), Math.max(...tissueX) * 1.1);
-  createArrow("y", new BABYLON.Color3(0, 0, 0), Math.max(...tissueY) * 1.1);
-  createArrow("z", new BABYLON.Color3(0, 0, 0), Math.max(...tissueZ) * 1.1);
 }
 
 /***************************************************************
@@ -287,6 +321,128 @@ function setupTooltipFollow(canvas) {
     datapointDiv.style.top = (evt.clientY + 10) + "px";
   });
 }
+
+/**
+ * Function: showPositionOverlay
+ * Purpose: Creates a GUI overlay that displays the camera's current position.
+ * - Updates dynamically as the camera moves.
+ * - Position is displayed in the bottom-right corner.
+ * @param {BABYLON.Scene} scene - The Babylon.js scene for GUI integration.
+ * @param {BABYLON.Camera} camera - The camera whose position is displayed.
+ */
+function showPositionOverlay(scene, camera) {
+  // Create a fullscreen GUI overlay using Babylon.js's GUI library.
+  let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+  // Create a text block to display the position.
+  let xPosition = new BABYLON.GUI.TextBlock();
+  xPosition.fontSize = 24; // Font size
+  xPosition.fontStyle = "bold"; // Font style
+  xPosition.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT; // Align text to the right
+  xPosition.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM; // Align text to the bottom
+  xPosition.paddingRight = 10; // Add some padding from the right
+  xPosition.paddingBottom = 300; // Add some padding from the top
+  xPosition.color = "red"; // Text color
+
+  yPosition = xPosition.clone();
+  yPosition.color = "green"; // Text color
+  yPosition.paddingBottom = 270;
+  zPosition = yPosition.clone();
+  zPosition.color = "blue"; // Text color
+  zPosition.paddingBottom = 240;
+
+  // Add the text blocks to the GUI overlay.
+  advancedTexture.addControl(xPosition);
+  advancedTexture.addControl(yPosition);
+  advancedTexture.addControl(zPosition);
+
+  // Update the position text dynamically as the camera moves.
+  scene.registerBeforeRender(() => {
+    xPosition.text = `X: ${camera.position.x.toFixed(2)}`;
+    yPosition.text = `Y: ${camera.position.y.toFixed(2)}`;
+    zPosition.text = `Z: ${camera.position.z.toFixed(2)}`;
+  });
+}
+
+/**
+ * Function: add3DCompass
+ * Purpose: Adds a 3D compass fixed to the bottom-right corner of the canvas.
+ * - A mini coordinate system (X, Y, Z axes) is always visible.
+ * - Rotates synchronously (inverted) with the camera to show the correct orientation of the axes.
+ * @param {BABYLON.Scene} mainScene - The primary scene of your application.
+ * @param {BABYLON.Camera} mainCamera - The main camera whose rotation is used to synchronize the compass.
+ * @param {BABYLON.Engine} engine - The Babylon.js engine used for rendering.
+ * @returns {BABYLON.Scene} - The mini scene containing the interactive compass.
+ */
+function add3DCompass(mainScene, mainCamera, engine) {
+  // Create a new scene dedicated to the compass visualization.
+  const compassScene = new BABYLON.Scene(engine);
+
+  // Prevent the compass scene from clearing the canvas to maintain visibility of the main scene.
+  compassScene.autoClear = false;
+  compassScene.clearColor = new BABYLON.Color4(0, 0, 0, 0); // Transparent background.
+
+  // Create an orthographic ArcRotateCamera for the compass.
+  const compassCamera = new BABYLON.ArcRotateCamera(
+    "compassCamera",
+    Math.PI / 2, Math.PI / 2, 5, BABYLON.Vector3.Zero(), compassScene
+  );
+  compassCamera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA; // Fixed scaling.
+  compassCamera.orthoLeft = -1;
+  compassCamera.orthoRight = 1;
+  compassCamera.orthoBottom = -1;
+  compassCamera.orthoTop = 1;
+  compassCamera.viewport = new BABYLON.Viewport(0.75, 0, 0.25, 0.25); // Bottom-right corner.
+
+  // Add light to the compass scene to illuminate the axes.
+  new BABYLON.HemisphericLight("compassLight", new BABYLON.Vector3(0, 1, 0), compassScene);
+
+  // Axis and arrowhead size settings.
+  const axisSize = 0.8;    // Length of the axis lines.
+  const axisRadius = 0.015;
+  const cross = new BABYLON.TransformNode("cross", compassScene);
+
+  const createAxis = (direction, color) => {
+    // Create the axis line.
+    const axis = BABYLON.MeshBuilder.CreateTube(
+      `${direction}Axis`,
+      { path: [BABYLON.Vector3.Zero(), direction.scale(axisSize)], radius: axisRadius, cap: BABYLON.Mesh.CAP_END },
+      compassScene
+    );
+    const axisMaterial = new BABYLON.StandardMaterial(`${direction}AxisMat`, compassScene);
+    axisMaterial.diffuseColor = color; // Match the arrowhead's color with the axis.
+    axis.material = axisMaterial;
+    axis.parent = cross;
+  };
+
+  // Create the X, Y, and Z axes with their respective colors.
+  createAxis(new BABYLON.Vector3(-1, 0, 0), new BABYLON.Color3.Red())
+  createAxis(new BABYLON.Vector3(0, 1, 0), new BABYLON.Color3.Green())
+  createAxis(new BABYLON.Vector3(0, 0, -1), new BABYLON.Color3.Blue())
+  BABYLON.MeshBuilder.CreateSphere("origin", { diameter: 5 * axisRadius }, compassScene);
+
+  // Synchronize the compass with the main camera's rotation.
+  mainScene.onBeforeRenderObservable.add(() => {
+    let camQuat = mainCamera.rotationQuaternion; // Get the camera's rotation as a quaternion.
+    if (!camQuat) {
+      // If the camera does not use quaternions, convert its Euler angles to a quaternion.
+      camQuat = BABYLON.Quaternion.RotationYawPitchRoll(
+        mainCamera.rotation.y, // Yaw (horizontal rotation).
+        -mainCamera.rotation.x, // Pitch (vertical tilt).
+        mainCamera.rotation.z  // Roll (bank rotation).
+      );
+    }
+    const inverseQuat = camQuat.clone().invert(); // Compute the inverse rotation.
+
+    // Apply the inverse rotation to the axes (arrowheads automatically follow).
+    cross.rotationQuaternion = inverseQuat; // Arrowheads inherit this rotation from their parent.
+
+  });
+
+  // Return the compass scene for further customization or control.
+  return compassScene;
+}
+
 
 /***************************************************************
  * Function: main
@@ -305,6 +461,7 @@ async function main() {
 
     // Step 3: Setup the scene, including the camera, lighting, and basic controls.
     scene = setupScene(engine, canvas);
+    compassScene = add3DCompass(scene, camera, engine);
 
     // Step 4: Setup the tooltip follow behavior so tooltips stay near the pointer.
     setupTooltipFollow(canvas);
@@ -318,6 +475,7 @@ async function main() {
     // Step 7: Run the render loop to continuously update the scene.
     engine.runRenderLoop(() => {
       scene.render();
+      compassScene.render();
     });
 
     // Handle browser window resize events to adjust the canvas dimension accordingly.
@@ -333,5 +491,3 @@ async function main() {
 
 // Start the application by calling the main function.
 main();
-
-
