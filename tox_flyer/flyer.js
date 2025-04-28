@@ -243,64 +243,77 @@ function plotData(scene, data) {
   
   // Create a base sphere that serves as a template.
   // Using instances is more performant than creating completely separate meshes.
-  let baseSphere = BABYLON.MeshBuilder.CreateSphere("baseSphere", { diameter: 0.25, segments: 16 }, scene);
-  
-  // Create and assign a blue material for the spheres.
-  let sphereMaterial = new BABYLON.StandardMaterial("sphereMat", scene);
-  sphereMaterial.diffuseColor = new BABYLON.Color3.Blue(); // Blue color
-  baseSphere.material = sphereMaterial;
-  
-  // Hide the original sphere since we will use instances.
-  baseSphere.isVisible = false;
-  
-  // Loop through the mock data and create an instance for each point.
-  for (let i = 0; i < numPoints; i++) {
-    let sphereInstance = baseSphere.createInstance("sphere_" + i);
-    sphereInstance.position = new BABYLON.Vector3(tissueX[i], tissueY[i], tissueZ[i]);
+  const createBaseSphere = (name, color) => {
+    let baseSphere = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 0.25, segments: 16 }, scene);
+    // Create and assign a blue material for the spheres.
+    let sphereMaterial = new BABYLON.StandardMaterial(name + "Mat", scene);
+    sphereMaterial.diffuseColor = color;
+    baseSphere.material = sphereMaterial;
+    // Hide the original sphere since we will use instances.
+    baseSphere.isVisible = false;
 
-    // Store the coordinate data in the instance's metadata.
-    sphereInstance.metadata = {
-      x: tissueX[i],
-      y: tissueY[i],
-      z: tissueZ[i]
-    };
+    baseSphere.dataPoint = (name, position) => {
+      const instance = baseSphere.createInstance(name);
+      instance.position = position;
+      instance.actionManager = baseSphere.actionManager;
+      return instance;
+    }
 
     // Enable pointer interactions by attaching an ActionManager to each instance.
-    sphereInstance.actionManager = new BABYLON.ActionManager(scene);
+    baseSphere.actionManager = new BABYLON.ActionManager(scene);
 
     // Register a hover action to display a tooltip with the data values.
-    sphereInstance.actionManager.registerAction(
+    baseSphere.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOverTrigger, function (evt) {
-        const pickResult = evt.source;
-        if (pickResult && pickResult.metadata) {
+        const dataPoint = evt.source;
+        if (dataPoint) {
           datapointDiv.style.display = "block";
           // Format the tooltip content with two decimal places.
-          datapointDiv.innerHTML = "x: " + pickResult.metadata.x.toFixed(2) + 
-                                 "<br>y: " + pickResult.metadata.y.toFixed(2) + 
-                                 "<br>z: " + pickResult.metadata.z.toFixed(2);
+          datapointDiv.innerHTML = "x: " + dataPoint.position.x.toFixed(2) + 
+                                 "<br>y: " + dataPoint.position.y.toFixed(2) + 
+                                 "<br>z: " + dataPoint.position.z.toFixed(2);
         }
       })
     );
 
     // Hide the tooltip when the pointer leaves the sphere.
-    sphereInstance.actionManager.registerAction(
+    baseSphere.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOutTrigger, function () {
         datapointDiv.style.display = "none";
       })
     );
 
-    // Register a click action to temporarily highlight the sphere.
-    sphereInstance.actionManager.registerAction(
+    // Register a click action to select a sphere.
+    baseSphere.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function (evt) {
-        let mesh = evt.source;
-        // Toggle a highlight effect: here, setting emissiveColor to Yellow.
-        if (mesh.material?.emissiveColor?.equals(BABYLON.Color3.Yellow())) {
-          mesh.material.emissiveColor = BABYLON.Color3.Black();
+        const instance = evt.source;
+        if (instance.TOX_unselectedInstance === undefined) {
+          // Create an instance of baseSphereSelected
+          const selectedInstance = baseSphereSelected.dataPoint(instance.name + "_selected", instance.position);
+
+          // Hide instance
+          instance.setEnabled(false);
+          selectedInstance.TOX_unselectedInstance = instance;
         } else {
-          mesh.material.emissiveColor = BABYLON.Color3.Yellow();
+          instance.TOX_unselectedInstance.setEnabled(true);
+          instance.dispose();
+          delete instance; // Clean up reference
         }
       })
     );
+
+    return baseSphere;
+  }
+
+  // Mesh for basic spheres
+  baseSphere = createBaseSphere("baseSphere", new BABYLON.Color3.Blue());
+
+  // Mesh for selected spheres, enables individual interaction (maybe orbit view or custom coloring)
+  baseSphereSelected = createBaseSphere("baseSphereSelected", new BABYLON.Color3.Yellow());
+
+  // Loop through the mock data and create an instance for each point.
+  for (let i = 0; i < numPoints; i++) {
+    baseSphere.dataPoint("dataPoint_" + i, new BABYLON.Vector3(tissueX[i], tissueY[i], tissueZ[i]));
   }
 }
 
