@@ -124,6 +124,10 @@ function setupCamera(scene, canvas) {
 function setupScene(engine, canvas) {
   // Create a new Babylon scene.
   let scene = new BABYLON.Scene(engine);
+
+  // set white background
+  scene.clearColor = BABYLON.Color3.White();
+
   create3DGrid(scene);
   setupCamera(scene, canvas);
 
@@ -179,33 +183,24 @@ function create3DGrid(scene, size = 100, step = 10) {
   let color = BABYLON.Color3.Gray(); // Default color for grid lines.
 
   // Lines along the X-axis.
-  for (let z = -halfSize; z <= halfSize; z += step) {
-    for (let y = -halfSize; y <= halfSize; y += step) {
+  for (let a = -halfSize; a <= halfSize; a += step) {
+    for (let b = -halfSize; b <= halfSize; b += step) {
+      // along x axis
       createLine(
-        new BABYLON.Vector3(-halfSize, y, z), // Start point
-        new BABYLON.Vector3(halfSize, y, z),  // End point
+        new BABYLON.Vector3(-halfSize, a, b), // Start point
+        new BABYLON.Vector3(halfSize, a, b),  // End point
         color
       );
-    }
-  }
-
-  // Lines along the Y-axis.
-  for (let x = -halfSize; x <= halfSize; x += step) {
-    for (let z = -halfSize; z <= halfSize; z += step) {
+      // along y axis
       createLine(
-        new BABYLON.Vector3(x, -halfSize, z), // Start point
-        new BABYLON.Vector3(x, halfSize, z),  // End point
+        new BABYLON.Vector3(a, -halfSize, b), // Start point
+        new BABYLON.Vector3(a, halfSize, b),  // End point
         color
       );
-    }
-  }
-
-  // Lines along the Z-axis.
-  for (let x = -halfSize; x <= halfSize; x += step) {
-    for (let y = -halfSize; y <= halfSize; y += step) {
+      // along z axis
       createLine(
-        new BABYLON.Vector3(x, y, -halfSize), // Start point
-        new BABYLON.Vector3(x, y, halfSize),  // End point
+        new BABYLON.Vector3(a, b, -halfSize), // Start point
+        new BABYLON.Vector3(a, b, halfSize),  // End point
         color
       );
     }
@@ -252,7 +247,7 @@ function plotData(scene, data) {
   
   // Create and assign a blue material for the spheres.
   let sphereMaterial = new BABYLON.StandardMaterial("sphereMat", scene);
-  sphereMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Blue color
+  sphereMaterial.diffuseColor = new BABYLON.Color3.Blue(); // Blue color
   baseSphere.material = sphereMaterial;
   
   // Hide the original sphere since we will use instances.
@@ -392,14 +387,14 @@ function add3DCompass(mainScene, mainCamera, engine) {
   compassCamera.orthoRight = 1;
   compassCamera.orthoBottom = -1;
   compassCamera.orthoTop = 1;
-  compassCamera.viewport = new BABYLON.Viewport(0.75, 0, 0.25, 0.25); // Bottom-right corner.
+  compassCamera.viewport = new BABYLON.Viewport(0.85, 0, 0.15, 0.25); // Bottom-right corner.
 
   // Add light to the compass scene to illuminate the axes.
   new BABYLON.HemisphericLight("compassLight", new BABYLON.Vector3(0, 1, 0), compassScene);
 
   // Axis and arrowhead size settings.
   const axisSize = 0.8;    // Length of the axis lines.
-  const axisRadius = 0.015;
+  const axisRadius = 0.0375;
   const cross = new BABYLON.TransformNode("cross", compassScene);
 
   const createAxis = (direction, color) => {
