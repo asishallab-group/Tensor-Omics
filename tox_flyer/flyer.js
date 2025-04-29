@@ -1,18 +1,10 @@
 /***************************************************************
- * Global Variables and State
+ * Global Variables
  ***************************************************************/
-// Global object to store the current view state (position and rotation)
-// This makes the view reproducible as you can always use 'currentViewState'
-// to retrieve the camera's current position and orientation.
-let currentViewState = {
-  position: { x: 0, y: 0, z: 0 },
-  rotation: { x: 0, y: 0, z: 0 }
-};
 
-// Babylon engine, scene and camera will be stored in these global variables.
+// Babylon engine and scene will be stored in these global variables.
 let engine;
 let scene;
-let camera;
 // Reference to the tooltip element for displaying hovered point data.
 let datapointDiv = document.getElementById("datapoint");
 
@@ -66,19 +58,23 @@ async function initializeEngine(canvas) {
 
 /**
  * Function: setupCamera
- * Purpose: Configure a UniversalCamera for movement and rotation controls.
+ * Purpose: Configure a UniversalCamera and ArcRotationCamera for movement and rotation controls.
  * - Sets up WASD and arrow keys for navigation in 3D space.
  * - Q/E for rotating left/right, Space/Shift for upward/downward movement.
  * - Attaches camera controls to the canvas for mouse-based view rotation.
  * - Binds mouse wheel to apply zoom effect to the view.
  */
-function setupCamera(scene, canvas) {
+function setupCamera(scene, canvas) {  
+  // create an ArcRotateCamera for orbit view
+  new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
+
   // Create a UniversalCamera placed initially above the ground and away from the origin.
   // UniversalCamera is suited for first-person style movement and rotation in 3D space.
-  camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 5, -20), scene);
+  // camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 5, -20), scene);
+  camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, -10), scene);
 
   // Customize key bindings for movement (WASD, Arrow keys, etc.).
-  // Movement forward/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
+  // Movement forwa rd/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
   camera.keysUp = [87, 38]; // W (87) and ArrowUp (38)
   camera.keysDown = [83, 40]; // S (83) and ArrowDown (40)
 
@@ -96,9 +92,6 @@ function setupCamera(scene, canvas) {
   camera.keysRotateLeft = [81]; // Q
   camera.keysRotateRight = [69]; // E
 
-  // Attach the camera controls to the canvas to enable mouse and keyboard usage.
-  camera.attachControl(canvas, true);
-
   // Set the movement speed and mouse sensitivity for a smooth experience.
   camera.speed = 0.5; // Controls the speed of movement for WASD and arrow keys.
   camera.angularSensibility = 2000; // Controls mouse drag sensitivity for view rotation.
@@ -112,6 +105,24 @@ function setupCamera(scene, canvas) {
     // Clamp the FOV value to keep the zoom within sensible limits.
     camera.fov = Math.min(Math.max(camera.fov, 0.1), 1.5);
   });
+
+  // Add function to easily switch cameras
+  scene.TOX_switchCamera = (target) => {
+    // scene.activeCamera.detachControl();
+    if (scene.activeCamera.name === "camera") {
+      scene.setActiveCameraByName("orbitCamera");
+      if (target !== undefined) {
+        scene.activeCamera.target = target;
+      }
+    } else {
+      scene.setActiveCameraByName("camera");
+      scene.activeCamera.positionQ = target;
+    }
+    // Attach the camera controls to the canvas to enable mouse and keyboard usage.
+    scene.activeCamera.attachControl(canvas);
+  }
+
+  scene.TOX_switchCamera();
 }
 
 /***************************************************************
@@ -135,22 +146,7 @@ function setupScene(engine, canvas) {
   let light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.8;
   
-  showPositionOverlay(scene, camera);
-
-  // Update the global view state every frame. This ensures reproducibility of the view.
-  scene.registerBeforeRender(() => {
-    currentViewState.position = {
-      x: camera.position.x,
-      y: camera.position.y,
-      z: camera.position.z
-    };
-    // The camera rotation is stored in Euler angles.
-    currentViewState.rotation = {
-      x: camera.rotation.x,
-      y: camera.rotation.y,
-      z: camera.rotation.z
-    };
-  });
+  showPositionOverlay(scene);
 
   return scene;
 }
@@ -268,6 +264,7 @@ function plotData(scene, data) {
         const dataPoint = evt.source;
         if (dataPoint) {
           datapointDiv.style.display = "block";
+          document.body.style.cursor = "pointer";
           // Format the tooltip content with two decimal places.
           datapointDiv.innerHTML = "x: " + dataPoint.position.x.toFixed(2) + 
                                  "<br>y: " + dataPoint.position.y.toFixed(2) + 
@@ -280,6 +277,7 @@ function plotData(scene, data) {
     baseSphere.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOutTrigger, function () {
         datapointDiv.style.display = "none";
+        document.body.style.cursor = "unset";
       })
     );
 
@@ -336,9 +334,8 @@ function setupTooltipFollow(canvas) {
  * - Updates dynamically as the camera moves.
  * - Position is displayed in the bottom-right corner.
  * @param {BABYLON.Scene} scene - The Babylon.js scene for GUI integration.
- * @param {BABYLON.Camera} camera - The camera whose position is displayed.
  */
-function showPositionOverlay(scene, camera) {
+function showPositionOverlay(scene) {
   // Create a fullscreen GUI overlay using Babylon.js's GUI library.
   let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
@@ -366,9 +363,9 @@ function showPositionOverlay(scene, camera) {
 
   // Update the position text dynamically as the camera moves.
   scene.registerBeforeRender(() => {
-    xPosition.text = `X: ${camera.position.x.toFixed(2)}`;
-    yPosition.text = `Y: ${camera.position.y.toFixed(2)}`;
-    zPosition.text = `Z: ${camera.position.z.toFixed(2)}`;
+    xPosition.text = `X: ${scene.activeCamera._position.x.toFixed(2)}`;
+    yPosition.text = `Y: ${scene.activeCamera._position.y.toFixed(2)}`;
+    zPosition.text = `Z: ${scene.activeCamera._position.z.toFixed(2)}`;
   });
 }
 
@@ -378,11 +375,10 @@ function showPositionOverlay(scene, camera) {
  * - A mini coordinate system (X, Y, Z axes) is always visible.
  * - Rotates synchronously (inverted) with the camera to show the correct orientation of the axes.
  * @param {BABYLON.Scene} mainScene - The primary scene of your application.
- * @param {BABYLON.Camera} mainCamera - The main camera whose rotation is used to synchronize the compass.
  * @param {BABYLON.Engine} engine - The Babylon.js engine used for rendering.
  * @returns {BABYLON.Scene} - The mini scene containing the interactive compass.
  */
-function add3DCompass(mainScene, mainCamera, engine) {
+function add3DCompass(mainScene, engine) {
   // Create a new scene dedicated to the compass visualization.
   const compassScene = new BABYLON.Scene(engine);
 
@@ -431,21 +427,26 @@ function add3DCompass(mainScene, mainCamera, engine) {
 
   // Synchronize the compass with the main camera's rotation.
   mainScene.onBeforeRenderObservable.add(() => {
-    let camQuat = mainCamera.rotationQuaternion; // Get the camera's rotation as a quaternion.
-    if (!camQuat) {
-      // If the camera does not use quaternions, convert its Euler angles to a quaternion.
+    const activeCamera = mainScene.activeCamera;
+    let camQuat;
+
+    if (activeCamera instanceof BABYLON.ArcRotateCamera) {
+      // Compute quaternion from alpha and beta for ArcRotateCamera.
+      const alpha = -activeCamera.alpha - Math.PI / 2;
+      const beta = activeCamera.beta - Math.PI / 2;
+
+      camQuat = BABYLON.Quaternion.RotationYawPitchRoll(alpha, beta, 0);
+    } else {
+      // Fallback for UniversalCamera or other camera types
       camQuat = BABYLON.Quaternion.RotationYawPitchRoll(
-        mainCamera.rotation.y, // Yaw (horizontal rotation).
-        -mainCamera.rotation.x, // Pitch (vertical tilt).
-        mainCamera.rotation.z  // Roll (bank rotation).
+          activeCamera.rotation.y, // Yaw
+          -activeCamera.rotation.x, // Pitch
+          activeCamera.rotation.z  // Roll
       );
     }
-    const inverseQuat = camQuat.clone().invert(); // Compute the inverse rotation.
-
-    // Apply the inverse rotation to the axes (arrowheads automatically follow).
-    cross.rotationQuaternion = inverseQuat; // Arrowheads inherit this rotation from their parent.
-
+    cross.rotationQuaternion = camQuat.invert();
   });
+
 
   // Return the compass scene for further customization or control.
   return compassScene;
@@ -469,7 +470,7 @@ async function main() {
 
     // Step 3: Setup the scene, including the camera, lighting, and basic controls.
     scene = setupScene(engine, canvas);
-    compassScene = add3DCompass(scene, camera, engine);
+    compassScene = add3DCompass(scene, engine);
 
     // Step 4: Setup the tooltip follow behavior so tooltips stay near the pointer.
     setupTooltipFollow(canvas);
