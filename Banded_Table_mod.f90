@@ -465,7 +465,7 @@ contains
                            if(allocated(temp_str_alloc)) deallocate(temp_str_alloc)
                            goto 999
                        end if
-                       ! *** Correction: Copy characters explicitly ***
+                       !  Copy characters explicitly 
                        do char_idx = 1, len(temp_str_alloc)
                            tbl%string_chars(tbl%string_offsets(k) + char_idx - 1) = temp_str_alloc(char_idx:char_idx)
                        end do
