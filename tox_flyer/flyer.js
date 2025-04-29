@@ -66,12 +66,13 @@ async function initializeEngine(canvas) {
  */
 function setupCamera(scene, canvas) {  
   // create an ArcRotateCamera for orbit view
-  new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
+  const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
 
   // Create a UniversalCamera placed initially above the ground and away from the origin.
   // UniversalCamera is suited for first-person style movement and rotation in 3D space.
   // camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 5, -20), scene);
-  camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, -10), scene);
+  const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, 0), scene);
+  orbitCam.position = camera.position;
 
   // Customize key bindings for movement (WASD, Arrow keys, etc.).
   // Movement forwa rd/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
@@ -107,12 +108,14 @@ function setupCamera(scene, canvas) {
   });
 
   // Add function to easily switch cameras
-  scene.TOX_switchCamera = (target) => {
-    // scene.activeCamera.detachControl();
+  scene.TOX_switchCamera = (target, radius) => {
     if (scene.activeCamera.name === "camera") {
       scene.setActiveCameraByName("orbitCamera");
       if (target !== undefined) {
-        scene.activeCamera.target = target;
+        scene.activeCamera.setTarget(target);
+      }
+      if (radius !== undefined) {
+        scene.activeCamera.radius = radius;
       }
     } else {
       scene.setActiveCameraByName("camera");
@@ -308,11 +311,59 @@ function plotData(scene, data) {
 
   // Mesh for selected spheres, enables individual interaction (maybe orbit view or custom coloring)
   baseSphereSelected = createBaseSphere("baseSphereSelected", new BABYLON.Color3.Yellow());
+  console.log(baseSphereSelected)
 
   // Loop through the mock data and create an instance for each point.
   for (let i = 0; i < numPoints; i++) {
     baseSphere.dataPoint("dataPoint_" + i, new BABYLON.Vector3(tissueX[i], tissueY[i], tissueZ[i]));
   }
+
+  scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
+    const key = evt.key.toLowerCase();
+    if (key === "f") {
+      const camera = scene.activeCamera;
+      if (camera.name === "orbitCamera") {
+        scene.TOX_switchCamera();
+      }
+      else if (baseSphereSelected.instances.length === 0) {
+        // Calculate the forward direction vector of the camera
+        const forward = camera.getDirection(BABYLON.Vector3.Forward());
+
+        // Scale the forward vector by the orbitCamera's radius
+        const orbitCam = scene.getCameraByName("orbitCamera");
+        const radius = 10;
+        const orbitTarget = camera.position.add(forward.scale(radius));
+
+        scene.TOX_switchCamera(orbitTarget, radius);
+      } else {
+        // calculate mid point of all selected points and set as target,
+        // set distance to this point as radius
+
+        // Initialize variables to calculate the sum of positions
+        let sumX = 0;
+        let sumY = 0;
+        let sumZ = 0;
+
+        // Loop through all instances and sum up their positions
+        baseSphereSelected.instances.forEach(instance => {
+            const position = instance.position;
+            sumX += position.x;
+            sumY += position.y;
+            sumZ += position.z;
+        });
+
+        // Calculate the average position
+        const numInstances = baseSphereSelected.instances.length;
+        const middlePoint = new BABYLON.Vector3(
+            sumX / numInstances,
+            sumY / numInstances,
+            sumZ / numInstances
+        );
+        const radius = BABYLON.Vector3.Distance(middlePoint, scene.activeCamera.position)
+        scene.TOX_switchCamera(middlePoint, radius);
+      }
+    }
+  })
 }
 
 /***************************************************************
@@ -363,9 +414,9 @@ function showPositionOverlay(scene) {
 
   // Update the position text dynamically as the camera moves.
   scene.registerBeforeRender(() => {
-    xPosition.text = `X: ${scene.activeCamera._position.x.toFixed(2)}`;
-    yPosition.text = `Y: ${scene.activeCamera._position.y.toFixed(2)}`;
-    zPosition.text = `Z: ${scene.activeCamera._position.z.toFixed(2)}`;
+    xPosition.text = `X: ${scene.activeCamera.position.x.toFixed(2)}`;
+    yPosition.text = `Y: ${scene.activeCamera.position.y.toFixed(2)}`;
+    zPosition.text = `Z: ${scene.activeCamera.position.z.toFixed(2)}`;
   });
 }
 
