@@ -1,12 +1,47 @@
-/***************************************************************
- * Global Variables
- ***************************************************************/
+"use strict";
+class Config {
+  #values = {
+    selectedDataPointColor: "#FFFF00FF",
+    outlierDataPointColor: "#0000FFFF",
+    outlierDataPointDiameter: 0.25,
 
-// Babylon engine and scene will be stored in these global variables.
-let engine;
-let scene;
-// Reference to the tooltip element for displaying hovered point data.
-let datapointDiv = document.getElementById("datapoint");
+    backgroundColor: "#FFFFFFFF",
+
+    xAxisColor: "#FF0000FF",
+    yAxisColor: "#00FF00FF",
+    zAxisColor: "#0000FFFF",
+
+    x: 0,
+    y: 0,
+    z: 0
+  }
+  #callbacks = {}
+
+  constructor() {
+    for (const [key, value] of Object.entries(this.#values)) {
+      Object.defineProperty(this, key, {
+        get() {
+          return this.#values[key];
+        },
+        set(value) {
+          this.#values[key] = value;
+          this.#callbacks[key]?.(value);
+        }
+      })
+      this[key] = value;
+    }
+  }
+
+  setSetterCallback(key, callback) {
+    if (this.#callbacks[key] === undefined) {
+      this.#callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
+      callback(this[key]);
+    } else {
+      throw Error(`Another callback function has been already registered for '${key}' in the past.`);
+    }
+  }
+}
+const config = new Config();
 
 /***************************************************************
  * Function: configureCanvas
@@ -16,7 +51,7 @@ let datapointDiv = document.getElementById("datapoint");
  ***************************************************************/
 function configureCanvas() {
   // Retrieve the canvas element by its id "view".
-  let canvas = document.getElementById("view");
+  const canvas = document.getElementById("view");
   if (!canvas) {
     throw new Error("Canvas element with id 'view' not found.");
   }
@@ -43,7 +78,7 @@ async function initializeEngine(canvas) {
   }
   // Create a new WebGPU engine.
   // Babylon.js automatically detects that we want to use WebGPU based on this engine.
-  engine = new BABYLON.WebGPUEngine(canvas);
+  const engine = new BABYLON.WebGPUEngine(canvas);
   try {
     // Asynchronously initialize the engine. This prepares the WebGPU adapter.
     await engine.initAsync();
@@ -67,12 +102,21 @@ async function initializeEngine(canvas) {
 function setupCamera(scene, canvas) {  
   // create an ArcRotateCamera for orbit view
   const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
+  const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
+  setupOrbitView(scene, meshSelectedPoints);
 
   // Create a UniversalCamera placed initially above the ground and away from the origin.
   // UniversalCamera is suited for first-person style movement and rotation in 3D space.
   // camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 5, -20), scene);
   const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, 0), scene);
-  orbitCam.position = camera.position;
+
+  // set position
+  for (const axis of "xyz") {
+    config.setSetterCallback(axis, (value) => {
+      orbitCam.position[axis] = value;
+      camera.position[axis] = value;
+    })
+  }
 
   // Customize key bindings for movement (WASD, Arrow keys, etc.).
   // Movement forwa rd/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
@@ -100,7 +144,7 @@ function setupCamera(scene, canvas) {
   // Listen to the mouse wheel event on the canvas to simulate zooming.
   canvas.addEventListener("wheel", event => {
     // event.deltaY is positive when scrolling down (zoom out) and negative when scrolling up (zoom in).
-    let delta = event.deltaY * 0.0005;
+    const delta = event.deltaY * 0.0005;
     // Adjust the camera's field of view (fov) to simulate zoom changes.
     camera.fov += delta;
     // Clamp the FOV value to keep the zoom within sensible limits.
@@ -128,6 +172,55 @@ function setupCamera(scene, canvas) {
   scene.TOX_switchCamera();
 }
 
+function setupOrbitView(scene, meshSelectedPoints) {
+  scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
+    const key = evt.key.toLowerCase();
+    if (key === "f") {
+      const camera = scene.activeCamera;
+      if (camera.name === "orbitCamera") {
+        scene.TOX_switchCamera();
+      }
+      else if (meshSelectedPoints.instances.length === 0) {
+        // Calculate the forward direction vector of the camera
+        const forward = camera.getDirection(BABYLON.Vector3.Forward());
+
+        // Scale the forward vector by the orbitCamera's radius
+        const orbitCam = scene.getCameraByName("orbitCamera");
+        const radius = 10;
+        const orbitTarget = camera.position.add(forward.scale(radius));
+
+        scene.TOX_switchCamera(orbitTarget, radius);
+      } else {
+        // calculate mid point of all selected points and set as target,
+        // set distance to this point as radius
+
+        // Initialize variables to calculate the sum of positions
+        let sumX = 0;
+        let sumY = 0;
+        let sumZ = 0;
+
+        // Loop through all instances and sum up their positions
+        meshSelectedPoints.instances.forEach(instance => {
+            const position = instance.position;
+            sumX += position.x;
+            sumY += position.y;
+            sumZ += position.z;
+        });
+
+        // Calculate the average position
+        const numInstances = meshSelectedPoints.instances.length;
+        const middlePoint = new BABYLON.Vector3(
+            sumX / numInstances,
+            sumY / numInstances,
+            sumZ / numInstances
+        );
+        const radius = BABYLON.Vector3.Distance(middlePoint, scene.activeCamera.position)
+        scene.TOX_switchCamera(middlePoint, radius);
+      }
+    }
+  })
+}
+
 /***************************************************************
  * Function: setupScene
  * Purpose: Create the Babylon scene, camera, lighting and input controls.
@@ -137,21 +230,25 @@ function setupCamera(scene, canvas) {
  ***************************************************************/
 function setupScene(engine, canvas) {
   // Create a new Babylon scene.
-  let scene = new BABYLON.Scene(engine);
+  const scene = new BABYLON.Scene(engine);
 
-  // set white background
-  scene.clearColor = BABYLON.Color3.White();
+  // set background color
+  config.setSetterCallback("backgroundColor", (value) => {
+    setBackgroundColor(scene, value);
+  });
 
   create3DGrid(scene);
   setupCamera(scene, canvas);
 
   // Create a basic hemispheric light to illuminate the scene.
-  let light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+  const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.8;
   
-  showPositionOverlay(scene);
-
   return scene;
+}
+
+function setBackgroundColor(scene, color) {
+  scene.clearColor = BABYLON.Color4.FromHexString(color);
 }
 
 /**
@@ -164,12 +261,12 @@ function setupScene(engine, canvas) {
  */
 function create3DGrid(scene, size = 100, step = 10) {
   // Create a parent node to group all grid lines for easy management.
-  let gridParent = new BABYLON.TransformNode("gridParent", scene);
+  const gridParent = new BABYLON.TransformNode("gridParent", scene);
 
   // Helper function to create a single line.
   function createLine(start, end, color) {
-    let line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
-    let material = new BABYLON.StandardMaterial("lineMat", scene);
+    const line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
+    const material = new BABYLON.StandardMaterial("lineMat", scene);
     material.emissiveColor = color; // Use emissive color to make lines bright.
     material.disableLighting = true; // Lines are unaffected by scene lighting.
     material.alpha = 0.2;
@@ -178,8 +275,8 @@ function create3DGrid(scene, size = 100, step = 10) {
   }
 
   // Create grid lines parallel to each axis.
-  let halfSize = size / 2;
-  let color = BABYLON.Color3.Gray(); // Default color for grid lines.
+  const halfSize = size / 2;
+  const color = BABYLON.Color3.Gray(); // Default color for grid lines.
 
   // Lines along the X-axis.
   for (let a = -halfSize; a <= halfSize; a += step) {
@@ -216,9 +313,9 @@ function create3DGrid(scene, size = 100, step = 10) {
  * @param {number} numPoints - The number of points to generate.
  ***************************************************************/
 function createMockData(numPoints = 100) {
-  let tissueX = new Float32Array(numPoints);
-  let tissueY = new Float32Array(numPoints);
-  let tissueZ = new Float32Array(numPoints);
+  const tissueX = new Float32Array(numPoints);
+  const tissueY = new Float32Array(numPoints);
+  const tissueZ = new Float32Array(numPoints);
   
   // Fill each array with random values between -25 and 25.
   for (let i = 0; i < numPoints; i++) {
@@ -237,32 +334,59 @@ function createMockData(numPoints = 100) {
  * - Also creates 3D arrows along the X, Y, and Z axes (in black) to serve as ordinates.
  ***************************************************************/
 function plotData(scene, data) {
-  let { tissueX, tissueY, tissueZ } = data;
-  let numPoints = tissueX.length;
+  const { tissueX, tissueY, tissueZ } = data;
+  const numPoints = tissueX.length;
   
   // Create a base sphere that serves as a template.
-  // Using instances is more performant than creating completely separate meshes.
-  const createBaseSphere = (name, color) => {
-    let baseSphere = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 0.25, segments: 16 }, scene);
-    // Create and assign a blue material for the spheres.
-    let sphereMaterial = new BABYLON.StandardMaterial(name + "Mat", scene);
-    sphereMaterial.diffuseColor = color;
-    baseSphere.material = sphereMaterial;
-    // Hide the original sphere since we will use instances.
-    baseSphere.isVisible = false;
+  // Using instances is more performant than creating compconstely separate meshes.
+  // Mesh for basic spheres
+  const meshOutliers = createSphereMesh(scene, "meshOutliers", "outlierDataPointColor", "outlierDataPointDiameter");
 
-    baseSphere.dataPoint = (name, position) => {
-      const instance = baseSphere.createInstance(name);
+  // Loop through the mock data and create an instance for each point.
+  for (let i = 0; i < numPoints; i++) {
+    meshOutliers.dataPoint("dataPoint_" + i, new BABYLON.Vector3(tissueX[i], tissueY[i], tissueZ[i]));
+  }
+}
+
+function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
+    const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+
+    // Create and assign a blue material for the spheres.
+    const sphereMaterial = new BABYLON.StandardMaterial(name + "Mat", scene);
+    mesh.material = sphereMaterial;
+
+    // set size
+    if (configDiameterAttribute) {
+      config.setSetterCallback(configDiameterAttribute, (value) => {
+        setSphereSize(mesh, value);
+        for (const instance of mesh.instances) {
+          setSphereSize(instance, value);
+        }
+      })
+    }
+
+    // set color
+    config.setSetterCallback(configColorAttribute, (value) => {
+      setSphereColor(mesh, value);
+    });
+
+    // Hide the original sphere since we will use instances.
+    mesh.isVisible = false;
+
+    mesh.dataPoint = function (name, position) {
+      const instance = this.createInstance(name);
       instance.position = position;
-      instance.actionManager = baseSphere.actionManager;
+      instance.actionManager = this.actionManager;
       return instance;
     }
 
     // Enable pointer interactions by attaching an ActionManager to each instance.
-    baseSphere.actionManager = new BABYLON.ActionManager(scene);
+    mesh.actionManager = new BABYLON.ActionManager(scene);
+
 
     // Register a hover action to display a tooltip with the data values.
-    baseSphere.actionManager.registerAction(
+    const datapointDiv = document.getElementById("datapoint");
+    mesh.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOverTrigger, function (evt) {
         const dataPoint = evt.source;
         if (dataPoint) {
@@ -277,7 +401,7 @@ function plotData(scene, data) {
     );
 
     // Hide the tooltip when the pointer leaves the sphere.
-    baseSphere.actionManager.registerAction(
+    mesh.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOutTrigger, function () {
         datapointDiv.style.display = "none";
         document.body.style.cursor = "unset";
@@ -285,12 +409,14 @@ function plotData(scene, data) {
     );
 
     // Register a click action to select a sphere.
-    baseSphere.actionManager.registerAction(
+    mesh.actionManager.registerAction(
       new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function (evt) {
         const instance = evt.source;
+        const meshSelectedPoints = scene.getMeshByName("meshSelectedPoints");
         if (instance.TOX_unselectedInstance === undefined) {
-          // Create an instance of baseSphereSelected
-          const selectedInstance = baseSphereSelected.dataPoint(instance.name + "_selected", instance.position);
+          // Create an instance of meshSelectedPoints
+          const selectedInstance = meshSelectedPoints.dataPoint(instance.name + "_selected", instance.position);
+          selectedInstance.scaling = instance.scaling;
 
           // Hide instance
           instance.setEnabled(false);
@@ -298,72 +424,21 @@ function plotData(scene, data) {
         } else {
           instance.TOX_unselectedInstance.setEnabled(true);
           instance.dispose();
-          delete instance; // Clean up reference
         }
       })
     );
 
-    return baseSphere;
-  }
+    return mesh;
+}
 
-  // Mesh for basic spheres
-  baseSphere = createBaseSphere("baseSphere", new BABYLON.Color3.Blue());
+function setSphereSize(sphere, diameter) {
+  sphere.scaling.x = diameter;
+  sphere.scaling.y = diameter;
+  sphere.scaling.z = diameter;
+}
 
-  // Mesh for selected spheres, enables individual interaction (maybe orbit view or custom coloring)
-  baseSphereSelected = createBaseSphere("baseSphereSelected", new BABYLON.Color3.Yellow());
-  console.log(baseSphereSelected)
-
-  // Loop through the mock data and create an instance for each point.
-  for (let i = 0; i < numPoints; i++) {
-    baseSphere.dataPoint("dataPoint_" + i, new BABYLON.Vector3(tissueX[i], tissueY[i], tissueZ[i]));
-  }
-
-  scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
-    const key = evt.key.toLowerCase();
-    if (key === "f") {
-      const camera = scene.activeCamera;
-      if (camera.name === "orbitCamera") {
-        scene.TOX_switchCamera();
-      }
-      else if (baseSphereSelected.instances.length === 0) {
-        // Calculate the forward direction vector of the camera
-        const forward = camera.getDirection(BABYLON.Vector3.Forward());
-
-        // Scale the forward vector by the orbitCamera's radius
-        const orbitCam = scene.getCameraByName("orbitCamera");
-        const radius = 10;
-        const orbitTarget = camera.position.add(forward.scale(radius));
-
-        scene.TOX_switchCamera(orbitTarget, radius);
-      } else {
-        // calculate mid point of all selected points and set as target,
-        // set distance to this point as radius
-
-        // Initialize variables to calculate the sum of positions
-        let sumX = 0;
-        let sumY = 0;
-        let sumZ = 0;
-
-        // Loop through all instances and sum up their positions
-        baseSphereSelected.instances.forEach(instance => {
-            const position = instance.position;
-            sumX += position.x;
-            sumY += position.y;
-            sumZ += position.z;
-        });
-
-        // Calculate the average position
-        const numInstances = baseSphereSelected.instances.length;
-        const middlePoint = new BABYLON.Vector3(
-            sumX / numInstances,
-            sumY / numInstances,
-            sumZ / numInstances
-        );
-        const radius = BABYLON.Vector3.Distance(middlePoint, scene.activeCamera.position)
-        scene.TOX_switchCamera(middlePoint, radius);
-      }
-    }
-  })
+function setSphereColor(sphere, color) {
+  sphere.material.diffuseColor = BABYLON.Color4.FromHexString(color);
 }
 
 /***************************************************************
@@ -373,6 +448,7 @@ function plotData(scene, data) {
  * - Offsets the tooltip by a few pixels from the pointer for better visibility.
  ***************************************************************/
 function setupTooltipFollow(canvas) {
+  const datapointDiv = document.getElementById("datapoint");
   canvas.addEventListener("mousemove", function (evt) {
     datapointDiv.style.left = (evt.clientX + 10) + "px";
     datapointDiv.style.top = (evt.clientY + 10) + "px";
@@ -386,26 +462,32 @@ function setupTooltipFollow(canvas) {
  * - Position is displayed in the bottom-right corner.
  * @param {BABYLON.Scene} scene - The Babylon.js scene for GUI integration.
  */
-function showPositionOverlay(scene) {
+function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
   // Create a fullscreen GUI overlay using Babylon.js's GUI library.
-  let advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+  const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
 
   // Create a text block to display the position.
-  let xPosition = new BABYLON.GUI.TextBlock();
-  xPosition.fontSize = 24; // Font size
+  const xPosition = new BABYLON.GUI.TextBlock();
+  xPosition.fontSize = "3%"; // Font size
   xPosition.fontStyle = "bold"; // Font style
   xPosition.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT; // Align text to the right
   xPosition.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM; // Align text to the bottom
-  xPosition.paddingRight = 10; // Add some padding from the right
-  xPosition.paddingBottom = 300; // Add some padding from the top
-  xPosition.color = "red"; // Text color
+  xPosition.left = "-1%"; // Add some padding from the right
+  xPosition.top = "-31%"; // Add some padding from the top
+  const yPosition = xPosition.clone();
+  yPosition.top = "-28%"; // Add some padding from the top
+  const zPosition = yPosition.clone();
+  zPosition.top = "-25%"; // Add some padding from the top
 
-  yPosition = xPosition.clone();
-  yPosition.color = "green"; // Text color
-  yPosition.paddingBottom = 270;
-  zPosition = yPosition.clone();
-  zPosition.color = "blue"; // Text color
-  zPosition.paddingBottom = 240;
+  function setColorCallback(attribute, textfield, axis) {
+    config.setSetterCallback(attribute, (value) => {
+      setTextfieldColor(textfield, value);
+      axis.material.diffuseColor = BABYLON.Color4.FromHexString(value);
+    })
+  }
+  setColorCallback("xAxisColor", xPosition, xAxis);
+  setColorCallback("yAxisColor", yPosition, yAxis);
+  setColorCallback("zAxisColor", zPosition, zAxis);
 
   // Add the text blocks to the GUI overlay.
   advancedTexture.addControl(xPosition);
@@ -418,6 +500,10 @@ function showPositionOverlay(scene) {
     yPosition.text = `Y: ${scene.activeCamera.position.y.toFixed(2)}`;
     zPosition.text = `Z: ${scene.activeCamera.position.z.toFixed(2)}`;
   });
+}
+
+function setTextfieldColor(textfield, color) {
+  textfield.color = color;
 }
 
 /**
@@ -435,7 +521,6 @@ function add3DCompass(mainScene, engine) {
 
   // Prevent the compass scene from clearing the canvas to maintain visibility of the main scene.
   compassScene.autoClear = false;
-  compassScene.clearColor = new BABYLON.Color4(0, 0, 0, 0); // Transparent background.
 
   // Create an orthographic ArcRotateCamera for the compass.
   const compassCamera = new BABYLON.ArcRotateCamera(
@@ -457,7 +542,7 @@ function add3DCompass(mainScene, engine) {
   const axisRadius = 0.0375;
   const cross = new BABYLON.TransformNode("cross", compassScene);
 
-  const createAxis = (direction, color) => {
+  const createAxis = (direction) => {
     // Create the axis line.
     const axis = BABYLON.MeshBuilder.CreateTube(
       `${direction}Axis`,
@@ -465,15 +550,19 @@ function add3DCompass(mainScene, engine) {
       compassScene
     );
     const axisMaterial = new BABYLON.StandardMaterial(`${direction}AxisMat`, compassScene);
-    axisMaterial.diffuseColor = color; // Match the arrowhead's color with the axis.
     axis.material = axisMaterial;
     axis.parent = cross;
+    return axis;
   };
 
-  // Create the X, Y, and Z axes with their respective colors.
-  createAxis(new BABYLON.Vector3(-1, 0, 0), new BABYLON.Color3.Red())
-  createAxis(new BABYLON.Vector3(0, 1, 0), new BABYLON.Color3.Green())
-  createAxis(new BABYLON.Vector3(0, 0, -1), new BABYLON.Color3.Blue())
+  // Create the X, Y, and Z axes with their respective colors and show current position above
+  showPositionOverlay(
+    mainScene,
+    createAxis(new BABYLON.Vector3(-1, 0, 0)),
+    createAxis(new BABYLON.Vector3(0, 1, 0)),
+    createAxis(new BABYLON.Vector3(0, 0, -1))
+  )
+  // add origin
   BABYLON.MeshBuilder.CreateSphere("origin", { diameter: 5 * axisRadius }, compassScene);
 
   // Synchronize the compass with the main camera's rotation.
@@ -517,17 +606,17 @@ async function main() {
     const canvas = configureCanvas();
 
     // Step 2: Initialize Babylon's experimental WebGPU engine.
-    await initializeEngine(canvas);
+    const engine = await initializeEngine(canvas);
 
     // Step 3: Setup the scene, including the camera, lighting, and basic controls.
-    scene = setupScene(engine, canvas);
-    compassScene = add3DCompass(scene, engine);
+    const scene = setupScene(engine, canvas);
+    const compassScene = add3DCompass(scene, engine);
 
     // Step 4: Setup the tooltip follow behavior so tooltips stay near the pointer.
     setupTooltipFollow(canvas);
 
     // Step 5: Generate mock data for plotting (simulate WASM-provided data).
-    let mockData = createMockData(200); // Increase the number of points for a denser plot.
+    const mockData = createMockData(200); // Increase the number of points for a denser plot.
 
     // Step 6: Plot the data points and draw the ordinate arrows.
     plotData(scene, mockData);
@@ -545,6 +634,7 @@ async function main() {
 
   } catch (err) {
     // Log any errors during initialization to the console.
+    console.log(err);
     document.body.innerHTML = `Error during initialization: ${err}`;
   }
 }
