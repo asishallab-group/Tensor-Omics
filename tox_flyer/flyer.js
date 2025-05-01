@@ -1,35 +1,76 @@
 "use strict";
 class Config {
-  #values = {
+  #allModes = {
+    darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    outlierDataPointDiameter: 0.25,
+    x: 0,
+    y: 0,
+    z: 0
+  }
+  #lightMode = {
     selectedDataPointColor: "#FFFF00FF",
     outlierDataPointColor: "#0000FFFF",
-    outlierDataPointDiameter: 0.25,
 
     backgroundColor: "#FFFFFFFF",
 
     xAxisColor: "#FF0000FF",
     yAxisColor: "#00FF00FF",
     zAxisColor: "#0000FFFF",
+  }
+  #darkMode = {
+    selectedDataPointColor: "#FFFF00FF",
+    outlierDataPointColor: "#F15829FF",
 
-    x: 0,
-    y: 0,
-    z: 0
+    backgroundColor: "#1B1A1FFF",
+
+    xAxisColor: "#DE0000FF",
+    yAxisColor: "#19CF00FF",
+    zAxisColor: "#0092FFFF",
   }
   #callbacks = {}
 
   constructor() {
-    for (const [key, value] of Object.entries(this.#values)) {
+    // setting getter/setter for darkMode-independent attributes
+    for (const [key, value] of Object.entries({...this.#allModes})) {
       Object.defineProperty(this, key, {
         get() {
-          return this.#values[key];
+          return this.#allModes[key];
         },
         set(value) {
-          this.#values[key] = value;
+          this.#allModes[key] = value;
           this.#callbacks[key]?.(value);
         }
       })
-      this[key] = value;
     }
+
+    // setting getter/setter for darkMode-dependent attributes
+    for (const [key, value] of Object.entries({...this.#lightMode})) {
+      Object.defineProperty(this, key, {
+        get() {
+          if (this.#allModes.darkMode) {
+            return this.#darkMode[key];
+          } else {
+            return this.#lightMode[key];
+          }
+        },
+        set(value) {
+          if (this.#allModes.darkMode) {
+            this.#darkMode[key] = value;
+          } else {
+            this.#lightMode[key] = value;
+          }
+          this.#callbacks[key]?.(value);
+        }
+      })
+    }
+
+    // on dark mode switch, all callbacks need to be triggered
+    this.setSetterCallback("darkMode", (value) => {
+      const entries = value ? Object.entries({...this.#darkMode}) : Object.entries({...this.#lightMode});
+      for (const [key, value] of entries) {
+        this[key] = value;
+      }
+    })
   }
 
   setSetterCallback(key, callback) {
