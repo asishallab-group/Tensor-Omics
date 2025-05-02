@@ -70,8 +70,8 @@ class Config {
     }
 
     // on dark mode switch, all callbacks need to be triggered
-    this.setSetterCallback("darkModeEnabled", (value) => {
-      const entries = value ? Object.entries({...this.#private.darkMode}) : Object.entries({...this.#private.lightMode});
+    this.setSetterCallback("darkModeEnabled", (enable) => {
+      const entries = enable ? Object.entries({...this.#private.darkMode}) : Object.entries({...this.#private.lightMode});
       for (const [key, value] of entries) {
         this[key] = value;
       }
@@ -292,8 +292,8 @@ function setupScene(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
 
   // set background color
-  config.setSetterCallback("backgroundColor", (value) => {
-    setBackgroundColor(scene, value);
+  config.setSetterCallback("backgroundColor", (hexColorCode) => {
+    setBackgroundColor(scene, hexColorCode);
   });
 
   create3DGrid(scene);
@@ -306,8 +306,8 @@ function setupScene(engine, canvas) {
   return scene;
 }
 
-function setBackgroundColor(scene, color) {
-  scene.clearColor = BABYLON.Color4.FromHexString(color);
+function setBackgroundColor(scene, hexColorCode) {
+  scene.clearColor = BABYLON.Color4.FromHexString(hexColorCode);
 }
 
 /**
@@ -416,17 +416,17 @@ function createSphereMesh(scene, name, configColorAttribute, configDiameterAttri
 
     // set size
     if (configDiameterAttribute) {
-      config.setSetterCallback(configDiameterAttribute, (value) => {
-        setSphereSize(mesh, value);
+      config.setSetterCallback(configDiameterAttribute, (diameter) => {
+        setSphereSize(mesh, diameter);
         for (const instance of mesh.instances) {
-          setSphereSize(instance, value);
+          setSphereSize(instance, diameter);
         }
       })
     }
 
     // set color
-    config.setSetterCallback(configColorAttribute, (value) => {
-      setSphereColor(mesh, value);
+    config.setSetterCallback(configColorAttribute, (hexColorCode) => {
+      setSphereColor(mesh, hexColorCode);
     });
 
     // Hide the original sphere since we will use instances.
@@ -500,6 +500,7 @@ function setSphereSize(sphere, diameter) {
 
 function setSphereColor(sphere, color) {
   sphere.material.diffuseColor = BABYLON.Color4.FromHexString(color);
+  sphere.material.alpha = sphere.material.diffuseColor.a;
 }
 
 /***************************************************************
@@ -541,9 +542,10 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
   zPosition.top = "-25%"; // Add some padding from the top
 
   function setColorCallback(attribute, textfield, axis) {
-    config.setSetterCallback(attribute, (value) => {
-      setTextfieldColor(textfield, value);
-      axis.material.diffuseColor = BABYLON.Color4.FromHexString(value);
+    config.setSetterCallback(attribute, (hexColorCode) => {
+      setTextfieldColor(textfield, hexColorCode);
+      axis.material.diffuseColor = BABYLON.Color4.FromHexString(hexColorCode);
+      axis.material.alpha = axis.material.diffuseColor.a;
     })
   }
   setColorCallback("xAxisColor", xPosition, xAxis);
