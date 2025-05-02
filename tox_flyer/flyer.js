@@ -1,72 +1,77 @@
 "use strict";
 class Config {
-  #allModes = {
-    darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
-    outlierDataPointDiameter: 0.25,
-    x: 0,
-    y: 0,
-    z: 0
+  #private = {
+    allModes: {
+      orbitModeEnabled: false,
+      darkModeEnabled: window.matchMedia('(prefers-color-scheme: dark)').matches,
+      outlierDataPointDiameter: 0.25,
+      // x, y, z, orbitCameraRotationX/Y will be defined in setupCamera()
+      // this is because the setter callback should change the camera's position,
+      // but as the position needs to be in sync with the config, the config value's would need permanent updates from the camera,
+      // which would lead to setting the camera's position unnecessarily to its current position
+    },
+    lightMode: {
+      selectedDataPointColor: "#FFFF00FF",
+      outlierDataPointColor: "#0000FFFF",
+
+      backgroundColor: "#FFFFFFFF",
+
+      xAxisColor: "#FF0000FF",
+      yAxisColor: "#00FF00FF",
+      zAxisColor: "#0000FFFF",
+    },
+    darkMode: {
+      selectedDataPointColor: "#FFFF00FF",
+      outlierDataPointColor: "#F15829FF",
+
+      backgroundColor: "#1B1A1FFF",
+
+      xAxisColor: "#DE0000FF",
+      yAxisColor: "#19CF00FF",
+      zAxisColor: "#0092FFFF",
+    },
+    callbacks: {}
   }
-  #lightMode = {
-    selectedDataPointColor: "#FFFF00FF",
-    outlierDataPointColor: "#0000FFFF",
-
-    backgroundColor: "#FFFFFFFF",
-
-    xAxisColor: "#FF0000FF",
-    yAxisColor: "#00FF00FF",
-    zAxisColor: "#0000FFFF",
-  }
-  #darkMode = {
-    selectedDataPointColor: "#FFFF00FF",
-    outlierDataPointColor: "#F15829FF",
-
-    backgroundColor: "#1B1A1FFF",
-
-    xAxisColor: "#DE0000FF",
-    yAxisColor: "#19CF00FF",
-    zAxisColor: "#0092FFFF",
-  }
-  #callbacks = {}
 
   constructor() {
     // setting getter/setter for darkMode-independent attributes
-    for (const [key, value] of Object.entries({...this.#allModes})) {
+    for (const [key, value] of Object.entries({...this.#private.allModes})) {
       Object.defineProperty(this, key, {
         get() {
-          return this.#allModes[key];
+          return this.#private.allModes[key];
         },
         set(value) {
-          this.#allModes[key] = value;
-          this.#callbacks[key]?.(value);
+          this.#private.allModes[key] = value;
+          this.#private.callbacks[key]?.(value);
         }
       })
     }
 
-    // setting getter/setter for darkMode-dependent attributes
-    for (const [key, value] of Object.entries({...this.#lightMode})) {
+    // defining getter and setter for the settings
+    // so values respect the dark mode setting and use callback functions to sync the rendered objects with config
+    for (const [key, value] of Object.entries({...this.#private.lightMode})) {
       Object.defineProperty(this, key, {
         get() {
-          if (this.#allModes.darkMode) {
-            return this.#darkMode[key];
+          if (this.#private.allModes.darkModeEnabled) {
+            return this.#private.darkMode[key];
           } else {
-            return this.#lightMode[key];
+            return this.#private.lightMode[key];
           }
         },
         set(value) {
-          if (this.#allModes.darkMode) {
-            this.#darkMode[key] = value;
+          if (this.#private.allModes.darkModeEnabled) {
+            this.#private.darkMode[key] = value;
           } else {
-            this.#lightMode[key] = value;
+            this.#private.lightMode[key] = value;
           }
-          this.#callbacks[key]?.(value);
+          this.#private.callbacks[key]?.(value);
         }
       })
     }
 
     // on dark mode switch, all callbacks need to be triggered
-    this.setSetterCallback("darkMode", (value) => {
-      const entries = value ? Object.entries({...this.#darkMode}) : Object.entries({...this.#lightMode});
+    this.setSetterCallback("darkModeEnabled", (value) => {
+      const entries = value ? Object.entries({...this.#private.darkMode}) : Object.entries({...this.#private.lightMode});
       for (const [key, value] of entries) {
         this[key] = value;
       }
@@ -74,8 +79,8 @@ class Config {
   }
 
   setSetterCallback(key, callback) {
-    if (this.#callbacks[key] === undefined) {
-      this.#callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
+    if (this.#private.callbacks[key] === undefined) {
+      this.#private.callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
       callback(this[key]);
     } else {
       throw Error(`Another callback function has been already registered for '${key}' in the past.`);
@@ -141,23 +146,9 @@ async function initializeEngine(canvas) {
  * - Binds mouse wheel to apply zoom effect to the view.
  */
 function setupCamera(scene, canvas) {  
-  // create an ArcRotateCamera for orbit view
-  const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
-  const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
-  setupOrbitView(scene, meshSelectedPoints);
-
   // Create a UniversalCamera placed initially above the ground and away from the origin.
   // UniversalCamera is suited for first-person style movement and rotation in 3D space.
-  // camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 5, -20), scene);
   const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, 0), scene);
-
-  // set position
-  for (const axis of "xyz") {
-    config.setSetterCallback(axis, (value) => {
-      orbitCam.position[axis] = value;
-      camera.position[axis] = value;
-    })
-  }
 
   // Customize key bindings for movement (WASD, Arrow keys, etc.).
   // Movement forwa rd/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
@@ -192,45 +183,59 @@ function setupCamera(scene, canvas) {
     camera.fov = Math.min(Math.max(camera.fov, 0.1), 1.5);
   });
 
-  // Add function to easily switch cameras
-  scene.TOX_switchCamera = (target, radius) => {
-    if (scene.activeCamera.name === "camera") {
-      scene.setActiveCameraByName("orbitCamera");
-      if (target !== undefined) {
-        scene.activeCamera.setTarget(target);
+  // set up position config for universal camera
+  for (const axis of "xyz") {
+    Object.defineProperty(config, axis, {
+      get() {
+        // will work for both cameras
+        return scene.activeCamera.position[axis];
+      },
+      set(value) {
+        camera.position[axis] = value;
       }
-      if (radius !== undefined) {
-        scene.activeCamera.radius = radius;
+    });
+  }
+  for (const axis of "XY") {
+    const attr = axis === "X" ? "alpha" : "beta";
+    Object.defineProperty(config, "orbitCameraRotation" + axis, {
+      get() {
+        // as the universal camera doesn't use alpha and beta rotation, this applies only to orbitCam
+        return (orbitCam[attr] % (2 * Math.PI)) * 180 / Math.PI;
+      },
+      set(value) {
+        orbitCam[attr] = value * Math.PI / 180;
       }
-    } else {
-      scene.setActiveCameraByName("camera");
-      scene.activeCamera.positionQ = target;
-    }
-    // Attach the camera controls to the canvas to enable mouse and keyboard usage.
-    scene.activeCamera.attachControl(canvas);
+    });
   }
 
-  scene.TOX_switchCamera();
+  // create an ArcRotateCamera for orbit view
+  const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
+  const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
+  setupOrbitView(scene, meshSelectedPoints);
 }
 
 function setupOrbitView(scene, meshSelectedPoints) {
-  scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
-    const key = evt.key.toLowerCase();
-    if (key === "f") {
-      const camera = scene.activeCamera;
-      if (camera.name === "orbitCamera") {
-        scene.TOX_switchCamera();
-      }
-      else if (meshSelectedPoints.instances.length === 0) {
-        // Calculate the forward direction vector of the camera
-        const forward = camera.getDirection(BABYLON.Vector3.Forward());
+  config.setSetterCallback("orbitModeEnabled", (enable) => {
+    if (!enable) {
+      const camera = scene.getCameraByName("camera");
+      const position = scene.activeCamera.position;
+      scene.switchActiveCamera(camera);
+      camera.position = position;
+    }
+    else {
+      const orbitCamera = scene.getCameraByName("orbitCamera");
+
+      // Calculate the forward direction vector of the camera
+      const forward = scene.activeCamera.getDirection(BABYLON.Vector3.Forward());
+      forward.normalize();
+
+      let target;
+      let radius;
+      if (meshSelectedPoints.instances.length === 0) {
 
         // Scale the forward vector by the orbitCamera's radius
-        const orbitCam = scene.getCameraByName("orbitCamera");
-        const radius = 10;
-        const orbitTarget = camera.position.add(forward.scale(radius));
-
-        scene.TOX_switchCamera(orbitTarget, radius);
+        radius = 10;
+        target = scene.activeCamera.position.add(forward.scale(radius));
       } else {
         // calculate mid point of all selected points and set as target,
         // set distance to this point as radius
@@ -250,14 +255,27 @@ function setupOrbitView(scene, meshSelectedPoints) {
 
         // Calculate the average position
         const numInstances = meshSelectedPoints.instances.length;
-        const middlePoint = new BABYLON.Vector3(
+        target = new BABYLON.Vector3(
             sumX / numInstances,
             sumY / numInstances,
             sumZ / numInstances
         );
-        const radius = BABYLON.Vector3.Distance(middlePoint, scene.activeCamera.position)
-        scene.TOX_switchCamera(middlePoint, radius);
+        radius = BABYLON.Vector3.Distance(target, scene.activeCamera.position);
       }
+      // Convert this diff into spherical coordinates.
+      var alpha = Math.atan2(forward.z, forward.x) + Math.PI;
+      var beta = Math.acos(-forward.y / forward.length()); // diff.length() is 10
+      scene.switchActiveCamera(orbitCamera);
+      orbitCamera.setTarget(target);
+      orbitCamera.radius = radius;
+      orbitCamera.alpha = alpha;
+      orbitCamera.beta = beta;
+    }
+  })
+  scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
+    const key = evt.key.toLowerCase();
+    if (key === "f") {
+      config.orbitModeEnabled = !config.orbitModeEnabled;
     }
   })
 }
@@ -464,6 +482,10 @@ function createSphereMesh(scene, name, configColorAttribute, configDiameterAttri
           selectedInstance.TOX_unselectedInstance = instance;
         } else {
           instance.TOX_unselectedInstance.setEnabled(true);
+
+          // sync scaling, as it may have changed during disabled state
+          instance.TOX_unselectedInstance.scaling = instance.scaling;
+
           instance.dispose();
         }
       })
@@ -473,9 +495,7 @@ function createSphereMesh(scene, name, configColorAttribute, configDiameterAttri
 }
 
 function setSphereSize(sphere, diameter) {
-  sphere.scaling.x = diameter;
-  sphere.scaling.y = diameter;
-  sphere.scaling.z = diameter;
+  sphere.scaling = new BABYLON.Vector3(diameter, diameter, diameter);
 }
 
 function setSphereColor(sphere, color) {
@@ -537,9 +557,9 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
 
   // Update the position text dynamically as the camera moves.
   scene.registerBeforeRender(() => {
-    xPosition.text = `X: ${scene.activeCamera.position.x.toFixed(2)}`;
-    yPosition.text = `Y: ${scene.activeCamera.position.y.toFixed(2)}`;
-    zPosition.text = `Z: ${scene.activeCamera.position.z.toFixed(2)}`;
+    xPosition.text = `X: ${config.x.toFixed(2)}`;
+    yPosition.text = `Y: ${config.y.toFixed(2)}`;
+    zPosition.text = `Z: ${config.z.toFixed(2)}`;
   });
 }
 
