@@ -53,6 +53,14 @@ function setupConfig() {
       } else {
         throw Error(`Another callback function has been already registered for '${key}' in the past.`);
       }
+    },
+    asURL() {
+      const currentURL = new URL(document.URL);
+      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify({
+        allModes: values.allModes,
+        lightMode: values.lightMode,
+        darkMode: values.darkMode
+      }))}`;
     }
   }
 
@@ -65,6 +73,16 @@ function setupConfig() {
       config.set(key, value);
     }
   })
+
+  try {
+    const currentURL = new URL(document.URL);
+    const importingConfig = JSON.parse(atob(currentURL.searchParams.get("config")));
+    if (importingConfig.allModes) values.allModes = importingConfig.allModes;
+    if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
+    if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
+  } catch (err) {
+    console.log("Could not import config from URL");
+  }
 
   return config;
 }
