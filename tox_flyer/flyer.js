@@ -9,8 +9,8 @@ function setupConfig() {
       x: 0,
       y: 0,
       z: 0,
-      orbitCameraRotationX: 0,
-      orbitCameraRotationY: 0,
+      rotationX: 0,
+      rotationY: 0,
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -76,10 +76,13 @@ function setupConfig() {
 
   try {
     const currentURL = new URL(document.URL);
-    const importingConfig = JSON.parse(atob(currentURL.searchParams.get("config")));
-    if (importingConfig.allModes) values.allModes = importingConfig.allModes;
-    if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
-    if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
+    const configArg = currentURL.searchParams.get("config");
+    if (configArg) {
+      const importingConfig = JSON.parse(atob(configArg));
+      if (importingConfig.allModes) values.allModes = importingConfig.allModes;
+      if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
+      if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
+    }
   } catch (err) {
     console.log("Could not import config from URL");
   }
@@ -150,6 +153,7 @@ const config = setupConfig();
     // Create a UniversalCamera placed initially above the ground and away from the origin.
     // UniversalCamera is suited for first-person style movement and rotation in 3D space.
     const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, 0), scene);
+    scene.switchActiveCamera(camera);
 
     // Customize key bindings for movement (WASD, Arrow keys, etc.).
     // Movement forwa rd/backward is controlled by W/S (87/83) and ArrowUp/ArrowDown keys.
@@ -192,12 +196,17 @@ const config = setupConfig();
     for (const axis of "xyz") {
       config.setSetterCallback(axis, (position) => {
         camera.position[axis] = position;
+        // TODO set orbitCam position, needs radius in config, position and rotation already exist
       })
     }
     for (const axis of "XY") {
-      const attr = axis === "X" ? "alpha" : "beta";
-      config.setSetterCallback("orbitCameraRotation" + axis, (degrees) => {
-        orbitCam[attr] = degrees * Math.PI / 180;
+      const attr = axis === "Y" ? "alpha" : "beta";
+      config.setSetterCallback("rotation" + axis, (degrees) => {
+        if (scene.activeCamera.alpha !== undefined) {
+          orbitCam[attr] = degrees * Math.PI / 180;
+        } else {
+          camera.rotation[axis.toLowerCase()] = degrees * Math.PI / 180;
+        }
       });
     }
     scene.registerBeforeRender(() => {
@@ -208,20 +217,20 @@ const config = setupConfig();
         config.set("z", scene.activeCamera.position.z, false);
       
         // as the universal camera doesn't use alpha and beta rotation, this applies only to orbitCam
-        config.set("orbitCameraRotationX", (orbitCam.alpha % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
-        config.set("orbitCameraRotationY", (orbitCam.beta % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
+        config.set("rotationX", ((scene.activeCamera.alpha ?? scene.activeCamera.rotation.x) % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
+        config.set("rotationY", ((scene.activeCamera.beta ?? scene.activeCamera.rotation.y) % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
     });
   }
 
   function setupOrbitView(scene, meshSelectedPoints) {
     config.setSetterCallback("orbitMode", (enable) => {
-      if (!enable) {
+      if (!enable && scene.activeCamera.name !== "camera") {
         const camera = scene.getCameraByName("camera");
         const position = scene.activeCamera.position;
         scene.switchActiveCamera(camera);
         camera.position = position;
       }
-      else {
+      else if (enable && scene.activeCamera.name !== "orbitCamera") {
         const orbitCamera = scene.getCameraByName("orbitCamera");
 
         // Calculate the forward direction vector of the camera
@@ -630,23 +639,20 @@ const config = setupConfig();
     // Synchronize the compass with the main camera's rotation.
     mainScene.onBeforeRenderObservable.add(() => {
       const activeCamera = mainScene.activeCamera;
-      let camQuat;
+      let alpha;
+      let beta;
 
       if (activeCamera instanceof BABYLON.ArcRotateCamera) {
         // Compute quaternion from alpha and beta for ArcRotateCamera.
-        const alpha = -activeCamera.alpha - Math.PI / 2;
-        const beta = activeCamera.beta - Math.PI / 2;
-
-        camQuat = BABYLON.Quaternion.RotationYawPitchRoll(alpha, beta, 0);
+        alpha = activeCamera.alpha + Math.PI / 2;
+        beta = -activeCamera.beta + Math.PI / 2;
       } else {
         // Fallback for UniversalCamera or other camera types
-        camQuat = BABYLON.Quaternion.RotationYawPitchRoll(
-            activeCamera.rotation.y, // Yaw
-            -activeCamera.rotation.x, // Pitch
-            activeCamera.rotation.z  // Roll
-        );
+        alpha = -activeCamera.rotation.y;
+        beta = activeCamera.rotation.x;
       }
-      cross.rotationQuaternion = camQuat.invert();
+      cross.rotation.x = beta;
+      cross.rotation.y = alpha;
     });
 
 
