@@ -70,15 +70,21 @@ subroutine update(n_tissues, n_genes, patch, n_patch, vec_container, shift_vecs,
 end subroutine
 
 ! === Save ===
-subroutine save(n_tissues, n_genes, vec_container, shift_vecs, filename, filename_len)
+subroutine save(n_tissues, n_genes, vec_container, shift_vecs, filename_bytes, filename_len)
   use TensorOmics_Interface
   integer(int32), intent(in) :: n_tissues, n_genes, filename_len
   real(real64), intent(in) :: vec_container(n_tissues, n_genes)
   real(real64), intent(in) :: shift_vecs(n_tissues, n_genes)
-  character(len=filename_len), intent(in) :: filename
-  integer(int32) :: u
+  integer(int32), intent(in) :: filename_bytes(filename_len)
+  character(len=filename_len) :: filename
+  integer(int32) :: i, u
 
-  open(newunit=u, file=filename, form='unformatted', status='replace')
+  ! Convert bytes to filename string
+  do i = 1, filename_len
+    filename(i:i) = achar(filename_bytes(i))
+  end do
+
+  open(newunit=u, file=filename, access='stream', form='unformatted', status='replace')
   write(u) vec_container, shift_vecs
   close(u)
 end subroutine

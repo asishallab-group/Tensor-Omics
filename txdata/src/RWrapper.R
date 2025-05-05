@@ -61,13 +61,16 @@ update_tensoromics <- function(tom, patch) {
 }
 
 save_tensoromics <- function(tom, filename) {
+  filename_raw <- charToRaw(filename)
+  filename_bytes <- as.integer(filename_raw)
+  filename_len <- length(filename_bytes)
   .Fortran("save",
            as.integer(nrow(tom$vec_container)),
            as.integer(ncol(tom$vec_container)),
            as.double(tom$vec_container),
            as.double(tom$shift_vecs),
-           as.character(filename),
-           as.integer(nchar(filename)))
+           as.integer(filename_bytes),
+           as.integer(filename_len))
 }
 
 # --------------------
@@ -90,6 +93,22 @@ test_update <- function() {
   cat("Update OK. Indices:", tom2$indices, "\n")
 }
 
+read_tensoromics <- function(filename, n_tissues, n_genes) {
+  # Read raw bytes
+  raw_data <- readBin(filename, "raw", file.size(filename))
+  
+  # Convert to double (8 bytes per element)
+  all_data <- readBin(raw_data, "double", n = 2 * n_tissues * n_genes)
+  
+  # Split into vec_container and shift_vecs
+  vec_container <- matrix(all_data[1:(n_tissues*n_genes)], 
+                          nrow = n_tissues, ncol = n_genes)
+  shift_vecs <- matrix(all_data[(n_tissues*n_genes + 1):length(all_data)], 
+                      nrow = n_tissues, ncol = n_genes)
+  
+  list(vec_container = vec_container, shift_vecs = shift_vecs)
+}
+
 test_save <- function() {
   est <- create_estimates(3, 10, 5, 8, rep(2,2))
   tom <- init_tensoromics(est)
@@ -100,6 +119,15 @@ test_save <- function() {
   info <- file.info(fn)
   stopifnot(!is.na(info$size) && info$size > 0)
   cat("Save OK. File:", fn, "\n")
+
+  loaded_data <- read_tensoromics("data/test_tensoromics.txdata", 3, 10)
+
+  # Compare with original data
+  stopifnot(
+    all.equal(loaded_data$vec_container, tom2$vec_container),
+    all.equal(loaded_data$shift_vecs, tom2$shift_vecs)
+  )
+  cat("Data consistency verified!\n")
 }
 
 run_all_tests <- function() {
