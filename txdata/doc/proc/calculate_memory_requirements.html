@@ -165,16 +165,16 @@
 
 
     <p>@file TensorOmics_mod.f90
-@brief Core functions for data storage management
-@brief Calculates memory requirements for the data container</p>
-<p>Computes total memory needed for both numerical arrays and metadata storage.
-@param[in] n_tissues Number of tissues
-@param[in] n_genes Number of genes
-@param[in] meta_n_rows Number of metadata rows
-@param[in] meta_max_char Maximum character length in metadata strings
-@param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char)
-@param[in] n_cols Number of metadata columns
-@param[out] mem_bytes Total required memory in bytes</p>
+ @brief Core functions for data storage management
+ @brief Calculates memory requirements for the data container</p>
+<p>Computes total memory needed for both numerical arrays and metadata storage. <br>
+@param[in] n_tissues Number of tissues <br>
+ @param[in] n_genes Number of genes <br>
+ @param[in] meta_n_rows Number of metadata rows <br>
+ @param[in] meta_max_char Maximum character length in metadata strings <br>
+ @param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char) <br>
+ @param[in] n_cols Number of metadata columns <br>
+ @param[out] mem_bytes Total required memory in bytes <br></p>
 
 
     <h3>Arguments</h3>
@@ -190,7 +190,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
+              <span class="anchor" id="variable-n_tissues"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -205,7 +205,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~2"></span>
+              <span class="anchor" id="variable-n_genes"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -220,7 +220,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-meta_n_rows~2"></span>
+              <span class="anchor" id="variable-meta_n_rows"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -235,7 +235,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-meta_max_char~2"></span>
+              <span class="anchor" id="variable-meta_max_char"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -250,7 +250,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-meta_col_types~2"></span>
+              <span class="anchor" id="variable-meta_col_types"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>

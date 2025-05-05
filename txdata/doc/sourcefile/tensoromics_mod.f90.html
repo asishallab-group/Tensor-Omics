@@ -171,19 +171,19 @@
       <section>
         <h2><span class="anchor" id="src"></span>Source Code</h2>
         <div class="hl codehilite"><pre><span></span><a id="ln-1" name="ln-1" href="#ln-1"></a><span class="c">!&gt; @file TensorOmics_mod.f90</span>
-<a id="ln-2" name="ln-2" href="#ln-2"></a><span class="c">!! @brief Core functions for data storage management</span>
+<a id="ln-2" name="ln-2" href="#ln-2"></a><span class="c">!&gt; @brief Core functions for data storage management</span>
 <a id="ln-3" name="ln-3" href="#ln-3"></a>
 <a id="ln-4" name="ln-4" href="#ln-4"></a>
 <a id="ln-5" name="ln-5" href="#ln-5"></a><span class="c">!&gt; @brief Calculates memory requirements for the data container</span>
 <a id="ln-6" name="ln-6" href="#ln-6"></a><span class="c">!!</span>
-<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="c">!! Computes total memory needed for both numerical arrays and metadata storage.</span>
-<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="c">!! @param[in] n_tissues Number of tissues</span>
-<a id="ln-9" name="ln-9" href="#ln-9"></a><span class="c">!! @param[in] n_genes Number of genes</span>
-<a id="ln-10" name="ln-10" href="#ln-10"></a><span class="c">!! @param[in] meta_n_rows Number of metadata rows</span>
-<a id="ln-11" name="ln-11" href="#ln-11"></a><span class="c">!! @param[in] meta_max_char Maximum character length in metadata strings</span>
-<a id="ln-12" name="ln-12" href="#ln-12"></a><span class="c">!! @param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char)</span>
-<a id="ln-13" name="ln-13" href="#ln-13"></a><span class="c">!! @param[in] n_cols Number of metadata columns</span>
-<a id="ln-14" name="ln-14" href="#ln-14"></a><span class="c">!! @param[out] mem_bytes Total required memory in bytes</span>
+<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="c">!!Computes total memory needed for both numerical arrays and metadata storage. &lt;br&gt;</span>
+<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="c">!!@param[in] n_tissues Number of tissues &lt;br&gt;</span>
+<a id="ln-9" name="ln-9" href="#ln-9"></a><span class="c">!! @param[in] n_genes Number of genes &lt;br&gt;</span>
+<a id="ln-10" name="ln-10" href="#ln-10"></a><span class="c">!! @param[in] meta_n_rows Number of metadata rows &lt;br&gt;</span>
+<a id="ln-11" name="ln-11" href="#ln-11"></a><span class="c">!! @param[in] meta_max_char Maximum character length in metadata strings &lt;br&gt;</span>
+<a id="ln-12" name="ln-12" href="#ln-12"></a><span class="c">!! @param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char) &lt;br&gt;</span>
+<a id="ln-13" name="ln-13" href="#ln-13"></a><span class="c">!! @param[in] n_cols Number of metadata columns &lt;br&gt;</span>
+<a id="ln-14" name="ln-14" href="#ln-14"></a><span class="c">!! @param[out] mem_bytes Total required memory in bytes &lt;br&gt;</span>
 <a id="ln-15" name="ln-15" href="#ln-15"></a><span class="k">subroutine </span><span class="n">calculate_memory_requirements</span><span class="p">(</span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">meta_n_rows</span><span class="p">,</span><span class="w"> </span><span class="n">meta_max_char</span><span class="p">,</span><span class="w"> </span><span class="n">meta_col_types</span><span class="p">,</span><span class="w"> </span><span class="n">n_cols</span><span class="p">,</span><span class="w"> </span><span class="n">mem_bytes</span><span class="p">)</span>
 <a id="ln-16" name="ln-16" href="#ln-16"></a><span class="w">  </span><span class="k">use </span><span class="n">TensorOmics_Interface</span>
 <a id="ln-17" name="ln-17" href="#ln-17"></a><span class="w">  </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">meta_n_rows</span><span class="p">,</span><span class="w"> </span><span class="n">meta_max_char</span><span class="p">,</span><span class="w"> </span><span class="n">n_cols</span>
@@ -215,18 +215,18 @@
 <a id="ln-43" name="ln-43" href="#ln-43"></a><span class="w">  </span><span class="n">mem_bytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mem_bytes</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dt_mem</span>
 <a id="ln-44" name="ln-44" href="#ln-44"></a><span class="k">end subroutine</span>
 <a id="ln-45" name="ln-45" href="#ln-45"></a>
-<a id="ln-46" name="ln-46" href="#ln-46"></a><span class="c">!&gt; @brief Initializes the TensorOmics data container</span>
+<a id="ln-46" name="ln-46" href="#ln-46"></a><span class="c">!&gt; @brief Initializes the TensorOmics data container &lt;br&gt;</span>
 <a id="ln-47" name="ln-47" href="#ln-47"></a><span class="c">!!</span>
-<a id="ln-48" name="ln-48" href="#ln-48"></a><span class="c">!! Allocates and zeros the primary storage matrices.</span>
-<a id="ln-49" name="ln-49" href="#ln-49"></a><span class="c">!! @param[in] n_tissues Number of tissues</span>
-<a id="ln-50" name="ln-50" href="#ln-50"></a><span class="c">!! @param[in] n_genes Number of genes</span>
-<a id="ln-51" name="ln-51" href="#ln-51"></a><span class="c">!! @param[in] meta_n_rows Number of metadata rows</span>
-<a id="ln-52" name="ln-52" href="#ln-52"></a><span class="c">!! @param[in] meta_max_char Maximum character length in metadata strings</span>
-<a id="ln-53" name="ln-53" href="#ln-53"></a><span class="c">!! @param[in] meta_col_types Array of column type codes</span>
-<a id="ln-54" name="ln-54" href="#ln-54"></a><span class="c">!! @param[in] n_cols Number of metadata columns</span>
-<a id="ln-55" name="ln-55" href="#ln-55"></a><span class="c">!! @param[out] vec_out Allocated vector container (n_tissues × n_genes)</span>
-<a id="ln-56" name="ln-56" href="#ln-56"></a><span class="c">!! @param[out] shift_out Allocated shift vectors (n_tissues × n_genes)</span>
-<a id="ln-57" name="ln-57" href="#ln-57"></a><span class="c">!! @param[out] next_idx Initial insertion index (always 1)</span>
+<a id="ln-48" name="ln-48" href="#ln-48"></a><span class="c">!! Allocates and zeros the primary storage matrices. &lt;br&gt;</span>
+<a id="ln-49" name="ln-49" href="#ln-49"></a><span class="c">!! @param[in] n_tissues Number of tissues &lt;br&gt;</span>
+<a id="ln-50" name="ln-50" href="#ln-50"></a><span class="c">!! @param[in] n_genes Number of genes &lt;br&gt;</span>
+<a id="ln-51" name="ln-51" href="#ln-51"></a><span class="c">!! @param[in] meta_n_rows Number of metadata rows &lt;br&gt;</span>
+<a id="ln-52" name="ln-52" href="#ln-52"></a><span class="c">!! @param[in] meta_max_char Maximum character length in metadata strings &lt;br&gt;</span>
+<a id="ln-53" name="ln-53" href="#ln-53"></a><span class="c">!! @param[in] meta_col_types Array of column type codes &lt;br&gt;</span>
+<a id="ln-54" name="ln-54" href="#ln-54"></a><span class="c">!! @param[in] n_cols Number of metadata columns &lt;br&gt;</span>
+<a id="ln-55" name="ln-55" href="#ln-55"></a><span class="c">!! @param[out] vec_out Allocated vector container (n_tissues × n_genes) &lt;br&gt;</span>
+<a id="ln-56" name="ln-56" href="#ln-56"></a><span class="c">!! @param[out] shift_out Allocated shift vectors (n_tissues × n_genes) &lt;br&gt;</span>
+<a id="ln-57" name="ln-57" href="#ln-57"></a><span class="c">!! @param[out] next_idx Initial insertion index (always 1) &lt;br&gt;</span>
 <a id="ln-58" name="ln-58" href="#ln-58"></a><span class="k">subroutine </span><span class="n">init</span><span class="p">(</span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">meta_n_rows</span><span class="p">,</span><span class="w"> </span><span class="n">meta_max_char</span><span class="p">,</span><span class="w"> </span><span class="n">meta_col_types</span><span class="p">,</span><span class="w"> </span><span class="n">n_cols</span><span class="p">,</span><span class="w"> </span><span class="n">vec_out</span><span class="p">,</span><span class="w"> </span><span class="n">shift_out</span><span class="p">,</span><span class="w"> </span><span class="n">next_idx</span><span class="p">)</span>
 <a id="ln-59" name="ln-59" href="#ln-59"></a><span class="w">  </span><span class="k">use </span><span class="n">TensorOmics_Interface</span>
 <a id="ln-60" name="ln-60" href="#ln-60"></a><span class="w">  </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">meta_n_rows</span><span class="p">,</span><span class="w"> </span><span class="n">meta_max_char</span><span class="p">,</span><span class="w"> </span><span class="n">n_cols</span>
@@ -245,17 +245,17 @@
 <a id="ln-73" name="ln-73" href="#ln-73"></a><span class="w">  </span><span class="n">next_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">self</span><span class="p">%</span><span class="n">next_idx</span>
 <a id="ln-74" name="ln-74" href="#ln-74"></a><span class="k">end subroutine</span>
 <a id="ln-75" name="ln-75" href="#ln-75"></a>
-<a id="ln-76" name="ln-76" href="#ln-76"></a><span class="c">!&gt; @brief Updates the container with new data patches</span>
+<a id="ln-76" name="ln-76" href="#ln-76"></a><span class="c">!&gt; @brief Updates the container with new data patches &lt;br&gt;</span>
 <a id="ln-77" name="ln-77" href="#ln-77"></a><span class="c">!!</span>
-<a id="ln-78" name="ln-78" href="#ln-78"></a><span class="c">!! Inserts new columns while maintaining running statistics.</span>
-<a id="ln-79" name="ln-79" href="#ln-79"></a><span class="c">!! @param[in] n_tissues Number of tissues</span>
-<a id="ln-80" name="ln-80" href="#ln-80"></a><span class="c">!! @param[in] n_genes Number of genes (max capacity)</span>
-<a id="ln-81" name="ln-81" href="#ln-81"></a><span class="c">!! @param[in] patch Data patch to insert (n_tissues × n_patch)</span>
-<a id="ln-82" name="ln-82" href="#ln-82"></a><span class="c">!! @param[in] n_patch Number of columns in patch</span>
-<a id="ln-83" name="ln-83" href="#ln-83"></a><span class="c">!! @param[in,out] vec_container Primary data matrix</span>
-<a id="ln-84" name="ln-84" href="#ln-84"></a><span class="c">!! @param[in,out] shift_vecs Shifted data matrix</span>
-<a id="ln-85" name="ln-85" href="#ln-85"></a><span class="c">!! @param[in,out] next_idx Next insertion index (auto-incremented)</span>
-<a id="ln-86" name="ln-86" href="#ln-86"></a><span class="c">!! @param[out] indices Array of inserted column indices</span>
+<a id="ln-78" name="ln-78" href="#ln-78"></a><span class="c">!! Inserts new columns while maintaining running statistics. &lt;br&gt;</span>
+<a id="ln-79" name="ln-79" href="#ln-79"></a><span class="c">!! @param[in] n_tissues Number of tissues &lt;br&gt;</span>
+<a id="ln-80" name="ln-80" href="#ln-80"></a><span class="c">!! @param[in] n_genes Number of genes (max capacity) &lt;br&gt;</span>
+<a id="ln-81" name="ln-81" href="#ln-81"></a><span class="c">!! @param[in] patch Data patch to insert (n_tissues × n_patch) &lt;br&gt;</span>
+<a id="ln-82" name="ln-82" href="#ln-82"></a><span class="c">!! @param[in] n_patch Number of columns in patch &lt;br&gt;</span>
+<a id="ln-83" name="ln-83" href="#ln-83"></a><span class="c">!! @param[in,out] vec_container Primary data matrix &lt;br&gt;</span>
+<a id="ln-84" name="ln-84" href="#ln-84"></a><span class="c">!! @param[in,out] shift_vecs Shifted data matrix &lt;br&gt;</span>
+<a id="ln-85" name="ln-85" href="#ln-85"></a><span class="c">!! @param[in,out] next_idx Next insertion index (auto-incremented) &lt;br&gt;</span>
+<a id="ln-86" name="ln-86" href="#ln-86"></a><span class="c">!! @param[out] indices Array of inserted column indices &lt;br&gt;</span>
 <a id="ln-87" name="ln-87" href="#ln-87"></a><span class="k">subroutine </span><span class="n">update</span><span class="p">(</span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">patch</span><span class="p">,</span><span class="w"> </span><span class="n">n_patch</span><span class="p">,</span><span class="w"> </span><span class="n">vec_container</span><span class="p">,</span><span class="w"> </span><span class="n">shift_vecs</span><span class="p">,</span><span class="w"> </span><span class="n">next_idx</span><span class="p">,</span><span class="w"> </span><span class="n">indices</span><span class="p">)</span>
 <a id="ln-88" name="ln-88" href="#ln-88"></a><span class="w">  </span><span class="k">use </span><span class="n">TensorOmics_Interface</span>
 <a id="ln-89" name="ln-89" href="#ln-89"></a><span class="w">  </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">n_patch</span>
@@ -275,15 +275,15 @@
 <a id="ln-103" name="ln-103" href="#ln-103"></a><span class="w">  </span><span class="k">end do</span>
 <a id="ln-104" name="ln-104" href="#ln-104"></a><span class="k">end subroutine</span>
 <a id="ln-105" name="ln-105" href="#ln-105"></a>
-<a id="ln-106" name="ln-106" href="#ln-106"></a><span class="c">!&gt; @brief Saves data to binary file (stream format)</span>
+<a id="ln-106" name="ln-106" href="#ln-106"></a><span class="c">!&gt; @brief Saves data to binary file (stream format) &lt;br&gt;</span>
 <a id="ln-107" name="ln-107" href="#ln-107"></a><span class="c">!!</span>
-<a id="ln-108" name="ln-108" href="#ln-108"></a><span class="c">!! Uses byte-level I/O for cross-platform compatibility with R.</span>
-<a id="ln-109" name="ln-109" href="#ln-109"></a><span class="c">!! @param[in] n_tissues Number of tissues</span>
-<a id="ln-110" name="ln-110" href="#ln-110"></a><span class="c">!! @param[in] n_genes Number of genes</span>
-<a id="ln-111" name="ln-111" href="#ln-111"></a><span class="c">!! @param[in] vec_container Primary data matrix</span>
-<a id="ln-112" name="ln-112" href="#ln-112"></a><span class="c">!! @param[in] shift_vecs Shifted data matrix</span>
-<a id="ln-113" name="ln-113" href="#ln-113"></a><span class="c">!! @param[in] filename_bytes Filename as ASCII byte array</span>
-<a id="ln-114" name="ln-114" href="#ln-114"></a><span class="c">!! @param[in] filename_len Length of filename</span>
+<a id="ln-108" name="ln-108" href="#ln-108"></a><span class="c">!! Uses byte-level I/O for cross-platform compatibility with R. &lt;br&gt;</span>
+<a id="ln-109" name="ln-109" href="#ln-109"></a><span class="c">!! @param[in] n_tissues Number of tissues &lt;br&gt;</span>
+<a id="ln-110" name="ln-110" href="#ln-110"></a><span class="c">!! @param[in] n_genes Number of genes &lt;br&gt;</span>
+<a id="ln-111" name="ln-111" href="#ln-111"></a><span class="c">!! @param[in] vec_container Primary data matrix &lt;br&gt;</span>
+<a id="ln-112" name="ln-112" href="#ln-112"></a><span class="c">!! @param[in] shift_vecs Shifted data matrix &lt;br&gt;</span>
+<a id="ln-113" name="ln-113" href="#ln-113"></a><span class="c">!! @param[in] filename_bytes Filename as ASCII byte array &lt;br&gt;</span>
+<a id="ln-114" name="ln-114" href="#ln-114"></a><span class="c">!! @param[in] filename_len Length of filename &lt;br&gt;</span>
 <a id="ln-115" name="ln-115" href="#ln-115"></a><span class="k">subroutine save</span><span class="p">(</span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">vec_container</span><span class="p">,</span><span class="w"> </span><span class="n">shift_vecs</span><span class="p">,</span><span class="w"> </span><span class="n">filename_bytes</span><span class="p">,</span><span class="w"> </span><span class="n">filename_len</span><span class="p">)</span>
 <a id="ln-116" name="ln-116" href="#ln-116"></a><span class="w">  </span><span class="k">use </span><span class="n">TensorOmics_Interface</span>
 <a id="ln-117" name="ln-117" href="#ln-117"></a><span class="w">  </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_tissues</span><span class="p">,</span><span class="w"> </span><span class="n">n_genes</span><span class="p">,</span><span class="w"> </span><span class="n">filename_len</span>

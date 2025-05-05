@@ -1,17 +1,17 @@
 !> @file TensorOmics_mod.f90
-!! @brief Core functions for data storage management
+!> @brief Core functions for data storage management
 
 
 !> @brief Calculates memory requirements for the data container
 !!
-!! Computes total memory needed for both numerical arrays and metadata storage.
-!! @param[in] n_tissues Number of tissues
-!! @param[in] n_genes Number of genes
-!! @param[in] meta_n_rows Number of metadata rows
-!! @param[in] meta_max_char Maximum character length in metadata strings
-!! @param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char)
-!! @param[in] n_cols Number of metadata columns
-!! @param[out] mem_bytes Total required memory in bytes
+!!Computes total memory needed for both numerical arrays and metadata storage. <br>
+!!@param[in] n_tissues Number of tissues <br>
+!! @param[in] n_genes Number of genes <br>
+!! @param[in] meta_n_rows Number of metadata rows <br>
+!! @param[in] meta_max_char Maximum character length in metadata strings <br>
+!! @param[in] meta_col_types Array of column type codes (1=int, 2=real, 3=char) <br>
+!! @param[in] n_cols Number of metadata columns <br>
+!! @param[out] mem_bytes Total required memory in bytes <br>
 subroutine calculate_memory_requirements(n_tissues, n_genes, meta_n_rows, meta_max_char, meta_col_types, n_cols, mem_bytes)
   use TensorOmics_Interface
   integer(int32), intent(in) :: n_tissues, n_genes, meta_n_rows, meta_max_char, n_cols
@@ -43,18 +43,18 @@ subroutine calculate_memory_requirements(n_tissues, n_genes, meta_n_rows, meta_m
   mem_bytes = mem_bytes + dt_mem
 end subroutine
 
-!> @brief Initializes the TensorOmics data container
+!> @brief Initializes the TensorOmics data container <br>
 !!
-!! Allocates and zeros the primary storage matrices.
-!! @param[in] n_tissues Number of tissues
-!! @param[in] n_genes Number of genes
-!! @param[in] meta_n_rows Number of metadata rows
-!! @param[in] meta_max_char Maximum character length in metadata strings
-!! @param[in] meta_col_types Array of column type codes
-!! @param[in] n_cols Number of metadata columns
-!! @param[out] vec_out Allocated vector container (n_tissues × n_genes)
-!! @param[out] shift_out Allocated shift vectors (n_tissues × n_genes)
-!! @param[out] next_idx Initial insertion index (always 1)
+!! Allocates and zeros the primary storage matrices. <br>
+!! @param[in] n_tissues Number of tissues <br>
+!! @param[in] n_genes Number of genes <br>
+!! @param[in] meta_n_rows Number of metadata rows <br>
+!! @param[in] meta_max_char Maximum character length in metadata strings <br>
+!! @param[in] meta_col_types Array of column type codes <br>
+!! @param[in] n_cols Number of metadata columns <br>
+!! @param[out] vec_out Allocated vector container (n_tissues × n_genes) <br>
+!! @param[out] shift_out Allocated shift vectors (n_tissues × n_genes) <br>
+!! @param[out] next_idx Initial insertion index (always 1) <br>
 subroutine init(n_tissues, n_genes, meta_n_rows, meta_max_char, meta_col_types, n_cols, vec_out, shift_out, next_idx)
   use TensorOmics_Interface
   integer(int32), intent(in) :: n_tissues, n_genes, meta_n_rows, meta_max_char, n_cols
@@ -73,17 +73,17 @@ subroutine init(n_tissues, n_genes, meta_n_rows, meta_max_char, meta_col_types, 
   next_idx = self%next_idx
 end subroutine
 
-!> @brief Updates the container with new data patches
+!> @brief Updates the container with new data patches <br>
 !!
-!! Inserts new columns while maintaining running statistics.
-!! @param[in] n_tissues Number of tissues
-!! @param[in] n_genes Number of genes (max capacity)
-!! @param[in] patch Data patch to insert (n_tissues × n_patch)
-!! @param[in] n_patch Number of columns in patch
-!! @param[in,out] vec_container Primary data matrix
-!! @param[in,out] shift_vecs Shifted data matrix
-!! @param[in,out] next_idx Next insertion index (auto-incremented)
-!! @param[out] indices Array of inserted column indices
+!! Inserts new columns while maintaining running statistics. <br>
+!! @param[in] n_tissues Number of tissues <br>
+!! @param[in] n_genes Number of genes (max capacity) <br>
+!! @param[in] patch Data patch to insert (n_tissues × n_patch) <br>
+!! @param[in] n_patch Number of columns in patch <br>
+!! @param[in,out] vec_container Primary data matrix <br>
+!! @param[in,out] shift_vecs Shifted data matrix <br>
+!! @param[in,out] next_idx Next insertion index (auto-incremented) <br>
+!! @param[out] indices Array of inserted column indices <br>
 subroutine update(n_tissues, n_genes, patch, n_patch, vec_container, shift_vecs, next_idx, indices)
   use TensorOmics_Interface
   integer(int32), intent(in) :: n_tissues, n_genes, n_patch
@@ -103,15 +103,15 @@ subroutine update(n_tissues, n_genes, patch, n_patch, vec_container, shift_vecs,
   end do
 end subroutine
 
-!> @brief Saves data to binary file (stream format)
+!> @brief Saves data to binary file (stream format) <br>
 !!
-!! Uses byte-level I/O for cross-platform compatibility with R.
-!! @param[in] n_tissues Number of tissues
-!! @param[in] n_genes Number of genes
-!! @param[in] vec_container Primary data matrix
-!! @param[in] shift_vecs Shifted data matrix
-!! @param[in] filename_bytes Filename as ASCII byte array
-!! @param[in] filename_len Length of filename
+!! Uses byte-level I/O for cross-platform compatibility with R. <br>
+!! @param[in] n_tissues Number of tissues <br>
+!! @param[in] n_genes Number of genes <br>
+!! @param[in] vec_container Primary data matrix <br>
+!! @param[in] shift_vecs Shifted data matrix <br>
+!! @param[in] filename_bytes Filename as ASCII byte array <br>
+!! @param[in] filename_len Length of filename <br>
 subroutine save(n_tissues, n_genes, vec_container, shift_vecs, filename_bytes, filename_len)
   use TensorOmics_Interface
   integer(int32), intent(in) :: n_tissues, n_genes, filename_len

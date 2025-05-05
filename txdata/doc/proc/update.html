@@ -164,16 +164,16 @@
     </div>
 
 
-    <p>@brief Updates the container with new data patches</p>
-<p>Inserts new columns while maintaining running statistics.
-@param[in] n_tissues Number of tissues
-@param[in] n_genes Number of genes (max capacity)
-@param[in] patch Data patch to insert (n_tissues × n_patch)
-@param[in] n_patch Number of columns in patch
-@param[in,out] vec_container Primary data matrix
-@param[in,out] shift_vecs Shifted data matrix
-@param[in,out] next_idx Next insertion index (auto-incremented)
-@param[out] indices Array of inserted column indices</p>
+    <p>@brief Updates the container with new data patches <br></p>
+<p>Inserts new columns while maintaining running statistics. <br>
+@param[in] n_tissues Number of tissues <br>
+@param[in] n_genes Number of genes (max capacity) <br>
+@param[in] patch Data patch to insert (n_tissues × n_patch) <br>
+@param[in] n_patch Number of columns in patch <br>
+@param[in,out] vec_container Primary data matrix <br>
+@param[in,out] shift_vecs Shifted data matrix <br>
+@param[in,out] next_idx Next insertion index (auto-incremented) <br>
+@param[out] indices Array of inserted column indices <br></p>
 
 
     <h3>Arguments</h3>
@@ -189,7 +189,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~4"></span>
+              <span class="anchor" id="variable-n_tissues~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -204,7 +204,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~4"></span>
+              <span class="anchor" id="variable-n_genes~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -249,7 +249,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec_container~2"></span>
+              <span class="anchor" id="variable-vec_container"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -264,7 +264,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vecs~2"></span>
+              <span class="anchor" id="variable-shift_vecs"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -279,7 +279,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-next_idx~3"></span>
+              <span class="anchor" id="variable-next_idx~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
