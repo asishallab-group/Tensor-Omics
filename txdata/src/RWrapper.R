@@ -1,6 +1,7 @@
 # tensoromics.R — R-Wrapper & Tests für libtensoromics.so
 
-dyn.load("libtensoromics.so")
+dyn.load("build/libtensoromics.so")
+
 
 create_estimates <- function(n_tissues, n_genes, meta_n_rows, meta_max_char, meta_col_types) {
   list(
@@ -9,71 +10,73 @@ create_estimates <- function(n_tissues, n_genes, meta_n_rows, meta_max_char, met
     meta_n_rows    = as.integer(meta_n_rows),
     meta_max_char  = as.integer(meta_max_char),
     meta_col_types = as.integer(meta_col_types),
-    n_cols         = as.integer(length(meta_col_types))
-  )
+    n_cols         = as.integer(length(meta_col_types)))
 }
 
 init_tensoromics <- function(est) {
-  res <- .Fortran("init_",
-                  est$n_tissues, est$n_genes,
-                  est$meta_n_rows, est$meta_max_char,
-                  est$meta_col_types, est$n_cols,
+  res <- .Fortran("init",
+                  as.integer(est$n_tissues),
+                  as.integer(est$n_genes),
+                  as.integer(est$meta_n_rows),
+                  as.integer(est$meta_max_char),
+                  as.integer(est$meta_col_types),
+                  as.integer(est$n_cols),
                   vec_out    = double(est$n_tissues * est$n_genes),
                   shift_out  = double(est$n_tissues * est$n_genes),
                   next_idx   = integer(1))
+  
   list(
-    vec_container = matrix(res$vec_out,   nrow = est$n_tissues, ncol = est$n_genes),
+    vec_container = matrix(res$vec_out, nrow = est$n_tissues, ncol = est$n_genes),
     shift_vecs    = matrix(res$shift_out, nrow = est$n_tissues, ncol = est$n_genes),
-    next_idx      = res$next_idx
-  )
+    next_idx      = res$next_idx)
 }
 
 calculate_memory <- function(est) {
-  .Fortran("calculate_memory_requirements_",
-           est$n_tissues, est$n_genes,
-           est$meta_n_rows, est$meta_max_char,
-           est$meta_col_types, est$n_cols,
+  .Fortran("calculate_memory_requirements",
+           as.integer(est$n_tissues),
+           as.integer(est$n_genes),
+           as.integer(est$meta_n_rows),
+           as.integer(est$meta_max_char),
+           as.integer(est$meta_col_types),
+           as.integer(est$n_cols),
            mem_bytes = integer(1))$mem_bytes
 }
 
 update_tensoromics <- function(tom, patch) {
-  n_tissues <- nrow(patch)
-  n_genes   <- ncol(tom$vec_container)
-  n_patch   <- ncol(patch)
-  res <- .Fortran("update_",
-                  as.integer(n_tissues),
-                  as.integer(n_genes),
-                  as.double(as.vector(patch)),
-                  as.integer(n_patch),
-                  as.double(as.vector(tom$vec_container)),
-                  as.double(as.vector(tom$shift_vecs)),
-                  as.integer(tom$next_idx),
-                  indices = integer(n_patch))
+  res <- .Fortran("update",
+                  as.integer(nrow(tom$vec_container)),
+                  as.integer(ncol(tom$vec_container)),
+                  as.double(patch),
+                  as.integer(ncol(patch)),
+                  vec_container = as.double(tom$vec_container),
+                  shift_vecs    = as.double(tom$shift_vecs),
+                  next_idx      = as.integer(tom$next_idx),
+                  indices       = integer(ncol(patch)))
+  
   list(
-    vec_container = matrix(res[[5]], nrow = n_tissues, ncol = n_genes),
-    shift_vecs    = matrix(res[[6]], nrow = n_tissues, ncol = n_genes),
-    next_idx      = res[[7]],
-    indices       = res$indices
-  )
+    vec_container = matrix(res$vec_container, nrow = nrow(tom$vec_container)),
+    shift_vecs    = matrix(res$shift_vecs, nrow = nrow(tom$vec_container)),
+    next_idx      = res$next_idx,
+    indices       = res$indices)
 }
 
 save_tensoromics <- function(tom, filename) {
-  .Fortran("save_",
+  .Fortran("save",
            as.integer(nrow(tom$vec_container)),
            as.integer(ncol(tom$vec_container)),
-           as.double(as.vector(tom$vec_container)),
-           as.double(as.vector(tom$shift_vecs)),
+           as.double(tom$vec_container),
+           as.double(tom$shift_vecs),
            as.character(filename),
            as.integer(nchar(filename)))
 }
 
 # --------------------
-# TEST-FUNKTIONEN:
-# -------------------- 
+# TEST FUNCTIONS:
+# --------------------
 test_init_mem <- function() {
   est <- create_estimates(8, 50, 20, 16, c(1,2,3))
   tom <- init_tensoromics(est)
-  stopifnot(dim(tom$vec_container) == c(8,50),
+  stopifnot(all(dim(tom$vec_container) == c(8,50)),
             tom$next_idx == 1L)
   cat("Init OK. Memory:", calculate_memory(est), "bytes\n")
 }
@@ -92,11 +95,11 @@ test_save <- function() {
   tom <- init_tensoromics(est)
   patch <- matrix(runif(3*2), nrow=3, ncol=2)
   tom2 <- update_tensoromics(tom, patch)
-  fn <- file.path(tempdir(), "test_tensoromics.bin")
+  fn <- file.path("data/test_tensoromics.txdata")
   save_tensoromics(tom2, fn)
   info <- file.info(fn)
   stopifnot(!is.na(info$size) && info$size > 0)
-  cat("Save OK. Datei:", fn, "\n")
+  cat("Save OK. File:", fn, "\n")
 }
 
 run_all_tests <- function() {
@@ -106,6 +109,6 @@ run_all_tests <- function() {
   cat("=== All tests passed! ===\n")
 }
 
-# automatisch ausführen, wenn interaktiv
 if (interactive()) run_all_tests()
 
+run_all_tests()
