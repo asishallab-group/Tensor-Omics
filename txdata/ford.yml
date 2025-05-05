@@ -1,0 +1,9 @@
+# ford.yml
+project: "Tensor Omics"
+author: "Aaron Schroeder"
+summary: "High-performance Fortran-R data storage system"
+src_dir: src/
+output_dir: docs/
+preprocess: true
+graph: true
+search: true
