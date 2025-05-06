@@ -11,6 +11,7 @@ function setupConfig() {
       z: 0,
       rotationX: 0,
       rotationY: 0,
+      orbitModeTargetDistance: 10
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -189,44 +190,60 @@ const config = setupConfig();
     });
 
     // create an ArcRotateCamera for orbit view
-    const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2, 10, new BABYLON.Vector3(0, 0, 0), scene);
+    const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, null, null, scene);
     const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
     setupOrbitView(scene, meshSelectedPoints);
 
-    for (const axis of "xyz") {
-      config.setSetterCallback(axis, (position) => {
-        camera.position[axis] = position;
-        // TODO set orbitCam position, needs radius in config, position and rotation already exist
-      })
-    }
+    // disable orbit mode to sync camera with config, because the ArcRotateCamera's position is being calculated during rendering, which makes it difficult to move
+    const orbitMode = config.get("orbitMode");
+    config.set("orbitMode", false);
+
     config.setSetterCallback("rotationX", (radians) => {
-      if (scene.activeCamera.name === "orbitCamera") {
+      if (config.get("orbitMode")) {
         orbitCam.beta = -radians + Math.PI / 2;
       } else {
         camera.rotation.x = radians;
       }
     });
     config.setSetterCallback("rotationY", (radians) => {
-      if (scene.activeCamera.name === "orbitCamera") {
+      if (config.get("orbitMode")) {
         orbitCam.alpha = radians + 1.5 * Math.PI;
       } else {
         camera.rotation.y = -radians;
       }
     });
-    scene.registerBeforeRender(() => {
-        // will work for both cameras
-        // disabling callback function to run, as it would just set the camera to its current position
-        config.set("x", scene.activeCamera.position.x, false);
-        config.set("y", scene.activeCamera.position.y, false);
-        config.set("z", scene.activeCamera.position.z, false);
-      
-        if (scene.activeCamera.name === "orbitCamera") {
-          config.set("rotationX", (-scene.activeCamera.beta + Math.PI / 2) % (2 * Math.PI), false);
-          config.set("rotationY", (scene.activeCamera.alpha - 1.5 * Math.PI) % (2 * Math.PI), false);
+
+    for (const axis of "xyz") {
+      config.setSetterCallback(axis, (position) => {
+        if (config.get("orbitMode")) {
+          const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z"));
+          const delta = newPosition.subtract(orbitCam.position); // Compute difference
+
+          orbitCam.setTarget(orbitCam.target.add(delta)); // Move the target appropriately
+          orbitCam.position = newPosition; // Move camera exactly to new position
         } else {
-          config.set("rotationX", scene.activeCamera.rotation.x, false);
-          config.set("rotationY", -scene.activeCamera.rotation.y, false);
+          camera.position[axis] = position;
         }
+      })
+    }
+    config.set("orbitMode", orbitMode);
+
+    scene.registerBeforeRender(() => {
+      // will work for both cameras
+      // disabling callback function to run, as it would just set the camera to its current position
+      config.set("x", scene.activeCamera.position.x, false);
+      config.set("y", scene.activeCamera.position.y, false);
+      config.set("z", scene.activeCamera.position.z, false);
+
+      if (config.get("orbitMode")) {
+        config.set("rotationX", (-scene.activeCamera.beta + Math.PI / 2) % (2 * Math.PI), false);
+        config.set("rotationY", (scene.activeCamera.alpha - 1.5 * Math.PI) % (2 * Math.PI), false);
+      } else {
+        config.set("rotationX", scene.activeCamera.rotation.x, false);
+        config.set("rotationY", -scene.activeCamera.rotation.y, false);
+      }
+
+      config.set("orbitModeTargetDistance", orbitCam.radius, false);
     });
   }
 
@@ -250,7 +267,7 @@ const config = setupConfig();
         if (meshSelectedPoints.instances.length === 0) {
 
           // Scale the forward vector by the orbitCamera's radius
-          radius = 10;
+          radius = config.get("orbitModeTargetDistance");
           target = scene.activeCamera.position.add(forward.scale(radius));
         } else {
           // calculate mid point of all selected points and set as target,
@@ -280,7 +297,7 @@ const config = setupConfig();
         }
         // Convert this diff into spherical coordinates.
         var alpha = Math.atan2(forward.z, forward.x) + Math.PI;
-        var beta = Math.acos(-forward.y / forward.length()); // diff.length() is 10
+        var beta = Math.acos(-forward.y / forward.length());
         scene.switchActiveCamera(orbitCamera);
         orbitCamera.setTarget(target);
         orbitCamera.radius = radius;
@@ -686,6 +703,7 @@ const config = setupConfig();
 
       // Step 3: Setup the scene, including the camera, lighting, and basic controls.
       const scene = setupScene(engine, canvas);
+      console.log(scene)
       const compassScene = add3DCompass(scene, engine);
 
       // Step 4: Setup the tooltip follow behavior so tooltips stay near the pointer.
