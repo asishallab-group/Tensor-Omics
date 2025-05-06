@@ -199,16 +199,20 @@ const config = setupConfig();
         // TODO set orbitCam position, needs radius in config, position and rotation already exist
       })
     }
-    for (const axis of "XY") {
-      const attr = axis === "Y" ? "alpha" : "beta";
-      config.setSetterCallback("rotation" + axis, (degrees) => {
-        if (scene.activeCamera.alpha !== undefined) {
-          orbitCam[attr] = degrees * Math.PI / 180;
-        } else {
-          camera.rotation[axis.toLowerCase()] = degrees * Math.PI / 180;
-        }
-      });
-    }
+    config.setSetterCallback("rotationX", (radians) => {
+      if (scene.activeCamera.name === "orbitCamera") {
+        orbitCam.beta = -radians + Math.PI / 2;
+      } else {
+        camera.rotation.x = radians;
+      }
+    });
+    config.setSetterCallback("rotationY", (radians) => {
+      if (scene.activeCamera.name === "orbitCamera") {
+        orbitCam.alpha = radians + 1.5 * Math.PI;
+      } else {
+        camera.rotation.y = -radians;
+      }
+    });
     scene.registerBeforeRender(() => {
         // will work for both cameras
         // disabling callback function to run, as it would just set the camera to its current position
@@ -216,9 +220,13 @@ const config = setupConfig();
         config.set("y", scene.activeCamera.position.y, false);
         config.set("z", scene.activeCamera.position.z, false);
       
-        // as the universal camera doesn't use alpha and beta rotation, this applies only to orbitCam
-        config.set("rotationX", ((scene.activeCamera.alpha ?? scene.activeCamera.rotation.x) % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
-        config.set("rotationY", ((scene.activeCamera.beta ?? scene.activeCamera.rotation.y) % (2 * Math.PI)) * 180 / Math.PI, false); // using deg instead of rad
+        if (scene.activeCamera.name === "orbitCamera") {
+          config.set("rotationX", (-scene.activeCamera.beta + Math.PI / 2) % (2 * Math.PI), false);
+          config.set("rotationY", (scene.activeCamera.alpha - 1.5 * Math.PI) % (2 * Math.PI), false);
+        } else {
+          config.set("rotationX", scene.activeCamera.rotation.x, false);
+          config.set("rotationY", -scene.activeCamera.rotation.y, false);
+        }
     });
   }
 
