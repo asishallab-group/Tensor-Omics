@@ -190,13 +190,9 @@ const config = setupConfig();
     });
 
     // create an ArcRotateCamera for orbit view
-    const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, null, null, scene);
+    const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, 10, new BABYLON.Vector3.Zero(), scene);
     const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
     setupOrbitView(scene, meshSelectedPoints);
-
-    // disable orbit mode to sync camera with config, because the ArcRotateCamera's position is being calculated during rendering, which makes it difficult to move
-    const orbitMode = config.get("orbitMode");
-    config.set("orbitMode", false);
 
     config.setSetterCallback("rotationX", (radians) => {
       if (config.get("orbitMode")) {
@@ -217,16 +213,21 @@ const config = setupConfig();
       config.setSetterCallback(axis, (position) => {
         if (config.get("orbitMode")) {
           const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z"));
-          const delta = newPosition.subtract(orbitCam.position); // Compute difference
-
-          orbitCam.setTarget(orbitCam.target.add(delta)); // Move the target appropriately
-          orbitCam.position = newPosition; // Move camera exactly to new position
+          const newTarget = getOrbitTargetFromPosition(scene, newPosition, orbitCam.radius);
+          orbitCam.setTarget(newTarget);
+          orbitCam.position = newPosition;
         } else {
           camera.position[axis] = position;
         }
       })
     }
-    config.set("orbitMode", orbitMode);
+
+    config.setSetterCallback("orbitModeTargetDistance", (radius) => {
+      if (config.get("orbitMode")) {
+        const newTarget = getOrbitTargetFromPosition(scene, orbitCam.position, radius);
+        orbitCam.setTarget(newTarget);
+      }
+    })
 
     scene.registerBeforeRender(() => {
       // will work for both cameras
@@ -247,6 +248,13 @@ const config = setupConfig();
     });
   }
 
+  function getOrbitTargetFromPosition(scene, position, radius) {
+    const forward = scene.activeCamera.getDirection(BABYLON.Vector3.Forward());
+    forward.normalize();
+    const newTarget = position.add(forward.scale(radius));
+    return newTarget;
+  }
+
   function setupOrbitView(scene, meshSelectedPoints) {
     config.setSetterCallback("orbitMode", (enable) => {
       if (!enable && scene.activeCamera.name !== "camera") {
@@ -258,17 +266,12 @@ const config = setupConfig();
       else if (enable && scene.activeCamera.name !== "orbitCamera") {
         const orbitCamera = scene.getCameraByName("orbitCamera");
 
-        // Calculate the forward direction vector of the camera
-        const forward = scene.activeCamera.getDirection(BABYLON.Vector3.Forward());
-        forward.normalize();
-
         let target;
         let radius;
-        if (meshSelectedPoints.instances.length === 0) {
 
-          // Scale the forward vector by the orbitCamera's radius
-          radius = config.get("orbitModeTargetDistance");
-          target = scene.activeCamera.position.add(forward.scale(radius));
+        if (meshSelectedPoints.instances.length === 0) {
+          radius = 10;
+          target = getOrbitTargetFromPosition(scene, scene.activeCamera.position, radius);
         } else {
           // calculate mid point of all selected points and set as target,
           // set distance to this point as radius
@@ -295,14 +298,9 @@ const config = setupConfig();
           );
           radius = BABYLON.Vector3.Distance(target, scene.activeCamera.position);
         }
-        // Convert this diff into spherical coordinates.
-        var alpha = Math.atan2(forward.z, forward.x) + Math.PI;
-        var beta = Math.acos(-forward.y / forward.length());
         scene.switchActiveCamera(orbitCamera);
         orbitCamera.setTarget(target);
         orbitCamera.radius = radius;
-        orbitCamera.alpha = alpha;
-        orbitCamera.beta = beta;
       }
     })
     scene.getEngine().getRenderingCanvas().addEventListener("keydown", (evt) => {
