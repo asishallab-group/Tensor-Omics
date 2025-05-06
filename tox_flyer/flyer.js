@@ -11,7 +11,9 @@ function setupConfig() {
       z: 0,
       rotationX: 0,
       rotationY: 0,
-      orbitModeTargetDistance: 10
+      orbitModeTargetDistance: 10,
+      mouseSensibility: 2000,  // the higher, the slower
+      movementSpeed: 0.5
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -176,18 +178,22 @@ const config = setupConfig();
     camera.keysRotateRight = [69]; // E
 
     // Set the movement speed and mouse sensitivity for a smooth experience.
-    camera.speed = 0.5; // Controls the speed of movement for WASD and arrow keys.
-    camera.angularSensibility = 2000; // Controls mouse drag sensitivity for view rotation.
-
-    // Listen to the mouse wheel event on the canvas to simulate zooming.
-    canvas.addEventListener("wheel", event => {
-      // event.deltaY is positive when scrolling down (zoom out) and negative when scrolling up (zoom in).
-      const delta = event.deltaY * 0.0005;
-      // Adjust the camera's field of view (fov) to simulate zoom changes.
-      camera.fov += delta;
-      // Clamp the FOV value to keep the zoom within sensible limits.
-      camera.fov = Math.min(Math.max(camera.fov, 0.1), 1.5);
+    config.setSetterCallback("movementSpeed", (speed) => {
+      camera.speed = speed; // Controls the speed of movement for WASD and arrow keys.
     });
+    config.setSetterCallback("mouseSensibility", (sensibility) => {
+      camera.angularSensibility = sensibility; // Controls mouse drag sensitivity for view rotation.
+    })
+
+    // // Listen to the mouse wheel event on the canvas to simulate zooming.
+    // canvas.addEventListener("wheel", event => {
+    //   // event.deltaY is positive when scrolling down (zoom out) and negative when scrolling up (zoom in).
+    //   const delta = event.deltaY * 0.0005;
+    //   // Adjust the camera's field of view (fov) to simulate zoom changes.
+    //   camera.fov += delta;
+    //   // Clamp the FOV value to keep the zoom within sensible limits.
+    //   camera.fov = Math.min(Math.max(camera.fov, 0.1), 1.5);
+    // });
 
     // create an ArcRotateCamera for orbit view
     const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, 10, new BABYLON.Vector3.Zero(), scene);
