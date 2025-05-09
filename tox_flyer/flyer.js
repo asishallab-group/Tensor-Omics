@@ -1,126 +1,6 @@
 "use strict";
 
-import { dataHandler } from "./dataHandler.js";
-
-function setupConfig() {
-  const values = {
-    allModes: {
-      orbitMode: false,
-      darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
-      outlierDataPointDiameter: 0.25,
-      x: 0,
-      y: 0,
-      z: 0,
-      rotationX: 0,
-      rotationY: 0,
-      orbitModeTargetDistance: 10,
-      mouseSensibility: 2000,  // the higher, the slower
-      movementSpeed: 0.5
-    },
-    lightMode: {
-      selectedDataPointColor: "#FFFF00FF",
-      outlierDataPointColor: "#0000FFFF",
-
-      backgroundColor: "#FFFFFFFF",
-
-      xAxisColor: "#FF0000FF",
-      yAxisColor: "#00FF00FF",
-      zAxisColor: "#0000FFFF",
-    },
-    darkMode: {
-      selectedDataPointColor: "#FFFF00FF",
-      outlierDataPointColor: "#F15829FF",
-
-      backgroundColor: "#1B1A1FFF",
-
-      xAxisColor: "#DE0000FF",
-      yAxisColor: "#19CF00FF",
-      zAxisColor: "#0092FFFF",
-    },
-    callbacks: {}
-  }
-
-  const config = {
-    get(key) {
-      return values.allModes[key] ?? (values.allModes.darkMode ? values.darkMode[key] : values.lightMode[key]);
-    },
-    set(key, value, runCallback=true) {
-      if (values.allModes[key] !== undefined) values.allModes[key] = value;
-      else if (values.allModes.darkMode) values.darkMode[key] = value;
-      else values.lightMode[key] = value;
-
-      if (runCallback) values.callbacks[key]?.(value);
-    },
-    setSetterCallback(key, callback) {
-      if (values.callbacks[key] === undefined) {
-        values.callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
-        callback(config.get(key));
-      } else {
-        throw Error(`Another callback function has been already registered for '${key}' in the past.`);
-      }
-    },
-    asURL() {
-      const currentURL = new URL(document.URL);
-      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify({
-        allModes: values.allModes,
-        lightMode: values.lightMode,
-        darkMode: values.darkMode
-      }))}`;
-    }
-  }
-
-  Object.freeze(config);
-
-  // on dark mode switch, all callbacks need to be triggered
-  config.setSetterCallback("darkMode", (enable) => {
-    const entries = enable ? Object.entries({...values.darkMode}) : Object.entries({...values.lightMode});
-    for (const [key, value] of entries) {
-      config.set(key, value);
-    }
-  })
-
-  try {
-    const currentURL = new URL(document.URL);
-    const configArg = currentURL.searchParams.get("config");
-    if (configArg) {
-      const importingConfig = JSON.parse(atob(configArg));
-      if (importingConfig.allModes) values.allModes = importingConfig.allModes;
-      if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
-      if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
-    }
-  } catch (err) {
-    console.log("Could not import config from URL");
-  }
-
-  return config;
-}
-
-Object.defineProperty(window, "config", {
-    value: setupConfig(),
-    writable: false, // Prevents modification
-    configurable: false // Prevents deletion
-});
-
-/***************************************************************
- * Function: configureCanvas
- * Purpose: Retrieve and configure the canvas element.
- * - Sets focus to the canvas on page load to enable keyboard controls immediately.
- * - Throws an error if the canvas element is not found.
- ***************************************************************/
-function configureCanvas() {
-  // Retrieve the canvas element by its id "view".
-  const canvas = document.getElementById("view");
-  if (!canvas) {
-    throw new Error("Canvas element with id 'view' not found.");
-  }
-
-  // Set focus to the canvas element to enable keyboard controls on load.
-  canvas.tabIndex = 1; // Ensure the canvas is focusable.
-  canvas.focus();
-
-  return canvas;
-}
-
+import { plotData, createSphereMesh } from "./plotData.js";
 
 /***************************************************************
  * Function: initializeEngine
@@ -148,6 +28,26 @@ async function initializeEngine(canvas) {
   engine.enableOfflineSupport = false;
 
   return engine;
+}
+
+/***************************************************************
+ * Function: configureCanvas
+ * Purpose: Retrieve and configure the canvas element.
+ * - Sets focus to the canvas on page load to enable keyboard controls immediately.
+ * - Throws an error if the canvas element is not found.
+ ***************************************************************/
+function configureCanvas(id) {
+  // Retrieve the canvas element by its id "view".
+  const canvas = document.getElementById(id);
+  if (!canvas) {
+    throw new Error(`Canvas element with id ${id} not found.`);
+  }
+
+  // Set focus to the canvas element to enable keyboard controls on load.
+  canvas.tabIndex = 1; // Ensure the canvas is focusable.
+  canvas.focus();
+
+  return canvas;
 }
 
 /**
@@ -339,7 +239,6 @@ function setupScene(engine, canvas) {
     setBackgroundColor(scene, hexColorCode);
   });
 
-  create3DGrid(scene);
   setupCamera(scene, canvas);
 
   // Create a basic hemispheric light to illuminate the scene.
@@ -351,193 +250,6 @@ function setupScene(engine, canvas) {
 
 function setBackgroundColor(scene, hexColorCode) {
   scene.clearColor = BABYLON.Color4.FromHexString(hexColorCode);
-}
-
-/**
- * Function: create3DGrid
- * Purpose: Creates a 3D grid with customizable size and density.
- * - Useful for visualizing spatial boundaries in a 3D plot.
- * @param {BABYLON.Scene} scene - The Babylon.js scene where the grid will be added.
- * @param {number} size - The total size of the grid (length of each axis).
- * @param {number} step - The spacing between grid lines.
- */
-function create3DGrid(scene, size = 100, step = 10) {
-  // Create a parent node to group all grid lines for easy management.
-  const gridParent = new BABYLON.TransformNode("gridParent", scene);
-
-  // Helper function to create a single line.
-  function createLine(start, end, color) {
-    const line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
-    const material = new BABYLON.StandardMaterial("lineMat", scene);
-    material.emissiveColor = color; // Use emissive color to make lines bright.
-    material.disableLighting = true; // Lines are unaffected by scene lighting.
-    material.alpha = 0.2;
-    line.material = material;
-    line.parent = gridParent; // Attach the line to the parent node.
-  }
-
-  // Create grid lines parallel to each axis.
-  const halfSize = size / 2;
-  const color = BABYLON.Color3.Gray(); // Default color for grid lines.
-
-  // Lines along the X-axis.
-  for (let a = -halfSize; a <= halfSize; a += step) {
-    for (let b = -halfSize; b <= halfSize; b += step) {
-      // along x axis
-      createLine(
-        new BABYLON.Vector3(-halfSize, a, b), // Start point
-        new BABYLON.Vector3(halfSize, a, b),  // End point
-        color
-      );
-      // along y axis
-      createLine(
-        new BABYLON.Vector3(a, -halfSize, b), // Start point
-        new BABYLON.Vector3(a, halfSize, b),  // End point
-        color
-      );
-      // along z axis
-      createLine(
-        new BABYLON.Vector3(a, b, -halfSize), // Start point
-        new BABYLON.Vector3(a, b, halfSize),  // End point
-        color
-      );
-    }
-  }
-
-  return gridParent; // Return the parent node containing all grid lines.
-}
-
-/***************************************************************
- * Function: plotData
- * Purpose: Visualize the data points and add axis ordinates.
- * - Creates a base blue sphere mesh; for performance reasons instances are used for each data point.
- * - Registers pointer events for tooltips (on hover) and for clicking to light up a point.
- * - Also creates 3D arrows along the X, Y, and Z axes (in black) to serve as ordinates.
- ***************************************************************/
-function plotData(scene, data) {
-  // Create a base sphere that serves as a template.
-  // Using instances is more performant than creating compconstely separate meshes.
-  // Mesh for basic spheres
-  const meshOutliers = createSphereMesh(scene, "meshOutliers", "outlierDataPointColor", "outlierDataPointDiameter");
-
-  // Loop through the mock data and create an instance for each point.
-  for (const family of dataHandler.families) {
-    dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(
-      ({coordinates, ...metaData}, i) => {
-        meshOutliers.dataPoint("dataPoint_" + i, new BABYLON.Vector3(...coordinates).scale(1000));
-      }
-    )
-  }
-}
-
-function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
-    const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
-
-    // Create and assign a blue material for the spheres.
-    const sphereMaterial = new BABYLON.StandardMaterial(name + "Mat", scene);
-    mesh.material = sphereMaterial;
-
-    // set size
-    if (configDiameterAttribute) {
-      config.setSetterCallback(configDiameterAttribute, (diameter) => {
-        setSphereSize(mesh, diameter);
-        for (const instance of mesh.instances) {
-          setSphereSize(instance, diameter);
-        }
-      })
-    }
-
-    // set color
-    config.setSetterCallback(configColorAttribute, (hexColorCode) => {
-      setSphereColor(mesh, hexColorCode);
-    });
-
-    // Hide the original sphere since we will use instances.
-    mesh.isVisible = false;
-
-    mesh.dataPoint = function (name, position) {
-      const instance = this.createInstance(name);
-      instance.position = position;
-      instance.actionManager = this.actionManager;
-      return instance;
-    }
-
-    // Enable pointer interactions by attaching an ActionManager to each instance.
-    mesh.actionManager = new BABYLON.ActionManager(scene);
-
-
-    // Register a hover action to display a tooltip with the data values.
-    const datapointDiv = document.getElementById("datapoint");
-    mesh.actionManager.registerAction(
-      new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOverTrigger, function (evt) {
-        const dataPoint = evt.source;
-        if (dataPoint) {
-          datapointDiv.style.display = "block";
-          document.body.style.cursor = "pointer";
-          // Format the tooltip content with two decimal places.
-          datapointDiv.innerHTML = "x: " + dataPoint.position.x.toFixed(2) + 
-                                 "<br>y: " + dataPoint.position.y.toFixed(2) + 
-                                 "<br>z: " + dataPoint.position.z.toFixed(2);
-        }
-      })
-    );
-
-    // Hide the tooltip when the pointer leaves the sphere.
-    mesh.actionManager.registerAction(
-      new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOutTrigger, function () {
-        datapointDiv.style.display = "none";
-        document.body.style.cursor = "unset";
-      })
-    );
-
-    // Register a click action to select a sphere.
-    mesh.actionManager.registerAction(
-      new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function (evt) {
-        const instance = evt.source;
-        const meshSelectedPoints = scene.getMeshByName("meshSelectedPoints");
-        if (instance.TOX_unselectedInstance === undefined) {
-          // Create an instance of meshSelectedPoints
-          const selectedInstance = meshSelectedPoints.dataPoint(instance.name + "_selected", instance.position);
-          selectedInstance.scaling = instance.scaling;
-
-          // Hide instance
-          instance.setEnabled(false);
-          selectedInstance.TOX_unselectedInstance = instance;
-        } else {
-          instance.TOX_unselectedInstance.setEnabled(true);
-
-          // sync scaling, as it may have changed during disabled state
-          instance.TOX_unselectedInstance.scaling = instance.scaling;
-
-          instance.dispose();
-        }
-      })
-    );
-
-    return mesh;
-}
-
-function setSphereSize(sphere, diameter) {
-  sphere.scaling = new BABYLON.Vector3(diameter, diameter, diameter);
-}
-
-function setSphereColor(sphere, color) {
-  sphere.material.diffuseColor = BABYLON.Color4.FromHexString(color);
-  sphere.material.alpha = sphere.material.diffuseColor.a;
-}
-
-/***************************************************************
- * Function: setupTooltipFollow
- * Purpose: Make the tooltip div follow the mouse pointer.
- * - Listens for mousemove events on the canvas.
- * - Offsets the tooltip by a few pixels from the pointer for better visibility.
- ***************************************************************/
-function setupTooltipFollow(canvas) {
-  const datapointDiv = document.getElementById("datapoint");
-  canvas.addEventListener("mousemove", function (evt) {
-    datapointDiv.style.left = (evt.clientX + 10) + "px";
-    datapointDiv.style.top = (evt.clientY + 10) + "px";
-  });
 }
 
 /**
@@ -675,7 +387,6 @@ function add3DCompass(mainScene, engine) {
   return compassScene;
 }
 
-
 /***************************************************************
  * Function: main
  * Purpose: Entry point of the application.
@@ -685,24 +396,15 @@ function add3DCompass(mainScene, engine) {
  ***************************************************************/
 async function main() {
   try {
-    // Step 1: Configure the canvas
-    const canvas = configureCanvas();
-
-    // Step 2: Initialize Babylon's experimental WebGPU engine.
+    const canvas = configureCanvas("view");
     const engine = await initializeEngine(canvas);
-
-    // Step 3: Setup the scene, including the camera, lighting, and basic controls.
     const scene = setupScene(engine, canvas);
     console.log(scene)
     const compassScene = add3DCompass(scene, engine);
 
-    // Step 4: Setup the tooltip follow behavior so tooltips stay near the pointer.
-    setupTooltipFollow(canvas);
-
-    // Step 5: Plot the data points and draw the ordinate arrows.
     plotData(scene);
 
-    // Step 6: Run the render loop to continuously update the scene.
+    // Run the render loop to continuously update the scene.
     engine.runRenderLoop(() => {
       scene.render();
       compassScene.render();
@@ -712,9 +414,6 @@ async function main() {
     window.addEventListener("resize", () => {
       engine.resize();
     });
-
-    // Enable snapshot rendering for the engine
-    // engine.snapshotRendering = true;
 
   } catch (err) {
     // Log any errors during initialization to the console.
