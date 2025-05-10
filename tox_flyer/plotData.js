@@ -101,34 +101,34 @@ function plotData(scene) {
   for (const family of dataHandler.families) {
     dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(({ coordinates, ...metaData }, i) => {
       // Convert the coordinate array into a BabylonJS Vector3 and scale it.
-      const position = new BABYLON.Vector3(...coordinates).scale(1000);
+      const position = new BABYLON.Vector3(...coordinates).scale(100);
 
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
       // which is also used as a key in the `chunks` object.
       const chunk = getChunkCentroid(position, chunkDiameter);
 
-      // If this chunk has not been created yet, create a TransformNode for it.
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = new BABYLON.TransformNode(`chunk_${chunk}`, scene);
-
-        // Disable the chunk if it lies outside the sight range relative to the config position.
-        // This is done by checking if the absolute difference in any axis is greater than or equal to sight.
-        if (
-          Math.abs(chunk[0] - posX) >= sight ||
-          Math.abs(chunk[1] - posY) >= sight ||
-          Math.abs(chunk[2] - posZ) >= sight
-        ) {
-          chunks[chunk].setEnabled(false);
-        }
+        // spheres stores the positions (and maybe metadata in future) of the spheres per family of this chunk
+        // instances stores the instances and is empty if not loaded
+        chunks[chunk] = { spheres: {}, instances: []};
       }
 
-      // Create a new instance of the sphere mesh for the data point.
-      // Name it uniquely using the index and position.
-      const instance = meshOutliers.dataPoint("dataPoint_" + i, position);
+      const chunkData = chunks[chunk];
+      if (
+        Math.abs(chunk[0] - posX) < sight &&
+        Math.abs(chunk[1] - posY) < sight &&
+        Math.abs(chunk[2] - posZ) < sight
+      ) {
+        // Create a new instance of the sphere mesh for the data point.
+        // Name it uniquely using the index and position.
+        const instance = meshOutliers.dataPoint("dataPoint_" + i, position);
 
-      // Parent the instance to the corresponding chunk's transform node.
-      instance.parent = chunks[chunk];
+        // Parent the instance to the corresponding chunk's transform node.
+        chunks[chunk].instances.push(instance);
+      }
+      chunkData.spheres[family] ??= [];
+      chunkData.spheres[family].push(position);
     });
   }
 
@@ -180,13 +180,13 @@ function plotData(scene) {
             // i.e. the new chunk in range along this axis.
             triggeredChunkCentroid[i] = currentAxis + compare * lastChunkDist;
             // Call loadChunk with a flag "true" to enable the chunk.
-            loadChunk(chunks[triggeredChunkCentroid], true);
+            loadChunk(scene, chunks[triggeredChunkCentroid], true);
 
             // Next, compute the position for the chunk that should be disabled,
             // i.e. the chunk that is no longer within range, so on the complementary side.
             triggeredChunkCentroid[i] = axis - compare * lastChunkDist;
             // Call loadChunk with the flag "false" to disable the chunk.
-            loadChunk(chunks[triggeredChunkCentroid], false);
+            loadChunk(scene, chunks[triggeredChunkCentroid], false);
           }
         }
       }
@@ -206,8 +206,24 @@ function getChunkCentroid({ x, y, z }, diameter) {
   return [trim(x), trim(y), trim(z)];
 }
 
-function loadChunk(chunk, state=true) {
-  chunk?.setEnabled(state);
+function loadChunk(scene, chunkData, state=true) {
+  if (chunkData) {
+    if (state) {
+      for (const [family, spheres] of Object.entries(chunkData.spheres)) {
+        const familyMesh = scene.getMeshByName("meshOutliers");  // when creating a mesh per family, the mesh will get the family name
+        for (const position of spheres) {
+          chunkData.instances.push(
+            familyMesh.dataPoint(null, position)
+          );
+        }
+      }
+    } else {
+      for (const instance of chunkData.instances) {
+        instance.dispose();
+      }
+      chunkData.instances.length = 0;
+    }
+  }
 }
 
 function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
