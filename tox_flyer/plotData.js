@@ -56,29 +56,158 @@ function create3DGrid(scene, size = 100, step = 10) {
   return gridParent; // Return the parent node containing all grid lines.
 }
 
-/***************************************************************
- * Function: plotData
- * Purpose: Visualize the data points and add axis ordinates.
- * - Creates a base blue sphere mesh; for performance reasons instances are used for each data point.
- * - Registers pointer events for tooltips (on hover) and for clicking to light up a point.
- * - Also creates 3D arrows along the X, Y, and Z axes (in black) to serve as ordinates.
- ***************************************************************/
+/**
+ * Plots data points in the scene by instancing a base sphere mesh onto different chunks.
+ * 
+ * Data points are grouped into "chunks" based on spatial positions determined by a chunk diameter.
+ * Chunks that fall outside a defined sight range relative to the config coordinates are disabled,
+ * and an update function dynamically loads/unloads chunks as the config position (e.g. camera)
+ * changes. A 3D grid is also created for visual reference.
+ *
+ * @param {BABYLON.Scene} scene - The BabylonJS scene in which to plot the data.
+ */
 function plotData(scene) {
-  // Create a base sphere that serves as a template.
-  // Using instances is more performant than creating compconstely separate meshes.
-  // Mesh for basic spheres
-  const meshOutliers = createSphereMesh(scene, "meshOutliers", "outlierDataPointColor", "outlierDataPointDiameter");
+  // Create a base sphere mesh that serves as a template for outlier data points.
+  // Using mesh instances is more performant than creating completely separate meshes.
+  const meshOutliers = createSphereMesh(
+    scene,
+    "meshOutliers",
+    "outlierDataPointColor",
+    "outlierDataPointDiameter"
+  );
 
-  // Loop through the mock data and create an instance for each point.
+  // Object to store TransformNodes representing spatial chunks.
+  // Each key in this object corresponds to a chunk's centroid in string form.
+  const chunks = {};
+
+  // Diameter of each chunk in world units.
+  const chunkDiameter = 50;
+
+  // Range (in number of chunks) around the current chunk that should be loaded.
+  const chunkLoadRange = 2;
+
+  // Define the "sight" range: the distance threshold (in world units) used to decide whether a chunk is visible.
+  // The value includes an extra 0.5 chunk diameter margin.
+  const sight = (chunkLoadRange + 0.5) * chunkDiameter;
+
+  // Retrieve the initial position from the configuration.
+  const posX = config.get("x");
+  const posY = config.get("y");
+  const posZ = config.get("z");
+
+  // Loop through each family available in the data handler.
+  // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
+  // and create an instance of the outlier mesh for each data point.
   for (const family of dataHandler.families) {
-    dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(
-      ({coordinates, ...metaData}, i) => {
-        meshOutliers.dataPoint("dataPoint_" + i, new BABYLON.Vector3(...coordinates).scale(1000));
+    dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(({ coordinates, ...metaData }, i) => {
+      // Convert the coordinate array into a BabylonJS Vector3 and scale it.
+      const position = new BABYLON.Vector3(...coordinates).scale(1000);
+
+      // Determine the centroid of the chunk this position falls into.
+      // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
+      // which is also used as a key in the `chunks` object.
+      const chunk = getChunkCentroid(position, chunkDiameter);
+
+      // If this chunk has not been created yet, create a TransformNode for it.
+      if (chunks[chunk] === undefined) {
+        chunks[chunk] = new BABYLON.TransformNode(`chunk_${chunk}`, scene);
+
+        // Disable the chunk if it lies outside the sight range relative to the config position.
+        // This is done by checking if the absolute difference in any axis is greater than or equal to sight.
+        if (
+          Math.abs(chunk[0] - posX) >= sight ||
+          Math.abs(chunk[1] - posY) >= sight ||
+          Math.abs(chunk[2] - posZ) >= sight
+        ) {
+          chunks[chunk].setEnabled(false);
+        }
       }
-    )
+
+      // Create a new instance of the sphere mesh for the data point.
+      // Name it uniquely using the index and position.
+      const instance = meshOutliers.dataPoint("dataPoint_" + i, position);
+
+      // Parent the instance to the corresponding chunk's transform node.
+      instance.parent = chunks[chunk];
+    });
   }
 
+  // Determine the initial chunk centroid based on the config position.
+  // This represents the "active" chunk coordinates in which data is loaded.
+  let chunkCentroid = getChunkCentroid({ x: posX, y: posY, z: posZ }, chunkDiameter);
+
+  // The maximum distance (in world units) to load/unload chunks.
+  const lastChunkDist = chunkLoadRange * chunkDiameter;
+
+  // Temporary array used to compute the centroid for chunks that need updating.
+  // This array is reused within the render loop for efficiency.
+  const triggeredChunkCentroid = [0, 0, 0];
+
+  /**
+   * Register a callback that fires before every render.
+   * This callback compares the current chunk centroid (from config)
+   * with the previous one and determines which neighboring chunks need to be loaded/unloaded.
+   */
+  scene.registerBeforeRender(() => {
+    // Get the current chunk centroid from the config position.
+    const currentChunkCentroid = getChunkCentroid(
+      { x: config.get("x"), y: config.get("y"), z: config.get("z") },
+      chunkDiameter
+    );
+
+    // Loop through each axis (x, y, z) and detect any change in the chunk centroid.
+    // If a change is detected along an axis, adjust chunks along that axis.
+    chunkCentroid.forEach((axis, i) => {
+      const currentAxis = currentChunkCentroid[i];
+      // Only proceed if the coordinate along this axis has changed.
+      if (currentAxis !== axis) {
+        // Determine the direction of movement on the changed axis.
+        // If currentAxis > axis then we are moving positively (compare = 1) else negatively (compare = -1).
+        const compare = currentAxis > axis ? 1 : -1;
+
+        // Loop over all possible offsets on the remaining two axes (j and k)
+        // covering the range from -lastChunkDist to lastChunkDist (in steps of chunkDiameter).
+        for (let aAxis = -lastChunkDist; aAxis <= lastChunkDist; aAxis += chunkDiameter) {
+          // Calculate the index for the first non-changing axis.
+          const j = (i + 1) % 3;
+          triggeredChunkCentroid[j] = chunkCentroid[j] + aAxis;
+          for (let bAxis = -lastChunkDist; bAxis <= lastChunkDist; bAxis += chunkDiameter) {
+            // Calculate the index for the second non-changing axis.
+            const k = (i + 2) % 3;
+            triggeredChunkCentroid[k] = chunkCentroid[k] + bAxis;
+
+            // For the changing axis, first compute the position for the chunk that should be loaded,
+            // i.e. the new chunk in range along this axis.
+            triggeredChunkCentroid[i] = currentAxis + compare * lastChunkDist;
+            // Call loadChunk with a flag "true" to enable the chunk.
+            loadChunk(chunks[triggeredChunkCentroid], true);
+
+            // Next, compute the position for the chunk that should be disabled,
+            // i.e. the chunk that is no longer within range, so on the complementary side.
+            triggeredChunkCentroid[i] = axis - compare * lastChunkDist;
+            // Call loadChunk with the flag "false" to disable the chunk.
+            loadChunk(chunks[triggeredChunkCentroid], false);
+          }
+        }
+      }
+    });
+    // Update the chunkCentroid to the current value for use in the next frame.
+    chunkCentroid = currentChunkCentroid;
+  });
+
+  // Create a 3D grid in the scene for improving interpretability.
   create3DGrid(scene);
+}
+
+function getChunkCentroid({ x, y, z }, diameter) {
+  function trim(a) {
+    return Math.floor((a + diameter / 2) / diameter) * diameter;
+  }
+  return [trim(x), trim(y), trim(z)];
+}
+
+function loadChunk(chunk, state=true) {
+  chunk?.setEnabled(state);
 }
 
 function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
