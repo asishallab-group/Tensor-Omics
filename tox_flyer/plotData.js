@@ -261,9 +261,6 @@ function createSphereMesh(scene, name, configColorAttribute, configDiameterAttri
       } else {
         instance.TOX_unselectedInstance.setEnabled(true);
 
-        // sync scaling, as it may have changed during disabled state
-        instance.TOX_unselectedInstance.scaling = instance.scaling;
-
         instance.dispose();
       }
     })
