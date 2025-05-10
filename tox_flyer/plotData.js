@@ -94,47 +94,44 @@ function plotData(scene) {
   const posX = config.get("x");
   const posY = config.get("y");
   const posZ = config.get("z");
+  const activeChunks = [];
 
   // Loop through each family available in the data handler.
   // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
   // and create an instance of the outlier mesh for each data point.
   for (const family of dataHandler.families) {
     dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(({ coordinates, ...metaData }, i) => {
-      // Convert the coordinate array into a BabylonJS Vector3 and scale it.
-      const position = new BABYLON.Vector3(...coordinates).scale(100);
+      const scaled = coordinates.map((v) => v*100);
 
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
       // which is also used as a key in the `chunks` object.
-      const chunk = getChunkCentroid(position, chunkDiameter);
+      const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        // spheres stores the positions (and maybe metadata in future) of the spheres per family of this chunk
-        // instances stores the instances and is empty if not loaded
-        chunks[chunk] = { spheres: {}, instances: []};
+        chunks[chunk] = [[], {}, null];
+        if (
+          Math.abs(chunk[0] - posX) < sight &&
+          Math.abs(chunk[1] - posY) < sight &&
+          Math.abs(chunk[2] - posZ) < sight
+        ) {
+          activeChunks.push(chunk.toString());
+        }
       }
-
-      const chunkData = chunks[chunk];
-      if (
-        Math.abs(chunk[0] - posX) < sight &&
-        Math.abs(chunk[1] - posY) < sight &&
-        Math.abs(chunk[2] - posZ) < sight
-      ) {
-        // Create a new instance of the sphere mesh for the data point.
-        // Name it uniquely using the index and position.
-        const instance = meshOutliers.dataPoint("dataPoint_" + i, position);
-
-        // Parent the instance to the corresponding chunk's transform node.
-        chunks[chunk].instances.push(instance);
-      }
-      chunkData.spheres[family] ??= [];
-      chunkData.spheres[family].push(position);
+      chunks[chunk][0].push(scaled);
+      chunks[chunk][1][family] ??= 0;
+      chunks[chunk][1][family]++;
     });
   }
 
+  for (const chunk of activeChunks) {
+    loadChunk(scene, chunks[chunk]);
+  }
+  console.log(chunks, activeChunks)
+
   // Determine the initial chunk centroid based on the config position.
   // This represents the "active" chunk coordinates in which data is loaded.
-  let chunkCentroid = getChunkCentroid({ x: posX, y: posY, z: posZ }, chunkDiameter);
+  let chunkCentroid = getChunkCentroid([posX, posY, posZ], chunkDiameter);
 
   // The maximum distance (in world units) to load/unload chunks.
   const lastChunkDist = chunkLoadRange * chunkDiameter;
@@ -151,7 +148,7 @@ function plotData(scene) {
   scene.registerBeforeRender(() => {
     // Get the current chunk centroid from the config position.
     const currentChunkCentroid = getChunkCentroid(
-      { x: config.get("x"), y: config.get("y"), z: config.get("z") },
+      [ config.get("x"), config.get("y"), config.get("z") ],
       chunkDiameter
     );
 
@@ -181,12 +178,17 @@ function plotData(scene) {
             triggeredChunkCentroid[i] = currentAxis + compare * lastChunkDist;
             // Call loadChunk with a flag "true" to enable the chunk.
             loadChunk(scene, chunks[triggeredChunkCentroid], true);
+            activeChunks.push(triggeredChunkCentroid.toString());
 
             // Next, compute the position for the chunk that should be disabled,
             // i.e. the chunk that is no longer within range, so on the complementary side.
             triggeredChunkCentroid[i] = axis - compare * lastChunkDist;
             // Call loadChunk with the flag "false" to disable the chunk.
             loadChunk(scene, chunks[triggeredChunkCentroid], false);
+            const chunkIndex = activeChunks.indexOf(triggeredChunkCentroid.toString());
+            if (chunkIndex !== -1) {
+              activeChunks.splice(chunkIndex, 1);
+            }
           }
         }
       }
@@ -199,7 +201,7 @@ function plotData(scene) {
   create3DGrid(scene);
 }
 
-function getChunkCentroid({ x, y, z }, diameter) {
+function getChunkCentroid([ x, y, z ], diameter) {
   function trim(a) {
     return Math.floor((a + diameter / 2) / diameter) * diameter;
   }
@@ -209,19 +211,28 @@ function getChunkCentroid({ x, y, z }, diameter) {
 function loadChunk(scene, chunkData, state=true) {
   if (chunkData) {
     if (state) {
-      for (const [family, spheres] of Object.entries(chunkData.spheres)) {
-        const familyMesh = scene.getMeshByName("meshOutliers");  // when creating a mesh per family, the mesh will get the family name
-        for (const position of spheres) {
-          chunkData.instances.push(
-            familyMesh.dataPoint(null, position)
-          );
+      const [positions, memberCounts] = chunkData;
+      const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries
+      positions.forEach((pos, i) => {
+        BABYLON.Matrix.Translation(...pos).copyToArray(positionsBuffer, 16 * i);
+      });
+
+      const colorBuffer = new Float32Array(4 * positions.length); // rgba
+      let colorIndex = 0;
+      Object.entries(memberCounts).forEach(([family, chunkMemberCount], i) => {
+        for (let _ = 0; _ < chunkMemberCount; _++) {
+          colorBuffer[colorIndex++] = 1 - i / positions.length; // r
+          colorBuffer[colorIndex++] = 1 - i / positions.length; // g
+          colorBuffer[colorIndex++] = 1 - i / positions.length; // b
+          colorBuffer[colorIndex++] = 1; // a
         }
-      }
+      });
+      chunkData[2] ??= BABYLON.MeshBuilder.CreateSphere(name, { diameter: 0.25, segments: 16 }, scene);
+      chunkData[2].thinInstanceSetBuffer("matrix", positionsBuffer, 16);
+      chunkData[2].thinInstanceSetBuffer("color", colorBuffer, 4);
     } else {
-      for (const instance of chunkData.instances) {
-        instance.dispose();
-      }
-      chunkData.instances.length = 0;
+      chunkData[2]?.dispose();
+      chunkData[2] = null;
     }
   }
 }
