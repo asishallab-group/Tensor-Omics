@@ -70,7 +70,11 @@ function setupScene(engine, canvas) {
   setupCamera(scene, canvas);
 
   // Create a basic hemispheric light to illuminate the scene.
-  const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+  let light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+  light.specular = new BABYLON.Color3(0.2,0.2,0.2);  // reduces reflection
+  light.intensity = 0.8;
+  light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, -1, 0), scene);
+  light.specular = new BABYLON.Color3(0.2,0.2,0.2);  // reduces reflection
   light.intensity = 0.8;
   
   return scene;

@@ -127,7 +127,6 @@ function plotData(scene) {
   for (const chunk of activeChunks) {
     loadChunk(scene, chunks[chunk]);
   }
-  console.log(chunks, activeChunks)
 
   // Determine the initial chunk centroid based on the config position.
   // This represents the "active" chunk coordinates in which data is loaded.
@@ -211,23 +210,41 @@ function getChunkCentroid([ x, y, z ], diameter) {
 function loadChunk(scene, chunkData, state=true) {
   if (chunkData) {
     if (state) {
-      const [positions, memberCounts] = chunkData;
-      const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries
-      positions.forEach((pos, i) => {
-        BABYLON.Matrix.Translation(...pos).copyToArray(positionsBuffer, 16 * i);
-      });
+      const [positions, memberCounts, mesh] = chunkData;
 
+      if (mesh !== null) {
+        mesh.dispose();
+      }
+      chunkData[2] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+      const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const colorBuffer = new Float32Array(4 * positions.length); // rgba
-      let colorIndex = 0;
+      let index = 0;
       Object.entries(memberCounts).forEach(([family, chunkMemberCount], i) => {
+        const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
         for (let _ = 0; _ < chunkMemberCount; _++) {
-          colorBuffer[colorIndex++] = 1 - i / positions.length; // r
-          colorBuffer[colorIndex++] = 1 - i / positions.length; // g
-          colorBuffer[colorIndex++] = 1 - i / positions.length; // b
-          colorBuffer[colorIndex++] = 1; // a
+          const posBufIndex = index * 16;
+          const diameter = config.get(`${family}_Diameter`) ?? 0.25;
+          positionsBuffer[posBufIndex] = diameter; // set x scale
+          positionsBuffer[posBufIndex + 5] = diameter; // set y scale
+          positionsBuffer[posBufIndex + 10] = diameter; // set z scale
+
+          const position = positions[index]
+          positionsBuffer[posBufIndex + 12] = position[0]; // set x position
+          positionsBuffer[posBufIndex + 13] = position[1]; // set y position
+          positionsBuffer[posBufIndex + 14] = position[2]; // set z position
+
+          positionsBuffer[posBufIndex + 15] = 1;
+          // the unchanged indices affect the rotation of the sphere -> zero 
+
+          // setting color
+          let colorIndex = 4 * index;
+          colorBuffer[colorIndex++] = color.r;
+          colorBuffer[colorIndex++] = color.g;
+          colorBuffer[colorIndex++] = color.b;
+          colorBuffer[colorIndex] = color.a;
         }
+        index += chunkMemberCount;
       });
-      chunkData[2] ??= BABYLON.MeshBuilder.CreateSphere(name, { diameter: 0.25, segments: 16 }, scene);
       chunkData[2].thinInstanceSetBuffer("matrix", positionsBuffer, 16);
       chunkData[2].thinInstanceSetBuffer("color", colorBuffer, 4);
     } else {
