@@ -1,0 +1,9 @@
+project: "LOESS Smoothing"
+author: "Aaron Schroeder"
+summary: "A Fortran implementation of LOESS smoothing"
+version: "1.0"
+src_dir: "src/"
+output_dir: "doc/"
+preprocess: True
+graph: True
+search: True
