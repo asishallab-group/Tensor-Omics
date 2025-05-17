@@ -137,6 +137,51 @@ run_all_tests <- function() {
   cat("=== All tests passed! ===\n")
 }
 
-if (interactive()) run_all_tests()
+# if (interactive()) run_all_tests()
 
-run_all_tests()
+# run_all_tests()
+
+#### REAL DATA TEST ####
+
+use_tpm <- function(file, output_file = "data/tensoromics_test_output.txdata") {
+  # Step 1: Load and transpose data
+  tpm_data <- as.matrix(read.csv(file, sep = "\t", row.names = 1))
+  tpm_transposed <- t(tpm_data)  # Shape: tissues × genes
+  
+  # Step 2: Define TensorOmics parameters
+  n_tissues <- nrow(tpm_transposed)
+  n_genes <- ncol(tpm_transposed)
+
+  gene_ids <- rownames(tpm_data)
+  meta_matrix <- matrix(gene_ids, ncol = 1)
+  meta_n_rows <- length(gene_ids)
+  meta_max_char <- max(nchar(gene_ids))
+  meta_col_types <- 3L  # character
+
+  estimates <- create_estimates(
+    n_tissues      = nrow(tpm_transposed),
+    n_genes        = ncol(tpm_transposed),
+    meta_n_rows    = meta_n_rows,
+    meta_max_char  = meta_max_char,
+    meta_col_types = meta_col_types
+  )
+
+
+  cat("Calculating memory needs...\n")
+  mem_required <- calculate_memory(estimates)
+  cat("Memory needed:", mem_required, "bytes\n")
+
+  # Step 3: Initialize empty TensorOmics container
+  tom <- init_tensoromics(estimates)
+  cat("Initialized container.\n")
+
+  # Step 4: Add the full TPM matrix as a patch
+  tom <- update_tensoromics(tom, patch = tpm_transposed)
+  cat("Update complete. Current index:", tom$next_idx, "\n")
+
+  # Step 5: Save to file
+  save_tensoromics(tom, output_file)
+  cat("Saved data to", output_file, "\n")
+
+  return(tom)
+}
