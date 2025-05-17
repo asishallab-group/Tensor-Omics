@@ -22,6 +22,8 @@ A Fortran implementation of the LOESS (Locally Estimated Scatterplot Smoothing) 
 └── README.md    # Project overview
 ```
 
+Please check `src/DEBUGGING.txt` for a details on the test cases.
+
 ## Usage
 
 ### 1. Compile and run the test program
