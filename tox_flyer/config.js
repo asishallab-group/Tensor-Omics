@@ -134,8 +134,4 @@ function setupConfig() {
   return config;
 }
 
-Object.defineProperty(window, "config", {
-    value: setupConfig(),
-    writable: false, // Prevents modification
-    configurable: false // Prevents deletion
-});
+export const config = setupConfig();

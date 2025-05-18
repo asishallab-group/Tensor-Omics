@@ -2,6 +2,7 @@
 
 import { plotData } from "./plotData.js";
 import { setupCamera } from "./camera.js";
+import { config } from "./config.js";
 
 /***************************************************************
  * Function: initializeEngine
@@ -229,6 +230,11 @@ function add3DCompass(mainScene, engine) {
  ***************************************************************/
 async function main() {
   try {
+    Object.defineProperty(window, "config", {
+      value: config,
+      writable: false, // Prevents modification
+      configurable: false // Prevents deletion
+    });
     const canvas = configureCanvas("view");
     const engine = await initializeEngine(canvas);
     const scene = setupScene(engine, canvas);
