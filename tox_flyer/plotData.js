@@ -88,12 +88,10 @@ function plotData(scene) {
     loadChunk(scene, chunks[chunk]);
   }
 
-  for (const needsReload of ["tissueX", "tissueY", "tissueZ", "chunkDiameter", "chunkLoadRange"]) {
-    config.setSetterCallback(needsReload, () => {
-      [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
-      lastChunkDist = chunkLoadRange * chunkDiameter;
-    }, false);
-  }
+  document.addEventListener("chunkReload", (evt) => {
+    [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
+    lastChunkDist = chunkLoadRange * chunkDiameter;
+  })
 
   // Determine the initial chunk centroid based on the config position.
   // This represents the "active" chunk coordinates in which data is loaded.
@@ -121,6 +119,7 @@ function plotData(scene) {
       const currentAxis = currentChunkCentroid[i];
       // Only proceed if the coordinate along this axis has changed.
       if (currentAxis !== axis) {
+
         // Determine the direction of movement on the changed axis.
         // If currentAxis > axis then we are moving positively (direction = 1) else negatively (direction = -1).
         const direction = currentAxis > axis ? 1 : -1;
@@ -172,8 +171,8 @@ function reloadChunks(scene, chunks, activeChunks) {
     config.get("x"),
     config.get("y"),
     config.get("z"),
-    config.get("chunkDiameter"),
-    config.get("chunkLoadRange")
+    chunkDiameter,
+    chunkLoadRange
   );
   for (const chunk of newActiveChunks) {
     loadChunk(scene, newChunks[chunk]);
@@ -251,10 +250,11 @@ function loadChunk(scene, chunkData, state=true) {
       chunkData[2] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
       const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const colorBuffer = new Float32Array(4 * positions.length); // rgba
-      let index = 0;
-      Object.entries(memberCounts).forEach(([family, chunkMemberCount], i) => {
+      let familyIndex = 0;
+      Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
         const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
-        for (let _ = 0; _ < chunkMemberCount; _++) {
+        for (let i = 0; i < chunkMemberCount; i++) {
+          const index = familyIndex + i;
           const posBufIndex = index * 16;
           const diameter = config.get(`${family}_Diameter`) ?? 0.25;
           positionsBuffer[posBufIndex] = diameter; // set x scale
@@ -276,7 +276,7 @@ function loadChunk(scene, chunkData, state=true) {
           colorBuffer[colorIndex++] = color.b;
           colorBuffer[colorIndex] = color.a;
         }
-        index += chunkMemberCount;
+        familyIndex += chunkMemberCount;
       });
       chunkData[2].thinInstanceSetBuffer("matrix", positionsBuffer, 16);
       chunkData[2].thinInstanceSetBuffer("color", colorBuffer, 4);

@@ -43,6 +43,15 @@ function setupConfig() {
     callbacks: {}
   }
 
+  const triggersChunkReload = [
+    "tissueX",
+    "tissueY",
+    "tissueZ",
+    "chunkDiameter",
+    "chunkLoadRange",
+    "darkMode"
+  ];
+
   const config = {
     get(key) {
       return values.allModes[key] ?? (values.allModes.darkMode ? values.darkMode[key] : values.lightMode[key]);
@@ -53,6 +62,14 @@ function setupConfig() {
       else values.lightMode[key] = value;
 
       if (runCallback) values.callbacks[key]?.(value);
+
+      // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
+      if (key.includes("_") || triggersChunkReload.includes(key)) {
+        const event = new CustomEvent("chunkReload", {
+          detail: { setting: key }
+        });
+        document.dispatchEvent(event);
+      }
     },
     setSetterCallback(key, callback) {
       if (values.callbacks[key] === undefined) {
