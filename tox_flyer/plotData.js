@@ -67,65 +67,33 @@ function create3DGrid(scene, size = 100, step = 10) {
  * @param {BABYLON.Scene} scene - The BabylonJS scene in which to plot the data.
  */
 function plotData(scene) {
-  // Create a base sphere mesh that serves as a template for outlier data points.
-  // Using mesh instances is more performant than creating completely separate meshes.
-  const meshOutliers = createSphereMesh(
-    scene,
-    "meshOutliers",
-    "outlierDataPointColor",
-    "outlierDataPointDiameter"
-  );
-
-  // Object to store TransformNodes representing spatial chunks.
-  // Each key in this object corresponds to a chunk's centroid in string form.
-  const chunks = {};
+  // Retrieve the initial position from the configuration.
+  const posX = config.get("x");
+  const posY = config.get("y");
+  const posZ = config.get("z");
 
   // Diameter of each chunk in world units.
   const chunkDiameter = 50;
 
   // Range (in number of chunks) around the current chunk that should be loaded.
   const chunkLoadRange = 2;
-
-  // Define the "sight" range: the distance threshold (in world units) used to decide whether a chunk is visible.
-  // The value includes an extra 0.5 chunk diameter margin.
-  const sight = (chunkLoadRange + 0.5) * chunkDiameter;
-
-  // Retrieve the initial position from the configuration.
-  const posX = config.get("x");
-  const posY = config.get("y");
-  const posZ = config.get("z");
-  const activeChunks = [];
-
-  // Loop through each family available in the data handler.
-  // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
-  // and create an instance of the outlier mesh for each data point.
-  for (const family of dataHandler.families) {
-    dataHandler.iterGenes(family, "Liver", "Heart", "Lung").forEach(({ coordinates, ...metaData }, i) => {
-      const scaled = coordinates.map((v) => v*100);
-
-      // Determine the centroid of the chunk this position falls into.
-      // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
-      // which is also used as a key in the `chunks` object.
-      const chunk = getChunkCentroid(scaled, chunkDiameter);
-
-      if (chunks[chunk] === undefined) {
-        chunks[chunk] = [[], {}, null];
-        if (
-          Math.abs(chunk[0] - posX) < sight &&
-          Math.abs(chunk[1] - posY) < sight &&
-          Math.abs(chunk[2] - posZ) < sight
-        ) {
-          activeChunks.push(chunk.toString());
-        }
-      }
-      chunks[chunk][0].push(scaled);
-      chunks[chunk][1][family] ??= 0;
-      chunks[chunk][1][family]++;
-    });
-  }
+  // Each key in this object corresponds to a chunk's centroid in string form.
+  let { chunks, activeChunks } = calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange);
 
   for (const chunk of activeChunks) {
     loadChunk(scene, chunks[chunk]);
+  }
+
+  for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
+    config.setSetterCallback(tissue, () => {
+      clearChunks(scene, chunks, activeChunks);
+      const recalculatedChunks = calculateChunks(config.get("x"), config.get("y"), config.get("z"), chunkDiameter, chunkLoadRange);
+      chunks = recalculatedChunks.chunks;
+      activeChunks = recalculatedChunks.activeChunks;
+      for (const chunk of activeChunks) {
+        loadChunk(scene, chunks[chunk]);
+      }
+    }, false);
   }
 
   // Determine the initial chunk centroid based on the config position.
@@ -158,8 +126,8 @@ function plotData(scene) {
       // Only proceed if the coordinate along this axis has changed.
       if (currentAxis !== axis) {
         // Determine the direction of movement on the changed axis.
-        // If currentAxis > axis then we are moving positively (compare = 1) else negatively (compare = -1).
-        const compare = currentAxis > axis ? 1 : -1;
+        // If currentAxis > axis then we are moving positively (direction = 1) else negatively (direction = -1).
+        const direction = currentAxis > axis ? 1 : -1;
 
         // Loop over all possible offsets on the remaining two axes (j and k)
         // covering the range from -lastChunkDist to lastChunkDist (in steps of chunkDiameter).
@@ -174,14 +142,14 @@ function plotData(scene) {
 
             // For the changing axis, first compute the position for the chunk that should be loaded,
             // i.e. the new chunk in range along this axis.
-            triggeredChunkCentroid[i] = currentAxis + compare * lastChunkDist;
+            triggeredChunkCentroid[i] = currentAxis + direction * lastChunkDist;
             // Call loadChunk with a flag "true" to enable the chunk.
             loadChunk(scene, chunks[triggeredChunkCentroid], true);
             activeChunks.push(triggeredChunkCentroid.toString());
 
             // Next, compute the position for the chunk that should be disabled,
             // i.e. the chunk that is no longer within range, so on the complementary side.
-            triggeredChunkCentroid[i] = axis - compare * lastChunkDist;
+            triggeredChunkCentroid[i] = axis - direction * lastChunkDist;
             // Call loadChunk with the flag "false" to disable the chunk.
             loadChunk(scene, chunks[triggeredChunkCentroid], false);
             const chunkIndex = activeChunks.indexOf(triggeredChunkCentroid.toString());
@@ -200,6 +168,57 @@ function plotData(scene) {
   create3DGrid(scene);
 }
 
+function clearChunks(scene, chunks, activeChunks) {
+  for (const chunk of activeChunks) {
+    loadChunk(scene, chunks[chunk], false);
+  }
+}
+
+function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
+  // Each key in this object corresponds to a chunk's centroid in string form.
+  const chunks = {};
+
+  // Define the "sight" range: the distance threshold (in world units) used to decide whether a chunk is visible.
+  // The value includes an extra 0.5 chunk diameter margin.
+  const sight = (chunkLoadRange + 0.5) * chunkDiameter;
+
+  const activeChunks = [];
+
+  const tissueX = config.get("tissueX");
+  const tissueY = config.get("tissueY");
+  const tissueZ = config.get("tissueZ");
+
+  // Loop through each family available in the data handler.
+  // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
+  // and create an instance of the outlier mesh for each data point.
+  for (const family of dataHandler.families) {
+    dataHandler.iterGenes(family, tissueX, tissueY, tissueZ).forEach(({ coordinates, ...metaData }, i) => {
+      const scaled = coordinates.map((v) => v*100);
+
+      // Determine the centroid of the chunk this position falls into.
+      // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
+      // which is also used as a key in the `chunks` object.
+      const chunk = getChunkCentroid(scaled, chunkDiameter);
+
+      if (chunks[chunk] === undefined) {
+        chunks[chunk] = [[], {}, null];
+        if (
+          Math.abs(chunk[0] - posX) < sight &&
+          Math.abs(chunk[1] - posY) < sight &&
+          Math.abs(chunk[2] - posZ) < sight
+        ) {
+          activeChunks.push(chunk.toString());
+        }
+      }
+      chunks[chunk][0].push(scaled);
+      chunks[chunk][1][family] ??= 0;
+      chunks[chunk][1][family]++;
+    });
+  }
+
+  return { chunks, activeChunks }
+}
+
 function getChunkCentroid([ x, y, z ], diameter) {
   function trim(a) {
     return Math.floor((a + diameter / 2) / diameter) * diameter;
@@ -215,6 +234,7 @@ function loadChunk(scene, chunkData, state=true) {
       if (mesh !== null) {
         mesh.dispose();
       }
+
       chunkData[2] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
       const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const colorBuffer = new Float32Array(4 * positions.length); // rgba

@@ -13,7 +13,10 @@ function setupConfig() {
       rotationY: 0,
       orbitModeTargetDistance: 10,
       mouseSensibility: 2000,  // the higher, the slower
-      movementSpeed: 0.5
+      movementSpeed: 0.5,
+      tissueX: "Liver",
+      tissueY: "Heart",
+      tissueZ: "Lung"
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
