@@ -1,7 +1,7 @@
 "use strict";
 
 function setupConfig() {
-  const values = {
+  const defaults = {
     allModes: {
       orbitMode: false,
       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
@@ -41,7 +41,13 @@ function setupConfig() {
       yAxisColor: "#19CF00FF",
       zAxisColor: "#0092FFFF",
     }
-  }
+  };
+
+  const values = {
+    allModes: {},
+    lightMode: {},
+    darkMode: {}
+  };
   
   const callbacks = {};
 
@@ -57,10 +63,19 @@ function setupConfig() {
 
   const config = {
     get(key) {
-      return values.allModes[key] ?? (values.allModes.darkMode ? values.darkMode[key] : values.lightMode[key]);
+      let value = values.allModes[key] ?? defaults.allModes[key];
+      if (value === undefined) {
+        if (values.allModes.darkMode ?? defaults.allModes.darkMode) {
+          value = values.darkMode[key] ?? defaults.darkMode[key];
+        } else {
+          value = values.lightMode[key] ?? defaults.lightMode[key];
+        }
+      }
+
+      return value;
     },
     set(key, value, runCallback=true) {
-      if (values.allModes[key] !== undefined) values.allModes[key] = value;
+      if (defaults.allModes[key] !== undefined) values.allModes[key] = value;
       else if (values.allModes.darkMode) values.darkMode[key] = value;
       else values.lightMode[key] = value;
 
@@ -92,10 +107,15 @@ function setupConfig() {
 
   // on dark mode switch, all callbacks need to be triggered
   config.setSetterCallback("darkMode", (enable) => {
-    const entries = enable ? Object.entries({...values.darkMode}) : Object.entries({...values.lightMode});
-    for (const [key, value] of entries) {
-      config.set(key, value);
+    for (const [key, callback] of Object.entries(callbacks)) {
+      if (key !== "darkMode") {
+        callback(config.get(key));
+      }
     }
+    const event = new CustomEvent("chunkReload", {
+      detail: { setting: "darkMode" }
+    });
+    document.dispatchEvent(event);
   })
 
   try {

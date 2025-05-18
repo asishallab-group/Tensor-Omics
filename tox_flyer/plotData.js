@@ -203,7 +203,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
   const scale = config.get("scale");
 
   // Loop through each family available in the data handler.
-  // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
+  // For each family, iterate through the genes for specific tissues
   // and create an instance of the outlier mesh for each data point.
   for (const family of dataHandler.families) {
     dataHandler.iterGenes(family, tissueX, tissueY, tissueZ).forEach(({ coordinates, ...metaData }, i) => {
