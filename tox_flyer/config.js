@@ -40,9 +40,10 @@ function setupConfig() {
       xAxisColor: "#DE0000FF",
       yAxisColor: "#19CF00FF",
       zAxisColor: "#0092FFFF",
-    },
-    callbacks: {}
+    }
   }
+  
+  const callbacks = {};
 
   const triggersChunkReload = [
     "tissueX",
@@ -63,7 +64,7 @@ function setupConfig() {
       else if (values.allModes.darkMode) values.darkMode[key] = value;
       else values.lightMode[key] = value;
 
-      if (runCallback) values.callbacks[key]?.(value);
+      if (runCallback) callbacks[key]?.(value);
 
       // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
       if (key.includes("_") || triggersChunkReload.includes(key)) {
@@ -74,8 +75,8 @@ function setupConfig() {
       }
     },
     setSetterCallback(key, callback) {
-      if (values.callbacks[key] === undefined) {
-        values.callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
+      if (callbacks[key] === undefined) {
+        callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
         callback(config.get(key));
       } else {
         throw Error(`Another callback function has been already registered for '${key}' in the past.`);
@@ -83,11 +84,7 @@ function setupConfig() {
     },
     asURL() {
       const currentURL = new URL(document.URL);
-      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify({
-        allModes: values.allModes,
-        lightMode: values.lightMode,
-        darkMode: values.darkMode
-      }))}`;
+      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify(values))}`;
     }
   }
 

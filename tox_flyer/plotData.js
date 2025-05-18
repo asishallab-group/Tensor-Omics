@@ -212,7 +212,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
       // which is also used as a key in the `chunks` object.
-      const chunk = getChunkCentroid(scaled, chunkDiameter);
+      const chunk = getChunkCentroid(coordinates, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
         chunks[chunk] = [[], {}, null];
