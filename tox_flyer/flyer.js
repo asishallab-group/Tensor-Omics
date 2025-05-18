@@ -126,9 +126,10 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
 
   // Update the position text dynamically as the camera moves.
   scene.registerBeforeRender(() => {
-    xPosition.text = `X: ${scene.activeCamera.position.x.toFixed(2)}`;
-    yPosition.text = `Y: ${scene.activeCamera.position.y.toFixed(2)}`;
-    zPosition.text = `Z: ${scene.activeCamera.position.z.toFixed(2)}`;
+    const scale = config.get("scale");
+    xPosition.text = `X: ${(scene.activeCamera.position.x / scale).toFixed(2)}`;
+    yPosition.text = `Y: ${(scene.activeCamera.position.y / scale).toFixed(2)}`;
+    zPosition.text = `Z: ${(scene.activeCamera.position.z / scale).toFixed(2)}`;
   });
 }
 

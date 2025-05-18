@@ -74,14 +74,15 @@ export function setupCamera(scene, canvas) {
   });
 
   for (const axis of "xyz") {
+    const scale = config.get("scale");
     config.setSetterCallback(axis, (position) => {
       if (config.get("orbitMode")) {
-        const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z"));
+        const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z")).scale(scale);
         const newTarget = getOrbitTargetFromPosition(scene, newPosition, orbitCam.radius);
         orbitCam.setTarget(newTarget);
         orbitCam.position = newPosition;
       } else {
-        camera.position[axis] = position;
+        camera.position[axis] = position * scale;
       }
     })
   }
@@ -94,11 +95,13 @@ export function setupCamera(scene, canvas) {
   })
 
   scene.registerBeforeRender(() => {
+    const scale = config.get("scale");
+
     // will work for both cameras
     // disabling callback function to run, as it would just set the camera to its current position
-    config.set("x", scene.activeCamera.position.x, false);
-    config.set("y", scene.activeCamera.position.y, false);
-    config.set("z", scene.activeCamera.position.z, false);
+    config.set("x", scene.activeCamera.position.x / scale, false);
+    config.set("y", scene.activeCamera.position.y / scale, false);
+    config.set("z", scene.activeCamera.position.z / scale, false);
 
     if (config.get("orbitMode")) {
       config.set("rotationX", (-scene.activeCamera.beta + Math.PI / 2) % (2 * Math.PI), false);

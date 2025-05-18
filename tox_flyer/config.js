@@ -18,7 +18,8 @@ function setupConfig() {
       tissueY: "Heart",
       tissueZ: "Lung",
       chunkDiameter: 50,
-      chunkLoadRange: 2
+      chunkLoadRange: 2,
+      scale: 100
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -49,6 +50,7 @@ function setupConfig() {
     "tissueZ",
     "chunkDiameter",
     "chunkLoadRange",
+    "scale",
     "darkMode"
   ];
 

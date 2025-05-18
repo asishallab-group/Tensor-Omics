@@ -200,12 +200,14 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
   const tissueY = config.get("tissueY");
   const tissueZ = config.get("tissueZ");
 
+  const scale = config.get("scale");
+
   // Loop through each family available in the data handler.
   // For each family, iterate through the genes for specific organs ("Liver", "Heart", "Lung")
   // and create an instance of the outlier mesh for each data point.
   for (const family of dataHandler.families) {
     dataHandler.iterGenes(family, tissueX, tissueY, tissueZ).forEach(({ coordinates, ...metaData }, i) => {
-      const scaled = coordinates.map((v) => v*100);
+      const scaled = coordinates.map((v) => v*scale);
 
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
