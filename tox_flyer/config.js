@@ -16,7 +16,9 @@ function setupConfig() {
       movementSpeed: 0.5,
       tissueX: "Liver",
       tissueY: "Heart",
-      tissueZ: "Lung"
+      tissueZ: "Lung",
+      chunkDiameter: 50,
+      chunkLoadRange: 2
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",

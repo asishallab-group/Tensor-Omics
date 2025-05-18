@@ -73,35 +73,31 @@ function plotData(scene) {
   const posZ = config.get("z");
 
   // Diameter of each chunk in world units.
-  const chunkDiameter = 50;
+  let chunkDiameter = config.get("chunkDiameter");
 
   // Range (in number of chunks) around the current chunk that should be loaded.
-  const chunkLoadRange = 2;
+  let chunkLoadRange = config.get("chunkLoadRange");
+
+  // The maximum distance (in world units) to load/unload chunks.
+  let lastChunkDist = chunkLoadRange * chunkDiameter;
+
   // Each key in this object corresponds to a chunk's centroid in string form.
-  let { chunks, activeChunks } = calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange);
+  let [ chunks, activeChunks ] = calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange);
 
   for (const chunk of activeChunks) {
     loadChunk(scene, chunks[chunk]);
   }
 
-  for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
-    config.setSetterCallback(tissue, () => {
-      clearChunks(scene, chunks, activeChunks);
-      const recalculatedChunks = calculateChunks(config.get("x"), config.get("y"), config.get("z"), chunkDiameter, chunkLoadRange);
-      chunks = recalculatedChunks.chunks;
-      activeChunks = recalculatedChunks.activeChunks;
-      for (const chunk of activeChunks) {
-        loadChunk(scene, chunks[chunk]);
-      }
+  for (const needsReload of ["tissueX", "tissueY", "tissueZ", "chunkDiameter", "chunkLoadRange"]) {
+    config.setSetterCallback(needsReload, () => {
+      [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
+      lastChunkDist = chunkLoadRange * chunkDiameter;
     }, false);
   }
 
   // Determine the initial chunk centroid based on the config position.
   // This represents the "active" chunk coordinates in which data is loaded.
   let chunkCentroid = getChunkCentroid([posX, posY, posZ], chunkDiameter);
-
-  // The maximum distance (in world units) to load/unload chunks.
-  const lastChunkDist = chunkLoadRange * chunkDiameter;
 
   // Temporary array used to compute the centroid for chunks that need updating.
   // This array is reused within the render loop for efficiency.
@@ -168,6 +164,23 @@ function plotData(scene) {
   create3DGrid(scene);
 }
 
+function reloadChunks(scene, chunks, activeChunks) {
+  clearChunks(scene, chunks, activeChunks);
+  const chunkDiameter = config.get("chunkDiameter");
+  const chunkLoadRange = config.get("chunkLoadRange");
+  const [newChunks, newActiveChunks] = calculateChunks(
+    config.get("x"),
+    config.get("y"),
+    config.get("z"),
+    config.get("chunkDiameter"),
+    config.get("chunkLoadRange")
+  );
+  for (const chunk of newActiveChunks) {
+    loadChunk(scene, newChunks[chunk]);
+  }
+  return [newChunks, newActiveChunks, chunkDiameter, chunkLoadRange];
+}
+
 function clearChunks(scene, chunks, activeChunks) {
   for (const chunk of activeChunks) {
     loadChunk(scene, chunks[chunk], false);
@@ -216,7 +229,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
     });
   }
 
-  return { chunks, activeChunks }
+  return [ chunks, activeChunks ]
 }
 
 function getChunkCentroid([ x, y, z ], diameter) {
