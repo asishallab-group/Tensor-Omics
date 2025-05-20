@@ -19,7 +19,8 @@ function setupConfig() {
       tissueZ: "Lung",
       chunkDiameter: 50,
       chunkLoadRange: 2,
-      scale: 100
+      scale: 100,
+      shownFamilies: null
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -58,7 +59,8 @@ function setupConfig() {
     "chunkDiameter",
     "chunkLoadRange",
     "scale",
-    "darkMode"
+    "darkMode",
+    "shownFamilies"
   ];
 
   const config = {
@@ -79,14 +81,16 @@ function setupConfig() {
       else if (values.allModes.darkMode) values.darkMode[key] = value;
       else values.lightMode[key] = value;
 
-      if (runCallback) callbacks[key]?.(value);
+      if (runCallback) {
+        callbacks[key]?.(value);
 
-      // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
-      if (key.includes("_") || triggersChunkReload.includes(key)) {
-        const event = new CustomEvent("chunkReload", {
-          detail: { setting: key }
-        });
-        document.dispatchEvent(event);
+        // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
+        if (key.includes("_") || triggersChunkReload.includes(key)) {
+          const event = new CustomEvent("chunkReload", {
+            detail: { setting: key }
+          });
+          document.dispatchEvent(event);
+        }
       }
     },
     setSetterCallback(key, callback) {

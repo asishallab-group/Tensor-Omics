@@ -13,7 +13,7 @@ export const handler = {
   },
   getColor(family) {
     // using the checksum of the family name as color code
-    const value = crc32(family) & (8**6-1); // mask the bits to have a number that is between hexal 0-777777, a range of around 260k values
+    const value = crc32(family) & (8**6-1); // mask the bits to have a number that is between octal 0-777777, a range of around 260k values
     const shift = config.get("darkMode") ? 3 : 7;
     const hexString = value.toString(8).padStart(6, "0");
 

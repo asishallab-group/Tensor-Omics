@@ -55,6 +55,7 @@ export function setupCamera(scene, canvas) {
 
   // create an ArcRotateCamera for orbit view
   const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, 10, new BABYLON.Vector3.Zero(), scene);
+  orbitCam.lowerRadiusLimit = 1;
   const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
   setupOrbitView(scene, meshSelectedPoints);
 

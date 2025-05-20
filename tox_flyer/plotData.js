@@ -250,35 +250,39 @@ function loadChunk(scene, chunkData, state=true) {
       }
 
       chunkData[2] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
-      const positionsBuffer = new Float32Array(16 * positions.length); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
-      const colorBuffer = new Float32Array(4 * positions.length); // rgba
-      let familyIndex = 0;
+      const familiesToShow = config.get("shownFamilies");
+      const shownSphereCount = familiesToShow?.reduce((a, b) => a + memberCounts[b], 0) ?? positions.length;
+      const positionsBuffer = new Float32Array(16 * shownSphereCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
+      const colorBuffer = new Float32Array(4 * shownSphereCount); // rgba
+      let positionsArrayIndex = 0;
+      let bufferIndex = 0;
       Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
-        const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
-        for (let i = 0; i < chunkMemberCount; i++) {
-          const index = familyIndex + i;
-          const posBufIndex = index * 16;
-          const diameter = config.get(`${family}_Diameter`) ?? 0.25;
-          positionsBuffer[posBufIndex] = diameter; // set x scale
-          positionsBuffer[posBufIndex + 5] = diameter; // set y scale
-          positionsBuffer[posBufIndex + 10] = diameter; // set z scale
+        if (familiesToShow === null || familiesToShow.includes(family)) {
+          const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+          for (let i = 0; i < chunkMemberCount; i++, bufferIndex++) {
+            const posBufIndex = bufferIndex * 16;
+            const diameter = config.get(`${family}_Diameter`) ?? 0.25;
+            positionsBuffer[posBufIndex] = diameter; // set x scale
+            positionsBuffer[posBufIndex + 5] = diameter; // set y scale
+            positionsBuffer[posBufIndex + 10] = diameter; // set z scale
 
-          const position = positions[index]
-          positionsBuffer[posBufIndex + 12] = position[0]; // set x position
-          positionsBuffer[posBufIndex + 13] = position[1]; // set y position
-          positionsBuffer[posBufIndex + 14] = position[2]; // set z position
+            const position = positions[positionsArrayIndex + i]
+            positionsBuffer[posBufIndex + 12] = position[0]; // set x position
+            positionsBuffer[posBufIndex + 13] = position[1]; // set y position
+            positionsBuffer[posBufIndex + 14] = position[2]; // set z position
 
-          positionsBuffer[posBufIndex + 15] = 1;
-          // the unchanged indices affect the rotation of the sphere -> zero 
+            positionsBuffer[posBufIndex + 15] = 1;
+            // the unchanged indices affect the rotation of the sphere -> zero 
 
-          // setting color
-          let colorIndex = 4 * index;
-          colorBuffer[colorIndex++] = color.r;
-          colorBuffer[colorIndex++] = color.g;
-          colorBuffer[colorIndex++] = color.b;
-          colorBuffer[colorIndex] = color.a;
+            // setting color
+            let colorIndex = 4 * bufferIndex;
+            colorBuffer[colorIndex++] = color.r;
+            colorBuffer[colorIndex++] = color.g;
+            colorBuffer[colorIndex++] = color.b;
+            colorBuffer[colorIndex] = color.a;
+          }
         }
-        familyIndex += chunkMemberCount;
+        positionsArrayIndex += chunkMemberCount;
       });
       chunkData[2].thinInstanceSetBuffer("matrix", positionsBuffer, 16);
       chunkData[2].thinInstanceSetBuffer("color", colorBuffer, 4);

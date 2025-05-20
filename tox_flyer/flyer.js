@@ -128,9 +128,9 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
   // Update the position text dynamically as the camera moves.
   scene.registerBeforeRender(() => {
     const precision = 2 + Math.floor(Math.log10(config.get("scale")));
-    xPosition.text = `X: ${config.get("x").toFixed(precision)}`;
-    yPosition.text = `Y: ${config.get("y").toFixed(precision)}`;
-    zPosition.text = `Z: ${config.get("z").toFixed(precision)}`;
+    xPosition.text = `${config.get("tissueX")}: ${config.get("x").toFixed(precision)}`;
+    yPosition.text = `${config.get("tissueY")}: ${config.get("y").toFixed(precision)}`;
+    zPosition.text = `${config.get("tissueZ")}: ${config.get("z").toFixed(precision)}`;
   });
 }
 
