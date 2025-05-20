@@ -75,8 +75,8 @@ export function setupCamera(scene, canvas) {
   });
 
   for (const axis of "xyz") {
-    const scale = config.get("scale");
     config.setSetterCallback(axis, (position) => {
+      const scale = config.get("scale");
       if (config.get("orbitMode")) {
         const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z")).scale(scale);
         const newTarget = getOrbitTargetFromPosition(scene, newPosition, orbitCam.radius);
