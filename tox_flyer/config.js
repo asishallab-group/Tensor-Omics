@@ -78,7 +78,7 @@ function setupConfig() {
     },
     set(key, value, runCallback=true) {
       if (defaults.allModes[key] !== undefined) values.allModes[key] = value;
-      else if (values.allModes.darkMode) values.darkMode[key] = value;
+      else if (config.get("darkMode")) values.darkMode[key] = value;
       else values.lightMode[key] = value;
 
       if (runCallback) {

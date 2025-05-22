@@ -252,18 +252,22 @@ function loadChunk(scene, chunkData, state=true) {
       }
 
       // data points -- spheres
-      chunkData[3] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
       const sphereDimensionsBuffer = new Float32Array(16 * (dataPoints.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const sphereColorBuffer = new Float32Array(4 * (dataPoints.length - outlierCount)); // rgba
+      if (sphereColorBuffer.length > 0) { // false if all members are outliers
+        chunkData[3] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+      }
 
       // outliers -- octahedrons
-      chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 1, flat: false }, scene);
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
-      chunkData[4].enableEdgesRendering();
-      chunkData[4].edgesWidth = 3;
-      chunkData[4].edgesColor = new BABYLON.Color4(0, 0, 0, 1); // Black edges
-      chunkData[4].edgesShareWithThinInstances = true;
+      if (outlierCount > 0) {
+        chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 1, flat: false }, scene);
+        chunkData[4].enableEdgesRendering();
+        chunkData[4].edgesWidth = 3;
+        chunkData[4].edgesColor = new BABYLON.Color4(0, 0, 0, 1); // Black edges
+        chunkData[4].edgesShareWithThinInstances = true;
+      }
 
       let familyIndex = 0;
       let outlierIndex = 0;
@@ -295,10 +299,10 @@ function loadChunk(scene, chunkData, state=true) {
         familyIndex += chunkMemberCount;
       });
 
-      chunkData[3].thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
-      chunkData[3].thinInstanceSetBuffer("color", sphereColorBuffer, 4);
-      chunkData[4].thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
-      chunkData[4].thinInstanceSetBuffer("color", octColorBuffer, 4);
+      chunkData[3]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
+      chunkData[3]?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
+      chunkData[4]?.thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
+      chunkData[4]?.thinInstanceSetBuffer("color", octColorBuffer, 4);
     } else {
       for (let i = chunkData.length - 2; i < chunkData.length; i++) {
         chunkData[i]?.dispose();
