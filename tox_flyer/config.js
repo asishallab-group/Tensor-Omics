@@ -77,7 +77,7 @@ function setupConfig() {
       return value;
     },
     set(key, value, runCallback=true) {
-      if (defaults.allModes[key] !== undefined) values.allModes[key] = value;
+      if (defaults.allModes[key] !== undefined || key.endsWith("Diameter")) values.allModes[key] = value;
       else if (config.get("darkMode")) values.darkMode[key] = value;
       else values.lightMode[key] = value;
 

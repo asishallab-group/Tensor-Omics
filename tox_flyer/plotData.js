@@ -262,7 +262,7 @@ function loadChunk(scene, chunkData, state=true) {
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
       if (outlierCount > 0) {
-        chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 1, flat: false }, scene);
+        chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
         chunkData[4].enableEdgesRendering();
         chunkData[4].edgesWidth = 3;
         chunkData[4].edgesColor = new BABYLON.Color4(0, 0, 0, 1); // Black edges
@@ -272,27 +272,30 @@ function loadChunk(scene, chunkData, state=true) {
       let familyIndex = 0;
       let outlierIndex = 0;
       Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
-        const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+        const familyColor = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+        const outlierColorHex = config.get(`${family}_OutlierColor`);
+        const outlierColor = outlierColorHex === undefined ? familyColor : BABYLON.Color4.FromHexString(outlierColorHex);
         for (let i = 0; i < chunkMemberCount; i++) {
           const index = familyIndex + i;
           const pointData = dataPoints[index]
-          const diameter = config.get(`${family}_Diameter`) ?? 0.25;
           if (pointData.is_outlier) {
+            const diameter = config.get(`${family}_OutlierDiameter`) ?? 0.25;
             fillThinInstanceBuffers(
               octDimensionsBuffer, outlierIndex * 16,
               octColorBuffer, outlierIndex * 4,
-              diameter / 2,
+              diameter,
               pointData.coordinates,
-              color
+              outlierColor
             );
             outlierIndex++;
           } else {
+            const diameter = config.get(`${family}_Diameter`) ?? 0.25;
             fillThinInstanceBuffers(
               sphereDimensionsBuffer, (index - outlierIndex) * 16,
               sphereColorBuffer, (index - outlierIndex) * 4,
               diameter,
               pointData.coordinates,
-              color
+              familyColor
             );
           }
         }
