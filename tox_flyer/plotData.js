@@ -201,12 +201,13 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
   const tissueZ = config.get("tissueZ");
 
   const scale = config.get("scale");
+  const familiesToShow = config.get("shownFamilies") ?? dataHandler.families;
 
   // Loop through each family available in the data handler.
   // For each family, iterate through the genes for specific tissues
   // and create an instance of the outlier mesh for each data point.
-  for (const family of dataHandler.families) {
-    dataHandler.iterGenes(family, tissueX, tissueY, tissueZ).forEach(({ coordinates, ...metaData }, i) => {
+  for (const family of familiesToShow) {
+    for (const { coordinates, ...metaData } of dataHandler.iterGenes(family, tissueX, tissueY, tissueZ)) {
       const scaled = coordinates.map((v) => v*scale);
 
       // Determine the centroid of the chunk this position falls into.
@@ -215,7 +216,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       const chunk = getChunkCentroid(coordinates, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = [[], {}, null];
+        chunks[chunk] = [[], {}, 0, null, null];
         if (
           Math.abs(chunk[0] - posX) < sight &&
           Math.abs(chunk[1] - posY) < sight &&
@@ -224,10 +225,11 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
           activeChunks.push(chunk.toString());
         }
       }
-      chunks[chunk][0].push(scaled);
+      chunks[chunk][0].push({ coordinates: scaled, ...metaData });
       chunks[chunk][1][family] ??= 0;
       chunks[chunk][1][family]++;
-    });
+      chunks[chunk][2] += metaData.is_outlier;
+    }
   }
 
   return [ chunks, activeChunks ]
@@ -243,54 +245,86 @@ function getChunkCentroid([ x, y, z ], diameter) {
 function loadChunk(scene, chunkData, state=true) {
   if (chunkData) {
     if (state) {
-      const [positions, memberCounts, mesh] = chunkData;
+      const [dataPoints, memberCounts, outlierCount, ...meshes] = chunkData;
 
-      if (mesh !== null) {
-        mesh.dispose();
+      for (const mesh of meshes) {
+        mesh?.dispose();
       }
 
-      chunkData[2] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
-      const familiesToShow = config.get("shownFamilies");
-      const shownSphereCount = familiesToShow?.reduce((a, b) => a + memberCounts[b], 0) ?? positions.length;
-      const positionsBuffer = new Float32Array(16 * shownSphereCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
-      const colorBuffer = new Float32Array(4 * shownSphereCount); // rgba
-      let positionsArrayIndex = 0;
-      let bufferIndex = 0;
+      // data points -- spheres
+      chunkData[3] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+      const sphereDimensionsBuffer = new Float32Array(16 * (dataPoints.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
+      const sphereColorBuffer = new Float32Array(4 * (dataPoints.length - outlierCount)); // rgba
+
+      // outliers -- octahedrons
+      chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 1, flat: false }, scene);
+      const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
+      const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
+      chunkData[4].enableEdgesRendering();
+      chunkData[4].edgesWidth = 3;
+      chunkData[4].edgesColor = new BABYLON.Color4(0, 0, 0, 1); // Black edges
+      chunkData[4].edgesShareWithThinInstances = true;
+
+      let familyIndex = 0;
+      let outlierIndex = 0;
       Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
-        if (familiesToShow === null || familiesToShow.includes(family)) {
-          const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
-          for (let i = 0; i < chunkMemberCount; i++, bufferIndex++) {
-            const posBufIndex = bufferIndex * 16;
-            const diameter = config.get(`${family}_Diameter`) ?? 0.25;
-            positionsBuffer[posBufIndex] = diameter; // set x scale
-            positionsBuffer[posBufIndex + 5] = diameter; // set y scale
-            positionsBuffer[posBufIndex + 10] = diameter; // set z scale
-
-            const position = positions[positionsArrayIndex + i]
-            positionsBuffer[posBufIndex + 12] = position[0]; // set x position
-            positionsBuffer[posBufIndex + 13] = position[1]; // set y position
-            positionsBuffer[posBufIndex + 14] = position[2]; // set z position
-
-            positionsBuffer[posBufIndex + 15] = 1;
-            // the unchanged indices affect the rotation of the sphere -> zero 
-
-            // setting color
-            let colorIndex = 4 * bufferIndex;
-            colorBuffer[colorIndex++] = color.r;
-            colorBuffer[colorIndex++] = color.g;
-            colorBuffer[colorIndex++] = color.b;
-            colorBuffer[colorIndex] = color.a;
+        const color = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+        for (let i = 0; i < chunkMemberCount; i++) {
+          const index = familyIndex + i;
+          const pointData = dataPoints[index]
+          const diameter = config.get(`${family}_Diameter`) ?? 0.25;
+          if (pointData.is_outlier) {
+            fillThinInstanceBuffers(
+              octDimensionsBuffer, outlierIndex * 16,
+              octColorBuffer, outlierIndex * 4,
+              diameter / 2,
+              pointData.coordinates,
+              color
+            );
+            outlierIndex++;
+          } else {
+            fillThinInstanceBuffers(
+              sphereDimensionsBuffer, (index - outlierIndex) * 16,
+              sphereColorBuffer, (index - outlierIndex) * 4,
+              diameter,
+              pointData.coordinates,
+              color
+            );
           }
         }
-        positionsArrayIndex += chunkMemberCount;
+        familyIndex += chunkMemberCount;
       });
-      chunkData[2].thinInstanceSetBuffer("matrix", positionsBuffer, 16);
-      chunkData[2].thinInstanceSetBuffer("color", colorBuffer, 4);
+
+      chunkData[3].thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
+      chunkData[3].thinInstanceSetBuffer("color", sphereColorBuffer, 4);
+      chunkData[4].thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
+      chunkData[4].thinInstanceSetBuffer("color", octColorBuffer, 4);
     } else {
-      chunkData[2]?.dispose();
-      chunkData[2] = null;
+      for (let i = chunkData.length - 2; i < chunkData.length; i++) {
+        chunkData[i]?.dispose();
+        chunkData[i] = null;
+      }
     }
   }
+}
+
+function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, diameter, [x, y, z], color) {
+  dimensionsBuffer[dIndex] = diameter; // set x scale
+  dimensionsBuffer[dIndex + 5] = diameter; // set y scale
+  dimensionsBuffer[dIndex + 10] = diameter; // set z scale
+
+  dimensionsBuffer[dIndex + 12] = x;
+  dimensionsBuffer[dIndex + 13] = y;
+  dimensionsBuffer[dIndex + 14] = z;
+
+  dimensionsBuffer[dIndex + 15] = 1;
+  // the unchanged indices affect the rotation of the sphere -> zero 
+
+  // setting color
+  colorBuffer[cIndex++] = color.r;
+  colorBuffer[cIndex++] = color.g;
+  colorBuffer[cIndex++] = color.b;
+  colorBuffer[cIndex] = color.a;
 }
 
 function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
