@@ -1,26 +1,92 @@
 "use strict";
 
+function getValidator() {
+  const validators = {};
+  {
+    const asArray = [
+      [
+        ["orbitMode", "darkMode"],
+        v => {
+          if (typeof v !== "boolean") throw Error("Expecting boolean value, got:", typeof v);
+        }
+      ],
+      [
+        ["x", "y", "z", "rotationX", "rotationY"],
+        v => {
+          if (typeof v !== "number") throw Error("Expecting number, got:", typeof v);
+        }
+      ],
+      [
+        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale"],
+        v => {
+          if (typeof v !== "number" || v <= 0) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
+        }
+      ],
+      [
+        ["chunkDiameter", "chunkLoadRange"],
+        v => {
+          if (!Number.isInteger(v) || v <= 0) throw Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
+        }
+      ],
+      [
+        ["shownFamilies"],
+        v => {
+          if (v !== null || !(v instanceof Array)) throw Error("Expecting either null or Array of family names, got:", v)
+        }
+      ]
+      //[] TODO: tissue validation
+    ]
+    for (const [keys, validator] of asArray) {
+      for (const key of keys) {
+        validators[key] = validator;
+      }
+    }
+  }
+  function validate(key, value) {
+    const validator = validators[key];
+    if (validator !== undefined) {
+      try {
+        validator(value);
+        return true;
+      } catch (err) {
+        console.error(`${key}: ${err.message}`);
+        return;
+      }
+    } else if (key.endsWith("Diameter")) {
+      if (typeof v !== "number" || v <= 0) {
+        console.error(`${key}: Expecting true positive number, got: ${v} (${typeof v})`);
+        return;
+      } else {
+        return true;
+      }
+    }
+    console.error(`Unknown key: ${key}`);
+  }
+
+  return validate;
+}
+
 function setupConfig() {
   const defaults = {
     allModes: {
       orbitMode: false,
       darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
-      outlierDataPointDiameter: 0.25,
       x: 0,
       y: 0,
       z: 0,
       rotationX: 0,
       rotationY: 0,
       orbitModeTargetDistance: 10,
-      mouseSensibility: 2000,  // the higher, the slower
+      mouseSensibility: 2000,  // the higher, the slower, greater zero
       movementSpeed: 0.5,
+      scale: 100,
+      chunkDiameter: 50,
+      chunkLoadRange: 2,
+      shownFamilies: null,
       tissueX: "Liver",
       tissueY: "Heart",
       tissueZ: "Lung",
-      chunkDiameter: 50,
-      chunkLoadRange: 2,
-      scale: 100,
-      shownFamilies: null
+      outlierDataPointDiameter: 0.25
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -51,6 +117,7 @@ function setupConfig() {
   };
   
   const callbacks = {};
+  const validate = getValidator();
 
   const triggersChunkReload = [
     "tissueX",
@@ -77,19 +144,20 @@ function setupConfig() {
       return value;
     },
     set(key, value, runCallback=true) {
-      if (defaults.allModes[key] !== undefined || key.endsWith("Diameter")) values.allModes[key] = value;
-      else if (config.get("darkMode")) values.darkMode[key] = value;
-      else values.lightMode[key] = value;
+      if (validate(key, value) !== undefined) {
+        if (defaults.allModes[key] !== undefined || !key.endsWith("Color")) values.allModes[key] = value;
+        else if (config.get("darkMode")) values.darkMode[key] = value;
+        else values.lightMode[key] = value;
 
-      if (runCallback) {
-        callbacks[key]?.(value);
+        if (runCallback) {
+          callbacks[key]?.(value);
 
-        // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
-        if (key.includes("_") || triggersChunkReload.includes(key)) {
-          const event = new CustomEvent("chunkReload", {
-            detail: { setting: key }
-          });
-          document.dispatchEvent(event);
+          // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
+          if (key.includes("_") || triggersChunkReload.includes(key)) {
+            document.dispatchEvent(new CustomEvent("chunkReload", {
+              detail: { setting: key }
+            }));
+          }
         }
       }
     },

@@ -95,6 +95,18 @@ export function setupCamera(scene, canvas) {
     }
   })
 
+  config.setSetterCallback("scale", (scale) => {
+    // update position to the scaled position
+    config.set("x", config.get("x"));
+    config.set("y", config.get("y"));
+    config.set("z", config.get("z"));
+  })
+  canvas.addEventListener("wheel", event => {
+    if (scene.activeCamera.name !== "orbitCamera") {
+      config.set("scale", config.get("scale") - Math.floor(event.deltaY / 10));
+    }
+  });
+
   scene.registerBeforeRender(() => {
     const scale = config.get("scale");
 

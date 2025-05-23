@@ -67,10 +67,10 @@ function create3DGrid(scene, size = 100, step = 10) {
  * @param {BABYLON.Scene} scene - The BabylonJS scene in which to plot the data.
  */
 function plotData(scene) {
-  // Retrieve the initial position from the configuration.
-  const posX = config.get("x");
-  const posY = config.get("y");
-  const posZ = config.get("z");
+  // get the initial position
+  const posX = scene.activeCamera.position.x;
+  const posY = scene.activeCamera.position.y;
+  const posZ = scene.activeCamera.position.z;
 
   // Diameter of each chunk in world units.
   let chunkDiameter = config.get("chunkDiameter");
@@ -109,7 +109,7 @@ function plotData(scene) {
   scene.registerBeforeRender(() => {
     // Get the current chunk centroid from the config position.
     const currentChunkCentroid = getChunkCentroid(
-      [ config.get("x"), config.get("y"), config.get("z") ],
+      [ scene.activeCamera.position.x, scene.activeCamera.position.y, scene.activeCamera.position.z ],
       chunkDiameter
     );
 
@@ -168,9 +168,9 @@ function reloadChunks(scene, chunks, activeChunks) {
   const chunkDiameter = config.get("chunkDiameter");
   const chunkLoadRange = config.get("chunkLoadRange");
   const [newChunks, newActiveChunks] = calculateChunks(
-    config.get("x"),
-    config.get("y"),
-    config.get("z"),
+    scene.activeCamera.position.x,
+    scene.activeCamera.position.y,
+    scene.activeCamera.position.z,
     chunkDiameter,
     chunkLoadRange
   );
@@ -213,7 +213,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
       // which is also used as a key in the `chunks` object.
-      const chunk = getChunkCentroid(coordinates, chunkDiameter);
+      const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
         chunks[chunk] = [[], {}, 0, null, null];
