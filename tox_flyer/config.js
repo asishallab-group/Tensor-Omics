@@ -1,71 +1,5 @@
 "use strict";
 
-function getValidator() {
-  const validators = {};
-  {
-    const asArray = [
-      [
-        ["orbitMode", "darkMode"],
-        v => {
-          if (typeof v !== "boolean") throw Error("Expecting boolean value, got:", typeof v);
-        }
-      ],
-      [
-        ["x", "y", "z", "rotationX", "rotationY"],
-        v => {
-          if (typeof v !== "number") throw Error("Expecting number, got:", typeof v);
-        }
-      ],
-      [
-        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale"],
-        v => {
-          if (typeof v !== "number" || v <= 0) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
-        }
-      ],
-      [
-        ["chunkDiameter", "chunkLoadRange"],
-        v => {
-          if (!Number.isInteger(v) || v <= 0) throw Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
-        }
-      ],
-      [
-        ["shownFamilies"],
-        v => {
-          if (v !== null || !(v instanceof Array)) throw Error("Expecting either null or Array of family names, got:", v)
-        }
-      ]
-      //[] TODO: tissue validation
-    ]
-    for (const [keys, validator] of asArray) {
-      for (const key of keys) {
-        validators[key] = validator;
-      }
-    }
-  }
-  function validate(key, value) {
-    const validator = validators[key];
-    if (validator !== undefined) {
-      try {
-        validator(value);
-        return true;
-      } catch (err) {
-        console.error(`${key}: ${err.message}`);
-        return;
-      }
-    } else if (key.endsWith("Diameter")) {
-      if (typeof v !== "number" || v <= 0) {
-        console.error(`${key}: Expecting true positive number, got: ${v} (${typeof v})`);
-        return;
-      } else {
-        return true;
-      }
-    }
-    console.error(`Unknown key: ${key}`);
-  }
-
-  return validate;
-}
-
 function setupConfig() {
   const defaults = {
     allModes: {
@@ -204,6 +138,79 @@ function setupConfig() {
   }
 
   return config;
+}
+
+function getValidator() {
+  const validators = {};
+  {
+    const asArray = [
+      [
+        ["orbitMode", "darkMode"],
+        v => {
+          if (typeof v !== "boolean") throw Error(`Expecting boolean value, got: ${typeof v}`);
+        }
+      ],
+      [
+        ["x", "y", "z", "rotationX", "rotationY"],
+        v => {
+          if (typeof v !== "number") throw Error(`Expecting number, got: ${typeof v}`);
+        }
+      ],
+      [
+        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale"],
+        v => {
+          if (typeof v !== "number" || v <= 0) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
+        }
+      ],
+      [
+        ["chunkDiameter", "chunkLoadRange"],
+        v => {
+          if (!Number.isInteger(v) || v <= 0) throw Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
+        }
+      ],
+      [
+        ["shownFamilies"],
+        v => {
+          if (v !== null && !(v instanceof Array)) throw Error(`Expecting either null or Array of family names, got: ${typeof v}`)
+        }
+      ],
+      [["tissueX", "tissueY", "tissueZ"], () => {}]
+    ]
+    for (const [keys, validator] of asArray) {
+      for (const key of keys) {
+        validators[key] = validator;
+      }
+    }
+  }
+  function validate(key, value) {
+    const validator = validators[key];
+    if (validator !== undefined) {
+      try {
+        validator(value);
+        return true;
+      } catch (err) {
+        console.error(`${key}: ${err.message}`);
+        return;
+      }
+    } else {
+      if (key.endsWith("Diameter")) {
+        if (typeof value !== "number" || value <= 0) {
+          console.error(`${key}: Expecting true positive number, got: ${value} (${typeof value})`);
+          return;
+        }
+        return true;
+      } else if (key.endsWith("Color")) {
+        if (!/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(value)) {
+          console.error(`${key}: Expecting RGB(A) hex color code, got: ${value}`);
+          return;
+        }
+        return true;
+      }
+      console.error(`Unknown key: ${key}`);
+    }
+  }
+
+  return validate;
 }
 
 export const config = setupConfig();
