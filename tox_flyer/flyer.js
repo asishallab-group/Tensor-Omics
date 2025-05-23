@@ -213,8 +213,13 @@ function add3DCompass(mainScene, engine) {
       alpha = -activeCamera.rotation.y;
       beta = activeCamera.rotation.x;
     }
-    cross.rotation.x = beta;
-    cross.rotation.y = alpha;
+
+    const camQuat = BABYLON.Quaternion.RotationYawPitchRoll(
+      -alpha, // Yaw (horizontal rotation).
+      -beta, // Pitch (vertical tilt).
+      0
+    );
+    cross.rotationQuaternion = camQuat.invert();
   });
 
 
