@@ -153,6 +153,7 @@ function add3DCompass(mainScene, engine) {
 
   // Prevent the compass scene from clearing the canvas to maintain visibility of the main scene.
   compassScene.autoClear = false;
+  setBackgroundColor(compassScene, "#00000000");
 
   // Create an orthographic ArcRotateCamera for the compass.
   const compassCamera = new BABYLON.ArcRotateCamera(
@@ -221,6 +222,71 @@ function add3DCompass(mainScene, engine) {
   return compassScene;
 }
 
+function captureScenes(engine, ...scenes) {
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+  const renderLoop = engine.activeRenderLoops[0];
+
+  const resolution = { width: 1920, height: 1080, precision: 4 };
+  tempCanvas.width = resolution.width * resolution.precision;
+  tempCanvas.height = resolution.height * resolution.precision;
+
+  const attached = scenes.map(s => {
+    if (s.activeCamera.inputs.attachedToElement) {
+      s.activeCamera.detachControl();
+      return true;
+    }
+    return false;
+  });
+
+  function captureScene(scenes, i=0) {
+    const scene = scenes[i]
+    if (scene === undefined) {
+      const finalImage = tempCanvas.toDataURL("image/png");
+      downloadImage(finalImage); // Save merged screenshot
+      engine.stopRenderLoop();
+      engine.runRenderLoop(renderLoop);
+      scenes.forEach((s, i) => {
+        if (attached[i]) {
+          s.activeCamera.attachControl();
+        }
+      });
+    } else {
+      const autoClear = scene.autoClear;
+      if (!autoClear) {
+        scene.autoClear = true;
+      }
+      engine.stopRenderLoop();
+      engine.runRenderLoop(() => {
+          scene.render();
+      });
+      BABYLON.Tools.CreateScreenshotUsingRenderTarget(
+        engine, scene.activeCamera, resolution, (data) => {
+          const img = new Image();
+          img.src = data;
+          img.onload = () => {
+            tempCtx.drawImage(img, 0, 0);
+            captureScene(scenes, i+1);
+          };
+        }
+      );
+      if (!autoClear) {
+        scene.autoClear = false;
+      }
+    }
+  }
+  captureScene(scenes);
+}
+
+function downloadImage(data) {
+  const link = document.createElement("a");
+  link.href = data;
+  link.download = "tox_flyer_screenshot.png";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 /***************************************************************
  * Function: main
  * Purpose: Entry point of the application.
@@ -252,6 +318,12 @@ async function main() {
     // Handle browser window resize events to adjust the canvas dimension accordingly.
     window.addEventListener("resize", () => {
       engine.resize();
+    });
+
+    document.addEventListener("keydown", (evt) => {
+      if (evt.key.toLowerCase() === "enter") {
+        captureScenes(engine, scene, compassScene);
+      }
     });
 
   } catch (err) {
