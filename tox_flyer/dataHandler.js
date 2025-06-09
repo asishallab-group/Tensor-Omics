@@ -1,6 +1,7 @@
 "use strict";
 
-import data from "./sampleData.json" with { type: "json" };
+// using fetch, as this is not supported in Linux: import data from "./sampleData.json" with { type: "json" };
+const data = await (await fetch("./sampleData.json")).json();
 
 export const handler = {
   get families() {
@@ -60,3 +61,9 @@ function crc32(str) {
 }
 
 Object.freeze(handler);
+
+Object.defineProperty(window, "iterFamilies", {
+  value: (function* () {for (const i of handler.families) {console.log(i);config.set("shownFamilies", [i]); yield;}}),
+  writable: false, // Prevents modification
+  configurable: false // Prevents deletion
+});
