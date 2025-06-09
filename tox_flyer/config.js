@@ -163,7 +163,13 @@ function getValidator() {
         }
       ],
       [
-        ["chunkDiameter", "chunkLoadRange"],
+        ["chunkDiameter"],
+        v => {
+          if (!Number.isInteger(v) || v <= 0 || v % 2 === 1) throw Error(`Expecting true positive even integer, got: ${v} (${typeof v})`);
+        }
+      ],
+      [
+        ["chunkLoadRange"],
         v => {
           if (!Number.isInteger(v) || v <= 0) throw Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
         }
