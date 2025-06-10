@@ -93,7 +93,7 @@ function plotData(scene) {
   let [ chunks, activeChunks ] = calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange);
 
   for (const chunk of activeChunks) {
-    loadChunk(scene, chunks[chunk]);
+    loadChunk(scene, chunks, chunk);
   }
 
   document.addEventListener("chunkReload", (evt) => {
@@ -147,14 +147,14 @@ function plotData(scene) {
             // i.e. the new chunk in range along this axis.
             triggeredChunkCentroid[i] = currentAxis + direction * lastChunkDist;
             // Call loadChunk with a flag "true" to enable the chunk.
-            loadChunk(scene, chunks[triggeredChunkCentroid], true);
+            loadChunk(scene, chunks, triggeredChunkCentroid, true);
             activeChunks.push(triggeredChunkCentroid.toString());
 
             // Next, compute the position for the chunk that should be disabled,
             // i.e. the chunk that is no longer within range, so on the complementary side.
             triggeredChunkCentroid[i] = axis - direction * lastChunkDist;
             // Call loadChunk with the flag "false" to disable the chunk.
-            loadChunk(scene, chunks[triggeredChunkCentroid], false);
+            loadChunk(scene, chunks, triggeredChunkCentroid, false);
             const chunkIndex = activeChunks.indexOf(triggeredChunkCentroid.toString());
             if (chunkIndex !== -1) {
               activeChunks.splice(chunkIndex, 1);
@@ -236,14 +236,14 @@ function reloadChunks(scene, chunks, activeChunks) {
     chunkLoadRange
   );
   for (const chunk of newActiveChunks) {
-    loadChunk(scene, newChunks[chunk]);
+    loadChunk(scene, newChunks, chunk);
   }
   return [newChunks, newActiveChunks, chunkDiameter, chunkLoadRange];
 }
 
 function clearChunks(scene, chunks, activeChunks) {
   for (const chunk of activeChunks) {
-    loadChunk(scene, chunks[chunk], false);
+    loadChunk(scene, chunks, chunk, false);
   }
 }
 
@@ -257,19 +257,19 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
 
   const activeChunks = [];
 
-  const tissueX = config.get("tissueX");
-  const tissueY = config.get("tissueY");
-  const tissueZ = config.get("tissueZ");
+  chunks.scale = config.get("scale");
+  chunks.tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]
 
-  const scale = config.get("scale");
   const familiesToShow = config.get("shownFamilies") ?? dataHandler.families;
 
   // Loop through each family available in the data handler.
   // For each family, iterate through the genes for specific tissues
   // and create an instance of the outlier mesh for each data point.
   for (const family of familiesToShow) {
-    for (const { coordinates, ...metaData } of dataHandler.iterGenes(family, tissueX, tissueY, tissueZ)) {
-      const scaled = coordinates.map((v) => v*scale);
+    const geneCount = dataHandler.getGeneCount(family);
+    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      const { coordinates, is_outlier } = dataHandler.getGeneData(family, geneIndex, chunks.tissues, ["is_outlier"]);
+      const scaled = coordinates.map((v) => v*chunks.scale);
 
       // Determine the centroid of the chunk this position falls into.
       // getChunkCentroid is assumed to return an array-like coordinate (e.g. [x, y, z])
@@ -286,10 +286,10 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
           activeChunks.push(chunk.toString());
         }
       }
-      chunks[chunk][0].push({ coordinates: scaled, ...metaData });
+      chunks[chunk][0].push(geneIndex);
       chunks[chunk][1][family] ??= 0;
       chunks[chunk][1][family]++;
-      chunks[chunk][2] += metaData.is_outlier;
+      chunks[chunk][2] += is_outlier;
     }
   }
 
@@ -303,18 +303,19 @@ function getChunkCentroid([ x, y, z ], diameter) {
   return [trim(x), trim(y), trim(z)];
 }
 
-function loadChunk(scene, chunkData, state=true) {
+function loadChunk(scene, chunks, chunk, state=true) {
+  const chunkData = chunks[chunk];
   if (chunkData) {
     if (state) {
-      const [dataPoints, memberCounts, outlierCount, ...meshes] = chunkData;
+      const [geneIndices, memberCounts, outlierCount, ...meshes] = chunkData;
 
       for (const mesh of meshes) {
         mesh?.dispose();
       }
 
       // data points -- spheres
-      const sphereDimensionsBuffer = new Float32Array(16 * (dataPoints.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
-      const sphereColorBuffer = new Float32Array(4 * (dataPoints.length - outlierCount)); // rgba
+      const sphereDimensionsBuffer = new Float32Array(16 * (geneIndices.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
+      const sphereColorBuffer = new Float32Array(4 * (geneIndices.length - outlierCount)); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
         chunkData[3] = SphereMesh(scene);
       }
@@ -338,14 +339,14 @@ function loadChunk(scene, chunkData, state=true) {
         const outlierColor = outlierColorHex === undefined ? familyColor : Color.FromHexString(outlierColorHex);
         for (let i = 0; i < chunkMemberCount; i++) {
           const index = inlierIndex + outlierIndex;
-          const pointData = dataPoints[index]
+          const pointData = dataHandler.getGeneData(family, geneIndices[index], chunks.tissues, ["is_outlier"]);
           if (pointData.is_outlier) {
             const diameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
             fillThinInstanceBuffers(
               octDimensionsBuffer, outlierIndex * 16,
               octColorBuffer, outlierIndex * 4,
               diameter,
-              pointData.coordinates,
+              pointData.coordinates.map(v => v * chunks.scale),
               outlierColor
             );
             outlierIndex++;
@@ -355,13 +356,16 @@ function loadChunk(scene, chunkData, state=true) {
               sphereDimensionsBuffer, inlierIndex * 16,
               sphereColorBuffer, inlierIndex * 4,
               diameter,
-              pointData.coordinates,
+              pointData.coordinates.map(v => v * chunks.scale),
               familyColor
             );
             inlierIndex++;
           }
         }
       });
+      if (inlierIndex + outlierIndex !== geneIndices.length) {
+        throw Error("Misfilled buffers");
+      }
 
       chunkData[3]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
       chunkData[3]?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
