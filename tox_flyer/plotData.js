@@ -1,6 +1,14 @@
 "use strict";
 
 import { handler as dataHandler } from "./dataHandler.js";
+import {
+  SphereMesh,
+  Color,
+  Vector,
+  TransformNode,
+  calcVectorDistance,
+  Octahedron
+} from "./babylon.js";
 
 /**
  * Function: create3DGrid
@@ -12,7 +20,7 @@ import { handler as dataHandler } from "./dataHandler.js";
  */
 function create3DGrid(scene, size = 100, step = 10) {
   // Create a parent node to group all grid lines for easy management.
-  const gridParent = new BABYLON.TransformNode("gridParent", scene);
+  const gridParent = TransformNode(scene, "gridParent");
 
   // Helper function to create a single line.
   function createLine(start, end, color) {
@@ -27,27 +35,27 @@ function create3DGrid(scene, size = 100, step = 10) {
 
   // Create grid lines parallel to each axis.
   const halfSize = size / 2;
-  const color = BABYLON.Color3.Gray(); // Default color for grid lines.
+  const color = Color(.5, .5, .5); // gray color for grid lines.
 
   // Lines along the X-axis.
   for (let a = -halfSize; a <= halfSize; a += step) {
     for (let b = -halfSize; b <= halfSize; b += step) {
       // along x axis
       createLine(
-        new BABYLON.Vector3(-halfSize, a, b), // Start point
-        new BABYLON.Vector3(halfSize, a, b),  // End point
+        Vector(-halfSize, a, b), // Start point
+        Vector(halfSize, a, b),  // End point
         color
       );
       // along y axis
       createLine(
-        new BABYLON.Vector3(a, -halfSize, b), // Start point
-        new BABYLON.Vector3(a, halfSize, b),  // End point
+        Vector(a, -halfSize, b), // Start point
+        Vector(a, halfSize, b),  // End point
         color
       );
       // along z axis
       createLine(
-        new BABYLON.Vector3(a, b, -halfSize), // Start point
-        new BABYLON.Vector3(a, b, halfSize),  // End point
+        Vector(a, b, -halfSize), // Start point
+        Vector(a, b, halfSize),  // End point
         color
       );
     }
@@ -161,6 +169,59 @@ function plotData(scene) {
 
   // Create a 3D grid in the scene for improving interpretability.
   create3DGrid(scene);
+
+  document.addEventListener("click", () => {
+    // TODO: unpicking, fix that triggered only when mouse doesnt move when clicking
+    const picked = pickFromMeshes(scene)
+    if (picked !== null) {
+      const selected = scene.getMeshByName("meshSelectedPoints");
+      const instance = selected.dataPoint(null, picked.position)
+      setSphereSize(instance, picked.diameter * 1.01)
+    }
+  })
+}
+
+function pickFromMeshes(scene, meshes) {
+  const pickRay = scene.createPickingRay(
+    scene.pointerX, scene.pointerY,
+    BABYLON.Matrix.Identity(),    // you can pass other transforms if you want
+    scene.activeCamera
+  );
+
+
+  let closestDist = Infinity;
+  let picked = null;
+  for (const mesh of scene.meshes) {
+    if (mesh.thinInstanceCount) {
+      const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
+
+      for (const i in sphereMatrices) {
+        const matrix = sphereMatrices[i].m;
+        // extract translation
+        const tx = matrix[12];
+        const ty = matrix[13];
+        const tz = matrix[14];
+        const spherePosition = Vector(tx, ty, tz);
+
+        const intersects = pickRay.intersectsSphere(
+          { center: spherePosition, radius: matrix[0] / 2 }
+        );
+        if (intersects) {
+          const distance = calcVectorDistance(scene.activeCamera.position, spherePosition);
+          if (distance < closestDist) {
+            closestDist = distance;
+            picked = {
+              position: spherePosition,
+              diameter: matrix[0],
+              index: i
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return picked;
 }
 
 function reloadChunks(scene, chunks, activeChunks) {
@@ -255,28 +316,28 @@ function loadChunk(scene, chunkData, state=true) {
       const sphereDimensionsBuffer = new Float32Array(16 * (dataPoints.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const sphereColorBuffer = new Float32Array(4 * (dataPoints.length - outlierCount)); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
-        chunkData[3] = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+        chunkData[3] = SphereMesh(scene);
       }
 
       // outliers -- octahedrons
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
       if (outlierCount > 0) {
-        chunkData[4] = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
+        chunkData[4] = Octahedron(scene)
         chunkData[4].enableEdgesRendering();
         chunkData[4].edgesWidth = 3;
-        chunkData[4].edgesColor = new BABYLON.Color4(0, 0, 0, 1); // Black edges
+        chunkData[4].edgesColor = Color(0, 0, 0, 1); // Black edges
         chunkData[4].edgesShareWithThinInstances = true;
       }
 
-      let familyIndex = 0;
+      let inlierIndex = 0;
       let outlierIndex = 0;
       Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
-        const familyColor = BABYLON.Color4.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+        const familyColor = Color.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
         const outlierColorHex = config.get(`${family}_OutlierColor`);
-        const outlierColor = outlierColorHex === undefined ? familyColor : BABYLON.Color4.FromHexString(outlierColorHex);
+        const outlierColor = outlierColorHex === undefined ? familyColor : Color.FromHexString(outlierColorHex);
         for (let i = 0; i < chunkMemberCount; i++) {
-          const index = familyIndex + i;
+          const index = inlierIndex + outlierIndex;
           const pointData = dataPoints[index]
           if (pointData.is_outlier) {
             const diameter = config.get(`${family}_OutlierDiameter`) ?? 0.25;
@@ -291,15 +352,15 @@ function loadChunk(scene, chunkData, state=true) {
           } else {
             const diameter = config.get(`${family}_Diameter`) ?? 0.25;
             fillThinInstanceBuffers(
-              sphereDimensionsBuffer, (index - outlierIndex) * 16,
-              sphereColorBuffer, (index - outlierIndex) * 4,
+              sphereDimensionsBuffer, inlierIndex * 16,
+              sphereColorBuffer, inlierIndex * 4,
               diameter,
               pointData.coordinates,
               familyColor
             );
+            inlierIndex++;
           }
         }
-        familyIndex += chunkMemberCount;
       });
 
       chunkData[3]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
@@ -334,73 +395,12 @@ function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, 
   colorBuffer[cIndex] = color.a;
 }
 
-function createSphereMesh(scene, name, configColorAttribute, configDiameterAttribute) {
-  const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
-
-  // Create and assign a blue material for the spheres.
-  const sphereMaterial = new BABYLON.StandardMaterial(name + "Mat", scene);
-  mesh.material = sphereMaterial;
-
-  // set size
-  if (configDiameterAttribute) {
-    config.setSetterCallback(configDiameterAttribute, (diameter) => {
-      setSphereSize(mesh, diameter);
-      for (const instance of mesh.instances) {
-        setSphereSize(instance, diameter);
-      }
-    })
-  }
-
-  // set color
-  config.setSetterCallback(configColorAttribute, (hexColorCode) => {
-    setSphereColor(mesh, hexColorCode);
-  });
-
-  // Hide the original sphere since we will use instances.
-  mesh.isVisible = false;
-
-  mesh.dataPoint = function (name, position) {
-    const instance = this.createInstance(name);
-    instance.position = position;
-    instance.actionManager = this.actionManager;
-    return instance;
-  }
-
-  // Enable pointer interactions by attaching an ActionManager to each instance.
-  mesh.actionManager = new BABYLON.ActionManager(scene);
-
-  // Register a click action to select a sphere.
-  mesh.actionManager.registerAction(
-    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function (evt) {
-      const instance = evt.source;
-      const meshSelectedPoints = scene.getMeshByName("meshSelectedPoints");
-      if (instance.TOX_unselectedInstance === undefined) {
-        // Create an instance of meshSelectedPoints
-        const selectedInstance = meshSelectedPoints.dataPoint(instance.name + "_selected", instance.position);
-        selectedInstance.scaling = instance.scaling;
-
-        // Hide instance
-        instance.setEnabled(false);
-        selectedInstance.TOX_unselectedInstance = instance;
-      } else {
-        instance.TOX_unselectedInstance.setEnabled(true);
-
-        instance.dispose();
-      }
-    })
-  );
-
-  setupTooltip(scene, mesh);
-
-  return mesh;
-}
-
 function setSphereSize(sphere, diameter) {
-  sphere.scaling = new BABYLON.Vector3(diameter, diameter, diameter);
+  sphere.scaling = Vector(diameter, diameter, diameter);
 }
 
 function setSphereColor(sphere, color) {
-  sphere.material.diffuseColor = BABYLON.Color4.FromHexString(color);
+  sphere.material.diffuseColor = Color.FromHexString(color);
   sphere.material.alpha = sphere.material.diffuseColor.a;
 }
 
@@ -441,4 +441,4 @@ function setupTooltip(scene, mesh) {
   });
 }
 
-export { plotData, createSphereMesh };
+export { plotData };

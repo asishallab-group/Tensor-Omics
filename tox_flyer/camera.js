@@ -1,6 +1,6 @@
 "use strict";
 
-import { createSphereMesh } from "./plotData.js";
+import { SphereMesh, Vector, UniversalCam, OrbitCam, calcVectorDistance } from "./babylon.js";
 
 /**
  * Function: setupCamera
@@ -13,7 +13,7 @@ import { createSphereMesh } from "./plotData.js";
 export function setupCamera(scene, canvas) {  
   // Create a UniversalCamera placed initially above the ground and away from the origin.
   // UniversalCamera is suited for first-person style movement and rotation in 3D space.
-  const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, 0), scene);
+  const camera = UniversalCam(scene, "camera");
   scene.switchActiveCamera(camera);
 
   // Customize key bindings for movement (WASD, Arrow keys, etc.).
@@ -54,9 +54,11 @@ export function setupCamera(scene, canvas) {
   // });
 
   // create an ArcRotateCamera for orbit view
-  const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", null, null, 10, new BABYLON.Vector3.Zero(), scene);
-  orbitCam.lowerRadiusLimit = 1;
-  const meshSelectedPoints = createSphereMesh(scene, "meshSelectedPoints", "selectedDataPointColor");
+  const orbitCam = OrbitCam(scene, "orbitCamera");
+
+  const meshSelectedPoints = SphereMesh(scene, "meshSelectedPoints");
+  meshSelectedPoints.isVisible = false;
+
   setupOrbitView(scene, meshSelectedPoints);
 
   config.setSetterCallback("rotationX", (radians) => {
@@ -78,7 +80,7 @@ export function setupCamera(scene, canvas) {
     config.setSetterCallback(axis, (position) => {
       const scale = config.get("scale");
       if (config.get("orbitMode")) {
-        const newPosition = new BABYLON.Vector3(config.get("x"), config.get("y"), config.get("z")).scale(scale);
+        const newPosition = Vector(config.get("x"), config.get("y"), config.get("z")).scale(scale);
         const newTarget = getOrbitTargetFromPosition(scene, newPosition, orbitCam.radius);
         orbitCam.setTarget(newTarget);
         orbitCam.position = newPosition;
@@ -129,7 +131,7 @@ export function setupCamera(scene, canvas) {
 }
 
 function getOrbitTargetFromPosition(scene, position, radius) {
-  const forward = scene.activeCamera.getDirection(BABYLON.Vector3.Forward());
+  const forward = scene.activeCamera.getDirection(Vector(0, 0, 1));
   forward.normalize();
   const newTarget = position.add(forward.scale(radius));
   return newTarget;
@@ -171,12 +173,12 @@ function setupOrbitView(scene, meshSelectedPoints) {
 
         // Calculate the average position
         const numInstances = meshSelectedPoints.instances.length;
-        target = new BABYLON.Vector3(
+        target = Vector(
             sumX / numInstances,
             sumY / numInstances,
             sumZ / numInstances
         );
-        radius = BABYLON.Vector3.Distance(target, scene.activeCamera.position);
+        radius = calcVectorDistance(target, scene.activeCamera.position);
       }
       scene.switchActiveCamera(orbitCamera);
       orbitCamera.setTarget(target);
