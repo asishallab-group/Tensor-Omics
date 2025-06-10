@@ -325,7 +325,7 @@ function loadChunk(scene, chunkData, state=true) {
       if (outlierCount > 0) {
         chunkData[4] = Octahedron(scene)
         chunkData[4].enableEdgesRendering();
-        chunkData[4].edgesWidth = 3;
+        chunkData[4].edgesWidth = config.get("defaultDiameter") * 12;
         chunkData[4].edgesColor = Color(0, 0, 0, 1); // Black edges
         chunkData[4].edgesShareWithThinInstances = true;
       }
@@ -340,7 +340,7 @@ function loadChunk(scene, chunkData, state=true) {
           const index = inlierIndex + outlierIndex;
           const pointData = dataPoints[index]
           if (pointData.is_outlier) {
-            const diameter = config.get(`${family}_OutlierDiameter`) ?? 0.25;
+            const diameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
             fillThinInstanceBuffers(
               octDimensionsBuffer, outlierIndex * 16,
               octColorBuffer, outlierIndex * 4,
@@ -350,7 +350,7 @@ function loadChunk(scene, chunkData, state=true) {
             );
             outlierIndex++;
           } else {
-            const diameter = config.get(`${family}_Diameter`) ?? 0.25;
+            const diameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
             fillThinInstanceBuffers(
               sphereDimensionsBuffer, inlierIndex * 16,
               sphereColorBuffer, inlierIndex * 4,

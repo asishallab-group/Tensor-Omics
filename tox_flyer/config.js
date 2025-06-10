@@ -20,7 +20,7 @@ function setupConfig() {
       tissueX: "Liver",
       tissueY: "Heart",
       tissueZ: "Lung",
-      outlierDataPointDiameter: 0.25
+      defaultDiameter: 0.25
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
@@ -61,7 +61,8 @@ function setupConfig() {
     "chunkLoadRange",
     "scale",
     "darkMode",
-    "shownFamilies"
+    "shownFamilies",
+    "defaultDiameter"
   ];
 
   const config = {
