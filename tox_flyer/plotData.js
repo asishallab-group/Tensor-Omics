@@ -1,13 +1,13 @@
 "use strict";
 
-import { handler as dataHandler } from "./dataHandler.js";
 import {
   SphereMesh,
   Color,
   Vector,
   TransformNode,
   calcVectorDistance,
-  Octahedron
+  Octahedron,
+  Material
 } from "./babylon.js";
 
 /**
@@ -21,21 +21,19 @@ import {
 function create3DGrid(scene, size = 100, step = 10) {
   // Create a parent node to group all grid lines for easy management.
   const gridParent = TransformNode(scene, "gridParent");
+  const color = Color(.5, .5, .5, 1); // gray color for grid lines.
+  const material = Material(scene, "lineMat", color);
+  material.disableLighting = true; // Lines are unaffected by scene lighting.
 
   // Helper function to create a single line.
   function createLine(start, end, color) {
     const line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
-    const material = new BABYLON.StandardMaterial("lineMat", scene);
-    material.emissiveColor = color; // Use emissive color to make lines bright.
-    material.disableLighting = true; // Lines are unaffected by scene lighting.
-    material.alpha = 0.2;
     line.material = material;
     line.parent = gridParent; // Attach the line to the parent node.
   }
 
   // Create grid lines parallel to each axis.
   const halfSize = size / 2;
-  const color = Color(.5, .5, .5); // gray color for grid lines.
 
   // Lines along the X-axis.
   for (let a = -halfSize; a <= halfSize; a += step) {
@@ -170,18 +168,29 @@ function plotData(scene) {
   // Create a 3D grid in the scene for improving interpretability.
   create3DGrid(scene);
 
-  document.addEventListener("click", () => {
-    // TODO: unpicking, fix that triggered only when mouse doesnt move when clicking
-    const picked = pickFromMeshes(scene)
-    if (picked !== null) {
-      const selected = scene.getMeshByName("meshSelectedPoints");
-      const instance = selected.dataPoint(null, picked.position)
-      setSphereSize(instance, picked.diameter * 1.01)
+  let previousX = null;
+  let previousY = null;
+  scene.onPointerObservable.add((evt) => {
+    if (evt.type === BABYLON.PointerEventTypes.POINTERDOWN) {
+      previousX = scene.pointerX;
+      previousY = scene.pointerY;
+    } else if (evt.type === BABYLON.PointerEventTypes.POINTERUP) {
+      if (Math.abs(previousX - scene.pointerX) < 5 && Math.abs(previousY - scene.pointerY) < 5) {
+        const picked = pickFromMeshes(scene, chunks, activeChunks);
+        if (picked !== null) {
+          const selected = scene.getMeshByName("meshSelectedPoints");
+          const id = `${picked.family}:${picked.geneIndex}`;
+          console.log(id);
+          if (!selected.TOX_unpick(id)) {
+            selected.TOX_pick(id, picked.position, picked.diameter * 1.01);
+          }
+        }
+      }
     }
-  })
+  });
 }
 
-function pickFromMeshes(scene, meshes) {
+function pickFromMeshes(scene, chunks, activeChunks) {
   const pickRay = scene.createPickingRay(
     scene.pointerX, scene.pointerY,
     BABYLON.Matrix.Identity(),    // you can pass other transforms if you want
@@ -191,29 +200,35 @@ function pickFromMeshes(scene, meshes) {
 
   let closestDist = Infinity;
   let picked = null;
-  for (const mesh of scene.meshes) {
-    if (mesh.thinInstanceCount) {
-      const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
+  for (const chunk of activeChunks) {
+    const meshes = chunks[chunk]?.slice(-2) ?? [];
+    for (const is_outlier in meshes) {
+      const mesh = meshes[is_outlier];
+      if (mesh) {
+        const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
 
-      for (const i in sphereMatrices) {
-        const matrix = sphereMatrices[i].m;
-        // extract translation
-        const tx = matrix[12];
-        const ty = matrix[13];
-        const tz = matrix[14];
-        const spherePosition = Vector(tx, ty, tz);
+        for (const i in sphereMatrices) {
+          const matrix = sphereMatrices[i].m;
+          // extract translation
+          const tx = matrix[12];
+          const ty = matrix[13];
+          const tz = matrix[14];
+          const spherePosition = Vector(tx, ty, tz);
 
-        const intersects = pickRay.intersectsSphere(
-          { center: spherePosition, radius: matrix[0] / 2 }
-        );
-        if (intersects) {
-          const distance = calcVectorDistance(scene.activeCamera.position, spherePosition);
-          if (distance < closestDist) {
-            closestDist = distance;
-            picked = {
-              position: spherePosition,
-              diameter: matrix[0],
-              index: i
+          const intersects = pickRay.intersectsSphere(
+            { center: spherePosition, radius: matrix[0] / 2 }
+          );
+          if (intersects) {
+            const distance = calcVectorDistance(scene.activeCamera.position, spherePosition);
+            if (distance < closestDist) {
+              closestDist = distance;
+              picked = {
+                position: spherePosition,
+                diameter: matrix[0],
+                index: i,
+                is_outlier,
+                chunk
+              }
             }
           }
         }
@@ -221,6 +236,18 @@ function pickFromMeshes(scene, meshes) {
     }
   }
 
+  if (picked) {
+    const genes = chunks[picked.chunk][0];
+    let pickedIndex = picked.index;
+    for (const [family, members] of Object.entries(genes)) {
+      pickedIndex -= members[picked.is_outlier].length;
+      if (pickedIndex < 0) {
+        picked.family = family;
+        picked.geneIndex = members[picked.is_outlier][pickedIndex + members[picked.is_outlier].length];
+        break;
+      }
+    }
+  }
   return picked;
 }
 
@@ -277,7 +304,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = [[], {}, 0, null, null];
+        chunks[chunk] = [{}, 0, 0, null, null];
         if (
           Math.abs(chunk[0] - posX) < sight &&
           Math.abs(chunk[1] - posY) < sight &&
@@ -286,9 +313,9 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
           activeChunks.push(chunk.toString());
         }
       }
-      chunks[chunk][0].push(geneIndex);
-      chunks[chunk][1][family] ??= 0;
-      chunks[chunk][1][family]++;
+      chunks[chunk][0][family] ??= [[], []]
+      chunks[chunk][0][family][is_outlier ? 1 : 0].push(geneIndex);
+      chunks[chunk][1] += !is_outlier;
       chunks[chunk][2] += is_outlier;
     }
   }
@@ -307,15 +334,15 @@ function loadChunk(scene, chunks, chunk, state=true) {
   const chunkData = chunks[chunk];
   if (chunkData) {
     if (state) {
-      const [geneIndices, memberCounts, outlierCount, ...meshes] = chunkData;
+      const [genes, inlierCount, outlierCount, ...meshes] = chunkData;
 
       for (const mesh of meshes) {
         mesh?.dispose();
       }
 
       // data points -- spheres
-      const sphereDimensionsBuffer = new Float32Array(16 * (geneIndices.length - outlierCount)); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
-      const sphereColorBuffer = new Float32Array(4 * (geneIndices.length - outlierCount)); // rgba
+      const sphereDimensionsBuffer = new Float32Array(16 * inlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
+      const sphereColorBuffer = new Float32Array(4 * inlierCount); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
         chunkData[3] = SphereMesh(scene);
       }
@@ -333,38 +360,37 @@ function loadChunk(scene, chunks, chunk, state=true) {
 
       let inlierIndex = 0;
       let outlierIndex = 0;
-      Object.entries(memberCounts).forEach(([family, chunkMemberCount]) => {
+      for (const [family, [inliers, outliers]] of Object.entries(genes)) {
         const familyColor = Color.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
+        for (const geneIndex of inliers) {
+          const diameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+          const pointData = dataHandler.getGeneData(family, geneIndex, chunks.tissues, []);
+          fillThinInstanceBuffers(
+            sphereDimensionsBuffer, inlierIndex * 16,
+            sphereColorBuffer, inlierIndex * 4,
+            diameter,
+            pointData.coordinates.map(v => v * chunks.scale),
+            familyColor
+          );
+          inlierIndex++;
+        }
         const outlierColorHex = config.get(`${family}_OutlierColor`);
         const outlierColor = outlierColorHex === undefined ? familyColor : Color.FromHexString(outlierColorHex);
-        for (let i = 0; i < chunkMemberCount; i++) {
-          const index = inlierIndex + outlierIndex;
-          const pointData = dataHandler.getGeneData(family, geneIndices[index], chunks.tissues, ["is_outlier"]);
-          if (pointData.is_outlier) {
-            const diameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
-            fillThinInstanceBuffers(
-              octDimensionsBuffer, outlierIndex * 16,
-              octColorBuffer, outlierIndex * 4,
-              diameter,
-              pointData.coordinates.map(v => v * chunks.scale),
-              outlierColor
-            );
-            outlierIndex++;
-          } else {
-            const diameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
-            fillThinInstanceBuffers(
-              sphereDimensionsBuffer, inlierIndex * 16,
-              sphereColorBuffer, inlierIndex * 4,
-              diameter,
-              pointData.coordinates.map(v => v * chunks.scale),
-              familyColor
-            );
-            inlierIndex++;
-          }
+        for (const geneIndex of outliers) {
+          const pointData = dataHandler.getGeneData(family, geneIndex, chunks.tissues, []);
+          const diameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
+          fillThinInstanceBuffers(
+            octDimensionsBuffer, outlierIndex * 16,
+            octColorBuffer, outlierIndex * 4,
+            diameter,
+            pointData.coordinates.map(v => v * chunks.scale),
+            outlierColor
+          );
+          outlierIndex++;
         }
-      });
-      if (inlierIndex + outlierIndex !== geneIndices.length) {
-        throw Error("Misfilled buffers");
+      }
+      if (inlierIndex !== inlierCount || outlierIndex !== outlierCount) {
+        console.error("Misfilled buffers", inlierIndex, inlierCount, outlierIndex, outlierCount);
       }
 
       chunkData[3]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
@@ -397,15 +423,6 @@ function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, 
   colorBuffer[cIndex++] = color.g;
   colorBuffer[cIndex++] = color.b;
   colorBuffer[cIndex] = color.a;
-}
-
-function setSphereSize(sphere, diameter) {
-  sphere.scaling = Vector(diameter, diameter, diameter);
-}
-
-function setSphereColor(sphere, color) {
-  sphere.material.diffuseColor = Color.FromHexString(color);
-  sphere.material.alpha = sphere.material.diffuseColor.a;
 }
 
 /***************************************************************

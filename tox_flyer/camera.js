@@ -1,6 +1,6 @@
 "use strict";
 
-import { SphereMesh, Vector, UniversalCam, OrbitCam, calcVectorDistance } from "./babylon.js";
+import { SphereMesh, Vector, UniversalCam, OrbitCam, calcVectorDistance, Material, Color } from "./babylon.js";
 
 /**
  * Function: setupCamera
@@ -56,8 +56,34 @@ export function setupCamera(scene, canvas) {
   // create an ArcRotateCamera for orbit view
   const orbitCam = OrbitCam(scene, "orbitCamera");
 
+  const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
   const meshSelectedPoints = SphereMesh(scene, "meshSelectedPoints");
-  meshSelectedPoints.isVisible = false;
+  highlightLayer.addMesh(meshSelectedPoints, Color(config.get("selectedDataPointColor")));
+
+  // disable as long as spheres are picked
+  highlightLayer.isEnabled = false;
+
+  meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
+  SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
+  meshSelectedPoints.TOX_pick = function (id, position, diameter) {
+    const instance = this.createInstance(id);
+    instance.position = position;
+    SphereMesh.setSize(instance, diameter);
+    highlightLayer.isEnabled = true;
+    return instance;
+  }
+  meshSelectedPoints.TOX_unpick = function (id) {
+    for (const instance of this.instances) {
+      if (instance.name === id) {
+        if (this.instances.length === 1) {
+          highlightLayer.isEnabled = false;
+        }
+        instance.dispose();
+        return true;
+      }
+    }
+    return false;
+  }
 
   setupOrbitView(scene, meshSelectedPoints);
 

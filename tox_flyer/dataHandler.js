@@ -27,8 +27,8 @@ export const handler = {
   },
   getCentroid(family, ...tissues) {
     return tissues.map((tissue) => {
-      return data[family]?.["centroid"][tissue];
-    })
+      return data[family]?.centroid[tissue];
+    });
   },
   getGeneData: function (family, geneIndex, tissues=null, attributes=null) {
     tissues ??= this.tissues;

@@ -1,5 +1,6 @@
 "use strict";
 
+import { handler as dataHandler } from "./dataHandler.js";
 import { plotData } from "./plotData.js";
 import { setupCamera } from "./camera.js";
 import { config } from "./config.js";
@@ -13,7 +14,8 @@ import {
   Light,
   TransformNode,
   OrbitCam,
-  SphereMesh
+  SphereMesh,
+  Material
 } from "./babylon.js";
 
 /***************************************************************
@@ -26,13 +28,13 @@ import {
 async function initializeEngine(canvas) {
   // Create a new WebGPU engine.
   // Babylon.js automatically detects that we want to use WebGPU based on this engine.
-  let engine = WebGPUEngine(canvas);
+  let engine = WebGPUEngine(canvas, true, { stencil: true });
   try {
     // Asynchronously initialize the engine. This prepares the WebGPU adapter.
     await engine.initAsync();
   } catch (err) {
     console.log("WebGPU is not supported, falling back to WebGL");
-    engine = WebGLEngine(canvas);
+    engine = WebGLEngine(canvas, true, { stencil: true });
   }
   // Disable offline support for a faster startup (optional setting)
   engine.enableOfflineSupport = false;
@@ -130,8 +132,7 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
   function setColorCallback(attribute, textfield, axis) {
     config.setSetterCallback(attribute, (hexColorCode) => {
       setTextfieldColor(textfield, hexColorCode);
-      axis.material.diffuseColor = Color.FromHexString(hexColorCode);
-      axis.material.alpha = axis.material.diffuseColor.a;
+      SphereMesh.setColor(axis, hexColorCode)
     })
   }
   setColorCallback("xAxisColor", xPosition, xAxis);
@@ -199,7 +200,7 @@ function add3DCompass(mainScene, engine) {
       { path: [Vector(0, 0, 0), direction.scale(axisSize)], radius: axisRadius, cap: BABYLON.Mesh.CAP_END },
       compassScene
     );
-    const axisMaterial = new BABYLON.StandardMaterial(`${direction}AxisMat`, compassScene);
+    const axisMaterial = Material(compassScene, `${direction}AxisMat`);
     axis.material = axisMaterial;
     axis.parent = cross;
     return axis;
@@ -318,6 +319,11 @@ function downloadImage(data) {
  ***************************************************************/
 async function main() {
   try {
+    Object.defineProperty(window, "dataHandler", {
+      value: dataHandler,
+      writable: false, // Prevents modification
+      configurable: false // Prevents deletion
+    });
     Object.defineProperty(window, "config", {
       value: config,
       writable: false, // Prevents modification
