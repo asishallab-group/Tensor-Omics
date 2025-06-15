@@ -94,6 +94,8 @@ function plotData(scene) {
     loadChunk(scene, chunks, chunk);
   }
 
+  setupSelectionMesh(scene);
+
   document.addEventListener("chunkReload", (evt) => {
     [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
     lastChunkDist = chunkLoadRange * chunkDiameter;
@@ -194,6 +196,90 @@ function plotData(scene) {
         break;
     }
   });
+}
+
+function setupSelectionMesh(scene) {
+  const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
+  const meshSelectedPoints = SphereMesh(scene, "meshSelectedPoints");
+
+  config.setSetterCallback("selectedDataPointColor", hexColorCode => {
+    highlightLayer.removeMesh(meshSelectedPoints);
+    highlightLayer.addMesh(meshSelectedPoints, Color(hexColorCode));
+  })
+  highlightLayer.setEffectIntensity(meshSelectedPoints, 0.7);
+
+  // disable as long as spheres are picked
+  highlightLayer.isEnabled = false;
+
+  meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
+  SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
+  meshSelectedPoints.TOX_pick = function (family, geneIndex) {
+    const scale = config.get("scale");
+    const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+    const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
+    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+
+    function pickOne(geneIndex) {
+      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+      const instance = this.createInstance();
+      instance.position = Vector(...coordinates.map(v => v * scale));
+      instance.TOX_family = family;
+      instance.TOX_geneIndex = geneIndex;
+      const diameter = is_outlier ? outlierDiameter : inlierDiameter;
+      SphereMesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
+    }
+    this.TOX_unpick(family, geneIndex);
+
+    if (geneIndex !== undefined) {
+      pickOne.call(this, geneIndex);
+    } else {
+      const geneCount = dataHandler.getGeneCount(family);
+      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+        pickOne.call(this, geneIndex);
+      }
+    }
+    highlightLayer.isEnabled = true;
+  }
+  meshSelectedPoints.TOX_unpick = function (family, geneIndex) {
+    const instances = this.instances.filter(i => i.TOX_family === family && ((geneIndex === undefined) || (i.TOX_geneIndex === geneIndex)))
+    for (const instance of instances) {
+      if (this.instances.length === 1) {
+        highlightLayer.isEnabled = false;
+      }
+      instance.dispose();
+    }
+    return instances.length;
+  }
+  meshSelectedPoints.TOX_update = function () {
+    for (const instance of [...this.instances]) {
+      this.TOX_pick(instance.TOX_family, instance.TOX_geneIndex);
+    }
+  }
+
+  // initially fetch picked instances from config and set them up
+  new Promise(resolve => {
+    document.dispatchEvent(new CustomEvent("initializePicked", { detail: resolve }));
+  }).then(picked => {
+    try {
+      for (const [family, genes] of Object.entries(picked)) {
+        for (const geneIndex of genes) {
+          meshSelectedPoints.TOX_pick(family, geneIndex);
+        }
+      }
+    } catch {
+      console.error("Could restore picked elements");;
+    }
+  })
+
+  // send picked instances to config
+  document.addEventListener("feedConfig", (evt) => {
+    const picked = {};
+    for (const instance of meshSelectedPoints.instances) {
+      picked[instance.TOX_family] ??= [];
+      picked[instance.TOX_family].push(instance.TOX_geneIndex);
+    }
+    evt.detail.meshSelectedPoints(picked);
+  })
 }
 
 function pickFromMeshes(scene, chunks, activeChunks) {

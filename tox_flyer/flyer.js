@@ -26,15 +26,16 @@ import {
  * - Wraps any initialization errors in a try/catch.
  ***************************************************************/
 async function initializeEngine(canvas) {
-  // Create a new WebGPU engine.
-  // Babylon.js automatically detects that we want to use WebGPU based on this engine.
-  let engine = WebGPUEngine(canvas, true, { stencil: true });
+  let engine;
+  const engineOptions = { antialias: true, stencil: true };
   try {
+    // Create a new WebGPU engine.
+    engine = WebGPUEngine(canvas, engineOptions);
     // Asynchronously initialize the engine. This prepares the WebGPU adapter.
     await engine.initAsync();
   } catch (err) {
     console.log("WebGPU is not supported, falling back to WebGL");
-    engine = WebGLEngine(canvas, true, { stencil: true });
+    engine = WebGLEngine(canvas, engineOptions);
   }
   // Disable offline support for a faster startup (optional setting)
   engine.enableOfflineSupport = false;
@@ -291,7 +292,8 @@ function captureScenes(engine, ...scenes) {
             tempCtx.drawImage(img, 0, 0);
             captureScene(scenes, i+1);
           };
-        }
+        },
+        "image/png", 1, true, null, true, true
       );
       if (!autoClear) {
         scene.autoClear = false;
