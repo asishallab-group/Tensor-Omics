@@ -70,31 +70,28 @@ export function setupCamera(scene, canvas) {
 
   meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
   SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
-  meshSelectedPoints.TOX_pick = function (family, position, diameter, geneIndex) {
-    function pickOne(position, diameter, geneIndex) {
+  meshSelectedPoints.TOX_pick = function (family, geneIndex) {
+    const scale = config.get("scale");
+    const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+    const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
+    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+
+    function pickOne(geneIndex) {
+      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
       const instance = this.createInstance();
-      instance.position = position;
+      instance.position = Vector(...coordinates.map(v => v * scale));
       instance.TOX_family = family;
       instance.TOX_geneIndex = geneIndex;
-      SphereMesh.setSize(instance, diameter);
+      SphereMesh.setSize(instance, is_outlier ? outlierDiameter : inlierDiameter);
     }
     this.TOX_unpick(family, geneIndex);
+
     if (geneIndex !== undefined) {
-      pickOne.call(this, position, diameter, geneIndex);
+      pickOne.call(this, geneIndex);
     } else {
       const geneCount = dataHandler.getGeneCount(family);
-      const scale = config.get("scale");
-      const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
-      const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
-      const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
       for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
-        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-        const diameter = is_outlier ? outlierDiameter : inlierDiameter;
-        pickOne.call(this,
-          Vector(...coordinates.map(v => v * scale)),
-          diameter,
-          geneIndex
-        );
+        pickOne.call(this, geneIndex);
       }
     }
     highlightLayer.isEnabled = true;
@@ -110,16 +107,35 @@ export function setupCamera(scene, canvas) {
     return instances.length;
   }
   meshSelectedPoints.TOX_update = function () {
-    const scale = config.get("scale");
-    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-    for (const instance of this.instances) {
-      const { is_outlier, coordinates } = dataHandler.getGeneData(instance.TOX_family, instance.TOX_geneIndex, tissues, ["is_outlier"]);
-      let diameter = config.get(is_outlier ? `${instance.TOX_family}_OutlierDiameter` : `${instance.TOX_family}_Diameter`);
-      diameter ??= config.get("defaultDiameter");
-      SphereMesh.setSize(instance, diameter);
-      instance.position = Vector(...coordinates.map(v => v * scale));
+    for (const instance of [...this.instances]) {
+      this.TOX_pick(instance.TOX_family, instance.TOX_geneIndex);
     }
   }
+
+  // initially fetch picked instances from config and set them up
+  new Promise(resolve => {
+    document.dispatchEvent(new CustomEvent("initializePicked", { detail: resolve }));
+  }).then(picked => {
+    try {
+      for (const [family, genes] of Object.entries(picked)) {
+        for (const geneIndex of genes) {
+          meshSelectedPoints.TOX_pick(family, geneIndex);
+        }
+      }
+    } catch {
+      console.error("Could restore picked elements");;
+    }
+  })
+
+  // send picked instances to config
+  document.addEventListener("feedConfig", (evt) => {
+    const picked = {};
+    for (const instance of meshSelectedPoints.instances) {
+      picked[instance.TOX_family] ??= [];
+      picked[instance.TOX_family].push(instance.TOX_geneIndex);
+    }
+    evt.detail.meshSelectedPoints(picked);
+  })
 
   setupOrbitView(scene, meshSelectedPoints);
 

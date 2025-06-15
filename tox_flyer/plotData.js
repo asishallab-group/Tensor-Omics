@@ -177,7 +177,7 @@ function plotData(scene) {
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
           if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
-            selected.TOX_pick(picked.family, picked.position, picked.diameter, picked.geneIndex);
+            selected.TOX_pick(picked.family, picked.geneIndex);
           }
         }
         break;

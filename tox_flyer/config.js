@@ -108,9 +108,15 @@ function setupConfig() {
         throw Error(`Another callback function has been already registered for '${key}' in the past.`);
       }
     },
-    asURL() {
+    async asURL() {
       const currentURL = new URL(document.URL);
-      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify(values))}`;
+      const picked = await new Promise(resolve => {
+        document.dispatchEvent(new CustomEvent(
+          "feedConfig",
+          { detail: {meshSelectedPoints: resolve } }
+        ));
+      });
+      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify({...values, picked}))}`;
     }
   }
 
@@ -137,9 +143,12 @@ function setupConfig() {
       if (importingConfig.allModes) values.allModes = importingConfig.allModes;
       if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
       if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
+      document.addEventListener("initializePicked", evt => {
+        evt.detail(importingConfig.picked);
+      }, { once: true })
     }
   } catch (err) {
-    console.log("Could not import config from URL");
+    console.error("Could not import config from URL");
   }
 
   return config;
