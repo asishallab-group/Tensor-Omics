@@ -58,33 +58,67 @@ export function setupCamera(scene, canvas) {
 
   const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
   const meshSelectedPoints = SphereMesh(scene, "meshSelectedPoints");
-  highlightLayer.addMesh(meshSelectedPoints, Color(config.get("selectedDataPointColor")));
+
+  config.setSetterCallback("selectedDataPointColor", hexColorCode => {
+    highlightLayer.removeMesh(meshSelectedPoints);
+    highlightLayer.addMesh(meshSelectedPoints, Color(hexColorCode));
+  })
+  highlightLayer.setEffectIntensity(meshSelectedPoints, 0.7);
 
   // disable as long as spheres are picked
   highlightLayer.isEnabled = false;
 
   meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
   SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
-  meshSelectedPoints.TOX_pick = function (position, diameter, family, geneIndex) {
-    const instance = this.createInstance();
-    instance.position = position;
-    instance.TOX_family = family;
-    instance.TOX_geneIndex = geneIndex;
-    SphereMesh.setSize(instance, diameter);
-    highlightLayer.isEnabled = true;
-    return instance;
-  }
-  meshSelectedPoints.TOX_unpick = function (family, geneIndex) {
-    for (const instance of this.instances) {
-      if (instance.TOX_family === family && instance.TOX_geneIndex === geneIndex) {
-        if (this.instances.length === 1) {
-          highlightLayer.isEnabled = false;
-        }
-        instance.dispose();
-        return true;
+  meshSelectedPoints.TOX_pick = function (family, position, diameter, geneIndex) {
+    function pickOne(position, diameter, geneIndex) {
+      const instance = this.createInstance();
+      instance.position = position;
+      instance.TOX_family = family;
+      instance.TOX_geneIndex = geneIndex;
+      SphereMesh.setSize(instance, diameter);
+    }
+    this.TOX_unpick(family, geneIndex);
+    if (geneIndex !== undefined) {
+      pickOne.call(this, position, diameter, geneIndex);
+    } else {
+      const geneCount = dataHandler.getGeneCount(family);
+      const scale = config.get("scale");
+      const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+      const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
+      const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+        const diameter = is_outlier ? outlierDiameter : inlierDiameter;
+        pickOne.call(this,
+          Vector(...coordinates.map(v => v * scale)),
+          diameter,
+          geneIndex
+        );
       }
     }
-    return false;
+    highlightLayer.isEnabled = true;
+  }
+  meshSelectedPoints.TOX_unpick = function (family, geneIndex) {
+    const instances = this.instances.filter(i => i.TOX_family === family && ((geneIndex === undefined) || (i.TOX_geneIndex === geneIndex)))
+    for (const instance of instances) {
+      if (this.instances.length === 1) {
+        highlightLayer.isEnabled = false;
+      }
+      instance.dispose();
+    }
+    return instances.length;
+  }
+  meshSelectedPoints.TOX_update = function () {
+    const scale = config.get("scale");
+    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+    for (const instance of this.instances) {
+      const { is_outlier, coordinates } = dataHandler.getGeneData(instance.TOX_family, instance.TOX_geneIndex, tissues, ["is_outlier"]);
+      let diameter = config.get(is_outlier ? `${instance.TOX_family}_OutlierDiameter` : `${instance.TOX_family}_Diameter`);
+      diameter ??= config.get("defaultDiameter");
+      SphereMesh.setSize(instance, diameter);
+      instance.position = Vector(...coordinates.map(v => v * scale));
+    }
   }
 
   setupOrbitView(scene, meshSelectedPoints);

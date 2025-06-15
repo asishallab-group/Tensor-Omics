@@ -97,6 +97,7 @@ function plotData(scene) {
   document.addEventListener("chunkReload", (evt) => {
     [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
     lastChunkDist = chunkLoadRange * chunkDiameter;
+    scene.getMeshByName("meshSelectedPoints").TOX_update();
   })
 
   // Determine the initial chunk centroid based on the config position.
@@ -176,28 +177,18 @@ function plotData(scene) {
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
           if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
-            selected.TOX_pick(picked.position, picked.diameter, picked.family, picked.geneIndex);
+            selected.TOX_pick(picked.family, picked.position, picked.diameter, picked.geneIndex);
           }
         }
         break;
       case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
-          const geneCount = dataHandler.getGeneCount(picked.family);
           const wasSelected = selected.TOX_unpick(picked.family, picked.geneIndex);
-          for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
-            selected.TOX_unpick(picked.family, geneIndex);
-            if (wasSelected) {
-              const { is_outlier, coordinates } = dataHandler.getGeneData(picked.family, geneIndex, chunks.tissues);
-              const scale = config.get("scale");
-              const diameter = is_outlier ? config.get(`${picked.family}_OutlierDiameter`) : config.get(`${picked.family}_Diameter`);
-              selected.TOX_pick(
-                Vector(...coordinates.map(v => v * chunks.scale)),
-                diameter ?? config.get("defaultDiameter"),
-                picked.family,
-                geneIndex
-              );
-            }
+          if (!wasSelected) {
+            selected.TOX_unpick(picked.family);
+          } else {
+            selected.TOX_pick(picked.family);
           }
         }
         break;
