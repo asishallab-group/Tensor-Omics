@@ -65,16 +65,18 @@ export function setupCamera(scene, canvas) {
 
   meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
   SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
-  meshSelectedPoints.TOX_pick = function (id, position, diameter) {
-    const instance = this.createInstance(id);
+  meshSelectedPoints.TOX_pick = function (position, diameter, family, geneIndex) {
+    const instance = this.createInstance();
     instance.position = position;
+    instance.TOX_family = family;
+    instance.TOX_geneIndex = geneIndex;
     SphereMesh.setSize(instance, diameter);
     highlightLayer.isEnabled = true;
     return instance;
   }
-  meshSelectedPoints.TOX_unpick = function (id) {
+  meshSelectedPoints.TOX_unpick = function (family, geneIndex) {
     for (const instance of this.instances) {
-      if (instance.name === id) {
+      if (instance.TOX_family === family && instance.TOX_geneIndex === geneIndex) {
         if (this.instances.length === 1) {
           highlightLayer.isEnabled = false;
         }

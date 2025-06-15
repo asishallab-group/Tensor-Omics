@@ -168,24 +168,39 @@ function plotData(scene) {
   // Create a 3D grid in the scene for improving interpretability.
   create3DGrid(scene);
 
-  let previousX = null;
-  let previousY = null;
+  let picked = null;
   scene.onPointerObservable.add((evt) => {
-    if (evt.type === BABYLON.PointerEventTypes.POINTERDOWN) {
-      previousX = scene.pointerX;
-      previousY = scene.pointerY;
-    } else if (evt.type === BABYLON.PointerEventTypes.POINTERUP) {
-      if (Math.abs(previousX - scene.pointerX) < 5 && Math.abs(previousY - scene.pointerY) < 5) {
-        const picked = pickFromMeshes(scene, chunks, activeChunks);
+    switch (evt.type) {
+      case BABYLON.PointerEventTypes.POINTERTAP:
+        picked = pickFromMeshes(scene, chunks, activeChunks);
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
-          const id = `${picked.family}:${picked.geneIndex}`;
-          console.log(id);
-          if (!selected.TOX_unpick(id)) {
-            selected.TOX_pick(id, picked.position, picked.diameter * 1.01);
+          if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
+            selected.TOX_pick(picked.position, picked.diameter, picked.family, picked.geneIndex);
           }
         }
-      }
+        break;
+      case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
+        if (picked !== null) {
+          const selected = scene.getMeshByName("meshSelectedPoints");
+          const geneCount = dataHandler.getGeneCount(picked.family);
+          const wasSelected = selected.TOX_unpick(picked.family, picked.geneIndex);
+          for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+            selected.TOX_unpick(picked.family, geneIndex);
+            if (wasSelected) {
+              const { is_outlier, coordinates } = dataHandler.getGeneData(picked.family, geneIndex, chunks.tissues);
+              const scale = config.get("scale");
+              const diameter = is_outlier ? config.get(`${picked.family}_OutlierDiameter`) : config.get(`${picked.family}_Diameter`);
+              selected.TOX_pick(
+                Vector(...coordinates.map(v => v * chunks.scale)),
+                diameter ?? config.get("defaultDiameter"),
+                picked.family,
+                geneIndex
+              );
+            }
+          }
+        }
+        break;
     }
   });
 }
@@ -323,8 +338,6 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       chunks[chunk][2] += is_outlier;
     }
   }
-
-  console.log(chunks[[0,0,0]][0])
 
   return [ chunks, activeChunks ]
 }
