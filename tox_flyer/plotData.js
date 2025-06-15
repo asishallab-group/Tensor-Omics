@@ -239,7 +239,7 @@ function pickFromMeshes(scene, chunks, activeChunks) {
   if (picked) {
     const genes = chunks[picked.chunk][0];
     let pickedIndex = picked.index;
-    for (const [family, members] of Object.entries(genes)) {
+    for (const [family, members] of genes.entries()) {
       pickedIndex -= members[picked.is_outlier].length;
       if (pickedIndex < 0) {
         picked.family = family;
@@ -304,7 +304,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = [{}, 0, 0, null, null];
+        chunks[chunk] = [new Map(), 0, 0, null, null];
         if (
           Math.abs(chunk[0] - posX) < sight &&
           Math.abs(chunk[1] - posY) < sight &&
@@ -313,12 +313,18 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
           activeChunks.push(chunk.toString());
         }
       }
-      chunks[chunk][0][family] ??= [[], []]
-      chunks[chunk][0][family][is_outlier ? 1 : 0].push(geneIndex);
+
+      const genes = chunks[chunk][0];
+      if (!genes.has(family)) {
+        genes.set(family, [[], []]);
+      }
+      genes.get(family)[is_outlier ? 1 : 0].push(geneIndex);
       chunks[chunk][1] += !is_outlier;
       chunks[chunk][2] += is_outlier;
     }
   }
+
+  console.log(chunks[[0,0,0]][0])
 
   return [ chunks, activeChunks ]
 }
@@ -360,7 +366,7 @@ function loadChunk(scene, chunks, chunk, state=true) {
 
       let inlierIndex = 0;
       let outlierIndex = 0;
-      for (const [family, [inliers, outliers]] of Object.entries(genes)) {
+      for (const [family, [inliers, outliers]] of genes.entries()) {
         const familyColor = Color.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
         for (const geneIndex of inliers) {
           const diameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
