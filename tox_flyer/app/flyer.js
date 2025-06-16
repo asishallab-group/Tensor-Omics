@@ -1,9 +1,9 @@
 "use strict";
 
 import { handler as dataHandler } from "./dataHandler.js";
-import { plotData } from "./plotData.js";
-import { setupCamera } from "./camera.js";
 import { config } from "./config.js";
+import { plotData } from "./flyer/plotData.js";
+import { setupCamera } from "./flyer/camera.js";
 import {
   WebGPUEngine,
   WebGLEngine,
@@ -16,7 +16,7 @@ import {
   OrbitCam,
   SphereMesh,
   Material
-} from "./babylon.js";
+} from "./flyer/babylon.js";
 
 /***************************************************************
  * Function: initializeEngine
