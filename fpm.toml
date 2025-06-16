@@ -1,0 +1,24 @@
+name = "F42CsvReader"
+version = "1.0.0"
+license = "Proprietary"
+author = "Luka Faensen"
+maintainer = "faensen.luka@th-bingen.de"
+copyright = "Copyright 2025, Asis Hallab"
+
+[build]
+auto-executables = false
+auto-tests = true
+auto-examples = false
+
+# This tells fpm to build a library using our custom script
+[library]
+source-dir = "src"
+build-script = "scripts/build_shared.sh"
+
+[install]
+library = true
+
+[test]
+name = "csv_io_test"
+source-dir = "test"
+main = "test_csv_io.f90"

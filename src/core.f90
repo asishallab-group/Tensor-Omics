@@ -5,7 +5,7 @@ MODULE csv_reader_module
     IMPLICIT NONE
 
     ! --- Public Constants ---
-    INTEGER, PARAMETER :: MAX_LINE_LEN = 4096
+    INTEGER, PARAMETER, PUBLIC :: MAX_LINE_LEN = 4096
     INTEGER, PARAMETER, PUBLIC :: MAX_FIELD_LEN = 512
     INTEGER, PARAMETER, PUBLIC :: IK = SELECTED_INT_KIND(18)
 
@@ -128,7 +128,7 @@ CONTAINS
             temp_field = TRIM(fields(i))
             IF (LEN_TRIM(temp_field) == 0) THEN ! Handle empty fields
                 column_data_type(i) = 3; n_char_cols = n_char_cols + 1; column_typed_index(i) = n_char_cols
-            ELSE IF (INDEX(temp_field, '.') > 0) THEN ! Simple check for real
+            ELSE IF (INDEX(temp_field, '.') > 0) THEN 
                  READ(temp_field, *, IOSTAT=stat) temp_r
                  IF (stat == 0) THEN
                     column_data_type(i) = 2; n_real_cols = n_real_cols + 1; column_typed_index(i) = n_real_cols
