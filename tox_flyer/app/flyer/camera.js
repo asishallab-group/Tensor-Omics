@@ -1,6 +1,6 @@
 "use strict";
 
-import { SphereMesh, Vector, UniversalCam, OrbitCam, calcVectorDistance, Material, Color } from "./babylon.js";
+import { Vector, UniversalCam, OrbitCam, calcVectorDistance, Material, Color } from "./babylon.js";
 
 /**
  * Function: setupCamera

@@ -14,7 +14,7 @@ import {
   Light,
   TransformNode,
   OrbitCam,
-  SphereMesh,
+  Mesh,
   Material
 } from "./flyer/babylon.js";
 
@@ -133,7 +133,7 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
   function setColorCallback(attribute, textfield, axis) {
     config.setSetterCallback(attribute, (hexColorCode) => {
       setTextfieldColor(textfield, hexColorCode);
-      SphereMesh.setColor(axis, hexColorCode)
+      Mesh.setColor(axis, hexColorCode)
     })
   }
   setColorCallback("xAxisColor", xPosition, xAxis);
@@ -239,7 +239,7 @@ function add3DCompass(mainScene, engine) {
     cross.rotationQuaternion = camQuat.invert();
   });
   // add origin
-  const origin = SphereMesh(compassScene, "origin");
+  const origin = Mesh.Sphere(compassScene, "origin");
   origin.scaling = origin.scaling.scale(5 * axisRadius);
 
   // Return the compass scene for further customization or control.

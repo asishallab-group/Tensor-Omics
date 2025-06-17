@@ -1,12 +1,11 @@
 "use strict";
 
 import {
-  SphereMesh,
+  Mesh,
   Color,
   Vector,
   TransformNode,
   calcVectorDistance,
-  Octahedron,
   Material
 } from "./babylon.js";
 
@@ -200,7 +199,7 @@ function plotData(scene) {
 
 function setupSelectionMesh(scene) {
   const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
-  const meshSelectedPoints = SphereMesh(scene, "meshSelectedPoints");
+  const meshSelectedPoints = Mesh.Sphere(scene, "meshSelectedPoints");
 
   config.setSetterCallback("selectedDataPointColor", hexColorCode => {
     highlightLayer.removeMesh(meshSelectedPoints);
@@ -212,7 +211,7 @@ function setupSelectionMesh(scene) {
   highlightLayer.isEnabled = false;
 
   meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
-  SphereMesh.setSize(meshSelectedPoints, 0); // hide initial instance
+  Mesh.setSize(meshSelectedPoints, 0); // hide initial instance
   meshSelectedPoints.TOX_pick = function (family, geneIndex) {
     const scale = config.get("scale");
     const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
@@ -226,7 +225,7 @@ function setupSelectionMesh(scene) {
       instance.TOX_family = family;
       instance.TOX_geneIndex = geneIndex;
       const diameter = is_outlier ? outlierDiameter : inlierDiameter;
-      SphereMesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
+      Mesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
     }
     this.TOX_unpick(family, geneIndex);
 
@@ -261,13 +260,15 @@ function setupSelectionMesh(scene) {
     document.dispatchEvent(new CustomEvent("initializePicked", { detail: resolve }));
   }).then(picked => {
     try {
-      for (const [family, genes] of Object.entries(picked)) {
-        for (const geneIndex of genes) {
-          meshSelectedPoints.TOX_pick(family, geneIndex);
+      if (typeof picked === "object") {
+        for (const [family, genes] of Object.entries(picked)) {
+          for (const geneIndex of genes) {
+            meshSelectedPoints.TOX_pick(family, geneIndex);
+          }
         }
       }
     } catch {
-      console.error("Could restore picked elements");;
+      console.error("Could not restore picked elements");;
     }
   })
 
@@ -440,14 +441,14 @@ function loadChunk(scene, chunks, chunk, state=true) {
       const sphereDimensionsBuffer = new Float32Array(16 * inlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const sphereColorBuffer = new Float32Array(4 * inlierCount); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
-        chunkData[3] = SphereMesh(scene);
+        chunkData[3] = Mesh.Sphere(scene);
       }
 
       // outliers -- octahedrons
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
       if (outlierCount > 0) {
-        chunkData[4] = Octahedron(scene)
+        chunkData[4] = Mesh.Octahedron(scene)
         chunkData[4].enableEdgesRendering();
         chunkData[4].edgesWidth = config.get("defaultDiameter") * 12;
         chunkData[4].edgesColor = Color(0, 0, 0, 1); // Black edges
