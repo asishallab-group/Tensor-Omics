@@ -1,0 +1,91 @@
+A0A1Q6GZX1      IPR001279       Metallo-beta-lactamase  PF00753 12      83
+A0A1Q6GZX1      IPR036866       Ribonuclease Z/Hydroxyacylglutathione hydrolase-like    G3DSA:3.60.15.10        8       351
+A0A1Q6GZX1      IPR036866       Ribonuclease Z/Hydroxyacylglutathione hydrolase-like    SSF56281        2       339
+A0A1Q6GZX1      IPR052159       Bacterial competence-related DNA uptake protein PTHR30619       14      352
+A0A1Q6GZX2      IPR021958       Protein of unknown function DUF3575     PF12099 16      186
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 12      35
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 50      72
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 124     144
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 157     181
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 361     383
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PR01005 410     427
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     PTHR30033       4       653
+A0A4Q6GZX1      IPR002371       Flagellar hook-associated protein 1     TIGR02492       4       347
+A0A4Q6GZX1      IPR010930       Flagellar basal-body/hook protein, C-terminal domain    PF06429 614     652
+A0A4Q6GZX1      IPR049119       Flagellar hook-associated protein 1, D2-like domain     PF21158 339     417
+A0A4Q6GZX1      IPR049474       Flagellar hook-associated protein 1, D3 domain  PF21159 440     544
+A0A4Q6GZX1      IPR053927       Flagellar hook-associated protein FlgK, helical domain  PF22638 93      327
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      MF_00254        9       293
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PF02091 11      292
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 63      78
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 84      104
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 115     139
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 141     161
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 164     179
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      PR01044 253     269
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      TIGR00388       10      301
+A0A4Q6GZX3      IPR002310       Glycine-tRNA ligase, alpha subunit      cd00733 10      292
+A0A4Q6GZX3      IPR006194       Glycine-tRNA synthetase, heterodimeric  PS50861 10      288
+A0A4Q6GZX3      IPR006194       Glycine-tRNA synthetase, heterodimeric  PTHR30075       9       297
+A0A4Q6GZX3      IPR045864       Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)        G3DSA:3.30.930.10       6       216
+A0A4Q6GZX3      IPR045864       Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)        SSF55681        10      292
+Q6GZX3  IPR004251       Pox virus entry-fusion-complex G9/A16   PF03003 169     247
+Q6GZX4  IPR007031       Poxvirus VLTF3, late transcription factor       PF04947 81      253
+A0A0E9LU99      IPR000523       Magnesium chelatase ChlI-like, catalytic domain PF01078 193     398
+A0A0E9LU99      IPR001208       MCM domain      PR01657 212     227
+A0A0E9LU99      IPR001208       MCM domain      PR01657 293     307
+A0A0E9LU99      IPR001208       MCM domain      PR01657 321     334
+A0A0E9LU99      IPR003593       AAA+ ATPase domain      SM00382 213     396
+A0A0E9LU99      IPR004482       Mg chelatase-related protein    TIGR00368       6       503
+A0A0E9LU99      IPR014721       Small ribosomal subunit protein uS5 domain 2-type fold, subgroup        G3DSA:3.30.230.10       4       172
+A0A0E9LU99      IPR020568       Ribosomal protein uS5 domain 2-type superfamily SSF54211        5       168
+A0A0E9LU99      IPR025158       Mg chelatase-related protein, C-terminal domain PF13335 407     503
+A0A0E9LU99      IPR027417       P-loop containing nucleoside triphosphate hydrolase     G3DSA:3.40.50.300       192     508
+A0A0E9LU99      IPR027417       P-loop containing nucleoside triphosphate hydrolase     SSF52540        192     507
+A0A0E9LU99      IPR045006       Magnesium-chelatase subunit ChlI-like   PTHR32039       18      503
+A0A2D3I253      IPR008924       Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal     G3DSA:1.20.840.10       1       156
+A0A2D3I253      IPR008924       Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal     SSF48081        1       156
+A0A2D3I253      IPR009047       Methyl-coenzyme M reductase, alpha subunit, C-terminal  PF02249 1       117
+A0A2E9LU99      IPR011059       Metal-dependent hydrolase, composite domain superfamily G3DSA:2.30.40.10        53      549
+A0A2E9LU99      IPR011059       Metal-dependent hydrolase, composite domain superfamily SSF51338        42      574
+A0A2E9LU99      IPR013108       Amidohydrolase 3        PF07969 94      572
+A0A2E9LU99      IPR032466       Metal-dependent hydrolase       SSF51556        104     533
+A0A2E9LU99      IPR033932       YtcJ like       cd01300 67      544
+A0A7C4TL18      IPR000077       Large ribosomal subunit protein eL39    MF_00629        1       50
+A0A7C4TL18      IPR000077       Large ribosomal subunit protein eL39    PF00832 8       49
+A0A7C4TL18      IPR020083       Large ribosomal subunit protein eL39, conserved site    PS00051 29      45
+A0A7C4TL18      IPR023626       Large ribosomal subunit protein eL39 domain superfamily G3DSA:1.10.1620.10      1       49
+A0A7C4TL18      IPR023626       Large ribosomal subunit protein eL39 domain superfamily SSF48662        2       50
+A0A7C4TSV9      IPR000783       RNA polymerase, subunit H/Rpb5 C-terminal       PF01191 3       75
+A0A7C4TSV9      IPR014381       DNA-directed RNA polymerase subunit Rpo5/Rpb5   MF_00025        3       76
+A0A7C4TSV9      IPR014381       DNA-directed RNA polymerase subunit Rpo5/Rpb5   PTHR10535       3       76
+A0A7C4TSV9      IPR020608       RNA polymerase, subunit H/Rpb5, conserved site  PS01110 8       21
+A0A7C4TSV9      IPR035913       RPB5-like RNA polymerase subunit superfamily    G3DSA:3.90.940.20       1       77
+A0A7C4TSV9      IPR035913       RPB5-like RNA polymerase subunit superfamily    SSF55287        1       76
+A0A7C4XJF3      IPR015419       CTAG/Pcc1 family        PF09341 15      65
+A0A7C4XVX2      IPR011059       Metal-dependent hydrolase, composite domain superfamily G3DSA:2.30.40.10        2       81
+A0A7C4XVX2      IPR011059       Metal-dependent hydrolase, composite domain superfamily G3DSA:2.30.40.10        452     506
+A0A7C4XVX2      IPR011059       Metal-dependent hydrolase, composite domain superfamily SSF51338        2       67
+A0A7C4XVX2      IPR011059       Metal-dependent hydrolase, composite domain superfamily SSF51338        382     513
+A0A7C4XVX2      IPR012027       Formylmethanofuran dehydrogenase, subunit A     PIRSF006453     1       559
+A0A7C4XVX2      IPR012027       Formylmethanofuran dehydrogenase, subunit A     TIGR03121       3       553
+A0A7C4XVX2      IPR012027       Formylmethanofuran dehydrogenase, subunit A     cd01304 4       542
+A0A7C4XVX2      IPR013108       Amidohydrolase 3        PF07969 42      497
+A0A7C4XVX2      IPR032466       Metal-dependent hydrolase       SSF51556        54      451
+A0A7C4XVX2      IPR050378       Metallo-dependent Hydrolases Superfamily        PTHR11647       1       510
+A0A7C4XW10      IPR000392       NifH/frxC family        PF00142 14      272
+A0A7C4XW10      IPR000392       NifH/frxC family        PIRSF000363     12      276
+A0A7C4XW10      IPR000392       NifH/frxC family        PS51026 13      274
+A0A7C4XW10      IPR000392       NifH/frxC family        PTHR42864       14      281
+A0A7C4XW10      IPR027417       P-loop containing nucleoside triphosphate hydrolase     G3DSA:3.40.50.300       14      271
+A0A7C4XW10      IPR027417       P-loop containing nucleoside triphosphate hydrolase     SSF52540        15      269
+A0A7C4XW10      IPR029752       D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1      PS00065 16      43
+A0A7C4XW10      IPR030655       NifH/chlL conserved site        PS00746 93      105
+A0AAE9LU99      IPR001753       Enoyl-CoA hydratase/isomerase   PF00378 9       259
+A0AAE9LU99      IPR014748       Enoyl-CoA hydratase, C-terminal G3DSA:1.10.12.10        204     264
+A0AAE9LU99      IPR018376       Enoyl-CoA hydratase/isomerase, conserved site   PS00166 103     123
+A0AAE9LU99      IPR029045       ClpP/crotonase-like domain superfamily  SSF52096        1       259
+A0AAE9LU99      IPR051683       Enoyl-CoA Hydratase/Isomerase Domain-Containing Protein PTHR42964       3       261
+E9LU99  IPR008924       Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal     G3DSA:1.20.840.10       1       160
+E9LU99  IPR008924       Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal     SSF48081        1       160
+E9LU99  IPR009047       Methyl-coenzyme M reductase, alpha subunit, C-terminal  PF02249 1       122
