@@ -10,58 +10,6 @@ import {
 } from "./babylon.js";
 
 /**
- * Function: create3DGrid
- * Purpose: Creates a 3D grid with customizable size and density.
- * - Useful for visualizing spatial boundaries in a 3D plot.
- * @param {BABYLON.Scene} scene - The Babylon.js scene where the grid will be added.
- * @param {number} size - The total size of the grid (length of each axis).
- * @param {number} step - The spacing between grid lines.
- */
-function create3DGrid(scene, size = 100, step = 10) {
-  // Create a parent node to group all grid lines for easy management.
-  const gridParent = TransformNode(scene, "gridParent");
-  const color = Color(.5, .5, .5, 1); // gray color for grid lines.
-  const material = Material(scene, "lineMat", color);
-  material.disableLighting = true; // Lines are unaffected by scene lighting.
-
-  // Helper function to create a single line.
-  function createLine(start, end, color) {
-    const line = BABYLON.MeshBuilder.CreateLines("line", { points: [start, end] }, scene);
-    line.material = material;
-    line.parent = gridParent; // Attach the line to the parent node.
-  }
-
-  // Create grid lines parallel to each axis.
-  const halfSize = size / 2;
-
-  // Lines along the X-axis.
-  for (let a = -halfSize; a <= halfSize; a += step) {
-    for (let b = -halfSize; b <= halfSize; b += step) {
-      // along x axis
-      createLine(
-        Vector(-halfSize, a, b), // Start point
-        Vector(halfSize, a, b),  // End point
-        color
-      );
-      // along y axis
-      createLine(
-        Vector(a, -halfSize, b), // Start point
-        Vector(a, halfSize, b),  // End point
-        color
-      );
-      // along z axis
-      createLine(
-        Vector(a, b, -halfSize), // Start point
-        Vector(a, b, halfSize),  // End point
-        color
-      );
-    }
-  }
-
-  return gridParent; // Return the parent node containing all grid lines.
-}
-
-/**
  * Plots data points in the scene by instancing a base sphere mesh onto different chunks.
  * 
  * Data points are grouped into "chunks" based on spatial positions determined by a chunk diameter.
@@ -147,14 +95,14 @@ function plotData(scene) {
             // i.e. the new chunk in range along this axis.
             triggeredChunkCentroid[i] = currentAxis + direction * lastChunkDist;
             // Call loadChunk with a flag "true" to enable the chunk.
-            loadChunk(scene, chunks, triggeredChunkCentroid, true);
+            loadChunk(scene, chunks, triggeredChunkCentroid.toString(), true);
             activeChunks.push(triggeredChunkCentroid.toString());
 
             // Next, compute the position for the chunk that should be disabled,
             // i.e. the chunk that is no longer within range, so on the complementary side.
             triggeredChunkCentroid[i] = axis - direction * lastChunkDist;
             // Call loadChunk with the flag "false" to disable the chunk.
-            loadChunk(scene, chunks, triggeredChunkCentroid, false);
+            loadChunk(scene, chunks, triggeredChunkCentroid.toString(), false);
             const chunkIndex = activeChunks.indexOf(triggeredChunkCentroid.toString());
             if (chunkIndex !== -1) {
               activeChunks.splice(chunkIndex, 1);
@@ -162,13 +110,13 @@ function plotData(scene) {
           }
         }
       }
+      if (activeChunks.length !== (chunkLoadRange*2 + 1)**3) {
+        console.error("Less active chunks than expected: ", activeChunks.length)
+      }
     });
     // Update the chunkCentroid to the current value for use in the next frame.
     chunkCentroid = currentChunkCentroid;
   });
-
-  // Create a 3D grid in the scene for improving interpretability.
-  create3DGrid(scene);
 
   let picked = null;
   scene.onPointerObservable.add((evt) => {
@@ -195,6 +143,39 @@ function plotData(scene) {
         break;
     }
   });
+}
+
+function create3DGridFromChunk(scene, chunk) {
+  const [chunkX, chunkY, chunkZ] = chunk.split(",").map(Number);
+  const chunkRadius = config.get("chunkDiameter") / 2;
+  const gridStep = 10;
+  const lines = [];
+
+  const left = chunkX - chunkRadius;
+  const right = chunkX + chunkRadius;
+  const bottom = chunkY - chunkRadius;
+  const top = chunkY + chunkRadius;
+  const back = chunkZ - chunkRadius;
+  const front = chunkZ + chunkRadius;
+  for (let z = back + Math.abs(back % gridStep); z <= front; z+=gridStep) {
+    for (let y = bottom + Math.abs(bottom % gridStep); y <= top; y+=gridStep) {
+      lines.push([Vector(left, y, z), Vector(right, y, z)]);
+    }
+  }
+  for (let z = back + Math.abs(back % gridStep); z <= front; z+=gridStep) {
+    for (let x = left + Math.abs(left % gridStep); x <= right; x+=gridStep) {
+      lines.push([Vector(x, bottom, z), Vector(x, top, z)]);
+    }
+  }
+  for (let y = bottom + Math.abs(bottom % gridStep); y <= top; y+=gridStep) {
+    for (let x = left + Math.abs(left % gridStep); x <= right; x+=gridStep) {
+      lines.push([Vector(x, y, back), Vector(x, y, front)]);
+    }
+  }
+
+  const grid = BABYLON.MeshBuilder.CreateLineSystem(null, { lines }, scene);
+  grid.color = Color(.5, .5, .5);
+  return grid;
 }
 
 function setupSelectionMesh(scene) {
@@ -375,8 +356,6 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
   // The value includes an extra 0.5 chunk diameter margin.
   const sight = (chunkLoadRange + 0.5) * chunkDiameter;
 
-  const activeChunks = [];
-
   chunks.scale = config.get("scale");
   chunks.tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]
 
@@ -397,14 +376,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = [new Map(), 0, 0, null, null];
-        if (
-          Math.abs(chunk[0] - posX) < sight &&
-          Math.abs(chunk[1] - posY) < sight &&
-          Math.abs(chunk[2] - posZ) < sight
-        ) {
-          activeChunks.push(chunk.toString());
-        }
+        chunks[chunk] = [new Map(), 0, 0, null, null, null];
       }
 
       const genes = chunks[chunk][0];
@@ -414,6 +386,22 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       genes.get(family)[is_outlier ? 1 : 0].push(geneIndex);
       chunks[chunk][1] += !is_outlier;
       chunks[chunk][2] += is_outlier;
+    }
+  }
+
+  const activeChunks = [];
+  for (let x = posX - sight; x <= posX + sight; x+=chunkDiameter) {
+    for (let y = posY - sight; y <= posY + sight; y+=chunkDiameter) {
+      for (let z = posZ - sight; z <= posZ + sight; z+=chunkDiameter) {
+        const chunk = getChunkCentroid([x, y, z], chunkDiameter);
+        if (
+          Math.abs(chunk[0] - posX) < sight &&
+          Math.abs(chunk[1] - posY) < sight &&
+          Math.abs(chunk[2] - posZ) < sight
+        ) {
+          activeChunks.push(chunk.toString());
+        }
+      }
     }
   }
 
@@ -437,22 +425,24 @@ function loadChunk(scene, chunks, chunk, state=true) {
         mesh?.dispose();
       }
 
+      chunkData[3] = create3DGridFromChunk(scene, chunk);
+
       // data points -- spheres
       const sphereDimensionsBuffer = new Float32Array(16 * inlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const sphereColorBuffer = new Float32Array(4 * inlierCount); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
-        chunkData[3] = Mesh.Sphere(scene);
+        chunkData[4] = Mesh.Sphere(scene);
       }
 
       // outliers -- octahedrons
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
       if (outlierCount > 0) {
-        chunkData[4] = Mesh.Octahedron(scene)
-        chunkData[4].enableEdgesRendering();
-        chunkData[4].edgesWidth = config.get("defaultDiameter") * 12;
-        chunkData[4].edgesColor = Color(0, 0, 0, 1); // Black edges
-        chunkData[4].edgesShareWithThinInstances = true;
+        chunkData[5] = Mesh.Octahedron(scene)
+        chunkData[5].enableEdgesRendering();
+        chunkData[5].edgesWidth = config.get("defaultDiameter") * 12;
+        chunkData[5].edgesColor = Color(0, 0, 0, 1); // Black edges
+        chunkData[5].edgesShareWithThinInstances = true;
       }
 
       let inlierIndex = 0;
@@ -490,16 +480,22 @@ function loadChunk(scene, chunks, chunk, state=true) {
         console.error("Misfilled buffers", inlierIndex, inlierCount, outlierIndex, outlierCount);
       }
 
-      chunkData[3]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
-      chunkData[3]?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
-      chunkData[4]?.thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
-      chunkData[4]?.thinInstanceSetBuffer("color", octColorBuffer, 4);
+      chunkData[4]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
+      chunkData[4]?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
+      chunkData[5]?.thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
+      chunkData[5]?.thinInstanceSetBuffer("color", octColorBuffer, 4);
     } else {
-      for (let i = chunkData.length - 2; i < chunkData.length; i++) {
-        chunkData[i]?.dispose();
-        chunkData[i] = null;
+      if (chunkData[0].size > 0) {
+        for (let i = chunkData.length - 3; i < chunkData.length; i++) {
+          chunkData[i]?.dispose();
+          chunkData[i] = null;
+        }
+      } else {
+        delete chunks[chunk];
       }
     }
+  } else {
+    chunks[chunk] = [new Map(), 0, 0, create3DGridFromChunk(scene, chunk), null, null];
   }
 }
 
