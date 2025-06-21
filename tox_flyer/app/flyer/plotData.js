@@ -21,9 +21,9 @@ import {
  */
 function plotData(scene) {
   // get the initial position
-  const posX = scene.activeCamera.position.x;
-  const posY = scene.activeCamera.position.y;
-  const posZ = scene.activeCamera.position.z;
+  const posX = config.get("x");
+  const posY = config.get("y");
+  const posZ = config.get("z");
 
   // Diameter of each chunk in world units.
   let chunkDiameter = config.get("chunkDiameter");
@@ -43,15 +43,16 @@ function plotData(scene) {
 
   setupSelectionMesh(scene);
 
+  // Determine the initial chunk centroid based on the config position.
+  // This represents the "active" chunk coordinates in which data is loaded.
+  let chunkCentroid = getChunkCentroid([posX, posY, posZ], chunkDiameter);
+
   document.addEventListener("chunkReload", (evt) => {
     [chunks, activeChunks, chunkDiameter, chunkLoadRange] = reloadChunks(scene, chunks, activeChunks);
     lastChunkDist = chunkLoadRange * chunkDiameter;
     scene.getMeshByName("meshSelectedPoints").TOX_update();
+    chunkCentroid = getChunkCentroid([config.get("x"), config.get("y"), config.get("z")], chunkDiameter);
   })
-
-  // Determine the initial chunk centroid based on the config position.
-  // This represents the "active" chunk coordinates in which data is loaded.
-  let chunkCentroid = getChunkCentroid([posX, posY, posZ], chunkDiameter);
 
   // Temporary array used to compute the centroid for chunks that need updating.
   // This array is reused within the render loop for efficiency.
@@ -110,10 +111,8 @@ function plotData(scene) {
           }
         }
       }
-      if (activeChunks.length !== (chunkLoadRange*2 + 1)**3) {
-        console.error("Less active chunks than expected: ", activeChunks.length)
-      }
     });
+
     // Update the chunkCentroid to the current value for use in the next frame.
     chunkCentroid = currentChunkCentroid;
   });
@@ -152,23 +151,26 @@ function create3DGridFromChunk(scene, chunk) {
   const lines = [];
 
   const left = chunkX - chunkRadius;
+  let firstLineLeft = left < 0 ? left - left % gridStep : left + 10 - left % gridStep;
   const right = chunkX + chunkRadius;
   const bottom = chunkY - chunkRadius;
+  let firstLineBottom = bottom < 0 ? bottom - bottom % gridStep : bottom + 10 - bottom % gridStep;
   const top = chunkY + chunkRadius;
   const back = chunkZ - chunkRadius;
+  let firstLineBack = back < 0 ? back - back % gridStep : back + 10 - back % gridStep;
   const front = chunkZ + chunkRadius;
-  for (let z = back + Math.abs(back % gridStep); z <= front; z+=gridStep) {
-    for (let y = bottom + Math.abs(bottom % gridStep); y <= top; y+=gridStep) {
+  for (let z = firstLineBack; z <= front; z+=gridStep) {
+    for (let y = firstLineBottom; y <= top; y+=gridStep) {
       lines.push([Vector(left, y, z), Vector(right, y, z)]);
     }
   }
-  for (let z = back + Math.abs(back % gridStep); z <= front; z+=gridStep) {
-    for (let x = left + Math.abs(left % gridStep); x <= right; x+=gridStep) {
+  for (let z = firstLineBack; z <= front; z+=gridStep) {
+    for (let x = firstLineLeft; x <= right; x+=gridStep) {
       lines.push([Vector(x, bottom, z), Vector(x, top, z)]);
     }
   }
-  for (let y = bottom + Math.abs(bottom % gridStep); y <= top; y+=gridStep) {
-    for (let x = left + Math.abs(left % gridStep); x <= right; x+=gridStep) {
+  for (let y = firstLineBottom; y <= top; y+=gridStep) {
+    for (let x = firstLineLeft; x <= right; x+=gridStep) {
       lines.push([Vector(x, y, back), Vector(x, y, front)]);
     }
   }
@@ -275,34 +277,31 @@ function pickFromMeshes(scene, chunks, activeChunks) {
   let closestDist = Infinity;
   let picked = null;
   for (const chunk of activeChunks) {
-    const meshes = chunks[chunk]?.slice(-2) ?? [];
-    for (const is_outlier in meshes) {
-      const mesh = meshes[is_outlier];
-      if (mesh) {
-        const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
+    const meshes = chunks[chunk][3];
+    for (const [meshType, mesh] of meshes) {
+      const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
 
-        for (const i in sphereMatrices) {
-          const matrix = sphereMatrices[i].m;
-          // extract translation
-          const tx = matrix[12];
-          const ty = matrix[13];
-          const tz = matrix[14];
-          const spherePosition = Vector(tx, ty, tz);
+      for (const i in sphereMatrices) {
+        const matrix = sphereMatrices[i].m;
+        // extract translation
+        const tx = matrix[12];
+        const ty = matrix[13];
+        const tz = matrix[14];
+        const spherePosition = Vector(tx, ty, tz);
 
-          const intersects = pickRay.intersectsSphere(
-            { center: spherePosition, radius: matrix[0] / 2 }
-          );
-          if (intersects) {
-            const distance = calcVectorDistance(scene.activeCamera.position, spherePosition);
-            if (distance < closestDist) {
-              closestDist = distance;
-              picked = {
-                position: spherePosition,
-                diameter: matrix[0],
-                index: i,
-                is_outlier,
-                chunk
-              }
+        const intersects = pickRay.intersectsSphere(
+          { center: spherePosition, radius: matrix[0] / 2 }
+        );
+        if (intersects) {
+          const distance = calcVectorDistance(scene.activeCamera.position, spherePosition);
+          if (distance < closestDist) {
+            closestDist = distance;
+            picked = {
+              position: spherePosition,
+              diameter: matrix[0],
+              index: i,
+              is_outlier: meshType === "outliers",
+              chunk
             }
           }
         }
@@ -313,11 +312,12 @@ function pickFromMeshes(scene, chunks, activeChunks) {
   if (picked) {
     const genes = chunks[picked.chunk][0];
     let pickedIndex = picked.index;
-    for (const [family, members] of genes.entries()) {
-      pickedIndex -= members[picked.is_outlier].length;
+    for (const [family, members] of genes) {
+      const indices = members[Number(picked.is_outlier)];
+      pickedIndex -= indices.length;
       if (pickedIndex < 0) {
         picked.family = family;
-        picked.geneIndex = members[picked.is_outlier][pickedIndex + members[picked.is_outlier].length];
+        picked.geneIndex = indices[pickedIndex + indices.length];
         break;
       }
     }
@@ -376,7 +376,7 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
       const chunk = getChunkCentroid(scaled, chunkDiameter);
 
       if (chunks[chunk] === undefined) {
-        chunks[chunk] = [new Map(), 0, 0, null, null, null];
+        chunks[chunk] = [new Map(), 0, 0, new Map()];
       }
 
       const genes = chunks[chunk][0];
@@ -405,6 +405,10 @@ function calculateChunks(posX, posY, posZ, chunkDiameter, chunkLoadRange) {
     }
   }
 
+  if (activeChunks.length !== (chunkLoadRange*2 + 1)**3) {
+    console.error(`Number of active chunks does not match, expected ${(chunkLoadRange*2 + 1)**3}, got ${activeChunks.length}`);
+  }
+
   return [ chunks, activeChunks ]
 }
 
@@ -419,35 +423,37 @@ function loadChunk(scene, chunks, chunk, state=true) {
   const chunkData = chunks[chunk];
   if (chunkData) {
     if (state) {
-      const [genes, inlierCount, outlierCount, ...meshes] = chunkData;
+      const [genes, inlierCount, outlierCount, meshes] = chunkData;
 
-      for (const mesh of meshes) {
-        mesh?.dispose();
+      for (const [key, mesh] of meshes) {
+        mesh.dispose();
+        meshes.delete(key);
       }
 
-      chunkData[3] = create3DGridFromChunk(scene, chunk);
+      meshes.set("grid", create3DGridFromChunk(scene, chunk));
 
       // data points -- spheres
       const sphereDimensionsBuffer = new Float32Array(16 * inlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const sphereColorBuffer = new Float32Array(4 * inlierCount); // rgba
       if (sphereColorBuffer.length > 0) { // false if all members are outliers
-        chunkData[4] = Mesh.Sphere(scene);
+        meshes.set("inliers", Mesh.Sphere(scene));
       }
 
       // outliers -- octahedrons
       const octDimensionsBuffer = new Float32Array(16 * outlierCount); // the translation buffer for one position takes 16 entries (it is a 4x4 rotation matrix)
       const octColorBuffer = new Float32Array(4 * outlierCount); // rgba
       if (outlierCount > 0) {
-        chunkData[5] = Mesh.Octahedron(scene)
-        chunkData[5].enableEdgesRendering();
-        chunkData[5].edgesWidth = config.get("defaultDiameter") * 12;
-        chunkData[5].edgesColor = Color(0, 0, 0, 1); // Black edges
-        chunkData[5].edgesShareWithThinInstances = true;
+        const mesh = Mesh.Octahedron(scene);
+        mesh.enableEdgesRendering();
+        mesh.edgesWidth = config.get("defaultDiameter") * 12;
+        mesh.edgesColor = Color(0, 0, 0, 1); // Black edges
+        mesh.edgesShareWithThinInstances = true;
+        meshes.set("outliers", mesh);
       }
 
       let inlierIndex = 0;
       let outlierIndex = 0;
-      for (const [family, [inliers, outliers]] of genes.entries()) {
+      for (const [family, [inliers, outliers]] of genes) {
         const familyColor = Color.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family));
         for (const geneIndex of inliers) {
           const diameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
@@ -480,22 +486,23 @@ function loadChunk(scene, chunks, chunk, state=true) {
         console.error("Misfilled buffers", inlierIndex, inlierCount, outlierIndex, outlierCount);
       }
 
-      chunkData[4]?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
-      chunkData[4]?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
-      chunkData[5]?.thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
-      chunkData[5]?.thinInstanceSetBuffer("color", octColorBuffer, 4);
+      meshes.get("inliers")?.thinInstanceSetBuffer("matrix", sphereDimensionsBuffer, 16);
+      meshes.get("inliers")?.thinInstanceSetBuffer("color", sphereColorBuffer, 4);
+      meshes.get("outliers")?.thinInstanceSetBuffer("matrix", octDimensionsBuffer, 16);
+      meshes.get("outliers")?.thinInstanceSetBuffer("color", octColorBuffer, 4);
     } else {
       if (chunkData[0].size > 0) {
-        for (let i = chunkData.length - 3; i < chunkData.length; i++) {
-          chunkData[i]?.dispose();
-          chunkData[i] = null;
+        const meshes = chunkData[3];
+        for (const [key, mesh] of meshes) {
+          mesh.dispose();
+          meshes.delete(key);
         }
       } else {
         delete chunks[chunk];
       }
     }
   } else {
-    chunks[chunk] = [new Map(), 0, 0, create3DGridFromChunk(scene, chunk), null, null];
+    chunks[chunk] = [new Map(), 0, 0, new Map([ ["grid", create3DGridFromChunk(scene, chunk)] ])];
   }
 }
 
