@@ -21,10 +21,8 @@ export function getChunks(scene) {
       this.tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]
       this.families = config.get("shownFamilies") ?? dataHandler.families;
       
-      const posX = this.scene.activeCamera.position.x;
-      const posY = this.scene.activeCamera.position.y;
-      const posZ = this.scene.activeCamera.position.z;
-      this.currentChunkCentroid = getChunkCentroid([posX, posY, posZ], this.diameter);
+      const position = this.scene.activeCamera.position.asArray();
+      this.currentChunkCentroid = getChunkCentroid(position, this.diameter);
 
       // Loop through each family available in the data handler.
       // For each family, iterate through the genes for specific tissues
@@ -54,26 +52,7 @@ export function getChunks(scene) {
         }
       }
 
-      this.active = [];
-      const offset = this.sight + this.diameter / 2;
-      for (let x = posX - offset; x <= posX + offset; x+=this.diameter) {
-        for (let y = posY - offset; y <= posY + offset; y+=this.diameter) {
-          for (let z = posZ - offset; z <= posZ + offset; z+=this.diameter) {
-            const centroid = getChunkCentroid([x, y, z], this.diameter);
-            if (
-              Math.abs(centroid[0] - posX) < this.sight &&
-              Math.abs(centroid[1] - posY) < this.sight &&
-              Math.abs(centroid[2] - posZ) < this.sight
-            ) {
-              this.active.push(centroid.toString());
-            }
-          }
-        }
-      }
-
-      if (this.active.length !== (this.loadRange*2 + 1)**3) {
-        console.error(`Number of active chunks does not match, expected ${(this.loadRange*2 + 1)**3}, got ${this.active.length}`);
-      }
+      this.active = calcActiveChunks(this, position);
     },
     load(state=true, centroid) {
       let chunks;
@@ -179,11 +158,31 @@ export function getChunks(scene) {
   return chunks;
 }
 
-function registerLoading(chunks) {
-  // Temporary array used to compute the centroid for chunks that need updating.
-  // This array is reused within the render loop for efficiency.
-  const triggeredChunkCentroid = [0, 0, 0];
+function calcActiveChunks(chunks, [posX, posY, posZ]) {
+  const activeChunks = [];
+  const offset = chunks.sight + chunks.diameter / 2;
+  for (let x = posX - offset; x <= posX + offset; x+=chunks.diameter) {
+    for (let y = posY - offset; y <= posY + offset; y+=chunks.diameter) {
+      for (let z = posZ - offset; z <= posZ + offset; z+=chunks.diameter) {
+        const centroid = getChunkCentroid([x, y, z], chunks.diameter);
+        if (
+          Math.abs(centroid[0] - posX) < chunks.sight &&
+          Math.abs(centroid[1] - posY) < chunks.sight &&
+          Math.abs(centroid[2] - posZ) < chunks.sight
+        ) {
+          activeChunks.push(centroid.toString());
+        }
+      }
+    }
+  }
 
+  if (activeChunks.length !== (chunks.loadRange*2 + 1)**3) {
+    console.error(`Number of active chunks does not match, expected ${(chunks.loadRange*2 + 1)**3}, got ${activeChunks.length}`);
+  }
+  return activeChunks;
+}
+
+function registerLoading(chunks) {
   /**
    * Register a callback that fires before every render.
    * This callback compares the current chunk centroid (from config)
@@ -195,56 +194,21 @@ function registerLoading(chunks) {
       [ chunks.scene.activeCamera.position.x, chunks.scene.activeCamera.position.y, chunks.scene.activeCamera.position.z ],
       chunks.diameter
     );
-    const farthestChunkDist = chunks.diameter * chunks.loadRange;
 
-    // Loop through each axis (x, y, z) and detect any change in the chunk centroid.
-    // If a change is detected along an axis, adjust chunks along that axis.
-    chunks.currentChunkCentroid.forEach((axis, i) => {
-      const currentAxis = newChunkCentroid[i];
-      // Only proceed if the coordinate along this axis has changed.
-      if (currentAxis !== axis) {
-
-        // Determine the direction of movement on the changed axis.
-        // If currentAxis > axis then we are moving positively (direction = 1) else negatively (direction = -1).
-        const direction = currentAxis > axis ? 1 : -1;
-
-        // Loop over all possible offsets on the remaining two axes (j and k)
-        // covering the range from -farthestChunkDist to farthestChunkDist (in steps of chunkDiameter).
-        for (let aAxis = -farthestChunkDist; aAxis <= farthestChunkDist; aAxis += chunks.diameter) {
-          // Calculate the index for the first non-changing axis.
-          const j = (i + 1) % 3;
-          triggeredChunkCentroid[j] = chunks.currentChunkCentroid[j] + aAxis;
-          for (let bAxis = -farthestChunkDist; bAxis <= farthestChunkDist; bAxis += chunks.diameter) {
-            // Calculate the index for the second non-changing axis.
-            const k = (i + 2) % 3;
-            triggeredChunkCentroid[k] = chunks.currentChunkCentroid[k] + bAxis;
-
-            // For the changing axis, first compute the position for the chunk that should be loaded,
-            // i.e. the new chunk in range along this axis.
-            triggeredChunkCentroid[i] = currentAxis + direction * farthestChunkDist;
-            // Call loadChunk with a flag "true" to enable the chunk.
-            chunks.load(true, triggeredChunkCentroid.toString());
-            chunks.active.push(triggeredChunkCentroid.toString());
-
-            // Next, compute the position for the chunk that should be disabled,
-            // i.e. the chunk that is no longer within range, so on the complementary side.
-            triggeredChunkCentroid[i] = axis - direction * farthestChunkDist;
-            // Call loadChunk with the flag "false" to disable the chunk.
-            chunks.load(false, triggeredChunkCentroid.toString());
-            const chunkIndex = chunks.active.indexOf(triggeredChunkCentroid.toString());
-            if (chunkIndex !== -1) {
-              chunks.active.splice(chunkIndex, 1);
-            }
-          }
+    if (!chunks.currentChunkCentroid.every((axis, i) => axis === newChunkCentroid[i])) {
+      const newActive = calcActiveChunks(chunks, newChunkCentroid);
+      newActive.forEach((centroid) => {
+        if (!chunks.active.includes(centroid)) {
+          chunks.load(true, centroid);
         }
-      }
-    });
-
-    // Update the chunkCentroid to the current value for use in the next frame.
-    chunks.currentChunkCentroid = newChunkCentroid;
-
-    if (chunks.active.length !== (chunks.loadRange*2 + 1)**3) {
-      console.error(`Number of active chunks does not match, expected ${(chunks.loadRange*2 + 1)**3}, got ${chunks.active.length}`);
+      });
+      chunks.active.forEach((centroid, i) => {
+        if (!newActive.includes(centroid)) {
+          chunks.load(false, centroid);
+        }
+      });
+      chunks.active = newActive;
+      chunks.currentChunkCentroid = newChunkCentroid;
     }
   });
 }
