@@ -1,28 +1,25 @@
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(stringr)
+library(purrr)
+library(Matrix) 
 library(tidytext)
 library(text2vec)
 library(irlba)
 
 # 1. load annotation table
-ann <- readRDS("/media/BioNAS/ag_hallab/Tensor_Omics/Protein_Function_Prediction/material/annotation_table.rds")
+ann <- readRDS("./material/annotation_table.rds")
 
 # 2. Create each corpus to handle them indipendently
 # GOA corpus: one doc per GO term name
 corpus_GO <- ann$GOA_label
 
-# IPR corpus: combine entry description + annotation
-corpus_IPR <- paste(
-  ann$interpro_entry_description %||% "",
-  ann$interpro_annotation %||% "",
-  sep = " "
-)
+# IPR corpus
+corpus_IPR <- ann$description
 
-# HRD corpus: combine SwissProt + TrEMBL descriptions
-corpus_HRD <- paste(
-  ann$swissprot_hrd  %||% "",
-  ann$trembl_hrd     %||% "",
-  sep = " "
-)
+# HRD corpus
+corpus_HRD <- ann$hrd
 
 corpora <- list(GO = corpus_GO,
                 IPR = corpus_IPR,
@@ -64,9 +61,11 @@ build_axes <- function(docs, name) {
   # co‐occurrence = t(it) %*% it
   cooc <- crossprod(it)
 
-  # 8. SVD on cooc, keep components explaining ≥80% variance
+  # 8. SVD on cooc, keep components explaining >80% variance
   #    use irlba for speed
-  sv <- irlba(cooc, nv = 50)     # start with 50 components
+  nv <- min(50, nrow(cooc) - 1, ncol(cooc) - 1)
+  if (nv < 1) stop("Co-occurrence matrix too small for SVD.")
+  sv <- irlba(cooc, nv = nv)
   vars <- sv$d^2 / sum(sv$d^2)
   k <- min(which(cumsum(vars) >= 0.80))
   U  <- sv$u[, 1:k]              # eigenword vectors
@@ -114,7 +113,7 @@ build_axes <- function(docs, name) {
 }
 
 # run for all three corpora
-axes <- map(corpora, build_axes)
+axes <- map2(corpora, names(corpora), build_axes)
 
 # save result
 saveRDS(axes, "lexical_axes_GO_IPR_HRD.rds")
