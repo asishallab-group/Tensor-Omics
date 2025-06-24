@@ -21,13 +21,15 @@ import {
  * @param {BABYLON.Scene} scene - The BabylonJS scene in which to plot the data.
  */
 function plotData(scene) {
-  const chunks = getChunks(scene);
-
   setupSelectionMesh(scene);
+  setupFamilyHullMesh(scene);
+
+  const chunks = getChunks(scene);
 
   document.addEventListener("chunkReload", (evt) => {
     chunks.recalculate();
     chunks.load();
+    scene.getMeshByName("hull").TOX_update();
     scene.getMeshByName("meshSelectedPoints").TOX_update();
   })
 
@@ -56,6 +58,72 @@ function plotData(scene) {
         break;
     }
   });
+}
+
+function setupFamilyHullMesh(scene) {
+  const hull = BABYLON.MeshBuilder.CreateIcoSphere("hull", {radius: 1, subdivisions: 2}, scene);
+  hull.material=new Material(scene);
+  hull.material.wireframe = true;
+  hull.scaling = Vector(0, 0, 0);
+
+  hull.TOX_create = function (family) {
+    hull.TOX_remove(family);
+    const scale = config.get("scale");
+    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+    const instance = this.createInstance(family);
+    const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
+
+    const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+    tissues ??= [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+    let farthestSpherePos = centroid;
+    let secondFarthestSpherePos = farthestSpherePos;
+    let farthestDist = 0;
+    let secondFarthestDist = farthestDist;
+    const geneCount = dataHandler.getGeneCount(family);
+    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+      if (!is_outlier) {
+        const genePos = Vector(...coordinates.map(v => v*scale));
+        const distance = calcVectorDistance(centroid, genePos)
+        if (distance > farthestDist) {
+          secondFarthestDist = farthestDist;
+          secondFarthestSpherePos = farthestSpherePos;
+          farthestDist = distance;
+          farthestSpherePos = genePos;
+        } else if (distance > secondFarthestDist) {
+          secondFarthestDist = distance;
+          secondFarthestSpherePos = genePos;
+        }
+      }
+    }
+
+    instance.position = centroid;
+    const length = farthestDist + sphereDiameter;
+    const width = Math.max(length / 2, secondFarthestDist + sphereDiameter)
+    instance.scaling.z = length;
+    instance.scaling.y = width;
+    instance.scaling.x = width;
+    instance.lookAt(farthestSpherePos);
+  }
+  hull.TOX_remove = function (family) {
+    const targets = this.instances.filter(i => (family === undefined) || (i.name === family));
+    for (const instance of targets) {
+      instance.dispose();
+    }
+    return targets.length;
+  }
+  hull.TOX_update = function () {
+    for (const instance of [...this.instances]) {
+      this.TOX_create(instance.name);
+    }
+  }
+  for (const family of config.get("shownFamilies")?.slice(-2,-1) ?? []) {
+    hull.TOX_create(family)
+    const centroids = Mesh.Sphere(scene, "centroid", {diameter: 1});
+    centroids.position = Vector(...dataHandler.getCentroid(family, ...[config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]).map(v=>v*config.get("scale")))
+    centroids.material = Material(scene, null, Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2))
+    Mesh.setColor(hull, centroids.material.diffuseColor)
+  }
 }
 
 function setupSelectionMesh(scene) {

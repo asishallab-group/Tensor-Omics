@@ -17,18 +17,18 @@ export const Mesh = {
 Object.freeze(Mesh);
 
 
-export function Vector(x, y, z) {
+export function Vector(x=0, y=0, z=0) {
   return new BABYLON.Vector3(x, y, z);
 }
 
 export function OrbitCam(scene, name) {
-  const cam = new BABYLON.ArcRotateCamera(name, null, null, 10, Vector(0, 0, 0), scene);
+  const cam = new BABYLON.ArcRotateCamera(name, null, null, 10, Vector(), scene);
   cam.lowerRadiusLimit = 1;
   return cam;
 }
 
 export function UniversalCam(scene, name) {
-  return new BABYLON.UniversalCamera(name, Vector(0, 0, 0), scene);
+  return new BABYLON.UniversalCamera(name, Vector(), scene);
 }
 
 export function calcVectorDistance(v1, v2) {
