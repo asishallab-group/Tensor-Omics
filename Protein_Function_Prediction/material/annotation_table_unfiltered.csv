@@ -1,0 +1,187 @@
+"","protein_id","description","GOA_label","hrd"
+"1","A0A4Q6GZX1","Flagellar hook-associated protein 1","bacterial-type flagellum assembly",NA
+"2","A0A4Q6GZX1","Flagellar hook-associated protein 1","structural molecule activity",NA
+"3","A0A4Q6GZX1","Flagellar hook-associated protein 1","bacterial-type flagellum hook",NA
+"4","A0A4Q6GZX1","Flagellar hook-associated protein 1","extracellular region",NA
+"5","A0A4Q6GZX1","Flagellar hook-associated protein 1","bacterial-type flagellum",NA
+"6","A0A4Q6GZX1","Flagellar basal-body/hook protein, C-terminal domain","bacterial-type flagellum assembly",NA
+"7","A0A4Q6GZX1","Flagellar basal-body/hook protein, C-terminal domain","structural molecule activity",NA
+"8","A0A4Q6GZX1","Flagellar basal-body/hook protein, C-terminal domain","bacterial-type flagellum hook",NA
+"9","A0A4Q6GZX1","Flagellar basal-body/hook protein, C-terminal domain","extracellular region",NA
+"10","A0A4Q6GZX1","Flagellar basal-body/hook protein, C-terminal domain","bacterial-type flagellum",NA
+"11","A0A4Q6GZX1","Flagellar hook-associated protein 1, D2-like domain","bacterial-type flagellum assembly",NA
+"12","A0A4Q6GZX1","Flagellar hook-associated protein 1, D2-like domain","structural molecule activity",NA
+"13","A0A4Q6GZX1","Flagellar hook-associated protein 1, D2-like domain","bacterial-type flagellum hook",NA
+"14","A0A4Q6GZX1","Flagellar hook-associated protein 1, D2-like domain","extracellular region",NA
+"15","A0A4Q6GZX1","Flagellar hook-associated protein 1, D2-like domain","bacterial-type flagellum",NA
+"16","A0A4Q6GZX1","Flagellar hook-associated protein 1, D3 domain","bacterial-type flagellum assembly",NA
+"17","A0A4Q6GZX1","Flagellar hook-associated protein 1, D3 domain","structural molecule activity",NA
+"18","A0A4Q6GZX1","Flagellar hook-associated protein 1, D3 domain","bacterial-type flagellum hook",NA
+"19","A0A4Q6GZX1","Flagellar hook-associated protein 1, D3 domain","extracellular region",NA
+"20","A0A4Q6GZX1","Flagellar hook-associated protein 1, D3 domain","bacterial-type flagellum",NA
+"21","A0A4Q6GZX1","Flagellar hook-associated protein FlgK, helical domain","bacterial-type flagellum assembly",NA
+"22","A0A4Q6GZX1","Flagellar hook-associated protein FlgK, helical domain","structural molecule activity",NA
+"23","A0A4Q6GZX1","Flagellar hook-associated protein FlgK, helical domain","bacterial-type flagellum hook",NA
+"24","A0A4Q6GZX1","Flagellar hook-associated protein FlgK, helical domain","extracellular region",NA
+"25","A0A4Q6GZX1","Flagellar hook-associated protein FlgK, helical domain","bacterial-type flagellum",NA
+"26","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","cytosol",NA
+"27","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","ATP binding",NA
+"28","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","cytoplasm",NA
+"29","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","glycine-tRNA ligase activity",NA
+"30","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","glycyl-tRNA aminoacylation",NA
+"31","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","nucleotide binding",NA
+"32","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","ligase activity",NA
+"33","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","aminoacyl-tRNA ligase activity",NA
+"34","A0A4Q6GZX3","Glycine-tRNA ligase, alpha subunit","translation",NA
+"35","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","cytosol",NA
+"36","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","ATP binding",NA
+"37","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","cytoplasm",NA
+"38","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","glycine-tRNA ligase activity",NA
+"39","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","glycyl-tRNA aminoacylation",NA
+"40","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","nucleotide binding",NA
+"41","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","ligase activity",NA
+"42","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","aminoacyl-tRNA ligase activity",NA
+"43","A0A4Q6GZX3","Glycine-tRNA synthetase, heterodimeric","translation",NA
+"44","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","cytosol",NA
+"45","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","ATP binding",NA
+"46","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","cytoplasm",NA
+"47","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","glycine-tRNA ligase activity",NA
+"48","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","glycyl-tRNA aminoacylation",NA
+"49","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","nucleotide binding",NA
+"50","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","ligase activity",NA
+"51","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","aminoacyl-tRNA ligase activity",NA
+"52","A0A4Q6GZX3","Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)","translation",NA
+"53","Q6GZX3","Pox virus entry-fusion-complex G9/A16","host cell membrane","Uncharacterized protein 002L"
+"54","Q6GZX3","Pox virus entry-fusion-complex G9/A16","membrane","Uncharacterized protein 002L"
+"55","Q6GZX4","Poxvirus VLTF3, late transcription factor","regulation of viral transcription","Putative transcription factor 001R"
+"56","A0A0E9LU99","Magnesium chelatase ChlI-like, catalytic domain","ATP binding",NA
+"57","A0A0E9LU99","Magnesium chelatase ChlI-like, catalytic domain","DNA binding",NA
+"58","A0A0E9LU99","Magnesium chelatase ChlI-like, catalytic domain","nucleotide binding",NA
+"59","A0A0E9LU99","MCM domain","ATP binding",NA
+"60","A0A0E9LU99","MCM domain","DNA binding",NA
+"61","A0A0E9LU99","MCM domain","nucleotide binding",NA
+"62","A0A0E9LU99","AAA+ ATPase domain","ATP binding",NA
+"63","A0A0E9LU99","AAA+ ATPase domain","DNA binding",NA
+"64","A0A0E9LU99","AAA+ ATPase domain","nucleotide binding",NA
+"65","A0A0E9LU99","Mg chelatase-related protein","ATP binding",NA
+"66","A0A0E9LU99","Mg chelatase-related protein","DNA binding",NA
+"67","A0A0E9LU99","Mg chelatase-related protein","nucleotide binding",NA
+"68","A0A0E9LU99","Small ribosomal subunit protein uS5 domain 2-type fold, subgroup","ATP binding",NA
+"69","A0A0E9LU99","Small ribosomal subunit protein uS5 domain 2-type fold, subgroup","DNA binding",NA
+"70","A0A0E9LU99","Small ribosomal subunit protein uS5 domain 2-type fold, subgroup","nucleotide binding",NA
+"71","A0A0E9LU99","Ribosomal protein uS5 domain 2-type superfamily","ATP binding",NA
+"72","A0A0E9LU99","Ribosomal protein uS5 domain 2-type superfamily","DNA binding",NA
+"73","A0A0E9LU99","Ribosomal protein uS5 domain 2-type superfamily","nucleotide binding",NA
+"74","A0A0E9LU99","Mg chelatase-related protein, C-terminal domain","ATP binding",NA
+"75","A0A0E9LU99","Mg chelatase-related protein, C-terminal domain","DNA binding",NA
+"76","A0A0E9LU99","Mg chelatase-related protein, C-terminal domain","nucleotide binding",NA
+"77","A0A0E9LU99","P-loop containing nucleoside triphosphate hydrolase","ATP binding",NA
+"78","A0A0E9LU99","P-loop containing nucleoside triphosphate hydrolase","DNA binding",NA
+"79","A0A0E9LU99","P-loop containing nucleoside triphosphate hydrolase","nucleotide binding",NA
+"80","A0A0E9LU99","Magnesium-chelatase subunit ChlI-like","ATP binding",NA
+"81","A0A0E9LU99","Magnesium-chelatase subunit ChlI-like","DNA binding",NA
+"82","A0A0E9LU99","Magnesium-chelatase subunit ChlI-like","nucleotide binding",NA
+"83","A0A2D3I253","Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal","methanogenesis","Methyl coenzyme M reductase (Fragment)"
+"84","A0A2D3I253","Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal","coenzyme-B sulfoethylthiotransferase activity","Methyl coenzyme M reductase (Fragment)"
+"85","A0A2D3I253","Methyl-coenzyme M reductase, alpha subunit, C-terminal","methanogenesis","Methyl coenzyme M reductase (Fragment)"
+"86","A0A2D3I253","Methyl-coenzyme M reductase, alpha subunit, C-terminal","coenzyme-B sulfoethylthiotransferase activity","Methyl coenzyme M reductase (Fragment)"
+"87","A0A2E9LU99","Metal-dependent hydrolase, composite domain superfamily","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds",NA
+"88","A0A2E9LU99","Metal-dependent hydrolase, composite domain superfamily","hydrolase activity",NA
+"89","A0A2E9LU99","Amidohydrolase 3","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds",NA
+"90","A0A2E9LU99","Amidohydrolase 3","hydrolase activity",NA
+"91","A0A2E9LU99","Metal-dependent hydrolase","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds",NA
+"92","A0A2E9LU99","Metal-dependent hydrolase","hydrolase activity",NA
+"93","A0A2E9LU99","YtcJ like","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds",NA
+"94","A0A2E9LU99","YtcJ like","hydrolase activity",NA
+"95","A0A7C4TL18","Large ribosomal subunit protein eL39","ribosome","Large ribosomal subunit protein eL39"
+"96","A0A7C4TL18","Large ribosomal subunit protein eL39","translation","Large ribosomal subunit protein eL39"
+"97","A0A7C4TL18","Large ribosomal subunit protein eL39","structural constituent of ribosome","Large ribosomal subunit protein eL39"
+"98","A0A7C4TL18","Large ribosomal subunit protein eL39","ribonucleoprotein complex","Large ribosomal subunit protein eL39"
+"99","A0A7C4TL18","Large ribosomal subunit protein eL39, conserved site","ribosome","Large ribosomal subunit protein eL39"
+"100","A0A7C4TL18","Large ribosomal subunit protein eL39, conserved site","translation","Large ribosomal subunit protein eL39"
+"101","A0A7C4TL18","Large ribosomal subunit protein eL39, conserved site","structural constituent of ribosome","Large ribosomal subunit protein eL39"
+"102","A0A7C4TL18","Large ribosomal subunit protein eL39, conserved site","ribonucleoprotein complex","Large ribosomal subunit protein eL39"
+"103","A0A7C4TL18","Large ribosomal subunit protein eL39 domain superfamily","ribosome","Large ribosomal subunit protein eL39"
+"104","A0A7C4TL18","Large ribosomal subunit protein eL39 domain superfamily","translation","Large ribosomal subunit protein eL39"
+"105","A0A7C4TL18","Large ribosomal subunit protein eL39 domain superfamily","structural constituent of ribosome","Large ribosomal subunit protein eL39"
+"106","A0A7C4TL18","Large ribosomal subunit protein eL39 domain superfamily","ribonucleoprotein complex","Large ribosomal subunit protein eL39"
+"107","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","tRNA transcription by RNA polymerase III","DNA-directed RNA polymerase subunit Rpo5"
+"108","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","transcription elongation by RNA polymerase I","DNA-directed RNA polymerase subunit Rpo5"
+"109","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","transcription by RNA polymerase II","DNA-directed RNA polymerase subunit Rpo5"
+"110","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","DNA-directed RNA polymerase activity","DNA-directed RNA polymerase subunit Rpo5"
+"111","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","DNA-templated transcription","DNA-directed RNA polymerase subunit Rpo5"
+"112","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","DNA binding","DNA-directed RNA polymerase subunit Rpo5"
+"113","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","transferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"114","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","nucleotidyltransferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"115","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","cytoplasm","DNA-directed RNA polymerase subunit Rpo5"
+"116","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5 C-terminal","DNA-directed RNA polymerase complex","DNA-directed RNA polymerase subunit Rpo5"
+"117","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","tRNA transcription by RNA polymerase III","DNA-directed RNA polymerase subunit Rpo5"
+"118","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","transcription elongation by RNA polymerase I","DNA-directed RNA polymerase subunit Rpo5"
+"119","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","transcription by RNA polymerase II","DNA-directed RNA polymerase subunit Rpo5"
+"120","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","DNA-directed RNA polymerase activity","DNA-directed RNA polymerase subunit Rpo5"
+"121","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","DNA-templated transcription","DNA-directed RNA polymerase subunit Rpo5"
+"122","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","DNA binding","DNA-directed RNA polymerase subunit Rpo5"
+"123","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","transferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"124","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","nucleotidyltransferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"125","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","cytoplasm","DNA-directed RNA polymerase subunit Rpo5"
+"126","A0A7C4TSV9","DNA-directed RNA polymerase subunit Rpo5/Rpb5","DNA-directed RNA polymerase complex","DNA-directed RNA polymerase subunit Rpo5"
+"127","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","tRNA transcription by RNA polymerase III","DNA-directed RNA polymerase subunit Rpo5"
+"128","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","transcription elongation by RNA polymerase I","DNA-directed RNA polymerase subunit Rpo5"
+"129","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","transcription by RNA polymerase II","DNA-directed RNA polymerase subunit Rpo5"
+"130","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","DNA-directed RNA polymerase activity","DNA-directed RNA polymerase subunit Rpo5"
+"131","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","DNA-templated transcription","DNA-directed RNA polymerase subunit Rpo5"
+"132","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","DNA binding","DNA-directed RNA polymerase subunit Rpo5"
+"133","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","transferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"134","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","nucleotidyltransferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"135","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","cytoplasm","DNA-directed RNA polymerase subunit Rpo5"
+"136","A0A7C4TSV9","RNA polymerase, subunit H/Rpb5, conserved site","DNA-directed RNA polymerase complex","DNA-directed RNA polymerase subunit Rpo5"
+"137","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","tRNA transcription by RNA polymerase III","DNA-directed RNA polymerase subunit Rpo5"
+"138","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","transcription elongation by RNA polymerase I","DNA-directed RNA polymerase subunit Rpo5"
+"139","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","transcription by RNA polymerase II","DNA-directed RNA polymerase subunit Rpo5"
+"140","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","DNA-directed RNA polymerase activity","DNA-directed RNA polymerase subunit Rpo5"
+"141","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","DNA-templated transcription","DNA-directed RNA polymerase subunit Rpo5"
+"142","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","DNA binding","DNA-directed RNA polymerase subunit Rpo5"
+"143","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","transferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"144","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","nucleotidyltransferase activity","DNA-directed RNA polymerase subunit Rpo5"
+"145","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","cytoplasm","DNA-directed RNA polymerase subunit Rpo5"
+"146","A0A7C4TSV9","RPB5-like RNA polymerase subunit superfamily","DNA-directed RNA polymerase complex","DNA-directed RNA polymerase subunit Rpo5"
+"147","A0A7C4XJF3","CTAG/Pcc1 family",NA,"KEOPS complex Pcc1-like subunit"
+"148","A0A7C4XVX2","Metal-dependent hydrolase, composite domain superfamily","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds","Formylmethanofuran dehydrogenase subunit A"
+"149","A0A7C4XVX2","Metal-dependent hydrolase, composite domain superfamily","hydrolase activity","Formylmethanofuran dehydrogenase subunit A"
+"150","A0A7C4XVX2","Formylmethanofuran dehydrogenase, subunit A","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds","Formylmethanofuran dehydrogenase subunit A"
+"151","A0A7C4XVX2","Formylmethanofuran dehydrogenase, subunit A","hydrolase activity","Formylmethanofuran dehydrogenase subunit A"
+"152","A0A7C4XVX2","Amidohydrolase 3","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds","Formylmethanofuran dehydrogenase subunit A"
+"153","A0A7C4XVX2","Amidohydrolase 3","hydrolase activity","Formylmethanofuran dehydrogenase subunit A"
+"154","A0A7C4XVX2","Metal-dependent hydrolase","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds","Formylmethanofuran dehydrogenase subunit A"
+"155","A0A7C4XVX2","Metal-dependent hydrolase","hydrolase activity","Formylmethanofuran dehydrogenase subunit A"
+"156","A0A7C4XVX2","Metallo-dependent Hydrolases Superfamily","hydrolase activity, acting on carbon-nitrogen (but not peptide) bonds","Formylmethanofuran dehydrogenase subunit A"
+"157","A0A7C4XVX2","Metallo-dependent Hydrolases Superfamily","hydrolase activity","Formylmethanofuran dehydrogenase subunit A"
+"158","A0A7C4XW10","NifH/frxC family","ATP binding","Nitrogenase iron protein"
+"159","A0A7C4XW10","NifH/frxC family","oxidoreductase activity","Nitrogenase iron protein"
+"160","A0A7C4XW10","NifH/frxC family","metal ion binding","Nitrogenase iron protein"
+"161","A0A7C4XW10","NifH/frxC family","iron-sulfur cluster binding","Nitrogenase iron protein"
+"162","A0A7C4XW10","NifH/frxC family","nucleotide binding","Nitrogenase iron protein"
+"163","A0A7C4XW10","P-loop containing nucleoside triphosphate hydrolase","ATP binding","Nitrogenase iron protein"
+"164","A0A7C4XW10","P-loop containing nucleoside triphosphate hydrolase","oxidoreductase activity","Nitrogenase iron protein"
+"165","A0A7C4XW10","P-loop containing nucleoside triphosphate hydrolase","metal ion binding","Nitrogenase iron protein"
+"166","A0A7C4XW10","P-loop containing nucleoside triphosphate hydrolase","iron-sulfur cluster binding","Nitrogenase iron protein"
+"167","A0A7C4XW10","P-loop containing nucleoside triphosphate hydrolase","nucleotide binding","Nitrogenase iron protein"
+"168","A0A7C4XW10","D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1","ATP binding","Nitrogenase iron protein"
+"169","A0A7C4XW10","D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1","oxidoreductase activity","Nitrogenase iron protein"
+"170","A0A7C4XW10","D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1","metal ion binding","Nitrogenase iron protein"
+"171","A0A7C4XW10","D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1","iron-sulfur cluster binding","Nitrogenase iron protein"
+"172","A0A7C4XW10","D-isomer specific 2-hydroxyacid dehydrogenase, NAD-binding domain conserved site 1","nucleotide binding","Nitrogenase iron protein"
+"173","A0A7C4XW10","NifH/chlL conserved site","ATP binding","Nitrogenase iron protein"
+"174","A0A7C4XW10","NifH/chlL conserved site","oxidoreductase activity","Nitrogenase iron protein"
+"175","A0A7C4XW10","NifH/chlL conserved site","metal ion binding","Nitrogenase iron protein"
+"176","A0A7C4XW10","NifH/chlL conserved site","iron-sulfur cluster binding","Nitrogenase iron protein"
+"177","A0A7C4XW10","NifH/chlL conserved site","nucleotide binding","Nitrogenase iron protein"
+"178","A0AAE9LU99","Enoyl-CoA hydratase/isomerase","catalytic activity",NA
+"179","A0AAE9LU99","Enoyl-CoA hydratase, C-terminal","catalytic activity",NA
+"180","A0AAE9LU99","Enoyl-CoA hydratase/isomerase, conserved site","catalytic activity",NA
+"181","A0AAE9LU99","ClpP/crotonase-like domain superfamily","catalytic activity",NA
+"182","A0AAE9LU99","Enoyl-CoA Hydratase/Isomerase Domain-Containing Protein","catalytic activity",NA
+"183","E9LU99","Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal","methanogenesis","Methyl-coenzyme M reductase alpha (Fragment)"
+"184","E9LU99","Methyl-coenzyme M reductase, alpha/beta subunit, C-terminal","coenzyme-B sulfoethylthiotransferase activity","Methyl-coenzyme M reductase alpha (Fragment)"
+"185","E9LU99","Methyl-coenzyme M reductase, alpha subunit, C-terminal","methanogenesis","Methyl-coenzyme M reductase alpha (Fragment)"
+"186","E9LU99","Methyl-coenzyme M reductase, alpha subunit, C-terminal","coenzyme-B sulfoethylthiotransferase activity","Methyl-coenzyme M reductase alpha (Fragment)"
