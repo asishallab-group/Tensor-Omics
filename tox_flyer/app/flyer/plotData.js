@@ -62,9 +62,8 @@ function plotData(scene) {
 
 function setupFamilyHullMesh(scene) {
   const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3, orientation: Vector(0, 0, 1)}, scene);
-  hull.material=new Material(scene);
-  hull.material.wireframe = true;
-  hull.scaling = Vector();
+  hull.material = Material(scene, null, {wireframe: true});
+  Mesh.setSize(hull, 0);
 
   hull.TOX_create = function (family) {
     hull.TOX_remove(family);
@@ -147,7 +146,7 @@ function setupSelectionMesh(scene) {
   // disable as long as spheres are picked
   highlightLayer.isEnabled = false;
 
-  meshSelectedPoints.material = Material(scene, null, Color(0, 0, 0, 0));
+  meshSelectedPoints.material = Material(scene, null, {color: Color(0, 0, 0, 0)});
   Mesh.setSize(meshSelectedPoints, 0); // hide initial instance
   meshSelectedPoints.TOX_pick = function (family, geneIndex) {
     const scale = config.get("scale");
@@ -163,6 +162,7 @@ function setupSelectionMesh(scene) {
       instance.TOX_geneIndex = geneIndex;
       const diameter = is_outlier ? outlierDiameter : inlierDiameter;
       Mesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
+      instance.freezeWorldMatrix();
     }
     this.TOX_unpick(family, geneIndex);
 

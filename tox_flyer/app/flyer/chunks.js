@@ -315,5 +315,7 @@ function create3DGridFromCentroidString(chunks, centroid) {
 
   const grid = BABYLON.MeshBuilder.CreateLineSystem(null, { lines }, chunks.scene);
   grid.color = Color(.5, .5, .5);
+  grid.freezeWorldMatrix();
+  grid.isPickable = false; 
   return grid;
 }

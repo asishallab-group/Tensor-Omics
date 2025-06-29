@@ -1,25 +1,35 @@
-"use strict"
-export const Mesh = {
-  Sphere(scene, name, options={}) {
-    return BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16, ...options }, scene);
-  },
-  Octahedron(scene, name) {
-    return BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
-  },
-  setColor(sphere, color) {
-    sphere.material.diffuseColor = typeof color === "string" ? Color.FromHexString(color) : color;
-    sphere.material.alpha = sphere.material.diffuseColor.a;
-  },
-  setSize(sphere, diameter) {
-    sphere.scaling = Vector(diameter, diameter, diameter);
-  }
-};
-Object.freeze(Mesh);
-
+"use strict";
 
 export function Vector(x=0, y=0, z=0) {
   return new BABYLON.Vector3(x, y, z);
 }
+
+export const Mesh = {
+  Sphere(scene, name, options={}) {
+    const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16, ...options }, scene);
+    mesh.isPickable = false;
+    mesh.freezeWorldMatrix();
+    return mesh;
+  },
+  Octahedron(scene, name) {
+    const mesh = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
+    mesh.isPickable = false;
+    mesh.freezeWorldMatrix();
+    return mesh;
+  },
+  setColor(sphere, color) {
+    sphere.material.unfreeze();
+    sphere.material.diffuseColor = typeof color === "string" ? Color.FromHexString(color) : color;
+    sphere.material.alpha = sphere.material.diffuseColor.a;
+    sphere.material.freeze();
+  },
+  setSize(sphere, diameter) {
+    sphere.unfreezeWorldMatrix();
+    sphere.scaling = Vector(diameter, diameter, diameter);
+    sphere.freezeWorldMatrix();
+  }
+};
+Object.freeze(Mesh);
 
 export function OrbitCam(scene, name) {
   const cam = new BABYLON.ArcRotateCamera(name, null, null, 10, Vector(), scene);
@@ -75,10 +85,14 @@ export function TransformNode(scene, name) {
   return new BABYLON.TransformNode(name, scene);
 }
 
-export function Material(scene, name, color) {
+export function Material(scene, name, options={}) {
   const material = new BABYLON.StandardMaterial(name, scene);
-  if (color) {
-    Mesh.setColor({material}, color);
+  if (options.color) {
+    Mesh.setColor({material}, options.color);
   }
+  if (options.wireframe) {
+    material.wireframe = true;
+  }
+  material.freeze();
   return material;
 }
