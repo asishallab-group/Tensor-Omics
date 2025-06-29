@@ -61,10 +61,10 @@ function plotData(scene) {
 }
 
 function setupFamilyHullMesh(scene) {
-  const hull = BABYLON.MeshBuilder.CreateIcoSphere("hull", {radius: 1, subdivisions: 2}, scene);
+  const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3, orientation: Vector(0, 0, 1)}, scene);
   hull.material=new Material(scene);
   hull.material.wireframe = true;
-  hull.scaling = Vector(0, 0, 0);
+  hull.scaling = Vector();
 
   hull.TOX_create = function (family) {
     hull.TOX_remove(family);
@@ -76,9 +76,7 @@ function setupFamilyHullMesh(scene) {
     const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
     tissues ??= [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
     let farthestSpherePos = centroid;
-    let secondFarthestSpherePos = farthestSpherePos;
     let farthestDist = 0;
-    let secondFarthestDist = farthestDist;
     const geneCount = dataHandler.getGeneCount(family);
     for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
       const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
@@ -86,20 +84,32 @@ function setupFamilyHullMesh(scene) {
         const genePos = Vector(...coordinates.map(v => v*scale));
         const distance = calcVectorDistance(centroid, genePos)
         if (distance > farthestDist) {
-          secondFarthestDist = farthestDist;
-          secondFarthestSpherePos = farthestSpherePos;
           farthestDist = distance;
           farthestSpherePos = genePos;
-        } else if (distance > secondFarthestDist) {
-          secondFarthestDist = distance;
-          secondFarthestSpherePos = genePos;
+        }
+      }
+    }
+
+    const lengthVector = farthestSpherePos.subtract(centroid).normalize();
+    let radius = 0;
+    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+      if (!is_outlier) {
+        const genePos = Vector(...coordinates.map(v => v*scale));
+        const centroidToGene = genePos.subtract(centroid);
+        const projectionLength = BABYLON.Vector3.Dot(centroidToGene, lengthVector);
+        const projectionVector = lengthVector.scale(projectionLength);
+        const heightVector = centroidToGene.subtract(projectionVector);
+        const height = heightVector.length();
+        if (height > radius) {
+          radius = height;
         }
       }
     }
 
     instance.position = centroid;
-    const length = farthestDist + sphereDiameter;
-    const width = Math.max(length / 2, secondFarthestDist + sphereDiameter)
+    const length = 2*(farthestDist + sphereDiameter);
+    const width = 3*(radius + sphereDiameter);
     instance.scaling.z = length;
     instance.scaling.y = width;
     instance.scaling.x = width;
