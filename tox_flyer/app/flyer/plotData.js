@@ -24,6 +24,7 @@ import {
 function plotData(scene) {
   setupSelectionMesh(scene);
   setupFamilyHullMesh(scene);
+  setupShiftVectorMesh(scene);
 
   const chunks = getChunks(scene);
 
@@ -31,6 +32,7 @@ function plotData(scene) {
     chunks.recalculate();
     chunks.load();
     setupFamilyHullMesh(scene);
+    setupShiftVectorMesh(scene);
     scene.getMeshByName("meshSelectedPoints").TOX_update();
   })
 
@@ -130,6 +132,83 @@ function setupFamilyHullMesh(scene) {
       hull.thinInstanceSetBuffer("matrix", dimensionsBuffer, 16);
       hull.thinInstanceSetBuffer("color", colorBuffer, 4);
     });
+  }
+}
+
+function setupShiftVectorMesh(scene) {
+  scene.getMeshByName("shiftVectorShaft")?.dispose();
+  scene.getMeshByName("shiftVectorHead")?.dispose();
+
+  const families = config.get("shownFamilies") ?? dataHandler.families;
+  const vectorCount = families.reduce((a, family) => {
+    const geneCount = dataHandler.getGeneCount(family);
+    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
+        a++;
+      }
+    }
+    return a;
+  }, 0);
+  if (vectorCount > 0) {
+    const scale = config.get("scale");
+    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+
+    const dimensionBuffers = {
+      shaft: new Float32Array(families.length * 16),
+      head: new Float32Array(families.length * 16)
+    }
+    const colorBuffer = new Float32Array(families.length * 4);
+
+    let bufferIndex = 0;
+    for (const family of families) {
+      let color = Color(config.get(family + "_Color") ?? dataHandler.getColor(family));
+      color = color.scale(1 / Math.max(color.r, color.g, color.b));
+      const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
+      const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+
+      const geneCount = dataHandler.getGeneCount(family);
+      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+        if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
+          const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
+          const genePos = Vector(...coordinates.map(v => v*scale));
+          const direction = genePos.subtract(centroid);
+          const vectorLength = direction.length();
+          const shaftLengthScale = 1 - 2.5 * sphereDiameter / vectorLength;
+          const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
+          const headPosition = centroid.add(direction.scale(1 - 1.5 * sphereDiameter / vectorLength));
+
+          // create shaft
+          fillThinInstanceBuffers(
+            dimensionBuffers.shaft, bufferIndex * 16,
+            {
+              position: shaftPosition,
+              scaling: Vector(sphereDiameter / 2, vectorLength * shaftLengthScale, sphereDiameter / 2),
+              target: genePos
+            },
+            colorBuffer, bufferIndex * 4,
+            color
+          );
+          // create head
+          fillThinInstanceBuffers(
+            dimensionBuffers.head, bufferIndex * 16,
+            {
+              position: headPosition,
+              scaling: Vector(sphereDiameter, sphereDiameter * 2, sphereDiameter),
+              target: genePos
+            },
+            colorBuffer, bufferIndex * 4,
+            color
+          );
+          bufferIndex++;
+        }
+      }
+    }
+    const shiftVectorShaft = BABYLON.MeshBuilder.CreateCylinder("shiftVectorShaft", {height: 1}, scene);
+    shiftVectorShaft.thinInstanceSetBuffer("matrix", dimensionBuffers.shaft, 16);
+    shiftVectorShaft.thinInstanceSetBuffer("color", colorBuffer, 4);
+    const shiftVectorHead = BABYLON.MeshBuilder.CreateCylinder("shiftVectorHead", {height: 1, diameterTop: 0}, scene);
+    shiftVectorHead.thinInstanceSetBuffer("matrix", dimensionBuffers.head, 16);
+    shiftVectorHead.thinInstanceSetBuffer("color", new Float32Array(colorBuffer), 4);
   }
 }
 

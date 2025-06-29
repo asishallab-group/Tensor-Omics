@@ -161,6 +161,8 @@ export function getChunks(scene) {
                 if (show) {
                   const coordinates = dataHandler.getCentroid(family, ...this.tissues);
                   const diameter = (diameters.inliers ?? diameters.default) * 4;
+                  const color = colors.family.scale(2);
+                  color.a = 1;
                   fillThinInstanceBuffers(
                     memberCtx.dimensionBuffer, memberCtx.bufferIndex * 16,
                     {
@@ -168,7 +170,7 @@ export function getChunks(scene) {
                       scaling: Vector(diameter, diameter, diameter)
                     },
                     memberCtx.colorBuffer, memberCtx.bufferIndex * 4,
-                    colors.family.scale(2)
+                    color
                   );
                 }
                 memberCtx.bufferIndex++;

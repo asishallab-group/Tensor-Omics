@@ -92,7 +92,7 @@ function setupConfig() {
           callbacks[key]?.(value);
 
           // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
-          if (key.includes("_") || triggersChunkReload.includes(key)) {
+          if (key.includes("_") || triggersChunkReload.includes(key) || /_ShiftVector:\d+/.test(key)) {
             document.dispatchEvent(new CustomEvent("chunkReload", {
               detail: { setting: key }
             }));
@@ -225,7 +225,7 @@ function getValidator() {
           return;
         }
         return true;
-      } else if (key.endsWith("_Centroid") || key.endsWith("_Hull")) {
+      } else if (key.endsWith("_Centroid") || key.endsWith("_Hull") || /_ShiftVector:\d+/.test(key)) {
         if (typeof value !== "boolean") {
           console.error(`${key}: Expecting boolean value, got: ${typeof v}`);
           return;
