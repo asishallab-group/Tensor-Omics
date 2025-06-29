@@ -96,3 +96,29 @@ export function Material(scene, name, options={}) {
   material.freeze();
   return material;
 }
+
+function getInstanceMatrix(position, scaling, target) {
+  let rotation;
+  if (target !== undefined) {
+    const direction = target.subtract(position).normalize();
+    const up = Vector(0, 1, 0);
+
+    // Create a rotation quaternion that aligns up and up
+    rotation = BABYLON.Quaternion.FromUnitVectorsToRef(up, direction, new BABYLON.Quaternion());
+  } else {
+    rotation = new BABYLON.Quaternion();
+  }
+
+  // Compose the final matrix: scale -> rotate -> translate
+  const matrix = BABYLON.Matrix.Compose(scaling, rotation, position);
+
+  return matrix;
+}
+
+export function fillThinInstanceBuffers(dimensionsBuffer, dIndex, {position, scaling, target}, colorBuffer, cIndex, color) {
+  getInstanceMatrix(position, scaling, target).copyToArray(dimensionsBuffer, dIndex);
+  colorBuffer[cIndex++] = color.r;
+  colorBuffer[cIndex++] = color.g;
+  colorBuffer[cIndex++] = color.b;
+  colorBuffer[cIndex] = color.a;
+}

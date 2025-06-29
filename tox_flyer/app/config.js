@@ -225,7 +225,7 @@ function getValidator() {
           return;
         }
         return true;
-      } else if (key.endsWith("_Centroid")) {
+      } else if (key.endsWith("_Centroid") || key.endsWith("_Hull")) {
         if (typeof value !== "boolean") {
           console.error(`${key}: Expecting boolean value, got: ${typeof v}`);
           return;

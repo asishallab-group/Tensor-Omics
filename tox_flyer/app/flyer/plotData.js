@@ -7,7 +7,8 @@ import {
   Vector,
   TransformNode,
   calcVectorDistance,
-  Material
+  Material,
+  fillThinInstanceBuffers
 } from "./babylon.js";
 
 /**
@@ -29,7 +30,7 @@ function plotData(scene) {
   document.addEventListener("chunkReload", (evt) => {
     chunks.recalculate();
     chunks.load();
-    scene.getMeshByName("hull").TOX_update();
+    setupFamilyHullMesh(scene);
     scene.getMeshByName("meshSelectedPoints").TOX_update();
   })
 
@@ -61,75 +62,74 @@ function plotData(scene) {
 }
 
 function setupFamilyHullMesh(scene) {
-  const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3, orientation: Vector(0, 0, 1)}, scene);
-  hull.material = Material(scene, null, {wireframe: true});
-  Mesh.setSize(hull, 0);
-
-  hull.TOX_create = function (family) {
-    hull.TOX_remove(family);
+  scene.getMeshByName("hull")?.dispose();
+  const families = (config.get("shownFamilies") ?? dataHandler.families).filter((family) => config.get(`${family}_Hull`));
+  if (families.length > 0) {
     const scale = config.get("scale");
     const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-    const instance = this.createInstance(family);
-    const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
 
-    const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
-    tissues ??= [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-    let farthestSpherePos = centroid;
-    let farthestDist = 0;
-    const geneCount = dataHandler.getGeneCount(family);
-    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
-      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-      if (!is_outlier) {
-        const genePos = Vector(...coordinates.map(v => v*scale));
-        const distance = calcVectorDistance(centroid, genePos)
-        if (distance > farthestDist) {
-          farthestDist = distance;
-          farthestSpherePos = genePos;
+    const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3}, scene);
+    hull.material = Material(scene, null, {wireframe: true});
+
+    const dimensionsBuffer = new Float32Array(families.length * 16);
+    const colorBuffer = new Float32Array(families.length * 4);
+
+    families.forEach((family, i) => {
+      const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
+      const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
+
+      // calculate farthest data point from centroid
+      let farthestSpherePos = centroid;
+      let farthestDist = 0;
+      const geneCount = dataHandler.getGeneCount(family);
+      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+        if (!is_outlier) {
+          const genePos = Vector(...coordinates.map(v => v*scale));
+          const distance = calcVectorDistance(centroid, genePos)
+          if (distance > farthestDist) {
+            farthestDist = distance;
+            farthestSpherePos = genePos;
+          }
         }
       }
-    }
 
-    const lengthVector = farthestSpherePos.subtract(centroid).normalize();
-    let radius = 0;
-    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
-      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-      if (!is_outlier) {
-        const genePos = Vector(...coordinates.map(v => v*scale));
-        const centroidToGene = genePos.subtract(centroid);
-        const projectionLength = BABYLON.Vector3.Dot(centroidToGene, lengthVector);
-        const projectionVector = lengthVector.scale(projectionLength);
-        const heightVector = centroidToGene.subtract(projectionVector);
-        const height = heightVector.length();
-        if (height > radius) {
-          radius = height;
+      // calculate farthest point from line centroid-farthestSphere
+      const lengthVector = farthestSpherePos.subtract(centroid).normalize();
+      let radius = 0;
+      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+        if (!is_outlier) {
+          const genePos = Vector(...coordinates.map(v => v*scale));
+          const centroidToGene = genePos.subtract(centroid);
+          const projectionLength = BABYLON.Vector3.Dot(centroidToGene, lengthVector);
+          const projectionVector = lengthVector.scale(projectionLength);
+          const heightVector = centroidToGene.subtract(projectionVector);
+          const height = heightVector.length();
+          if (height > radius) {
+            radius = height;
+          }
         }
       }
-    }
 
-    instance.position = centroid;
-    const length = 2*(farthestDist + sphereDiameter);
-    const width = 3*(radius + sphereDiameter);
-    instance.scaling.z = length;
-    instance.scaling.y = width;
-    instance.scaling.x = width;
-    instance.lookAt(farthestSpherePos);
-  }
-  hull.TOX_remove = function (family) {
-    const targets = this.instances.filter(i => (family === undefined) || (i.name === family));
-    for (const instance of targets) {
-      instance.dispose();
-    }
-    return targets.length;
-  }
-  hull.TOX_update = function () {
-    for (const instance of [...this.instances]) {
-      this.TOX_create(instance.name);
-    }
-  }
-  for (const family of config.get("shownFamilies")?.slice(-2, -1) ?? []) {
-    hull.TOX_create(family)
-    config.set(`${family}_Centroid`, true)
-    Mesh.setColor(hull, Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2))
+      const length = 2*(farthestDist + sphereDiameter);
+      const width = 3*(radius + sphereDiameter);
+
+      const color = Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2);
+      fillThinInstanceBuffers(
+        dimensionsBuffer, i * 16,
+        {
+          position: centroid,
+          scaling: Vector(width, length, width),
+          target: farthestSpherePos
+        },
+        colorBuffer, i * 4,
+        color
+      );
+
+      hull.thinInstanceSetBuffer("matrix", dimensionsBuffer, 16);
+      hull.thinInstanceSetBuffer("color", colorBuffer, 4);
+    });
   }
 }
 

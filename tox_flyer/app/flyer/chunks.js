@@ -1,6 +1,6 @@
 "use strict";
 
-import { Color, Vector, Mesh } from "./babylon.js";
+import { Color, Vector, Mesh, fillThinInstanceBuffers } from "./babylon.js";
 
 export function getChunks(scene) {
   const chunks = {
@@ -144,24 +144,30 @@ export function getChunks(scene) {
               if (memberType !== "centroids") {
                 for (const geneIndex of geneIndices) {
                   const { coordinates } = dataHandler.getGeneData(family, geneIndex, this.tissues, []);
+                  const diameter = diameters[memberType] ?? diameters.default;
                   fillThinInstanceBuffers(
                     memberCtx.dimensionBuffer, memberCtx.bufferIndex * 16,
+                    {
+                      position: Vector(...coordinates.map(v => v * this.scale)),
+                      scaling: Vector(diameter, diameter, diameter)
+                    },
                     memberCtx.colorBuffer, memberCtx.bufferIndex * 4,
-                    diameters[memberType] ?? diameters.default,
-                    coordinates.map(v => v * this.scale),
                     colors[memberType] ?? colors.family
                   );
                   memberCtx.bufferIndex++;
                 }
               } else {
-                const coordinates = dataHandler.getCentroid(family, ...this.tissues);
                 const show = config.get(`${family}_Centroid`);
                 if (show) {
+                  const coordinates = dataHandler.getCentroid(family, ...this.tissues);
+                  const diameter = (diameters.inliers ?? diameters.default) * 4;
                   fillThinInstanceBuffers(
                     memberCtx.dimensionBuffer, memberCtx.bufferIndex * 16,
+                    {
+                      position: Vector(...coordinates.map(v => v * this.scale)),
+                      scaling: Vector(diameter, diameter, diameter)
+                    },
                     memberCtx.colorBuffer, memberCtx.bufferIndex * 4,
-                    (diameters.inliers ?? diameters.default) * 4,
-                    coordinates.map(v => v * this.scale),
                     colors.family.scale(2)
                   );
                 }
@@ -256,24 +262,24 @@ function registerLoading(chunks) {
   });
 }
 
-function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, diameter, [x, y, z], color) {
-  dimensionsBuffer[dIndex] = diameter; // set x scale
-  dimensionsBuffer[dIndex + 5] = diameter; // set y scale
-  dimensionsBuffer[dIndex + 10] = diameter; // set z scale
+// function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, diameter, [x, y, z], color) {
+//   dimensionsBuffer[dIndex] = diameter; // set x scale
+//   dimensionsBuffer[dIndex + 5] = diameter; // set y scale
+//   dimensionsBuffer[dIndex + 10] = diameter; // set z scale
 
-  dimensionsBuffer[dIndex + 12] = x;
-  dimensionsBuffer[dIndex + 13] = y;
-  dimensionsBuffer[dIndex + 14] = z;
+//   dimensionsBuffer[dIndex + 12] = x;
+//   dimensionsBuffer[dIndex + 13] = y;
+//   dimensionsBuffer[dIndex + 14] = z;
 
-  dimensionsBuffer[dIndex + 15] = 1;
-  // the unchanged indices affect the rotation of the sphere -> zero 
+//   dimensionsBuffer[dIndex + 15] = 1;
+//   // the unchanged indices affect the rotation of the sphere -> zero 
 
-  // setting color
-  colorBuffer[cIndex++] = color.r;
-  colorBuffer[cIndex++] = color.g;
-  colorBuffer[cIndex++] = color.b;
-  colorBuffer[cIndex] = color.a;
-}
+//   // setting color
+//   colorBuffer[cIndex++] = color.r;
+//   colorBuffer[cIndex++] = color.g;
+//   colorBuffer[cIndex++] = color.b;
+//   colorBuffer[cIndex] = color.a;
+// }
 
 function getChunkCentroid([ x, y, z ], diameter) {
   function trim(a) {
