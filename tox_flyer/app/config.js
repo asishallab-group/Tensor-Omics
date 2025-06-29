@@ -225,6 +225,12 @@ function getValidator() {
           return;
         }
         return true;
+      } else if (key.endsWith("_Centroid")) {
+        if (typeof value !== "boolean") {
+          console.error(`${key}: Expecting boolean value, got: ${typeof v}`);
+          return;
+        }
+        return true;
       }
       console.error(`Unknown key: ${key}`);
     }

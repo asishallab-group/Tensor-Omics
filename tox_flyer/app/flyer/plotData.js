@@ -127,12 +127,10 @@ function setupFamilyHullMesh(scene) {
       this.TOX_create(instance.name);
     }
   }
-  for (const family of config.get("shownFamilies")?.slice(-2,-1) ?? []) {
+  for (const family of config.get("shownFamilies")?.slice(-2, -1) ?? []) {
     hull.TOX_create(family)
-    const centroids = Mesh.Sphere(scene, "centroid", {diameter: 1});
-    centroids.position = Vector(...dataHandler.getCentroid(family, ...[config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]).map(v=>v*config.get("scale")))
-    centroids.material = Material(scene, null, Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2))
-    Mesh.setColor(hull, centroids.material.diffuseColor)
+    config.set(`${family}_Centroid`, true)
+    Mesh.setColor(hull, Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2))
   }
 }
 
@@ -157,7 +155,7 @@ function setupSelectionMesh(scene) {
     const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
     const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
 
-    function pickOne(geneIndex) {
+    const pickOne = (geneIndex) => {
       const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
       const instance = this.createInstance();
       instance.position = Vector(...coordinates.map(v => v * scale));
@@ -169,11 +167,11 @@ function setupSelectionMesh(scene) {
     this.TOX_unpick(family, geneIndex);
 
     if (geneIndex !== undefined) {
-      pickOne.call(this, geneIndex);
+      pickOne(geneIndex);
     } else {
       const geneCount = dataHandler.getGeneCount(family);
       for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
-        pickOne.call(this, geneIndex);
+        pickOne(geneIndex);
       }
     }
     highlightLayer.isEnabled = true;
@@ -232,8 +230,8 @@ function pickFromMeshes(chunks) {
 
   let closestDist = Infinity;
   let picked = null;
-  for (const centroid of chunks.active) {
-    const meshes = chunks.chunks.get(centroid)[3];
+  for (const chunkCentroid of chunks.active) {
+    const meshes = chunks.chunks.get(chunkCentroid)[2];
     for (const [meshType, mesh] of meshes) {
       const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
 
@@ -256,8 +254,8 @@ function pickFromMeshes(chunks) {
               position: spherePosition,
               diameter: matrix[0],
               index: i,
-              is_outlier: meshType === "outliers",
-              centroid
+              meshType,
+              chunkCentroid
             }
           }
         }
@@ -266,15 +264,31 @@ function pickFromMeshes(chunks) {
   }
 
   if (picked) {
-    const genes = chunks.chunks.get(picked.centroid)[0];
+    const [genes] = chunks.chunks.get(picked.chunkCentroid);
     let pickedIndex = picked.index;
-    for (const [family, members] of genes) {
-      const indices = members[Number(picked.is_outlier)];
-      pickedIndex -= indices.length;
-      if (pickedIndex < 0) {
-        picked.family = family;
-        picked.geneIndex = indices[pickedIndex + indices.length];
-        break;
+    switch (picked.meshType) {
+      case "centroids": {
+        for (const [family, members] of genes) {
+          if (pickedIndex === 0) {
+            console.log(`Picked centroid of family '${family}'`);
+            return null;
+          }
+          pickedIndex -= Boolean(members.centroids)
+        }
+      }
+      case "inliers":
+      case "outliers": {
+        for (const [family, members] of genes) {
+          const indices = members[picked.meshType];
+          if (indices) {
+            pickedIndex -= indices.length;
+            if (pickedIndex < 0) {
+              picked.family = family;
+              picked.geneIndex = indices[pickedIndex + indices.length];
+              break;
+            }
+          }
+        }
       }
     }
   }
