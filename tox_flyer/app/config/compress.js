@@ -6,35 +6,83 @@ const MAX_ENC_CHAR_CODE = 2 ** 15 - 1;
 const SEPARATORS = new Map();
 [
   "sign",
-  "float"
-].forEach((sep, i) => SEPARATORS.set(sep, String.fromCharCode(MAX_ENC_CHAR_CODE + i + 1)))
+  "float",
+  "familyKey_allModes",
+  "familyKey_lightMode",
+  "familyKey_darkMode",
+  "familyKeyStop",
+  "picked",
+  "null",
+  "array",
+].forEach((sep, i) => SEPARATORS.set(sep, String.fromCharCode(MAX_ENC_CHAR_CODE + i + 1)));
 
-const CHAR_CODE_AFTER_SEP = MAX_ENC_CHAR_CODE + 1 + SEPARATORS.size;
+const SEPARATORS_REV = new Map();
+SEPARATORS.entries().forEach(([k, v]) => SEPARATORS_REV.set(v, k));
 
-
-function getKeyEncoder(defaults) {
-  const offsets = new Map();
-  let offset = 0;
+function getKeyEncoder(defaults, familyKeyTypes) {
+  // add builtin keys as separators
   for (const [category, settings] of Object.entries(defaults)) {
-    offsets.set(category, offset);
-    offset += Object.keys(settings).length;
+    for (const key of Object.keys(settings)) {
+      const sepType = `${key}:${category}`;
+      const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + 1);
+      SEPARATORS.set(sepType, sep);
+      SEPARATORS_REV.set(sep, sepType);
+    }
   }
+  const CHAR_CODE_AFTER_SEP = MAX_ENC_CHAR_CODE + 1 + SEPARATORS.size;
 
   function encode(category, key) {
-    const keys = Object.keys(defaults[category]).sort();
-    return String.fromCharCode(CHAR_CODE_AFTER_SEP + offsets.get(category) + keys.indexOf(key));
+    if (key.includes("_")) {
+      let encoded = SEPARATORS.get("familyKey_" + category);
+      const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/).slice(1);
+
+      encoded += encodeInt(Number.parseInt(family));
+
+      const keyTypeIdx = familyKeyTypes.indexOf(keyType);
+      if (keyTypeIdx === -1) throw new Error(`Missing family key type: '${keyType}'`);
+      encoded += String.fromCharCode(CHAR_CODE_AFTER_SEP + keyTypeIdx);
+
+      if (gene !== undefined) {
+        encoded += encodeInt(Number.parseInt(gene.slice(1)));
+      }
+      
+      encoded += SEPARATORS.get("familyKeyStop");
+      return encoded;
+    } else {
+      return SEPARATORS.get(`${key}:${category}`);
+    }
   }
 
   function decode(str, idx) {
-    const charCodePlusOffset = str.charCodeAt(idx) - CHAR_CODE_AFTER_SEP;
-    for (const [category, offset] of Array.from(offsets).reverse()) {
-      if (charCodePlusOffset >= offset) {
-        const keys = Object.keys(defaults[category]).sort();
-        const keyIdx = charCodePlusOffset - offset;
-        const decoded = {category, key: keys[keyIdx]};
-        idx++;
-        return { decoded, idx };
-      }
+    const sepType = SEPARATORS_REV.get(str.charAt(idx));
+    if (sepType === undefined) throw new Error("Corrupted key encoding: Missing start");
+
+    if (!sepType.startsWith("familyKey")) {
+      const [key, category] = sepType.split(":");
+      return { decoded: { category, key }, idx: idx + 1 };
+    }
+
+    // if this is reached, a family key was encoded
+    const category = sepType.split("_")[1];
+    if (category === undefined) throw new Error("Corrupted family key encoding: Unknown category");
+
+    idx++;
+    const decodedFamily = decodeInt(str, idx);
+    idx = decodedFamily.idx;
+
+    const keyTypeIdx = str.charCodeAt(idx) - CHAR_CODE_AFTER_SEP;
+    const keyType = familyKeyTypes[keyTypeIdx];
+    if (keyType === undefined) throw new Error("Corrupted family key encoding: Unknown key type");
+    const key = `${decodedFamily.decoded}_${familyKeyTypes[keyTypeIdx]}`;
+
+    idx++;
+    if (str.charAt(idx) === SEPARATORS.get("familyKeyStop")) {
+      return { decoded: { category, key }, idx: idx + 1 };
+    } else {
+      const decodedGene = decodeInt(str, idx);
+      if (str.charAt(decodedGene.idx) !== SEPARATORS.get("familyKeyStop")) throw new Error("Corrupted family key encoding: Missing stop");
+
+      return { decoded: { category, key: `${key}:${decodedGene.decoded}` }, idx: decodedGene.idx + 1 };
     }
   }
 
@@ -62,7 +110,7 @@ function decodeInt(str, idx) {
     sign = -1;
     idx++;
   }
-  if (str.charCodeAt(idx) > MAX_ENC_CHAR_CODE) throw Error("Corrupted int encoding");
+  if (str.charCodeAt(idx) > MAX_ENC_CHAR_CODE) throw new Error("Corrupted int encoding: Unexpected separator");
   let decoded = 0;
   const shift = MAX_ENC_CHAR_CODE.toString(2).length;
 
@@ -95,7 +143,7 @@ function decodeFloat(str, idx) {
   idx = firstPart.idx;
   intView[0] = firstPart.decoded;
 
-  if (str.charAt(idx) !== SEPARATORS.get("float")) throw Error("Corrupted float encoding");
+  if (str.charAt(idx) !== SEPARATORS.get("float")) throw new Error("Corrupted float encoding: Missing separator");
   idx++;
 
   const secondPart = decodeInt(str, idx);
@@ -121,20 +169,20 @@ function decodeColor(str, idx) {
 
 function test() {
   function testGetMapping() {
-    const defaults = {allModes: {a: 1}, lightMode: {b: 1}, darkMode: {b: 1}};
-    const encoder = getKeyEncoder(defaults);
+    const defaults = {allModes: {a: 1, "123_ShiftVector:12": true}, lightMode: {b: 1, "123_OutlierColor": "#FFFFFF"}, darkMode: {b: 1}};
+    const encoder = getKeyEncoder(defaults, ["ShiftVector", "OutlierColor"]);
     for (const [category, settings] of Object.entries(defaults)) {
       for (const key of Object.keys(settings)) {
         const encoded = encoder.encode(category, key);
         const decoded = encoder.decode(encoded, 0);
-        if (decoded.idx !== 1) {
-          throw Error(`Mapping returned wrong index, expected 1, got ${decoded.idx}`);
+        if (decoded.decoded.key !== key) {
+          throw new Error(`Mapping returned wrong key, expected ${key}, got ${decoded.decoded.key}`);
         }
         if (decoded.decoded.category !== category) {
-          throw Error(`Mapping returned wrong category, expected ${category}, got ${decoded.decoded.category}`);
+          throw new Error(`Mapping returned wrong category, expected ${category}, got ${decoded.decoded.category}`);
         }
-        if (decoded.decoded.key !== key) {
-          throw Error(`Mapping returned wrong key, expected ${key}, got ${decoded.decoded.key}`);
+        if (decoded.idx !== encoded.length) {
+          throw new Error(`Mapping returned wrong index, expected ${encoded.length}, got ${decoded.idx}`);
         }
       }
     }
@@ -146,10 +194,10 @@ function test() {
       const encodedInt = encodeInt(int);
       const decodedInt = decodeInt(encodedInt, 0);
       if (decodedInt.decoded !== int) {
-        throw Error(`Integer decoding failed, expected ${int}, got ${decodedInt.decoded}`);
+        throw new Error(`Integer decoding failed, expected ${int}, got ${decodedInt.decoded}`);
       }
       if (decodedInt.idx !== encodedInt.length) {
-        throw Error(`Integer decoding for ${int} returned wrong index, expected ${encodedInt.length}, got ${decodedInt.idx}`);
+        throw new Error(`Integer decoding for ${int} returned wrong index, expected ${encodedInt.length}, got ${decodedInt.idx}`);
       }
     }
   }
@@ -161,10 +209,10 @@ function test() {
       const encodedFloat = encodeFloat(float);
       const decodedFloat = decodeFloat(encodedFloat, 0);
       if (decodedFloat.decoded !== float) {
-        throw Error(`Float decoding failed, expected ${float}, got ${decodedFloat.decoded}`);
+        throw new Error(`Float decoding failed, expected ${float}, got ${decodedFloat.decoded}`);
       }
       if (decodedFloat.idx !== encodedFloat.length) {
-        throw Error(`Float decoding for ${float} returned wrong index, expected ${encodedFloat.length}, got ${decodedFloat.idx}`);
+        throw new Error(`Float decoding for ${float} returned wrong index, expected ${encodedFloat.length}, got ${decodedFloat.idx}`);
       }
     }
   }
@@ -177,10 +225,10 @@ function test() {
 
       const expected = color.padEnd(9, "F").toLowerCase();
       if (decodedColor.decoded !== expected) {
-        throw Error(`Color encoding failed, expected '${expected}', got '${decodedColor.decoded}'`);
+        throw new Error(`Color encoding failed, expected '${expected}', got '${decodedColor.decoded}'`);
       }
       if (decodedColor.idx !== encodedColor.length) {
-        throw Error(`Color decoding returned wrong index, expected ${encodedColor.length}, got ${decodedColor.idx}`);
+        throw new Error(`Color decoding returned wrong index, expected ${encodedColor.length}, got ${decodedColor.idx}`);
       }
     }
   }
