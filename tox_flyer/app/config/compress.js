@@ -7,9 +7,7 @@ const SEPARATORS = new Map();
 [
   "sign",
   "float",
-  "familyKey_allModes",
-  "familyKey_lightMode",
-  "familyKey_darkMode",
+  "familyKeyStart",
   "familyKeyStop",
   "picked",
   "null",
@@ -30,11 +28,16 @@ function getEncoder(defaults, familyKeyTypes) {
     }
   }
   for (const keyType in familyKeyTypes) {
-    const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + 1);
-    SEPARATORS.set(keyType, sep);
-    SEPARATORS_REV.set(sep, keyType);
+    for (const category in defaults) {
+      const sepType = `${keyType}_${category}`;
+      const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + 1);
+      SEPARATORS.set(sepType, sep);
+      SEPARATORS_REV.set(sep, sepType);
+    }
   }
 
+  let previousFamilyEnc = null;
+  let previousFamilyDec = null;
 
   function encode(category, key, value) {
     const encoders = {
@@ -75,15 +78,19 @@ function getEncoder(defaults, familyKeyTypes) {
 
     let type;
     let defaultValue;
-    let encodedKey;
+    let encodedKey = "";
     if (key.includes("_")) {
-      encodedKey = SEPARATORS.get("familyKey_" + category);
       const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/).slice(1);
 
-      encodedKey += encodeInt(Number.parseInt(family));
+      if (previousFamilyEnc !== family) {
+        encodedKey = SEPARATORS.get("familyKeyStart");
+        encodedKey += encodeInt(Number.parseInt(family));
+        previousFamilyEnc = family;
+      }
 
-      if (!SEPARATORS.has(keyType)) throw new Error(`Missing family key type: '${keyType}'`);
-      encodedKey += SEPARATORS.get(keyType);
+      const keyTypeSep = `${keyType}_${category}`;
+      if (!SEPARATORS.has(keyTypeSep)) throw new Error(`Missing family key type: '${keyType}'`);
+      encodedKey += SEPARATORS.get(keyTypeSep);
 
       if (gene !== undefined) {
         encodedKey += encodeInt(Number.parseInt(gene.slice(1)));
@@ -94,6 +101,7 @@ function getEncoder(defaults, familyKeyTypes) {
       defaultValue = familyKeyTypes[keyType].default;
       type = familyKeyTypes[keyType].type
     } else {
+      previousFamilyEnc = null;
       encodedKey = SEPARATORS.get(`${key}:${category}`);
       defaultValue = defaults[category][key];
     }
@@ -134,24 +142,31 @@ function getEncoder(defaults, familyKeyTypes) {
     let key;
     let type;
     let defaultValue;
-    if (!sepType.startsWith("familyKey")) {
+    if (sepType.includes(":")) {
+      previousFamilyDec = null;
+
       [key, category] = sepType.split(":");
       type = typeof defaults[category][key];
       if (type === "boolean") {
         defaultValue = defaults[category][key];
       }
     } else {
-      category = sepType.split("_")[1];
+      let family;
+      let keyType;
+      if (previousFamilyDec === null) {
+        const decodedFamily = decodeInt(str, idx);
+        idx = decodedFamily.idx;
+        family = decodedFamily.decoded;
+        previousFamilyDec = family;
+        [keyType, category] = SEPARATORS_REV.get(str.charAt(idx)).split("_");
+        idx++;
+      } else {
+        family = previousFamilyDec;
+        [keyType, category] = sepType.split("_");
+      }
       if (category === undefined) throw new Error("Corrupted family key encoding: Unknown category");
+      key = `${family}_${keyType}`;
 
-      const decodedFamily = decodeInt(str, idx);
-      idx = decodedFamily.idx;
-
-      const keyType = SEPARATORS_REV.get(str.charAt(idx));
-      if (keyType === undefined) throw new Error("Corrupted family key encoding: Unknown key type");
-      key = `${decodedFamily.decoded}_${keyType}`;
-
-      idx++;
       type = familyKeyTypes[keyType].type;
       if (type === "boolean") {
         defaultValue = familyKeyTypes[keyType].default;
@@ -266,11 +281,17 @@ function decodeColor(str, idx) {
 }
 
 function encode(encoder, values) {
-  let encoded = "";
+  const entries = [];
   for (const [category, settings] of Object.entries(values)) {
     for (const [key, value] of Object.entries(settings)) {
-      encoded += encoder(category, key, value);
+      entries.push([key, category, value]);
     }
+  }
+  entries.sort(([a], [b]) => a.localeCompare(b));
+
+  let encoded = "";
+  for (const [key, category, value] of entries) {
+    encoded += encoder(category, key, value);
   }
   return encoded;
 }
@@ -323,7 +344,10 @@ function test() {
           changedInt: 2,
           unchangedFloat: 1.00000001,
           unchangedBool: true,
-          "123_ChangedFamilySettingWithGene:12": false
+          "123_ChangedFamilySettingWithGene:12": false,
+          "123_ChangedFamilySettingWithGene:13": false,
+          "123_ChangedFamilySettingWithGene:14": false,
+          "123_ChangedFamilySettingWithGene:15": false
         },
         lightMode: {
           changedColor: "#66666666",
@@ -335,8 +359,11 @@ function test() {
       };
       const expected = {
         allModes: {
-          changedInt: 2,
-          "123_ChangedFamilySettingWithGene:12": false
+          "123_ChangedFamilySettingWithGene:12": false,
+          "123_ChangedFamilySettingWithGene:13": false,
+          "123_ChangedFamilySettingWithGene:14": false,
+          "123_ChangedFamilySettingWithGene:15": false,
+          changedInt: 2
         }, lightMode: {
           changedColor: "#66666666"
         },
@@ -405,7 +432,7 @@ function test() {
       func();
       console.log(`${test}: SUCCESS`)
     } catch (err) {
-      console.error(`${test}: FAILED: ${err.message}`);
+      console.error(`${test}: FAILED: ${err.message}`, err);
     }
   }
 }
