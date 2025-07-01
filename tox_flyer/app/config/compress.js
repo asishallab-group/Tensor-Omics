@@ -55,19 +55,20 @@ function getEncoder(defaults, familyKeyTypes) {
           return "";
         }
       },
-      color: (encodedKey, value, defaultValue) => {
+      string: (encodedKey, value, defaultValue) => {
         if (value !== defaultValue) {
-          return encodedKey + encodeColor(value);
+          if (/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(value)) {
+            return encodedKey + encodeColor(value);
+          } else {
+            console.error("Encoding strings only supported for color codes");
+            return "";
+          }
         } else {
           return "";
         }
       },
-      string: (encodedKey, value, defaultValue) => {
-        console.log("Encoding strings not yet supported");
-        return "";
-      },
       object: (encodedKey, value, defaultValue) => {
-        console.log("Encoding objects not yet supported");
+        console.error("Encoding objects not yet supported");
         return "";
       }
     }
@@ -101,12 +102,7 @@ function getEncoder(defaults, familyKeyTypes) {
       encodedKey = SEPARATORS.get(`${key}:${category}`);
       defaultValue = defaults[category][key];
     }
-    let encoder;
-    if (category !== "allModes") {
-      encoder = encoders.color;
-    } else {
-      encoder = encoders[typeof value];
-    }
+    const encoder = encoders[typeof value];
     return encoder(encodedKey, value, defaultValue);
   }
 
@@ -116,16 +112,12 @@ function getEncoder(defaults, familyKeyTypes) {
         const decoded = decodeNumber(str, idx);
         return { value: decoded.decoded, idx: decoded.idx };
       },
-      color: (str, idx) => {
+      string: (str, idx) => {
         const decoded = decodeColor(str, idx);
         return { value: decoded.decoded, idx: decoded.idx };
       },
-      string: (str, idx) => {
-        console.log("Decoding strings not yet supported");
-        return "";
-      },
       object: (str, idx) => {
-        console.log("Decoding objects not yet supported");
+        console.error("Decoding objects not yet supported");
         return "";
       }
     }
@@ -181,13 +173,7 @@ function getEncoder(defaults, familyKeyTypes) {
     if (type === "boolean") {
       return { category, key, value: !defaultValue, idx };
     } else {
-      let decoder;
-      if (category !== "allModes") {
-        decoder = decoders.color;
-      } else {
-        decoder = decoders[type];
-      }
-
+      const decoder = decoders[type];
       return { category, key, ...decoder(str, idx) };
     }
   }
@@ -305,7 +291,10 @@ function encode(encoder, values) {
 
 function encodeBase64(encoder, values) {
   const encoded = encode(encoder, values);
-  return btoa(unescape(encodeURIComponent(encoded)));
+  let base64 = btoa(unescape(encodeURIComponent(encoded)));
+  base64 = base64.replaceAll("/", "_");
+  base64 = base64.replaceAll("+", "-");
+  return base64.replaceAll("=", "");
 }
 
 function decode(decoder, encodedStr) {
@@ -326,6 +315,9 @@ function decode(decoder, encodedStr) {
 }
 
 function decodeBase64(decoder, base64) {
+  base64 = base64.replaceAll("_", "/");
+  base64 = base64.replaceAll("-", "+");
+  base64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
   const encoded = decodeURIComponent(escape(atob(base64)));
   return decode(decoder, encoded);
 }
@@ -379,7 +371,7 @@ function test() {
 
       const familyKeyTypes = {
         ChangedFamilySettingWithGene: { type: "boolean", default: (family) => true },
-        UnchangedFamilySettingWithoutGene: { type: "color", default: (family) => "#FFFFFF" },
+        UnchangedFamilySettingWithoutGene: { type: "string", default: (family) => "#FFFFFF" },
       }
 
       const encoder = getEncoder(defaults, familyKeyTypes);
