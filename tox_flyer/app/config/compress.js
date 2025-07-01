@@ -50,11 +50,7 @@ function getEncoder(defaults, familyKeyTypes) {
       },
       number: (encodedKey, value, defaultValue) => {
         if (value !== defaultValue) {
-          if (Number.isInteger(value)) {
-            return encodedKey + encodeInt(value);
-          } else {
-            return encodedKey + encodeFloat(value);
-          }
+          return encodedKey + encodeNumber(value);
         } else {
           return "";
         }
@@ -84,7 +80,7 @@ function getEncoder(defaults, familyKeyTypes) {
 
       if (previousFamilyEnc !== family) {
         encodedKey = SEPARATORS.get("familyKeyStart");
-        encodedKey += encodeInt(Number.parseInt(family));
+        encodedKey += encodeNumber(Number.parseInt(family));
         previousFamilyEnc = family;
       }
 
@@ -93,7 +89,7 @@ function getEncoder(defaults, familyKeyTypes) {
       encodedKey += SEPARATORS.get(keyTypeSep);
 
       if (gene !== undefined) {
-        encodedKey += encodeInt(Number.parseInt(gene.slice(1)));
+        encodedKey += encodeNumber(Number.parseInt(gene.slice(1)));
       }
       
       encodedKey += SEPARATORS.get("familyKeyStop");
@@ -154,7 +150,7 @@ function getEncoder(defaults, familyKeyTypes) {
       let family;
       let keyType;
       if (previousFamilyDec === null) {
-        const decodedFamily = decodeInt(str, idx);
+        const decodedFamily = decodeNumber(str, idx);
         idx = decodedFamily.idx;
         family = decodedFamily.decoded;
         previousFamilyDec = family;
@@ -174,7 +170,7 @@ function getEncoder(defaults, familyKeyTypes) {
       if (str.charAt(idx) === SEPARATORS.get("familyKeyStop")) {
         idx++;
       } else {
-        const decodedGene = decodeInt(str, idx);
+        const decodedGene = decodeNumber(str, idx);
         if (str.charAt(decodedGene.idx) !== SEPARATORS.get("familyKeyStop")) throw new Error("Corrupted family key encoding: Missing stop");
 
         idx = decodedGene.idx + 1;
@@ -199,83 +195,94 @@ function getEncoder(defaults, familyKeyTypes) {
   return {encode, decode};
 }
 
-function encodeInt(int) {
+function encodeBigInt(int) {
   let encoded = "";
   if (int < 0) {
     encoded = SEPARATORS.get("sign");
     int = -int;
   }
 
-  const shift = 2 ** MAX_ENC_CHAR_CODE.toString(2).length;
+  const shift = BigInt(2 ** MAX_ENC_CHAR_CODE.toString(2).length);
   do {
-    encoded += String.fromCharCode(int & MAX_ENC_CHAR_CODE);
-    int = Number.parseInt(int / shift);
+    const charCode = int & BigInt(MAX_ENC_CHAR_CODE);
+    encoded += String.fromCharCode(Number.parseInt(charCode));
+    int /= shift;
   } while (int > 0)
   return encoded;
 }
 
-function decodeInt(str, idx) {
-  let sign = 1;
+function decodeBigInt(str, idx) {
+  let sign = 1n;
   if (str.charAt(idx) === SEPARATORS.get("sign")) {
-    sign = -1;
+    sign = -1n;
     idx++;
   }
   if (str.charCodeAt(idx) > MAX_ENC_CHAR_CODE) throw new Error("Corrupted int encoding: Unexpected separator");
-  let decoded = 0;
-  const shift = MAX_ENC_CHAR_CODE.toString(2).length;
+  let decoded = 0n;
+  const shift = BigInt(MAX_ENC_CHAR_CODE.toString(2).length);
 
-  let i = 0;
+  let i = 0n;
   while (str.charCodeAt(idx) <= MAX_ENC_CHAR_CODE) {
-    decoded += str.charCodeAt(idx) * (2 ** (shift * i++));
+    decoded += BigInt(str.charCodeAt(idx)) * (2n ** (shift * i++));
     idx++;
   }
   return { decoded: sign * decoded, idx };
 }
 
-function encodeFloat(float) {
-  const buffer = new ArrayBuffer(8); // 64 bits
-  const floatView = new Float64Array(buffer);
-  const intView = new Int32Array(buffer);
+function floatToBigInt(float) {
+  const buf = new ArrayBuffer(8); // 64 bits
+  const view = new DataView(buf);
+  view.setFloat64(0, float);
 
-  // Write float value
-  floatView[0] = float;
+  let result = 0n;
+  for (let i = 0; i < 8; i++) {
+    result = (result << 8n) | BigInt(view.getUint8(i));
+  }
+  return result;
+}
 
-  // Read raw bits as two 32-bit integers
-  return encodeInt(intView[0]) + SEPARATORS.get("float") + encodeInt(intView[1]);
+function encodeNumber(number) {
+  if (Number.isSafeInteger(number)) {
+    return encodeBigInt(BigInt(number));
+  } else {
+    return encodeBigInt(floatToBigInt(number)) + SEPARATORS.get("float");
+  }
+}
+
+function bigIntToFloat64(big) {
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  for (let i = 7; i >= 0; i--) {
+    view.setUint8(i, Number(big & 0xFFn));
+    big >>= 8n;
+  }
+  return view.getFloat64(0);
 }
 
 function decodeNumber(str, idx) {
-  const firstPart = decodeInt(str, idx);
-  idx = firstPart.idx;
+  const decoded = decodeBigInt(str, idx);
+  idx = decoded.idx;
 
-  let decoded = firstPart.decoded;
+  let number;
   if (str.charAt(idx) === SEPARATORS.get("float")) {
-    const buffer = new ArrayBuffer(8); // 64 bits
-    const floatView = new Float64Array(buffer);
-    const intView = new Int32Array(buffer);
-    
-    intView[0] = firstPart.decoded;
+    number = bigIntToFloat64(decoded.decoded);
     idx++;
-
-    const secondPart = decodeInt(str, idx);
-    idx = secondPart.idx;
-    intView[1] = secondPart.decoded;
-  
-    decoded = floatView[0];
+  } else {
+    number = Number.parseInt(decoded.decoded);
   }
 
-  return { decoded, idx };
+  return { decoded: number, idx };
 }
 
 function encodeColor(hexCode) {
   const code = hexCode.slice(1).padEnd(8, "F");
   const codeInt = Number.parseInt(code, 16);
-  return encodeInt(codeInt);
+  return encodeNumber(codeInt);
 }
 
 function decodeColor(str, idx) {
   let decoded = "#";
-  const decodedInt = decodeInt(str, idx);
+  const decodedInt = decodeNumber(str, idx);
   decoded += decodedInt.decoded.toString(16);
   return { decoded, idx: decodedInt.idx };
 }
@@ -372,7 +379,7 @@ function test() {
 
       const familyKeyTypes = {
         ChangedFamilySettingWithGene: { type: "boolean", default: (family) => true },
-        UnchangedFamilySettingWithoutGene: { type: "string", default: (family) => "#FFFFFF" },
+        UnchangedFamilySettingWithoutGene: { type: "color", default: (family) => "#FFFFFF" },
       }
 
       const encoder = getEncoder(defaults, familyKeyTypes);
@@ -386,8 +393,9 @@ function test() {
     testInt() {
       const ints = [MAX_CHAR_CODE * 12, 12, 0, MAX_CHAR_CODE, MAX_CHAR_CODE - 1, 100000000, -100000000, 2882400255, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER];
       for (const int of ints) {
-        const encodedInt = encodeInt(int);
+        const encodedInt = encodeNumber(int);
         const decodedInt = decodeNumber(encodedInt, 0);
+
         if (decodedInt.decoded !== int) {
           throw new Error(`Integer decoding failed, expected ${int}, got ${decodedInt.decoded}`);
         }
@@ -397,11 +405,12 @@ function test() {
       }
     },
     testFloat() {
-      const floats = [MAX_CHAR_CODE * 12, 12, 0, MAX_CHAR_CODE, MAX_CHAR_CODE - 1, 100000000, -100000000, 2882400255].map(f => f * Math.PI);
+      const floats = [MAX_CHAR_CODE * 12, 12, 0.00000001, MAX_CHAR_CODE, MAX_CHAR_CODE - 1, 100000000, -100000000, 2882400255].map(f => f * Math.PI);
 
       for (const float of [...floats, Number.MAX_VALUE, Number.MIN_VALUE]) {
-        const encodedFloat = encodeFloat(float);
+        const encodedFloat = encodeNumber(float);
         const decodedFloat = decodeNumber(encodedFloat, 0);
+
         if (decodedFloat.decoded !== float) {
           throw new Error(`Float decoding failed, expected ${float}, got ${decodedFloat.decoded}`);
         }
