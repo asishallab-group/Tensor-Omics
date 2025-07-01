@@ -68,7 +68,18 @@ function getEncoder(defaults, familyKeyTypes) {
         }
       },
       object: (encodedKey, value, defaultValue) => {
-        console.error("Encoding objects not yet supported");
+        if (value !== defaultValue) {
+          if (value === null) {
+            return encodedKey + SEPARATORS.get("null");
+          } else if (value instanceof Array) {
+            const encoded = value.map(v => encoders.number(SEPARATORS.get("array"), v)).join("");
+
+            // replace first encoded key by encodedKey
+            return encodedKey + encoded.slice(1);
+          } else {
+            console.error("Encoding objects is not supported");
+          }
+        }
         return "";
       }
     }
@@ -117,8 +128,21 @@ function getEncoder(defaults, familyKeyTypes) {
         return { value: decoded.decoded, idx: decoded.idx };
       },
       object: (str, idx) => {
-        console.error("Decoding objects not yet supported");
-        return "";
+        if (str.charAt(idx) === SEPARATORS.get("null")) {
+          return { value: null, idx: idx + 1 };
+        } else {
+          const decoded = [];
+          if (!SEPARATORS_REV.has(str.charAt(idx))) {
+            do {
+              const decodedNum = decoders.number(str, idx);
+              decoded.push(decodedNum.value);
+              idx = decodedNum.idx + 1;
+            } while (str.charAt(idx - 1) === SEPARATORS.get("array"));
+            idx--;
+          } 
+
+          return { value: decoded, idx };
+        }
       }
     }
 
@@ -329,10 +353,13 @@ function test() {
         allModes: {
           changedInt: 1,
           unchangedFloat: 1.00000001,
-          unchangedBool: true
+          unchangedBool: true,
+          shownFamilies: null
         },
         lightMode: {
-          changedColor: "#ABCDEF05"
+          changedColor: "#ABCDEF05",
+          setArrayNull: [],
+          setArrayEmpty: [1,2,3]
         }, 
         darkMode: {
           unchangedColor: "#123456"
@@ -346,11 +373,14 @@ function test() {
           "123_ChangedFamilySettingWithGene:12": false,
           "123_ChangedFamilySettingWithGene:13": false,
           "123_ChangedFamilySettingWithGene:14": false,
-          "123_ChangedFamilySettingWithGene:15": false
+          "123_ChangedFamilySettingWithGene:15": false,
+          shownFamilies: [1, 16, 12]
         },
         lightMode: {
           changedColor: "#66666666",
-          "123_UnchangedFamilySettingWithoutGene": "#FFFFFF"
+          "123_UnchangedFamilySettingWithoutGene": "#FFFFFF",
+          setArrayEmpty: [],
+          setArrayNull: null
         },
         darkMode: {
           unchangedColor: "#123456"
@@ -362,9 +392,12 @@ function test() {
           "123_ChangedFamilySettingWithGene:13": false,
           "123_ChangedFamilySettingWithGene:14": false,
           "123_ChangedFamilySettingWithGene:15": false,
-          changedInt: 2
+          changedInt: 2,
+          shownFamilies: [1, 16, 12]
         }, lightMode: {
-          changedColor: "#66666666"
+          changedColor: "#66666666",
+          setArrayEmpty: [],
+          setArrayNull: null
         },
         darkMode: {}
       };
@@ -379,6 +412,7 @@ function test() {
       const decoded = decodeBase64(encoder.decode, encoded);
 
       if (JSON.stringify(decoded) !== JSON.stringify(expected)) {
+        console.log(decoded)
         throw new Error("Mismatched decoding");
       }
     },
