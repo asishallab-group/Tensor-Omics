@@ -98,7 +98,7 @@ function getEncoder(defaults, familyKeyTypes) {
       
       encodedKey += SEPARATORS.get("familyKeyStop");
       
-      defaultValue = familyKeyTypes[keyType].default;
+      defaultValue = familyKeyTypes[keyType].default(family);
       type = familyKeyTypes[keyType].type
     } else {
       previousFamilyEnc = null;
@@ -169,7 +169,7 @@ function getEncoder(defaults, familyKeyTypes) {
 
       type = familyKeyTypes[keyType].type;
       if (type === "boolean") {
-        defaultValue = familyKeyTypes[keyType].default;
+        defaultValue = familyKeyTypes[keyType].default(family);
       }
       if (str.charAt(idx) === SEPARATORS.get("familyKeyStop")) {
         idx++;
@@ -371,8 +371,8 @@ function test() {
       };
 
       const familyKeyTypes = {
-        ChangedFamilySettingWithGene: { type: "boolean", default: true },
-        UnchangedFamilySettingWithoutGene: { type: "string", default: "#FFFFFF" },
+        ChangedFamilySettingWithGene: { type: "boolean", default: (family) => true },
+        UnchangedFamilySettingWithoutGene: { type: "string", default: (family) => "#FFFFFF" },
       }
 
       const encoder = getEncoder(defaults, familyKeyTypes);
