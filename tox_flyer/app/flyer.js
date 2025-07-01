@@ -1,7 +1,7 @@
 "use strict";
 
 import { handler as dataHandler } from "./dataHandler.js";
-import { config } from "./config.js";
+import { setupConfig } from "./config.js";
 import { plotData } from "./flyer/plotData.js";
 import { setupCamera } from "./flyer/camera.js";
 import {
@@ -327,7 +327,7 @@ async function main() {
       configurable: false // Prevents deletion
     });
     Object.defineProperty(window, "config", {
-      value: config,
+      value: setupConfig(),
       writable: false, // Prevents modification
       configurable: false // Prevents deletion
     });

@@ -83,8 +83,7 @@ function setupFamilyHullMesh(scene) {
       // calculate farthest data point from centroid
       let farthestSpherePos = centroid;
       let farthestDist = 0;
-      const geneCount = dataHandler.getGeneCount(family);
-      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      for (const geneIndex of dataHandler.genes(family)) {
         const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
         if (!is_outlier) {
           const genePos = Vector(...coordinates.map(v => v*scale));
@@ -99,7 +98,7 @@ function setupFamilyHullMesh(scene) {
       // calculate farthest point from line centroid-farthestSphere
       const lengthVector = farthestSpherePos.subtract(centroid).normalize();
       let radius = 0;
-      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      for (const geneIndex of dataHandler.genes(family)) {
         const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
         if (!is_outlier) {
           const genePos = Vector(...coordinates.map(v => v*scale));
@@ -141,8 +140,7 @@ function setupShiftVectorMesh(scene) {
 
   const families = config.get("shownFamilies") ?? dataHandler.families;
   const vectorCount = families.reduce((a, family) => {
-    const geneCount = dataHandler.getGeneCount(family);
-    for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+    for (const geneIndex of dataHandler.genes(family)) {
       if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
         a++;
       }
@@ -166,16 +164,15 @@ function setupShiftVectorMesh(scene) {
       const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
       const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
 
-      const geneCount = dataHandler.getGeneCount(family);
-      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      for (const geneIndex of dataHandler.genes(family)) {
         if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
           const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
           const genePos = Vector(...coordinates.map(v => v*scale));
           const direction = genePos.subtract(centroid);
-          const vectorLength = direction.length();
-          const shaftLengthScale = 1 - 2.5 * sphereDiameter / vectorLength;
+          const vectorLength = direction.length() - sphereDiameter / 2;
+          const shaftLengthScale = 1 - 2 * sphereDiameter / vectorLength;
           const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
-          const headPosition = centroid.add(direction.scale(1 - 1.5 * sphereDiameter / vectorLength));
+          const headPosition = centroid.add(direction.scale(shaftLengthScale + sphereDiameter / vectorLength / 2));
 
           // create shaft
           fillThinInstanceBuffers(
@@ -208,7 +205,7 @@ function setupShiftVectorMesh(scene) {
     shiftVectorShaft.thinInstanceSetBuffer("color", colorBuffer, 4);
     const shiftVectorHead = BABYLON.MeshBuilder.CreateCylinder("shiftVectorHead", {height: 1, diameterTop: 0}, scene);
     shiftVectorHead.thinInstanceSetBuffer("matrix", dimensionBuffers.head, 16);
-    shiftVectorHead.thinInstanceSetBuffer("color", new Float32Array(colorBuffer), 4);
+    shiftVectorHead.thinInstanceSetBuffer("color", colorBuffer, 4);
   }
 }
 
@@ -248,8 +245,7 @@ function setupSelectionMesh(scene) {
     if (geneIndex !== undefined) {
       pickOne(geneIndex);
     } else {
-      const geneCount = dataHandler.getGeneCount(family);
-      for (let geneIndex = 0; geneIndex < geneCount; geneIndex++) {
+      for (const geneIndex of dataHandler.genes(family)) {
         pickOne(geneIndex);
       }
     }

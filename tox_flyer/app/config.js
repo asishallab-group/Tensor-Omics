@@ -1,6 +1,6 @@
 "use strict";
 
-function setupConfig() {
+export function setupConfig() {
   const defaults = {
     allModes: {
       orbitMode: false,
@@ -24,7 +24,6 @@ function setupConfig() {
     },
     lightMode: {
       selectedDataPointColor: "#FFFF00FF",
-      outlierDataPointColor: "#0000FFFF",
 
       backgroundColor: "#FFFFFFFF",
 
@@ -34,7 +33,6 @@ function setupConfig() {
     },
     darkMode: {
       selectedDataPointColor: "#FFFF00FF",
-      outlierDataPointColor: "#F15829FF",
 
       backgroundColor: "#1B1A1FFF",
 
@@ -116,7 +114,37 @@ function setupConfig() {
           { detail: {meshSelectedPoints: resolve } }
         ));
       });
-      return `${currentURL.origin}${currentURL.pathname}?config=${btoa(JSON.stringify({...values, picked}))}`;
+      const encode = await getCompressor(defaults, values, picked);
+      const base64 = encode(true);
+      return `${currentURL.origin}${currentURL.pathname}?config=${base64}`;
+    },
+    async asFile() {
+      const picked = await new Promise(resolve => {
+        document.dispatchEvent(new CustomEvent(
+          "feedConfig",
+          { detail: {meshSelectedPoints: resolve } }
+        ));
+      });
+      const encode = await getCompressor(defaults, values, picked);
+      const content = encode();
+      const filename = "tox_flyer.conf";
+
+      // Create a blob from the string
+      const blob = new Blob([content], { type: "text/plain" });
+
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(blob);
+
+      // Create a link and trigger the download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   }
 
@@ -139,19 +167,100 @@ function setupConfig() {
     const currentURL = new URL(document.URL);
     const configArg = currentURL.searchParams.get("config");
     if (configArg) {
-      const importingConfig = JSON.parse(atob(configArg));
-      if (importingConfig.allModes) values.allModes = importingConfig.allModes;
-      if (importingConfig.darkMode) values.darkMode = importingConfig.darkMode;
-      if (importingConfig.lightMode) values.lightMode = importingConfig.lightMode;
-      document.addEventListener("initializePicked", evt => {
-        evt.detail(importingConfig.picked);
-      }, { once: true })
+      getCompressor(defaults).then(decode => {
+        const importingConfig = decode(configArg, true);
+        values.allModes = importingConfig.values.allModes;
+        values.lightMode = importingConfig.values.lightMode;
+        values.darkMode = importingConfig.values.darkMode;
+        document.addEventListener("initializePicked", evt => {
+          evt.detail(importingConfig.picked);
+        }, { once: true })
+      })
     }
   } catch (err) {
     console.error("Could not import config from URL");
   }
 
   return config;
+}
+
+async function getCompressor(defaults, values=null, picked=null) {
+  const {
+    getEncoder,
+    encode,
+    encodeBase64,
+    decode,
+    decodeBase64
+  } = await import("./config/compress.js");
+
+  const familyKeyTypes = {
+    ShiftVector: { type: "boolean", default: () => false },
+    Centroid: { type: "boolean", default: () => false },
+    Hull: { type: "boolean", default: () => false }, 
+    Color: { type: "string", default: (family) => dataHandler.getColor(family) },
+    OutlierColor: { type: "string", default: (family) => dataHandler.getFamily(family) },
+    Diameter: { type: "number", default: () => defaults.allModes.defaultDiameter },
+    OutlierDiameter: { type: "number", default: () => defaults.allModes.defaultDiameter },
+    Picked: { type: "object", default: () => [] }
+  }
+
+  const defaultsCopy = JSON.parse(JSON.stringify(defaults));
+  defaultsCopy.allModes.tissueX = dataHandler.tissues.indexOf(defaults.allModes.tissueX);
+  defaultsCopy.allModes.tissueY = dataHandler.tissues.indexOf(defaults.allModes.tissueY);
+  defaultsCopy.allModes.tissueZ = dataHandler.tissues.indexOf(defaults.allModes.tissueZ);
+  const encoder = getEncoder(defaultsCopy, familyKeyTypes);
+
+  if (values) {
+    const valuesCopy = JSON.parse(JSON.stringify(values));
+    for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
+      const val = valuesCopy.allModes[tissue];
+      if (val !== undefined) {
+        valuesCopy.allModes[tissue] = dataHandler.tissues.indexOf(val);
+      }
+    }
+
+    for (const [family, genes] of Object.entries(picked)) {
+      valuesCopy.allModes[`${family}_Picked`] = genes;
+    }
+
+    function compress(asBase64=false) {
+      if (asBase64) {
+        return encodeBase64(encoder.encode, valuesCopy);
+      } else {
+        return encode(encoder.encode, valuesCopy);
+      }
+    }
+    return compress;
+  } else {
+    function decompress(encoded, isBase64=false) {
+      let decodedValues;
+      if (isBase64) {
+        decodedValues = decodeBase64(encoder.decode, encoded);
+      } else {
+        decodedValues = decode(encoder.decode, encoded);
+      }
+
+      const decodedPicked = {};
+      for (const [key, values] of Object.entries(decodedValues.allModes)) {
+        const family = key.match(/^(.*)_Picked/)?.[1];
+        if (family) {
+          decodedPicked[family] = decodedValues.allModes[`${family}_Picked`];
+          delete decodedValues.allModes[`${family}_Picked`];
+        }
+      }
+
+      for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
+        const val = decodedValues.allModes[tissue];
+        if (val !== undefined) {
+          decodedValues.allModes[tissue] = dataHandler.tissues[val];
+        }
+      }
+
+      return { values: decodedValues, picked: decodedPicked };
+    }
+
+    return decompress;
+  }
 }
 
 function getValidator() {
@@ -167,13 +276,13 @@ function getValidator() {
       [
         ["x", "y", "z", "rotationX", "rotationY"],
         v => {
-          if (typeof v !== "number") throw Error(`Expecting number, got: ${typeof v}`);
+          if (typeof v !== "number" || !Number.isFinite(v)) throw Error(`Expecting number, got: ${typeof v}`);
         }
       ],
       [
         ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale"],
         v => {
-          if (typeof v !== "number" || v <= 0) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
+          if (typeof v !== "number" || v <= 0 || !Number.isFinite(v)) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
         }
       ],
       [
@@ -214,7 +323,7 @@ function getValidator() {
       }
     } else {
       if (key.endsWith("Diameter")) {
-        if (typeof value !== "number" || value <= 0) {
+        if (typeof value !== "number" || value <= 0 || !Number.isFinite(value)) {
           console.error(`${key}: Expecting true positive number, got: ${value} (${typeof value})`);
           return;
         }
@@ -227,7 +336,7 @@ function getValidator() {
         return true;
       } else if (key.endsWith("_Centroid") || key.endsWith("_Hull") || /_ShiftVector:\d+/.test(key)) {
         if (typeof value !== "boolean") {
-          console.error(`${key}: Expecting boolean value, got: ${typeof v}`);
+          console.error(`${key}: Expecting boolean value, got: ${typeof value}`);
           return;
         }
         return true;
@@ -238,5 +347,3 @@ function getValidator() {
 
   return validate;
 }
-
-export const config = setupConfig();
