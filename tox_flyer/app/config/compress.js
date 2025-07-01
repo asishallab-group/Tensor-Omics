@@ -317,12 +317,21 @@ export function encode(encoder, values) {
     encoded += encoder(category, key, value);
   }
 
-  const lzmaAsBigInt = LZMA.compress(encoded, 9).reduce((acc, byte) => (acc << 8n) | BigInt(byte + 128), 0n);
-  return encodeBigInt(lzmaAsBigInt);
+  return new Promise((res, rej) => {
+    LZMA.compress(encoded, 1, (compressed, err) => {
+      if (err) rej(new Error("Error during LZMA compression"));
+      try {
+        const asBigInt = compressed.reduce((acc, byte) => (acc << 8n) | BigInt(byte + 128), 0n);
+        res(encodeBigInt(asBigInt));
+      } catch (err) {
+        rej(err);
+      }
+    });
+  });
 }
 
-export function encodeBase64(encoder, values) {
-  const encoded = encode(encoder, values);
+export async function encodeBase64(encoder, values) {
+  const encoded = await encode(encoder, values);
   let base64 = btoa(unescape(encodeURIComponent(encoded)));
   base64 = base64.replaceAll("/", "_");
   base64 = base64.replaceAll("+", "-");
@@ -337,23 +346,31 @@ export function decode(decoder, encodedStr) {
     lzmaAsBigInt >>= 8n; // Shift 8 bits to the right
   }
 
-  encodedStr = LZMA.decompress(lzmaEncoded);
+  return new Promise((res, rej) => {
+    LZMA.decompress(lzmaEncoded, (decompressed, err) => {
+      if (err) rej(new Error("Error during LZMA decompression"));
+      try {
+        const values = {
+          allModes: {},
+          lightMode: {},
+          darkMode: {}
+        };
 
-  const values = {
-    allModes: {},
-    lightMode: {},
-    darkMode: {}
-  };
+        let idx = 0;
+        while (idx < decompressed.length) {
+          const decoded = decoder(decompressed, idx);
 
-  let idx = 0;
-  while (idx < encodedStr.length) {
-    const decoded = decoder(encodedStr, idx);
+          values[decoded.category][decoded.key] = decoded.value;
+          idx = decoded.idx;
+        }
 
-    values[decoded.category][decoded.key] = decoded.value;
-    idx = decoded.idx;
-  }
+        res(values);
+      } catch (err) {
+        rej(err);
+      }
+    });
+  });
 
-  return values;
 }
 
 export function decodeBase64(decoder, base64) {
@@ -366,7 +383,7 @@ export function decodeBase64(decoder, base64) {
 
 function test() {
   const tests = {
-    testEncodeDecode() {
+    async testEncodeDecode() {
       const defaults = {
         allModes: {
           changedInt: 1,
@@ -391,8 +408,8 @@ function test() {
           unchangedBool: true,
           "123_ChangedFamilySettingWithGene:12": false,
           "123_ChangedFamilySettingWithGene:13": false,
-          "123_ChangedFamilySettingWithGene:14": false,
-          "123_ChangedFamilySettingWithGene:15": false,
+          "124_ChangedFamilySettingWithGene:14": false,
+          "124_ChangedFamilySettingWithGene:15": false,
           setNullToArray: [1, 16, 12],
           unchangedArray: [4, 1, 2]
         },
@@ -410,8 +427,8 @@ function test() {
         allModes: {
           "123_ChangedFamilySettingWithGene:12": false,
           "123_ChangedFamilySettingWithGene:13": false,
-          "123_ChangedFamilySettingWithGene:14": false,
-          "123_ChangedFamilySettingWithGene:15": false,
+          "124_ChangedFamilySettingWithGene:14": false,
+          "124_ChangedFamilySettingWithGene:15": false,
           changedInt: 2,
           setNullToArray: [1, 12, 16]
         },
@@ -429,8 +446,8 @@ function test() {
       }
 
       const encoder = getEncoder(defaults, familyKeyTypes);
-      const encoded = encodeBase64(encoder.encode, custom);
-      const decoded = decodeBase64(encoder.decode, encoded);
+      const encoded = await encodeBase64(encoder.encode, custom);
+      const decoded = await decodeBase64(encoder.decode, encoded);
 
       if (JSON.stringify(decoded) !== JSON.stringify(expected)) {
         throw new Error("Mismatched decoding");
@@ -492,4 +509,6 @@ function test() {
   }
 }
 
+// note that if you run tests, all previous encodings (e.g. in URLs) won't decode correctly,
+// as the separators differ then because the test function initializes some separators when calling getEncoder
 // test()

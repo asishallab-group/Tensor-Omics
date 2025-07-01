@@ -327,7 +327,7 @@ async function main() {
       configurable: false // Prevents deletion
     });
     Object.defineProperty(window, "config", {
-      value: setupConfig(),
+      value: await setupConfig(),
       writable: false, // Prevents modification
       configurable: false // Prevents deletion
     });

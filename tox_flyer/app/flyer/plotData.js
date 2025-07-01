@@ -152,10 +152,10 @@ function setupShiftVectorMesh(scene) {
     const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
 
     const dimensionBuffers = {
-      shaft: new Float32Array(families.length * 16),
-      head: new Float32Array(families.length * 16)
+      shaft: new Float32Array(vectorCount * 16),
+      head: new Float32Array(vectorCount * 16)
     }
-    const colorBuffer = new Float32Array(families.length * 4);
+    const colorBuffer = new Float32Array(vectorCount * 4);
 
     let bufferIndex = 0;
     for (const family of families) {

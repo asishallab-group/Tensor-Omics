@@ -1,6 +1,6 @@
 "use strict";
 
-export function setupConfig() {
+export async function setupConfig() {
   const defaults = {
     allModes: {
       orbitMode: false,
@@ -106,6 +106,9 @@ export function setupConfig() {
         throw Error(`Another callback function has been already registered for '${key}' in the past.`);
       }
     },
+    runCallbacks() {
+      config.set("darkMode", config.get("darkMode"));
+    },
     async asURL() {
       const currentURL = new URL(document.URL);
       const picked = await new Promise(resolve => {
@@ -115,7 +118,7 @@ export function setupConfig() {
         ));
       });
       const encode = await getCompressor(defaults, values, picked);
-      const base64 = encode(true);
+      const base64 = await encode(true);
       return `${currentURL.origin}${currentURL.pathname}?config=${base64}`;
     },
     async asFile() {
@@ -126,7 +129,7 @@ export function setupConfig() {
         ));
       });
       const encode = await getCompressor(defaults, values, picked);
-      const content = encode();
+      const content = await encode();
       const filename = "tox_flyer.conf";
 
       // Create a blob from the string
@@ -167,15 +170,14 @@ export function setupConfig() {
     const currentURL = new URL(document.URL);
     const configArg = currentURL.searchParams.get("config");
     if (configArg) {
-      getCompressor(defaults).then(decode => {
-        const importingConfig = decode(configArg, true);
-        values.allModes = importingConfig.values.allModes;
-        values.lightMode = importingConfig.values.lightMode;
-        values.darkMode = importingConfig.values.darkMode;
-        document.addEventListener("initializePicked", evt => {
-          evt.detail(importingConfig.picked);
-        }, { once: true })
-      })
+      const decode = await getCompressor(defaults);
+      const importingConfig = await decode(configArg, true);
+      values.allModes = importingConfig.values.allModes;
+      values.lightMode = importingConfig.values.lightMode;
+      values.darkMode = importingConfig.values.darkMode;
+      document.addEventListener("initializePicked", evt => {
+        evt.detail(importingConfig.picked);
+      }, { once: true });
     }
   } catch (err) {
     console.error("Could not import config from URL");
@@ -232,12 +234,12 @@ async function getCompressor(defaults, values=null, picked=null) {
     }
     return compress;
   } else {
-    function decompress(encoded, isBase64=false) {
+    async function decompress(encoded, isBase64=false) {
       let decodedValues;
       if (isBase64) {
-        decodedValues = decodeBase64(encoder.decode, encoded);
+        decodedValues = await decodeBase64(encoder.decode, encoded);
       } else {
-        decodedValues = decode(encoder.decode, encoded);
+        decodedValues = await decode(encoder.decode, encoded);
       }
 
       const decodedPicked = {};
