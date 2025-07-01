@@ -72,10 +72,13 @@ function getEncoder(defaults, familyKeyTypes) {
           if (value === null) {
             return encodedKey + SEPARATORS.get("null");
           } else if (value instanceof Array) {
-            const encoded = value.map(v => encoders.number(SEPARATORS.get("array"), v)).join("");
+            value.sort();
+            if (defaultValue === null || defaultValue.sort().toString() !== value.toString()) {
+              const encoded = value.map(v => encoders.number(SEPARATORS.get("array"), v)).join("");
 
-            // replace first encoded key by encodedKey
-            return encodedKey + encoded.slice(1);
+              // replace first encoded key by encodedKey
+              return encodedKey + encoded.slice(1);
+            }
           } else {
             console.error("Encoding objects is not supported");
           }
@@ -354,7 +357,8 @@ function test() {
           changedInt: 1,
           unchangedFloat: 1.00000001,
           unchangedBool: true,
-          shownFamilies: null
+          shownFamilies: null,
+          unchangedArray: [1, 4, 2]
         },
         lightMode: {
           changedColor: "#ABCDEF05",
@@ -374,7 +378,8 @@ function test() {
           "123_ChangedFamilySettingWithGene:13": false,
           "123_ChangedFamilySettingWithGene:14": false,
           "123_ChangedFamilySettingWithGene:15": false,
-          shownFamilies: [1, 16, 12]
+          shownFamilies: [1, 16, 12],
+          unchangedArray: [4, 1, 2]
         },
         lightMode: {
           changedColor: "#66666666",
@@ -393,8 +398,9 @@ function test() {
           "123_ChangedFamilySettingWithGene:14": false,
           "123_ChangedFamilySettingWithGene:15": false,
           changedInt: 2,
-          shownFamilies: [1, 16, 12]
-        }, lightMode: {
+          shownFamilies: [1, 12, 16]
+        },
+        lightMode: {
           changedColor: "#66666666",
           setArrayEmpty: [],
           setArrayNull: null
@@ -412,7 +418,6 @@ function test() {
       const decoded = decodeBase64(encoder.decode, encoded);
 
       if (JSON.stringify(decoded) !== JSON.stringify(expected)) {
-        console.log(decoded)
         throw new Error("Mismatched decoding");
       }
     },
