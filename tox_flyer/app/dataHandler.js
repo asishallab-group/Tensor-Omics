@@ -16,12 +16,22 @@ export const handler = {
       data[0]?.tissues ?? {}
     );
   },
-  getFamilyIndex(family) {
-    for (const i in data) {
-      if (data[i].family === family) {
-        return i;
+  getFamilyIndices(...familyIDs) {
+    familyIDs = new Set(familyIDs);
+    const indices = {};
+    for (let i = 0; i < data.length; i++) {
+      const family = data[i].family;
+      if (familyIDs.delete(family)) {
+        indices[family] = i;
+      }
+      if (familyIDs.size === 0) {
+        break;
       }
     }
+    return indices;
+  },
+  getFamilyIDs(...familyIndices) {
+    return familyIndices.map(f => data[f]?.family);
   },
   getFamilyCount() {
     return data.length;
@@ -31,14 +41,16 @@ export const handler = {
   },
   getColor(familyIdx) {
     // using the checksum of the family name as color code
-    const familyID = data[familyIdx].family;
-    const value = crc32(familyID) & (8**6-1); // mask the bits to have a number that is between octal 0-777777, a range of around 260k values
-    const shift = config.get("darkMode") ? 3 : 7;
-    const hexString = value.toString(8).padStart(6, "0");
+    const familyID = data[familyIdx]?.family;
+    if (familyID !== undefined) {
+      const value = crc32(familyID) & (8**6-1); // mask the bits to have a number that is between octal 0-777777, a range of around 260k values
+      const shift = config.get("darkMode") ? 3 : 7;
+      const hexString = value.toString(8).padStart(6, "0");
 
-    // shift the numbers, so in darkmode the color consists of numbers between 3-9 and in lightMode between 9-F
-    // why shifting? because brighter colors are ugly in darkmode and vice versa
-    return "#" + hexString.replace(/[0-7]/g, char => (Number(char) + shift).toString(16)).toUpperCase();
+      // shift the numbers, so in darkmode the color consists of numbers between 3-9 and in lightMode between 9-F
+      // why shifting? because brighter colors are ugly in darkmode and vice versa
+      return "#" + hexString.replace(/[0-7]/g, char => (Number(char) + shift).toString(16)).toUpperCase();
+    }
   },
   getCentroid(familyIdx, ...tissues) {
     return tissues.map((tissue) => {

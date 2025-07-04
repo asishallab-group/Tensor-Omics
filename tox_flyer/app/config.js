@@ -103,7 +103,7 @@ export async function setupConfig() {
         callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
         callback(this.get(key));
       } else {
-        throw Error(`Another callback function has been already registered for '${key}' in the past.`);
+        throw new Error(`Another callback function has been already registered for '${key}' in the past.`);
       }
     },
     runCallbacks() {
@@ -270,42 +270,48 @@ function getValidator() {
   {
     const asArray = [
       [
-        ["orbitMode", "darkMode"],
+        ["orbitMode", "darkMode", "ShiftVector", "Centroid", "Hull"],
         v => {
-          if (typeof v !== "boolean") throw Error(`Expecting boolean value, got: ${typeof v}`);
+          if (typeof v !== "boolean") throw new Error(`Expecting boolean value, got: ${typeof v}`);
         }
       ],
       [
         ["x", "y", "z", "rotationX", "rotationY"],
         v => {
-          if (typeof v !== "number" || !Number.isFinite(v)) throw Error(`Expecting number, got: ${typeof v}`);
+          if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`Expecting number, got: ${typeof v}`);
         }
       ],
       [
-        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale"],
+        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale", "defaultDiameter", "Diameter", "OutlierDiameter"],
         v => {
-          if (typeof v !== "number" || v <= 0 || !Number.isFinite(v)) throw Error(`Expecting true positive number, got: ${v} (${typeof v})`);
+          if (typeof v !== "number" || v <= 0 || !Number.isFinite(v)) throw new Error(`Expecting true positive number, got: ${v} (${typeof v})`);
         }
       ],
       [
         ["chunkDiameter"],
         v => {
-          if (!Number.isInteger(v) || v <= 0 || v % 2 === 1) throw Error(`Expecting true positive even integer, got: ${v} (${typeof v})`);
+          if (!Number.isInteger(v) || v <= 0 || v % 2 === 1) throw new Error(`Expecting true positive even integer, got: ${v} (${typeof v})`);
         }
       ],
       [
         ["chunkLoadRange"],
         v => {
-          if (!Number.isInteger(v) || v <= 0) throw Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
+          if (!Number.isInteger(v) || v <= 0) throw new Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
         }
       ],
       [
         ["shownFamilies"],
         v => {
-          if (v !== null && !(v instanceof Array)) throw Error(`Expecting either null or Array of family names, got: ${typeof v}`)
+          if (v !== null && !(v instanceof Array)) throw new Error(`Expecting either null or Array of family names, got: ${typeof v}`);
         }
       ],
-      [["tissueX", "tissueY", "tissueZ"], () => {}]
+      [["tissueX", "tissueY", "tissueZ"], () => {}],
+      [
+        ["selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor", "Color"],
+        v => {
+          if (!/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(v)) throw new Error(`Expecting RGB(A) hex color code, got: ${v}`);
+        }
+      ],
     ]
     for (const [keys, validator] of asArray) {
       for (const key of keys) {
@@ -314,7 +320,13 @@ function getValidator() {
     }
   }
   function validate(key, value) {
-    const validator = validators[key];
+    const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/)?.slice(1) ?? [];
+    let validator;
+    if (keyType !== undefined) {
+      validator = validators[keyType];
+    } else if (key[0].toUpperCase() !== key[0]) {
+      validator = validators[key];
+    }
     if (validator !== undefined) {
       try {
         validator(value);
@@ -324,25 +336,6 @@ function getValidator() {
         return;
       }
     } else {
-      if (key.endsWith("Diameter")) {
-        if (typeof value !== "number" || value <= 0 || !Number.isFinite(value)) {
-          console.error(`${key}: Expecting true positive number, got: ${value} (${typeof value})`);
-          return;
-        }
-        return true;
-      } else if (key.endsWith("Color")) {
-        if (!/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(value)) {
-          console.error(`${key}: Expecting RGB(A) hex color code, got: ${value}`);
-          return;
-        }
-        return true;
-      } else if (key.endsWith("_Centroid") || key.endsWith("_Hull") || /_ShiftVector:\d+/.test(key)) {
-        if (typeof value !== "boolean") {
-          console.error(`${key}: Expecting boolean value, got: ${typeof value}`);
-          return;
-        }
-        return true;
-      }
       console.error(`Unknown key: ${key}`);
     }
   }

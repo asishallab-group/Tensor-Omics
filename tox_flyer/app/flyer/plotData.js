@@ -6,7 +6,6 @@ import {
   Color,
   Vector,
   TransformNode,
-  calcVectorDistance,
   Material,
   fillThinInstanceBuffers
 } from "./babylon.js";
@@ -87,7 +86,7 @@ function setupFamilyHullMesh(scene) {
         const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
         if (!is_outlier) {
           const genePos = Vector(...coordinates.map(v => v*scale));
-          const distance = calcVectorDistance(centroid, genePos)
+          const distance = Vector.Distance(centroid, genePos)
           if (distance > farthestDist) {
             farthestDist = distance;
             farthestSpherePos = genePos;
@@ -95,14 +94,28 @@ function setupFamilyHullMesh(scene) {
         }
       }
 
+      let otherEnd = farthestSpherePos;
+      farthestDist = 0;
+      for (const geneIndex of dataHandler.genes(family)) {
+        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
+        if (!is_outlier) {
+          const genePos = Vector(...coordinates.map(v => v*scale));
+          const distance = Vector.Distance(farthestSpherePos, genePos)
+          if (distance > farthestDist) {
+            farthestDist = distance;
+            otherEnd = genePos;
+          }
+        }
+      }
+
       // calculate farthest point from line centroid-farthestSphere
-      const lengthVector = farthestSpherePos.subtract(centroid).normalize();
+      const lengthVector = farthestSpherePos.subtract(otherEnd).normalize();
       let radius = 0;
       for (const geneIndex of dataHandler.genes(family)) {
         const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
         if (!is_outlier) {
           const genePos = Vector(...coordinates.map(v => v*scale));
-          const centroidToGene = genePos.subtract(centroid);
+          const centroidToGene = genePos.subtract(otherEnd);
           const projectionLength = BABYLON.Vector3.Dot(centroidToGene, lengthVector);
           const projectionVector = lengthVector.scale(projectionLength);
           const heightVector = centroidToGene.subtract(projectionVector);
@@ -113,14 +126,14 @@ function setupFamilyHullMesh(scene) {
         }
       }
 
-      const length = 2*(farthestDist + sphereDiameter);
-      const width = 3*(radius + sphereDiameter);
+      const length = 2 * (Vector.Distance(farthestSpherePos, otherEnd) / 2 + sphereDiameter);
+      const width = 3 * (radius + sphereDiameter);
 
       const color = Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2);
       fillThinInstanceBuffers(
         dimensionsBuffer, i * 16,
         {
-          position: centroid,
+          position: farthestSpherePos.add(otherEnd).scale(0.5),
           scaling: Vector(width, length, width),
           target: farthestSpherePos
         },
@@ -322,7 +335,7 @@ function pickFromMeshes(chunks) {
           { center: spherePosition, radius: matrix[0] / 2 }
         );
         if (intersects) {
-          const distance = calcVectorDistance(chunks.scene.activeCamera.position, spherePosition);
+          const distance = Vector.Distance(chunks.scene.activeCamera.position, spherePosition);
           if (distance < closestDist) {
             closestDist = distance;
             picked = {
