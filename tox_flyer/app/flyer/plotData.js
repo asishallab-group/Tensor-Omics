@@ -1,6 +1,7 @@
 "use strict";
 
 import { getChunks } from "./chunks.js";
+import { createTooltip, removeTooltip } from "./gui.js";
 import {
   Mesh,
   Color,
@@ -38,23 +39,46 @@ function plotData(scene) {
   let picked = null;
   scene.onPointerObservable.add((evt) => {
     switch (evt.type) {
+      case BABYLON.PointerEventTypes.POINTERDOWN:
+        removeTooltip();
+        break;
       case BABYLON.PointerEventTypes.POINTERTAP:
         picked = pickFromMeshes(chunks);
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
           if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
             selected.TOX_pick(picked.family, picked.geneIndex);
+            const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species"]);
+            createTooltip(evt.event.clientX, evt.event.clientY,
+              "Data Point<table><tbody>" +
+              `<tr><td>Gene:</td><td>${geneData.genes}</td></tr>` +
+              `<tr><td>Species:</td><td>${geneData.species}</td></tr>` +
+              `<tr><td>${chunks.tissues[0]}:</td><td>${geneData.coordinates[0]}</td></tr>` +
+              `<tr><td>${chunks.tissues[1]}:</td><td>${geneData.coordinates[1]}</td></tr>` +
+              `<tr><td>${chunks.tissues[2]}:</td><td>${geneData.coordinates[2]}</td></tr>` +
+              "</tbody></table>"
+            );
           }
+        } else {
+          removeTooltip();
         }
         break;
       case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
         if (picked !== null) {
           const selected = scene.getMeshByName("meshSelectedPoints");
-          const wasSelected = selected.TOX_unpick(picked.family, picked.geneIndex);
-          if (!wasSelected) {
+
+          // if unpick was successful, so it was picked already, the original pick was initiated by the simultaneously triggered POINTERTAP
+          const wasUnselected = selected.TOX_unpick(picked.family, picked.geneIndex);
+          if (!wasUnselected) {
             selected.TOX_unpick(picked.family);
           } else {
             selected.TOX_pick(picked.family);
+            createTooltip(evt.event.clientX, evt.event.clientY,
+              "Family<table><tbody>" +
+              `<tr><td>Family:</td><td>${dataHandler.getFamilyIDs(picked.family)[0]}</td></tr>` +
+              `<tr><td>Members:</td><td>${dataHandler.getGeneCount(picked.family)}</td></tr>` +
+              "</tbody></table>"
+            );
           }
         }
         break;
@@ -381,43 +405,6 @@ function pickFromMeshes(chunks) {
     }
   }
   return picked;
-}
-
-/***************************************************************
- * Function: setupTooltipFollow
- * Purpose: Make the tooltip div follow the mouse pointer.
- * - Listens for mousemove events on the canvas.
- * - Offsets the tooltip by a few pixels from the pointer for better visibility.
- ***************************************************************/
-function setupTooltip(scene, mesh) {
-  // Register a hover action to display a tooltip with the data values.
-  const datapointDiv = document.getElementById("datapoint");
-  mesh.actionManager.registerAction(
-    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOverTrigger, function (evt) {
-      const dataPoint = evt.source;
-      if (dataPoint) {
-        datapointDiv.style.display = "block";
-        document.body.style.cursor = "pointer";
-        // Format the tooltip content with two decimal places.
-        datapointDiv.innerHTML = "x: " + dataPoint.position.x.toFixed(2) + 
-                               "<br>y: " + dataPoint.position.y.toFixed(2) + 
-                               "<br>z: " + dataPoint.position.z.toFixed(2);
-      }
-    })
-  );
-
-  // Hide the tooltip when the pointer leaves the sphere.
-  mesh.actionManager.registerAction(
-    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPointerOutTrigger, function () {
-      datapointDiv.style.display = "none";
-      document.body.style.cursor = "unset";
-    })
-  );
-
-  scene.getEngine().getRenderingCanvas().addEventListener("mousemove", function (evt) {
-    datapointDiv.style.left = (evt.clientX + 10) + "px";
-    datapointDiv.style.top = (evt.clientY + 10) + "px";
-  });
 }
 
 export { plotData };
