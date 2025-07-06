@@ -4,7 +4,7 @@ export async function setupConfig() {
   const defaults = {
     allModes: {
       orbitMode: false,
-      darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+      darkMode: true,
       x: 0,
       y: 0,
       z: 0,
@@ -152,6 +152,8 @@ export async function setupConfig() {
   }
 
   Object.freeze(config);
+
+  config.set("darkMode", window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // on dark mode switch, all callbacks need to be triggered
   config.setSetterCallback("darkMode", (enable) => {

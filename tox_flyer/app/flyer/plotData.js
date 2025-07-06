@@ -45,19 +45,35 @@ function plotData(scene) {
       case BABYLON.PointerEventTypes.POINTERTAP:
         picked = pickFromMeshes(chunks);
         if (picked !== null) {
-          const selected = scene.getMeshByName("meshSelectedPoints");
-          if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
-            selected.TOX_pick(picked.family, picked.geneIndex);
-            const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species"]);
-            createTooltip(evt.event.clientX, evt.event.clientY,
-              "Data Point<table><tbody>" +
-              `<tr><td>Gene:</td><td>${geneData.genes}</td></tr>` +
-              `<tr><td>Species:</td><td>${geneData.species}</td></tr>` +
-              `<tr><td>${chunks.tissues[0]}:</td><td>${geneData.coordinates[0]}</td></tr>` +
-              `<tr><td>${chunks.tissues[1]}:</td><td>${geneData.coordinates[1]}</td></tr>` +
-              `<tr><td>${chunks.tissues[2]}:</td><td>${geneData.coordinates[2]}</td></tr>` +
-              "</tbody></table>"
-            );
+          switch (picked.type) {
+            case "gene": {
+              const selected = scene.getMeshByName("meshSelectedPoints");
+              if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
+                selected.TOX_pick(picked.family, picked.geneIndex);
+                const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species"]);
+                createTooltip(evt.event.clientX, evt.event.clientY,
+                  "Data Point<table><tbody>" +
+                  `<tr><td>Gene:</td><td>${geneData.genes}</td></tr>` +
+                  `<tr><td>Species:</td><td>${geneData.species}</td></tr>` +
+                  `<tr><td>${chunks.tissues[0]}:</td><td>${geneData.coordinates[0].toFixed(2)}</td></tr>` +
+                  `<tr><td>${chunks.tissues[1]}:</td><td>${geneData.coordinates[1].toFixed(2)}</td></tr>` +
+                  `<tr><td>${chunks.tissues[2]}:</td><td>${geneData.coordinates[2].toFixed(2)}</td></tr>` +
+                  "</tbody></table>"
+                );
+              }
+              break;
+            }
+            case "centroid": {
+              const centroid = dataHandler.getCentroid(picked.family, ...chunks.tissues);
+              createTooltip(evt.event.clientX, evt.event.clientY,
+                "Centroid<table><tbody>" +
+                `<tr><td>Family:</td><td>${dataHandler.getFamilyIDs(picked.family)[0]}</td></tr>` +
+                `<tr><td>${chunks.tissues[0]}:</td><td>${centroid[0].toFixed(2)}</td></tr>` +
+                `<tr><td>${chunks.tissues[1]}:</td><td>${centroid[1].toFixed(2)}</td></tr>` +
+                `<tr><td>${chunks.tissues[2]}:</td><td>${centroid[2].toFixed(2)}</td></tr>` +
+                "</tbody></table>"
+              );
+            }
           }
         } else {
           removeTooltip();
@@ -249,6 +265,7 @@ function setupShiftVectorMesh(scene) {
 function setupSelectionMesh(scene) {
   const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
   const meshSelectedPoints = Mesh.Sphere(scene, "meshSelectedPoints");
+  meshSelectedPoints.TOX_type = "gene";
 
   config.setSetterCallback("selectedDataPointColor", hexColorCode => {
     highlightLayer.removeMesh(meshSelectedPoints);
@@ -268,6 +285,8 @@ function setupSelectionMesh(scene) {
     const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
 
     const pickOne = (geneIndex) => {
+      document.dispatchEvent(new CustomEvent("pick", { detail: { family, gene: geneIndex, type: this.TOX_type } }));
+
       const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
       const instance = this.createInstance();
       instance.position = Vector(...coordinates.map(v => v * scale));
@@ -294,6 +313,7 @@ function setupSelectionMesh(scene) {
       if (this.instances.length === 1) {
         highlightLayer.isEnabled = false;
       }
+      document.dispatchEvent(new CustomEvent("unpick", { detail: { family: instance.TOX_family, gene: instance.TOX_geneIndex, type: this.TOX_type } }));
       instance.dispose();
     }
     return instances.length;
@@ -380,16 +400,20 @@ function pickFromMeshes(chunks) {
     let pickedIndex = picked.index;
     switch (picked.meshType) {
       case "centroids": {
+        picked.type = "centroid";
         for (const [family, members] of genes) {
           if (pickedIndex === 0) {
             console.log(`Picked centroid of family '${family}'`);
-            return null;
+            picked.family = family;
+            break;
           }
           pickedIndex -= Boolean(members.centroids)
         }
+        break;
       }
       case "inliers":
       case "outliers": {
+        picked.type = "gene";
         for (const [family, members] of genes) {
           const indices = members[picked.meshType];
           if (indices) {
@@ -401,6 +425,7 @@ function pickFromMeshes(chunks) {
             }
           }
         }
+        break;
       }
     }
   }
