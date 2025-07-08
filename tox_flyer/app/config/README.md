@@ -89,7 +89,7 @@ Anyway, arrays store only elements of the same data type.
 It will be encoded as follows:
 ```js
 if (array === null) {
-  return separator("null");
+  return encode(key) + separator("null");
 } else {
   encoding = encode(key);
   encoding += array.map(element => encode(element)).join(separator("array"));
@@ -119,6 +119,6 @@ Strings are kinda tricky in the encoding, as they may contain separator characte
   Before decoding the data, the string array needs to be extracted and used as lookup in decoding, as the strings are encoded as indices.
   ```js
   [encoded, ...split] = encoded.split(separator("strings"));
-  stringArray = split.join(separator("strings"));
+  stringArray = parse(split.join(separator("strings")));
   return decode(encoded, stringArray);
   ```
