@@ -64,7 +64,7 @@ function plotData(scene) {
               break;
             }
             case "centroid": {
-              const centroid = dataHandler.getCentroid(picked.family, ...chunks.tissues);
+              const { centroid } = dataHandler.getFamilyData(picked.family, ...chunks.tissues);
               createTooltip(evt.event.clientX, evt.event.clientY,
                 "Centroid<table><tbody>" +
                 `<tr><td>Family:</td><td>${dataHandler.getFamilyIDs(picked.family)[0]}</td></tr>` +
@@ -116,66 +116,15 @@ function setupFamilyHullMesh(scene) {
     const colorBuffer = new Float32Array(families.length * 4);
 
     families.forEach((family, i) => {
-      const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
-      const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
-
-      // calculate farthest data point from centroid
-      let farthestSpherePos = centroid;
-      let farthestDist = 0;
-      for (const geneIndex of dataHandler.genes(family)) {
-        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-        if (!is_outlier) {
-          const genePos = Vector(...coordinates.map(v => v*scale));
-          const distance = Vector.Distance(centroid, genePos)
-          if (distance > farthestDist) {
-            farthestDist = distance;
-            farthestSpherePos = genePos;
-          }
-        }
-      }
-
-      let otherEnd = farthestSpherePos;
-      farthestDist = 0;
-      for (const geneIndex of dataHandler.genes(family)) {
-        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-        if (!is_outlier) {
-          const genePos = Vector(...coordinates.map(v => v*scale));
-          const distance = Vector.Distance(farthestSpherePos, genePos)
-          if (distance > farthestDist) {
-            farthestDist = distance;
-            otherEnd = genePos;
-          }
-        }
-      }
-
-      // calculate farthest point from line centroid-farthestSphere
-      const lengthVector = farthestSpherePos.subtract(otherEnd).normalize();
-      let radius = 0;
-      for (const geneIndex of dataHandler.genes(family)) {
-        const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-        if (!is_outlier) {
-          const genePos = Vector(...coordinates.map(v => v*scale));
-          const centroidToGene = genePos.subtract(otherEnd);
-          const projectionLength = BABYLON.Vector3.Dot(centroidToGene, lengthVector);
-          const projectionVector = lengthVector.scale(projectionLength);
-          const heightVector = centroidToGene.subtract(projectionVector);
-          const height = heightVector.length();
-          if (height > radius) {
-            radius = height;
-          }
-        }
-      }
-
-      const length = 2 * (Vector.Distance(farthestSpherePos, otherEnd) / 2 + sphereDiameter);
-      const width = 3 * (radius + sphereDiameter);
-
+      const familyData = dataHandler.getFamilyData(family, ...tissues);
+      const centroid = Vector(...familyData.centroid.map(v => v*scale));
+      const stdDevs = familyData.stdDevs.map(v => v*scale);
       const color = Color(config.get(family + "_Color") ?? dataHandler.getColor(family)).scale(2);
       fillThinInstanceBuffers(
         dimensionsBuffer, i * 16,
         {
-          position: farthestSpherePos.add(otherEnd).scale(0.5),
-          scaling: Vector(width, length, width),
-          target: farthestSpherePos
+          position: centroid,
+          scaling: Vector(stdDevs[0] * 3, stdDevs[1] * 2, stdDevs[2] * 3)
         },
         colorBuffer, i * 4,
         color
@@ -214,7 +163,7 @@ function setupShiftVectorMesh(scene) {
     for (const family of families) {
       let color = Color(config.get(family + "_Color") ?? dataHandler.getColor(family));
       color = color.scale(1 / Math.max(color.r, color.g, color.b));
-      const centroid = Vector(...dataHandler.getCentroid(family, ...tissues).map(v => v*scale));
+      const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
       const sphereDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
 
       for (const geneIndex of dataHandler.genes(family)) {

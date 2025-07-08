@@ -62,7 +62,7 @@ export function getChunks(scene) {
           const memberType = is_outlier ? "outliers" : "inliers";
           handleMember(family, coordinates, memberType, geneIndex);
         }
-        const familyCentroid = dataHandler.getCentroid(family, ...this.tissues);
+        const familyCentroid = dataHandler.getFamilyData(family, ...this.tissues).centroid;
         handleMember(family, familyCentroid, "centroids");
       }
       this.active = calcActiveChunks(this, position);
@@ -158,7 +158,7 @@ export function getChunks(scene) {
               } else {
                 const show = config.get(`${family}_Centroid`);
                 if (show) {
-                  const coordinates = dataHandler.getCentroid(family, ...this.tissues);
+                  const coordinates = dataHandler.getFamilyData(family, ...this.tissues).centroid;
                   const diameter = (diameters.inliers ?? diameters.default) * 4;
                   const color = colors.family.scale(2);
                   color.a = 1;
