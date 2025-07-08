@@ -14,7 +14,7 @@ For URL generation this final string is gonna be base64 encoded, with `/`, `+` r
 ## Step 1: encode config data as compact parsible string
 
 The encoding of the data follows the concept of key-value pairs.
-After the encoded key, its related encoded value follows.
+After the encoded key its related encoded value follows.
 The keys act as separators here, so when decoding, the value ends if the next key comes.
 Each key in the config has a default value. Thus, a key-value pair will only be encoded if the value doesn't match its default.
 
@@ -72,7 +72,7 @@ Having this, the encoded key is built from multiple parts:
 4. (optional) if a gene index was specified (third group), its encoding follows here
 5. separator `familyKeyStop` tells that the key ends here
 
-There is one optimization concerning family related keys. Before encoding the config object, all key-value pairs will be sorted by its key.
+There is one optimization concerning family related keys. Before encoding the config object, all key-value pairs will be sorted by their key.
 In this way, all settings related to a family come in a sequence. This can be exploited.
 Instead of encoding the same family id for every key of this family, the family is only encoded for the first element,
 and all following keys that are part of the family will be encoded without the trailing "familyKeyStart" character and the encoded family.
@@ -101,12 +101,18 @@ So each key with array typed value accepts `null` as value. `null` will be treat
 
 When decoding:
 - `null` follows after key means value `null`
-- a separator character unlike `null` follows after key means value empty array
+- a separator character unlike `null` follows after key means value `[]`
 - a value follows means: Take it as first element and append all values of the following key-value pairs if key is `array` separator
 
 ***
 
 ### Future Enhancements
+
+#### Arrays: range
+
+Currently, the numeric values of arrays are simply encoded and separated by the separator `array`. But when having an array of integers, a significant improvement can be done. Imagine an array with ascending integers, which is common if we have an array of indices, like `[1,2,3,5]`.
+Instead of encoding every single int, the series `1,2,3` could be encoded as `encode(1) + separator("range") + encode(3)`, which reduces this overhead for encoding `2`. The longer the series, the more benefit. Even in the smallest case of range `1-2` (`encode(1) + separator("range") + encode(2)`) it would be just the same amount of characters as if encoding as `1,2` (`encode(1) + separator("array") + encode(2)`).
+So in the end it is a good improvement for integer arrays.
 
 #### Strings
 
