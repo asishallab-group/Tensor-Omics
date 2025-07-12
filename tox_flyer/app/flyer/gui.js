@@ -27,13 +27,13 @@ function appendDetailRow({ family, gene, type }) {
   const id = `${family}.${gene}.${type}`;
   const data = dataHandler.getGeneData(family, gene);
   const table = document.getElementById(type + "DetailsTable");
-  const row = document.createElement("tr");
-  row.id = id;
+  const row = createElement("tr", { id });
 
   const dataMap = getDetailsTableDataMap();
   for (const cell of dataMap[type]) {
-    const td = document.createElement("td");
-    td.textContent = cell.data(data);
+    const td = createElement("td", {
+      children: [cell.data(data, family, gene)]
+    });
     row.appendChild(td);
   }
   table.tBodies[0].appendChild(row);
@@ -52,48 +52,48 @@ function removeDetailRow({ family, gene, type }) {
 function createPickedDetailsDialog() {
   if (!document.getElementById("pickedDetails")) {
     {
-      const pickedDetails = document.createElement("dialog");
-      pickedDetails.id = "pickedDetails";
-      const menu = document.createElement("menu");
-      menu.id = "pickedDetailsMenu";
-      const tables = document.createElement("section");
-      tables.id = "pickedDetailsTables";
+      const menu = createElement("menu", { id: "pickedDetailsMenu" });
+      const tables = createElement("section", { id: "pickedDetailsTables" });
 
       const tableHeaders = getDetailsTableDataMap();
 
       for (const [pickType, headers] of Object.entries(tableHeaders)) {
-        const menuItem = document.createElement("li");
-        menuItem.id = pickType + "Details";
-        menuItem.textContent = pickType + "s";
+        const menuItem = createElement("li", {
+          id: pickType + "Details",
+          textContent: pickType + "s"
+        });
         menuItem.addEventListener("click", () => {
           switchToDetails(pickType);
         })
         menu.appendChild(menuItem);
 
-        const table = document.createElement("table");
-        table.id = pickType + "DetailsTable";
-        table.classList.add("detailsTable");
-        const tHead = document.createElement("thead");
-        const tr = document.createElement("tr");
+        const tr = createElement("tr");
         tr.id = pickType + "DetailsHeader";
         for (const header of headers) {
-          const th = document.createElement("th");
-          if (header.configKey) {
-            th.textContent = config.get(header.configKey);
-          } else {
-            th.textContent = header.title;
-          }
+          const th = createElement("th", {
+            textContent: header.title ?? config.get(header.configKey)
+          });
           tr.appendChild(th);
         }
-        tHead.appendChild(tr);
-        table.appendChild(tHead);
-        const tBody = document.createElement("tbody");
-        table.hidden = true;
-        table.appendChild(tBody);
+        const table = createElement("table", {
+          id: pickType + "DetailsTable",
+          hidden: true,
+          children: [
+            createElement("thead", { children: [tr] }),
+            createElement("tbody")
+          ]
+        });
+        table.classList.add("detailsTable");
+        table.classList.add("datatable");
         tables.appendChild(table);
       }
-      pickedDetails.appendChild(menu);
-      pickedDetails.appendChild(tables);
+      const pickedDetails = createElement("dialog", {
+        id: "pickedDetails",
+        children: [
+          menu,
+          tables
+        ]
+      });
       document.getElementById("UI")?.appendChild(pickedDetails);
     }
 
@@ -123,12 +123,38 @@ function createPickedDetailsDialog() {
 function getDetailsTableDataMap() {
   const tissues = dataHandler.tissues;
   function getTissueData(geneData) {
-    return geneData.coordinates[tissues.indexOf(config.get(this.configKey))];
+    return geneData.coordinates[tissues.indexOf(config.get(this.configKey))].toFixed(3);
+  }
+  const links = {
+    family: {
+      title: "Family",
+      data(geneData, familyIdx, geneIdx) {
+        return showSingleDetails(geneData, geneData["family"], [
+          { title: "Identifier", data() {return geneData["family"]}},
+          { title: "Gene Count", data() {return dataHandler.getGeneCount(familyIdx)}},
+          { title: "Description", data() {return "..."}},
+        ]);
+      }
+    },
+    gene: { 
+      title: "Gene",
+      data(geneData, familyIdx, geneIdx) {
+        return showSingleDetails(geneData, geneData["genes"], [
+          { title: "Identifier", data() {return geneData["genes"]} },
+          links.family,
+          { title: "Species", data() {return geneData["species"]} },
+          { title: "Description", data() {return "..."} },
+          ...dataHandler.tissues.map((tissue, i) => {
+            return { title: tissue, data() {return geneData.coordinates[i]} }
+          })
+        ]);
+      } 
+    }
   }
   return {
     "gene": [
-      { title: "Identifier", data(geneData) {return geneData["genes"]} },
-      { title: "Family", data(geneData) {return geneData["family"]} },
+      links.gene,
+      links.family,
       { configKey: "tissueX", data: getTissueData},
       { configKey: "tissueY", data: getTissueData},
       { configKey: "tissueZ", data: getTissueData}
@@ -146,19 +172,41 @@ function getDetailsTableDataMap() {
   };
 }
 
+function showSingleDetails(geneData, value, headerMap) {
+  const a = createElement("a", { textContent: value });
+  a.addEventListener("click", evt => {
+    evt.preventDefault();
+    const table = document.createElement("table");
+    const tBody = document.createElement("tbody");
+    for (const header of headerMap) {
+      const tr = createElement("tr", {
+        children: [
+          createElement("td", { textContent: header.title ?? config.get(header.configKey) }),
+          createElement("td", { children: [header.data(geneData)] })
+        ]
+      });
+      tBody.appendChild(tr);
+    }
+    table.appendChild(tBody);
+    table.classList.add("datatable");
+    const dialog = createElement("dialog", { children: [table] });
+    dialog.addEventListener("close", () => dialog.remove());
+    document.getElementById("UI")?.appendChild(dialog);
+    dialog.showModal();
+  });
+  return a;
+}
+
 function createUIdiv() {
   const flyer = document.getElementById("flyer");
   if (flyer) {
-    const canvas = document.createElement("canvas");
-    canvas.id = "view";
+    const canvas = createElement("canvas", { id: "view" });
     flyer.appendChild(canvas);
 
     document.getElementById("UI")?.remove();
-    const UI = document.createElement("div");
-    UI.id = "UI";
+    const UI = createElement("div", { id: "UI" });
     for (const area of ["top-left", "top-right", "mid-right"]) {
-      const element = document.createElement("aside");
-      element.id = area;
+      const element = createElement("aside", { id: area });
       UI.appendChild(element);
     }
     flyer.appendChild(UI);
@@ -169,9 +217,10 @@ function createUIdiv() {
 
 function createDetailButton() {
   if (!document.getElementById("detailBtn")) {
-    const button = document.createElement("button");
-    button.id = "detailBtn";
-    button.innerHTML = "Detail";
+    const button = createElement("button", {
+      id: "detailBtn",
+      textContent: "Detail"
+    });
     button.addEventListener("click", () => document.getElementById("pickedDetails")?.showModal());
     document.getElementById("mid-right")?.appendChild(button);
   }
@@ -184,8 +233,7 @@ function removeDetailButton() {
 export function createTooltip(x, y, text) {
   let tooltip = document.getElementById("tooltip");
   if (tooltip === null) {
-    tooltip = document.createElement("aside");
-    tooltip.id = "tooltip";
+    tooltip = createElement("aside", { id: "tooltip" });
     tooltip.classList.add("tooltip");
     document.getElementById("UI")?.appendChild(tooltip);
   }
@@ -200,3 +248,15 @@ export function removeTooltip() {
 window.addEventListener("resize", () => {
   removeTooltip();
 })
+
+function createElement(tag, options={}) {
+  const element = document.createElement(tag);
+  const { children, ...attributes } = options;
+  if (children) {
+    element.append(...children);
+  }
+  for (const [key, value] of Object.entries(attributes)) {
+    element[key] = value;
+  }
+  return element;
+}
