@@ -12,12 +12,14 @@ export const Mesh = {
     const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16, ...options }, scene);
     mesh.isPickable = false;
     mesh.freezeWorldMatrix();
+    mesh.TOX_shape = "sphere";
     return mesh;
   },
   Octahedron(scene, name) {
     const mesh = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
     mesh.isPickable = false;
     mesh.freezeWorldMatrix();
+    mesh.TOX_shape = "octahedron";
     return mesh;
   },
   setColor(sphere, color) {
@@ -96,7 +98,7 @@ export function Material(scene, name, options={}) {
   return material;
 }
 
-function getInstanceMatrix(position, scaling, target) {
+export function getInstanceMatrix(position, scaling, target) {
   let rotation;
   if (target !== undefined) {
     const direction = target.subtract(position).normalize();

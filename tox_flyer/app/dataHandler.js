@@ -54,6 +54,7 @@ export const handler = {
   },
   getFamilyData(familyIdx, ...tissues) {
     const familyData = {
+      family: this.getFamilyIDs(familyIdx)[0],
       centroid: [],
       stdDevs: []
     };

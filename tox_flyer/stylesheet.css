@@ -35,13 +35,16 @@ main {
   font-size: 12px;
 }
 
-#UI {
-  * {
-    -webkit-user-select: text; /* Safari */
-    -ms-user-select: text; /* IE 10, 11 */
-    user-select: text;
-  }
+.textselect {
+  -webkit-user-select: auto; /* Safari */
+  -ms-user-select: auto; /* IE 10, 11 */
+  user-select: auto;
+}
+.clickable {
+  cursor: pointer;
+}
 
+#UI {
   position: absolute;
   top: 0;
   left: 0;
@@ -166,4 +169,8 @@ main {
 }
 .datatable thead:first-child th:last-child {
   border-top-right-radius: 8px;
+}
+
+.center {
+  text-align: center;
 }

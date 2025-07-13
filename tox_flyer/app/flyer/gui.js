@@ -25,9 +25,16 @@ export function setupGUI() {
 
 function appendDetailRow({ family, gene, type }) {
   const id = `${family}.${gene}.${type}`;
-  const data = dataHandler.getGeneData(family, gene);
+  let data;
+  if (type === "centroid") {
+    const familyData = dataHandler.getFamilyData(family, ...dataHandler.tissues);
+    data = { coordinates: familyData.centroid, family: familyData.family };
+  } else {
+    data = dataHandler.getGeneData(family, gene);
+  }
   const table = document.getElementById(type + "DetailsTable");
   const row = createElement("tr", { id });
+  row.appendChild(createRowSelector());
 
   const dataMap = getDetailsTableDataMap();
   for (const cell of dataMap[type]) {
@@ -67,8 +74,9 @@ function createPickedDetailsDialog() {
         })
         menu.appendChild(menuItem);
 
-        const tr = createElement("tr");
-        tr.id = pickType + "DetailsHeader";
+        const tr = createElement("tr", { id: pickType + "DetailsHeader" });
+        tr.appendChild(createRowSelector(true));
+
         for (const header of headers) {
           const th = createElement("th", {
             textContent: header.title ?? config.get(header.configKey)
@@ -81,10 +89,13 @@ function createPickedDetailsDialog() {
           children: [
             createElement("thead", { children: [tr] }),
             createElement("tbody")
+          ],
+          classes: [
+            "detailsTable",
+            "datatable",
+            "textselect"
           ]
         });
-        table.classList.add("detailsTable");
-        table.classList.add("datatable");
         tables.appendChild(table);
       }
       const pickedDetails = createElement("dialog", {
@@ -118,6 +129,30 @@ function createPickedDetailsDialog() {
       }
     })
   }
+}
+
+function createRowSelector(selectAll=false) {
+  const checkbox = createElement("input", { type: "checkbox", classes: ["clickable"] });
+  if (selectAll) {
+    checkbox.addEventListener("change", evt => {
+      const table = evt.target.closest("table");
+      const changeEvent = new Event("change");
+      for (const checkbox of table.getElementsByClassName("row-selector")) {
+        checkbox.checked = evt.target.checked;
+        checkbox.dispatchEvent(changeEvent);
+      }
+    })
+  } else {
+    checkbox.classList.add("row-selector");
+    checkbox.addEventListener("change", evt => {
+      const tr = evt.target.closest("tr");
+      tr.classList.toggle("selected", evt.target.checked);
+    })
+  }
+  return createElement(selectAll ? "th": "td", {
+    children: [checkbox],
+    classes: ["center"]
+  })
 }
 
 function getDetailsTableDataMap() {
@@ -173,11 +208,14 @@ function getDetailsTableDataMap() {
 }
 
 function showSingleDetails(geneData, value, headerMap) {
-  const a = createElement("a", { textContent: value });
+  const a = createElement("a", {
+    textContent: value,
+    classes: ["clickable"]
+  });
   a.addEventListener("click", evt => {
     evt.preventDefault();
-    const table = document.createElement("table");
-    const tBody = document.createElement("tbody");
+    const table = createElement("table", { classes: ["datatable"] });
+    const tBody = createElement("tbody");
     for (const header of headerMap) {
       const tr = createElement("tr", {
         children: [
@@ -188,7 +226,6 @@ function showSingleDetails(geneData, value, headerMap) {
       tBody.appendChild(tr);
     }
     table.appendChild(tBody);
-    table.classList.add("datatable");
     const dialog = createElement("dialog", { children: [table] });
     dialog.addEventListener("close", () => dialog.remove());
     document.getElementById("UI")?.appendChild(dialog);
@@ -219,7 +256,8 @@ function createDetailButton() {
   if (!document.getElementById("detailBtn")) {
     const button = createElement("button", {
       id: "detailBtn",
-      textContent: "Detail"
+      textContent: "Detail",
+      classes: ["clickable"]
     });
     button.addEventListener("click", () => document.getElementById("pickedDetails")?.showModal());
     document.getElementById("mid-right")?.appendChild(button);
@@ -233,8 +271,10 @@ function removeDetailButton() {
 export function createTooltip(x, y, text) {
   let tooltip = document.getElementById("tooltip");
   if (tooltip === null) {
-    tooltip = createElement("aside", { id: "tooltip" });
-    tooltip.classList.add("tooltip");
+    tooltip = createElement("aside", {
+      id: "tooltip",
+      classes: ["tooltip"]
+    });
     document.getElementById("UI")?.appendChild(tooltip);
   }
   tooltip.style.top = y + 10 + "px";
@@ -251,12 +291,19 @@ window.addEventListener("resize", () => {
 
 function createElement(tag, options={}) {
   const element = document.createElement(tag);
-  const { children, ...attributes } = options;
+  const { children, classes, ...attributes } = options;
   if (children) {
     element.append(...children);
   }
+  if (classes) {
+    element.classList.add(...classes);
+  }
   for (const [key, value] of Object.entries(attributes)) {
-    element[key] = value;
+    if (element[key] === undefined) {
+      element.setAttribute(key, value);
+    } else {
+      element[key] = value;
+    }
   }
   return element;
 }
