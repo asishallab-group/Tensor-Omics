@@ -8,7 +8,8 @@ import {
   Vector,
   TransformNode,
   Material,
-  fillThinInstanceBuffers
+  fillThinInstanceBuffers,
+  getInstanceMatrix
 } from "./babylon.js";
 
 /**
@@ -47,9 +48,8 @@ function plotData(scene) {
         if (picked !== null) {
           switch (picked.type) {
             case "gene": {
-              const selected = scene.getMeshByName("meshSelectedPoints");
-              if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
-                selected.TOX_pick(picked.family, picked.geneIndex);
+              if (!unpickInstance(picked)) {
+                pickInstance(picked);
                 const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species"]);
                 createTooltip(evt.event.clientX, evt.event.clientY,
                   "Data Point<table><tbody>" +
@@ -64,9 +64,9 @@ function plotData(scene) {
               break;
             }
             case "centroid": {
-              const selected = scene.getMeshByName("meshSelectedCentroids");
-              if (!selected.TOX_unpick(picked.family, picked.geneIndex)) {
-                selected.TOX_pick(picked.family);
+              // const selected = scene.getMeshByName("meshSelectedCentroids");
+              if (!unpickInstance(picked)) {
+                pickInstance(picked);
                 const { centroid } = dataHandler.getFamilyData(picked.family, ...chunks.tissues);
                 createTooltip(evt.event.clientX, evt.event.clientY,
                   "Centroid<table><tbody>" +
@@ -85,23 +85,22 @@ function plotData(scene) {
         }
         break;
       case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
-        if (picked !== null) {
-          const selected = scene.getMeshByName("meshSelectedPoints");
-
-          // if unpick was successful, so it was picked already, the original pick was initiated by the simultaneously triggered POINTERTAP
-          const wasUnselected = selected.TOX_unpick(picked.family, picked.geneIndex);
-          if (!wasUnselected) {
-            selected.TOX_unpick(picked.family);
-          } else {
-            selected.TOX_pick(picked.family);
-            createTooltip(evt.event.clientX, evt.event.clientY,
-              "Family<table><tbody>" +
-              `<tr><td>Family:</td><td>${dataHandler.getFamilyIDs(picked.family)[0]}</td></tr>` +
-              `<tr><td>Members:</td><td>${dataHandler.getGeneCount(picked.family)}</td></tr>` +
-              "</tbody></table>"
-            );
-          }
-        }
+        // // should pick/unpick all instances of a family, TODO, not yet working
+        // if (picked !== null) {
+        //   // if unpick was successful, so it was picked already, the original pick was initiated by the simultaneously triggered POINTERTAP
+        //   const wasUnselected = unpickInstance(picked);
+        //   if (!wasUnselected) {
+        //     unpickInstance(picked);
+        //   } else {
+        //     pickInstance(picked);
+        //     createTooltip(evt.event.clientX, evt.event.clientY,
+        //       "Family<table><tbody>" +
+        //       `<tr><td>Family:</td><td>${dataHandler.getFamilyIDs(picked.family)[0]}</td></tr>` +
+        //       `<tr><td>Members:</td><td>${dataHandler.getGeneCount(picked.family)}</td></tr>` +
+        //       "</tbody></table>"
+        //     );
+        //   }
+        // }
         break;
     }
   });
@@ -207,114 +206,75 @@ function setupShiftVectorMesh(scene) {
         }
       }
     }
-    const shiftVectorShaft = BABYLON.MeshBuilder.CreateCylinder("shiftVectorShaft", {height: 1}, scene);
+    const shiftVectorShaft = Mesh.Cylinder(scene, "shiftVectorShaft");
     shiftVectorShaft.thinInstanceSetBuffer("matrix", dimensionBuffers.shaft, 16);
     shiftVectorShaft.thinInstanceSetBuffer("color", colorBuffer, 4);
-    const shiftVectorHead = BABYLON.MeshBuilder.CreateCylinder("shiftVectorHead", {height: 1, diameterTop: 0}, scene);
+    const shiftVectorHead = Mesh.Cone(scene, "shiftVectorHead");
     shiftVectorHead.thinInstanceSetBuffer("matrix", dimensionBuffers.head, 16);
     shiftVectorHead.thinInstanceSetBuffer("color", colorBuffer, 4);
   }
 }
 
-function setupSelectionMeshes(scene) {
-  let pickedCount = 0;
+function pickInstance({ mesh, family, geneIndex, position, scaling, rotation, type }) {
+  unpickInstance({ mesh, family, geneIndex });
+  const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
+  const instance = selectionMesh.thinInstanceAdd(BABYLON.Matrix.Compose(scaling.add(Vector(.001, .001, .001)), rotation, position));
+  selectionMesh.TOX_metadata[instance] = { family, geneIndex };
+  selectionMesh.isVisible = true;
 
-  function unpick(family, geneIndex) {
-    const instances = this.instances.filter(i => ((i.TOX_family === family) || (family === undefined)) && ((geneIndex === undefined) || (i.TOX_geneIndex === geneIndex)))
-    for (const instance of instances) {
-      document.dispatchEvent(new CustomEvent("unpick", { detail: { family: instance.TOX_family, gene: instance.TOX_geneIndex, type: this.TOX_type } }));
-      instance.dispose();
-      pickedCount--;
-    }
-    if (pickedCount === 0) {
-      highlightLayer.isEnabled = false;
-    }
-    return instances.length;
-  }
-  function update() {
-    for (const instance of [...this.instances]) {
-      this.TOX_pick(instance.TOX_family, instance.TOX_geneIndex);
-    }
-  }
-  const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
+  document.dispatchEvent(new CustomEvent("pick", { detail: { family, gene: geneIndex, type } }));
+}
 
-  // disable as long as spheres are picked
-  highlightLayer.isEnabled = false;
+function unpickInstance({ mesh, family, geneIndex, type }) {
+  const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
+  const worldMatrices = selectionMesh.thinInstanceGetWorldMatrices();
+  for (let i = 0; i < selectionMesh.thinInstanceCount; i++) {
+    const data = selectionMesh.TOX_metadata[i];
+    if (data.family === family) {
+      if (data.geneIndex === geneIndex) {
+        selectionMesh.thinInstanceCount--;
+        selectionMesh.thinInstanceSetMatrixAt(i, worldMatrices[selectionMesh.thinInstanceCount]);
+        selectionMesh.TOX_metadata[i] = selectionMesh.TOX_metadata[selectionMesh.thinInstanceCount];
+        selectionMesh.isVisible = selectionMesh.hasThinInstances;
 
-  function setupMesh(mesh, type) {
-    mesh.TOX_type = type;
-    mesh.material = Material(scene, null, {color: Color(0, 0, 0, 0)});
-    Mesh.setSize(mesh, 0); // hide initial instance
-    mesh.TOX_update = update;
-    mesh.TOX_unpick = unpick;
-  }
-
-  const meshSelectedPoints = Mesh.Sphere(scene, "meshSelectedPoints");
-  setupMesh(meshSelectedPoints, "gene");
-
-  meshSelectedPoints.TOX_pick = function (family, geneIndex) {
-    const scale = config.get("scale");
-    const inlierDiameter = config.get(`${family}_Diameter`) ?? config.get("defaultDiameter");
-    const outlierDiameter = config.get(`${family}_OutlierDiameter`) ?? config.get("defaultDiameter");
-    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-
-    const pickOne = (geneIndex) => {
-      document.dispatchEvent(new CustomEvent("pick", { detail: { family, gene: geneIndex, type: this.TOX_type } }));
-
-      const { is_outlier, coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, ["is_outlier"]);
-      const instance = this.createInstance();
-      instance.position = Vector(...coordinates.map(v => v * scale));
-      instance.TOX_family = family;
-      instance.TOX_geneIndex = geneIndex;
-      const diameter = is_outlier ? outlierDiameter : inlierDiameter;
-      Mesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
-      instance.freezeWorldMatrix();
-      pickedCount++;
-    }
-    this.TOX_unpick(family, geneIndex);
-
-    if (geneIndex !== undefined) {
-      pickOne(geneIndex);
-    } else {
-      for (const geneIndex of dataHandler.genes(family)) {
-        pickOne(geneIndex);
+        document.dispatchEvent(new CustomEvent("unpick", { detail: { family, gene: data.geneIndex, type } }));
+        break;
       }
     }
-    highlightLayer.isEnabled = true;
+  }
+  return selectionMesh.TOX_metadata.splice(selectionMesh.thinInstanceCount).length;
+}
+
+function setupSelectionMeshes(scene) {
+  const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
+
+  const material =  Material(scene, null, {color: Color(0, 0, 0, 0)});
+
+  function setupMesh(mesh) {
+    mesh.isVisible = false;
+    mesh.material = material;
+    highlightLayer.setEffectIntensity(mesh, 0.7);
+    mesh.TOX_metadata = [];
   }
 
-  const meshSelectedCentroids = Mesh.Sphere(scene, "meshSelectedCentroids");
-  setupMesh(meshSelectedCentroids, "centroid");
+  const meshes = [
+    Mesh.Sphere(scene, "picked_sphere"),
+    Mesh.Octahedron(scene, "picked_octahedron"),
+    Mesh.Octahedron(scene, "picked_cylinder"),
+    Mesh.Cone(scene, "picked_cone")
+  ];
 
-  meshSelectedCentroids.TOX_pick = function (family) {
-    const scale = config.get("scale");
-    const diameter = (config.get(`${family}_Diameter`) ?? config.get("defaultDiameter")) * 4;
-    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-
-    this.TOX_unpick(family);
-
-    document.dispatchEvent(new CustomEvent("pick", { detail: { family, type: this.TOX_type } }));
-
-    const { centroid } = dataHandler.getFamilyData(family, ...tissues);
-    const instance = this.createInstance();
-    instance.position = Vector(...centroid.map(v => v * scale));
-    instance.TOX_family = family;
-    Mesh.setSize(instance, diameter + 0.001); // slightly larger so the highlightLayer can truly distinguish it from the actual sphere
-    instance.freezeWorldMatrix();
-    pickedCount++;
-    highlightLayer.isEnabled = true;
+  for (const mesh of meshes) {
+    setupMesh(mesh);
   }
 
   config.setSetterCallback("selectedDataPointColor", hexColorCode => {
-    highlightLayer.removeMesh(meshSelectedPoints);
-    highlightLayer.addMesh(meshSelectedPoints, Color(hexColorCode));
-    highlightLayer.removeMesh(meshSelectedCentroids);
-    highlightLayer.addMesh(meshSelectedCentroids, Color(hexColorCode));
+    const color = Color(hexColorCode);
+    for (const mesh of meshes) {
+      highlightLayer.removeMesh(mesh);
+      highlightLayer.addMesh(mesh, color);
+    }
   });
-  highlightLayer.setEffectIntensity(meshSelectedPoints, 0.7);
-  highlightLayer.setEffectIntensity(meshSelectedCentroids, 0.7);
-
-
 
   // initially fetch picked instances from config and set them up
   new Promise(resolve => {
@@ -324,7 +284,7 @@ function setupSelectionMeshes(scene) {
       if (typeof picked === "object") {
         for (const [family, genes] of Object.entries(picked)) {
           for (const geneIndex of genes) {
-            meshSelectedPoints.TOX_pick(family, geneIndex);
+            // meshSelectedPoints.TOX_pick(family, geneIndex);
           }
         }
       }
@@ -355,7 +315,12 @@ function pickFromMeshes(chunks) {
   let closestDist = Infinity;
   let picked = null;
   for (const chunkCentroid of chunks.active) {
-    const meshes = chunks.chunks.get(chunkCentroid)[2];
+    const meshes = [
+      ...chunks.chunks.get(chunkCentroid)[2],
+      ["arrow", chunks.scene.getMeshByName("shiftVectorHead")],
+      ["arrow", chunks.scene.getMeshByName("shiftVectorShaft")]
+    ];
+
     for (const [meshType, mesh] of meshes) {
       const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
 
@@ -370,6 +335,9 @@ function pickFromMeshes(chunks) {
           intersects = pickRay.intersectsSphere(
             { center: position, radius: scaling.x / 2 }
           );
+        } else {
+          // TODO: maybe use bounding box in local space
+          intersects = false;
         }
         if (intersects) {
           const distance = Vector.Distance(chunks.scene.activeCamera.position, position);
@@ -381,6 +349,7 @@ function pickFromMeshes(chunks) {
               scaling,
               index: i,
               meshType,
+              mesh,
               chunkCentroid
             }
           }

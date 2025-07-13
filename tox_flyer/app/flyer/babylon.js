@@ -7,20 +7,29 @@ Vector.Distance = function (v1, v2) {
   return v1.subtract(v2).length();
 }
 
+function setupMesh(mesh, shape) {
+  mesh.isPickable = false;
+  mesh.freezeWorldMatrix();
+  mesh.TOX_shape = shape;
+  return mesh;
+}
+
 export const Mesh = {
   Sphere(scene, name, options={}) {
     const mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16, ...options }, scene);
-    mesh.isPickable = false;
-    mesh.freezeWorldMatrix();
-    mesh.TOX_shape = "sphere";
-    return mesh;
+    return setupMesh(mesh, "sphere");
   },
   Octahedron(scene, name) {
     const mesh = BABYLON.MeshBuilder.CreatePolyhedron(name, { type: 2, size: 0.5, flat: false }, scene);
-    mesh.isPickable = false;
-    mesh.freezeWorldMatrix();
-    mesh.TOX_shape = "octahedron";
-    return mesh;
+    return setupMesh(mesh, "octahedron");
+  },
+  Cylinder(scene, name) {
+    const mesh = BABYLON.MeshBuilder.CreateCylinder(name, {height: 1}, scene);
+    return setupMesh(mesh, "cylinder");
+  },
+  Cone(scene, name) {
+    const mesh = BABYLON.MeshBuilder.CreateCylinder(name, {height: 1, diameterTop: 0}, scene);
+    return setupMesh(mesh, "cone");
   },
   setColor(sphere, color) {
     sphere.material.unfreeze();

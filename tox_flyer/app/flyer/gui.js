@@ -67,7 +67,8 @@ function createPickedDetailsDialog() {
       for (const [pickType, headers] of Object.entries(tableHeaders)) {
         const menuItem = createElement("li", {
           id: pickType + "Details",
-          textContent: pickType + "s"
+          textContent: pickType + "s",
+          classes: ["clickable"]
         });
         menuItem.addEventListener("click", () => {
           switchToDetails(pickType);
