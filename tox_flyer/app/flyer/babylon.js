@@ -107,7 +107,7 @@ export function Material(scene, name, options={}) {
   return material;
 }
 
-export function getInstanceMatrix(position, scaling, target) {
+function getInstanceMatrix(position, scaling, target) {
   let rotation;
   if (target !== undefined) {
     const direction = target.subtract(position).normalize();
@@ -123,6 +123,15 @@ export function getInstanceMatrix(position, scaling, target) {
   const matrix = BABYLON.Matrix.Compose(scaling, rotation, position);
 
   return matrix;
+}
+
+export function decomposeMatrix(matrix) {
+  const position = Vector();
+  const scaling = Vector();
+  const rotation = new BABYLON.Quaternion();
+
+  matrix.decompose(scaling, rotation, position);
+  return { position, scaling, rotation };
 }
 
 export function fillThinInstanceBuffers(dimensionsBuffer, dIndex, {position, scaling, target}, colorBuffer, cIndex, color) {

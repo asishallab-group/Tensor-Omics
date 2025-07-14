@@ -9,7 +9,7 @@ import {
   TransformNode,
   Material,
   fillThinInstanceBuffers,
-  getInstanceMatrix
+  decomposeMatrix
 } from "./babylon.js";
 
 /**
@@ -43,13 +43,38 @@ function plotData(scene) {
       case BABYLON.PointerEventTypes.POINTERDOWN:
         removeTooltip();
         break;
-      case BABYLON.PointerEventTypes.POINTERTAP:
+      case BABYLON.PointerEventTypes.POINTERTAP: {
+        function handlePick(picked, onPick, dispatchEvent=true) {
+          let eventType;
+          if (!unpickInstance(picked)) {
+            pickInstance(picked);
+            onPick?.();
+            eventType = "pick";
+          } else {
+            eventType = "unpick";
+          }
+          if (dispatchEvent) {
+            const detail = {
+              family: picked.family,
+              gene: picked.geneIndex,
+              type: picked.type
+            };
+            document.dispatchEvent(new CustomEvent(eventType, { detail }));
+          }
+        }
         picked = pickFromMeshes(chunks);
         if (picked !== null) {
           switch (picked.type) {
+            case "shift vector": {
+              let dispatchEvent = true;
+              for (const part of ["shiftVectorHead", "shiftVectorShaft"]) {
+                handlePick(picked[part], null, dispatchEvent);
+                dispatchEvent = false;
+              }
+              break;
+            }
             case "gene": {
-              if (!unpickInstance(picked)) {
-                pickInstance(picked);
+              handlePick(picked, () => {
                 const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species"]);
                 createTooltip(evt.event.clientX, evt.event.clientY,
                   "Data Point<table><tbody>" +
@@ -60,13 +85,11 @@ function plotData(scene) {
                   `<tr><td>${chunks.tissues[2]}:</td><td>${geneData.coordinates[2].toFixed(2)}</td></tr>` +
                   "</tbody></table>"
                 );
-              }
+              });
               break;
             }
             case "centroid": {
-              // const selected = scene.getMeshByName("meshSelectedCentroids");
-              if (!unpickInstance(picked)) {
-                pickInstance(picked);
+              handlePick(picked, () => {
                 const { centroid } = dataHandler.getFamilyData(picked.family, ...chunks.tissues);
                 createTooltip(evt.event.clientX, evt.event.clientY,
                   "Centroid<table><tbody>" +
@@ -76,7 +99,7 @@ function plotData(scene) {
                   `<tr><td>${chunks.tissues[2]}:</td><td>${centroid[2].toFixed(2)}</td></tr>` +
                   "</tbody></table>"
                 );
-              }
+              });
               break;
             }
           }
@@ -84,6 +107,7 @@ function plotData(scene) {
           removeTooltip();
         }
         break;
+      }
       case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
         // // should pick/unpick all instances of a family, TODO, not yet working
         // if (picked !== null) {
@@ -221,8 +245,6 @@ function pickInstance({ mesh, family, geneIndex, position, scaling, rotation, ty
   const instance = selectionMesh.thinInstanceAdd(BABYLON.Matrix.Compose(scaling.add(Vector(.001, .001, .001)), rotation, position));
   selectionMesh.TOX_metadata[instance] = { family, geneIndex };
   selectionMesh.isVisible = true;
-
-  document.dispatchEvent(new CustomEvent("pick", { detail: { family, gene: geneIndex, type } }));
 }
 
 function unpickInstance({ mesh, family, geneIndex, type }) {
@@ -236,13 +258,11 @@ function unpickInstance({ mesh, family, geneIndex, type }) {
         selectionMesh.thinInstanceSetMatrixAt(i, worldMatrices[selectionMesh.thinInstanceCount]);
         selectionMesh.TOX_metadata[i] = selectionMesh.TOX_metadata[selectionMesh.thinInstanceCount];
         selectionMesh.isVisible = selectionMesh.hasThinInstances;
-
-        document.dispatchEvent(new CustomEvent("unpick", { detail: { family, gene: data.geneIndex, type } }));
-        break;
+        return true;
       }
     }
   }
-  return selectionMesh.TOX_metadata.splice(selectionMesh.thinInstanceCount).length;
+  return false;
 }
 
 function setupSelectionMeshes(scene) {
@@ -260,7 +280,7 @@ function setupSelectionMeshes(scene) {
   const meshes = [
     Mesh.Sphere(scene, "picked_sphere"),
     Mesh.Octahedron(scene, "picked_octahedron"),
-    Mesh.Octahedron(scene, "picked_cylinder"),
+    Mesh.Cylinder(scene, "picked_cylinder"),
     Mesh.Cone(scene, "picked_cone")
   ];
 
@@ -304,6 +324,61 @@ function setupSelectionMeshes(scene) {
   })
 }
 
+function intersectsNonSpherical(
+  worldMatrix,    // Matrix of the instance
+  worldRay,       // Ray in world space
+  scaling
+) {
+  // 1. Build local‐space AABB
+  const max = Vector(.5, .5, .5);
+  const min = max.negate();
+
+  // 2. Transform ray into local space
+  const inv    = BABYLON.Matrix.Invert(worldMatrix);
+  const localR = new BABYLON.Ray(
+    BABYLON.Vector3.TransformCoordinates(worldRay.origin, inv),
+    BABYLON.Vector3.TransformNormal(worldRay.direction, inv).normalize(),
+    worldRay.length
+  );
+
+  // 3. Test box
+  return localR.intersectsBoxMinMax(min, max);
+}
+
+function meshHit(ray, mesh, maxDistance=Infinity) {
+  const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
+
+  let picked = null;
+
+  for (const i in sphereMatrices) {
+    const { position, scaling, rotation } = decomposeMatrix(sphereMatrices[i]);
+
+    const distance = Vector.Distance(ray.origin, position);
+    if (distance < (picked?.distance ?? maxDistance)) {
+      let intersects;
+      if (["sphere", "octahedron"].includes(mesh.TOX_shape)) {
+        intersects = ray.intersectsSphere(
+          { center: position, radius: scaling.x / 2 }
+        );
+      } else {
+        intersects = intersectsNonSpherical(sphereMatrices[i], ray, scaling);
+      }
+      if (intersects) {
+        picked = {
+          position,
+          rotation,
+          scaling,
+          index: i,
+          mesh,
+          distance
+        }
+      }
+    }
+  }
+
+  return picked;
+}
+
 function pickFromMeshes(chunks) {
   const pickRay = chunks.scene.createPickingRay(
     chunks.scene.pointerX, chunks.scene.pointerY,
@@ -311,58 +386,55 @@ function pickFromMeshes(chunks) {
     chunks.scene.activeCamera
   );
 
-
-  let closestDist = Infinity;
   let picked = null;
   for (const chunkCentroid of chunks.active) {
-    const meshes = [
-      ...chunks.chunks.get(chunkCentroid)[2],
-      ["arrow", chunks.scene.getMeshByName("shiftVectorHead")],
-      ["arrow", chunks.scene.getMeshByName("shiftVectorShaft")]
-    ];
+    const meshes = chunks.chunks.get(chunkCentroid)[2];
 
     for (const [meshType, mesh] of meshes) {
-      const sphereMatrices = mesh.thinInstanceGetWorldMatrices(); 
+      const hit = meshHit(pickRay, mesh, picked?.distance);
+      if (hit !== null) {
+        picked = hit;
+        picked.meshType = meshType;
+        picked.chunkCentroid = chunkCentroid;
+      }
+    }
+  }
 
-      for (const i in sphereMatrices) {
-        const position = Vector();
-        const scaling = Vector();
-        const rotation = new BABYLON.Quaternion();
-
-        sphereMatrices[i].decompose(scaling, rotation, position);
-        let intersects;
-        if (["sphere", "octahedron"].includes(mesh.TOX_shape)) {
-          intersects = pickRay.intersectsSphere(
-            { center: position, radius: scaling.x / 2 }
-          );
-        } else {
-          // TODO: maybe use bounding box in local space
-          intersects = false;
+  const unchunkedMeshes = {
+    arrow: ["shiftVectorShaft", "shiftVectorHead"]
+  };
+  for (const [meshType, meshNames] of Object.entries(unchunkedMeshes)) {
+    let hit = null;
+    for (const meshName of meshNames) {
+      const mesh = chunks.scene.getMeshByName(meshName);
+      hit = meshHit(pickRay, mesh, picked?.distance);
+      if (hit !== null) {
+        picked = { meshType };
+        for (const meshName of meshNames) {
+          const mesh = chunks.scene.getMeshByName(meshName);
+          const worldMatrices = mesh.thinInstanceGetWorldMatrices();
+          const decomposed = decomposeMatrix(worldMatrices[hit.index]);
+          picked[mesh.name] = { ...hit, ...decomposed, mesh };
         }
-        if (intersects) {
-          const distance = Vector.Distance(chunks.scene.activeCamera.position, position);
-          if (distance < closestDist) {
-            closestDist = distance;
-            picked = {
-              position,
-              rotation,
-              scaling,
-              index: i,
-              meshType,
-              mesh,
-              chunkCentroid
-            }
-          }
-        }
+        break;
       }
     }
   }
 
   if (picked) {
-    const [genes] = chunks.chunks.get(picked.chunkCentroid);
     let pickedIndex = picked.index;
     switch (picked.meshType) {
+      case "arrow": {
+        picked.type = "shift vector";
+        for (const meshName of unchunkedMeshes["arrow"]) {
+          picked[meshName].type = "shift vector";
+          picked[meshName].family = 0;
+          picked[meshName].geneIndex = 0;
+        }
+        break;
+      }
       case "centroids": {
+        const [genes] = chunks.chunks.get(picked.chunkCentroid);
         picked.type = "centroid";
         for (const [family, members] of genes) {
           if (pickedIndex === 0) {
@@ -375,6 +447,7 @@ function pickFromMeshes(chunks) {
       }
       case "inliers":
       case "outliers": {
+        const [genes] = chunks.chunks.get(picked.chunkCentroid);
         picked.type = "gene";
         for (const [family, members] of genes) {
           const indices = members[picked.meshType];
