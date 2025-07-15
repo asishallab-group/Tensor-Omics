@@ -17,25 +17,24 @@ const SEPARATORS_REV = new Map();
 SEPARATORS.entries().forEach(([k, v]) => SEPARATORS_REV.set(v, k));
 
 export function getEncoder(defaults, familyKeyTypes) {
+  const separators = new Map();
+  const separatorsRev = new Map();
+
   // add builtin keys as separators
   for (const [category, settings] of Object.entries(defaults)) {
     for (const key of Object.keys(settings)) {
       const sepType = `${key}:${category}`;
-      if (!SEPARATORS.has(sepType)) {
-        const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + 1);
-        SEPARATORS.set(sepType, sep);
-        SEPARATORS_REV.set(sep, sepType);
-      }
+      const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + separators.size + 1);
+      separators.set(sepType, sep);
+      separatorsRev.set(sep, sepType);
     }
   }
   for (const keyType in familyKeyTypes) {
     for (const category in defaults) {
       const sepType = `${keyType}_${category}`;
-      if (!SEPARATORS.has(sepType)) {
-        const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + 1);
-        SEPARATORS.set(sepType, sep);
-        SEPARATORS_REV.set(sep, sepType);
-      }
+      const sep = String.fromCharCode(MAX_ENC_CHAR_CODE + SEPARATORS.size + separators.size + 1);
+      separators.set(sepType, sep);
+      separatorsRev.set(sep, sepType);
     }
   }
 
@@ -102,8 +101,8 @@ export function getEncoder(defaults, familyKeyTypes) {
       }
 
       const keyTypeSep = `${keyType}_${category}`;
-      if (!SEPARATORS.has(keyTypeSep)) throw new Error(`Missing family key type: '${keyType}'`);
-      encodedKey += SEPARATORS.get(keyTypeSep);
+      if (!separators.has(keyTypeSep)) throw new Error(`Missing family key type: '${keyType}'`);
+      encodedKey += separators.get(keyTypeSep);
 
       if (gene !== undefined) {
         encodedKey += encodeNumber(Number.parseInt(gene.slice(1)));
@@ -115,7 +114,7 @@ export function getEncoder(defaults, familyKeyTypes) {
       type = familyKeyTypes[keyType].type
     } else {
       previousFamilyEnc = null;
-      encodedKey = SEPARATORS.get(`${key}:${category}`);
+      encodedKey = separators.get(`${key}:${category}`);
 
       defaultValue = defaults[category][key];
     }
@@ -138,7 +137,7 @@ export function getEncoder(defaults, familyKeyTypes) {
           return { value: null, idx: idx + 1 };
         } else {
           const decoded = [];
-          if (!SEPARATORS_REV.has(str.charAt(idx))) {
+          if (str.charCodeAt(idx) <= MAX_ENC_CHAR_CODE ) {
             do {
               const decodedNum = decoders.number(str, idx);
               decoded.push(decodedNum.value);
@@ -152,7 +151,7 @@ export function getEncoder(defaults, familyKeyTypes) {
       }
     }
 
-    const sepType = SEPARATORS_REV.get(str.charAt(idx));
+    const sepType = SEPARATORS_REV.get(str.charAt(idx)) ?? separatorsRev.get(str.charAt(idx));
     if (sepType === undefined) throw new Error("Corrupted key encoding: Missing key");
     idx++;
     let category;
@@ -176,7 +175,7 @@ export function getEncoder(defaults, familyKeyTypes) {
         idx = decodedFamily.idx;
         family = decodedFamily.decoded;
         previousFamilyDec = family;
-        [keyType, category] = SEPARATORS_REV.get(str.charAt(idx)).split("_");
+        [keyType, category] = separatorsRev.get(str.charAt(idx)).split("_");
         idx++;
       } else {
         family = previousFamilyDec;
@@ -511,4 +510,4 @@ function test() {
 
 // note that if you run tests, all previous encodings (e.g. in URLs) won't decode correctly,
 // as the separators differ then because the test function initializes some separators when calling getEncoder
-// test()
+test()

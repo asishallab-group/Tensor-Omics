@@ -1,6 +1,6 @@
 "use strict";
 
-import { Color, Vector, Mesh, fillThinInstanceBuffers } from "./babylon.js";
+import { Color, Vector, Mesh, fillThinInstanceBuffers, getInstanceMatrix, decomposeMatrix } from "./babylon.js";
 
 export function getChunks(scene) {
   const chunks = {
@@ -24,7 +24,7 @@ export function getChunks(scene) {
       this.diameter = config.get("chunkDiameter");
       this.loadRange = config.get("chunkLoadRange");
       this.tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")]
-      this.families = config.get("shownFamilies") ?? dataHandler.families;
+      this.families = config.get("shownFamilies");
       
       const position = this.scene.activeCamera.position.asArray();
       this.currentChunkCentroid = getChunkCentroid(position, this.diameter);
@@ -127,17 +127,13 @@ export function getChunks(scene) {
 
           for (const [family, members] of genes) {
             const colors = {
-              family: Color.FromHexString(config.get(`${family}_Color`) ?? dataHandler.getColor(family))
+              inliers: Color.FromHexString(config.get(`${family}_Color`)),
+              outliers: Color.FromHexString(config.get(`${family}_OutlierColor`))
             };
-            colors.centroids = colors.family.scale(2);
+            colors.centroids = colors.inliers.scale(2);
             colors.centroids.a /= 2;
 
-            const outlierColorHex = config.get(`${family}_OutlierColor`);
-            if (outlierColorHex !== undefined) {
-              colors.outliers = Color.FromHexString(outlierColorHex);
-            }
             const diameters = {
-              default: config.get(`defaultDiameter`),
               inliers: config.get(`${family}_Diameter`),
               outliers: config.get(`${family}_OutlierDiameter`)
             }
@@ -145,32 +141,47 @@ export function getChunks(scene) {
 
             for (const [memberType, geneIndices] of Object.entries(members)) {
               const memberCtx = ctx[memberType];
-              const diameter = diameters[memberType] ?? diameters.default;
-              const color = colors[memberType] ?? colors.family;
+              const diameter = diameters[memberType];
+              const color = colors[memberType];
 
-              const addInstance = (coordinates, diameter) => {
+              const addInstance = (coordinates, diameter, family, geneIndex, pickedType, pickedConfigAttr) => {
+                const position = Vector(...coordinates.map(v => v * this.scale));
+                const scaling = Vector(diameter, diameter, diameter);
+                const instanceMatrix = getInstanceMatrix(
+                  position,
+                  scaling
+                );
                 fillThinInstanceBuffers(
                   memberCtx.dimensionBuffer, memberCtx.bufferIndex * 16,
-                  {
-                    position: Vector(...coordinates.map(v => v * this.scale)),
-                    scaling: Vector(diameter, diameter, diameter)
-                  },
+                  instanceMatrix,
                   memberCtx.colorBuffer, memberCtx.bufferIndex * 4,
                   color
                 );
                 memberCtx.bufferIndex++;
+
+                if (config.get(pickedConfigAttr)) {
+                  pickInstance({
+                    mesh: meshes.get(memberType),
+                    family,
+                    geneIndex,
+                    position,
+                    scaling,
+                    rotation: decomposeMatrix(instanceMatrix).rotation,
+                    type: pickedType
+                  });
+                }
               }
 
               if (memberType !== "centroids") {
                 for (const geneIndex of geneIndices) {
                   const { coordinates } = dataHandler.getGeneData(family, geneIndex, this.tissues, []);
-                  addInstance(coordinates, diameter);
+                  addInstance(coordinates, diameter, family, geneIndex, "Gene", `${family}_PickedGene:${geneIndex}`);
                 }
               } else {
                 const show = config.get(`${family}_Centroid`);
                 if (show) {
                   const coordinates = dataHandler.getFamilyData(family, ...this.tissues).centroid;
-                  addInstance(coordinates, diameter * 4);
+                  addInstance(coordinates, diameter * 4, family, undefined, "Centroid", `${family}_PickedCentroid`);
                 } else {
                   memberCtx.bufferIndex++;
                 }
@@ -233,6 +244,57 @@ function calcActiveChunks(chunks, [posX, posY, posZ]) {
   return activeChunks;
 }
 
+export function pickInstance({ mesh, family, geneIndex, position, scaling, rotation, type }, dispatchEvent=true) {
+  unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent);
+  const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
+  const instance = selectionMesh.thinInstanceAdd(
+    BABYLON.Matrix.Compose(
+      scaling.add(Vector(.001, .001, .001)), // enlarge a little bit to make the instance truly distinguishable from the original
+      rotation,
+      position
+    )
+  );
+  selectionMesh.TOX_metadata[instance] = { family, geneIndex };
+  selectionMesh.isVisible = true;
+  if (dispatchEvent) {
+    const detail = {
+      family,
+      gene: geneIndex,
+      type
+    };
+    document.dispatchEvent(new CustomEvent("pick", { detail }));
+  }
+}
+
+export function unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent=true) {
+  const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
+  const worldMatrices = selectionMesh.thinInstanceGetWorldMatrices();
+  for (let i = 0; i < selectionMesh.thinInstanceCount; i++) {
+    const data = selectionMesh.TOX_metadata[i];
+    if (data.family === family) {
+      if (data.geneIndex === geneIndex) {
+        selectionMesh.thinInstanceCount--;
+        selectionMesh.thinInstanceSetMatrixAt(i, worldMatrices[selectionMesh.thinInstanceCount]);
+        selectionMesh.TOX_metadata[i] = selectionMesh.TOX_metadata[selectionMesh.thinInstanceCount];
+        selectionMesh.TOX_metadata.splice(selectionMesh.thinInstanceCount);
+        selectionMesh.isVisible = selectionMesh.hasThinInstances;
+
+        if (dispatchEvent) {
+          const detail = {
+            family,
+            gene: geneIndex,
+            type
+          };
+          document.dispatchEvent(new CustomEvent("unpick", { detail }));
+        }
+
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function registerLoading(chunks) {
   /**
    * Register a callback that fires before every render.
@@ -263,25 +325,6 @@ function registerLoading(chunks) {
     }
   });
 }
-
-// function fillThinInstanceBuffers(dimensionsBuffer, dIndex, colorBuffer, cIndex, diameter, [x, y, z], color) {
-//   dimensionsBuffer[dIndex] = diameter; // set x scale
-//   dimensionsBuffer[dIndex + 5] = diameter; // set y scale
-//   dimensionsBuffer[dIndex + 10] = diameter; // set z scale
-
-//   dimensionsBuffer[dIndex + 12] = x;
-//   dimensionsBuffer[dIndex + 13] = y;
-//   dimensionsBuffer[dIndex + 14] = z;
-
-//   dimensionsBuffer[dIndex + 15] = 1;
-//   // the unchanged indices affect the rotation of the sphere -> zero 
-
-//   // setting color
-//   colorBuffer[cIndex++] = color.r;
-//   colorBuffer[cIndex++] = color.g;
-//   colorBuffer[cIndex++] = color.b;
-//   colorBuffer[cIndex] = color.a;
-// }
 
 function getChunkCentroid([ x, y, z ], diameter) {
   function trim(a) {

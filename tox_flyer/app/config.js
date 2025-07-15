@@ -1,52 +1,55 @@
 "use strict";
 
+const DEFAULTS = {
+  allModes: {
+    orbitMode: false,
+    darkMode: true,
+    x: 0,
+    y: 0,
+    z: 0,
+    rotationX: 0,
+    rotationY: 0,
+    orbitModeTargetDistance: 10,
+    mouseSensibility: 2000,  // the higher, the slower, greater zero
+    movementSpeed: 0.5,
+    scale: 100,
+    chunkDiameter: 50,
+    chunkLoadRange: 2,
+    shownFamilies: null,
+    tissueX: "Liver",
+    tissueY: "Heart",
+    tissueZ: "Lung",
+    defaultDiameter: 0.25
+  },
+  lightMode: {
+    selectedDataPointColor: "#FFFF00FF",
+
+    backgroundColor: "#FFFFFFFF",
+
+    xAxisColor: "#FF0000FF",
+    yAxisColor: "#00FF00FF",
+    zAxisColor: "#0000FFFF",
+  },
+  darkMode: {
+    selectedDataPointColor: "#FFFF00FF",
+
+    backgroundColor: "#1B1A1FFF",
+
+    xAxisColor: "#DE0000FF",
+    yAxisColor: "#19CF00FF",
+    zAxisColor: "#0092FFFF",
+  }
+};
+
 export async function setupConfig() {
-  const defaults = {
-    allModes: {
-      orbitMode: false,
-      darkMode: true,
-      x: 0,
-      y: 0,
-      z: 0,
-      rotationX: 0,
-      rotationY: 0,
-      orbitModeTargetDistance: 10,
-      mouseSensibility: 2000,  // the higher, the slower, greater zero
-      movementSpeed: 0.5,
-      scale: 100,
-      chunkDiameter: 50,
-      chunkLoadRange: 2,
-      shownFamilies: null,
-      tissueX: "Liver",
-      tissueY: "Heart",
-      tissueZ: "Lung",
-      defaultDiameter: 0.25
-    },
-    lightMode: {
-      selectedDataPointColor: "#FFFF00FF",
-
-      backgroundColor: "#FFFFFFFF",
-
-      xAxisColor: "#FF0000FF",
-      yAxisColor: "#00FF00FF",
-      zAxisColor: "#0000FFFF",
-    },
-    darkMode: {
-      selectedDataPointColor: "#FFFF00FF",
-
-      backgroundColor: "#1B1A1FFF",
-
-      xAxisColor: "#DE0000FF",
-      yAxisColor: "#19CF00FF",
-      zAxisColor: "#0092FFFF",
-    }
-  };
 
   const values = {
     allModes: {},
     lightMode: {},
     darkMode: {}
   };
+
+  let familyKeyTypes;
   
   const callbacks = {};
   const validate = getValidator();
@@ -65,36 +68,31 @@ export async function setupConfig() {
 
   const config = {
     get(key) {
-      let value = values.allModes[key] ?? defaults.allModes[key];
+      let value = values.allModes[key] ?? DEFAULTS.allModes[key];
       if (value === undefined) {
-        if (values.allModes.darkMode ?? defaults.allModes.darkMode) {
-          value = values.darkMode[key] ?? defaults.darkMode[key];
+        if (values.allModes.darkMode ?? DEFAULTS.allModes.darkMode) {
+          value = values.darkMode[key] ?? DEFAULTS.darkMode[key];
         } else {
-          value = values.lightMode[key] ?? defaults.lightMode[key];
+          value = values.lightMode[key] ?? DEFAULTS.lightMode[key];
         }
       }
 
-      return value;
+      return value ?? familyDefault(key, familyKeyTypes);
     },
     set(key, value, runCallback=true) {
-      if (validate(key, value) !== undefined) {
-        if (!key.includes("_") && this.get(key) === undefined) {
-          console.error(`${key}: Unknown key`);
-          return;
-        }
-        if (defaults.allModes[key] !== undefined || !key.endsWith("Color")) values.allModes[key] = value;
-        else if (this.get("darkMode")) values.darkMode[key] = value;
-        else values.lightMode[key] = value;
+      validate(key, value);
+      if (DEFAULTS.allModes[key] !== undefined || !key.endsWith("Color")) values.allModes[key] = value;
+      else if (this.get("darkMode")) values.darkMode[key] = value;
+      else values.lightMode[key] = value;
 
-        if (runCallback) {
-          callbacks[key]?.(value);
+      if (runCallback) {
+        callbacks[key]?.(value);
 
-          // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
-          if (key.includes("_") || triggersChunkReload.includes(key) || /_ShiftVector:\d+/.test(key)) {
-            document.dispatchEvent(new CustomEvent("chunkReload", {
-              detail: { setting: key }
-            }));
-          }
+        // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
+        if (key.includes("_") || triggersChunkReload.includes(key)) {
+          document.dispatchEvent(new CustomEvent("chunkReload", {
+            detail: { setting: key }
+          }));
         }
       }
     },
@@ -111,26 +109,19 @@ export async function setupConfig() {
     },
     async asURL() {
       const currentURL = new URL(document.URL);
-      const picked = await new Promise(resolve => {
-        document.dispatchEvent(new CustomEvent(
-          "feedConfig",
-          { detail: {meshSelectedPoints: resolve } }
-        ));
-      });
-      const encode = await getCompressor(defaults, values, picked);
+      const encode = await getCompressor(familyKeyTypes, values);
       const base64 = await encode(true);
       return `${currentURL.origin}${currentURL.pathname}?config=${base64}`;
     },
-    async asFile() {
-      const picked = await new Promise(resolve => {
-        document.dispatchEvent(new CustomEvent(
-          "feedConfig",
-          { detail: {meshSelectedPoints: resolve } }
-        ));
-      });
-      const encode = await getCompressor(defaults, values, picked);
-      const content = await encode();
-      const filename = "tox_flyer.conf";
+    async asFile(filename="tox_flyer.conf", compressed=true) {
+      let content;
+
+      if (compressed) {
+        const encode = await getCompressor(familyKeyTypes, values);
+        content = await encode();
+      } else {
+        content = JSON.stringify(values);
+      }
 
       // Create a blob from the string
       const blob = new Blob([content], { type: "text/plain" });
@@ -153,6 +144,19 @@ export async function setupConfig() {
 
   Object.freeze(config);
 
+  familyKeyTypes = {
+    ShiftVector: { type: "boolean", default: () => false },
+    Centroid: { type: "boolean", default: () => false },
+    Hull: { type: "boolean", default: () => false },
+    Color: { type: "string", default: (family) => dataHandler.getColor(family) },
+    OutlierColor: { type: "string", default: (family) => config.get(`${family}_Color`) },
+    Diameter: { type: "number", default: () => config.get("defaultDiameter") },
+    OutlierDiameter: { type: "number", default: () => config.get("defaultDiameter") },
+    PickedGene: { type: "boolean", default: () => false },
+    PickedShiftVector: { type: "boolean", default: () => false },
+    PickedCentroid: { type: "boolean", default: () => false },
+  };
+
   config.set("darkMode", window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // on dark mode switch, all callbacks need to be triggered
@@ -172,14 +176,12 @@ export async function setupConfig() {
     const currentURL = new URL(document.URL);
     const configArg = currentURL.searchParams.get("config");
     if (configArg) {
-      const decode = await getCompressor(defaults);
+      const decode = await getCompressor(familyKeyTypes);
       const importingConfig = await decode(configArg, true);
-      values.allModes = importingConfig.values.allModes;
-      values.lightMode = importingConfig.values.lightMode;
-      values.darkMode = importingConfig.values.darkMode;
-      document.addEventListener("initializePicked", evt => {
-        evt.detail(importingConfig.picked);
-      }, { once: true });
+
+      values.allModes = importingConfig.allModes;
+      values.lightMode = importingConfig.lightMode;
+      values.darkMode = importingConfig.darkMode;
     }
   } catch (err) {
     console.error("Could not import config from URL");
@@ -188,7 +190,16 @@ export async function setupConfig() {
   return config;
 }
 
-async function getCompressor(defaults, values=null, picked=null) {
+function familyDefault(key, familyKeyTypes) {
+  const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/)?.slice(1) ?? [];
+  if (keyType !== undefined) {
+    return familyKeyTypes[keyType].default(family);
+  } else if (key === "shownFamilies") {
+    return dataHandler.families;
+  }
+}
+
+async function getCompressor(familyKeyTypes, values=null) {
   const {
     getEncoder,
     encode,
@@ -197,21 +208,10 @@ async function getCompressor(defaults, values=null, picked=null) {
     decodeBase64
   } = await import("./config/compress.js");
 
-  const familyKeyTypes = {
-    ShiftVector: { type: "boolean", default: () => false },
-    Centroid: { type: "boolean", default: () => false },
-    Hull: { type: "boolean", default: () => false }, 
-    Color: { type: "string", default: (family) => dataHandler.getColor(family) },
-    OutlierColor: { type: "string", default: (family) => dataHandler.getFamily(family) },
-    Diameter: { type: "number", default: () => defaults.allModes.defaultDiameter },
-    OutlierDiameter: { type: "number", default: () => defaults.allModes.defaultDiameter },
-    Picked: { type: "object", default: () => [] }
-  }
-
-  const defaultsCopy = JSON.parse(JSON.stringify(defaults));
-  defaultsCopy.allModes.tissueX = dataHandler.tissues.indexOf(defaults.allModes.tissueX);
-  defaultsCopy.allModes.tissueY = dataHandler.tissues.indexOf(defaults.allModes.tissueY);
-  defaultsCopy.allModes.tissueZ = dataHandler.tissues.indexOf(defaults.allModes.tissueZ);
+  const defaultsCopy = JSON.parse(JSON.stringify(DEFAULTS));
+  defaultsCopy.allModes.tissueX = dataHandler.tissues.indexOf(DEFAULTS.allModes.tissueX);
+  defaultsCopy.allModes.tissueY = dataHandler.tissues.indexOf(DEFAULTS.allModes.tissueY);
+  defaultsCopy.allModes.tissueZ = dataHandler.tissues.indexOf(DEFAULTS.allModes.tissueZ);
   const encoder = getEncoder(defaultsCopy, familyKeyTypes);
 
   if (values) {
@@ -221,10 +221,6 @@ async function getCompressor(defaults, values=null, picked=null) {
       if (val !== undefined) {
         valuesCopy.allModes[tissue] = dataHandler.tissues.indexOf(val);
       }
-    }
-
-    for (const [family, genes] of Object.entries(picked)) {
-      valuesCopy.allModes[`${family}_Picked`] = genes;
     }
 
     function compress(asBase64=false) {
@@ -244,15 +240,6 @@ async function getCompressor(defaults, values=null, picked=null) {
         decodedValues = await decode(encoder.decode, encoded);
       }
 
-      const decodedPicked = {};
-      for (const [key, values] of Object.entries(decodedValues.allModes)) {
-        const family = key.match(/^(.*)_Picked/)?.[1];
-        if (family) {
-          decodedPicked[family] = decodedValues.allModes[`${family}_Picked`];
-          delete decodedValues.allModes[`${family}_Picked`];
-        }
-      }
-
       for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
         const val = decodedValues.allModes[tissue];
         if (val !== undefined) {
@@ -260,7 +247,7 @@ async function getCompressor(defaults, values=null, picked=null) {
         }
       }
 
-      return { values: decodedValues, picked: decodedPicked };
+      return decodedValues;
     }
 
     return decompress;
@@ -272,7 +259,7 @@ function getValidator() {
   {
     const asArray = [
       [
-        ["orbitMode", "darkMode", "ShiftVector", "Centroid", "Hull"],
+        ["orbitMode", "darkMode", "ShiftVector", "Centroid", "Hull", "PickedGene", "PickedShiftVector", "PickedCentroid"],
         v => {
           if (typeof v !== "boolean") throw new Error(`Expecting boolean value, got: ${typeof v}`);
         }
@@ -334,11 +321,11 @@ function getValidator() {
         validator(value);
         return true;
       } catch (err) {
-        console.error(`${key}: ${err.message}`);
+        throw new Error(`${key}: ${err.message}`);
         return;
       }
     } else {
-      console.error(`Unknown key: ${key}`);
+      throw new Error(`Unknown key: ${key}`);
     }
   }
 

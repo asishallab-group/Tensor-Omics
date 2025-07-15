@@ -3,7 +3,7 @@
 export function setupGUI() {
   createUIdiv();
   createPickedDetailsDialog();
-  switchToDetails("gene");
+  switchToDetails("Gene");
 
   let pickedCount = 0;
   document.addEventListener("pick", evt => {
@@ -26,7 +26,7 @@ export function setupGUI() {
 function appendDetailRow({ family, gene, type }) {
   const id = `${family}.${gene}.${type}`;
   let data;
-  if (type === "centroid") {
+  if (type === "Centroid") {
     const familyData = dataHandler.getFamilyData(family, ...dataHandler.tissues);
     data = { coordinates: familyData.centroid, family: familyData.family };
   } else {
@@ -188,18 +188,18 @@ function getDetailsTableDataMap() {
     }
   }
   return {
-    "gene": [
+    Gene: [
       links.gene,
       links.family,
       { configKey: "tissueX", data: getTissueData},
       { configKey: "tissueY", data: getTissueData},
       { configKey: "tissueZ", data: getTissueData}
     ],
-    "shift vector": [
+    ShiftVector: [
       { title: "Gene", data(geneData) {return geneData["genes"]} },
       { title: "Family", data(geneData) {return geneData["family"]} }
     ],
-    "centroid": [
+    Centroid: [
       links.family,
       { configKey: "tissueX", data: getTissueData},
       { configKey: "tissueY", data: getTissueData},

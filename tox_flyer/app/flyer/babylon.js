@@ -107,7 +107,7 @@ export function Material(scene, name, options={}) {
   return material;
 }
 
-function getInstanceMatrix(position, scaling, target) {
+export function getInstanceMatrix(position, scaling, target) {
   let rotation;
   if (target !== undefined) {
     const direction = target.subtract(position).normalize();
@@ -134,8 +134,8 @@ export function decomposeMatrix(matrix) {
   return { position, scaling, rotation };
 }
 
-export function fillThinInstanceBuffers(dimensionsBuffer, dIndex, {position, scaling, target}, colorBuffer, cIndex, color) {
-  getInstanceMatrix(position, scaling, target).copyToArray(dimensionsBuffer, dIndex);
+export function fillThinInstanceBuffers(dimensionsBuffer, dIndex, instanceMatrix, colorBuffer, cIndex, color) {
+  instanceMatrix.copyToArray(dimensionsBuffer, dIndex);
   colorBuffer[cIndex++] = color.r;
   colorBuffer[cIndex++] = color.g;
   colorBuffer[cIndex++] = color.b;

@@ -92,7 +92,9 @@ export function setupCamera(scene, canvas) {
   })
   canvas.addEventListener("wheel", event => {
     if (scene.activeCamera.name !== "orbitCamera") {
-      config.set("scale", config.get("scale") - Math.floor(event.deltaY / 10));
+      try {
+        config.set("scale", config.get("scale") - Math.floor(event.deltaY / 10));
+      } catch {}
     }
   });
 
