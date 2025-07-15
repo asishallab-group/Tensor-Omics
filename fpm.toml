@@ -1,24 +1,31 @@
-name = "F42CsvReader"
+
+
+
+
+
+
+name = "GeneCentroidCalculator"
 version = "1.0.0"
 license = "Proprietary"
 author = "Luka Faensen"
 maintainer = "faensen.luka@th-bingen.de"
 copyright = "Copyright 2025, Asis Hallab"
 
+
 [build]
+
 auto-executables = false
 auto-tests = true
 auto-examples = false
-
-# This tells fpm to build a library using our custom script
 [library]
-source-dir = "src"
-build-script = "scripts/build_shared.sh"
-
+source-dir = "src" # Your core Fortran modules here
+build-script = "scripts/build.sh"
 [install]
 library = true
 
 [test]
-name = "csv_io_test"
-source-dir = "test"
-main = "test_csv_io.f90"
+# This section tells fpm about your test executables
+name = "test_runner_table_read" # Name for your test executable
+source-dir = "test" # The directory containing your test files
+main = "run_tests.f90" # The main program file for running tests
+
