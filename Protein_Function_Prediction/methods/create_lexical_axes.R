@@ -20,8 +20,30 @@ corpora <- list(
   HRD = ann_hrd$hrd
 )
 
+clean_go <- function(text) {
+  text %>%
+    str_replace_all("[\\[\\]()]", " ") %>%
+    str_replace_all("--+", "-") %>%
+    str_squish()
+}
+
+clean_ipr <- function(text) {
+  text %>%
+    str_replace_all("[\\[\\]()]", " ") %>%
+    str_replace_all("--+", "-") %>%
+    str_replace_all(",", " ") %>%
+    str_squish()
+}
+
+clean_hrd <- function(text) {
+  text %>%
+    str_replace_all("[\\[\\]()]", " ") %>%
+    str_replace_all("--+", "-") %>%
+    str_squish()
+}
+
 # Prot‑scriber splitter regex (specialized for HRDs)
-splitter <- "(?<=\\b)[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?(?=\\b)"
+splitter <- "(?<=\\b)[A-Za-z0-9/-]+(?:'[A-Za-z0-9]+)?(?=\\b)"
 
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
@@ -31,12 +53,36 @@ build_axes <- function(docs, name) {
   valid_docs <- !is.na(docs)
   docs <- docs[valid_docs]
   
-  # 3. Tokenize & lowercase
+  # Corpus-spezifisches Preprocessing
+  docs <- switch(name,
+    GO = clean_go(docs),
+    IPR = clean_ipr(docs),
+    HRD = clean_hrd(docs),
+    stop("Unknown corpus: ", name)
+  )
+
+  # if existent, remove last identifier from HRD descriptions
+  if (name == "HRD") {
+    docs <- sapply(docs, function(txt) {
+      parts <- str_split(txt, " ", simplify = TRUE)
+      last <- tail(parts, 1)
+      if (is_identifier(last)) {
+        str_trim(str_remove(txt, paste0("\\s*", last, "$")))
+      } else {
+        txt
+      }
+    })
+  }
+
+  # 3. Tokenize & lowercase, then filter
   dt <- tibble(doc_id = seq_along(docs), text = docs) %>%
     unnest_tokens(token, text, token = "regex", pattern = splitter) %>%
     mutate(token = str_to_lower(token)) %>%
-    filter(str_length(token) > 1)
-  
+    filter(
+      str_length(token) > 2,                    # length > 2
+      str_detect(token, "[a-z]")                # contains at least one letter ot remove tokens like "[(-"
+    )
+
   # 4. Word frequencies per document & global f_w
   wf_doc <- dt %>% count(doc_id, token, name = "tf")
   fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf))
