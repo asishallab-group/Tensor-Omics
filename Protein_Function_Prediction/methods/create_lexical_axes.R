@@ -111,7 +111,10 @@ build_axes <- function(docs, name) {
   sv <- irlba(cooc, nv = nv)
   vars <- sv$d^2 / sum(sv$d^2)
   k <- min(which(cumsum(vars) >= 0.80))
-  U <- sv$u[, 1:k]              # Eigenword vectors
+
+  # Eigenwords
+  U <- sv$u[, 1:k, drop = FALSE] 
+  # Eigenword vectors
   colnames(U) <- paste0("EW", 1:k)
   rownames(U) <- vocab
   
