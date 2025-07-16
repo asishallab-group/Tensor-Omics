@@ -54,7 +54,10 @@ export function getChunks(scene) {
       }
 
       const familyHulls = this.scene.getMeshByName("hull");
+      familyHulls.TOX_remove();
       const shiftVectors = this.scene.getMeshByName("shiftVector");
+      shiftVectors.TOX_remove();
+
       // Loop through each family available in the data handler.
       // For each family, iterate through the genes for specific tissues
       // and create an instance of the outlier mesh for each data point.
@@ -78,6 +81,9 @@ export function getChunks(scene) {
         handleMember(family, familyCentroid, "centroids");
       }
       this.active = calcActiveChunks(this, position);
+
+      familyHulls.TOX_update();
+      shiftVectors.TOX_update();
     },
     load(state=true, centroid) {
       let chunks;
@@ -256,32 +262,75 @@ function calcActiveChunks(chunks, [posX, posY, posZ]) {
   return activeChunks;
 }
 
+const DYNAMIC_THIN_INSTANCE_STEP_SIZE = 1000;
+
 export function setupDynamicThinInstanceMesh(mesh, hasColor=true) {
   mesh.isVisible = false;
   mesh.TOX_metadata = [];
+  mesh.TOX_instanceCount = 0;
+  mesh.TOX_matrixBuffer = new Float32Array(16 * DYNAMIC_THIN_INSTANCE_STEP_SIZE);
   if (hasColor) {
-    mesh.thinInstanceRegisterAttribute("color", 4);
+    mesh.TOX_colorBuffer = new Float32Array(4 * DYNAMIC_THIN_INSTANCE_STEP_SIZE);
   }
+}
+
+export function dynamicThinInstanceBufferUpdated(mesh) {
+  mesh.thinInstanceSetBuffer("matrix", mesh.TOX_matrixBuffer.subarray(0, mesh.TOX_instanceCount * 16), 16);
+  if (mesh.TOX_colorBuffer !== undefined) {
+    mesh.thinInstanceSetBuffer("color", mesh.TOX_colorBuffer.subarray(0, mesh.TOX_instanceCount * 4), 4);
+  }
+  mesh.thinInstanceCount = mesh.TOX_instanceCount;
+  mesh.isVisible = mesh.hasThinInstances;
+}
+
+function extendDynamicThinInstanceBuffer(oldContents, stride) {
+  const newContents = new Float32Array(oldContents.length + DYNAMIC_THIN_INSTANCE_STEP_SIZE * stride);
+  newContents.set(oldContents);
+  return newContents;
 }
 
 export function createDynamicThinInstance(mesh, family, geneIndex, instanceMatrix, color) {
-  const instance = mesh.thinInstanceAdd(instanceMatrix);
-  mesh.TOX_metadata[instance] = { family, geneIndex };
-  mesh.isVisible = true;
-  if (color !== undefined) {
-    mesh.thinInstanceSetAttributeAt("color", instance, color.asArray());
+  if (mesh.TOX_instanceCount * 16 === mesh.TOX_matrixBuffer.length) {
+    mesh.TOX_matrixBuffer = extendDynamicThinInstanceBuffer(mesh.TOX_matrixBuffer, 16);
+    if (mesh.TOX_colorBuffer !== undefined) {
+      mesh.TOX_colorBuffer = extendDynamicThinInstanceBuffer(mesh.TOX_colorBuffer, 4);
+    }
   }
+  instanceMatrix.copyToArray(mesh.TOX_matrixBuffer, mesh.TOX_instanceCount * 16);
+  mesh.TOX_metadata[mesh.TOX_instanceCount] = { family, geneIndex };
+
+  if (mesh.TOX_colorBuffer !== undefined) {
+    mesh.TOX_colorBuffer.set(color.asArray(), mesh.TOX_instanceCount * 4);
+  }
+  mesh.TOX_instanceCount++;
 }
 
 export function removeDynamicThinInstance(mesh, family, geneIndex) {
-  for (let i = 0; i < mesh.thinInstanceCount; i++) {
+  if (family === undefined) {
+    const removed = mesh.TOX_instanceCount > 0;
+    mesh.TOX_instanceCount = 0;
+    return removed;
+  }
+  for (let i = 0; i < mesh.TOX_instanceCount; i++) {
     const data = mesh.TOX_metadata[i];
     if (data.family === family) {
       if (data.geneIndex === geneIndex) {
-        mesh.thinInstanceSetMatrixAt(i, mesh.thinInstanceGetWorldMatrices()[mesh.thinInstanceCount - 1]);
+        function remove(buffer, stride) {
+          const lastInstanceIndex = (mesh.TOX_instanceCount - 1) * stride;
+          const removingInstanceIndex = i * stride;
+          for (let j = 0; j < stride; j++) {
+            buffer[removingInstanceIndex + j] = buffer[lastInstanceIndex + j];
+          }
+        }
+
+        remove(mesh.TOX_matrixBuffer, 16);
+
+        if (mesh.TOX_colorBuffer !== undefined) {
+          remove(mesh.TOX_colorBuffer, 4);
+        }
+
         mesh.TOX_metadata[i] = mesh.TOX_metadata.pop();
-        mesh.thinInstanceCount--;
-        mesh.isVisible = mesh.hasThinInstances;
+        mesh.TOX_instanceCount--;
 
         return true;
       }
@@ -303,7 +352,7 @@ export function pickInstance({ mesh, family, geneIndex, position, scaling, rotat
       position
     )
   );
-  selectionMesh.isVisible = true;
+  dynamicThinInstanceBufferUpdated(selectionMesh);
   if (dispatchEvent) {
     const detail = {
       family,
@@ -317,13 +366,16 @@ export function pickInstance({ mesh, family, geneIndex, position, scaling, rotat
 export function unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent=true) {
   const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
   const didExist = removeDynamicThinInstance(selectionMesh, family, geneIndex);
-  if (dispatchEvent && didExist) {
-    const detail = {
-      family,
-      gene: geneIndex,
-      type
-    };
-    document.dispatchEvent(new CustomEvent("unpick", { detail }));
+  if (didExist) {
+    dynamicThinInstanceBufferUpdated(selectionMesh);
+    if (dispatchEvent) {
+      const detail = {
+        family,
+        gene: geneIndex,
+        type
+      };
+      document.dispatchEvent(new CustomEvent("unpick", { detail }));
+    }
   }
   return didExist;
 }

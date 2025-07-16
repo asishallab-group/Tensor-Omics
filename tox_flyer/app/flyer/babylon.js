@@ -136,8 +136,10 @@ export function decomposeMatrix(matrix) {
 
 export function fillThinInstanceBuffers(dimensionsBuffer, dIndex, instanceMatrix, colorBuffer, cIndex, color) {
   instanceMatrix.copyToArray(dimensionsBuffer, dIndex);
-  colorBuffer[cIndex++] = color.r;
-  colorBuffer[cIndex++] = color.g;
-  colorBuffer[cIndex++] = color.b;
-  colorBuffer[cIndex] = color.a;
+  if (colorBuffer !== undefined) {
+    colorBuffer[cIndex++] = color.r;
+    colorBuffer[cIndex++] = color.g;
+    colorBuffer[cIndex++] = color.b;
+    colorBuffer[cIndex] = color.a;
+  }
 }

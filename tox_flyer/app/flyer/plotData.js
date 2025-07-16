@@ -6,7 +6,8 @@ import {
   unpickInstance,
   createDynamicThinInstance,
   removeDynamicThinInstance,
-  setupDynamicThinInstanceMesh
+  setupDynamicThinInstanceMesh,
+  dynamicThinInstanceBufferUpdated
 } from "./chunks.js";
 import { createTooltip, removeTooltip } from "./gui.js";
 import {
@@ -40,7 +41,7 @@ function plotData(scene) {
   document.addEventListener("chunkReload", (evt) => {
     chunks.recalculate();
     chunks.load();
-  })
+  });
 
   let picked = null;
   scene.onPointerObservable.add((evt) => {
@@ -150,6 +151,10 @@ function setupFamilyHullMesh(scene) {
   hull.TOX_remove = function (family) {
     removeDynamicThinInstance(this, family);
   }
+
+  hull.TOX_update = function () {
+    dynamicThinInstanceBufferUpdated(this);
+  }
 }
 
 function setupShiftVectorMesh(scene) {
@@ -207,6 +212,11 @@ function setupShiftVectorMesh(scene) {
   shiftVectorHead.TOX_remove = function (family, gene) {
     removeDynamicThinInstance(this, family, gene);
     removeDynamicThinInstance(shiftVectorShaft, family, gene);
+  }
+
+  shiftVectorHead.TOX_update = function () {
+    dynamicThinInstanceBufferUpdated(this);
+    dynamicThinInstanceBufferUpdated(shiftVectorShaft);
   }
 }
 
