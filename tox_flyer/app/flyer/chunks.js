@@ -54,6 +54,7 @@ export function getChunks(scene) {
       }
 
       const familyHulls = this.scene.getMeshByName("hull");
+      const shiftVectors = this.scene.getMeshByName("shiftVector");
       // Loop through each family available in the data handler.
       // For each family, iterate through the genes for specific tissues
       // and create an instance of the outlier mesh for each data point.
@@ -64,6 +65,11 @@ export function getChunks(scene) {
         }
 
         for (const geneIndex of dataHandler.genes(family)) {
+          shiftVectors.TOX_remove(family, geneIndex);
+          if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
+            shiftVectors.TOX_create(family, geneIndex, this.tissues, this.scale);
+          }
+
           const { coordinates, is_outlier } = dataHandler.getGeneData(family, geneIndex, this.tissues, ["is_outlier"]);
           const memberType = is_outlier ? "outliers" : "inliers";
           handleMember(family, coordinates, memberType, geneIndex);
@@ -259,7 +265,6 @@ export function setupDynamicThinInstanceMesh(mesh, hasColor=true) {
 }
 
 export function createDynamicThinInstance(mesh, family, geneIndex, instanceMatrix, color) {
-  removeDynamicThinInstance(mesh, family, geneIndex);
   const instance = mesh.thinInstanceAdd(instanceMatrix);
   mesh.TOX_metadata[instance] = { family, geneIndex };
   mesh.isVisible = true;
@@ -287,6 +292,7 @@ export function removeDynamicThinInstance(mesh, family, geneIndex) {
 
 export function pickInstance({ mesh, family, geneIndex, position, scaling, rotation, type }, dispatchEvent=true) {
   const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
+  unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent);
   createDynamicThinInstance(
     selectionMesh,
     family,

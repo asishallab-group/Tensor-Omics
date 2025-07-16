@@ -40,7 +40,6 @@ function plotData(scene) {
   document.addEventListener("chunkReload", (evt) => {
     chunks.recalculate();
     chunks.load();
-    setupShiftVectorMesh(scene);
   })
 
   let picked = null;
@@ -65,8 +64,8 @@ function plotData(scene) {
           switch (picked.type) {
             case "ShiftVector": {
               let dispatchEvent = true;
-              for (const part of ["shiftVectorHead", "shiftVectorShaft"]) {
-                handlePick(picked[part], null, dispatchEvent);
+              for (const pickedPart of picked.parts) {
+                handlePick(pickedPart, null, dispatchEvent);
                 dispatchEvent = false;
               }
               break;
@@ -154,97 +153,60 @@ function setupFamilyHullMesh(scene) {
 }
 
 function setupShiftVectorMesh(scene) {
-  scene.getMeshByName("shiftVectorShaft")?.dispose();
-  scene.getMeshByName("shiftVectorHead")?.dispose();
+  const shiftVectorShaft = Mesh.Cylinder(scene, "shiftVectorShaft");
+  setupDynamicThinInstanceMesh(shiftVectorShaft);
+  const shiftVectorHead = Mesh.Cone(scene, "shiftVector");
+  setupDynamicThinInstanceMesh(shiftVectorHead);
 
-  const families = config.get("shownFamilies");
-  const vectorCount = families.reduce((a, family) => {
-    for (const geneIndex of dataHandler.genes(family)) {
-      if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
-        a++;
+  shiftVectorHead.TOX_create = function create(family, geneIndex, tissues, scale) {
+    let color = Color(config.get(family + "_Color"));
+    const colorScale = 1 / Math.max(color.r, color.g, color.b);
+    color = color.scale(colorScale);
+    color.a /= colorScale;
+
+    const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
+    const sphereDiameter = config.get(`${family}_Diameter`);
+
+    const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
+    const genePos = Vector(...coordinates.map(v => v*scale));
+    const direction = genePos.subtract(centroid);
+    const vectorLength = direction.length() - sphereDiameter / 2;
+    const shaftLengthScale = 1 - 2 * sphereDiameter / vectorLength;
+    const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
+    const headPosition = centroid.add(direction.scale(shaftLengthScale + sphereDiameter / vectorLength / 2));
+
+    // create shaft
+    const shaftInstanceMatrix = getInstanceMatrix(
+      shaftPosition,
+      Vector(sphereDiameter / 2, vectorLength * shaftLengthScale, sphereDiameter / 2),
+      genePos
+    );
+    // create head
+    const headInstanceMatrix = getInstanceMatrix(
+      headPosition,
+      Vector(sphereDiameter, sphereDiameter * 2, sphereDiameter),
+      genePos
+    );
+
+    for (const mesh of [this, shiftVectorShaft]) {
+      const isThis = mesh === this;
+      const matrix = isThis ? headInstanceMatrix : shaftInstanceMatrix;
+      createDynamicThinInstance(mesh, family, geneIndex, matrix, color);
+      if (config.get(`${family}_PickedShiftVector:${geneIndex}`)) {
+        pickInstance({
+          mesh,
+          family,
+          geneIndex,
+          ...decomposeMatrix(matrix),
+          type: "ShiftVector"
+        }, isThis);  // fire pick event only once for shaft
       }
     }
-    return a;
-  }, 0);
-  if (vectorCount > 0) {
-    const shiftVectorShaft = Mesh.Cylinder(scene, "shiftVectorShaft");
-    const shiftVectorHead = Mesh.Cone(scene, "shiftVectorHead");
+  }
 
-    const scale = config.get("scale");
-    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
-
-    const dimensionBuffers = {
-      shaft: new Float32Array(vectorCount * 16),
-      head: new Float32Array(vectorCount * 16)
-    }
-    const colorBuffer = new Float32Array(vectorCount * 4);
-
-    let bufferIndex = 0;
-    for (const family of families) {
-      let color = Color(config.get(family + "_Color"));
-      color = color.scale(1 / Math.max(color.r, color.g, color.b));
-      const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
-      const sphereDiameter = config.get(`${family}_Diameter`);
-
-      for (const geneIndex of dataHandler.genes(family)) {
-        if (config.get(`${family}_ShiftVector:${geneIndex}`)) {
-          const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
-          const genePos = Vector(...coordinates.map(v => v*scale));
-          const direction = genePos.subtract(centroid);
-          const vectorLength = direction.length() - sphereDiameter / 2;
-          const shaftLengthScale = 1 - 2 * sphereDiameter / vectorLength;
-          const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
-          const headPosition = centroid.add(direction.scale(shaftLengthScale + sphereDiameter / vectorLength / 2));
-
-          // create shaft
-          const shaftInstanceMatrix = getInstanceMatrix(
-            shaftPosition,
-            Vector(sphereDiameter / 2, vectorLength * shaftLengthScale, sphereDiameter / 2),
-            genePos
-          );
-          fillThinInstanceBuffers(
-            dimensionBuffers.shaft, bufferIndex * 16,
-            shaftInstanceMatrix,
-            colorBuffer, bufferIndex * 4,
-            color
-          );
-          // create head
-          const headInstanceMatrix = getInstanceMatrix(
-            headPosition,
-            Vector(sphereDiameter, sphereDiameter * 2, sphereDiameter),
-            genePos
-          );
-          fillThinInstanceBuffers(
-            dimensionBuffers.head, bufferIndex * 16,
-            headInstanceMatrix,
-            colorBuffer, bufferIndex * 4,
-            color
-          );
-
-          if (config.get(`${family}_PickedShiftVector:${geneIndex}`)) {
-            pickInstance({
-              mesh: shiftVectorHead,
-              family,
-              geneIndex,
-              ...decomposeMatrix(headInstanceMatrix),
-              type: "ShiftVector"
-            });
-            pickInstance({
-              mesh: shiftVectorShaft,
-              family,
-              geneIndex,
-              ...decomposeMatrix(shaftInstanceMatrix),
-              type: "ShiftVector"
-            }, false);
-          }
-          bufferIndex++;
-        }
-      }
-    }
-    shiftVectorShaft.thinInstanceSetBuffer("matrix", dimensionBuffers.shaft, 16);
-    shiftVectorShaft.thinInstanceSetBuffer("color", colorBuffer, 4);
-    shiftVectorHead.thinInstanceSetBuffer("matrix", dimensionBuffers.head, 16);
-    shiftVectorHead.thinInstanceSetBuffer("color", colorBuffer, 4);
+  shiftVectorHead.TOX_remove = function (family, gene) {
+    removeDynamicThinInstance(this, family, gene);
+    removeDynamicThinInstance(shiftVectorShaft, family, gene);
   }
 }
 
@@ -356,7 +318,7 @@ function pickFromMeshes(chunks) {
   }
 
   const unchunkedMeshes = {
-    arrow: ["shiftVectorShaft", "shiftVectorHead"]
+    arrow: ["shiftVectorShaft", "shiftVector"]
   };
   for (const [meshType, meshNames] of Object.entries(unchunkedMeshes)) {
     let hit = null;
@@ -365,12 +327,12 @@ function pickFromMeshes(chunks) {
       if (mesh) {
         hit = meshHit(pickRay, mesh, picked?.distance);
         if (hit !== null) {
-          picked = { meshType };
+          picked = { meshType, parts: [] };
           for (const meshName of meshNames) {
             const mesh = chunks.scene.getMeshByName(meshName);
             const worldMatrices = mesh.thinInstanceGetWorldMatrices();
             const decomposed = decomposeMatrix(worldMatrices[hit.index]);
-            picked[mesh.name] = { ...hit, ...decomposed, mesh };
+            picked.parts.push({ ...hit, ...decomposed, mesh });
           }
           break;
         }
@@ -383,10 +345,10 @@ function pickFromMeshes(chunks) {
     switch (picked.meshType) {
       case "arrow": {
         picked.type = "ShiftVector";
-        for (const meshName of unchunkedMeshes["arrow"]) {
-          picked[meshName].type = "ShiftVector";
-          picked[meshName].family = 76;
-          picked[meshName].geneIndex = 21;
+        for (const pickedPart of picked.parts) {
+          pickedPart.type = "ShiftVector";
+          pickedPart.family = 76;
+          pickedPart.geneIndex = 21;
         }
         break;
       }
