@@ -1,6 +1,13 @@
 "use strict";
 
-import { getChunks, pickInstance, unpickInstance } from "./chunks.js";
+import {
+  getChunks,
+  pickInstance,
+  unpickInstance,
+  createDynamicThinInstance,
+  removeDynamicThinInstance,
+  setupDynamicThinInstanceMesh
+} from "./chunks.js";
 import { createTooltip, removeTooltip } from "./gui.js";
 import {
   Mesh,
@@ -10,7 +17,7 @@ import {
   Material,
   fillThinInstanceBuffers,
   decomposeMatrix,
-  getInstanceMatrix
+  getInstanceMatrix,
 } from "./babylon.js";
 
 /**
@@ -33,7 +40,6 @@ function plotData(scene) {
   document.addEventListener("chunkReload", (evt) => {
     chunks.recalculate();
     chunks.load();
-    setupFamilyHullMesh(scene);
     setupShiftVectorMesh(scene);
   })
 
@@ -123,37 +129,27 @@ function plotData(scene) {
 }
 
 function setupFamilyHullMesh(scene) {
-  scene.getMeshByName("hull")?.dispose();
-  const families = config.get("shownFamilies").filter((family) => config.get(`${family}_Hull`));
-  if (families.length > 0) {
-    const scale = config.get("scale");
-    const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+  const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3}, scene);
+  setupDynamicThinInstanceMesh(hull);
 
-    const hull = BABYLON.MeshBuilder.CreateCapsule("hull", {height: 1, radius: 1/3, subdivisions: 2, capSubdivisions: 3}, scene);
-    hull.material = Material(scene, null, {wireframe: true});
+  hull.material = Material(scene, null, {wireframe: true});
+  hull.TOX_create = function (family, tissues, scale) {
+    const familyData = dataHandler.getFamilyData(family, ...tissues);
+    const centroid = Vector(...familyData.centroid.map(v => v*scale));
+    const stdDevs = familyData.stdDevs.map(v => v*scale);
+    const color = Color(config.get(family + "_Color")).scale(2);
+    color.a /= 2;
 
-    const dimensionsBuffer = new Float32Array(families.length * 16);
-    const colorBuffer = new Float32Array(families.length * 4);
+    const instanceMatrix = getInstanceMatrix(
+      centroid,
+      Vector(stdDevs[0] * 3, stdDevs[1] * 2, stdDevs[2] * 3)
+    );
 
-    families.forEach((family, i) => {
-      const familyData = dataHandler.getFamilyData(family, ...tissues);
-      const centroid = Vector(...familyData.centroid.map(v => v*scale));
-      const stdDevs = familyData.stdDevs.map(v => v*scale);
-      const color = Color(config.get(family + "_Color")).scale(2);
-      color.a /= 2;
-      fillThinInstanceBuffers(
-        dimensionsBuffer, i * 16,
-        getInstanceMatrix(
-          centroid,
-          Vector(stdDevs[0] * 3, stdDevs[1] * 2, stdDevs[2] * 3)
-        ),
-        colorBuffer, i * 4,
-        color
-      );
+    createDynamicThinInstance(this, family, undefined, instanceMatrix, color);
+  }
 
-      hull.thinInstanceSetBuffer("matrix", dimensionsBuffer, 16);
-      hull.thinInstanceSetBuffer("color", colorBuffer, 4);
-    });
+  hull.TOX_remove = function (family) {
+    removeDynamicThinInstance(this, family);
   }
 }
 
@@ -258,10 +254,9 @@ function setupSelectionMeshes(scene) {
   const material =  Material(scene, null, {color: Color(0, 0, 0, 0)});
 
   function setupMesh(mesh) {
-    mesh.isVisible = false;
+    setupDynamicThinInstanceMesh(mesh, false);
     mesh.material = material;
     highlightLayer.setEffectIntensity(mesh, 0.7);
-    mesh.TOX_metadata = [];
   }
 
   const meshes = [

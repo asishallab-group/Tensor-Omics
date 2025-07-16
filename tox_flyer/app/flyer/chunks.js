@@ -53,10 +53,16 @@ export function getChunks(scene) {
         counts[memberType]++;
       }
 
+      const familyHulls = this.scene.getMeshByName("hull");
       // Loop through each family available in the data handler.
       // For each family, iterate through the genes for specific tissues
       // and create an instance of the outlier mesh for each data point.
       for (const family of this.families) {
+        familyHulls.TOX_remove(family);
+        if (config.get(`${family}_Hull`)) {
+          familyHulls.TOX_create(family, this.tissues, this.scale);
+        }
+
         for (const geneIndex of dataHandler.genes(family)) {
           const { coordinates, is_outlier } = dataHandler.getGeneData(family, geneIndex, this.tissues, ["is_outlier"]);
           const memberType = is_outlier ? "outliers" : "inliers";
@@ -244,17 +250,53 @@ function calcActiveChunks(chunks, [posX, posY, posZ]) {
   return activeChunks;
 }
 
+export function setupDynamicThinInstanceMesh(mesh, hasColor=true) {
+  mesh.isVisible = false;
+  mesh.TOX_metadata = [];
+  if (hasColor) {
+    mesh.thinInstanceRegisterAttribute("color", 4);
+  }
+}
+
+export function createDynamicThinInstance(mesh, family, geneIndex, instanceMatrix, color) {
+  removeDynamicThinInstance(mesh, family, geneIndex);
+  const instance = mesh.thinInstanceAdd(instanceMatrix);
+  mesh.TOX_metadata[instance] = { family, geneIndex };
+  mesh.isVisible = true;
+  if (color !== undefined) {
+    mesh.thinInstanceSetAttributeAt("color", instance, color.asArray());
+  }
+}
+
+export function removeDynamicThinInstance(mesh, family, geneIndex) {
+  for (let i = 0; i < mesh.thinInstanceCount; i++) {
+    const data = mesh.TOX_metadata[i];
+    if (data.family === family) {
+      if (data.geneIndex === geneIndex) {
+        mesh.thinInstanceSetMatrixAt(i, mesh.thinInstanceGetWorldMatrices()[mesh.thinInstanceCount - 1]);
+        mesh.TOX_metadata[i] = mesh.TOX_metadata.pop();
+        mesh.thinInstanceCount--;
+        mesh.isVisible = mesh.hasThinInstances;
+
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function pickInstance({ mesh, family, geneIndex, position, scaling, rotation, type }, dispatchEvent=true) {
-  unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent);
   const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
-  const instance = selectionMesh.thinInstanceAdd(
+  createDynamicThinInstance(
+    selectionMesh,
+    family,
+    geneIndex,
     BABYLON.Matrix.Compose(
       scaling.add(Vector(.001, .001, .001)), // enlarge a little bit to make the instance truly distinguishable from the original
       rotation,
       position
     )
   );
-  selectionMesh.TOX_metadata[instance] = { family, geneIndex };
   selectionMesh.isVisible = true;
   if (dispatchEvent) {
     const detail = {
@@ -268,31 +310,16 @@ export function pickInstance({ mesh, family, geneIndex, position, scaling, rotat
 
 export function unpickInstance({ mesh, family, geneIndex, type }, dispatchEvent=true) {
   const selectionMesh = mesh.getScene().getMeshByName("picked_" + mesh.TOX_shape);
-  const worldMatrices = selectionMesh.thinInstanceGetWorldMatrices();
-  for (let i = 0; i < selectionMesh.thinInstanceCount; i++) {
-    const data = selectionMesh.TOX_metadata[i];
-    if (data.family === family) {
-      if (data.geneIndex === geneIndex) {
-        selectionMesh.thinInstanceCount--;
-        selectionMesh.thinInstanceSetMatrixAt(i, worldMatrices[selectionMesh.thinInstanceCount]);
-        selectionMesh.TOX_metadata[i] = selectionMesh.TOX_metadata[selectionMesh.thinInstanceCount];
-        selectionMesh.TOX_metadata.splice(selectionMesh.thinInstanceCount);
-        selectionMesh.isVisible = selectionMesh.hasThinInstances;
-
-        if (dispatchEvent) {
-          const detail = {
-            family,
-            gene: geneIndex,
-            type
-          };
-          document.dispatchEvent(new CustomEvent("unpick", { detail }));
-        }
-
-        return true;
-      }
-    }
+  const didExist = removeDynamicThinInstance(selectionMesh, family, geneIndex);
+  if (dispatchEvent && didExist) {
+    const detail = {
+      family,
+      gene: geneIndex,
+      type
+    };
+    document.dispatchEvent(new CustomEvent("unpick", { detail }));
   }
-  return false;
+  return didExist;
 }
 
 function registerLoading(chunks) {

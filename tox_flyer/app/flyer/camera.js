@@ -90,10 +90,10 @@ export function setupCamera(scene, canvas) {
     config.set("y", config.get("y"));
     config.set("z", config.get("z"));
   })
-  canvas.addEventListener("wheel", event => {
-    if (scene.activeCamera.name !== "orbitCamera") {
+  canvas.addEventListener("wheel", evt => {
+    if (scene.activeCamera.name !== "orbitCamera" && !evt.ctrlKey && !evt.altKey && !evt.shiftKey && !evt.metaKey) {
       try {
-        config.set("scale", config.get("scale") - Math.floor(event.deltaY / 10));
+        config.set("scale", config.get("scale") - Math.floor(evt.deltaY / 10));
       } catch {}
     }
   });
