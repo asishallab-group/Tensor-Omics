@@ -204,7 +204,7 @@ export function getChunks(scene) {
     function reload() {
       chunks.load();
     }
-    for (const setting of ["shownFamilies", "defaultDiameter", "Centroid", "Diameter", "OutlierDiameter", "Color", "OutlierColor"]) {
+    for (const setting of ["shownFamilies", "defaultDiameter", "Centroid", "Diameter", "OutlierDiameter", "Color", "OutlierColor", "darkMode"]) {
       document.addEventListener(setting, reload);
     }
   }

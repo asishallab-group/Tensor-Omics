@@ -129,7 +129,7 @@ export function setupFamilyHullMesh(scene) {
     }
     document.dispatchEvent(new CustomEvent("HullUpdated"));
   }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Color"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Color", "darkMode"]) {
     document.addEventListener(setting, recreate);
   }
 }
@@ -197,7 +197,7 @@ export function setupShiftVectorMesh(scene) {
     }
     document.dispatchEvent(new CustomEvent("ShiftVectorUpdated"));
   }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter", "Color"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter", "Color", "darkMode"]) {
     document.addEventListener(setting, recreate);
   }
 }
@@ -221,6 +221,7 @@ export function setupSelectionMeshes(scene) {
       }
     }
     document.addEventListener("selectedDataPointColor", setHighlightColor);
+    document.addEventListener("darkMode", () => setHighlightColor({ detail: config.get("selectedDataPointColor") }));
     setHighlightColor({ detail: config.get("selectedDataPointColor") });
   }
 

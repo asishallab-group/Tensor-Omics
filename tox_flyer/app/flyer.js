@@ -84,6 +84,7 @@ function setupScene(engine, canvas) {
     scene.fogColor = Color.FromHexString(evt.detail);
   }
   document.addEventListener("backgroundColor", setBackground);
+  document.addEventListener("darkMode", () => setBackground({ detail: config.get("backgroundColor") }));
   setBackground({ detail: config.get("backgroundColor") });
 
   setupCamera(scene, canvas);
@@ -133,6 +134,7 @@ function showPositionOverlay(scene, xAxis, yAxis, zAxis) {
       Mesh.setColor(axis, evt.detail);
     }
     document.addEventListener(attribute, setColor);
+    document.addEventListener("darkMode", () => setColor({ detail: config.get(attribute) }));
     setColor({ detail: config.get(attribute) });
   }
   addTextfieldEventLister("xAxisColor", xPosition, xAxis);
