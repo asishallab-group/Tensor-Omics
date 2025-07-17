@@ -106,7 +106,7 @@ export function setupFamilyHullMesh(scene) {
       const familyData = dataHandler.getFamilyData(family, config.get("tissueX"), config.get("tissueY"), config.get("tissueZ"));
       const centroid = Vector(...familyData.centroid.map(v => v*scale));
       const stdDevs = familyData.stdDevs.map(v => v*scale);
-      const color = Color(config.get(family + "_Color")).scale(2);
+      const color = Color(config.familyGet(family, "Color")).scale(2);
       color.a /= 2;
 
       const instanceMatrix = getInstanceMatrix(
@@ -125,7 +125,7 @@ export function setupFamilyHullMesh(scene) {
 
   function recreate() {
     for (const { family } of hull.TOX_metadata) {
-      config.set(`${family}_Hull`, true, false);
+      config.familySet(family, "Hull", true, undefined, false);
     }
     document.dispatchEvent(new CustomEvent("HullUpdated"));
   }
@@ -139,7 +139,7 @@ export function createVectorPartsInstanceMatrices(family, geneIndex, grow=0) {
   const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
 
   const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
-  const sphereDiameter = config.get(`${family}_Diameter`);
+  const sphereDiameter = config.familyGet(family, "Diameter");
 
   const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
   const genePos = Vector(...coordinates.map(v => v*scale));
@@ -174,7 +174,7 @@ export function setupShiftVectorMesh(scene) {
     if (value) {
       const matrices = createVectorPartsInstanceMatrices(family, gene);
 
-      let color = Color(config.get(family + "_Color"));
+      let color = Color(config.familyGet(family, "Color"));
       const colorScale = 1 / Math.max(color.r, color.g, color.b);
       color = color.scale(colorScale);
       color.a /= colorScale;
@@ -193,7 +193,7 @@ export function setupShiftVectorMesh(scene) {
 
   function recreate() {
     for (const { family, geneIndex } of shiftVectorHead.TOX_metadata) {
-      config.set(`${family}_ShiftVector:${geneIndex}`, true, false);
+      config.familySet(family, "ShiftVector", true, geneIndex, false);
     }
     document.dispatchEvent(new CustomEvent("ShiftVectorUpdated"));
   }

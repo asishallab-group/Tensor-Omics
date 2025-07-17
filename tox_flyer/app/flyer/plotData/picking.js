@@ -23,9 +23,9 @@ export function setupPicking(chunks) {
         const mesh = chunks.scene.getMeshByName(meshName);
         for (const { family, geneIndex } of mesh.TOX_metadata) {
           if (geneIndex !== undefined) {
-            config.set(`${family}_PickedGene:${geneIndex}`, true, false);
+            config.familySet(family, "PickedGene", true, geneIndex, false);
           } else {
-            config.set(`${family}_PickedCentroid`, true, false);
+            config.familySet(family, "PickedCentroid", true, geneIndex, false);
           }
         }
       }
@@ -49,13 +49,12 @@ function registerClickEvents(chunks) {
       case BABYLON.PointerEventTypes.POINTERTAP: {
         function handlePick(picked, onPick) {
           const keyType = `Picked${picked.type}`;
-          const configAttr = `${picked.family}_${keyType}` + (picked.geneIndex === undefined ? "" : `:${picked.geneIndex}`);
-          const isPicked = config.get(configAttr);
+          const isPicked = config.familyGet(picked.family, keyType, picked.geneIndex);
           if (!isPicked) {
             onPick?.();
           }
           
-          config.set(configAttr, !isPicked);
+          config.familySet(picked.family, keyType, !isPicked, picked.geneIndex);
         }
         picked = pickFromMeshes(chunks);
         if (picked !== null) {
@@ -141,7 +140,7 @@ function setupGenePicking(scene) {
     const { coordinates, is_outlier } = dataHandler.getGeneData(family, gene, [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")], ["is_outlier"]);
     const mesh = scene.getMeshByName(`picked${is_outlier ? "Octahedron" : "Sphere"}`);
     if (value) {
-      const diameter = (config.get(is_outlier ? `${family}_OutlierDiameter` : `${family}_Diameter`)) + .001;
+      const diameter = (config.familyGet(family, is_outlier ? "OutlierDiameter" : "Diameter")) + .001;
       const scale = config.get("scale");
       selectionMeshPick(
         mesh,
@@ -169,7 +168,7 @@ function setupCentroidPicking(scene) {
     const mesh = scene.getMeshByName("pickedSphere");
     if (value) {
       const { centroid } = dataHandler.getFamilyData(family, config.get("tissueX"), config.get("tissueY"), config.get("tissueZ"));
-      const diameter = config.get(`${family}_Diameter`) * 4 + .001;
+      const diameter = config.familyGet(family, "Diameter") * 4 + .001;
       const scale = config.get("scale");
       selectionMeshPick(
         mesh,
@@ -211,7 +210,7 @@ function setupVectorPicking(scene) {
     for (const meshName of ["pickedVectorShaft", "pickedVectorHead"]) {
       const mesh = scene.getMeshByName(meshName);
       for (const { family, geneIndex } of mesh.TOX_metadata) {
-        config.set(`${family}_PickedShiftVector:${geneIndex}`, true, false);
+        config.familySet(family, "PickedShiftVector", true, geneIndex, false);
       }
     }
     document.dispatchEvent(new CustomEvent("PickedShiftVectorUpdated"));

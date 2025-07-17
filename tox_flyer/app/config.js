@@ -83,6 +83,20 @@ export async function setupConfig() {
         document.dispatchEvent(new CustomEvent(key, { detail: value }));
       }
     },
+    familySet(familyIndex, key, value, geneIndex, update) {
+      if (geneIndex === undefined) {
+        this.set(`${familyIndex}_${key}`, value, update);
+      } else {
+        this.set(`${familyIndex}_${key}:${geneIndex}`, value, update);
+      }
+    },
+    familyGet(familyIndex, key, geneIndex) {
+      if (geneIndex === undefined) {
+        return this.get(`${familyIndex}_${key}`);
+      } else {
+        return this.get(`${familyIndex}_${key}:${geneIndex}`);
+      }
+    },
     async asURL() {
       const currentURL = new URL(document.URL);
       const encode = await getCompressor(familyKeyTypes, values);

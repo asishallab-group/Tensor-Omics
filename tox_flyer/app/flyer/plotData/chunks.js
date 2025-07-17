@@ -126,15 +126,15 @@ export function getChunks(scene) {
 
           for (const [family, members] of genes) {
             const colors = {
-              inliers: Color.FromHexString(config.get(`${family}_Color`)),
-              outliers: Color.FromHexString(config.get(`${family}_OutlierColor`))
+              inliers: Color.FromHexString(config.familyGet(family, "Color")),
+              outliers: Color.FromHexString(config.familyGet(family, "OutlierColor"))
             };
             colors.centroids = colors.inliers.scale(2);
             colors.centroids.a /= 2;
 
             const diameters = {
-              inliers: config.get(`${family}_Diameter`),
-              outliers: config.get(`${family}_OutlierDiameter`)
+              inliers: config.familyGet(family, "Diameter"),
+              outliers: config.familyGet(family, "OutlierDiameter")
             }
             diameters.centroids = diameters.inliers;
 
@@ -165,7 +165,7 @@ export function getChunks(scene) {
                   addInstance(coordinates, diameter);
                 }
               } else {
-                const show = config.get(`${family}_Centroid`);
+                const show = config.familyGet(family, "Centroid");
                 if (show) {
                   const coordinates = dataHandler.getFamilyData(family, ...this.tissues).centroid;
                   addInstance(coordinates, diameter * 4);
