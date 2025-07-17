@@ -2,8 +2,6 @@
 
 import {
   getChunks,
-  pickInstance,
-  unpickInstance,
   createDynamicThinInstance,
   removeDynamicThinInstance,
   setupDynamicThinInstanceMesh,
@@ -36,12 +34,15 @@ function plotData(scene) {
   setupFamilyHullMesh(scene);
   setupShiftVectorMesh(scene);
 
-  const chunks = getChunks(scene);
+  document.dispatchEvent(new CustomEvent("initialTrigger", { detail: [
+    "Hull",
+    "ShiftVector",
+    "PickedGene",
+    "PickedCentroid",
+    "PickedShiftVector"
+  ]}));
 
-  document.addEventListener("chunkReload", (evt) => {
-    chunks.recalculate();
-    chunks.load();
-  });
+  const chunks = getChunks(scene);
 
   let picked = null;
   scene.onPointerObservable.add((evt) => {
@@ -50,25 +51,21 @@ function plotData(scene) {
         removeTooltip();
         break;
       case BABYLON.PointerEventTypes.POINTERTAP: {
-        function handlePick(picked, onPick, dispatchEvent=true) {
-          const configAttr = `${picked.family}_Picked${picked.type}` + (picked.geneIndex === undefined ? "" : `:${picked.geneIndex}`);
-          if (!unpickInstance(picked, dispatchEvent)) {
-            pickInstance(picked, dispatchEvent);
+        function handlePick(picked, onPick) {
+          const keyType = `Picked${picked.type}`;
+          const configAttr = `${picked.family}_${keyType}` + (picked.geneIndex === undefined ? "" : `:${picked.geneIndex}`);
+          const isPicked = config.get(configAttr);
+          if (!isPicked) {
             onPick?.();
-            config.set(configAttr, true, false);
-          } else {
-            config.set(configAttr, false, false);
           }
+          
+          config.set(configAttr, !isPicked);
         }
         picked = pickFromMeshes(chunks);
         if (picked !== null) {
           switch (picked.type) {
             case "ShiftVector": {
-              let dispatchEvent = true;
-              for (const pickedPart of picked.parts) {
-                handlePick(pickedPart, null, dispatchEvent);
-                dispatchEvent = false;
-              }
+              handlePick(picked);
               break;
             }
             case "Gene": {
@@ -133,122 +130,263 @@ function setupFamilyHullMesh(scene) {
   setupDynamicThinInstanceMesh(hull);
 
   hull.material = Material(scene, null, {wireframe: true});
-  hull.TOX_create = function (family, tissues, scale) {
-    const familyData = dataHandler.getFamilyData(family, ...tissues);
-    const centroid = Vector(...familyData.centroid.map(v => v*scale));
-    const stdDevs = familyData.stdDevs.map(v => v*scale);
-    const color = Color(config.get(family + "_Color")).scale(2);
-    color.a /= 2;
 
-    const instanceMatrix = getInstanceMatrix(
-      centroid,
-      Vector(stdDevs[0] * 3, stdDevs[1] * 2, stdDevs[2] * 3)
-    );
+  function createHull(evt) {
+    const { family, gene, value } = evt.detail;
+    if (value) {
+      const scale = config.get("scale");
+      const familyData = dataHandler.getFamilyData(family, config.get("tissueX"), config.get("tissueY"), config.get("tissueZ"));
+      const centroid = Vector(...familyData.centroid.map(v => v*scale));
+      const stdDevs = familyData.stdDevs.map(v => v*scale);
+      const color = Color(config.get(family + "_Color")).scale(2);
+      color.a /= 2;
 
-    createDynamicThinInstance(this, family, undefined, instanceMatrix, color);
+      const instanceMatrix = getInstanceMatrix(
+        centroid,
+        Vector(stdDevs[0] * 3, stdDevs[1] * 2, stdDevs[2] * 3)
+      );
+
+      createDynamicThinInstance(hull, family, undefined, instanceMatrix, color);
+    } else {
+      removeDynamicThinInstance(hull, family);
+    }
   }
 
-  hull.TOX_remove = function (family) {
-    removeDynamicThinInstance(this, family);
-  }
+  document.addEventListener("Hull", createHull);
+  document.addEventListener("HullUpdated", () => dynamicThinInstanceBufferUpdated(hull));
 
-  hull.TOX_update = function () {
-    dynamicThinInstanceBufferUpdated(this);
+  function recreate() {
+    for (const { family } of hull.TOX_metadata) {
+      config.set(`${family}_Hull`, true, false);
+    }
+    document.dispatchEvent(new CustomEvent("HullUpdated"));
   }
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Color"]) {
+    document.addEventListener(setting, recreate);
+  }
+}
+
+function createVectorPartsInstanceMatrices(family, geneIndex, grow=0) {
+  const scale = config.get("scale");
+  const tissues = [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")];
+
+  const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
+  const sphereDiameter = config.get(`${family}_Diameter`);
+
+  const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
+  const genePos = Vector(...coordinates.map(v => v*scale));
+  const direction = genePos.subtract(centroid);
+  const vectorLength = direction.length() - sphereDiameter / 2;
+  const shaftLengthScale = 1 - 2 * sphereDiameter / vectorLength;
+  const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
+  const headPosition = centroid.add(direction.scale(shaftLengthScale + sphereDiameter / vectorLength / 2));
+
+  return {
+    shaft: getInstanceMatrix(
+      shaftPosition,
+      Vector(sphereDiameter / 2 + grow, vectorLength * shaftLengthScale + grow, sphereDiameter / 2 + grow),
+      genePos
+    ),
+    head: getInstanceMatrix(
+      headPosition,
+      Vector(sphereDiameter + grow, sphereDiameter * 2 + grow, sphereDiameter + grow),
+      genePos
+    )
+  };
 }
 
 function setupShiftVectorMesh(scene) {
   const shiftVectorShaft = Mesh.Cylinder(scene, "shiftVectorShaft");
   setupDynamicThinInstanceMesh(shiftVectorShaft);
-  const shiftVectorHead = Mesh.Cone(scene, "shiftVector");
+  const shiftVectorHead = Mesh.Cone(scene, "shiftVectorHead");
   setupDynamicThinInstanceMesh(shiftVectorHead);
 
-  shiftVectorHead.TOX_create = function create(family, geneIndex, tissues, scale) {
-    let color = Color(config.get(family + "_Color"));
-    const colorScale = 1 / Math.max(color.r, color.g, color.b);
-    color = color.scale(colorScale);
-    color.a /= colorScale;
+  document.addEventListener("ShiftVector", evt => {
+    const { family, gene, value } = evt.detail;
+    if (value) {
+      const matrices = createVectorPartsInstanceMatrices(family, gene);
 
-    const centroid = Vector(...dataHandler.getFamilyData(family, ...tissues).centroid.map(v => v*scale));
-    const sphereDiameter = config.get(`${family}_Diameter`);
-
-    const { coordinates } = dataHandler.getGeneData(family, geneIndex, tissues, []);
-    const genePos = Vector(...coordinates.map(v => v*scale));
-    const direction = genePos.subtract(centroid);
-    const vectorLength = direction.length() - sphereDiameter / 2;
-    const shaftLengthScale = 1 - 2 * sphereDiameter / vectorLength;
-    const shaftPosition = centroid.add(direction.scale(shaftLengthScale / 2));
-    const headPosition = centroid.add(direction.scale(shaftLengthScale + sphereDiameter / vectorLength / 2));
-
-    // create shaft
-    const shaftInstanceMatrix = getInstanceMatrix(
-      shaftPosition,
-      Vector(sphereDiameter / 2, vectorLength * shaftLengthScale, sphereDiameter / 2),
-      genePos
-    );
-    // create head
-    const headInstanceMatrix = getInstanceMatrix(
-      headPosition,
-      Vector(sphereDiameter, sphereDiameter * 2, sphereDiameter),
-      genePos
-    );
-
-    for (const mesh of [this, shiftVectorShaft]) {
-      const isThis = mesh === this;
-      const matrix = isThis ? headInstanceMatrix : shaftInstanceMatrix;
-      createDynamicThinInstance(mesh, family, geneIndex, matrix, color);
-      if (config.get(`${family}_PickedShiftVector:${geneIndex}`)) {
-        pickInstance({
-          mesh,
-          family,
-          geneIndex,
-          ...decomposeMatrix(matrix),
-          type: "ShiftVector"
-        }, isThis);  // fire pick event only once for shaft
-      }
+      let color = Color(config.get(family + "_Color"));
+      const colorScale = 1 / Math.max(color.r, color.g, color.b);
+      color = color.scale(colorScale);
+      color.a /= colorScale;
+      createDynamicThinInstance(shiftVectorShaft, family, gene, matrices.shaft, color);
+      createDynamicThinInstance(shiftVectorHead, family, gene, matrices.head, color);
+    } else {
+      removeDynamicThinInstance(shiftVectorHead, family, gene);
+      removeDynamicThinInstance(shiftVectorShaft, family, gene);
     }
-  }
+  });
 
-  shiftVectorHead.TOX_remove = function (family, gene) {
-    removeDynamicThinInstance(this, family, gene);
-    removeDynamicThinInstance(shiftVectorShaft, family, gene);
-  }
-
-  shiftVectorHead.TOX_update = function () {
-    dynamicThinInstanceBufferUpdated(this);
+  document.addEventListener("ShiftVectorUpdated", () => {
+    dynamicThinInstanceBufferUpdated(shiftVectorHead);
     dynamicThinInstanceBufferUpdated(shiftVectorShaft);
+  });
+
+  function recreate() {
+    for (const { family, geneIndex } of shiftVectorHead.TOX_metadata) {
+      config.set(`${family}_ShiftVector:${geneIndex}`, true, false);
+    }
+    document.dispatchEvent(new CustomEvent("ShiftVectorUpdated"));
+  }
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter", "Color"]) {
+    document.addEventListener(setting, recreate);
   }
 }
 
 function setupSelectionMeshes(scene) {
+  const meshes = [
+    Mesh.Sphere(scene, "pickedSphere"),
+    Mesh.Octahedron(scene, "pickedOctahedron"),
+    Mesh.Cylinder(scene, "pickedVectorShaft"),
+    Mesh.Cone(scene, "pickedVectorHead")
+  ];
+
   const highlightLayer = new BABYLON.HighlightLayer("highlight", scene);
+
+  {
+    function setHighlightColor(evt) {
+      const color = Color(evt.detail);
+      for (const mesh of meshes) {
+        highlightLayer.removeMesh(mesh);
+        highlightLayer.addMesh(mesh, color);
+      }
+    }
+    document.addEventListener("selectedDataPointColor", setHighlightColor);
+    setHighlightColor({ detail: config.get("selectedDataPointColor") });
+  }
 
   const material =  Material(scene, null, {color: Color(0, 0, 0, 0)});
 
-  function setupMesh(mesh) {
+  for (const mesh of meshes) {
     setupDynamicThinInstanceMesh(mesh, false);
     mesh.material = material;
     highlightLayer.setEffectIntensity(mesh, 0.7);
   }
 
-  const meshes = [
-    Mesh.Sphere(scene, "picked_sphere"),
-    Mesh.Octahedron(scene, "picked_octahedron"),
-    Mesh.Cylinder(scene, "picked_cylinder"),
-    Mesh.Cone(scene, "picked_cone")
-  ];
-
-  for (const mesh of meshes) {
-    setupMesh(mesh);
+  setupGenePicking(scene);
+  setupCentroidPicking(scene);
+  setupVectorPicking(scene);
+  {
+    function repickGenesAndCentroids() {
+      for (const meshName of ["pickedSphere", "pickedOctahedron"]) {
+        const mesh = scene.getMeshByName(meshName);
+        for (const { family, geneIndex } of mesh.TOX_metadata) {
+          if (geneIndex !== undefined) {
+            config.set(`${family}_PickedGene:${geneIndex}`, true, false);
+          } else {
+            config.set(`${family}_PickedCentroid`, true, false);
+          }
+        }
+      }
+      document.dispatchEvent(new CustomEvent("PickedCentroidUpdated"));
+      document.dispatchEvent(new CustomEvent("PickedGeneUpdated"));
+    }
+    for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "OutlierDiameter", "Diameter", "defaultDiameter"]) {
+      document.addEventListener(setting, repickGenesAndCentroids);
+    }
   }
 
-  config.setSetterCallback("selectedDataPointColor", hexColorCode => {
-    const color = Color(hexColorCode);
-    for (const mesh of meshes) {
-      highlightLayer.removeMesh(mesh);
-      highlightLayer.addMesh(mesh, color);
+}
+
+function selectionMeshPick(selectionMesh, family, gene, type, instanceMatrix, dispatchEvent=true) {
+  if (instanceMatrix !== undefined) {
+    const instanceCount = selectionMesh.TOX_instanceCount;
+    createDynamicThinInstance( selectionMesh, family, gene, instanceMatrix );
+    if (instanceCount !== selectionMesh.TOX_instanceCount && dispatchEvent) {
+      document.dispatchEvent(new CustomEvent("pick", { detail: { family, gene, type } }));
     }
+  } else {
+    if (removeDynamicThinInstance(selectionMesh, family, gene) && dispatchEvent) {
+      document.dispatchEvent(new CustomEvent("unpick", { detail: { family, gene, type } }));
+    }
+  }
+}
+
+function setupGenePicking(scene) {
+  function pick(evt) {
+    const { family, gene, value } = evt.detail;
+    const { coordinates, is_outlier } = dataHandler.getGeneData(family, gene, [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")], ["is_outlier"]);
+    const mesh = scene.getMeshByName(`picked${is_outlier ? "Octahedron" : "Sphere"}`);
+    if (value) {
+      const diameter = (config.get(is_outlier ? `${family}_OutlierDiameter` : `${family}_Diameter`)) + .001;
+      const scale = config.get("scale");
+      selectionMeshPick(
+        mesh,
+        family,
+        gene,
+        "Gene",
+        getInstanceMatrix(
+          Vector(...coordinates.map(v => v*scale)),
+          Vector(diameter, diameter, diameter)
+        )      
+      );
+    } else {
+      selectionMeshPick(mesh, family, gene, "Gene");
+    }
+  }
+  document.addEventListener("PickedGene", pick);
+  for (const meshName of ["pickedSphere", "pickedOctahedron"]) {
+    document.addEventListener("PickedGeneUpdated", () => dynamicThinInstanceBufferUpdated(scene.getMeshByName(meshName)));
+  }
+}
+
+function setupCentroidPicking(scene) {
+  function pick(evt) {
+    const { family, value } = evt.detail;
+    const mesh = scene.getMeshByName("pickedSphere");
+    if (value) {
+      const { centroid } = dataHandler.getFamilyData(family, config.get("tissueX"), config.get("tissueY"), config.get("tissueZ"));
+      const diameter = config.get(`${family}_Diameter`) * 4 + .001;
+      const scale = config.get("scale");
+      selectionMeshPick(
+        mesh,
+        family,
+        undefined,
+        "Centroid",
+        getInstanceMatrix(
+          Vector(...centroid.map(v => v*scale)),
+          Vector(diameter, diameter, diameter)
+        )      
+      );
+    } else {
+      selectionMeshPick(mesh, family, undefined, "Centroid");
+    }
+  }
+  document.addEventListener("PickedCentroid", pick);
+  document.addEventListener("PickedCentroidUpdated", () => dynamicThinInstanceBufferUpdated(scene.getMeshByName("pickedSphere")));
+}
+
+function setupVectorPicking(scene) {
+  function pick(evt) {
+    const { family, gene, value } = evt.detail;
+    if (value) {
+      const matrices = createVectorPartsInstanceMatrices(family, gene, .001);
+      selectionMeshPick(scene.getMeshByName("pickedVectorShaft"), family, gene, "ShiftVector", matrices.shaft);
+      selectionMeshPick(scene.getMeshByName("pickedVectorHead"), family, gene, "ShiftVector", matrices.head, false);
+    } else {
+      selectionMeshPick(scene.getMeshByName("pickedVectorShaft"), family, gene, "ShiftVector");
+      selectionMeshPick(scene.getMeshByName("pickedVectorHead"), family, gene, "ShiftVector", undefined, false);
+    }
+  }
+  document.addEventListener("PickedShiftVector", pick);
+  document.addEventListener("PickedShiftVectorUpdated", () => {
+    dynamicThinInstanceBufferUpdated(scene.getMeshByName("pickedVectorShaft"));
+    dynamicThinInstanceBufferUpdated(scene.getMeshByName("pickedVectorHead"));
   });
+
+  function repick() {
+    for (const meshName of ["pickedVectorShaft", "pickedVectorHead"]) {
+      const mesh = scene.getMeshByName(meshName);
+      for (const { family, geneIndex } of mesh.TOX_metadata) {
+        config.set(`${family}_PickedShiftVector:${geneIndex}`, true, false);
+      }
+    }
+    document.dispatchEvent(new CustomEvent("PickedShiftVectorUpdated"));
+  }
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter"]) {
+    document.addEventListener(setting, repick);
+  }
 }
 
 function intersectsNonSpherical(
@@ -292,11 +430,7 @@ function meshHit(ray, mesh, maxDistance=Infinity) {
       }
       if (intersects) {
         picked = {
-          position,
-          rotation,
-          scaling,
           index: i,
-          mesh,
           distance
         }
       }
@@ -328,7 +462,7 @@ function pickFromMeshes(chunks) {
   }
 
   const unchunkedMeshes = {
-    arrow: ["shiftVectorShaft", "shiftVector"]
+    arrow: ["shiftVectorShaft", "shiftVectorHead"]
   };
   for (const [meshType, meshNames] of Object.entries(unchunkedMeshes)) {
     let hit = null;
@@ -337,13 +471,8 @@ function pickFromMeshes(chunks) {
       if (mesh) {
         hit = meshHit(pickRay, mesh, picked?.distance);
         if (hit !== null) {
-          picked = { meshType, parts: [] };
-          for (const meshName of meshNames) {
-            const mesh = chunks.scene.getMeshByName(meshName);
-            const worldMatrices = mesh.thinInstanceGetWorldMatrices();
-            const decomposed = decomposeMatrix(worldMatrices[hit.index]);
-            picked.parts.push({ ...hit, ...decomposed, mesh });
-          }
+          const { family, geneIndex } = mesh.TOX_metadata[hit.index];
+          picked = { ...hit, meshType, family, geneIndex };
           break;
         }
       }
@@ -355,11 +484,6 @@ function pickFromMeshes(chunks) {
     switch (picked.meshType) {
       case "arrow": {
         picked.type = "ShiftVector";
-        for (const pickedPart of picked.parts) {
-          pickedPart.type = "ShiftVector";
-          pickedPart.family = 76;
-          pickedPart.geneIndex = 21;
-        }
         break;
       }
       case "centroids": {

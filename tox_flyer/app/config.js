@@ -54,18 +54,6 @@ export async function setupConfig() {
   const callbacks = {};
   const validate = getValidator();
 
-  const triggersChunkReload = [
-    "tissueX",
-    "tissueY",
-    "tissueZ",
-    "chunkDiameter",
-    "chunkLoadRange",
-    "scale",
-    "darkMode",
-    "shownFamilies",
-    "defaultDiameter"
-  ];
-
   const config = {
     get(key) {
       let value = values.allModes[key] ?? DEFAULTS.allModes[key];
@@ -79,33 +67,21 @@ export async function setupConfig() {
 
       return value ?? familyDefault(key, familyKeyTypes);
     },
-    set(key, value, runCallback=true) {
+    set(key, value, update=true) {
       validate(key, value);
       if (DEFAULTS.allModes[key] !== undefined || !key.endsWith("Color")) values.allModes[key] = value;
       else if (this.get("darkMode")) values.darkMode[key] = value;
       else values.lightMode[key] = value;
-
-      if (runCallback) {
-        callbacks[key]?.(value);
-
-        // when changing family related stuff (like <familyname>_Color) or other things that need to trigger a chunk reload
-        if (key.includes("_") || triggersChunkReload.includes(key)) {
-          document.dispatchEvent(new CustomEvent("chunkReload", {
-            detail: { setting: key }
-          }));
+      
+      const [, family, familyKeyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/) ?? [];
+      if (familyKeyType !== undefined) {
+        document.dispatchEvent(new CustomEvent(familyKeyType, { detail: { family: Number(family), gene: Number(gene?.slice(1)), value } }));
+        if (update) {
+          document.dispatchEvent(new CustomEvent(familyKeyType + "Updated"));
         }
+      } else if (update) {
+        document.dispatchEvent(new CustomEvent(key, { detail: value }));
       }
-    },
-    setSetterCallback(key, callback) {
-      if (callbacks[key] === undefined) {
-        callbacks[key] = (value) => callback(value); // wrapping the callback to avoid this-context on the private callbacks object
-        callback(this.get(key));
-      } else {
-        throw new Error(`Another callback function has been already registered for '${key}' in the past.`);
-      }
-    },
-    runCallbacks() {
-      config.set("darkMode", config.get("darkMode"));
     },
     async asURL() {
       const currentURL = new URL(document.URL);
@@ -159,19 +135,6 @@ export async function setupConfig() {
 
   config.set("darkMode", window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  // on dark mode switch, all callbacks need to be triggered
-  config.setSetterCallback("darkMode", (enable) => {
-    for (const [key, callback] of Object.entries(callbacks)) {
-      if (key !== "darkMode") {
-        callback(config.get(key));
-      }
-    }
-    const event = new CustomEvent("chunkReload", {
-      detail: { setting: "darkMode" }
-    });
-    document.dispatchEvent(event);
-  })
-
   try {
     const currentURL = new URL(document.URL);
     const configArg = currentURL.searchParams.get("config");
@@ -186,6 +149,23 @@ export async function setupConfig() {
   } catch (err) {
     console.error("Could not import config from URL");
   }
+
+  document.addEventListener("initialTrigger", evt => {
+    const unchunked = new Set(evt.detail);
+
+    for (const settings of Object.values(values)) {
+      for (const [key, value] of Object.entries(settings)) {
+        const [, family, familyKeyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/) ?? [];
+        if (familyKeyType !== undefined && unchunked.has(familyKeyType)) {
+          document.dispatchEvent(new CustomEvent(familyKeyType, { detail: { family: Number(family), gene: Number(gene?.slice(1)), value } }));
+        }
+      }
+    }
+
+    for (const key of unchunked) {
+      document.dispatchEvent(new CustomEvent(key + "Updated"));
+    }
+  }, { once: true });
 
   return config;
 }
@@ -296,7 +276,7 @@ function getValidator() {
       ],
       [["tissueX", "tissueY", "tissueZ"], () => {}],
       [
-        ["selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor", "Color"],
+        ["selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor", "Color", "OutlierColor"],
         v => {
           if (!/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(v)) throw new Error(`Expecting RGB(A) hex color code, got: ${v}`);
         }

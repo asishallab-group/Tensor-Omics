@@ -109,23 +109,23 @@ function createPickedDetailsDialog() {
       document.getElementById("UI")?.appendChild(pickedDetails);
     }
 
-    document.addEventListener("chunkReload", evt => {
+    document.addEventListener("tissueUpdate", evt => {
       const dataMap = getDetailsTableDataMap();
       for (const table of document.getElementsByName("detailsTable")) {
         const [type] = table.id.split("DetailsTable");
         const headers = table.tHead.firstChild.children;
+        let column;
         dataMap[type].forEach(({ configKey }, i) => {
-          if (configKey !== undefined) {
-            headers[i].textContent = config.get(configKey);
+          if (configKey === evt.detail.key) {
+            headers[i].textContent = evt.detail.value;
+            column = i;
           }
         })
 
         for (const row of table.tBody.children) {
           const [family, gene, type] = row.id.split(".");
           const geneData = dataHandler.getGeneData(Number(family), Number(gene));
-          dataMap[type].forEach(({ data }, i) => {
-            row[i].textContent = data(geneData);
-          })
+          row[column].textContent = dataMap[type][column].data(geneData);
         }
       }
     })
