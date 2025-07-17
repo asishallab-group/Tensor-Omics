@@ -1,6 +1,6 @@
 "use strict";
 
-import { Color, Vector, Mesh, fillThinInstanceBuffers, getInstanceMatrix, decomposeMatrix } from "./babylon.js";
+import { Color, Vector, Mesh, fillThinInstanceBuffers, getInstanceMatrix, decomposeMatrix } from "../babylon.js";
 
 export function getChunks(scene) {
   const chunks = {
@@ -273,91 +273,6 @@ function calcActiveChunks(chunks, [posX, posY, posZ]) {
     console.error(`Number of active chunks does not match, expected ${(chunks.loadRange*2 + 1)**3}, got ${activeChunks.length}`);
   }
   return activeChunks;
-}
-
-const DYNAMIC_THIN_INSTANCE_STEP_SIZE = 1000;
-
-export function setupDynamicThinInstanceMesh(mesh, hasColor=true) {
-  mesh.isVisible = false;
-  mesh.TOX_metadata = [];
-  mesh.TOX_instanceCount = 0;
-  mesh.TOX_matrixBuffer = new Float32Array(16 * DYNAMIC_THIN_INSTANCE_STEP_SIZE);
-  if (hasColor) {
-    mesh.TOX_colorBuffer = new Float32Array(4 * DYNAMIC_THIN_INSTANCE_STEP_SIZE);
-  }
-}
-
-export function dynamicThinInstanceBufferUpdated(mesh) {
-  mesh.thinInstanceSetBuffer("matrix", mesh.TOX_matrixBuffer.subarray(0, mesh.TOX_instanceCount * 16), 16);
-  if (mesh.TOX_colorBuffer !== undefined) {
-    mesh.thinInstanceSetBuffer("color", mesh.TOX_colorBuffer.subarray(0, mesh.TOX_instanceCount * 4), 4);
-  }
-  mesh.thinInstanceCount = mesh.TOX_instanceCount;
-  mesh.isVisible = mesh.hasThinInstances;
-}
-
-function extendDynamicThinInstanceBuffer(oldContents, stride) {
-  const newContents = new Float32Array(oldContents.length + DYNAMIC_THIN_INSTANCE_STEP_SIZE * stride);
-  newContents.set(oldContents);
-  return newContents;
-}
-
-function getThinInstanceIndexDynamicBuffer(mesh, family, geneIndex) {
-  for (let i = 0; i < mesh.TOX_instanceCount; i++) {
-    const data = mesh.TOX_metadata[i];
-    if (data.family === family) {
-      if (data.geneIndex === geneIndex) {
-        return i;
-      }
-    }
-  }
-  return null;
-}
-
-export function createDynamicThinInstance(mesh, family, geneIndex, instanceMatrix, color) {
-  let index = getThinInstanceIndexDynamicBuffer(mesh, family, geneIndex);
-  if (index === null) {
-    index = mesh.TOX_instanceCount;
-    if (mesh.TOX_instanceCount * 16 === mesh.TOX_matrixBuffer.length) {
-      mesh.TOX_matrixBuffer = extendDynamicThinInstanceBuffer(mesh.TOX_matrixBuffer, 16);
-      if (mesh.TOX_colorBuffer !== undefined) {
-        mesh.TOX_colorBuffer = extendDynamicThinInstanceBuffer(mesh.TOX_colorBuffer, 4);
-      }
-    }
-    mesh.TOX_instanceCount++;
-  }
-  instanceMatrix.copyToArray(mesh.TOX_matrixBuffer, index * 16);
-  mesh.TOX_metadata[index] = { family, geneIndex };
-
-  if (mesh.TOX_colorBuffer !== undefined) {
-    mesh.TOX_colorBuffer.set(color.asArray(), index * 4);
-  }
-}
-
-export function removeDynamicThinInstance(mesh, family, geneIndex) {
-  const index = getThinInstanceIndexDynamicBuffer(mesh, family, geneIndex);
-
-  if (index !== null) {
-    function remove(buffer, stride) {
-      const lastInstanceIndex = (mesh.TOX_instanceCount - 1) * stride;
-      const removingInstanceIndex = index * stride;
-      for (let i = 0; i < stride; i++) {
-        buffer[removingInstanceIndex + i] = buffer[lastInstanceIndex + i];
-      }
-    }
-
-    remove(mesh.TOX_matrixBuffer, 16);
-
-    if (mesh.TOX_colorBuffer !== undefined) {
-      remove(mesh.TOX_colorBuffer, 4);
-    }
-
-    mesh.TOX_metadata[index] = mesh.TOX_metadata.pop();
-    mesh.TOX_instanceCount--;
-
-    return true;
-  }
-  return false;
 }
 
 function registerLoading(chunks) {
