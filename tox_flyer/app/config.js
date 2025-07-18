@@ -1,5 +1,7 @@
 "use strict";
 
+import { createFamilyKey, splitFamilyKey, getValidator } from "./config/validation.js";
+
 const DEFAULTS = {
   allModes: {
     orbitMode: false,
@@ -73,29 +75,21 @@ export async function setupConfig() {
       else if (this.get("darkMode")) values.darkMode[key] = value;
       else values.lightMode[key] = value;
       
-      const [, family, familyKeyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/) ?? [];
-      if (familyKeyType !== undefined) {
-        document.dispatchEvent(new CustomEvent(familyKeyType, { detail: { family: Number(family), gene: Number(gene?.slice(1)), value } }));
+      const { family, keyType, gene } = splitFamilyKey(key) ?? {};
+      if (keyType !== undefined) {
+        document.dispatchEvent(new CustomEvent(keyType, { detail: { family, gene, value } }));
         if (update) {
-          document.dispatchEvent(new CustomEvent(familyKeyType + "Updated"));
+          document.dispatchEvent(new CustomEvent(keyType + "Updated"));
         }
       } else if (update) {
         document.dispatchEvent(new CustomEvent(key, { detail: value }));
       }
     },
     familySet(familyIndex, key, value, geneIndex, update) {
-      if (geneIndex === undefined) {
-        this.set(`${familyIndex}_${key}`, value, update);
-      } else {
-        this.set(`${familyIndex}_${key}:${geneIndex}`, value, update);
-      }
+      this.set(createFamilyKey(familyIndex, key, geneIndex), value, update);
     },
     familyGet(familyIndex, key, geneIndex) {
-      if (geneIndex === undefined) {
-        return this.get(`${familyIndex}_${key}`);
-      } else {
-        return this.get(`${familyIndex}_${key}:${geneIndex}`);
-      }
+      return this.get(createFamilyKey(familyIndex, key, geneIndex));
     },
     async asURL() {
       const currentURL = new URL(document.URL);
@@ -169,9 +163,9 @@ export async function setupConfig() {
 
     for (const settings of Object.values(values)) {
       for (const [key, value] of Object.entries(settings)) {
-        const [, family, familyKeyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/) ?? [];
-        if (familyKeyType !== undefined && unchunked.has(familyKeyType)) {
-          document.dispatchEvent(new CustomEvent(familyKeyType, { detail: { family: Number(family), gene: Number(gene?.slice(1)), value } }));
+        const { family, keyType, gene } = splitFamilyKey(key) ?? {};
+        if (unchunked.has(keyType)) {
+          document.dispatchEvent(new CustomEvent(keyType, { detail: { family, gene, value } }));
         }
       }
     }
@@ -246,82 +240,4 @@ async function getCompressor(familyKeyTypes, values=null) {
 
     return decompress;
   }
-}
-
-function getValidator() {
-  const validators = {};
-  {
-    const asArray = [
-      [
-        ["orbitMode", "darkMode", "ShiftVector", "Centroid", "Hull", "PickedGene", "PickedShiftVector", "PickedCentroid"],
-        v => {
-          if (typeof v !== "boolean") throw new Error(`Expecting boolean value, got: ${typeof v}`);
-        }
-      ],
-      [
-        ["x", "y", "z", "rotationX", "rotationY"],
-        v => {
-          if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`Expecting number, got: ${typeof v}`);
-        }
-      ],
-      [
-        ["orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale", "defaultDiameter", "Diameter", "OutlierDiameter"],
-        v => {
-          if (typeof v !== "number" || v <= 0 || !Number.isFinite(v)) throw new Error(`Expecting true positive number, got: ${v} (${typeof v})`);
-        }
-      ],
-      [
-        ["chunkDiameter"],
-        v => {
-          if (!Number.isInteger(v) || v <= 0 || v % 2 === 1) throw new Error(`Expecting true positive even integer, got: ${v} (${typeof v})`);
-        }
-      ],
-      [
-        ["chunkLoadRange"],
-        v => {
-          if (!Number.isInteger(v) || v <= 0) throw new Error(`Expecting true positive integer, got: ${v} (${typeof v})`);
-        }
-      ],
-      [
-        ["shownFamilies"],
-        v => {
-          if (v !== null && !(v instanceof Array)) throw new Error(`Expecting either null or Array of family names, got: ${typeof v}`);
-        }
-      ],
-      [["tissueX", "tissueY", "tissueZ"], () => {}],
-      [
-        ["selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor", "Color", "OutlierColor"],
-        v => {
-          if (!/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(v)) throw new Error(`Expecting RGB(A) hex color code, got: ${v}`);
-        }
-      ],
-    ]
-    for (const [keys, validator] of asArray) {
-      for (const key of keys) {
-        validators[key] = validator;
-      }
-    }
-  }
-  function validate(key, value) {
-    const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/)?.slice(1) ?? [];
-    let validator;
-    if (keyType !== undefined) {
-      validator = validators[keyType];
-    } else if (key[0].toUpperCase() !== key[0]) {
-      validator = validators[key];
-    }
-    if (validator !== undefined) {
-      try {
-        validator(value);
-        return true;
-      } catch (err) {
-        throw new Error(`${key}: ${err.message}`);
-        return;
-      }
-    } else {
-      throw new Error(`Unknown key: ${key}`);
-    }
-  }
-
-  return validate;
 }

@@ -1,5 +1,11 @@
 "use strict";
 
+import {
+  COLOR_REGEX,
+  splitFamilyKey,
+  createFamilyKey
+} from "./validation.js";
+
 const MAX_CHAR_CODE = 2 ** 16 - 1;
 const MAX_ENC_CHAR_CODE = 2 ** 15 - 1;
 
@@ -59,7 +65,7 @@ export function getEncoder(defaults, familyKeyTypes) {
       },
       string: (encodedKey, value, defaultValue) => {
         if (value !== defaultValue) {
-          if (/^#[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?$/.test(value)) {
+          if (COLOR_REGEX.test(value)) {
             return encodedKey + encodeColor(value);
           } else {
             console.error("Encoding strings only supported for color codes");
@@ -91,12 +97,11 @@ export function getEncoder(defaults, familyKeyTypes) {
     let type;
     let defaultValue;
     let encodedKey = "";
-    if (key.includes("_")) {
-      const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/).slice(1);
-
+    const { family, keyType, gene } = splitFamilyKey(key) ?? {};
+    if (family !== undefined) {
       if (previousFamilyEnc !== family) {
         encodedKey = SEPARATORS.get("familyKeyStart");
-        encodedKey += encodeNumber(Number.parseInt(family));
+        encodedKey += encodeNumber(family);
         previousFamilyEnc = family;
       }
 
@@ -105,7 +110,7 @@ export function getEncoder(defaults, familyKeyTypes) {
       encodedKey += separators.get(keyTypeSep);
 
       if (gene !== undefined) {
-        encodedKey += encodeNumber(Number.parseInt(gene.slice(1)));
+        encodedKey += encodeNumber(gene);
       }
       
       encodedKey += SEPARATORS.get("familyKeyStop");
@@ -182,8 +187,8 @@ export function getEncoder(defaults, familyKeyTypes) {
         [keyType, category] = sepType.split("_");
       }
       if (category === undefined) throw new Error("Corrupted family key encoding: Unknown category" + keyType);
-      key = `${family}_${keyType}`;
 
+      let gene;
       type = familyKeyTypes[keyType].type;
       if (type === "boolean") {
         defaultValue = familyKeyTypes[keyType].default(family);
@@ -195,8 +200,9 @@ export function getEncoder(defaults, familyKeyTypes) {
         if (str.charAt(decodedGene.idx) !== SEPARATORS.get("familyKeyStop")) throw new Error("Corrupted family key encoding: Missing stop");
 
         idx = decodedGene.idx + 1;
-        key += ":" + decodedGene.decoded;
+        gene = decodedGene.decoded;
       }
+      key = createFamilyKey(family, keyType, gene);
     }
 
     if (type === "boolean") {

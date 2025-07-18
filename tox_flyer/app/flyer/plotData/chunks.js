@@ -209,20 +209,6 @@ export function getChunks(scene) {
     }
   }
 
-  {
-    function tellGUItissueUpdate(key, value) {
-      document.dispatchEvent(new CustomEvent("tissueUpdate", { detail: { key, value } }));
-    }
-    function setTissue(evt) {
-      chunks.load();
-      tellGUItissueUpdate(evt.type, evt.detail);
-    }
-    for (const setting of ["tissueX", "tissueY", "tissueZ"]) {
-      document.addEventListener(setting, setTissue);
-      tellGUItissueUpdate(setting);
-    }
-  }
-
   function rebuildChunks() {
     chunks.recalculate();
     chunks.load();
@@ -231,7 +217,9 @@ export function getChunks(scene) {
   rebuildChunks();
   registerLoading(chunks);
 
-  document.addEventListener("scale", rebuildChunks);
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale"]) {
+    document.addEventListener(setting, rebuildChunks);
+  }
 
   {
     function setFog() {
