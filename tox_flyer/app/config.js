@@ -21,7 +21,6 @@ const DEFAULTS = {
     tissueX: "Liver",
     tissueY: "Heart",
     tissueZ: "Lung",
-    defaultDiameter: 0.25
   },
   lightMode: {
     selectedDataPointColor: "#FFFF00FF",
@@ -77,9 +76,16 @@ export async function setupConfig() {
       
       const { family, keyType, gene } = splitFamilyKey(key) ?? {};
       if (keyType !== undefined) {
-        document.dispatchEvent(new CustomEvent(keyType, { detail: { family, gene, value } }));
-        if (update) {
-          document.dispatchEvent(new CustomEvent(keyType + "Updated"));
+        const { supportsGeneRelated, supportsFamilyRelated } = familyKeyTypes[keyType];
+        if (!supportsFamilyRelated && gene === undefined) {
+          throw new Error(`Setting '${keyType}' is related to single genes, setting value for whole family is not supported`);
+        } else if (!supportsGeneRelated && gene !== undefined) {
+          throw new Error(`Setting '${keyType}' is related to the whole family, setting value for single gene is not supported`);
+        } else {
+          document.dispatchEvent(new CustomEvent(keyType, { detail: { family, gene, value } }));
+          if (update) {
+            document.dispatchEvent(new CustomEvent(keyType + "Updated"));
+          }
         }
       } else if (update) {
         document.dispatchEvent(new CustomEvent(key, { detail: value }));
@@ -129,16 +135,14 @@ export async function setupConfig() {
   Object.freeze(config);
 
   familyKeyTypes = {
-    ShiftVector: { type: "boolean", default: () => false },
-    Centroid: { type: "boolean", default: () => false },
-    Hull: { type: "boolean", default: () => false },
-    Color: { type: "string", default: (family) => dataHandler.getColor(family) },
-    OutlierColor: { type: "string", default: (family) => config.get(`${family}_Color`) },
-    Diameter: { type: "number", default: () => config.get("defaultDiameter") },
-    OutlierDiameter: { type: "number", default: () => config.get("defaultDiameter") },
-    PickedGene: { type: "boolean", default: () => false },
-    PickedShiftVector: { type: "boolean", default: () => false },
-    PickedCentroid: { type: "boolean", default: () => false },
+    ShiftVector: { type: "boolean", default: () => false, supportsGeneRelated: true },
+    Centroid: { type: "boolean", default: () => false, supportsFamilyRelated: true },
+    Hull: { type: "boolean", default: () => false, supportsFamilyRelated: true },
+    Color: { type: "string", default: (family) => dataHandler.getColor(family), supportsGeneRelated: true, supportsFamilyRelated: true },
+    Diameter: { type: "number", default: () => 0.25, supportsGeneRelated: true },
+    PickedGene: { type: "boolean", default: () => false, supportsGeneRelated: true },
+    PickedShiftVector: { type: "boolean", default: () => false, supportsGeneRelated: true },
+    PickedCentroid: { type: "boolean", default: () => false, supportsFamilyRelated: true },
   };
 
   config.set("darkMode", window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -149,13 +153,12 @@ export async function setupConfig() {
     if (configArg) {
       const decode = await getCompressor(familyKeyTypes);
       const importingConfig = await decode(configArg, true);
-
       values.allModes = importingConfig.allModes;
       values.lightMode = importingConfig.lightMode;
       values.darkMode = importingConfig.darkMode;
     }
   } catch (err) {
-    console.error("Could not import config from URL");
+    console.error("Could not import config from URL", err);
   }
 
   document.addEventListener("initialTrigger", evt => {
@@ -179,9 +182,13 @@ export async function setupConfig() {
 }
 
 function familyDefault(key, familyKeyTypes) {
-  const [family, keyType, gene] = key.match(/^(\d+)_(\D+)(:\d+)?$/)?.slice(1) ?? [];
+  const { family, keyType, gene } = splitFamilyKey(key) ?? {};
   if (keyType !== undefined) {
-    return familyKeyTypes[keyType].default(family);
+    if (gene === undefined) {
+      return familyKeyTypes[keyType].default(family);
+    } else {
+      return config.get(createFamilyKey(family, keyType));
+    }
   } else if (key === "shownFamilies") {
     return dataHandler.families;
   }

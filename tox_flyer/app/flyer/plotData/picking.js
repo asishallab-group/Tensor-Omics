@@ -32,7 +32,7 @@ export function setupPicking(chunks) {
       document.dispatchEvent(new CustomEvent("PickedCentroidUpdated"));
       document.dispatchEvent(new CustomEvent("PickedGeneUpdated"));
     }
-    for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "OutlierDiameter", "Diameter", "defaultDiameter"]) {
+    for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter"]) {
       document.addEventListener(setting, repickGenesAndCentroids);
     }
   }
@@ -140,7 +140,7 @@ function setupGenePicking(scene) {
     const { coordinates, is_outlier } = dataHandler.getGeneData(family, gene, [config.get("tissueX"), config.get("tissueY"), config.get("tissueZ")], ["is_outlier"]);
     const mesh = scene.getMeshByName(`picked${is_outlier ? "Octahedron" : "Sphere"}`);
     if (value) {
-      const diameter = (config.familyGet(family, is_outlier ? "OutlierDiameter" : "Diameter")) + .001;
+      const diameter = (config.familyGet(family, "Diameter")) + .001;
       const scale = config.get("scale");
       selectionMeshPick(
         mesh,
@@ -215,7 +215,7 @@ function setupVectorPicking(scene) {
     }
     document.dispatchEvent(new CustomEvent("PickedShiftVectorUpdated"));
   }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter"]) {
     document.addEventListener(setting, repick);
   }
 }

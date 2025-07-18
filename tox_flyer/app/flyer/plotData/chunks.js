@@ -118,32 +118,18 @@ export function getChunks(scene) {
             }
             const mesh = Mesh.Octahedron(this.scene);
             mesh.enableEdgesRendering();
-            mesh.edgesWidth = config.get("defaultDiameter") * 12;
+            mesh.edgesWidth = 3;
             mesh.edgesColor = Color(0, 0, 0, 1); // Black edges
             mesh.edgesShareWithThinInstances = true;
             meshes.set("outliers", mesh);
           }
 
           for (const [family, members] of genes) {
-            const colors = {
-              inliers: Color.FromHexString(config.familyGet(family, "Color")),
-              outliers: Color.FromHexString(config.familyGet(family, "OutlierColor"))
-            };
-            colors.centroids = colors.inliers.scale(2);
-            colors.centroids.a /= 2;
-
-            const diameters = {
-              inliers: config.familyGet(family, "Diameter"),
-              outliers: config.familyGet(family, "OutlierDiameter")
-            }
-            diameters.centroids = diameters.inliers;
 
             for (const [memberType, geneIndices] of Object.entries(members)) {
               const memberCtx = ctx[memberType];
-              const diameter = diameters[memberType];
-              const color = colors[memberType];
 
-              const addInstance = (coordinates, diameter) => {
+              const addInstance = (coordinates, diameter, color) => {
                 const position = Vector(...coordinates.map(v => v * this.scale));
                 const scaling = Vector(diameter, diameter, diameter);
                 const instanceMatrix = getInstanceMatrix(
@@ -162,13 +148,19 @@ export function getChunks(scene) {
               if (memberType !== "centroids") {
                 for (const geneIndex of geneIndices) {
                   const { coordinates } = dataHandler.getGeneData(family, geneIndex, this.tissues, []);
-                  addInstance(coordinates, diameter);
+                  const color = Color.FromHexString(config.familyGet(family, "Color", geneIndex));
+                  const diameter = config.familyGet(family, "Diameter", geneIndex);
+                  addInstance(coordinates, diameter, color);
                 }
               } else {
                 const show = config.familyGet(family, "Centroid");
                 if (show) {
                   const coordinates = dataHandler.getFamilyData(family, ...this.tissues).centroid;
-                  addInstance(coordinates, diameter * 4);
+                  let color = Color.FromHexString(config.familyGet(family, "Color"));
+                  color = color.scale(2);
+                  color.a /= 2;
+                  const diameter = config.familyGet(family, "Diameter");
+                  addInstance(coordinates, diameter * 4, color);
                 } else {
                   memberCtx.bufferIndex++;
                 }
@@ -204,7 +196,7 @@ export function getChunks(scene) {
     function reload() {
       chunks.load();
     }
-    for (const setting of ["shownFamilies", "defaultDiameter", "Centroid", "Diameter", "OutlierDiameter", "Color", "OutlierColor", "darkMode"]) {
+    for (const setting of ["shownFamilies", "Centroid", "Diameter", "Color", "darkMode"]) {
       document.addEventListener(setting, reload);
     }
   }
@@ -217,7 +209,7 @@ export function getChunks(scene) {
   rebuildChunks();
   registerLoading(chunks);
 
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "shownFamilies"]) {
     document.addEventListener(setting, rebuildChunks);
   }
 

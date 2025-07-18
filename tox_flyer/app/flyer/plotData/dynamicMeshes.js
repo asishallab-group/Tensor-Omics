@@ -197,7 +197,7 @@ export function setupShiftVectorMesh(scene) {
     }
     document.dispatchEvent(new CustomEvent("ShiftVectorUpdated"));
   }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "defaultDiameter", "Color", "darkMode"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "Color", "darkMode"]) {
     document.addEventListener(setting, recreate);
   }
 }
