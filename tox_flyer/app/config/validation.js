@@ -36,7 +36,7 @@ export function getValidator() {
       [
         ["x", "y", "z", "rotationX", "rotationY"],
         v => {
-          if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`Expecting number, got: ${typeof v}`);
+          if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`Expecting non infinite number, got: ${typeof v} '${v}'`);
         }
       ],
       [

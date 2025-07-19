@@ -192,41 +192,31 @@ export function getChunks(scene) {
     }
   };
 
-  {
-    function reload() {
-      chunks.load();
-    }
-    for (const setting of ["shownFamilies", "Centroid", "Diameter", "Color", "darkMode"]) {
-      document.addEventListener(setting, reload);
-    }
+  const recalculate = chunks.recalculate.bind(chunks);
+  const reload = chunks.load.bind(chunks);
+  function setFog() {
+    scene.fogEnd = chunks.loadRange * chunks.diameter;
+    scene.fogStart = 0.5 * chunks.diameter;
   }
 
-  function rebuildChunks() {
-    chunks.recalculate();
-    chunks.load();
+  const needsRecalculation = ["tissueX", "tissueY", "tissueZ", "scale", "shownFamilies"];
+  const needsReload = ["shownFamilies", "Centroid", "Diameter", "Color", "darkMode"];
+  const needsRecalculationAndSetsFog = ["chunkDiameter", "chunkLoadRange"];
+
+  for (const setting of needsRecalculationAndSetsFog) {
+    config.onChange(setting, setFog);
+  }
+  for (const setting of [...needsReload, ...needsRecalculation, ...needsRecalculationAndSetsFog]) {
+    config.onChange(setting, reload);
   }
 
-  rebuildChunks();
+  // has higher priority on update -> first recalculate, then do anything else
+  for (const setting of [...needsRecalculation, ...needsRecalculationAndSetsFog]) {
+    config.onChange(setting, recalculate, Infinity);
+  }
+
   registerLoading(chunks);
 
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "shownFamilies"]) {
-    document.addEventListener(setting, rebuildChunks);
-  }
-
-  {
-    function setFog() {
-      scene.fogEnd = chunks.loadRange * chunks.diameter;
-      scene.fogStart = 0.5 * chunks.diameter;
-    }
-    function changeSight(evt) {
-      rebuildChunks();
-      setFog();
-    }
-    for (const setting of ["chunkDiameter", "chunkLoadRange"]) {
-      document.addEventListener(setting, changeSight);
-    }
-    setFog();
-  }
   return chunks;
 }
 
