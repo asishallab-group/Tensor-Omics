@@ -13,6 +13,19 @@ ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/mate
 ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2goa.rds")
 ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2ipr.rds")
 
+data("stop_words")
+
+is_identifier <- function(token) {
+  if (length(token) != 1) stop("Token muss Länge 1 haben")
+  
+  token <- tolower(token)
+  has_special_chars <- grepl("[0-9/-]", token)
+  too_short <- nchar(token) < 3
+  not_stopword <- !token %in% stop_words$word
+  
+  return(not_stopword && (has_special_chars || too_short))
+}
+
 # 2. Create corpora from the annotation tables
 corpora <- list(
   GO = ann_goa$GOA_label,
@@ -64,7 +77,7 @@ build_axes <- function(docs, name) {
   # if existent, remove last identifier from HRD descriptions
   if (name == "HRD") {
     docs <- sapply(docs, function(txt) {
-      parts <- str_split(txt, " ", simplify = TRUE)
+      parts <- str_split(txt, " ")[[1]]
       last <- tail(parts, 1)
       if (is_identifier(last)) {
         str_trim(str_remove(txt, paste0("\\s*", last, "$")))
@@ -80,13 +93,15 @@ build_axes <- function(docs, name) {
     mutate(token = str_to_lower(token)) %>%
     filter(
       str_length(token) > 2,                    # length > 2
-      str_detect(token, "[a-z]")                # contains at least one letter ot remove tokens like "[(-"
+      str_detect(token, "[A-Za-z]")                # contains at least one letter ot remove tokens like "[(-"
     )
+    message("Number of unique tokens before filtering: ", n_distinct(dt$token))
 
   # 4. Word frequencies per document & global f_w
   wf_doc <- dt %>% count(doc_id, token, name = "tf")
   fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf))
-  
+  message("Number of unique tokens after TF count: ", nrow(fw))
+
   total_fw <- sum(fw$fw)
   
   # 5. Shannon information content IC(token) = -log(fw/total_fw)
@@ -95,7 +110,8 @@ build_axes <- function(docs, name) {
   # 6. Drop bottom 10% by IC
   cutoff_ic <- quantile(fw$IC, 0.10, na.rm = TRUE)
   keep_tokens <- fw %>% filter(IC > cutoff_ic) %>% pull(token)
-  
+  message("Tokens retained after IC filter: ", length(keep_tokens))
+
   # 7. Build co-occurrence matrix (token × token)
   dt_f <- wf_doc %>% filter(token %in% keep_tokens)
   vocab <- unique(dt_f$token)
@@ -125,9 +141,11 @@ build_axes <- function(docs, name) {
   idf <- doc_freq %>% 
     mutate(idf = log(ndocs / df)) %>%
     filter(df < 0.95 * ndocs)   # Drop words in ≥95% docs
-  
+  message("Tokens retained after IDF filter: ", nrow(idf))
+
   # Intersect tokens with both U and idf
   tokens_final <- intersect(rownames(U), idf$token)
+  message("Final number of tokens used: ", length(tokens_final))
   Uf <- U[tokens_final, , drop = FALSE]
   idf_f <- idf %>% filter(token %in% tokens_final)
   
@@ -157,6 +175,27 @@ build_axes <- function(docs, name) {
 axes <- map2(corpora, names(corpora), build_axes)
 
 # Save result
-saveRDS(axes, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO_IPR_HRD.rds")
+saveRDS(axes$GO, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
+saveRDS(axes$IPR, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
+saveRDS(axes$HRD, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
+
+message("Stats for GO:\n")
+message("df: \n")
+message(table(axes$GO$idf$df))
+message("Summary: \n")
+message(summary(axes$GO))
+
+message("Stats for HRD:\n")
+message("df: \n")
+message(table(axes$HRD$idf$df))
+message("Summary: \n")
+message(summary(axes$HRD))
+
+message("Stats for IPR:\n")
+message("df: \n")
+message(table(axes$IPR$idf$df))
+message("Summary: \n")
+message(summary(axes$IPR))
+
 
 cat("Done. Lexical axes built for GO, InterPro & HRDs.")
