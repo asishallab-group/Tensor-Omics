@@ -13,6 +13,7 @@ ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/mate
 ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2goa.rds")
 ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2ipr.rds")
 
+
 data("stop_words")
 
 is_identifier <- function(token) {
@@ -33,14 +34,7 @@ corpora <- list(
   HRD = ann_hrd$hrd
 )
 
-clean_go <- function(text) {
-  text %>%
-    str_replace_all("[\\[\\]()]", " ") %>%
-    str_replace_all("--+", "-") %>%
-    str_squish()
-}
-
-clean_ipr <- function(text) {
+clean_doc <- function(text) {
   text %>%
     str_replace_all("[\\[\\]()]", " ") %>%
     str_replace_all("--+", "-") %>%
@@ -48,15 +42,19 @@ clean_ipr <- function(text) {
     str_squish()
 }
 
-clean_hrd <- function(text) {
-  text %>%
-    str_replace_all("[\\[\\]()]", " ") %>%
-    str_replace_all("--+", "-") %>%
-    str_squish()
+tokenize_custom <- function(docs, pattern) {
+  tibble(doc_id = seq_along(docs), text = docs) %>%
+    mutate(tokens = str_extract_all(text, pattern)) %>%
+    unnest(tokens) %>%
+    rename(token = tokens) %>%
+    mutate(token = str_to_lower(token)) %>%
+    filter(
+      str_length(token) > 2,
+      str_detect(token, "[a-z]")  # nur Tokens mit Buchstaben
+    )
 }
 
-# Prot‑scriber splitter regex (specialized for HRDs)
-splitter <- "(?<=\\b)[A-Za-z0-9/-]+(?:'[A-Za-z0-9]+)?(?=\\b)"
+splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
 
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
@@ -67,19 +65,14 @@ build_axes <- function(docs, name) {
   docs <- docs[valid_docs]
   
   # Corpus-spezifisches Preprocessing
-  docs <- switch(name,
-    GO = clean_go(docs),
-    IPR = clean_ipr(docs),
-    HRD = clean_hrd(docs),
-    stop("Unknown corpus: ", name)
-  )
+  docs <- clean_doc(docs)
 
   # if existent, remove last identifier from HRD descriptions
   if (name == "HRD") {
     docs <- sapply(docs, function(txt) {
       parts <- str_split(txt, " ")[[1]]
       last <- tail(parts, 1)
-      if (is_identifier(last)) {
+      if (is_identifier(last) && length(parts) > 3) {
         str_trim(str_remove(txt, paste0("\\s*", last, "$")))
       } else {
         txt
@@ -88,16 +81,10 @@ build_axes <- function(docs, name) {
   }
 
   # 3. Tokenize & lowercase, then filter
-  dt <- tibble(doc_id = seq_along(docs), text = docs) %>%
-    unnest_tokens(token, text, token = "regex", pattern = splitter) %>%
-    mutate(token = str_to_lower(token)) %>%
-    filter(
-      str_length(token) > 2,                    # length > 2
-      str_detect(token, "[A-Za-z]")                # contains at least one letter ot remove tokens like "[(-"
-    )
-    message("Number of unique tokens before filtering: ", n_distinct(dt$token))
-
-  # 4. Word frequencies per document & global f_w
+  dt <- tokenize_custom(docs, splitter)
+  message("Number of unique tokens before filtering: ", n_distinct(dt$token))
+  
+  4. Word frequencies per document & global f_w
   wf_doc <- dt %>% count(doc_id, token, name = "tf")
   fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf))
   message("Number of unique tokens after TF count: ", nrow(fw))
@@ -174,26 +161,20 @@ build_axes <- function(docs, name) {
 # Run for all three corpora
 axes <- map2(corpora, names(corpora), build_axes)
 
-# Save result
+Save result
 saveRDS(axes$GO, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
 saveRDS(axes$IPR, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
 saveRDS(axes$HRD, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
 
 message("Stats for GO:\n")
-message("df: \n")
-message(table(axes$GO$idf$df))
 message("Summary: \n")
 message(summary(axes$GO))
 
 message("Stats for HRD:\n")
-message("df: \n")
-message(table(axes$HRD$idf$df))
 message("Summary: \n")
 message(summary(axes$HRD))
 
 message("Stats for IPR:\n")
-message("df: \n")
-message(table(axes$IPR$idf$df))
 message("Summary: \n")
 message(summary(axes$IPR))
 
