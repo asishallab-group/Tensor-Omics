@@ -1,0 +1,85 @@
+{
+    "Fortran R Wrapper": {
+        "prefix": "f42:wrapper_r",
+        "body": [
+            "subroutine ${1:core_routine_name}_R(${2:arg1, arg2, ...})",
+            "  use ${3:my_core_module}",
+            "  ! -- Declare arguments as in the core routine (Fortran standard types) --",
+            "  ${4:real(8), intent(in) :: vec(*)}",
+            "  ${5:integer, intent(in) :: n}",
+            "",
+            "  call ${1:core_routine_name}(${2:arg1, arg2, ...})",
+            "end subroutine ${1:core_routine_name}_R"
+        ],
+        "description": "Wrapper for R interface (Fortran standard types, no bind(C))"
+    },
+    "Fortran C/Python Wrapper": {
+        "prefix": "f42:wrapper_c",
+        "body": [
+            "! -- Use this snippet or helper_c_wrapper.py to generate the C/Python wrapper --",
+            "subroutine ${1:core_routine_name}_C(${2:arg1_ptr, arg1_len, ...}) bind(C, name=\"${1:core_routine_name}_C\")",
+            "  use iso_c_binding",
+            "  use ${3:my_core_module}",
+            "",
+            "  ! -- Declare C-compatible arguments --",
+            "  ${4:type(c_ptr), value :: arg1_ptr}",
+            "  ${5:integer(c_int), value :: arg1_len}",
+            "",
+            "  ! -- Convert C types/pointers to Fortran types/pointers/arrays as needed --",
+            "  ${6:character(len=arg1_len), pointer :: arg1_fortran_ptr}",
+            "  ${7:call c_f_pointer(arg1_ptr, arg1_fortran_ptr, [arg1_len])}",
+            "",
+            "  call ${1:core_routine_name}(${2:arg1, arg2, ...})",
+            "end subroutine ${1:core_routine_name}_C"
+        ],
+        "description": "Wrapper for C/Python interface (bind(C), C-compatible types)"
+    },
+    "Fortran Standard Argument Declaration": {
+        "prefix": "f42:arg",
+        "body": [
+            "${1:real(8)}, intent(${2:inout}) :: ${3:variable_name}${4:(dimensions)}"
+        ],
+        "description": "Fortran standard argument declaration (e.g., for core routines or R wrappers)"
+    },
+    "C-Compatible Argument Declaration (Scalar/Pointer)": {
+        "prefix": "f42:c_arg",
+        "body": [
+            "${1:type(c_ptr)} :: ${2:ptr_name}",
+            "integer(c_int) :: ${3:len_name}"
+        ],
+        "description": "C-style argument declaration for pointers (e.g., strings/buffers from C)"
+    },
+    "C-Compatible Argument Declaration (Value)": {
+        "prefix": "f42:c_arg_val",
+        "body": [
+            "${1:integer(c_int)}, value :: ${2:variable_name}"
+        ],
+        "description": "C-style argument declaration for pass-by-value (e.g., integer dimensions)"
+    },
+    "Map Flat Array to 2D (c_f_pointer)": {
+        "prefix": "f42:flat_array_2d",
+        "body": [
+            "real(c_double), pointer :: ${1:matrix_pointer}(:,:)",
+            "call c_f_pointer(c_loc(${2:flat_array_c_ptr}), ${1:matrix_pointer}, [${3:num_rows}, ${4:num_cols}])"
+        ],
+        "description": "Map a C-style flat array pointer to a Fortran 2D array pointer using c_f_pointer"
+    },
+    "Character String Pointer Conversion (C to Fortran)": {
+        "prefix": "f42:c_str_to_f_str",
+        "body": [
+            "character(kind=c_char), pointer :: ${1:c_string_ptr}(:)",
+            "character(len=${2:max_len}) :: ${3:fortran_string_local}",
+            "integer :: i_char_loop",
+            "",
+            "call c_f_pointer(${4:incoming_c_ptr}, ${1:c_string_ptr}, [${5:incoming_len}])",
+            "                                                                                ",
+            "${3:fortran_string_local} = ' ' ! Initialize with spaces",
+            "if (${5:incoming_len} > 0) then",
+            "  do i_char_loop = 1, min(${5:incoming_len}, len(${3:fortran_string_local}))",
+            "    ${3:fortran_string_local}(i_char_loop:i_char_loop) = ${1:c_string_ptr}(i_char_loop)",
+            "  end do",
+            "end if"
+        ],
+        "description": "Convert an incoming C_PTR (char*) and length to a local Fortran CHARACTER string"
+    }
+}

@@ -8,6 +8,19 @@ PROGRAM main
 
     IMPLICIT NONE
 
+    ! Abstract interface for run_all_proc: no arguments
+    ABSTRACT INTERFACE
+        SUBROUTINE test_interface()
+        END SUBROUTINE test_interface
+    END INTERFACE
+
+    ! Abstract interface for run_named_proc: takes a CHARACTER(LEN=*), INTENT(IN) array argument
+    ABSTRACT INTERFACE
+        SUBROUTINE test_named_interface(test_names)
+            CHARACTER(LEN=*), INTENT(IN) :: test_names(:)
+        END SUBROUTINE test_named_interface
+    END INTERFACE
+
     ! Type to hold a suite's name and its run functions
     TYPE :: test_suite_case
         CHARACTER(LEN=64) :: name
@@ -15,23 +28,15 @@ PROGRAM main
         PROCEDURE(test_named_interface), POINTER, NOPASS :: run_named_proc => NULL()
     END TYPE test_suite_case
 
-    ! Abstract interface for running named tests
-    ABSTRACT INTERFACE
-        SUBROUTINE test_named_interface(test_names)
-            CHARACTER(LEN=*), INTENT(IN) :: test_names(:)
-        END SUBROUTINE test_named_interface
-    END INTERFACE
-
     TYPE(test_suite_case), ALLOCATABLE :: available_suites(:)
     
-    CHARACTER(LEN=256), ALLOCATABLE :: args(:)
-    CHARACTER(LEN=64) :: suite_name_arg
-    CHARACTER(LEN=64), ALLOCATABLE :: test_names_arg(:)
-    INTEGER :: num_args
-    INTEGER :: i, j
+    CHARACTER(LEN=64) :: parsed_suite_name
+    CHARACTER(LEN=64), ALLOCATABLE :: parsed_test_names(:)
+    INTEGER :: num_parsed_args
 
-    ! Private procedures for this program
-    PRIVATE :: initialize_suites, add_suite, parse_command_line_args
+    CALL initialize_suites()
+    CALL parse_command_line_args(parsed_suite_name, parsed_test_names, num_parsed_args)
+    CALL run_tests()
 
 CONTAINS
 
@@ -51,8 +56,9 @@ CONTAINS
     !> @brief Adds a new test suite to the registry.
     SUBROUTINE add_suite(name, run_all_proc, run_named_proc)
         CHARACTER(LEN=*), INTENT(IN) :: name
-        PROCEDURE(test_interface), POINTER :: run_all_proc
-        PROCEDURE(test_named_interface), POINTER :: run_named_proc
+        PROCEDURE(test_interface) :: run_all_proc
+        PROCEDURE(test_named_interface) :: run_named_proc
+
 
         INTEGER :: old_size
         TYPE(test_suite_case), ALLOCATABLE :: temp_suites(:)
@@ -65,19 +71,19 @@ CONTAINS
         temp_suites(old_size + 1)%run_all_proc => run_all_proc
         temp_suites(old_size + 1)%run_named_proc => run_named_proc
 
-        IF (ALLOCATED(available_suites)) DEALLOCATE(available_suites)
-        available_suites = temp_suites
-        IF (ALLOCATED(temp_suites)) DEALLOCATE(temp_suites)
+        ! Move temp_suites back to available_suites
+        CALL MOVE_ALLOC(from=temp_suites, to=available_suites)
+
     END SUBROUTINE add_suite
 
     !> @brief Parses command line arguments to determine tests to run.
     SUBROUTINE parse_command_line_args(suite_name, test_names, num_found_args)
         CHARACTER(LEN=*), INTENT(OUT) :: suite_name
-        CHARACTER(LEN=:), ALLOCATABLE, INTENT(OUT) :: test_names(:)
+        CHARACTER(LEN=64), ALLOCATABLE, INTENT(OUT) :: test_names(:)
         INTEGER, INTENT(OUT) :: num_found_args
 
         CHARACTER(LEN=256) :: arg_str
-        INTEGER :: i_arg, start_pos, end_pos, num_commas
+        INTEGER :: i, start_pos, end_pos, num_commas
 
         num_found_args = COMMAND_ARGUMENT_COUNT()
         suite_name = ""
@@ -98,26 +104,28 @@ CONTAINS
             RETURN
         END IF
 
-        ! Remaining arguments are specific test names (comma-separated if only one arg)
-        ! This assumes "test1,test2,test3" is passed as a single argument string
+        ! Second argument is a comma-separated list of test names
         CALL GET_COMMAND_ARGUMENT(2, VALUE=arg_str)
         
-        num_commas = COUNT(arg_str(1:LEN_TRIM(arg_str)) == ',')
+        ! CORRECTED: The 'COUNT' intrinsic does not have 'back' or 'dim' keywords for this usage.
+        ! Use an array constructor to count characters.
+        num_commas = COUNT([(arg_str(i:i) == ',', i=1, LEN_TRIM(arg_str))])
+
         IF (num_commas == 0) THEN
-            ! Single test name or first part of comma-separated string
+            ! Single test name
             ALLOCATE(test_names(1))
             test_names(1) = TRIM(arg_str)
         ELSE
             ! Comma-separated list of test names
             ALLOCATE(test_names(num_commas + 1))
             start_pos = 1
-            DO i_arg = 1, num_commas + 1
+            DO i = 1, num_commas + 1
                 end_pos = INDEX(arg_str(start_pos:), ',')
                 IF (end_pos == 0) THEN ! Last part
-                    test_names(i_arg) = TRIM(arg_str(start_pos:))
+                    test_names(i) = TRIM(arg_str(start_pos:))
                     EXIT
                 ELSE
-                    test_names(i_arg) = TRIM(arg_str(start_pos : start_pos + end_pos - 2))
+                    test_names(i) = TRIM(arg_str(start_pos : start_pos + end_pos - 2))
                     start_pos = start_pos + end_pos
                 END IF
             END DO
@@ -125,16 +133,10 @@ CONTAINS
 
     END SUBROUTINE parse_command_line_args
 
-    ! --- Main Test Execution Logic ---
-    BLOCK MAIN_TEST_EXECUTION
+    ! Main execution logic: run tests based on parsed arguments
+    SUBROUTINE run_tests()
         INTEGER :: i_suite
         LOGICAL :: suite_found
-        CHARACTER(LEN=64) :: parsed_suite_name
-        CHARACTER(LEN=64), ALLOCATABLE :: parsed_test_names(:)
-        INTEGER :: num_parsed_args
-
-        CALL initialize_suites()
-        CALL parse_command_line_args(parsed_suite_name, parsed_test_names, num_parsed_args)
 
         IF (num_parsed_args == 0) THEN
             ! Run all tests from all suites
@@ -148,15 +150,15 @@ CONTAINS
             DO i_suite = 1, SIZE(available_suites)
                 IF (TRIM(parsed_suite_name) == TRIM(available_suites(i_suite)%name)) THEN
                     suite_found = .TRUE.
+                    ! CORRECTED: Check number of arguments, not size of test_names array.
+                    ! num_parsed_args == 1 means only a suite name was given.
                     IF (num_parsed_args == 1) THEN
                         ! Run all tests in the specified suite
                         WRITE(*,*) "Running all tests in suite: ", TRIM(parsed_suite_name), "..."
                         CALL available_suites(i_suite)%run_all_proc()
                     ELSE
                         ! Run specific tests within the specified suite
-                        WRITE(*,*) "Running tests in suite '", TRIM(parsed_suite_name), &
-                                   "': ", TRIM(parsed_test_names(1)), &
-                                   " (and possibly others) ..."
+                        WRITE(*,*) "Running specific tests in suite '", TRIM(parsed_suite_name), "'..."
                         CALL available_suites(i_suite)%run_named_proc(parsed_test_names)
                     END IF
                     EXIT
@@ -164,11 +166,12 @@ CONTAINS
             END DO
             IF (.NOT. suite_found) THEN
                 WRITE(*,*) "Error: Unknown test suite: ", TRIM(parsed_suite_name)
-                ERROR STOP "Unknown suite."
+                ERROR STOP 1
             END IF
         END IF
 
-        WRITE(*,*) "All requested tests completed successfully."
-    END BLOCK MAIN_TEST_EXECUTION
+        ! Note: This message is only reached if no test calls ERROR STOP.
+        WRITE(*,*) "Test runner finished."
+    END SUBROUTINE run_tests
 
 END PROGRAM main
