@@ -9,16 +9,15 @@ library(text2vec)
 library(irlba)
 
 ann_goa <- data.frame(
-  GOA_label = c("proteasome complex", "transferase activity, transferring phosphorus-containing groups",
-                "transferase activity", "polysaccharide biosynthetic process", "protein transport", "membrane")
+  GOA_label = c("proteasome complex", "obsolete delphinidin 3-O-glucoside 2''-O-glucosyltransferase activity", "N',N'',N'''-triacetylfusarinine C metabolic process")
 )
 
 ann_ipr <- data.frame(
-  description = c("Protein kinase domain", "Transmembrane domain", "DNA binding domain", "Zinc finger domain")
+  description = c("Protein kinase domain", "Transmembrane domain", "DNA binding domain", "obsolete MgATP(2-) binding")
 )
 
 ann_hrd <- data.frame(
-  hrd = c("DNA repair protein", "Cell cycle regulator", "Transcription factor", "Signal transduction protein")
+  hrd = c("DNA repair protein", "Cell cycle regulator", "Transcription factor", "Signal transduction protein complex ald3146zf")
 )
 
 data("stop_words")
@@ -61,7 +60,7 @@ tokenize_custom <- function(docs, pattern) {
     )
 }
 
-splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
+splitter <- "[0-9A-Za-z]*'*?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
 
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
@@ -79,7 +78,7 @@ build_axes <- function(docs, name) {
     docs <- sapply(docs, function(txt) {
       parts <- str_split(txt, " ")[[1]]
       last <- tail(parts, 1)
-      if (is_identifier(last) && length(parts) > 3) {
+      if (is_identifier(last) && length(parts) > 4) {
         str_trim(str_remove(txt, paste0("\\s*", last, "$")))
       } else {
         txt
