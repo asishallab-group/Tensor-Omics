@@ -176,6 +176,10 @@ main {
   background-color: #f9f9f9;
 }
 
+.datatable tbody tr.selected {
+  background-color: rgba(0, 0, 0, 0.3); /* dark overlay */
+}
+
 /* Optional: rounded corners on the top row */
 .datatable thead:first-child th:first-child {
   border-top-left-radius: 8px;

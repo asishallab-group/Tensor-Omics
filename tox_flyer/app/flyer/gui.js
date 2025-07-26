@@ -34,7 +34,7 @@ function appendDetailRow({ family, gene, type }) {
   }
   const table = document.getElementById(type + "DetailsTable");
   const row = createElement("tr", { id });
-  row.appendChild(createRowSelector());
+  row.appendChild(createRowSelector(false, family, gene, type));
 
   const dataMap = getDetailsTableDataMap();
   for (const cell of dataMap[type]) {
@@ -75,28 +75,10 @@ function createPickedDetailsDialog() {
         })
         menu.appendChild(menuItem);
 
-        const tr = createElement("tr", { id: pickType + "DetailsHeader" });
-        tr.appendChild(createRowSelector(true));
-
-        for (const header of headers) {
-          const th = createElement("th", {
-            children: [header.title]
-          });
-          tr.appendChild(th);
-        }
-        const table = createElement("table", {
-          id: pickType + "DetailsTable",
-          hidden: true,
-          children: [
-            createElement("thead", { children: [tr] }),
-            createElement("tbody")
-          ],
-          classes: [
-            "detailsTable",
-            "datatable",
-            "textselect"
-          ]
-        });
+        const table = createMasterTable([], null, headers);
+        table.id = pickType + "DetailsTable";
+        table.hidden = true;
+        table.classList.add("detailsTable");
         tables.appendChild(table);
       }
       const pickedDetails = createElement("dialog", {
@@ -111,28 +93,44 @@ function createPickedDetailsDialog() {
   }
 }
 
-function createRowSelector(selectAll=false) {
+function createRowSelector(selectAll, family, gene, type) {
   const checkbox = createElement("input", { type: "checkbox", classes: ["clickable"] });
   if (selectAll) {
+    checkbox.id = "selectAll";
     checkbox.addEventListener("change", evt => {
       const table = evt.target.closest("table");
-      const changeEvent = new Event("change");
+      const changeEvent = new Event("change", {bubbles: true});
       for (const checkbox of table.getElementsByClassName("row-selector")) {
-        checkbox.checked = evt.target.checked;
-        checkbox.dispatchEvent(changeEvent);
+        if (checkbox.checked !== evt.target.checked) {
+          checkbox.checked = evt.target.checked;
+          checkbox.dispatchEvent(changeEvent);
+        }
       }
     })
   } else {
     checkbox.classList.add("row-selector");
+    checkbox.setAttribute("tox-family", family);
+    checkbox.setAttribute("tox-gene", gene);
     checkbox.addEventListener("change", evt => {
       const tr = evt.target.closest("tr");
       tr.classList.toggle("selected", evt.target.checked);
+      if (!evt.target.checked) {
+        evt.target.closest("table").querySelector("#selectAll").checked = false;
+      }
     })
   }
-  return createElement(selectAll ? "th": "td", {
+  const element = createElement(selectAll ? "th": "td", {
     children: [checkbox],
-    classes: ["center"]
-  })
+    classes: ["center", "clickable"]
+  });
+
+  element.addEventListener("click", function (evt) {
+    if (evt.target === this) {
+      this.firstChild.click();
+    }
+  });
+
+  return element;
 }
 
 function getDetailsTableDataMap() {
@@ -221,16 +219,12 @@ function createDataTable(options) {
   return createElement("table", { ...options, classes: ["datatable", "textselect", ...(options.classes ?? [])] });
 }
 
-function createMasterTable(elements, getData, headerMap) {
-  const headerCells = headerMap.map(({ title }) => createElement("th", { children: [title] }))
-  const thead = createElement("thead", {
-    children: [createElement("tr", { children: [createRowSelector(), ...headerCells] })]
-  });
+function createMasterTable(elements, getData, headerMap, bodyOnly=false) {
   const tbody = createElement("tbody");
 
   for (const { family, gene } of elements) {
-    const row = createElement("tr", { family, gene });
-    row.appendChild(createRowSelector());
+    const row = createElement("tr");
+    row.appendChild(createRowSelector(false, family, gene, "Gene"));
 
     const data = getData(family, gene);
     for (const cell of headerMap) {
@@ -239,10 +233,33 @@ function createMasterTable(elements, getData, headerMap) {
       });
       row.appendChild(td);
     }
+
     tbody.appendChild(row);
   }
 
-  return createDataTable({ children: [thead, tbody]});
+  if (bodyOnly) {
+    return tbody;
+  } else {
+    const headerCells = headerMap.map(({ title }) => createElement("th", { children: [title] }))
+    const thead = createElement("thead", {
+      children: [createElement("tr", { children: [createRowSelector(true), ...headerCells] })]
+    });
+
+    const table = createDataTable({ children: [thead, tbody]});
+    let selectedRowCount = 0;
+    table.addEventListener("change", evt => {
+      if (evt.target.classList.contains("row-selector")) {
+        if (evt.target.checked) {
+          selectedRowCount++;
+        } else {
+          selectedRowCount--;
+        }
+        console.log(selectedRowCount)
+      }
+    });
+
+    return table;
+  }
 }
 
 function createSingleDetailsTable(geneData, familyIdx, geneIdx, headerMap) {
