@@ -136,31 +136,42 @@ function createRowSelector(selectAll=false) {
 }
 
 function getDetailsTableDataMap() {
+  const dataMap = {};
+
   const tissues = dataHandler.tissues;
   const links = {
     family: {
       title: "Family",
       data(geneData, familyIdx, geneIdx) {
-        return showSingleDetails(geneData, geneData["family"], [
-          { title: "Identifier", data() {return geneData["family"]}},
-          { title: "Gene Count", data() {return dataHandler.getGeneCount(familyIdx)}},
+        return createLinkElement(geneData.family, () => createSingleDetailsTable(geneData, familyIdx, geneIdx, [
+          { title: "Identifier", data() {return geneData.family} },
+          {
+            title: "Genes",
+            data() {
+              return createLinkElement(`Inspect ${dataHandler.getGeneCount(familyIdx)} members`, () => createMasterTable(
+                dataHandler.genes(familyIdx).map(gene => ({family: familyIdx, gene})),
+                (family, gene) => dataHandler.getGeneData(family, gene),
+                dataMap.Gene
+              ))
+            }
+          },
           { title: "Description", data() {return "..."}},
-        ]);
+        ]));
       }
     },
-    gene: { 
+    gene: {
       title: "Gene",
       data(geneData, familyIdx, geneIdx) {
-        return showSingleDetails(geneData, geneData["genes"], [
-          { title: "Identifier", data() {return geneData["genes"]} },
+        return createLinkElement(geneData.genes, () => createSingleDetailsTable(geneData, familyIdx, geneIdx, [
+          { title: "Identifier", data() {return geneData.genes } },
           links.family,
-          { title: "Species", data() {return geneData["species"]} },
+          { title: "Species", data() {return geneData.species} },
           { title: "Description", data() {return "..."} },
           ...tissues.map((tissue, i) => {
             return { title: tissue, data() {return geneData.coordinates[i]} }
           })
-        ]);
-      } 
+        ]));
+      }
     }
   }
   function tissueRelatedHeader(key) {
@@ -188,49 +199,84 @@ function getDetailsTableDataMap() {
     tissueRelatedHeader("tissueX"),
     tissueRelatedHeader("tissueY"),
     tissueRelatedHeader("tissueZ")
-  ]
-  return {
-    Gene: [
-      links.gene,
-      links.family,
-      ...tissueRelated
-    ],
-    ShiftVector: [
-      links.gene,
-      links.family
-    ],
-    Centroid: [
-      links.family,
-      ...tissueRelated
-    ]
-  };
+  ];
+
+  dataMap.Gene = [
+    links.gene,
+    links.family,
+    ...tissueRelated
+  ];
+  dataMap.ShiftVector = [
+    links.gene,
+    links.family
+  ];
+  dataMap.Centroid = [
+    links.family,
+    ...tissueRelated
+  ];
+  return dataMap;
 }
 
-function showSingleDetails(geneData, value, headerMap) {
+function createDataTable(options) {
+  return createElement("table", { ...options, classes: ["datatable", "textselect", ...(options.classes ?? [])] });
+}
+
+function createMasterTable(elements, getData, headerMap) {
+  const headerCells = headerMap.map(({ title }) => createElement("th", { children: [title] }))
+  const thead = createElement("thead", {
+    children: [createElement("tr", { children: [createRowSelector(), ...headerCells] })]
+  });
+  const tbody = createElement("tbody");
+
+  for (const { family, gene } of elements) {
+    const row = createElement("tr", { family, gene });
+    row.appendChild(createRowSelector());
+
+    const data = getData(family, gene);
+    for (const cell of headerMap) {
+      const td = createElement("td", {
+        children: [cell.data(data, family, gene)]
+      });
+      row.appendChild(td);
+    }
+    tbody.appendChild(row);
+  }
+
+  return createDataTable({ children: [thead, tbody]});
+}
+
+function createSingleDetailsTable(geneData, familyIdx, geneIdx, headerMap) {
+  const tBody = createElement("tbody");
+  for (const header of headerMap) {
+    const tr = createElement("tr", {
+      children: [
+        createElement("td", { children: [header.title] }),
+        createElement("td", { children: [header.data(geneData, familyIdx, geneIdx)] })
+      ]
+    });
+    tBody.appendChild(tr);
+  }
+
+  return createDataTable({ children: [tBody]});
+}
+
+function createLinkElement(value, linkContent) {
   const a = createElement("a", {
     textContent: value,
     classes: ["clickable"]
   });
   a.addEventListener("click", evt => {
     evt.preventDefault();
-    const table = createElement("table", { classes: ["datatable", "textselect"] });
-    const tBody = createElement("tbody");
-    for (const header of headerMap) {
-      const tr = createElement("tr", {
-        children: [
-          createElement("td", { children: [header.title] }),
-          createElement("td", { children: [header.data(geneData)] })
-        ]
-      });
-      tBody.appendChild(tr);
-    }
-    table.appendChild(tBody);
-    const dialog = createElement("dialog", { children: [table] });
-    dialog.addEventListener("close", () => dialog.remove());
-    document.getElementById("UI")?.appendChild(dialog);
-    dialog.showModal();
+    show(linkContent());
   });
   return a;
+}
+
+function show(...contents) {
+  const dialog = createElement("dialog", { children: contents });
+  dialog.addEventListener("close", () => dialog.remove());
+  document.getElementById("UI")?.appendChild(dialog);
+  dialog.showModal();
 }
 
 function createUIdiv() {
