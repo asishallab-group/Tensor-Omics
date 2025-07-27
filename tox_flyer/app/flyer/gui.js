@@ -4,6 +4,7 @@ export function setupGUI() {
   createUIdiv();
   createPickedDetailsDialog();
   switchToDetails("Gene");
+  setupConfigCallbacks();
 
   let pickedCount = 0;
   document.addEventListener("pick", evt => {
@@ -23,6 +24,49 @@ export function setupGUI() {
   });
 }
 
+function setupConfigCallbacks() {
+  for (const familyRelated of ["ShiftVector", "Centroid", "Hull", "Color", "Diameter", "PickedGene", "PickedShiftVector", "PickedCentroid"]) {
+    config.onChange(familyRelated, ({ family, gene, value }) => {
+      for (const cell of document.getElementsByClassName(familyRelated)) {
+        const tr = cell.closest("tr");
+        if (tr.getAttribute("tox-family") == family && tr.getAttribute("tox-gene") == gene) {
+          cell.innerText = value;
+          break;
+        }
+      }
+    }, null);
+  }
+
+  for (const tissue of ["tissueX", "tissueY", "tissueZ"]) {
+    config.onChange(tissue, ({ value }) => {
+      for (const cell of document.getElementsByClassName(tissue)) {
+        if (cell.classList.contains("data")) {
+          const tr = cell.closest("tr");
+          const family = tr.getAttribute("tox-family");
+          const gene = tr.getAttribute("tox-gene");
+          let data;
+          if (gene === "undefined") {
+            [data] = dataHandler.getFamilyData(family, value).centroid;
+          } else {
+            [data] = dataHandler.getGeneData(family, gene, [value], []).coordinates;
+          }
+          cell.innerText = data.toFixed(3);
+        } else {
+          cell.innerText = value;
+        }
+      }
+    }, null);
+  }
+
+  for (const nonFamilyRelated of ["orbitMode", "darkMode", "x", "y", "z", "rotationX", "rotationY", "orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale", "chunkDiameter", "chunkLoadRange", "shownFamilies", "selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor"]) {
+    config.onChange(nonFamilyRelated, ({ value }) => {
+      for (const cell of document.getElementsByClassName(nonFamilyRelated)) {
+        cell.innerText = value;
+      }
+    }, null);
+  }
+}
+
 function appendDetailRow({ family, gene, type }) {
   const id = `${family}.${gene}.${type}`;
   let data;
@@ -33,7 +77,7 @@ function appendDetailRow({ family, gene, type }) {
     data = dataHandler.getGeneData(family, gene);
   }
   const table = document.getElementById(type + "DetailsTable");
-  const row = createElement("tr", { id });
+  const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
   row.appendChild(createRowSelector(false, family, gene, type));
 
   const dataMap = getDetailsTableDataMap();
@@ -109,8 +153,6 @@ function createRowSelector(selectAll, family, gene, type) {
     })
   } else {
     checkbox.classList.add("row-selector");
-    checkbox.setAttribute("tox-family", family);
-    checkbox.setAttribute("tox-gene", gene);
     checkbox.addEventListener("change", evt => {
       const tr = evt.target.closest("tr");
       tr.classList.toggle("selected", evt.target.checked);
@@ -173,23 +215,18 @@ function getDetailsTableDataMap() {
     }
   }
   function tissueRelatedHeader(key) {
-    function createValueElement(tissueData) {
-      const valueElement = createElement("span");
-      valueElement.innerText = tissueData[tissues.indexOf(config.get(key))].toFixed(3);
-      config.onChange(key, function ({ value }) {
-        valueElement.innerText = tissueData[tissues.indexOf(value)].toFixed(3);
-      });
-      return valueElement;
-    }
     return {
       get title() {
-        const title = createElement("span");
-        title.innerText = config.get(key);
-        config.onChange(key, ({ value }) => title.innerText = value);
-        return title;
+        return createElement("span", {
+          classes: [key],
+          innerText: config.get(key)
+        });
       },
       data(geneData) {
-        return createValueElement(geneData.coordinates);
+        return createElement("span", {
+          classes: [key, "data"],
+          innerText: geneData.coordinates[tissues.indexOf(config.get(key))].toFixed(3)
+        });
       }
     };
   }
@@ -223,7 +260,7 @@ function createMasterTable(elements, getData, headerMap, bodyOnly=false) {
   const tbody = createElement("tbody");
 
   for (const { family, gene } of elements) {
-    const row = createElement("tr");
+    const row = createElement("tr", { "tox-family": family, "tox-gene": gene });
     row.appendChild(createRowSelector(false, family, gene, "Gene"));
 
     const data = getData(family, gene);
@@ -254,7 +291,6 @@ function createMasterTable(elements, getData, headerMap, bodyOnly=false) {
         } else {
           selectedRowCount--;
         }
-        console.log(selectedRowCount)
       }
     });
 
