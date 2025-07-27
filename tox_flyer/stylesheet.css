@@ -42,7 +42,7 @@ main {
   user-select: auto;
   pointer-events: auto;
 }
-.clickable {
+.clickable:not([disabled]) {
   pointer-events: auto;
   cursor: pointer;
 }
