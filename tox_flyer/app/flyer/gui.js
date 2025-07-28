@@ -7,21 +7,24 @@ export function setupGUI() {
   setupConfigCallbacks();
 
   let pickedCount = 0;
-  document.addEventListener("pick", evt => {
-    if (pickedCount === 0) {
-      createDetailButton();
-    }
-    appendDetailRow(evt.detail);
-    pickedCount++;
-  });
+  for (const type of ["Gene", "ShiftVector", "Centroid"]) {
+    config.onChange("Picked" + type, ({ family, gene, value }) => {
+      if (value) {
+        if (pickedCount === 0) {
+          createDetailButton();
+        }
+        appendDetailRow({ family, gene, type });
+        pickedCount++;
+      } else {
+        pickedCount--;
+        removeDetailRow({ family, gene, type });
+        if (pickedCount === 0) {
+          removeDetailButton();
+        }
+      }
+    }, null);
+  }
 
-  document.addEventListener("unpick", evt => {
-    pickedCount--;
-    removeDetailRow(evt.detail);
-    if (pickedCount === 0) {
-      removeDetailButton();
-    }
-  });
 }
 
 function setupConfigCallbacks() {
@@ -77,25 +80,27 @@ function setupConfigCallbacks() {
 
 function appendDetailRow({ family, gene, type }) {
   const id = `${family}.${gene}.${type}`;
-  let data;
-  if (type === "Centroid") {
-    const familyData = dataHandler.getFamilyData(family, ...dataHandler.tissues);
-    data = { coordinates: familyData.centroid, family: familyData.family };
-  } else {
-    data = dataHandler.getGeneData(family, gene);
-  }
-  const table = document.getElementById(type + "DetailsTable");
-  const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
-  row.appendChild(createRowSelector(false, family, gene, type));
+  if (document.getElementById(id) === null) {
+    let data;
+    if (type === "Centroid") {
+      const familyData = dataHandler.getFamilyData(family, ...dataHandler.tissues);
+      data = { coordinates: familyData.centroid, family: familyData.family };
+    } else {
+      data = dataHandler.getGeneData(family, gene);
+    }
+    const table = document.getElementById(type + "DetailsTable");
+    const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
+    row.appendChild(createRowSelector(false, family, gene, type));
 
-  const dataMap = getDetailsTableDataMap();
-  for (const cell of dataMap[type]) {
-    const td = createElement("td", {
-      children: [cell.data(data, family, gene)]
-    });
-    row.appendChild(td);
+    const dataMap = getDetailsTableDataMap();
+    for (const cell of dataMap[type]) {
+      const td = createElement("td", {
+        children: [cell.data(data, family, gene)]
+      });
+      row.appendChild(td);
+    }
+    table.tBodies[0].appendChild(row);
   }
-  table.tBodies[0].appendChild(row);
 }
 
 function switchToDetails(type) {
