@@ -1,9 +1,0 @@
-project: TensorOmics
-output_dir: doc
-docmark: "!"
-author: TensorOmics Developers
-summary: >
-  Fortran subroutine for reading and serialize/deserialize
-doc_block_style: doxygen
-files:
-  - src/*.f90

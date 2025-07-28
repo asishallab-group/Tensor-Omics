@@ -1,0 +1,21 @@
+
+name = "fortran_csv_reader"
+version = "1.0.0"
+license = "Proprietary"
+author = "Luka Faensen"
+maintainer = "faensen.luka@th-bingen.de"
+copyright = "Copyright 2025, Asis Hallab"
+
+
+[build]
+
+auto-executables = true
+auto-tests = true
+auto-examples = true
+[library]
+source-dir = "src" # Your core Fortran modules here
+build-script = "scripts/build.sh"
+[install]
+library = true
+
+
