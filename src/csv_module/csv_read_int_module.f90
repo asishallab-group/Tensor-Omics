@@ -20,6 +20,8 @@ CONTAINS
         INTEGER(INT32) :: num_rows, num_cols_in, num_cols_out
         INTEGER(INT32) :: i, j, col_idx
         INTEGER(INT32) :: read_stat
+        ! CORRECTED: Added a temporary variable for the internal read.
+        CHARACTER(LEN=MAX_FIELD_LEN) :: temp_field
 
         status = 0
         num_rows = SIZE(data_in, DIM=1)
@@ -42,7 +44,9 @@ CONTAINS
             END IF
 
             DO i = 1, num_rows
-                READ(data_in(i, col_idx), *, IOSTAT=read_stat) int_data_out(i, j)
+                ! CORRECTED: Use the temporary variable for the READ statement.
+                temp_field = TRIM(data_in(i, col_idx))
+                READ(temp_field, *, IOSTAT=read_stat) int_data_out(i, j)
                 IF (read_stat /= 0) THEN
                     ! Handle conversion error, e.g., set to a default error value
                     int_data_out(i, j) = -9999
@@ -85,13 +89,12 @@ SUBROUTINE read_integer_columns_c(data_in_ascii, num_rows, num_cols_in, &
 
     ! --- 1. Reconstruct Fortran arrays from flat C arrays ---
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
-    data_in_fortran = ' ' ! Initialize with spaces
+    data_in_fortran = ' '
     DO j = 1, num_cols_in
         DO i = 1, num_rows
             DO k = 1, MAX_FIELD_LEN
-                ! C is row-major, Fortran is column-major. This indexing handles the conversion.
                 char_idx = (i - 1) * num_cols_in * MAX_FIELD_LEN + (j - 1) * MAX_FIELD_LEN + k
-                IF (data_in_ascii(char_idx) == 0) EXIT ! Stop at null terminator
+                IF (data_in_ascii(char_idx) == 0) EXIT
                 data_in_fortran(i, j)(k:k) = CHAR(data_in_ascii(char_idx))
             END DO
         END DO
@@ -108,7 +111,6 @@ SUBROUTINE read_integer_columns_c(data_in_ascii, num_rows, num_cols_in, &
     IF (ALLOCATED(int_data_out_fortran)) THEN
         DO j = 1, num_cols_to_read
             DO i = 1, num_rows
-                ! Convert back to C row-major order in the flat output array
                 char_idx = (i - 1) * num_cols_to_read + j
                 int_data_out(char_idx) = int_data_out_fortran(i, j)
             END DO
@@ -147,7 +149,9 @@ SUBROUTINE read_integer_columns_r(data_in_ascii, num_rows, num_cols_in, &
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
     DO j = 1, num_cols_in
         DO i = 1, num_rows
+            data_in_fortran(i, j) = ' '
             DO k = 1, MAX_FIELD_LEN
+                IF (data_in_ascii(k, i, j) == 0) EXIT
                 data_in_fortran(i, j)(k:k) = CHAR(data_in_ascii(k, i, j))
             END DO
         END DO

@@ -232,7 +232,6 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
     INTEGER :: i, j, k, char_idx, num_rows, num_cols
     LOGICAL :: has_header_f
 
-    ! CORRECTED: Convert C_BOOL to default LOGICAL before passing to core subroutine.
     has_header_f = has_header
     ALLOCATE(CHARACTER(LEN=fn_len) :: filename)
     DO i = 1, fn_len
@@ -274,6 +273,7 @@ SUBROUTINE read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_a
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
     IMPLICIT NONE
     
+    ! CORRECTED: Added num_rows and num_cols as inputs and used them in declarations.
     INTEGER(INT32), INTENT(IN) :: filename_ascii(fn_len)
     INTEGER(INT32), INTENT(IN) :: fn_len, num_rows, num_cols
     LOGICAL, INTENT(IN) :: has_header

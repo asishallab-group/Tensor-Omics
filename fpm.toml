@@ -1,19 +1,10 @@
-
-name = "fortran_csv_reader"
-version = "1.0.0"
-license = "Proprietary"
-author = "Luka Faensen"
-maintainer = "faensen.luka@th-bingen.de"
-copyright = "Copyright 2025, Asis Hallab"
-
-[build]
-auto-executables = true
-auto-tests = true
-auto-examples = true
-
-# This section tells fpm to build a linkable library
-[library]
-source-dir = "src/csv_module" # Tell fpm where the source files are
+name = "tensor-omics"
+version = "0.1.0"
+license = "MIT"
 
 [install]
 library = true
+
+[library]
+type = "shared" 
+

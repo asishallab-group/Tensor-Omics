@@ -1,0 +1,94 @@
+{
+    "Fortran: Parse CSV Line": {
+        "prefix": "f42:parse_line",
+        "body": [
+            "! Parses a single string line into an array of fields.",
+            "call parse_line(${1:line}, ${2:delimiter}, ${3:fields_out}, ${4:status})",
+            "$0"
+        ],
+        "description": "Call the core Fortran subroutine to parse a CSV line."
+    },
+    "Fortran: Read CSV to Strings": {
+        "prefix": "f42:read_csv_to_strings",
+        "body": [
+            "! Reads an entire CSV file into a 2D array of strings.",
+            "call read_csv_to_strings(${1:filename}, ${2:has_header}, ${3:delimiter}, ${4:header_out}, ${5:data_out}, ${6:status})",
+            "$0"
+        ],
+        "description": "Call the core Fortran subroutine to read a CSV into a string array."
+    },
+    "Fortran: Read Integer Columns": {
+        "prefix": "f42:read_integer_columns",
+        "body": [
+            "! Converts string columns to a 2D integer array.",
+            "call read_integer_columns(${1:data_in}, ${2:cols_to_read}, ${3:int_data_out}, ${4:status})",
+            "$0"
+        ],
+        "description": "Call the core Fortran subroutine to read integer columns."
+    },
+    "Fortran: Read Real Columns": {
+        "prefix": "f42:read_real_columns",
+        "body": [
+            "! Converts string columns to a 2D real array.",
+            "call read_real_columns(${1:data_in}, ${2:cols_to_read}, ${3:real_data_out}, ${4:status})",
+            "$0"
+        ],
+        "description": "Call the core Fortran subroutine to read real columns."
+    },
+    "R: Get CSV Dimensions": {
+        "prefix": "f42:R_get_csv_dims",
+        "body": [
+            "result <- .Fortran(\"get_csv_dims_r\",",
+            "    filename_ascii = as.integer(${1:filename_ascii}),",
+            "    fn_len = as.integer(length(${1:filename_ascii})),",
+            "    has_header = as.logical(${2:TRUE}),",
+            "    delimiter_ascii = as.integer(charToRaw(${3:','})),",
+            "    num_rows = integer(1),",
+            "    num_cols = integer(1),",
+            "    status = integer(1))",
+            "$0"
+        ],
+        "description": "Call get_csv_dims_r from R to get CSV dimensions."
+    },
+    "R: Read Integer Columns": {
+        "prefix": "f42:R_read_integer_columns",
+        "body": [
+            "result <- .Fortran(\"read_integer_columns_r\",",
+            "    data_in_ascii = ${1:ascii_array},",
+            "    num_rows = as.integer(${2:num_rows}),",
+            "    num_cols_in = as.integer(${3:num_cols}),",
+            "    cols_to_read = as.integer(${4:columns_to_read}),",
+            "    num_cols_to_read = as.integer(length(${4:columns_to_read})),",
+            "    int_data_out = matrix(0L, nrow=${2:num_rows}, ncol=length(${4:columns_to_read})),",
+            "    status = integer(1))",
+            "$0"
+        ],
+        "description": "Call read_integer_columns_r from R."
+    },
+    "Python/C: Setup get_csv_dims": {
+        "prefix": "f42:C_setup_get_csv_dims",
+        "body": [
+            "get_csv_dims = lib.get_csv_dims_c",
+            "get_csv_dims.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32), ctypes.c_int,",
+            "    ctypes.c_bool, ctypes.c_int,",
+            "    ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)",
+            "]",
+            "get_csv_dims.restype = None"
+        ],
+        "description": "Setup ctypes interface for the get_csv_dims_c function."
+    },
+    "Python/C: Setup read_integer_columns": {
+        "prefix": "f42:C_setup_read_integer_columns",
+        "body": [
+            "read_int = lib.read_integer_columns_c",
+            "read_int.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32), ctypes.c_int, ctypes.c_int,",
+            "    np.ctypeslib.ndpointer(dtype=np.int32), ctypes.c_int,",
+            "    np.ctypeslib.ndpointer(dtype=np.int32), ctypes.POINTER(ctypes.c_int)",
+            "]",
+            "read_int.restype = None"
+        ],
+        "description": "Setup ctypes interface for the read_integer_columns_c function."
+    }
+}

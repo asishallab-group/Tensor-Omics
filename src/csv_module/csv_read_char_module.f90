@@ -97,7 +97,6 @@ SUBROUTINE read_character_columns_c(data_in_ascii, num_rows, num_cols_in, &
 
     ! --- 3. Copy the Fortran result back to the C output buffer ---
     IF (ALLOCATED(char_data_out_fortran)) THEN
-        ! CORRECTED: Initialize the assumed-size array with a loop.
         total_out_size = num_rows * num_cols_to_read * MAX_FIELD_LEN
         DO i = 1, total_out_size
             char_data_out_ascii(i) = 0
@@ -143,7 +142,9 @@ SUBROUTINE read_character_columns_r(data_in_ascii, num_rows, num_cols_in, &
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
     DO j = 1, num_cols_in
         DO i = 1, num_rows
+            data_in_fortran(i, j) = ' '
             DO k = 1, MAX_FIELD_LEN
+                IF (data_in_ascii(k, i, j) == 0) EXIT
                 data_in_fortran(i, j)(k:k) = CHAR(data_in_ascii(k, i, j))
             END DO
         END DO

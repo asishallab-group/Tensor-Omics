@@ -25,7 +25,6 @@ CONTAINS
         status = 0
         trimmed_line = TRIM(line)
         
-        ! First pass: count fields
         n_fields = 1
         paren_level = 0
         DO i = 1, LEN_TRIM(trimmed_line)
@@ -38,7 +37,6 @@ CONTAINS
 
         ALLOCATE(temp_fields(n_fields))
         
-        ! Second pass: extract fields
         start_pos = 1
         paren_level = 0
         n_fields = 1
@@ -72,29 +70,23 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
     USE, INTRINSIC :: iso_c_binding
     IMPLICIT NONE
 
-    ! C Arguments
     INTEGER(C_INT), INTENT(IN) :: line_ascii(*)
     INTEGER(C_INT), VALUE, INTENT(IN) :: line_len, delimiter_ascii
     INTEGER(C_INT), INTENT(OUT) :: fields_out_ascii(*), num_fields_out, status
 
-    ! Local variables
     CHARACTER(LEN=:), ALLOCATABLE :: line_f
     CHARACTER(LEN=1) :: delimiter_f
     CHARACTER(LEN=512), ALLOCATABLE :: fields_f(:)
-    INTEGER :: i, k, char_idx
-    INTEGER :: n_fields, start_pos, paren_level
+    INTEGER :: i, k, char_idx, n_fields, start_pos, paren_level
     INTEGER(C_INT) :: total_out_size
 
-    ! Convert C inputs to Fortran types
     ALLOCATE(CHARACTER(LEN=line_len) :: line_f)
     DO i = 1, line_len
         line_f(i:i) = CHAR(line_ascii(i))
     END DO
     delimiter_f = CHAR(delimiter_ascii)
 
-    ! --- Duplicated Parsing Logic ---
-    n_fields = 1
-    paren_level = 0
+    n_fields = 1; paren_level = 0
     DO i = 1, LEN_TRIM(line_f)
         IF (line_f(i:i) == '(') paren_level = paren_level + 1
         IF (line_f(i:i) == ')') paren_level = paren_level - 1
@@ -102,9 +94,7 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
     END DO
 
     ALLOCATE(fields_f(n_fields))
-    start_pos = 1
-    paren_level = 0
-    n_fields = 1
+    start_pos = 1; paren_level = 0; n_fields = 1
     DO i = 1, LEN_TRIM(line_f)
         IF (line_f(i:i) == '(') paren_level = paren_level + 1
         IF (line_f(i:i) == ')') paren_level = paren_level - 1
@@ -115,18 +105,15 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
         END IF
     END DO
     fields_f(n_fields) = TRIM(line_f(start_pos:))
-    ! --- End of Duplicated Logic ---
 
     status = 0
     num_fields_out = SIZE(fields_f)
 
-    ! Convert Fortran character array to C integer ASCII array
     IF (ALLOCATED(fields_f)) THEN
         total_out_size = num_fields_out * 512
         DO i = 1, total_out_size
             fields_out_ascii(i) = 0
         END DO
-
         DO i = 1, num_fields_out
             DO k = 1, LEN_TRIM(fields_f(i))
                 char_idx = (i-1) * 512 + k
@@ -143,29 +130,23 @@ SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     IMPLICIT NONE
 
-    ! R Arguments
     INTEGER(INT32), INTENT(IN) :: line_ascii(line_len)
     INTEGER(INT32), INTENT(IN) :: line_len, delimiter_ascii
     INTEGER(INT32), INTENT(OUT) :: fields_out_ascii(512, *)
     INTEGER(INT32), INTENT(OUT) :: num_fields_out, status
 
-    ! Local variables
     CHARACTER(LEN=:), ALLOCATABLE :: line_f
     CHARACTER(LEN=1) :: delimiter_f
     CHARACTER(LEN=512), ALLOCATABLE :: fields_f(:)
-    INTEGER :: i, k
-    INTEGER :: n_fields, start_pos, paren_level
+    INTEGER :: i, k, n_fields, start_pos, paren_level
 
-    ! Convert R inputs to Fortran types
     ALLOCATE(CHARACTER(LEN=line_len) :: line_f)
     DO i = 1, line_len
         line_f(i:i) = CHAR(line_ascii(i))
     END DO
     delimiter_f = CHAR(delimiter_ascii)
 
-    ! --- Duplicated Parsing Logic ---
-    n_fields = 1
-    paren_level = 0
+    n_fields = 1; paren_level = 0
     DO i = 1, LEN_TRIM(line_f)
         IF (line_f(i:i) == '(') paren_level = paren_level + 1
         IF (line_f(i:i) == ')') paren_level = paren_level - 1
@@ -173,9 +154,7 @@ SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
     END DO
 
     ALLOCATE(fields_f(n_fields))
-    start_pos = 1
-    paren_level = 0
-    n_fields = 1
+    start_pos = 1; paren_level = 0; n_fields = 1
     DO i = 1, LEN_TRIM(line_f)
         IF (line_f(i:i) == '(') paren_level = paren_level + 1
         IF (line_f(i:i) == ')') paren_level = paren_level - 1
@@ -186,18 +165,14 @@ SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
         END IF
     END DO
     fields_f(n_fields) = TRIM(line_f(start_pos:))
-    ! --- End of Duplicated Logic ---
 
     status = 0
     num_fields_out = SIZE(fields_f)
 
-    ! Convert Fortran character array to R integer ASCII array
     IF (ALLOCATED(fields_f)) THEN
-        ! CORRECTED: Initialize the used part of the assumed-size array with a loop.
         DO i = 1, num_fields_out
             fields_out_ascii(:, i) = 0
         END DO
-
         DO i = 1, num_fields_out
             DO k = 1, LEN_TRIM(fields_f(i))
                 fields_out_ascii(k, i) = ICHAR(fields_f(i)(k:k))

@@ -19,6 +19,7 @@ CONTAINS
         INTEGER(INT32) :: num_rows, num_cols_in, num_cols_out
         INTEGER(INT32) :: i, j, col_idx
         INTEGER(INT32) :: read_stat
+        CHARACTER(LEN=MAX_FIELD_LEN) :: temp_field
 
         status = 0
         num_rows = SIZE(data_in, DIM=1)
@@ -41,7 +42,8 @@ CONTAINS
             END IF
 
             DO i = 1, num_rows
-                READ(data_in(i, col_idx), *, IOSTAT=read_stat) logical_data_out(i, j)
+                temp_field = TRIM(data_in(i, col_idx))
+                READ(temp_field, *, IOSTAT=read_stat) logical_data_out(i, j)
                 IF (read_stat /= 0) THEN
                     logical_data_out(i, j) = .FALSE.
                     status = 3 ! At least one conversion error occurred
@@ -142,7 +144,9 @@ SUBROUTINE read_logical_columns_r(data_in_ascii, num_rows, num_cols_in, &
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
     DO j = 1, num_cols_in
         DO i = 1, num_rows
+            data_in_fortran(i, j) = ' '
             DO k = 1, MAX_FIELD_LEN
+                IF (data_in_ascii(k, i, j) == 0) EXIT
                 data_in_fortran(i, j)(k:k) = CHAR(data_in_ascii(k, i, j))
             END DO
         END DO
