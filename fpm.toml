@@ -6,16 +6,14 @@ author = "Luka Faensen"
 maintainer = "faensen.luka@th-bingen.de"
 copyright = "Copyright 2025, Asis Hallab"
 
-
 [build]
-
 auto-executables = true
 auto-tests = true
 auto-examples = true
+
+# This section tells fpm to build a linkable library
 [library]
-source-dir = "src" # Your core Fortran modules here
-build-script = "scripts/build.sh"
+source-dir = "src/csv_module" # Tell fpm where the source files are
+
 [install]
 library = true
-
-
