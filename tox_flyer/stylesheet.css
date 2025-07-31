@@ -9,7 +9,6 @@ html, body {
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10, 11 */
   user-select: none;
-  tab
 }
 
 main {
@@ -52,8 +51,8 @@ main {
   top: 0;
   left: 0;
   z-index: 10; /* Higher than canvas */
-  width: 100vw;
-  height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
   pointer-events: none; /* Allows UI interaction */
 
   display: grid;
@@ -76,6 +75,7 @@ main {
   grid-area: dialog;
   width: 60%;
   height: 60%;
+  pointer-events: auto;
 }
 
 #UI > #mid-right {
@@ -93,8 +93,8 @@ main {
   border-radius: 1pc;
   box-shadow: inherit;
   width: fit-content;
-  font-size: 3vh;
-  margin-right: 1vw;
+  font-size: 3dvh;
+  margin-right: 1dvw;
   font-weight: bold;
   padding: 1%;
 }

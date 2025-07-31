@@ -100,6 +100,7 @@ function appendDetailRow({ family, gene, type }) {
       row.appendChild(td);
     }
     table.tBodies[0].appendChild(row);
+    table.querySelector("#selectAll").checked = false;
   }
 }
 
