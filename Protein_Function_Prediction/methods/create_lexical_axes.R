@@ -42,21 +42,29 @@ clean_doc <- function(text) {
     str_squish()
 }
 
-tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
-  tibble(protein_id = protein_ids, text = texts) %>%
-    mutate(tokens = if (name == "GO") {
-      str_split(text, pattern)
-    } else {
-      str_extract_all(text, pattern)
-    }) %>%
-    unnest(tokens) %>%
-    rename(token = tokens) %>%
-    mutate(token = str_to_lower(str_trim(token))) %>%
+tokenize_custom <- function(docs, pattern, name = NULL) {
+  protein_ids <- docs[[1]]
+  texts <- docs[[2]]
+
+  if (name == "GO") {
+    tokens_list <- str_split(texts, pattern)
+  } else {
+    tokens_list <- str_extract_all(texts, pattern)
+  }
+
+  dt <- tibble(
+    protein_id = rep(protein_ids, lengths(tokens_list)),
+    token = str_to_lower(str_trim(unlist(tokens_list)))
+  )
+
+  dt <- dt %>%
     filter(
       str_length(token) > 2,
       str_detect(token, "[a-z]"),
       !str_detect(token, "^[0-9]{2,}[a-z]$")
     )
+
+  return(dt)
 }
 
 
