@@ -29,9 +29,9 @@ is_identifier <- function(token) {
 
 # 2. Create corpora from the annotation tables
 corpora <- list(
-  GO = ann_goa$GOA_label,
-  IPR = ann_ipr$description,
-  HRD = ann_hrd$hrd
+  GO = ann_goa,
+  IPR = ann_ipr,
+  HRD = ann_hrd
 )
 
 clean_doc <- function(text) {
@@ -42,29 +42,40 @@ clean_doc <- function(text) {
     str_squish()
 }
 
-tokenize_custom <- function(docs, pattern) {
-  tibble(doc_id = seq_along(docs), text = docs) %>%
-    mutate(tokens = str_extract_all(text, pattern)) %>%
+tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
+  tibble(protein_id = protein_ids, text = texts) %>%
+    mutate(tokens = if (name == "GO") {
+      str_split(text, pattern)
+    } else {
+      str_extract_all(text, pattern)
+    }) %>%
     unnest(tokens) %>%
     rename(token = tokens) %>%
-    mutate(token = str_to_lower(token)) %>%
+    mutate(token = str_to_lower(str_trim(token))) %>%
     filter(
       str_length(token) > 2,
-      str_detect(token, "[a-z]")  # nur Tokens mit Buchstaben
+      str_detect(token, "[a-z]"),
+      !str_detect(token, "^[0-9]{2,}[a-z]$")
     )
 }
 
-splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
 
+splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
+splitter_go <- "[\\s.,:]+"
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
   message("Processing corpus: ", name, " (", length(docs), " docs)")
   
+  protein_ids <- docs[[1]]
+  texts <- docs[[2]]
+
   # Remove NA documents
-  valid_docs <- !is.na(docs)
-  docs <- docs[valid_docs]
+  valid_docs <- !is.na(texts)
+  texts <- texts[valid_docs]
+  protein_ids <- protein_ids[valid_docs]
+
   
-  # Corpus-spezifisches Preprocessing
+  # Corpora-specific Preprocessing
   docs <- clean_doc(docs)
 
   # if existent, remove last identifier from HRD descriptions
@@ -72,7 +83,7 @@ build_axes <- function(docs, name) {
     docs <- sapply(docs, function(txt) {
       parts <- str_split(txt, " ")[[1]]
       last <- tail(parts, 1)
-      if (is_identifier(last) && length(parts) > 3) {
+      if (is_identifier(last) && length(parts) > 4) {
         str_trim(str_remove(txt, paste0("\\s*", last, "$")))
       } else {
         txt
@@ -81,11 +92,16 @@ build_axes <- function(docs, name) {
   }
 
   # 3. Tokenize & lowercase, then filter
-  dt <- tokenize_custom(docs, splitter)
-  message("Number of unique tokens before filtering: ", n_distinct(dt$token))
-  
-  4. Word frequencies per document & global f_w
-  wf_doc <- dt %>% count(doc_id, token, name = "tf")
+  if (name == "GO") {
+    dt <- tokenize_custom(protein_ids, texts, splitter_go, name)
+  } else {
+    dt <- tokenize_custom(protein_ids, texts, splitter, name)
+  }
+
+  message("Number of unique tokens before filtering: ", n_distinct(dt$token), "\nNumber of tokens: ", length(dt$token))
+
+  # 4. Word frequencies per document & global f_w
+  wf_doc <- dt %>% count(protein_id, token, name = "tf")
   fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf))
   message("Number of unique tokens after TF count: ", nrow(fw))
 
@@ -104,7 +120,7 @@ build_axes <- function(docs, name) {
   vocab <- unique(dt_f$token)
   
   # Create a token-by-doc matrix
-  it <- dt_f %>% cast_sparse(doc_id, token)
+  it <- dt_f %>% cast_sparse(protein_id, token)
   # Co-occurrence = t(it) %*% it
   cooc <- crossprod(it)
   
@@ -122,8 +138,8 @@ build_axes <- function(docs, name) {
   rownames(U) <- vocab
   
   # 9. Compute IDF for each token
-  ndocs <- length(unique(dt$doc_id))
-  doc_freq <- dt %>% distinct(doc_id, token) %>%
+  ndocs <- length(unique(dt$protein_id))
+  doc_freq <- dt %>% distinct(protein_id, token) %>%
     count(token, name = "df")
   idf <- doc_freq %>% 
     mutate(idf = log(ndocs / df)) %>%
@@ -141,10 +157,10 @@ build_axes <- function(docs, name) {
     filter(token %in% tokens_final) %>%
     left_join(idf_f, by = "token") %>%
     mutate(tf_idf = tf * idf) %>%
-    select(doc_id, token, tf_idf)
+    select(protein_id, token, tf_idf)
   
   # Build sparse matrix and project
-  mat_tfidf <- cast_sparse(tfidf, doc_id, token, value = "tf_idf")
+  mat_tfidf <- cast_sparse(tfidf, protein_id, token, value = "tf_idf")
   doc_proj <- mat_tfidf %*% Uf
   
   colnames(doc_proj) <- paste0("EW", 1:k)
@@ -161,7 +177,7 @@ build_axes <- function(docs, name) {
 # Run for all three corpora
 axes <- map2(corpora, names(corpora), build_axes)
 
-Save result
+# Save result
 saveRDS(axes$GO, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
 saveRDS(axes$IPR, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
 saveRDS(axes$HRD, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
