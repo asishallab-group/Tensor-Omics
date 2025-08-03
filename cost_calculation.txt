@@ -1,6 +1,0 @@
-PhD	280
-HiWi	21
-Heigwer	65
-Troidl	15 + 35
-Dusel	15 + 40
-Server	35
