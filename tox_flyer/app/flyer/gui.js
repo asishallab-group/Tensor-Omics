@@ -2,6 +2,7 @@
 
 export function setupGUI() {
   createUIdiv();
+  addIcons();
   createPickedDetailsDialog();
   switchToDetails("Gene");
   setupConfigCallbacks();
@@ -24,7 +25,25 @@ export function setupGUI() {
       }
     }, null);
   }
+}
 
+function addIcons() {
+  const icons = {
+    "top-left": [
+      { src: "/images/gear.png", alt: "Settings" },
+    ]
+  }
+
+  for (const [area, areaIcons] of Object.entries(icons)) {
+    const areaElement = document.getElementById(area);
+    for (const icon of areaIcons) {
+      areaElement?.appendChild(createElement("img", {
+        height: 1,
+        classes: ["icon"],
+        ...icon
+      }));
+    }
+  }
 }
 
 function setupConfigCallbacks() {
@@ -135,10 +154,10 @@ function createPickedDetailsDialog() {
         })
         menu.appendChild(menuItem);
 
-        const table = createMasterTable([], null, headers);
+        const { table } = createMasterTable({ elements: [] }, null, headers);
         table.id = pickType + "DetailsTable";
 
-        const tableUI = createTableUI(table, pickType === "Gene" ? "Details" : undefined);
+        const tableUI = createTableUI({ table }, pickType === "Gene" ? "Details" : undefined);
         tableUI.hidden = true;
         tableUI.classList.add("detailsTable");
         tables.appendChild(tableUI);
@@ -248,63 +267,92 @@ function createCustomizationTable(table) {
     { title: "Diameter", data: input("Diameter", "number")},
   ];
 
-  return createMasterTable(elements, (family, gene) => dataHandler.getGeneData(family, gene), headers);
+  return createMasterTable({ elements }, (family, gene) => dataHandler.getGeneData(family, gene), headers);
 }
 
-function createTableUI(table, type) {
-  const doneButton = createButton({ innerText: "Done" });
-  doneButton.addEventListener("click", function () {this.closest("dialog").close()});
+function createTableUI({ table, next, previous }, type) {
+  const bottomChildren = [];
+  function applyChanges() {
+    for (const input of this.querySelectorAll("input[key]")) {
+      const tr = input.closest("tr");
+      const family = tr.getAttribute("tox-family");
+      const gene = tr.getAttribute("tox-gene");
+      switch (input.type) {
+        case "number": {
+          config.familySet(family, input.getAttribute("key"), Number(input.value), gene, false);
+          break;
+        }
+        default: {
+          config.familySet(family, input.getAttribute("key"), input.value, gene, false);
+          break;
+        }
+      }
+    }
+  }
+
+  function selectRow(row, state) {
+    const rowID = `${row.getAttribute("tox-family")}_${row.getAttribute("tox-gene")}`;
+    if (state) {
+      table.TOX_selectedRows.add(rowID);
+    } else {
+      table.TOX_selectedRows.delete(rowID);
+    }
+  }
+
   switch (type) {
     case "Details": {
-      let selectedRowCount = 0;
-
       const customizationButton = createButton({
         innerText: "Customize",
         disabled: true,
       });
       customizationButton.addEventListener("click", function () {
-        if (selectedRowCount > 0) {
-          function applyChanges() {
-            for (const input of this.querySelectorAll("input[key]")) {
-              const tr = input.closest("tr");
-              const family = tr.getAttribute("tox-family");
-              const gene = tr.getAttribute("tox-gene");
-              switch (input.type) {
-                case "number": {
-                  config.familySet(family, input.getAttribute("key"), Number(input.value), gene, false);
-                  break;
-                }
-                default: {
-                  config.familySet(family, input.getAttribute("key"), input.value, gene, false);
-                  break;
-                }
-              }
-            }
-          }
+        if (table.TOX_selectedRows.size > 0) {
           show(createTableUI(createCustomizationTable(table), "Customize"), applyChanges);
         }
       })
 
       table.addEventListener("change", evt => {
         if (evt.target.classList.contains("row-selector")) {
-          if (evt.target.checked) {
-            selectedRowCount++;
-          } else {
-            selectedRowCount--;
-          }
-          customizationButton.disabled = selectedRowCount === 0;
+          selectRow(evt.target.closest("tr"), evt.target.checked);
+          customizationButton.disabled = table.TOX_selectedRows.size === 0;
         }
       });
-      const bottom = createElement("center", { children: [customizationButton, doneButton] });
-      return createElement("section", { children: [table, bottom] });
+      
+      bottomChildren.push(customizationButton);
+      break;
+    }
+    case "Customize": {
+      table.addEventListener("change", evt => {
+        if (evt.target.classList.contains("row-selector")) {
+          selectRow(evt.target.closest("tr"), evt.target.checked);
+        }
+      });
     }
     case "SingleDetails":
-    case "Customize":
-    default: {
-      const bottom = createElement("center", { children: [doneButton] });
-      return createElement("section", { children: [table, bottom] });
-    }
+    default: {}
   }
+  const doneButton = createButton({ innerText: "Done" });
+  doneButton.addEventListener("click", function () {this.closest("dialog").close()});
+  bottomChildren.push(doneButton);
+
+  if ((typeof next === "function") && (typeof previous === "function")) {
+    const nextBtn = createElement("span", {
+      innerHTML: "&#8594;", // right arrow
+      classes: ["clickable"]
+    });
+    nextBtn.addEventListener("click", function () { applyChanges.call(table); next(); });
+    bottomChildren.push(nextBtn);
+
+    const previousBtn = createElement("span", {
+      innerHTML: "&#8592;", // left arrow
+      classes: ["clickable"]
+    });
+    previousBtn.addEventListener("click", function () { applyChanges.call(table); previous(); });
+    bottomChildren.unshift(previousBtn);
+  }
+
+  const bottom = createElement("center", { children: bottomChildren });
+  return createElement("section", { children: [table, bottom] });
 }
 
 function getDetailsTableDataMap() {
@@ -321,7 +369,7 @@ function getDetailsTableDataMap() {
             title: "Genes",
             data() {
               return createLinkElement(`Inspect ${dataHandler.getGeneCount(familyIdx)} members`, () => createTableUI(createMasterTable(
-                dataHandler.genes(familyIdx).map(gene => ({family: familyIdx, gene})),
+                { elements: dataHandler.genes(familyIdx).map(gene => ({family: familyIdx, gene})) },
                 (family, gene) => dataHandler.getGeneData(family, gene),
                 dataMap.Gene
               ), "Details"))
@@ -386,22 +434,95 @@ function getDetailsTableDataMap() {
   return dataMap;
 }
 
-function createMasterTable(elements, getData, headerMap, bodyOnly=false) {
+function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnly=false) {
   const tbody = createElement("tbody");
 
-  for (const { family, gene } of elements) {
-    const row = createElement("tr", { "tox-family": family, "tox-gene": gene });
-    row.appendChild(createRowSelector(false, family, gene, "Gene"));
+  function generateRows(elements, firstFamily, firstGene, { lastBefore, firstAfter }) {
+    if (elements === undefined) {
+      elements = [];
 
-    const data = getData(family, gene);
-    for (const cell of headerMap) {
-      const td = createElement("td", {
-        children: [cell.data(data, family, gene)]
-      });
-      row.appendChild(td);
+      if (firstAfter !== undefined) {
+        const familyCount = dataHandler.getFamilyCount();
+        if (firstGene === undefined) {
+          for (let family = firstFamily; (family < familyCount) && (elements.length < firstAfter); family++) {
+            elements.push({ family });
+          }
+        } else {
+          let geneCount = dataHandler.getGeneCount(firstFamily);
+          while ((elements.length < firstAfter) && (firstFamily < familyCount)) {
+            if (firstGene < geneCount) {
+              elements.push({ family: firstFamily, gene: firstGene });
+              firstGene++;
+            } else {
+              firstFamily++;
+              firstGene = 0;
+              geneCount = dataHandler.getGeneCount(firstFamily);
+            }
+          }
+        }
+      } else {
+        if (firstGene === undefined) {
+          for (let family = firstFamily - 1; (family >= 0) && (elements.length < lastBefore); family--) {
+            elements.push({ family });
+          }
+        } else {
+          while (elements.length < lastBefore) {
+            firstGene--;
+            if (firstGene >= 0) {
+              elements.push({ family: firstFamily, gene: firstGene });
+            } else {
+              firstFamily--;
+              if (firstFamily === -1) break;
+              firstGene = dataHandler.getGeneCount(firstFamily);
+            }
+          }
+        }
+      }
+    } else {
+      const lastElement = elements.findIndex(({ family, gene }) => ((family == firstFamily) && (gene == firstGene)));
+      if (firstAfter !== undefined) {
+        elements = elements.slice(lastElement + 1, lastElement + paginationStep + 1 );
+      } else {
+        if (lastElement > -1) {
+          elements = elements.slice(lastElement - paginationStep, lastElement);
+        } else {
+          return;
+        }
+      }
     }
 
-    tbody.appendChild(row);
+    if (elements.length > 0) {
+      {
+        const allSelector = tbody.closest("table")?.querySelector("#selectAll");
+        if (allSelector !== undefined) {
+          allSelector.checked = false;
+          allSelector.dispatchEvent(new Event("change"));
+        }
+      }
+
+      tbody.innerText = "";
+      for (const { family, gene } of elements) {
+        const row = createElement("tr", { "tox-family": family, "tox-gene": gene });
+        row.appendChild(createRowSelector(false, family, gene, "Gene"));
+
+        const data = getData(family, gene);
+        for (const cell of headerMap) {
+          const td = createElement("td", {
+            children: [cell.data(data, family, gene)]
+          });
+          row.appendChild(td);
+        }
+
+        tbody.appendChild(row);
+      }
+    }
+  }
+
+  const paginationStep = 2;
+  if (familyOnly) {
+    generateRows(elements, -1, undefined, { firstAfter: paginationStep });
+  } else {
+    generateRows(elements, -1, -1, { firstAfter: paginationStep });
   }
 
   if (bodyOnly) {
@@ -412,7 +533,37 @@ function createMasterTable(elements, getData, headerMap, bodyOnly=false) {
       children: [createElement("tr", { children: [createRowSelector(true), ...headerCells] })]
     });
 
-    return createDataTable({ children: [thead, tbody]});
+    const table = createDataTable({ children: [thead, tbody]});
+    table.TOX_selectedRows = new Set();
+    return {
+      table,
+      next() {
+        const lastFamily = Number(tbody.lastChild.getAttribute("tox-family"));
+        if (familyOnly) {
+          if (lastFamily < dataHandler.getFamilyCount()) {
+            generateRows(elements, lastFamily, undefined, { firstAfter: paginationStep });
+          }
+        } else {
+          const lastGene = Number(tbody.lastChild.getAttribute("tox-gene"));
+          if (lastGene + 1 < dataHandler.getGeneCount(lastFamily) || lastFamily + 1 < dataHandler.getFamilyCount()) {
+            generateRows(elements, lastFamily, lastGene, { firstAfter: paginationStep });
+          }
+        }
+      },
+      previous() {
+        const firstFamily = Number(tbody.firstChild.getAttribute("tox-family"));
+        if (familyOnly) {
+          if (firstFamily > 0) {
+            generateRows(elements, firstFamily, undefined, { lastBefore: paginationStep });
+          }
+        } else {
+          const firstGene = Number(tbody.firstChild.getAttribute("tox-gene"));
+          if (firstGene > 0 || firstFamily > 0) {
+            generateRows(elements, firstFamily, firstGene, { lastBefore: paginationStep });
+          }
+        }
+      }
+    }
   }
 }
 
@@ -428,7 +579,9 @@ function createSingleDetailsTable(geneData, familyIdx, geneIdx, headerMap) {
     tBody.appendChild(tr);
   }
 
-  return createDataTable({ children: [tBody]});
+  return {
+    table: createDataTable({ children: [tBody]})
+  };
 }
 
 function createLinkElement(value, linkContent) {

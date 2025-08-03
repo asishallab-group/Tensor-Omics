@@ -46,6 +46,11 @@ main {
   cursor: pointer;
 }
 
+img.icon {
+  width: 5em;
+  height: 5em;
+}
+
 #UI {
   position: absolute;
   top: 0;
@@ -109,10 +114,6 @@ main {
   grid-area: top-right;
   display: flex;
   box-shadow: none;
-}
-
-#top-left > * {
-  height: 1%;
 }
 
 #pickedDetailsMenu {
