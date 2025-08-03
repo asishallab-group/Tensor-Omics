@@ -108,6 +108,7 @@ function appendDetailRow({ family, gene, type }) {
       data = dataHandler.getGeneData(family, gene);
     }
     const table = document.getElementById(type + "DetailsTable");
+    table.TOX_elements.push({ family, gene });
     const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
     row.appendChild(createRowSelector(false, family, gene, type));
 
@@ -214,14 +215,6 @@ function createRowSelector(selectAll, family, gene, type) {
 }
 
 function createCustomizationTable(table) {
-  const elements = [];
-  for (const selectedRow of table.getElementsByClassName("selected")) {
-    elements.push({
-      family: selectedRow.getAttribute("tox-family"),
-      gene: selectedRow.getAttribute("tox-gene")
-    });
-  }
-
   function dataFunc(key) {
     return function (geneData, familyIdx, geneIdx) {
       return createElement("span", { classes: [key], innerText: config.familyGet(familyIdx, key, geneIdx)});
@@ -267,7 +260,15 @@ function createCustomizationTable(table) {
     { title: "Diameter", data: input("Diameter", "number")},
   ];
 
-  return createMasterTable({ elements }, (family, gene) => dataHandler.getGeneData(family, gene), headers);
+  return createMasterTable(
+    {
+      elements: table.TOX_elements,
+      familyOnly: table.TOX_familyOnly,
+      parentTable: table
+    },
+    (family, gene) => dataHandler.getGeneData(family, gene),
+    headers
+  );
 }
 
 function createTableUI({ table, next, previous }, type) {
@@ -290,13 +291,24 @@ function createTableUI({ table, next, previous }, type) {
     }
   }
 
-  function selectRow(row, state) {
-    const rowID = `${row.getAttribute("tox-family")}_${row.getAttribute("tox-gene")}`;
-    if (state) {
-      table.TOX_selectedRows.add(rowID);
+  function selectorHandler(target, callback) {
+    if (target.id === "selectAll") {
+      table.TOX_selectedRows.clear();
+        console.log(table.TOX_allSelectorState)
+      table.TOX_allSelectorState = target.checked;
+        console.log(table.TOX_allSelectorState)
     } else {
-      table.TOX_selectedRows.delete(rowID);
+      const row = target.closest("tr");
+      if (target.classList.contains("row-selector")) {
+        const rowID = table.TOX_rowID(row.getAttribute("tox-family"), row.getAttribute("tox-gene"));
+        if (target.checked !== table.TOX_allSelectorState) {
+          table.TOX_selectedRows.add(rowID);
+        } else {
+          table.TOX_selectedRows.delete(rowID);
+        }
+      }
     }
+    callback?.();
   }
 
   switch (type) {
@@ -306,27 +318,18 @@ function createTableUI({ table, next, previous }, type) {
         disabled: true,
       });
       customizationButton.addEventListener("click", function () {
-        if (table.TOX_selectedRows.size > 0) {
-          show(createTableUI(createCustomizationTable(table), "Customize"), applyChanges);
-        }
+        show(createTableUI(createCustomizationTable(table), "Customize"), applyChanges);
       })
 
-      table.addEventListener("change", evt => {
-        if (evt.target.classList.contains("row-selector")) {
-          selectRow(evt.target.closest("tr"), evt.target.checked);
-          customizationButton.disabled = table.TOX_selectedRows.size === 0;
-        }
-      });
+      table.addEventListener("change", evt => selectorHandler(evt.target, () => {
+        customizationButton.disabled = !table.TOX_allSelectorState && table.TOX_selectedRows.size === 0;
+      }));
       
       bottomChildren.push(customizationButton);
       break;
     }
     case "Customize": {
-      table.addEventListener("change", evt => {
-        if (evt.target.classList.contains("row-selector")) {
-          selectRow(evt.target.closest("tr"), evt.target.checked);
-        }
-      });
+      table.addEventListener("change", evt => selectorHandler(evt.target));
     }
     case "SingleDetails":
     default: {}
@@ -336,16 +339,14 @@ function createTableUI({ table, next, previous }, type) {
   bottomChildren.push(doneButton);
 
   if ((typeof next === "function") && (typeof previous === "function")) {
-    const nextBtn = createElement("span", {
+    const nextBtn = createButton({
       innerHTML: "&#8594;", // right arrow
-      classes: ["clickable"]
     });
     nextBtn.addEventListener("click", function () { applyChanges.call(table); next(); });
     bottomChildren.push(nextBtn);
 
-    const previousBtn = createElement("span", {
+    const previousBtn = createButton({
       innerHTML: "&#8592;", // left arrow
-      classes: ["clickable"]
     });
     previousBtn.addEventListener("click", function () { applyChanges.call(table); previous(); });
     bottomChildren.unshift(previousBtn);
@@ -434,8 +435,12 @@ function getDetailsTableDataMap() {
   return dataMap;
 }
 
-function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnly=false) {
+function createMasterTable({ elements, familyOnly, parentTable }, getData, headerMap, bodyOnly=false) {
   const tbody = createElement("tbody");
+
+  if ((parentTable !== undefined) && (elements !== undefined)) {
+    elements = elements.filter(({ family, gene }) => parentTable.TOX_isSelected(family, gene));
+  }
 
   function generateRows(elements, firstFamily, firstGene, { lastBefore, firstAfter }) {
     if (elements === undefined) {
@@ -492,18 +497,18 @@ function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnl
     }
 
     if (elements.length > 0) {
-      {
-        const allSelector = tbody.closest("table")?.querySelector("#selectAll");
-        if (allSelector !== undefined) {
-          allSelector.checked = false;
-          allSelector.dispatchEvent(new Event("change"));
-        }
-      }
-
       tbody.innerText = "";
       for (const { family, gene } of elements) {
         const row = createElement("tr", { "tox-family": family, "tox-gene": gene });
-        row.appendChild(createRowSelector(false, family, gene, "Gene"));
+        const rowSelector = createRowSelector(false, family, gene, "Gene");
+        const table = tbody.closest("table");
+        if (table !== null) {
+          if (table.TOX_isSelected(family, gene)) {
+            rowSelector.querySelector(".row-selector").checked = true;
+            row.classList.add("selected");
+          }
+        }
+        row.appendChild(rowSelector);
 
         const data = getData(family, gene);
         for (const cell of headerMap) {
@@ -518,7 +523,7 @@ function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnl
     }
   }
 
-  const paginationStep = 2;
+  const paginationStep = 10;
   if (familyOnly) {
     generateRows(elements, -1, undefined, { firstAfter: paginationStep });
   } else {
@@ -534,10 +539,18 @@ function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnl
     });
 
     const table = createDataTable({ children: [thead, tbody]});
+    table.TOX_elements = elements;
+    table.TOX_familyOnly = familyOnly;
     table.TOX_selectedRows = new Set();
-    return {
+    table.TOX_allSelectorState = false;
+    table.TOX_rowID = (family, gene) => `${family}_${gene}`;
+    table.TOX_isSelected = function (family, gene) {
+      return this.TOX_allSelectorState !== this.TOX_selectedRows.has(this.TOX_rowID(family, gene));
+    }
+
+    const result = {
       table,
-      next() {
+      next(checkOnly=false) {
         const lastFamily = Number(tbody.lastChild.getAttribute("tox-family"));
         if (familyOnly) {
           if (lastFamily < dataHandler.getFamilyCount()) {
@@ -550,7 +563,7 @@ function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnl
           }
         }
       },
-      previous() {
+      previous(checkOnly=false) {
         const firstFamily = Number(tbody.firstChild.getAttribute("tox-family"));
         if (familyOnly) {
           if (firstFamily > 0) {
@@ -564,6 +577,7 @@ function createMasterTable({ elements, familyOnly }, getData, headerMap, bodyOnl
         }
       }
     }
+    return result;
   }
 }
 
