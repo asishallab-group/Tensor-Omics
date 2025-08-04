@@ -96,6 +96,13 @@ The correctness of the calculation, the correctness of the implemented algorithm
 \section{Obligatory use of \texttt{intent} and \texttt{pure} }
 \begin{itemize}
   \item Always use \texttt{intent} for function or subroutine arguments.
+    Be aware of the kind of data being passed.
+
+  \begin{itemize}
+    \item \textbf{intent(in)}: Use when the pointer's contents are only read.
+    \item \textbf{intent(out)}: Use when the contents will be entirely overwritten.
+    \item \textbf{intent(inout)}: Use when the subroutine both reads and writes to the data, and the initial values are important.
+  \end{itemize}
   \item Always use \texttt{pure} where possible.
 \end{itemize}
 
@@ -250,14 +257,9 @@ real(c_double) :: x(*)      ! OK
 real(c_double), dimension(:) :: x  ! Not allowed
 \end{verbatim}
 
-\subsubsection{Avoid optional arguments and intent propagation}
+\subsubsection{Avoid optional arguments}
 
-Declare arguments explicitly, without \texttt{intent} or \texttt{optional}.
-
-\begin{verbatim}
-real(c_double) :: x(*)
-! No intent or optional keyword
-\end{verbatim}
+Optional arguments are not allowed in R and C wrappers because \texttt{bind(C)} and \texttt{.Fortran()} are not compatible with them. If optional arguments are needed, they should only be used in core subroutines that are called directly from Fortran. 
 
 \subsubsection{Pass all arguments by reference}
 
