@@ -24,6 +24,503 @@ citecolor=black
 
 \maketitle
 
+\tableofcontents
+\vspace{1cm}
+
+\newpage
+\section{Use latest gfortran compiler version}
+
+To ensure optimal performance and compatibility, always use the latest stable version of the gfortran compiler (15+). 
+
+\noindent We recommend adding a PPA (Personal Package Archive) to your system to easily install the latest version. If you are using Ubuntu, you can do this by running:
+\begin{verbatim}
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get install gfortran-<version> # e.g., gfortran-15 
+\end{verbatim}
+
+\noindent If gfortran-15 is not available, you can also get the latest version with Docker: 
+{\begin{itemize}
+  \item Install and setup Docker as explained for your operating system in the Docker documentation.
+  \item Use our \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/gfortran.docker?ref_type=heads}{Dockerfile gfortran.docker}: 
+  \begin{verbatim}
+    docker build -t arch-gfortran -f gfortran.docker . 
+  \end{verbatim}
+  \item Then build the project with:
+  \begin{verbatim}
+    docker run -it -v `pwd`:/opt arch-gfortran '/opt/build.sh'
+  \end{verbatim}
+\end{itemize}}
+
+\section{Use of double precision}
+
+Declare in Fortran internal functions and subroutines \texttt{real} variables and constants always using the ISO double precision standard (see below for an example). Do make sure that if you assign values at compile time, so constants, you \emph{must use} the \texttt{\_real64} suffix to guarantee precision (see example below).
+
+\begin{verbatim}
+program double_precision_example
+  use, intrinsic :: iso_fortran_env, only: real64  ! Use explicit ISO-standard double precision
+  implicit none
+
+  real(real64) :: x, y, result
+
+  ! Assign values
+  x = 3.141592653589793_real64
+  y = 2.718281828459045_real64
+
+  ! Perform computation
+  result = x * y
+
+  ! Print with full precision
+  print "(A, F24.16)", "Result = ", result
+
+end program double_precision_example
+\end{verbatim}
+
+\section{Using \texttt{test suite framework} for Testing}
+
+This framework provides a robust and scalable system for organizing and executing unit tests in Fortran. It allows running individual tests, complete test suites, or all project tests with simple and clear syntax.
+
+\noindent Please check \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/tree/main/test?ref_type=heads}{this readme file} for details.
+
+\subsection{Do not test multiple times}
+
+The correctness of the calculation, the correctness of the implemented algorithm is \emph{only} tested in Fortran.
+
+\noindent The API language tests for R, Python, and, if we ever included them, in C should only test that the function can be correctly called and the return values are accessible and of the expected type.
+
+\noindent In other words, do not repeat tests, if avoidable.
+
+\noindent If your test is created by an AI from the original Fortran code, and you thus do not lose work time on writing the test again in another programming language, please do feel free to do so.
+
+
+\section{Obligatory use of \texttt{intent} and \texttt{pure} }
+\begin{itemize}
+  \item Always use \texttt{intent} for function or subroutine arguments.
+  \item Always use \texttt{pure} where possible.
+\end{itemize}
+
+\section{Documenting Fortran Code with FORD}
+
+\textbf{FORD} (Fortran Documentation Generator) is a modern tool for generating web and PDF documentation from structured comments in Fortran code. It creates navigable documentation with cross-references, module and subroutine descriptions, argument lists, and usage examples.
+
+\subsection{Basic principles}
+\begin{itemize}
+  \item Use special comments (\texttt{!>} and \texttt{!|}) to annotate modules, subroutines, functions, and variables.
+  \item Comments must be placed immediately before the entity they document.
+  \item It is recommended to document all arguments, the general purpose, and any relevant side effects.
+\end{itemize}
+\begin{itemize}
+  \item Use \texttt{!>} for general descriptions of modules, subroutines, and functions.
+  \item Use \texttt{!|} to document each argument.
+  \item If relevant, add usage examples and warnings with \texttt{!!}.
+  \item Keep documentation up to date when the interface changes.
+  \item Generate documentation with FORD regularly and review the HTML output.
+\end{itemize}
+\subsection{Minimal example}
+\begin{verbatim}
+!> Module for calculating normalized tissue (axis) versatility.
+module avmod
+  use, intrinsic :: iso_fortran_env, only: real64
+  implicit none
+contains
+
+  !> Computes normalized tissue versatility for selected expression vectors.
+  !! The metric is based on the angle between each gene expression vector and the space diagonal.
+  pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, &
+                                             exp_vecs_selection_index, axes_selection, &
+                                             tissue_versatilities, tissue_angles_deg)
+    !| Number of axes (tissues/dimensions)
+    integer, intent(in) :: n_axes
+    !| Number of expression vectors (genes)
+    integer, intent(in) :: n_vectors
+    !| 2D array (n_axes, n_vectors), each column is a gene expression vector
+    real(real64), intent(in) :: expression_vectors(n_axes, n_vectors)
+    !| Logical array (n_vectors), .TRUE. for vectors to process
+    logical, intent(in) :: exp_vecs_selection_index(n_vectors)
+    !| Logical array (n_axes), .TRUE. for axes to include in calculation
+    logical, intent(in) :: axes_selection(n_axes)
+    !| Output, real array, length = count(exp_vecs_selection_index), stores the calculated 
+       tissue versatilities
+    real(real64), intent(out) :: tissue_versatilities(count(exp_vecs_selection_index))
+    !| Output, real array, length = count(exp_vecs_selection_index), stores the calculated 
+       angles in degrees
+    real(real64), intent(out) :: tissue_angles_deg(count(exp_vecs_selection_index))
+    ! ...
+  end subroutine compute_tissue_versatility
+end module avmod
+\end{verbatim}
+
+\subsection{How to generate documentation}
+\begin{enumerate}
+  \item Run \texttt{ford ford.yml} in the project root.
+  \item Open the generated HTML file (\texttt{doc/index.html}) in your browser.
+\end{enumerate}
+
+
+
+\section{Fortran to other programming languages Interface}
+
+Ideally, we build our Tensor Omics and F42 code so that it can be included and
+called from any other programming language. This comprises R, of course, but
+also Python, Lua, Julia, Matlab, etc. We can easily achieve this by offering
+two interface functions for every Tensor Omics or F42 function that we
+implement. Importantly, we should implement such pure Fortran functions in
+Fortran \texttt{module}s. Then add another function of the same name with
+appended ``\texttt{\_R}'' to expose the module function to R and a
+\texttt{bind(C)} with \texttt{use\_iso\_c\_binding} and naming the function
+with appended ``\texttt{\_C}''. See the below example for clarification.
+
+\begin{verbatim}
+! High-performance module code
+module tensor_omics
+contains
+  subroutine project_vector_core(v, n)
+    real(real64), intent(inout) :: v(n)
+    integer, intent(in) :: n
+    ! core vector projection logic
+  end subroutine
+end module
+
+! R interface
+subroutine project_vector_R(v, n)
+  real(real64) :: v(*)
+  integer :: n
+  use tensor_omics
+  call project_vector_core(v, n)
+end subroutine
+
+! C / WASM / Python interface
+subroutine project_vector_C(v, n) bind(C, name="project_vector_C")
+  use iso_c_binding
+  real(c_double) :: v(*)
+  integer(c_int) :: n
+  use tensor_omics
+  call project_vector_core(v, n)
+end subroutine
+\end{verbatim}
+
+\subsection{When to Write Wrappers for Fortran Functions}
+
+Only write wrappers for Fortran functions and subroutines that provide truly new or essential functionality to the API languages (C, R). For example, generic utilities such as sorting, which are already well-supported in most high-level languages, should not be wrapped unless there is a compelling reason. Focus on exposing the core scientific Tensor Omics or F42 functions.
+
+\subsection{The \texttt{\_tox} API Layer: Safe Data Access and Usage}
+
+In addition to the standard wrappers, we will implement another layer of API functions, conventionally named with the suffix \texttt{\_tox}, that are designed to operate using a pointer to our \texttt{txdata} Fortran type. This approach allows for efficient and direct manipulation of complex data structures from API languages, while maintaining safety and clarity.
+
+It is good practice to expose all relevant Fortran routines, but in the user manual and documentation, we will emphasize the use of the \texttt{\_tox} interface for most users. This interface is safer and more robust, as it manages the internal data structures and memory correctly. Direct access to lower-level routines is possible, but should be used with caution: the user must ensure that arrays or pointers passed to Fortran are not modified elsewhere (e.g., by libraries like matplotlib or numpy) while Fortran code is using them, to avoid undefined behavior or memory corruption.
+
+\textbf{Documentation guideline:} In the manual, show usage examples of the \texttt{\_tox} interface as the recommended way, and only mention that direct calls are possible for advanced users who understand the risks and memory management requirements.
+
+\textbf{Example:} The \texttt{analyze\_tox} function takes a pointer to a \texttt{txdata} object and performs analysis, ensuring all memory and data integrity is managed by the Fortran backend. Direct calls to lower-level routines should be clearly marked as advanced usage.
+
+
+\subsection{Safe and Efficient Interface Design for \texttt{bind(C)} in Tensor Omics}
+
+
+To expose Tensor Omics routines safely and portably, we use minimal \texttt{bind(C)} wrappers around internal Fortran procedures. Each wrapper is designed for ABI stability, no-copy interop, and zero semantic loss.
+
+\subsubsection{Keep \texttt{bind(C)} wrappers minimal}
+
+Wrap only, no computation.
+
+\begin{verbatim}
+subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
+  use iso_c_binding
+  real(c_double) :: x(*)
+  integer(c_int) :: n
+  call project_vector_core(x, n)
+end subroutine
+\end{verbatim}
+
+\subsubsection{Use \texttt{iso\_c\_binding} types}
+
+Avoid compiler-specific kinds.
+
+\begin{verbatim}
+real(c_double) :: x(*)
+integer(c_int) :: n
+\end{verbatim}
+
+\subsubsection{Accept arguments as C-style pointers}
+
+Do not use assumed-shape or allocatable arrays.
+
+\begin{verbatim}
+real(c_double) :: x(*)      ! OK
+real(c_double), dimension(:) :: x  ! Not allowed
+\end{verbatim}
+
+\subsubsection{Avoid optional arguments and intent propagation}
+
+Declare arguments explicitly, without \texttt{intent} or \texttt{optional}.
+
+\begin{verbatim}
+real(c_double) :: x(*)
+! No intent or optional keyword
+\end{verbatim}
+
+\subsubsection{Pass all arguments by reference}
+
+Do not use \texttt{value}; pass pointers from caller (Python, Lua, etc.).
+
+\begin{verbatim}
+real(c_double) :: x(*)
+integer(c_int) :: n
+\end{verbatim}
+
+\subsubsection{Preserve SIMD and optimization pathways}
+
+Call computational logic in a separate routine that uses full Fortran features.
+
+\begin{verbatim}
+subroutine project_vector_core(x, n)
+  real(real64), intent(inout) :: x(n)
+  integer, intent(in) :: n
+  ! fast loop, vectorizable
+end subroutine
+\end{verbatim}
+
+\subsubsection{Use stable symbol names}
+
+Avoid compiler-dependent mangling by specifying names explicitly.
+
+\begin{verbatim}
+subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
+\end{verbatim}
+
+\subsubsection{Ensure ABI compatibility with all consumers}
+
+Expose only basic types: scalars and flat arrays.
+
+\begin{verbatim}
+real(c_double) :: vec(*)
+integer(c_int) :: n
+! No derived types, assumed-shape arrays, or allocatables
+\end{verbatim}
+
+\subsubsection{Verify type equivalence when calling core Fortran routines}
+
+Make sure internal types match \texttt{iso\_c\_binding} externally.
+
+\begin{verbatim}
+use iso_c_binding
+real(real64) :: x(n)
+! Ensure real(real64) == real(c_double) on your compiler
+\end{verbatim}
+
+\subsubsection{Avoid aliasing in calls to \texttt{bind(C)} routines}
+
+Do not pass the same variable twice under different names.
+
+\begin{verbatim}
+! DON'T - Unsafe aliasing: same memory twice
+call project_vector_C(x, x, n)
+
+! OK - Pass unique memory regions only
+call project_vector_C(x, y, n)
+\end{verbatim}
+
+This structure ensures maximum compatibility and reproducibility across calling environments without compromising Fortran-native performance.
+
+\subsection{How to pass arguments back and forth to C, and thus Python, without memory copy.}
+
+When passing arrays or strings between Fortran and C (or Python), you can achieve zero-copy interoperation using the ISO C binding module and pointer association. Below are canonical examples for both arrays and C strings:
+
+\subsubsection*{int, real, logical, complex Fortran assumed shape arrays}
+
+\begin{verbatim}
+module interop_example
+  use iso_c_binding
+  implicit none
+contains
+
+! Entry point called from C
+subroutine process_int_array(ptr, n, f_arr) bind(C)
+  use iso_c_binding
+  implicit none
+  type(c_ptr), value :: ptr         ! Raw C pointer passed from C
+  integer(c_int), value :: n        ! Number of elements
+
+  integer(c_int), pointer :: f_arr(:) ! Fortran pointer to wrap the C array
+
+  ! Convert raw C pointer into a Fortran assumed-shape pointer
+  call c_f_pointer(ptr, f_arr, [n])
+
+  ! f_arr can now be passed to any subroutine expecting an assumed-shape array
+  call do_work_on_array(f_arr)
+
+end subroutine process_int_array
+
+! This subroutine accepts an assumed-shape array and works with it
+subroutine do_work_on_array(arr)
+  implicit none
+  integer(c_int), intent(inout) :: arr(:)
+
+  integer :: i
+  do i = 1, size(arr)
+    arr(i) = arr(i) + 1
+  end do
+end subroutine do_work_on_array
+
+end module interop_example
+\end{verbatim}
+
+\subsubsection*{C Strings to Fortran Strings}
+
+This is for C Strings, but should be treated with caution, because the result \textbf{cannot be used as assumed length Fortran chars}.
+
+\begin{verbatim}
+module charptr_demo
+  use iso_c_binding
+  implicit none
+contains
+
+subroutine process_c_string(c_str_ptr, str_len) bind(C)
+  use iso_c_binding
+  implicit none
+
+  ! Arguments from C
+  type(c_ptr), value :: c_str_ptr
+  integer(c_int), value :: str_len
+
+  ! Fortran pointer to reshape the C char*
+  character(kind=c_char), pointer :: str(:)
+
+  ! Map the C pointer to a Fortran pointer
+  call c_f_pointer(c_str_ptr, str, [str_len])
+
+  ! NOTE:
+  ! The above Fortran pointer can be passed as an assumed shape Array
+  ! to any Fortran subroutine or function expecting an assumed shape
+  ! argument. Internally they are converted without (much) overhead. 
+
+  ! Print characters one by one (to show contents and no copy)
+  print *, 'Received C string (raw char*):'
+  print '(a)', str ! Note: prints whole array as string
+
+  ! Optionally: Loop through chars
+  ! do i = 1, str_len
+  !   write(*,'(a)', advance='no') str(i)
+  ! end do
+  ! write(*,*)
+end subroutine process_c_string
+
+end module charptr_demo
+\end{verbatim}
+
+\subsubsection*{Summary Table of Interoperable Array Patterns}
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Direction} & \textbf{Method} & \textbf{Copy?} & \textbf{Safe?} \\
+\hline
+C $\rightarrow$ Fortran & \texttt{c\_f\_pointer} & No & Yes \\
+Fortran $\rightarrow$ C & \texttt{c\_loc + shape info} & No & Yes \\
+Fortran descriptor to C & Not possible & N/A & No \\
+Allocatable return & Not portable & Yes (implicit) & No \\
+\hline
+\end{tabular}
+\end{center}
+
+This approach ensures efficient, copy-free interoperation between Fortran and C while preserving the expressiveness of assumed-shape arrays internally in Fortran.
+
+\noindent\textbf{Caller responsibility:}
+The external caller (e.g., from C, Python, Lua) must allocate a 1D array of size \texttt{nrow * ncol} and ensure it is stored in Fortran-style column-major order, or reshaped accordingly.
+
+\noindent This pattern allows Tensor Omics to retain full multidimensional structure internally while offering safe and portable interfaces to external consumers.
+
+
+\section{Fortran Array Notation Cheat-Sheet}
+
+This section summarizes the three common ways to declare array arguments in Fortran procedures, with a focus on their use, safety, and suitability in modern code.
+
+\subsection{1. Assumed-Size Arrays \texttt{(*)}}
+
+\begin{verbatim}
+subroutine example(a, n)
+  real(real64), intent(in) :: a(*)
+  integer, intent(in) :: n
+  integer :: i
+  do i = 1, n
+    print *, a(i)
+  end do
+end subroutine
+\end{verbatim}
+
+\textbf{Meaning:} \texttt{a(*)} is an assumed-size array. The subroutine does not know the array bounds and must be told explicitly via a separate argument (e.g., \texttt{n}). This is the lowest-level array form and maps closely to a raw pointer in C.
+
+\textbf{Limitations:}
+\begin{itemize}
+  \item No bounds checking
+  \item \texttt{size(a)} and \texttt{lbound(a)} are illegal
+  \item Cannot use array operations like \texttt{matmul} or \texttt{sum}
+  \item Unsafe for slicing (\texttt{a(2:5)} is undefined)
+\end{itemize}
+
+\textbf{Use case:} C interoperability, legacy code, low-level memory kernels.
+
+
+\subsection{2. Assumed-Shape Arrays \texttt{(:)}}
+
+\begin{verbatim}
+subroutine example(a)
+  real(real64), intent(in) :: a(:)
+  integer :: i
+  do i = 1, size(a)
+    print *, a(i)
+  end do
+end subroutine
+\end{verbatim}
+
+\textbf{Meaning:} \texttt{a(:)} is an assumed-shape array. The compiler receives size and bounds information at runtime. Requires an explicit interface (typically via a module or \texttt{interface} block).
+
+\textbf{Advantages:}
+\begin{itemize}
+  \item Safe: \texttt{size(a)} is available
+  \item Supports slicing, broadcasting, and array intrinsics
+  \item Can use \texttt{matmul}, \texttt{dot\_product}, etc.
+\end{itemize}
+
+\textbf{Use case:} Recommended default for most modern Fortran code.
+
+
+\subsection{3. Multidimensional Arrays \texttt{(:,:)} and Higher}
+
+\begin{verbatim}
+subroutine process_matrix(A)
+  real(real64), intent(in) :: A(:, :)
+  print *, size(A, 1), size(A, 2)
+end subroutine
+\end{verbatim}
+
+\textbf{Meaning:} Each colon represents a dimension of unknown size. Like 1D assumed-shape arrays, this requires an explicit interface and passes shape info at runtime.
+
+\textbf{Features:}
+\begin{itemize}
+  \item Full array operations: \texttt{transpose}, \texttt{matmul}, etc.
+  \item Safer and clearer semantics for tensors and matrices
+\end{itemize}
+
+\textbf{Use case:} Tensor Omics vector spaces, image/matrix processing, linear algebra routines.
+
+\vspace{1em}
+
+\noindent\textbf{Summary Table}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+Notation & Bounds Known? & Safe? & Use Case \\
+\hline
+\texttt{(*)} & No  & No  & C interop, low-level \\
+\texttt{(:)} & Yes & Yes & Modern Fortran arrays \\
+\texttt{(:,:)} & Yes & Yes & Matrices, tensors \\
+\hline
+\end{tabular}
+
+\noindent For all assumed-shape forms (\texttt{(:)}, \texttt{(:,:)}), ensure the subroutine has an explicit interface or is in a module.
+
+
 \section{Memory Passing Behavior in Fortran (F42 Standard for Tensor Omics)}
 
 \subsection{General Principles}
@@ -152,14 +649,13 @@ Using \texttt{bind(C)} in Fortran changes the function's symbol name and calling
   \item \texttt{src/mysub.f90}:
 \begin{verbatim}
 subroutine mysub(x, y, result)
-  real(8) :: x, y, result
+  real(real64) :: x, y, result
   result = x + y
 end subroutine
 \end{verbatim}
 \end{itemize}
 
 \vspace{1em}
-
 \subsection{Why \texttt{GOTO} Is Forbidden in F42 and TOX}
 
 \texttt{GOTO} is a low-level control structure that violates the principles of structured, readable, and verifiable code. While allowed by Fortran, its use is incompatible with both modern software engineering and WebAssembly (WASM) compilation.
@@ -325,427 +821,6 @@ principles of F42. Developers are encouraged to refactor inner computations
 into pure, stateless subroutines and apply parallelization only where it
 governs the outermost iteration logic.
 
-\section{Fortran to other programming languages Interface}
-
-Ideally, we build our Tensor Omics and F42 code so that it can be included and
-called from any other programming language. This comprises R, of course, but
-also Python, Lua, Julia, Matlab, etc. We can easily achieve this by offering
-two interface functions for every Tensor Omics or F42 function that we
-implement. Importantly, we should implement such pure Fortran functions in
-Fortran \texttt{module}s. Then add another function of the same name with
-appended ``\texttt{\_R}'' to expose the module function to R and a
-\texttt{bind(C)} with \texttt{use\_iso\_c\_binding} and naming the function
-with appended ``\texttt{\_C}''. See the below example for clarification.
-
-\begin{verbatim}
-! High-performance module code
-module tensor_omics
-contains
-  subroutine project_vector_core(v, n)
-    real(8), intent(inout) :: v(n)
-    integer, intent(in) :: n
-    ! core vector projection logic
-  end subroutine
-end module
-
-! R interface
-subroutine project_vector_R(v, n)
-  real(8) :: v(*)
-  integer :: n
-  use tensor_omics
-  call project_vector_core(v, n)
-end subroutine
-
-! C / WASM / Python interface
-subroutine project_vector_C(v, n) bind(C, name="project_vector_C")
-  use iso_c_binding
-  real(c_double) :: v(*)
-  integer(c_int) :: n
-  use tensor_omics
-  call project_vector_core(v, n)
-end subroutine
-\end{verbatim}
-
-\subsection{Safe and Efficient Interface Design for \texttt{bind(C)} in Tensor Omics}
-
-To expose Tensor Omics routines safely and portably, we use minimal \texttt{bind(C)} wrappers around internal Fortran procedures. Each wrapper is designed for ABI stability, no-copy interop, and zero semantic loss.
-
-\subsubsection{Keep \texttt{bind(C)} wrappers minimal}
-
-Wrap only, no computation.
-
-\begin{verbatim}
-subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
-  use iso_c_binding
-  real(c_double) :: x(*)
-  integer(c_int) :: n
-  call project_vector_core(x, n)
-end subroutine
-\end{verbatim}
-
-\subsubsection{Use \texttt{iso\_c\_binding} types}
-
-Avoid compiler-specific kinds.
-
-\begin{verbatim}
-real(c_double) :: x(*)
-integer(c_int) :: n
-\end{verbatim}
-
-\subsubsection{Accept arguments as C-style pointers}
-
-Do not use assumed-shape or allocatable arrays.
-
-\begin{verbatim}
-real(c_double) :: x(*)      ! OK
-real(c_double), dimension(:) :: x  ! Not allowed
-\end{verbatim}
-
-\subsubsection{Avoid optional arguments and intent propagation}
-
-Declare arguments explicitly, without \texttt{intent} or \texttt{optional}.
-
-\begin{verbatim}
-real(c_double) :: x(*)
-! No intent or optional keyword
-\end{verbatim}
-
-\subsubsection{Pass all arguments by reference}
-
-Do not use \texttt{value}; pass pointers from caller (Python, Lua, etc.).
-
-\begin{verbatim}
-real(c_double) :: x(*)
-integer(c_int) :: n
-\end{verbatim}
-
-\subsubsection{Preserve SIMD and optimization pathways}
-
-Call computational logic in a separate routine that uses full Fortran features.
-
-\begin{verbatim}
-subroutine project_vector_core(x, n)
-  real(8), intent(inout) :: x(n)
-  integer, intent(in) :: n
-  ! fast loop, vectorizable
-end subroutine
-\end{verbatim}
-
-\subsubsection{Use stable symbol names}
-
-Avoid compiler-dependent mangling by specifying names explicitly.
-
-\begin{verbatim}
-subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
-\end{verbatim}
-
-\subsubsection{Ensure ABI compatibility with all consumers}
-
-Expose only basic types: scalars and flat arrays.
-
-\begin{verbatim}
-real(c_double) :: vec(*)
-integer(c_int) :: n
-! No derived types, assumed-shape arrays, or allocatables
-\end{verbatim}
-
-\subsubsection{Verify type equivalence when calling core Fortran routines}
-
-Make sure internal types match \texttt{iso\_c\_binding} externally.
-
-\begin{verbatim}
-use iso_c_binding
-real(8) :: x(n)
-! Ensure real(8) == real(c_double) on your compiler
-\end{verbatim}
-
-\subsubsection{Avoid aliasing in calls to \texttt{bind(C)} routines}
-
-Do not pass the same variable twice under different names.
-
-\begin{verbatim}
-! DON'T - Unsafe aliasing: same memory twice
-call project_vector_C(x, x, n)
-
-! OK - Pass unique memory regions only
-call project_vector_C(x, y, n)
-\end{verbatim}
-
-This structure ensures maximum compatibility and reproducibility across calling environments without compromising Fortran-native performance.
-
-\subsection{Interfacing Arrays Between Fortran and C Without Memory Copy}
-
-When writing Fortran procedures with \texttt{bind(C)} and \texttt{iso\_c\_binding}, only assumed-size arrays (\texttt{x(*)}) are allowed. Assumed-shape arrays (\texttt{x(:)} or \texttt{x(:,:)}), which rely on Fortran descriptors, are not compatible with the C ABI. However, both directions of memory-safe interoperation can be achieved without copying, using \texttt{c\_f\_pointer} and \texttt{c\_loc}.
-
-\subsubsection{Passing a C-Style Flat Array to Fortran as Assumed-Shape}
-
-To reinterpret an assumed-size array received from C as a shaped array in Fortran, use pointer association via \texttt{c\_f\_pointer}. This method avoids any memory copy and provides full Fortran array semantics internally.
-
-\paragraph{Fortran Wrapper}
-
-\begin{verbatim}
-subroutine project_matrix_C(x, nrow, ncol) bind(C, name="project_matrix_C")
-  use iso_c_binding
-  implicit none
-  real(c_double), intent(inout) :: x(*)
-  integer(c_int), value :: nrow, ncol
-
-  real(c_double), pointer :: mat(:,:)
-  call c_f_pointer(c_loc(x(1)), mat, [nrow, ncol])
-
-  call project_matrix(mat)
-end subroutine
-\end{verbatim}
-
-\paragraph{Internal Routine with Full Fortran Semantics}
-
-\begin{verbatim}
-subroutine project_matrix(mat)
-  real(8), intent(inout) :: mat(:,:)
-  ! Full array-based logic permitted here
-end subroutine
-\end{verbatim}
-
-This technique supports any rank, and does not involve copying. It is compatible with arrays passed from C, Python (via ctypes or cffi), LuaJIT, and WebAssembly when memory layout is column-major.
-
-\subsubsection{Returning a Fortran Array to C Without Copying}
-
-Because Fortran array descriptors are not understood by C, assumed-shape or allocatable arrays cannot be returned directly to C. Instead, a raw pointer to the data must be returned using \texttt{c\_loc}, along with shape metadata as scalar arguments.
-
-\paragraph{Returning Allocated Data from Fortran to C}
-
-\begin{verbatim}
-subroutine get_data_C(data_ptr, n) bind(C, name="get_data_C")
-  use iso_c_binding
-  implicit none
-  type(c_ptr), intent(out) :: data_ptr
-  integer(c_int), intent(out) :: n
-
-  real(c_double), pointer :: buffer(:)
-
-  n = 100
-  allocate(buffer(n))
-  buffer = [(real(i, c_double), i = 1, n)]
-
-  data_ptr = c_loc(buffer(1))
-end subroutine
-\end{verbatim}
-
-\paragraph{Caller-Side Interpretation in C (Example)}
-
-\begin{verbatim}
-extern void get_data_C(void **ptr, int *n);
-double *buf;
-int n;
-get_data_C((void**)&buf, &n);
-// buf now points to n doubles allocated by Fortran
-\end{verbatim}
-
-\paragraph{Alternative: Caller Allocates the Buffer}
-
-A more interoperable strategy is for the C side to allocate the buffer and pass it to Fortran for filling.
-
-\begin{verbatim}
-subroutine fill_vector_C(buf, n) bind(C, name="fill_vector_C")
-  use iso_c_binding
-  real(c_double), intent(out) :: buf(*)
-  integer(c_int), value :: n
-  integer :: i
-  do i = 1, n
-    buf(i) = i * 2.0
-  end do
-end subroutine
-\end{verbatim}
-
-\subsubsection{Summary Table of Interoperable Array Patterns}
-
-\begin{center}
-\begin{tabular}{|l|l|l|l|}
-\hline
-\textbf{Direction} & \textbf{Method} & \textbf{Copy?} & \textbf{Safe?} \\
-\hline
-C $\rightarrow$ Fortran & \texttt{c\_f\_pointer} & No & Yes \\
-Fortran $\rightarrow$ C & \texttt{c\_loc + shape info} & No & Yes \\
-Fortran descriptor to C & Not possible & N/A & No \\
-Allocatable return & Not portable & Yes (implicit) & No \\
-\hline
-\end{tabular}
-\end{center}
-
-This approach ensures efficient, copy-free interoperation between Fortran and C while preserving the expressiveness of assumed-shape arrays internally in Fortran.
-
-\noindent\textbf{Caller responsibility:}
-The external caller (e.g., from C, Python, Lua) must allocate a 1D array of size \texttt{nrow * ncol} and ensure it is stored in Fortran-style column-major order, or reshaped accordingly.
-
-\noindent This pattern allows Tensor Omics to retain full multidimensional structure internally while offering safe and portable interfaces to external consumers.
-
-\section{Fortran Array Notation Cheat-Sheet}
-
-This section summarizes the three common ways to declare array arguments in Fortran procedures, with a focus on their use, safety, and suitability in modern code.
-
-\subsection{1. Assumed-Size Arrays \texttt{(*)}}
-
-\begin{verbatim}
-subroutine example(a, n)
-  real(8), intent(in) :: a(*)
-  integer, intent(in) :: n
-  integer :: i
-  do i = 1, n
-    print *, a(i)
-  end do
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} \texttt{a(*)} is an assumed-size array. The subroutine does not know the array bounds and must be told explicitly via a separate argument (e.g., \texttt{n}). This is the lowest-level array form and maps closely to a raw pointer in C.
-
-\textbf{Limitations:}
-\begin{itemize}
-  \item No bounds checking
-  \item \texttt{size(a)} and \texttt{lbound(a)} are illegal
-  \item Cannot use array operations like \texttt{matmul} or \texttt{sum}
-  \item Unsafe for slicing (\texttt{a(2:5)} is undefined)
-\end{itemize}
-
-\textbf{Use case:} C interoperability, legacy code, low-level memory kernels.
-
-
-\subsection{2. Assumed-Shape Arrays \texttt{(:)}}
-
-\begin{verbatim}
-subroutine example(a)
-  real(8), intent(in) :: a(:)
-  integer :: i
-  do i = 1, size(a)
-    print *, a(i)
-  end do
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} \texttt{a(:)} is an assumed-shape array. The compiler receives size and bounds information at runtime. Requires an explicit interface (typically via a module or \texttt{interface} block).
-
-\textbf{Advantages:}
-\begin{itemize}
-  \item Safe: \texttt{size(a)} is available
-  \item Supports slicing, broadcasting, and array intrinsics
-  \item Can use \texttt{matmul}, \texttt{dot\_product}, etc.
-\end{itemize}
-
-\textbf{Use case:} Recommended default for most modern Fortran code.
-
-
-\subsection{3. Multidimensional Arrays \texttt{(:,:)} and Higher}
-
-\begin{verbatim}
-subroutine process_matrix(A)
-  real(8), intent(in) :: A(:, :)
-  print *, size(A, 1), size(A, 2)
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} Each colon represents a dimension of unknown size. Like 1D assumed-shape arrays, this requires an explicit interface and passes shape info at runtime.
-
-\textbf{Features:}
-\begin{itemize}
-  \item Full array operations: \texttt{transpose}, \texttt{matmul}, etc.
-  \item Safer and clearer semantics for tensors and matrices
-\end{itemize}
-
-\textbf{Use case:} Tensor Omics vector spaces, image/matrix processing, linear algebra routines.
-
-\vspace{1em}
-
-\noindent\textbf{Summary Table}
-
-\begin{tabular}{|l|l|l|l|}
-\hline
-Notation & Bounds Known? & Safe? & Use Case \\
-\hline
-\texttt{(*)} & No  & No  & C interop, low-level \\
-\texttt{(:)} & Yes & Yes & Modern Fortran arrays \\
-\texttt{(:,:)} & Yes & Yes & Matrices, tensors \\
-\hline
-\end{tabular}
-
-\noindent For all assumed-shape forms (\texttt{(:)}, \texttt{(:,:)}), ensure the subroutine has an explicit interface or is in a module.
-
-\section{Using \texttt{fpm} for Testing}
-
-\subsection{1. Directory Structure}
-The Fortran Package Manager (fpm) expects test files to be located in the \texttt{test/} subdirectory:
-
-\begin{verbatim}
-project_root/
-  src/
-    your_module.f90
-  test/
-    test_your_module.f90
-  fpm.toml
-\end{verbatim}
-
-\subsection{2. Writing a Test File}
-Use standard Fortran procedures for testing. A minimal example:
-
-\begin{verbatim}
-! test/test_smooth.f90
-module test_smooth
-  use mymodule       ! your actual module
-  use, intrinsic :: iso_fortran_env, only: wp => real64
-  use, intrinsic :: ieee_arithmetic
-  implicit none
-contains
-
-  subroutine test_identity_field
-    real(wp), dimension(3,10) :: vectors, coords, smoothed
-    vectors = 1.0_wp
-    coords = reshape([(i*0.1_wp, i=1,30)], shape(coords))
-
-    call build_kdtree(coords, tree)
-    call smooth_vectors_gaussian_adaptive(coords, vectors, tree, smoothed, 5)
-
-    if (any(abs(smoothed - vectors) > 1e-12_wp)) then
-      error stop "Test failed: smoothed vectors differ from input"
-    end if
-  end subroutine
-
-end module
-\end{verbatim}
-
-\subsection{3. Add Test to \texttt{fpm.toml}}
-
-\begin{verbatim}
-[build]
-name = "tensor-omics"
-
-[test]
-name = "smooth-test"
-source-dir = "test"
-main = "test_smooth.f90"
-\end{verbatim}
-
-Alternatively, simply place all test modules in the \texttt{test/} directory and fpm will discover and run them automatically.
-
-\subsection{4. Run the Tests}
-
-\begin{verbatim}
-fpm test
-\end{verbatim}
-
-This command compiles and runs all subroutines in your test modules.
-
-\subsection{5. Advanced Test Frameworks}
-
-For more advanced features such as assertions, parameterized tests, or colored output, consider the following Fortran test frameworks:
-
-\begin{itemize}
-  \item \texttt{vegetables} \url{https://github.com/fortran-lang/vegetables}
-  \item \texttt{test-drive} \url{https://github.com/fortran-lang/test-drive}
-  \item \texttt{pFUnit} \url{https://github.com/Goddard-Fortran-Ecosystem/pFUnit}
-\end{itemize}
-
-However, \texttt{fpm test} works out of the box with plain Fortran modules and \texttt{error stop}.
-
-\subsection{Optional}
-Would you like a sample \texttt{fpm} project template with your smoothing algorithm and pre-configured test suite?
 
 \section{High-Performance Fortran Compilation and Memory Alignment}
 
@@ -863,8 +938,8 @@ Most importantly:
 \noindent
 Example:
 \begin{verbatim}
-real(8) :: tmp
-real(8) :: sum
+real(real64) :: tmp
+real(real64) :: sum
 
 !$omp parallel do simd private(i, tmp) reduction(+:sum) schedule(static)
 do i = 1, n
@@ -928,42 +1003,29 @@ When performing numerical or logical accumulation in parallel regions, OpenMP pr
 \label{intel_flags}
 Recommended flags:
 \begin{verbatim}
--O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul
+-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC
 \end{verbatim}
 
 \subsubsection{GNU Compiler (\texttt{gfortran})}
 \label{gfortran_flags}
 Recommended flags:
 \begin{verbatim}
--O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math
+-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize 
+-fassociative-math -fPIC
 \end{verbatim}
 
 \subsection{Configuring \texttt{fpm.toml}}
-Use dedicated profiles for Intel and GNU compilers in your \texttt{fpm.toml}:
 
 \begin{verbatim}
-[profile.release-gfortran]
-flags = [
-  "-O3",
-  "-march=native",
-  "-mtune=native",
-  "-fopenmp",
-  "-ffast-math",
-  "-funroll-loops",
-  "-ftree-vectorize",
-  "-fassociative-math"
-]
+name = "tensor-omics"
+version = "0.1.0"
+license = "MIT"
 
-[profile.release-ifx]
-flags = [
-  "-O3",
-  "-qopenmp",
-  "-xHost",
-  "-align", "array64byte",
-  "-qopt-zmm-usage=high",
-  "-qopt-prefetch=3",
-  "-qopt-matmul"
-]
+[install]
+library = true
+
+[library]
+type = "shared" 
 \end{verbatim}
 
 \subsection{Compile Script with Hardware-Dependent Defaults}
@@ -971,36 +1033,59 @@ Use a compile script to choose the optimal alignment at runtime and apply the ap
 
 \begin{verbatim}
 #!/bin/bash
-
-# build.sh — Optimized build script for FPM with dynamic alignment
-
+# build.sh | Optimized build script for FPM with dynamic alignment
 # Default fallback alignment for the most likely situation:
 ALIGN=32
-
 # Detect capabilities in order of descending priority:
 if lscpu | grep -q amx; then
-  ALIGN=128
+ALIGN=128
 elif lscpu | grep -q avx512; then
-  ALIGN=64
+ALIGN=64
 elif lscpu | grep -q avx2; then
-  ALIGN=32
+ALIGN=32
 elif lscpu | grep -q sse2; then
-  ALIGN=16
+ALIGN=16
 fi
-
 # Detect compiler and choose appropriate profile:
 if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  PROFILE="release-ifx"
+  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul 
+  -fPIC"
+  COMPILER="ifx"
 else
-  PROFILE="release-gfortran"
+  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize 
+  -fassociative-math -fPIC"
+  COMPILER="gfortran"
 fi
 
-# Informative output:
-echo "Detected alignment: $ALIGN bytes"
-echo "Using compiler profile: $PROFILE"
+# Detect --max-performance flag
+MAX_PERF_FLAG=""
+for arg in "$@"; do
+  if [[ "$arg" == "--max-performance" ]]; then
+    MAX_PERF_FLAG="-DMAX_PERFORMANCE"
+  fi
+done
 
+# Informative output:
 # Build with selected profile and alignment parameter:
-fpm build --profile "$PROFILE" --flag "-DDEFAULT_ALIGNMENT=$ALIGN"
+export FC
+fpm build --compiler $COMPILER --flag "$FLAGS" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" 
+          --flag "$MAX_PERF_FLAG"
+
+echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes, optimization flags: $FLAGS, 
+      max performance: $MAX_PERF_FLAG"
+
+# Find .so file in the build directory
+sofile=$(find build -name 'libtensor-omics.so' | head -n 1)
+
+# Create symbolic link in the build directory with relative path
+if [[ -n "$sofile" ]]; then
+  # Extract the relative path from build/ directory
+  relative_path=$(realpath --relative-to=build "$sofile")
+  ln -sf "$relative_path" build/libtensor-omics.so
+  echo "Created symlink: build/libtensor-omics.so -> $relative_path"
+else
+  echo "Warning: libtensor-omics.so not found in build directory"
+fi
 \end{verbatim}
 
 \subsection{Contiguous and Aligned Arrays in Fortran}
@@ -1043,7 +1128,7 @@ Use this in your allocation logic:
 \begin{verbatim}
 use alignment_utils
 integer :: m, padded_m
-real(8), allocatable :: A(:)
+real(real64), allocatable :: A(:)
 
 m = 1000
 padded_m = padded_size(m)
@@ -1058,7 +1143,7 @@ To ensure all dimensions are padded and aligned, wrap padding in a helper proced
 
 \begin{verbatim}
 integer :: nx, ny, px, py
-real(8), allocatable :: A(:,:)
+real(real64), allocatable :: A(:,:)
 
 nx = 800
 ny = 600
@@ -1231,7 +1316,7 @@ Crucially, \textbf{looping over coarrays automatically refers to the local image
 A coarray is declared in Fortran by appending square brackets with \texttt{[*]} to the variable declaration. For example:
 
 \begin{verbatim}
-real(8), allocatable :: a(:)[:], b(:)[:], c(:)[:]
+real(real64), allocatable :: a(:)[:], b(:)[:], c(:)[:]
 \end{verbatim}
 
 The colon \texttt{:} indicates a deferred-shape (allocatable) array, and the brackets \texttt{[:]} declare the variable as a coarray, with one instance per image.
