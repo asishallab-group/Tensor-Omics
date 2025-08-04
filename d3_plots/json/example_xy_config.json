@@ -1,0 +1,15 @@
+{
+  "xField": "median_distance",
+  "yField": "std",
+  "showPoints": true,
+  "connectPoints": false,
+  "lineStyle": "smooth",
+  "xLabel": "Median Distance",
+  "yLabel": "Standard Deviation",
+  "xValues": [0.5, 1.0, 2.0, 3.5, 5.5, 7.0],
+  "yValues": [2.0, 1.5, 1.0, 0.8, 1.2, 2.5],
+  "highlightIndices": [2, 4],
+  "lineColor": "blue",
+  "pointColor": "yellow",
+  "highlightColor": "red"
+}

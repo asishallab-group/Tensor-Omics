@@ -1,0 +1,9 @@
+{
+  "plotType": "bar",
+  "xField": "category",
+  "yField": "value",
+  "xValues": ["A", "B", "C", "D", "E"],
+  "yValues": [5, 8, 2, 6, 9],
+  "xLabel": "Category",
+  "yLabel": "Value"
+}

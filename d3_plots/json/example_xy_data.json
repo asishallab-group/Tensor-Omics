@@ -1,0 +1,7 @@
+[
+  { "median_distance": 1.2, "std": 0.5 },
+  { "median_distance": 2.1, "std": 0.7 },
+  { "median_distance": 3.0, "std": 0.9 },
+  { "median_distance": 4.2, "std": 1.1 },
+  { "median_distance": 5.0, "std": 1.3 }
+]
