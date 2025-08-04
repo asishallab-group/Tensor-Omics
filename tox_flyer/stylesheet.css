@@ -4,11 +4,25 @@ html, body {
   height: 100dvh;
   margin: 0;
   overflow: hidden;
+}
 
+html, body, button, .notextselect {
   /* Disable selection of anything, as everything happens 'inside' the canvas */
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10, 11 */
   user-select: none;
+}
+
+.textselect {
+  -webkit-user-select: auto; /* Safari */
+  -ms-user-select: auto; /* IE 10, 11 */
+  user-select: auto;
+  pointer-events: auto;
+}
+
+.clickable:not([disabled]) {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 main {
@@ -33,17 +47,6 @@ main {
   display: block;
   pointer-events: none;
   font-size: 12px;
-}
-
-.textselect {
-  -webkit-user-select: auto; /* Safari */
-  -ms-user-select: auto; /* IE 10, 11 */
-  user-select: auto;
-  pointer-events: auto;
-}
-.clickable:not([disabled]) {
-  pointer-events: auto;
-  cursor: pointer;
 }
 
 img.icon {
