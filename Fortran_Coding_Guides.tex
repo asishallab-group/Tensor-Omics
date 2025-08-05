@@ -106,6 +106,111 @@ The correctness of the calculation, the correctness of the implemented algorithm
   \item Always use \texttt{pure} where possible.
 \end{itemize}
 
+\subsection{Optional Arguments in Fortran}
+
+\subsubsection{Overview}
+
+Fortran (ISO standard, since Fortran 90) supports \texttt{optional} procedure arguments, which allow the caller to omit certain arguments when invoking a subroutine or function. Their presence must be checked explicitly using the intrinsic function \texttt{PRESENT}. Fortran does not support default values in procedure headers. Developers must assign defaults manually.
+
+\subsubsection{Syntax and Usage}
+
+To declare an optional argument:
+
+\begin{verbatim}
+subroutine example(a, b, c)
+  integer, intent(in) :: a
+  real, intent(in), optional :: b, c
+\end{verbatim}
+
+To check whether an optional argument was passed:
+
+\begin{verbatim}
+  if (present(b)) then
+    print *, 'B is provided: ', b
+  else
+    print *, 'B is not provided.'
+  end if
+\end{verbatim}
+
+\subsubsection{Example}
+
+\begin{verbatim}
+program optional_demo
+  call greet("Josef")
+  call greet("Josef", "Mexico")
+contains
+  subroutine greet(name, location)
+    character(len=*), intent(in) :: name
+    character(len=*), intent(in), optional :: location
+
+    print *, "Hello, ", name
+    if (present(location)) then
+      print *, "How is the weather in ", location, "?"
+    end if
+  end subroutine greet
+end program optional_demo
+\end{verbatim}
+
+\subsubsection{Default Value Handling}
+
+Fortran does not support assigning default values directly in the argument list. Instead, assign them manually after a \texttt{PRESENT} check:
+
+\begin{verbatim}
+subroutine greet(name, title)
+  character(len=*), intent(in) :: name
+  character(len=*), intent(in), optional :: title
+  character(len=20) :: effective_title
+
+  if (present(title)) then
+    effective_title = title
+  else
+    effective_title = "Mr./Ms."
+  end if
+
+  print *, "Hello, ", trim(effective_title), " ", trim(name)
+end subroutine greet
+\end{verbatim}
+
+\subsubsection{Workaround: Interface Overloading}
+
+To emulate default arguments, use multiple procedures with an interface:
+
+\begin{verbatim}
+module greeter_mod
+contains
+  subroutine greet1(name)
+    character(len=*), intent(in) :: name
+    call greet2(name, "Mr./Ms.")
+  end subroutine
+
+  subroutine greet2(name, title)
+    character(len=*), intent(in) :: name
+    character(len=*), intent(in) :: title
+    print *, "Hello, ", trim(title), " ", trim(name)
+  end subroutine
+end module
+
+program main
+  use greeter_mod
+  interface greet
+    module procedure greet1, greet2
+  end interface
+
+  call greet("Josef")
+  call greet("Josef", "Dr.")
+end program
+\end{verbatim}
+
+\subsubsection{Best Practices}
+
+\begin{itemize}
+  \item Always check optional arguments with \texttt{PRESENT} before accessing them.
+  \item Avoid relying on optional arguments for critical logic without default assignment.
+  \item Use interface overloading to simulate default values if needed for cleaner calling code.
+  \item Do not use optional arguments in \texttt{elemental} procedures (not supported).
+  \item Document the behavior and defaults of optional arguments clearly in the procedure's interface documentation.
+\end{itemize}
+
 \section{Documenting Fortran Code with FORD}
 
 \textbf{FORD} (Fortran Documentation Generator) is a modern tool for generating web and PDF documentation from structured comments in Fortran code. It creates navigable documentation with cross-references, module and subroutine descriptions, argument lists, and usage examples.
