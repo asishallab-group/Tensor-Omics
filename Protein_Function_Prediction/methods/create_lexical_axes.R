@@ -7,12 +7,17 @@ library(Matrix)
 library(tidytext)
 library(text2vec)
 library(irlba)
+library(progressr)
+library(pbapply)
+
+# Aktiviert globale Fortschrittsanzeige
+handlers(global = TRUE)
+handlers("txtprogressbar")
 
 # 1. Load annotation tables
 ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2hrd.rds")
 ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2goa.rds")
 ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2ipr.rds")
-
 
 data("stop_words")
 
@@ -42,34 +47,31 @@ clean_doc <- function(text) {
     str_squish()
 }
 
-tokenize_custom <- function(docs, pattern, name = NULL) {
-  protein_ids <- docs[[1]]
-  texts <- docs[[2]]
-
+# Optimierte Tokenizer-Funktion ohne rep()
+tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
   if (name == "GO") {
     tokens_list <- str_split(texts, pattern)
   } else {
     tokens_list <- str_extract_all(texts, pattern)
   }
 
-  dt <- tibble(
-    protein_id = rep(protein_ids, lengths(tokens_list)),
-    token = str_to_lower(str_trim(unlist(tokens_list)))
-  )
-
-  dt <- dt %>%
+  tibble(
+    protein_id = protein_ids,  # nur einmal pro Dokument
+    tokens_list = tokens_list
+  ) %>%
+    unnest(tokens_list) %>%
+    rename(token = tokens_list) %>%
+    mutate(token = str_to_lower(str_trim(token))) %>%
     filter(
       str_length(token) > 2,
       str_detect(token, "[a-z]"),
       !str_detect(token, "^[0-9]{2,}[a-z]$")
     )
-
-  return(dt)
 }
-
 
 splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
 splitter_go <- "[\\s.,:]+"
+
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
   message("Processing corpus: ", name, " (", length(docs), " docs)")
@@ -82,13 +84,12 @@ build_axes <- function(docs, name) {
   texts <- texts[valid_docs]
   protein_ids <- protein_ids[valid_docs]
 
-  
-  # Corpora-specific Preprocessing
-  docs <- clean_doc(docs)
+  # Preprocess
+  texts <- clean_doc(texts)
 
-  # if existent, remove last identifier from HRD descriptions
+  # HRD spezifisches Entfernen von IDs
   if (name == "HRD") {
-    docs <- sapply(docs, function(txt) {
+    texts <- pbsapply(texts, function(txt) {
       parts <- str_split(txt, " ")[[1]]
       last <- tail(parts, 1)
       if (is_identifier(last) && length(parts) > 4) {
@@ -99,80 +100,63 @@ build_axes <- function(docs, name) {
     })
   }
 
-  # 3. Tokenize & lowercase, then filter
+  # Tokenize
+  p <- progressor(steps = 6)
+  p("Tokenizing")
   if (name == "GO") {
     dt <- tokenize_custom(protein_ids, texts, splitter_go, name)
   } else {
     dt <- tokenize_custom(protein_ids, texts, splitter, name)
   }
 
-  message("Number of unique tokens before filtering: ", n_distinct(dt$token), "\nNumber of tokens: ", length(dt$token))
-
-  # 4. Word frequencies per document & global f_w
+  p("Counting term frequencies")
   wf_doc <- dt %>% count(protein_id, token, name = "tf")
-  fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf))
-  message("Number of unique tokens after TF count: ", nrow(fw))
+  fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf), .groups = "drop")
 
   total_fw <- sum(fw$fw)
   
-  # 5. Shannon information content IC(token) = -log(fw/total_fw)
+  p("Calculating IC and filtering bottom 10%")
   fw <- fw %>% mutate(IC = -log(fw / total_fw))
-  
-  # 6. Drop bottom 10% by IC
   cutoff_ic <- quantile(fw$IC, 0.10, na.rm = TRUE)
   keep_tokens <- fw %>% filter(IC > cutoff_ic) %>% pull(token)
-  message("Tokens retained after IC filter: ", length(keep_tokens))
 
-  # 7. Build co-occurrence matrix (token × token)
+  p("Building co-occurrence matrix")
   dt_f <- wf_doc %>% filter(token %in% keep_tokens)
-  vocab <- unique(dt_f$token)
-  
-  # Create a token-by-doc matrix
-  it <- dt_f %>% cast_sparse(protein_id, token)
-  # Co-occurrence = t(it) %*% it
+  it <- dt_f %>% cast_sparse(protein_id, token, value = "tf")
   cooc <- crossprod(it)
-  
-  # 8. SVD on cooc, keep components explaining >80% variance
+
+  p("SVD decomposition")
   nv <- min(50, nrow(cooc) - 1, ncol(cooc) - 1)
   if (nv < 1) stop("Co-occurrence matrix too small for SVD.")
   sv <- irlba(cooc, nv = nv)
   vars <- sv$d^2 / sum(sv$d^2)
   k <- min(which(cumsum(vars) >= 0.80))
 
-  # Eigenwords
   U <- sv$u[, 1:k, drop = FALSE] 
-  # Eigenword vectors
   colnames(U) <- paste0("EW", 1:k)
-  rownames(U) <- vocab
-  
-  # 9. Compute IDF for each token
+  rownames(U) <- colnames(cooc)
+
+  p("Computing IDF and projecting documents")
   ndocs <- length(unique(dt$protein_id))
   doc_freq <- dt %>% distinct(protein_id, token) %>%
     count(token, name = "df")
   idf <- doc_freq %>% 
     mutate(idf = log(ndocs / df)) %>%
-    filter(df < 0.95 * ndocs)   # Drop words in ≥95% docs
-  message("Tokens retained after IDF filter: ", nrow(idf))
+    filter(df < 0.95 * ndocs)
 
-  # Intersect tokens with both U and idf
   tokens_final <- intersect(rownames(U), idf$token)
-  message("Final number of tokens used: ", length(tokens_final))
   Uf <- U[tokens_final, , drop = FALSE]
   idf_f <- idf %>% filter(token %in% tokens_final)
-  
-  # 10. Project documents into eigenword-space by TF-IDF weighted sum
+
   tfidf <- wf_doc %>% 
     filter(token %in% tokens_final) %>%
     left_join(idf_f, by = "token") %>%
     mutate(tf_idf = tf * idf) %>%
     select(protein_id, token, tf_idf)
-  
-  # Build sparse matrix and project
+
   mat_tfidf <- cast_sparse(tfidf, protein_id, token, value = "tf_idf")
   doc_proj <- mat_tfidf %*% Uf
-  
   colnames(doc_proj) <- paste0("EW", 1:k)
-  rownames(doc_proj) <- paste0(name, "_doc", rownames(doc_proj))
   
   list(
     word_axes = Uf,
@@ -182,25 +166,14 @@ build_axes <- function(docs, name) {
   )
 }
 
-# Run for all three corpora
-axes <- map2(corpora, names(corpora), build_axes)
+# Run with progress display
+with_progress({
+  axes <- map2(corpora, names(corpora), build_axes)
+})
 
 # Save result
-saveRDS(axes$GO, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
+saveRDS(axes$GO,  "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
 saveRDS(axes$IPR, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
 saveRDS(axes$HRD, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
 
-message("Stats for GO:\n")
-message("Summary: \n")
-message(summary(axes$GO))
-
-message("Stats for HRD:\n")
-message("Summary: \n")
-message(summary(axes$HRD))
-
-message("Stats for IPR:\n")
-message("Summary: \n")
-message(summary(axes$IPR))
-
-
-cat("Done. Lexical axes built for GO, InterPro & HRDs.")
+message("Done. Lexical axes built for GO, InterPro & HRDs.")

@@ -57,21 +57,21 @@ get_top_ids_with_stop <- function(q_vec, ref_mat, max_k = 30, window_k = 3) {
 }
 
 # ---- Load lexical axes and reference spaces ----
-axes_GO  <- readRDS("material/lexical_axes_GO.rds")
-axes_HRD <- readRDS("material/lexical_axes_HRD.rds")
-axes_IPR <- readRDS("material/lexical_axes_IPR.rds")
+axes_GO  <- readRDS("material/rds_files/lexical_axes_GO.rds")
+axes_HRD <- readRDS("material/rds_files/lexical_axes_HRD.rds")
+axes_IPR <- readRDS("material/rds_files/lexical_axes_IPR.rds")
 
 go_ref  <- axes_GO$doc_vectors
 hrd_ref <- axes_HRD$doc_vectors
 ipr_ref <- axes_IPR$doc_vectors
 
 # ---- Load annotation data ----
-ann_goa <- readRDS("material/protein2goa.rds")
-ann_hrd <- readRDS("material/protein2hrd.rds")
-ann_ipr <- readRDS("material/protein2ipr.rds")
+ann_goa <- readRDS("material/rds_files/protein2goa.rds")
+ann_hrd <- readRDS("material/rds_files/protein2hrd.rds")
+ann_ipr <- readRDS("material/rds_files/protein2ipr.rds")
 
 # ---- Load Kidera ----
-kidera <- readRDS("material/kidera_vectors.rds")
+kidera <- readRDS("material/rds_files/kidera_factors_uniref50_morethan1_ref_prots.rds")
 kidera_ref <- kidera %>%
   select(protein_id, starts_with("K")) %>%
   column_to_rownames("protein_id") %>%
@@ -92,7 +92,7 @@ predict_functions <- function(protein_list, blast_results, kidera) {
       head(30)
 
     # Log-transform gm-sim and normalize
-    gm_sim_log <- log1p(hits$gm_sim)  # log(1 + x) to avoid log(0)
+    gm_sim_log <- log1p(hits$gm_sim)
     w <- gm_sim_log / sum(gm_sim_log)
 
     # Filter matching reference vectors
@@ -101,7 +101,7 @@ predict_functions <- function(protein_list, blast_results, kidera) {
     V_ipr <- ipr_ref[intersect(hits$subject, rownames(ipr_ref)), , drop = FALSE]
     V_kid <- kidera_ref[intersect(hits$subject, rownames(kidera_ref)), , drop = FALSE]
 
-    # Weight length match (important!)
+    # Match weights to matrix rows
     idx_go  <- match(rownames(V_go), hits$subject)
     idx_hrd <- match(rownames(V_hrd), hits$subject)
     idx_ipr <- match(rownames(V_ipr), hits$subject)
@@ -151,12 +151,34 @@ predict_functions <- function(protein_list, blast_results, kidera) {
   bind_rows(all_preds)
 }
 
+# ---- Load and prepare BLAST results ----
+blast_results <- read_tsv(
+  "material/rds_files/diamond_test_1.txt", # <-- BLAST-Output hier angeben
+  col_names = c("query", "subject", "q_start", "q_end", "q_len",
+                "s_start", "s_end", "s_len", "pident", "evalue", "bitscore"),
+  col_types = cols(
+    query = col_character(),
+    subject = col_character(),
+    q_start = col_double(),
+    q_end = col_double(),
+    q_len = col_double(),
+    s_start = col_double(),
+    s_end = col_double(),
+    s_len = col_double(),
+    pident = col_double(),
+    evalue = col_double(),
+    bitscore = col_double()
+  )
+) %>%
+  mutate(
+    align_length = abs(q_end - q_start) + 1
+  )
+
+# ---- Automatically detect all query proteins ----
+query_proteins <- unique(blast_results$query)
+
 # ---- Run prediction ----
-
-query_proteins <- c("Prot_ID_here")
-blast_results <- readRDS("material/blast_results.rds")
-
 predictions <- predict_functions(query_proteins, blast_results, kidera)
 
-# Save as CSV
+# ---- Save output ----
 write_csv(predictions, "predicted_functions.csv")
