@@ -46,8 +46,10 @@ function addIcons() {
 
 function setupConfigCallbacks() {
   function setText(cell, value) {
-    if (typeof value === "boolean") {
-      cell.innerText = value ? "Visible" : "Hidden";
+    if (cell.type === "checkbox") {
+      cell.checked = value;
+    } else if (cell.tagName === "input") {
+      cell.value = value;
     } else {
       cell.innerText = value;
     }
@@ -233,13 +235,10 @@ function createCustomizationTable(table) {
 
   function booleanInput(key) {
     return function(geneData, familyIdx, geneIdx) {
-      const content = createButton({
+      const content = createToggle({
         key,
         classes: [key],
-        innerText: config.familyGet(familyIdx, key, geneIdx) ? "Visible" : "Hidden"
-      });
-      content.addEventListener("click", evt => {
-        config.familySet(familyIdx, key, !config.familyGet(familyIdx, key, geneIdx), geneIdx, false);
+        checked: config.familyGet(familyIdx, key, geneIdx)
       });
       return content;
     }
@@ -291,6 +290,10 @@ function createTableUI({ table, next, previous }, type) {
       switch (input.type) {
         case "number": {
           config.familySet(family, input.getAttribute("key"), Number(input.value), gene, false);
+          break;
+        }
+        case "checkbox": {
+          config.familySet(family, input.getAttribute("key"), input.checked, gene, false);
           break;
         }
         default: {
@@ -692,6 +695,21 @@ function createButton(options) {
 
 function createDataTable(options) {
   return createElement("table", { ...options, classes: ["datatable", "textselect", ...(options.classes ?? [])] });
+}
+
+function createToggle(checkboxOptions) {
+  const checkbox = createElement("input", {
+    ...checkboxOptions,
+    type: "checkbox"
+  });
+  const slider = createElement("span", {
+    classes: ["slider"]
+  });
+  
+  return createElement("label", {
+    children: [checkbox, slider],
+    classes: ["toggle"]
+  });
 }
 
 function createElement(tag, options={}) {
