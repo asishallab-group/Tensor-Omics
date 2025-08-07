@@ -106,6 +106,7 @@ The correctness of the calculation, the correctness of the implemented algorithm
   \item Always use \texttt{pure} where possible.
 \end{itemize}
 
+
 \subsection{Optional Arguments in Fortran}
 
 \subsubsection{Overview}
@@ -310,6 +311,20 @@ subroutine project_vector_C(v, n) bind(C, name="project_vector_C")
   call project_vector_core(v, n)
 end subroutine
 \end{verbatim}
+
+These distinctions are essential for both performance and correctness. Please document this behavior in all wrapper comments.
+
+\subsubsection{Important note on memory and array copies:}
+
+\begin{itemize}
+  \item \textbf{R wrappers:} When calling Fortran routines from R (using wrappers with the ``\texttt{\_R}'' suffix), the R interface will \emph{always} create a copy of the arrays passed as arguments. This is a fundamental property of the R--Fortran interface and ensures that the original R objects remain unchanged. Therefore, the following statement must be included in the documentation of every wrapper:
+  \textbf{When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs.}
+  \item \textbf{C wrappers:} When calling Fortran routines from C (using wrappers with the ``\texttt{\_C}'' suffix and \texttt{bind(C)}), the interface operates \emph{directly} on the memory provided by the caller. Therefore, the following statement must be included in the documentation of every wrapper:
+  \textbf{When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.}
+\end{itemize}
+
+You may add these legends manually, or for convenience, use the snippets \verb|tox:legend_r| and \verb|tox:legend_c| found in \verb|snippets/tox_snippets.json|.
+
 
 \subsection{When to Write Wrappers for Fortran Functions}
 
