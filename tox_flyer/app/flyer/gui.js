@@ -195,25 +195,10 @@ function createRowSelector(selectAll, family, gene, type) {
   const checkbox = createElement("input", { type: "checkbox", classes: ["clickable"] });
   if (selectAll) {
     checkbox.id = "selectAll";
-    checkbox.addEventListener("change", evt => {
-      const table = evt.target.closest("table");
-      const changeEvent = new Event("change", {bubbles: true});
-      for (const checkbox of table.getElementsByClassName("row-selector")) {
-        if (checkbox.checked !== evt.target.checked) {
-          checkbox.checked = evt.target.checked;
-          checkbox.dispatchEvent(changeEvent);
-        }
-      }
-    })
+    checkbox.addEventListener("change", allSelectorListener);
   } else {
     checkbox.classList.add("row-selector");
-    checkbox.addEventListener("change", evt => {
-      const tr = evt.target.closest("tr");
-      tr.classList.toggle("selected", evt.target.checked);
-      if (!evt.target.checked) {
-        evt.target.closest("table").querySelector("#selectAll").checked = false;
-      }
-    })
+    checkbox.addEventListener("change", rowSelectorListener);
   }
   const element = createElement(selectAll ? "th": "td", {
     children: [checkbox],
@@ -227,6 +212,21 @@ function createRowSelector(selectAll, family, gene, type) {
   });
 
   return element;
+}
+
+function rowSelectorListener(evt) {
+  const tr = evt.target.closest("tr");
+  tr.classList.toggle("selected", evt.target.checked);
+}
+
+function allSelectorListener(evt) {
+  const table = evt.target.closest("table");
+  for (const checkbox of table.getElementsByClassName("row-selector")) {
+    if (checkbox.checked !== evt.target.checked) {
+      checkbox.checked = evt.target.checked;
+      rowSelectorListener({ target: checkbox });
+    }
+  }
 }
 
 function createCustomizationTable(table) {
@@ -323,8 +323,18 @@ function createTableUI({ table, next, previous }, type) {
         const rowID = table.TOX_rowID(getNumericAttribute(row, "tox-family"), getNumericAttribute(row, "tox-gene"));
         if (target.checked !== table.TOX_allSelectorState) {
           table.TOX_selectedRows.add(rowID);
+          if (table.TOX_elementCount === table.TOX_selectedRows.size) {
+            table.TOX_selectedRows.clear();
+            table.TOX_allSelectorState = !table.TOX_allSelectorState;
+            table.querySelector("#selectAll").checked = table.TOX_allSelectorState;
+          } else {
+            table.querySelector("#selectAll").checked = false;
+          }
         } else {
           table.TOX_selectedRows.delete(rowID);
+          if (table.TOX_selectedRows.size === 0) {
+            table.querySelector("#selectAll").checked = table.TOX_allSelectorState;
+          }
         }
       }
     }
@@ -372,7 +382,9 @@ function createTableUI({ table, next, previous }, type) {
     bottomChildren.unshift(previousBtn);
   }
 
-  const bottom = createElement("center", { children: bottomChildren });
+  const bottom = createElement("center", {
+    children: bottomChildren
+  });
   return createElement("section", { children: [table, bottom] });
 }
 
@@ -565,6 +577,11 @@ function createMasterTable({ elements, familyOnly, parentTable }, getData, heade
     table.TOX_familyOnly = familyOnly;
     table.TOX_selectedRows = new Set();
     table.TOX_allSelectorState = false;
+    Object.defineProperty(table, "TOX_elementCount", {
+      get() {
+        return this.TOX_elements?.length ?? Infinity;
+      }
+    });
     table.TOX_rowID = (family, gene) => `${family}_${gene}`;
     table.TOX_isSelected = function (family, gene) {
       return this.TOX_allSelectorState !== this.TOX_selectedRows.has(this.TOX_rowID(family, gene));
@@ -627,6 +644,7 @@ function createLinkElement(value, linkContent) {
   });
   a.addEventListener("click", evt => {
     evt.preventDefault();
+    applyChanges.call(evt.target.closest("table"));
     show(linkContent());
   });
   return a;
