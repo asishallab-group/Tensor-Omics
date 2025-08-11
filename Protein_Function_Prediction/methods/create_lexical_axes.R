@@ -1,3 +1,4 @@
+#Version 1.4.2
 library(dplyr)
 library(tidyr)
 library(tibble)
@@ -55,6 +56,9 @@ tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
     tokens_list <- str_extract_all(texts, pattern)
   }
 
+  message("[", name, "] Tokens vor Filtern: ", sum(lengths(tokens_list)))
+  message("[", name, "] Unique Tokens vor Filtern: ", length(unique(unlist(tokens_list))))
+
   tibble(
     protein_id = protein_ids,  # nur einmal pro Dokument
     tokens_list = tokens_list
@@ -74,7 +78,7 @@ splitter_go <- "[\\s.,:]+"
 
 # Function to build axes for one corpus
 build_axes <- function(docs, name) {
-  message("Processing corpus: ", name, " (", length(docs), " docs)")
+  message("Processing corpus: ", name, " (", length(docs[[2]]), " docs)")
   
   protein_ids <- docs[[1]]
   texts <- docs[[2]]
@@ -109,16 +113,23 @@ build_axes <- function(docs, name) {
     dt <- tokenize_custom(protein_ids, texts, splitter, name)
   }
 
+  message("[", name, "] Tokens nach Filtern: ", nrow(dt))
+  message("[", name, "] Unique Tokens nach Filtern: ", n_distinct(dt$token))
+
   p("Counting term frequencies")
   wf_doc <- dt %>% count(protein_id, token, name = "tf")
   fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf), .groups = "drop")
 
   total_fw <- sum(fw$fw)
   
+  message("[", name, "] Unique Tokens nach TF count: ", nrow(fw))
+
   p("Calculating IC and filtering bottom 10%")
   fw <- fw %>% mutate(IC = -log(fw / total_fw))
   cutoff_ic <- quantile(fw$IC, 0.10, na.rm = TRUE)
   keep_tokens <- fw %>% filter(IC > cutoff_ic) %>% pull(token)
+
+  message("[", name, "] Tokens retained nach IC filter: ", length(keep_tokens))
 
   p("Building co-occurrence matrix")
   dt_f <- wf_doc %>% filter(token %in% keep_tokens)
@@ -157,6 +168,19 @@ build_axes <- function(docs, name) {
   mat_tfidf <- cast_sparse(tfidf, protein_id, token, value = "tf_idf")
   doc_proj <- mat_tfidf %*% Uf
   colnames(doc_proj) <- paste0("EW", 1:k)
+
+  # Create protein to tokens mapping
+  protein_to_tokens <- dt %>%
+    distinct(protein_id, token) %>%
+    group_by(protein_id) %>%
+    summarise(tokens = list(token), .groups = "drop")
+
+	# Save the mapping as RDS file named by corpus
+  saveRDS(
+    protein_to_tokens,
+    file = paste0("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_", name, ".rds")
+    )
+
   
   list(
     word_axes = Uf,

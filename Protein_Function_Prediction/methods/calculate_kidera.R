@@ -1,75 +1,55 @@
-# Pakete laden
-library(Biostrings)
-library(Peptides)
-library(future.apply)
-library(tibble)
-library(dplyr)
+#Version 1.2.7
 
-# Anzahl der Worker automatisch aus SLURM oder manuell setzen
-library(future)
-workers <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", 8))
-plan(multisession, workers = workers)
+library(Biostrings)     # Für effizientes Einlesen der FASTA
+library(Peptides)       # Für kideraFactors()
+library(future.apply)   # Für Parallelisierung
+library(tibble)         # Für hübsche Dataframes
+library(dplyr)          # Für Datenmanipulation
 
-# Eingabe-FASTA
+# Parallel-Plan with 8 Workers
+plan(multisession, workers = 8)
+
+# Path to fasta
 fasta_path <- "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/uniref50_morethan1.fasta"
 
-message("Lade FASTA-Datei: ", fasta_path)
+cat("Loading fasta:", fasta_path, "\n")
 aa <- readAAStringSet(fasta_path)
 ids <- names(aa)
 seqs <- as.character(aa)
+cat("Numbers of loaded sequences:", length(seqs), "\n")
 
-message("Anzahl geladener Sequenzen: ", length(seqs))
-message("Beispiel-Sequenz (roh): ", substr(seqs[1], 1, 60), "...")
+# IDs säubern: 'UniRef50_' entfernen und alles nach Leerzeichen abschneiden
+ids_clean <- sub("^UniRef50_", "", sub(" .*", "", ids))
 
-# IDs bereinigen
-ids_clean <- sub(" .*", "", ids)
-
-# Nicht-Standard-AAs entfernen
-clean_sequence <- function(seq) {
-  gsub("[^ACDEFGHIKLMNPQRSTVWY]", "", seq)
-}
-
-# Safe-Kidera mit Reinigung
+# Funktion zur sicheren Kidera-Faktoren-Berechnung mit AA-Säuberung
 safe_kidera <- function(seq) {
-  seq <- clean_sequence(seq)
-  if (nchar(seq) == 0) {
+  # Nicht-Standard-AAs entfernen (X, B, Z, etc.)
+  seq_clean <- gsub("[^ACDEFGHIKLMNPQRSTVWY]", "", seq)
+  if (nchar(seq_clean) == 0) {
+    # Falls nach Reinigung nichts übrig bleibt: NA-Vektor zurückgeben
     return(rep(NA_real_, 10))
   }
   tryCatch(
-    kideraFactors(seq),
-    error = function(e) {
-      message("Fehler bei Sequenz (nach Cleanup): ", seq)
-      rep(NA_real_, 10)
-    }
+    as.numeric(kideraFactors(seq_clean)[[1]]),
+    error = function(e) rep(NA_real_, 10)
   )
 }
 
-# Berechne Kidera-Faktoren
-message("Starte Kidera-Berechnung mit ", workers, " Workern...")
+cat("Starting kidera calculation with 8 workers...\n")
 kidera_list <- future_lapply(seqs, safe_kidera)
-
-message("Berechnung abgeschlossen. Erstelle Matrix...")
+cat("Done. Creating Matrix...\n")
 
 kidera_matrix <- do.call(rbind, kidera_list)
-colnames(kidera_matrix) <- paste0("k", 1:10)
+colnames(kidera_matrix) <- paste0("KF", 1:10)
 
-# In Tibble mit IDs
+# Dataframe zusammenbauen mit id + Kidera-Faktoren
 kidera_df <- as_tibble(kidera_matrix) %>%
-  mutate(id = ids_clean, .before = 1)
+  mutate(id = ids_clean, .before = 1) %>%
+  filter(if_all(starts_with("KF"), ~ !is.na(.x)))
 
-message("Anzahl Zeilen vor NA-Filter: ", nrow(kidera_df))
+cat("Final dataframe with: ", nrow(kidera_df), "valid sequences.\n")
 
-# Zeige Beispielzeilen
-message("Beispiel-Kidera-Werte:")
-print(head(kidera_df, 3))
+# Speichern
+saveRDS(kidera_df, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds")
+cat("Data saved.\n")
 
-# Entferne Zeilen mit NA
-kidera_df <- kidera_df %>%
-  filter(if_all(starts_with("k"), ~ !is.na(.x)))
-
-message("Anzahl Zeilen nach NA-Filter: ", nrow(kidera_df))
-
-# Ausgabe speichern
-save_path <- "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds"
-saveRDS(kidera_df, save_path)
-message("Speichern abgeschlossen: ", save_path)
