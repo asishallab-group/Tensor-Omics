@@ -2,12 +2,11 @@
 # - Adds token-level calculations for HRD / GO / IPR
 # - Keeps previous doc-vector / kidera / svd logic as well
 # Requirements: dplyr, tibble, readr, stringr
-#Version 2.1.1
+#Version 2.1.2
 library(dplyr)
 library(tibble)
 library(readr)
 library(stringr)
-library(tidytext)
 
 # ---- Helper functions ----
 cosine_sim <- function(q_vec, ref_mat) {
@@ -80,13 +79,13 @@ named_numeric <- function(names_vec) {
 }
 
 # ---- Load data (unchanged) ----
-axes_GO  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/lexical_axes_GO.rds")
-axes_HRD <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/lexical_axes_HRD.rds")
-axes_IPR <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/lexical_axes_IPR.rds")
+axes_GO  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
+axes_HRD <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
+axes_IPR <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
 
-protein_to_tokens_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein_to_tokens_ipr.rds")
-protein_to_tokens_go  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein_to_tokens_go.rds")
-protein_to_tokens_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein_to_tokens_hrd.rds")
+protein_to_tokens_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_IPR.rds")
+protein_to_tokens_go  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_GO.rds")
+protein_to_tokens_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_HRD.rds")
 
 get_or_null <- function(x, name) {
   if (!is.null(x) && !is.null(x[[name]])) x[[name]] else NULL
@@ -108,12 +107,12 @@ go_ref  <- go_doc_ref
 hrd_ref <- hrd_doc_ref 
 ipr_ref <- ipr_doc_ref
 
-ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein2goa.rds")
-ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein2hrd.rds")
-ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/protein2ipr.rds")
+ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2goa.rds")
+ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2hrd.rds")
+ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2ipr.rds")
 
-kidera <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/kidera_factors_uniref50_morethan1_ref_prots.rds")
-kidera_ref <- kidera %>% select(id, starts_with("K")) %>% column_to_rownames("protein_id") %>% as.matrix()
+kidera <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds")
+kidera_ref <- kidera %>% select(id, starts_with("K")) %>% column_to_rownames("id") %>% as.matrix()
 
 svd_ref <- read_csv(
   "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/svd_reduced_matrix.csv",
@@ -133,6 +132,11 @@ get_protein_tokens <- function(prot_id, type = c("GO", "HRD", "IPR")) {
     tokens <- protein_to_tokens_ipr[[prot_id]]
   }
   if (is.null(tokens)) character(0) else tokens
+}
+
+# Hilfsfunktion zum Entfernen des UniRef50_ Präfix
+strip_uniref_prefix <- function(id) {
+  sub("^UniRef50_", "", id)
 }
 
 # ---- Map tokens to candidate terms (simple lookup) ----
@@ -226,8 +230,22 @@ predict_functions_token_based <- function(protein_list, blast_results, kidera,
       # Build protein-level token vectors for hits using mapping
       prot_token_vecs <- list()
       hit_ids <- hits$subject
+      hit_ids_stripped <- strip_uniref_prefix(hit_ids)
+      
+      # Debug: Zeige IDs, die nicht im Mapping sind
+      missing_in_mapping <- hit_ids_stripped[!hit_ids_stripped %in% names(prot_to_tokens)]
+      if (length(missing_in_mapping) > 0) {
+        message("DEBUG: Folgende Hit-IDs fehlen im Token-Mapping für ", atype, ": ", paste(missing_in_mapping, collapse = ", "))
+      }
+      
+      # Debug: Zeige IDs, die nicht in der Token-Matrix sind
+      missing_in_matrix <- hit_ids_stripped[!hit_ids_stripped %in% rownames(token_mat)]
+      if (length(missing_in_matrix) > 0) {
+        message("DEBUG: Folgende Hit-IDs fehlen in der Token-Matrix für ", atype, ": ", paste(missing_in_matrix, collapse = ", "))
+      }
+      
       for (h_idx in seq_along(hit_ids)) {
-        hid <- hit_ids[h_idx]
+        hid <- hit_ids_stripped[h_idx]
         tokens <- prot_to_tokens[[hid]]
         if (is.null(tokens) || length(tokens) == 0) {
           prot_token_vecs[[hid]] <- numeric(0)
@@ -245,14 +263,8 @@ predict_functions_token_based <- function(protein_list, blast_results, kidera,
       
       # Some hits may have no token vectors. Filter them and re-normalize weights accordingly
       available_hits <- names(prot_token_vecs)[sapply(prot_token_vecs, function(x) length(x) > 0)]
-      if (length(available_hits) == 0) {
-        message(" - No hit has tokens for ", atype)
-        token_results[[atype]] <- character(0)
-        term_results[[atype]] <- character(0)
-        next
-      }
-      # get indices and weights for available hits
-      idx_in_hits <- match(available_hits, hits$subject)
+      # Passe available_hits ebenfalls an (falls nötig)
+      idx_in_hits <- match(available_hits, hit_ids_stripped)
       w_sub <- w[idx_in_hits]
       w_sub_sum <- sum(w_sub)
       if (w_sub_sum <= 0) {
@@ -329,11 +341,14 @@ predict_functions_token_based <- function(protein_list, blast_results, kidera,
     # (keep original neighbors logic)
     # compute q_doc vectors (weighted sums) if doc matrices available
     compute_qdoc <- function(ref_mat) {
-      if (is.null(ref_mat) || nrow(ref_mat) == 0) return(numeric(0))
-      ids <- intersect(hits$subject, rownames(ref_mat))
+      if (is.null(ref_mat)) return(numeric(0))
+      if (!is.matrix(ref_mat) && !is.data.frame(ref_mat)) return(numeric(0))
+      if (nrow(ref_mat) == 0) return(numeric(0))
+      # Entferne Präfix bei den Hit-IDs
+      ids <- intersect(strip_uniref_prefix(hits$subject), rownames(ref_mat))
       if (length(ids) == 0) return(numeric(0))
       V <- ref_mat[ids, , drop = FALSE]
-      idx <- match(rownames(V), hits$subject)
+      idx <- match(rownames(V), strip_uniref_prefix(hits$subject))
       colSums(V * w[idx])
     }
     q_go  <- compute_qdoc(go_ref)
@@ -367,7 +382,8 @@ predict_functions_token_based <- function(protein_list, blast_results, kidera,
     # Token-based: one row per (atype, token, token_score, mapped_terms...) - for simplicity we return joined mapped terms as a single string
     token_rows <- bind_rows(lapply(names(token_results), function(at) {
       tr <- token_results[[at]]
-      if (is.null(tr) || nrow(tr) == 0) {
+      # Robustere Prüfung:
+      if (is.null(tr) || !is.data.frame(tr) || nrow(tr) == 0) {
         tibble(protein_id = q, annotation_type = at, token = character(0), token_score = numeric(0), mapped_terms = character(0))
       } else {
         mapped_terms_str <- sapply(seq_len(nrow(tr)), function(r) {
@@ -425,7 +441,7 @@ predict_functions_token_based <- function(protein_list, blast_results, kidera,
 
 # ---- Load and prepare BLAST results ----
 blast_results <- read_tsv(
-  "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/rds_files/diamond_test_1.txt",
+  "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/diamond_test_1.txt",
   col_names = c("query", "subject", "q_start", "q_end", "q_len",
                 "s_start", "s_end", "s_len", "pident", "evalue", "bitscore"),
   col_types = cols(
@@ -457,5 +473,6 @@ predictions_token <- predict_functions_token_based(
 )
 
 # ---- Save outputs ----
-write_csv(predictions_token, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/predicted_functions_token_based.csv")
+write_csv(predictions_token, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/predicted_functions_token_based.csv")
 message("\nSaved token-based predictions to predicted_functions_token_based.csv")
+
