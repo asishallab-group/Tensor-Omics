@@ -218,7 +218,7 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
     IMPLICIT NONE
     
-    INTEGER(C_INT), INTENT(IN) :: filename_ascii(fn_len)
+    INTEGER(C_INT), INTENT(IN) :: filename_ascii(*)
     INTEGER(C_INT), VALUE, INTENT(IN) :: fn_len
     LOGICAL(C_BOOL), VALUE, INTENT(IN) :: has_header
     INTEGER(C_INT), VALUE, INTENT(IN) :: delimiter_ascii
