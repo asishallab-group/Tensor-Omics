@@ -10,6 +10,8 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{amssymb}
+\usepackage{longtable}
+\usepackage{array}
 
 \geometry{margin=1in}
 
@@ -170,13 +172,26 @@ Values close to 1 indicate high tissue-specificity; values close to 0 indicate b
 \section{Error Handling}
 In case you encounter errors while using TOX, the following error codes may help you identify the issue. The error codes are grouped into categories based on their nature, such as I/O errors, format validation errors, memory errors, and internal errors.
 
-\begin{table}[htbp]
-\centering
-\caption{TOX Error Codes Reference}
-\begin{tabular}{p{3cm} p{10cm}}
+\begin{longtable}{>{\ttfamily}p{3cm} p{10cm}}
+\caption{TOX Error Codes Reference} \\
 \hline
 \textbf{Error Code} & \textbf{Description} \\
 \hline
+\endfirsthead
+
+\multicolumn{2}{c}%
+{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+\hline
+\textbf{Error Code} & \textbf{Description} \\
+\hline
+\endhead
+
+\hline \multicolumn{2}{r}{{Continued on next page}} \\
+\endfoot
+
+\hline
+\endlastfoot
+
 0 & Success \\[6pt]
 
 \multicolumn{2}{l}{\textbf{1xx: I/O / File Reading Errors}} \\[3pt]
@@ -206,9 +221,8 @@ In case you encounter errors while using TOX, the following error codes may help
 \multicolumn{2}{l}{\textbf{9xxx: Internal / Unknown Errors}} \\[3pt]
 9001 & Internal error: unexpected state or invariant violated. \\
 9999 & Unknown error (fallback for unexpected errors). \\
-\hline
-\end{tabular}
-\end{table}
+
+\end{longtable}
 
 
 % ===========================
