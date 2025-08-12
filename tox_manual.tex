@@ -11,7 +11,6 @@
 \usepackage{booktabs}
 \usepackage{amssymb}
 
-
 \geometry{margin=1in}
 
 \begin{document}
@@ -167,6 +166,50 @@ This scales values into the interval $[0, 1]$:
   \text{Tissue Specificity} = 1 - \text{Tissue Versatility}
 \]
 Values close to 1 indicate high tissue-specificity; values close to 0 indicate broad expression.
+
+\section{Error Handling}
+In case you encounter errors while using TOX, the following error codes may help you identify the issue. The error codes are grouped into categories based on their nature, such as I/O errors, format validation errors, memory errors, and internal errors.
+
+\begin{table}[htbp]
+\centering
+\caption{TOX Error Codes Reference}
+\begin{tabular}{p{3cm} p{10cm}}
+\hline
+\textbf{Error Code} & \textbf{Description} \\
+\hline
+0 & Success \\[6pt]
+
+\multicolumn{2}{l}{\textbf{1xx: I/O / File Reading Errors}} \\[3pt]
+101 & Could not open file. \\
+102 & Could not read magic number. \\
+103 & Could not read array type code. \\
+104 & Could not read number of dimensions. \\
+105 & Could not read array dimensions. \\
+106 & Could not read character length. \\
+107 & Could not read array data. \\[6pt]
+
+\multicolumn{2}{l}{\textbf{2xx: Format / Input Validation Errors}} \\[3pt]
+200 & Invalid format detected (e.g., magic mismatch or corrupt format). \\
+201 & Invalid input provided. \\
+202 & Empty input arrays provided (e.g., zero-length arrays). \\
+203 & Dimension mismatch detected (shape inconsistencies). \\
+204 & NaN or Inf found in input data where not allowed. \\
+205 & Unsupported data type encountered (e.g., complex types). \\[6pt]
+
+\multicolumn{2}{l}{\textbf{3xx: Memory Errors}} \\[3pt]
+301 & Memory allocation failed. \\
+302 & Null pointer reference encountered. \\[6pt]
+
+\multicolumn{2}{l}{\textbf{5xxx: Fortran Runtime / Unit State Errors}} \\[3pt]
+5002 & Fortran runtime error: unit not open or not connected. \\[6pt]
+
+\multicolumn{2}{l}{\textbf{9xxx: Internal / Unknown Errors}} \\[3pt]
+9001 & Internal error: unexpected state or invariant violated. \\
+9999 & Unknown error (fallback for unexpected errors). \\
+\hline
+\end{tabular}
+\end{table}
+
 
 % ===========================
 \section{Implementation Notes}
