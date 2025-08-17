@@ -17,7 +17,6 @@ import {
 
 export function setupDetailView() {
   createPickedDetailsDialog();
-  switchToDetails("Gene");
 }
 
 function createTableUIWithCustomizationButton(tableComponents) {
@@ -38,25 +37,54 @@ function createTableUIWithCustomizationButton(tableComponents) {
   });
 }
 
+function multiViewMenuListener({ target }) {
+  for (const content of target.closest("section").querySelector("section").children) {
+    if (!content.hidden) {
+      applyChanges(content);
+    }
+    content.hidden = content.getAttribute("menu-name") !== target.textContent;
+  }
+  for (const tab of target.closest("section").querySelector("menu").children) {
+    tab.classList.toggle("active", tab.textContent === target.textContent);
+  }
+}
+
+function createMultiView(contents) {
+  const menu = createElement("menu", {classes: ["tabs"]});
+  const contentBody = createElement("section");
+  for (const [menuName, content] of Object.entries(contents)) {
+    const menuItem = createElement("li", {
+      textContent: menuName,
+      classes: ["clickable"]
+    });
+    menuItem.addEventListener("click", multiViewMenuListener)
+    menu.appendChild(menuItem);
+
+    content.hidden = true;
+    content.setAttribute("menu-name", menuName);
+    contentBody.appendChild(content);
+  }
+
+  if (contentBody.firstChild !== undefined) {
+    contentBody.firstChild.hidden = false;
+    menu.firstChild.classList.add("active");
+  }
+  return createElement("section", {
+    children: [
+      menu,
+      contentBody
+    ]
+  });
+}
+
 function createPickedDetailsDialog() {
   if (!document.getElementById("pickedDetails")) {
     {
-      const menu = createElement("menu", { id: "pickedDetailsMenu" });
-      const tables = createElement("section", { id: "pickedDetailsTables" });
-
-      const tableHeaders = getDetailsTableDataMap();
+      const tableHeaders = getDetailsTableDataMap("Gene", "ShiftVector", "Centroid");
+      const menuNames = {Gene: "Genes", ShiftVector: "Shift Vectors", Centroid: "Centroids"};
+      const multiViewArg = {};
 
       for (const [pickType, headers] of Object.entries(tableHeaders)) {
-        const menuItem = createElement("li", {
-          id: pickType + "Details",
-          textContent: pickType + "s",
-          classes: ["clickable"]
-        });
-        menuItem.addEventListener("click", () => {
-          switchToDetails(pickType);
-        })
-        menu.appendChild(menuItem);
-
         const { table } = createMasterTable({ elements: [] }, null, headers);
         table.id = pickType + "DetailsTable";
 
@@ -66,16 +94,12 @@ function createPickedDetailsDialog() {
         } else {
           tableUI = createTableUI({ table }, { beforePageSwitch: applyChanges });
         }
-        tableUI.hidden = true;
-        tableUI.classList.add("detailsTable");
-        tables.appendChild(tableUI);
+
+        multiViewArg[menuNames[pickType]] = tableUI;
       }
       const pickedDetails = createElement("dialog", {
         id: "pickedDetails",
-        children: [
-          menu,
-          tables
-        ]
+        children: [createMultiView(multiViewArg)]
       });
       pickedDetails.addEventListener("close", () => { applyChanges(pickedDetails); config.update() });
       document.getElementById("UI")?.appendChild(pickedDetails);
@@ -98,7 +122,7 @@ export function appendDetailRow({ family, gene, type }) {
     const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
     row.appendChild(createRowSelector(false, family, gene, type));
 
-    const dataMap = getDetailsTableDataMap();
+    const dataMap = getDetailsTableDataMap(type);
     for (const cell of dataMap[type]) {
       const td = createElement("td", {
         children: [cell.data(data, family, gene)]
@@ -112,15 +136,6 @@ export function appendDetailRow({ family, gene, type }) {
   }
 
   return false;
-}
-
-function switchToDetails(type) {
-  for (const tableUI of document.getElementsByClassName("detailsTable")) {
-    if (!tableUI.hidden) {
-      applyChanges(tableUI);
-    }
-    tableUI.hidden = tableUI.querySelector("#" + type + "DetailsTable") === null;
-  }
 }
 
 export function removeDetailRow({ family, gene, type }) {
@@ -150,28 +165,15 @@ function createCellLinkElement(value, linkContent) {
   return a;
 }
 
-function getDetailsTableDataMap() {
-  const dataMap = {};
+function getDetailsTableDataMap(...types) {
+  const headers = {};
 
   const tissues = dataHandler.tissues;
   const links = {
     family: {
       title: "Family",
       data(geneData, familyIdx, geneIdx) {
-        return createCellLinkElement(geneData.family, () => createTableUI(createSingleDetailsTable(geneData, familyIdx, geneIdx, [
-          { title: "Identifier", data() {return geneData.family} },
-          {
-            title: "Genes",
-            data() {
-              return createCellLinkElement(`Inspect ${dataHandler.getGeneCount(familyIdx)} members`, () => createTableUIWithCustomizationButton(createMasterTable(
-                { elements: dataHandler.genes(familyIdx).map(gene => ({family: familyIdx, gene})) },
-                (family, gene) => dataHandler.getGeneData(family, gene),
-                dataMap.Gene
-              )))
-            }
-          },
-          { title: "Description", data() {return "..."}},
-        ]), {}));
+        return createCellLinkElement(geneData.family, () => createTableUI(createSingleDetailsTable(geneData, familyIdx, geneIdx, headers.Family), {}));
       }
     },
     gene: {
@@ -212,21 +214,56 @@ function getDetailsTableDataMap() {
     tissueRelatedHeader("tissueZ")
   ];
 
-  dataMap.Gene = [
+  headers.Gene = [
     links.gene,
     links.family,
     { title: "Type", data(geneData) {return geneData.is_outlier ? "Outlier" : "Inlier"} },
     ...tissueRelated
   ];
-  dataMap.ShiftVector = [
-    links.gene,
-    links.family,
-    { title: "Visibility", data: createInputForHeaderData("ShiftVector", "boolean") }
+
+  headers.Family = [
+    { title: "Identifier", data(geneData) {return geneData.family} },
+    {
+      title: "Genes",
+      data(geneData, familyIdx) {
+        return createCellLinkElement(`Inspect ${dataHandler.getGeneCount(familyIdx)} members`, () => createTableUIWithCustomizationButton(createMasterTable(
+          { elements: dataHandler.genes(familyIdx).map(gene => ({family: familyIdx, gene})) },
+          (family, gene) => dataHandler.getGeneData(family, gene),
+          headers.Gene
+        )))
+      }
+    },
+    { title: "Description", data() {return "..."}},
   ];
-  dataMap.Centroid = [
-    links.family,
-    { title: "Visibility", data: createInputForHeaderData("Centroid", "boolean") },
-    ...tissueRelated
-  ];
+
+  const dataMap = {};
+
+  for (const type of types) {
+    switch (type) {
+      case "Gene": {
+        dataMap.Gene = headers.Gene;
+        break;
+      }
+      case "ShiftVector": {
+        dataMap.ShiftVector = [
+          links.gene,
+          links.family,
+          { title: "Visibility", data: createInputForHeaderData("ShiftVector", "boolean") }
+        ];
+        break;
+      }
+      case "Centroid": {
+        dataMap.Centroid = [
+          links.family,
+          { title: "Visibility", data: createInputForHeaderData("Centroid", "boolean") },
+          ...tissueRelated
+        ];
+        break;
+      }
+      case "Family": {
+        dataMap.Family = headers.Family;
+      }
+    }
+  }
   return dataMap;
 }

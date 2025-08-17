@@ -119,7 +119,7 @@ img.icon {
   box-shadow: none;
 }
 
-#pickedDetailsMenu {
+menu.tabs {
   display: flex;
   justify-content: center;
   list-style: none;
@@ -127,11 +127,11 @@ img.icon {
   margin: 0;
 }
 
-#pickedDetailsMenu li {
+menu.tabs li {
   margin-right: 20px;
 }
 
-#pickedDetailsMenu li:last-child {
+menu.tabs li:last-child {
   margin-right: 0;
 }
 
