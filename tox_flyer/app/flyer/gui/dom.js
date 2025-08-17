@@ -299,6 +299,8 @@ export function createSingleDetailsTable(geneData, familyIdx, geneIdx, headerMap
   const tBody = createElement("tbody");
   for (const header of headerMap) {
     const tr = createElement("tr", {
+      "tox-family": familyIdx,
+      "tox-gene": geneIdx,
       children: [
         createElement("td", { children: [header.title] }),
         createElement("td", { children: [header.data(geneData, familyIdx, geneIdx)] })

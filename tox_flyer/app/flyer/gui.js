@@ -54,7 +54,7 @@ function setupConfigCallbacks() {
     }, null);
   }
 
-  for (const nonFamilyRelated of ["orbitMode", "darkMode", "x", "y", "z", "rotationX", "rotationY", "orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale", "chunkDiameter", "chunkLoadRange", "shownFamilies", "selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor"]) {
+  for (const nonFamilyRelated of ["orbitMode", "darkMode", "x", "y", "z", "rotationX", "rotationY", "orbitModeTargetDistance", "mouseSensibility", "movementSpeed", "scale", "chunkDiameter", "chunkLoadRange", "selectedDataPointColor", "backgroundColor", "xAxisColor", "yAxisColor", "zAxisColor"]) {
     config.onChange(nonFamilyRelated, ({ value }) => {
       for (const cell of document.getElementsByClassName(nonFamilyRelated)) {
         setText(cell);

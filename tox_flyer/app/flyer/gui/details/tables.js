@@ -85,7 +85,7 @@ function createCellLinkElement(value, linkContent) {
   a.addEventListener("click", evt => {
     evt.preventDefault();
     applyChanges(evt.target.closest("table"));
-    show(linkContent());
+    show(linkContent(), applyChanges);
   });
   return a;
 }
@@ -98,7 +98,7 @@ export function getDetailsTableDataMap(...types) {
     family: {
       title: "Family",
       data(geneData, familyIdx, geneIdx) {
-        return createCellLinkElement(geneData.family, () => createTableUI(createSingleDetailsTable(geneData, familyIdx, geneIdx, headers.Family), {}));
+        return createCellLinkElement(geneData.family, () => createTableUI(createSingleDetailsTable(geneData, familyIdx, undefined, headers.Family), {}));
       }
     },
     gene: {
@@ -158,6 +158,7 @@ export function getDetailsTableDataMap(...types) {
         ), "Gene"))
       }
     },
+    { title: "Visibility", data: createInputForHeaderData("Visible", "boolean") },
     { title: "Description", data() {return "..."}},
   ];
 
