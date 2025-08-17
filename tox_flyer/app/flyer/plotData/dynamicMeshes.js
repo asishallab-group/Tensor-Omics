@@ -123,13 +123,21 @@ export function setupFamilyHullMesh(scene) {
       }
     }
 
-    config.onChange("Hull", create, null);
+    config.onChange("Hull", evt => { if (config.familyGet(evt.family, "Visible")) create(evt); }, null);
+
+    function changeVisibility({ family, value }) {
+      if (config.familyGet(family, "Hull")) {
+        create({ family, value});
+      }
+    }
+    config.onChange("Visible", changeVisibility, null);
   }
 
   function update() {
     dynamicThinInstanceBufferUpdated(hull);
   }
   config.onChange("Hull", update);
+  config.onChange("Visible", update);
 
   function recreate() {
     hull.TOX_instanceCount = 0;
@@ -137,7 +145,7 @@ export function setupFamilyHullMesh(scene) {
       config.familySet(family, "Hull", true, undefined, false);
     }
   }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Color", "darkMode", "Visible"]) {
+  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Color", "darkMode"]) {
     config.onChange(setting, recreate, 1);
     config.onChange(setting, update);
   }
@@ -182,24 +190,31 @@ export function setupShiftVectorMesh(scene) {
 
   {
     function create({ family, gene, value }) {
-      if (config.familyGet(family, "Visible")) {
-        if (value) {
-          const matrices = createVectorPartsInstanceMatrices(family, gene);
+      if (value) {
+        const matrices = createVectorPartsInstanceMatrices(family, gene);
 
-          let color = Color(config.familyGet(family, "Color"));
-          const colorScale = 1 / Math.max(color.r, color.g, color.b);
-          color = color.scale(colorScale);
-          color.a /= colorScale;
-          createDynamicThinInstance(shiftVectorShaft, family, gene, matrices.shaft, color);
-          createDynamicThinInstance(shiftVectorHead, family, gene, matrices.head, color);
-        } else {
-          removeDynamicThinInstance(shiftVectorHead, family, gene);
-          removeDynamicThinInstance(shiftVectorShaft, family, gene);
-        }
+        let color = Color(config.familyGet(family, "Color"));
+        const colorScale = 1 / Math.max(color.r, color.g, color.b);
+        color = color.scale(colorScale);
+        color.a /= colorScale;
+        createDynamicThinInstance(shiftVectorShaft, family, gene, matrices.shaft, color);
+        createDynamicThinInstance(shiftVectorHead, family, gene, matrices.head, color);
+      } else {
+        removeDynamicThinInstance(shiftVectorHead, family, gene);
+        removeDynamicThinInstance(shiftVectorShaft, family, gene);
       }
     };
 
-    config.onChange("ShiftVector", create, null);
+    config.onChange("ShiftVector", evt => { if (config.familyGet(evt.family, "Visible")) create(evt); }, null);
+
+    function changeVisibility({ family, value }) {
+      for (const gene of dataHandler.genes(family)) {
+        if (config.familyGet(family, "ShiftVector", gene)) {
+          create({ family, gene, value});
+        }
+      }
+    }
+    config.onChange("Visible", changeVisibility, null);
   }
 
   function update() {
@@ -207,17 +222,20 @@ export function setupShiftVectorMesh(scene) {
     dynamicThinInstanceBufferUpdated(shiftVectorShaft);
   }
   config.onChange("ShiftVector", update);
+  config.onChange("Visible", update);
 
-  function recreate() {
-    shiftVectorHead.TOX_instanceCount = 0;
-    shiftVectorShaft.TOX_instanceCount = 0;
-    for (const { family, geneIndex } of shiftVectorHead.TOX_metadata) {
-      config.familySet(family, "ShiftVector", true, geneIndex, false);
+  {
+    function recreate() {
+      shiftVectorHead.TOX_instanceCount = 0;
+      shiftVectorShaft.TOX_instanceCount = 0;
+      for (const { family, geneIndex } of shiftVectorHead.TOX_metadata) {
+        config.familySet(family, "ShiftVector", true, geneIndex, false);
+      }
     }
-  }
-  for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "Color", "darkMode", "Visible"]) {
-    config.onChange(setting, recreate, 1);
-    config.onChange(setting, update);
+    for (const setting of ["tissueX", "tissueY", "tissueZ", "scale", "Diameter", "Color", "darkMode"]) {
+      config.onChange(setting, recreate, 1);
+      config.onChange(setting, update);
+    }
   }
 }
 
