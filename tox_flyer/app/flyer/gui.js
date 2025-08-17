@@ -21,7 +21,7 @@ function setupConfigCallbacks() {
     }
   }
 
-  for (const familyRelated of ["ShiftVector", "Centroid", "Hull", "Color", "Diameter", "PickedGene", "PickedShiftVector", "PickedCentroid"]) {
+  for (const familyRelated of ["ShiftVector", "Centroid", "Hull", "Color", "Diameter", "PickedGene", "PickedShiftVector", "PickedCentroid", "Visible"]) {
     config.onChange(familyRelated, ({ family, gene, value }) => {
       for (const cell of document.getElementsByClassName(familyRelated)) {
         const tr = cell.closest("tr");

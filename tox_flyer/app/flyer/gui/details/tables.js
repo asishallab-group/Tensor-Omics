@@ -196,6 +196,6 @@ export function getDetailsTableDataMap(...types) {
 
 export function createDetailsDialog(options) {
   const dialog = createElement("dialog", options);
-  dialog.addEventListener("close", () => { applyChanges(dialog); config.update() });
+  dialog.addEventListener("close", () => { applyChanges(dialog); config.update(); document.getElementById("view")?.focus() });
   document.getElementById("UI")?.appendChild(dialog);
 }
