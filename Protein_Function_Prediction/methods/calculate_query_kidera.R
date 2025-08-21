@@ -10,7 +10,7 @@ library(dplyr)          # Für Datenmanipulation
 plan(multisession, workers = 8)
 
 # Path to fasta
-fasta_path <- "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/uniref50_morethan1.fasta"
+fasta_path <- "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/p_coccineus_different_root.faa"
 
 cat("Loading fasta:", fasta_path, "\n")
 aa <- readAAStringSet(fasta_path)
@@ -23,12 +23,14 @@ ids_clean <- sub("^UniRef50_", "", sub(" .*", "", ids))
 
 # Funktion zur sicheren Kidera-Faktoren-Berechnung mit AA-Säuberung
 safe_kidera <- function(seq) {
-  if (nchar(seq) == 0) {
+  # Nicht-Standard-AAs entfernen (X, B, Z, etc.)
+  seq_clean <- gsub("[^ACDEFGHIKLMNPQRSTVWY]", "", seq)
+  if (nchar(seq_clean) == 0) {
     # Falls nach Reinigung nichts übrig bleibt: NA-Vektor zurückgeben
     return(rep(NA_real_, 10))
   }
   tryCatch(
-    as.numeric(kideraFactors(seq)[[1]]),
+    as.numeric(kideraFactors(seq_clean)[[1]]),
     error = function(e) rep(NA_real_, 10)
   )
 }
@@ -48,6 +50,6 @@ kidera_df <- as_tibble(kidera_matrix) %>%
 cat("Final dataframe with: ", nrow(kidera_df), "valid sequences.\n")
 
 # Speichern
-saveRDS(kidera_df, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds")
+saveRDS(kidera_df, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/query_kidera.rds")
 cat("Data saved.\n")
 

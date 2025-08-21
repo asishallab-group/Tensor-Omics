@@ -1,4 +1,4 @@
-#Version 1.4.2
+# Version 1.4.3 - Ohne Filterung, mit angepasster Tokenisierung
 library(dplyr)
 library(tidyr)
 library(tibble)
@@ -22,17 +22,6 @@ ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/mate
 
 data("stop_words")
 
-is_identifier <- function(token) {
-  if (length(token) != 1) stop("Token muss Länge 1 haben")
-  
-  token <- tolower(token)
-  has_special_chars <- grepl("[0-9/-]", token)
-  too_short <- nchar(token) < 3
-  not_stopword <- !token %in% stop_words$word
-  
-  return(not_stopword && (has_special_chars || too_short))
-}
-
 # 2. Create corpora from the annotation tables
 corpora <- list(
   GO = ann_goa,
@@ -48,19 +37,23 @@ clean_doc <- function(text) {
     str_squish()
 }
 
-# Optimierte Tokenizer-Funktion ohne rep()
+# Neue Tokenizer-Funktion für HRD und IPR (an Leerzeichen, Semikolon, Punkten)
 tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
   if (name == "GO") {
     tokens_list <- str_split(texts, pattern)
   } else {
-    tokens_list <- str_extract_all(texts, pattern)
+    # Für HRD und IPR an typischen Trennzeichen splitten
+    tokens_list <- str_split(texts, "[\\s.;,]+")
   }
 
+  # Entferne leere Tokens
+  tokens_list <- map(tokens_list, ~ .x[.x != ""])
+  
   message("[", name, "] Tokens vor Filtern: ", sum(lengths(tokens_list)))
   message("[", name, "] Unique Tokens vor Filtern: ", length(unique(unlist(tokens_list))))
 
   tibble(
-    protein_id = protein_ids,  # nur einmal pro Dokument
+    protein_id = protein_ids,
     tokens_list = tokens_list
   ) %>%
     unnest(tokens_list) %>%
@@ -68,15 +61,13 @@ tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
     mutate(token = str_to_lower(str_trim(token))) %>%
     filter(
       str_length(token) > 2,
-      str_detect(token, "[a-z]"),
-      !str_detect(token, "^[0-9]{2,}[a-z]$")
+      str_detect(token, "[a-z]")
     )
 }
 
-splitter <- "[0-9]*'?-?[A-Za-z]+(?:['/-][0-9A-Za-z]+)*"
 splitter_go <- "[\\s.,:]+"
 
-# Function to build axes for one corpus
+# Funktion zur Erstellung der Achsen ohne Filterung
 build_axes <- function(docs, name) {
   message("Processing corpus: ", name, " (", length(docs[[2]]), " docs)")
   
@@ -91,26 +82,13 @@ build_axes <- function(docs, name) {
   # Preprocess
   texts <- clean_doc(texts)
 
-  # HRD spezifisches Entfernen von IDs
-  if (name == "HRD") {
-    texts <- pbsapply(texts, function(txt) {
-      parts <- str_split(txt, " ")[[1]]
-      last <- tail(parts, 1)
-      if (is_identifier(last) && length(parts) > 4) {
-        str_trim(str_remove(txt, paste0("\\s*", last, "$")))
-      } else {
-        txt
-      }
-    })
-  }
-
   # Tokenize
   p <- progressor(steps = 6)
   p("Tokenizing")
   if (name == "GO") {
     dt <- tokenize_custom(protein_ids, texts, splitter_go, name)
   } else {
-    dt <- tokenize_custom(protein_ids, texts, splitter, name)
+    dt <- tokenize_custom(protein_ids, texts, NULL, name)  # Pattern nicht benötigt für HRD/IPR
   }
 
   message("[", name, "] Tokens nach Filtern: ", nrow(dt))
@@ -118,22 +96,9 @@ build_axes <- function(docs, name) {
 
   p("Counting term frequencies")
   wf_doc <- dt %>% count(protein_id, token, name = "tf")
-  fw <- wf_doc %>% group_by(token) %>% summarise(fw = sum(tf), .groups = "drop")
-
-  total_fw <- sum(fw$fw)
-  
-  message("[", name, "] Unique Tokens nach TF count: ", nrow(fw))
-
-  p("Calculating IC and filtering bottom 10%")
-  fw <- fw %>% mutate(IC = -log(fw / total_fw))
-  cutoff_ic <- quantile(fw$IC, 0.10, na.rm = TRUE)
-  keep_tokens <- fw %>% filter(IC > cutoff_ic) %>% pull(token)
-
-  message("[", name, "] Tokens retained nach IC filter: ", length(keep_tokens))
 
   p("Building co-occurrence matrix")
-  dt_f <- wf_doc %>% filter(token %in% keep_tokens)
-  it <- dt_f %>% cast_sparse(protein_id, token, value = "tf")
+  it <- wf_doc %>% cast_sparse(protein_id, token, value = "tf")
   cooc <- crossprod(it)
 
   p("SVD decomposition")
@@ -141,7 +106,7 @@ build_axes <- function(docs, name) {
   if (nv < 1) stop("Co-occurrence matrix too small for SVD.")
   sv <- irlba(cooc, nv = nv)
   vars <- sv$d^2 / sum(sv$d^2)
-  k <- min(which(cumsum(vars) >= 0.80))
+  k <- min(which(cumsum(vars) >= 0.90))
 
   U <- sv$u[, 1:k, drop = FALSE] 
   colnames(U) <- paste0("EW", 1:k)
@@ -152,15 +117,13 @@ build_axes <- function(docs, name) {
   doc_freq <- dt %>% distinct(protein_id, token) %>%
     count(token, name = "df")
   idf <- doc_freq %>% 
-    mutate(idf = log(ndocs / df)) %>%
-    filter(df < 0.95 * ndocs)
+    mutate(idf = log(ndocs / df))
 
-  tokens_final <- intersect(rownames(U), idf$token)
+  tokens_final <- rownames(U)
   Uf <- U[tokens_final, , drop = FALSE]
   idf_f <- idf %>% filter(token %in% tokens_final)
 
   tfidf <- wf_doc %>% 
-    filter(token %in% tokens_final) %>%
     left_join(idf_f, by = "token") %>%
     mutate(tf_idf = tf * idf) %>%
     select(protein_id, token, tf_idf)
@@ -168,19 +131,6 @@ build_axes <- function(docs, name) {
   mat_tfidf <- cast_sparse(tfidf, protein_id, token, value = "tf_idf")
   doc_proj <- mat_tfidf %*% Uf
   colnames(doc_proj) <- paste0("EW", 1:k)
-
-  # Create protein to tokens mapping
-  protein_to_tokens <- dt %>%
-    distinct(protein_id, token) %>%
-    group_by(protein_id) %>%
-    summarise(tokens = list(token), .groups = "drop")
-
-	# Save the mapping as RDS file named by corpus
-  saveRDS(
-    protein_to_tokens,
-    file = paste0("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_", name, ".rds")
-    )
-
   
   list(
     word_axes = Uf,

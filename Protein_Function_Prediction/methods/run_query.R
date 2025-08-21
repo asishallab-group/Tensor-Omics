@@ -1,478 +1,367 @@
-# Token-based prediction version of your script
-# - Adds token-level calculations for HRD / GO / IPR
-# - Keeps previous doc-vector / kidera / svd logic as well
-# Requirements: dplyr, tibble, readr, stringr
-#Version 2.1.2
-library(dplyr)
-library(tibble)
-library(readr)
-library(stringr)
+# Protein Function Prediction Pipeline (SVD + Kidera + Lexical Consistency)
+# Date: 2025-08-18
+#
+# Overview
+# - Build a chemical structure space from SVD embeddings (variable dims) + 10 Kidera factors.
+# - Embed query proteins using BLAST hits with *normalized geometric mean* weights.
+# - Supports multiple query proteins in a single BLAST file (separate embeddings per query).
+# - Find nearest neighbors via Euclidean KD-tree (RANN) with a sequential stop rule.
+# - Per corpus (GO/IPR/HRD): enforce high lexical consistency via cosine similarity (>= threshold).
+# - Save results per query as CSV + RDS under results/<query_id>/.
+#
+# Notes
+# - ID normalization removes the "UniRef50_" prefix to match other files.
+# - The geometric mean is computed directly from DIAMOND (-f6) output using forward/backward overlap and pident (with 0.1 fallbacks).
+# - Combination mode:
+#     * "sum": conventional weighted combination:  sum_i w_i * v_i     (default)
+#     * "mean_after_weight": mean over weighted vectors: (1/n) * sum_i w_i * v_i
+# - Designed for very large reference sets, but memory limits apply. Consider chunking if needed.
+#
+# Neu:
+# - Ein Referenz-Mittelwert-Vektor kann angegeben werden, um eine neue Normalisierung durchzuführen.
 
-# ---- Helper functions ----
-cosine_sim <- function(q_vec, ref_mat) {
-  # ref_mat: rows = entities, cols = vector dims
-  if (length(q_vec) == 0 || nrow(ref_mat) == 0) return(numeric(0))
-  denom_ref <- sqrt(rowSums(ref_mat^2))
-  denom_q <- sqrt(sum(q_vec^2))
-  # avoid division by zero
-  denom_ref[denom_ref == 0] <- .Machine$double.eps
-  if (denom_q == 0) denom_q <- .Machine$double.eps
-  sims <- as.vector((ref_mat %*% q_vec) / (denom_ref * denom_q))
-  names(sims) <- rownames(ref_mat)
-  sims
+suppressPackageStartupMessages({
+  require(data.table)
+  require(Matrix)
+  require(RANN)
+  require(stringr)
+  require(tools)
+  require(optparse)
+})
+
+# ------------------------
+# Utility helpers
+# ------------------------
+canon_id <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)
+  # drop UniRef50_ prefix if present
+  x <- sub("^(?i)UniRef50[_:]?", "", x, perl = TRUE)
+  x
 }
 
-get_top_ids <- function(q_vec, ref_mat, top_n = 5) {
-  sims <- cosine_sim(q_vec, ref_mat)
-  if (length(sims) == 0) return(character(0))
-  top <- sort(sims, decreasing = TRUE)[1:min(top_n, length(sims))]
-  names(top)
+ensure_dir <- function(path) {
+  if (!dir.exists(path)) dir.create(path, recursive = TRUE, showWarnings = FALSE)
 }
 
-get_predictions <- function(ids, annotation_df) {
-  if (length(ids) == 0) return(character(0))
-  annotation_df %>%
-    filter(protein_id %in% ids) %>%
-    distinct(protein_id, term) %>%
-    pull(term)
+save_both <- function(obj, df, out_dir, base_name) {
+  ensure_dir(out_dir)
+  rds_path <- file.path(out_dir, sprintf("%s.rds", base_name))
+  csv_path <- file.path(out_dir, sprintf("%s.csv", base_name))
+  saveRDS(obj, rds_path)
+  fwrite(df, csv_path)
+  list(rds = rds_path, csv = csv_path)
 }
 
-compute_gm_sim <- function(pident, align_len, q_len, s_len) {
-  overlap <- align_len / pmax(q_len, s_len)
-  gm <- sqrt(pident * overlap)
-  gm
+# ------------------------
+# Loading reference data
+# ------------------------
+load_lexical_axes <- function(path) {
+  message("Lade lexikalische Achsen aus ", path, "...")
+  ax <- readRDS(path)
+  if (!"doc_vectors" %in% names(ax)) stop("lexical axes RDS missing 'doc_vectors'")
+  dv <- ax$doc_vectors
+  if (!is.null(rownames(dv))) {
+    rownames(dv) <- canon_id(rownames(dv))
+  }
+  message("Lexikalische Achsen geladen: ", nrow(dv), " Einträge.")
+  list(doc_vectors = dv, explained_variance = ax$explained_variance)
 }
 
-get_top_ids_with_stop <- function(q_vec, ref_mat, max_k = 30, window_k = 3) {
-  if (length(q_vec) == 0 || nrow(ref_mat) == 0) return(character(0))
+# NEUE FUNKTION: Mean-Vektor laden und vorbereiten
+load_mean_vector <- function(path) {
+  message("Lade Mean-Vektor aus ", path, "...")
+  mean_dt <- fread(path)
+  # Wir nehmen an, die erste Spalte ist die Protein-ID und die zweite der Vektorwert
+  setnames(mean_dt, names(mean_dt)[1:2], c("Protein_ID", "Mean_Vector_Value"))
+  mean_dt[, Protein_ID := canon_id(Protein_ID)]
+  setkey(mean_dt, Protein_ID)
+  message("Mean-Vektor geladen: ", nrow(mean_dt), " Einträge.")
+  mean_dt
+}
+
+
+# Geänderte Funktion: calculate_norm_gmean_weights
+compute_norm_gmean_weights <- function(blast_file, mean_dt = NULL) {
+  message("Verarbeite BLAST-Ergebnisse aus ", blast_file, "...")
+  cols <- c("qseqid","sseqid","qstart","qend","qlen",
+            "sstart","send","slen","pident","evalue","bitscore")
+  dt <- data.table::fread(blast_file, sep = "\t", header = FALSE, col.names = cols)
+  dt[, overlap := ((qend - qstart) + (send - sstart)) / (qlen + slen) * 100]
+  dt[, qid := canon_id(qseqid)]
+  dt[, sid := canon_id(sseqid)]
+  dt_back <- data.table::copy(dt)
+  data.table::setnames(dt_back,
+                       c("qid","sid","overlap","pident"),
+                       c("sid","qid","overlap_b","pident_b"))
+  dt_back <- dt_back[, .(qid, sid, overlap_b, pident_b)]
   
-  sims <- cosine_sim(q_vec, ref_mat)
-  if (length(sims) == 0) return(character(0))
-  sims_sorted <- sort(sims, decreasing = TRUE)
+  # Korrigierter Merge-Vorgang
+  merged <- dt[dt_back, on = .(qid = sid, sid = qid)]
   
-  selected <- names(sims_sorted)[1]
-  if (length(sims_sorted) == 1) return(selected)
+  merged[is.na(overlap_b), overlap_b := 0.1]
+  merged[is.na(pident_b),  pident_b  := 0.1]
   
-  deltas <- numeric()
-  for (i in 2:min(length(sims_sorted), max_k)) {
-    delta <- sims_sorted[i] - sims_sorted[i - 1]
-    deltas <- c(deltas, delta)
-    
-    if (i > window_k) {
-      mu <- mean(deltas[(i - window_k):(i - 1)])
-      sigma <- sd(deltas[(i - window_k):(i - 1)])
-      if (is.na(sigma)) sigma <- 0
-      if (delta < (mu - 2 * sigma)) {
+  gm <- function(vals) exp(mean(log(pmax(vals, 1e-12))))
+  merged[, gmean := gm(c(overlap, overlap_b, pident, pident_b)), by = 1:nrow(merged)]
+  merged <- merged[is.finite(gmean) & gmean > 0]
+
+  # NEUE Logik: Wenn ein Mean-Vektor vorhanden ist, diesen für die Normalisierung verwenden
+  if (!is.null(mean_dt)) {
+    message("Wende neue Normalisierungslogik an...")
+    # Hole die Mean-Werte für alle sids aus der Tabelle
+    merged[, mean_val := mean_dt[.(sid), Mean_Vector_Value]]
+    merged[is.na(mean_val), mean_val := 0] # Falls eine ID nicht im Mean-Vektor ist, 0 verwenden
+
+    # Berechne den Normalisierungsfaktor pro query_id
+    merged[, norm_factor := sum(gmean), by = qid]
+
+    # Berechne die finalen Gewichte
+    merged[, w := (gmean - mean_val) / norm_factor]
+    merged[norm_factor == 0, w := 0] # Division by zero vermeiden
+
+  } else {
+    # Ursprüngliche Logik, falls kein Mean-Vektor angegeben ist
+    merged[, w := gmean / sum(gmean), by = qid]
+  }
+
+  message("BLAST-Gewichtungen berechnet.")
+  merged[, .(id = sid, w, qid)]
+}
+
+# ------------------------
+# Query embedding in SVD and chemical space
+# ------------------------
+combine_hit_vectors <- function(weights_dt, svd_mat, query_id, combine_mode = c("sum", "mean_after_weight")) {
+  combine_mode <- match.arg(combine_mode)
+  ids <- intersect(weights_dt[qid == query_id, id], rownames(svd_mat))
+  if (length(ids) == 0) stop(sprintf("None of the BLAST hits for query %s are present in SVD matrix.", query_id))
+  w <- weights_dt[qid == query_id][match(ids, id), w]
+  V <- svd_mat[ids, , drop = FALSE]
+  weighted <- V * w
+  vq <- colSums(weighted)
+  if (combine_mode == "mean_after_weight") {
+    vq <- vq / nrow(weighted)
+  }
+  as.numeric(vq)
+}
+
+append_query_kidera <- function(v_svd_q, query_kidera_row) {
+  if (is.null(query_kidera_row) || length(query_kidera_row) != 10) stop("Query Kidera row must have 10 numeric values.")
+  c(v_svd_q, as.numeric(query_kidera_row))
+}
+
+# ------------------------
+# KD-tree search + lexical gating per corpus
+# ------------------------
+cosine_sim <- function(x, Y) {
+  x <- as.numeric(x)
+  Y <- as.matrix(Y)
+  x_norm <- sqrt(sum(x * x))
+  if (x_norm == 0) return(rep(NA_real_, nrow(Y)))
+  y_norms <- sqrt(rowSums(Y * Y))
+  as.numeric((Y %*% x) / (y_norms * x_norm))
+}
+
+collect_neighbors_for_corpus <- function(neighbor_ids, doc_mat_sparse, threshold = 0.9) {
+  if (length(neighbor_ids) == 0) return(list(ids = character(), similarities = numeric(), doc_vectors = NULL, mean_vector = NULL))
+  
+  available <- intersect(neighbor_ids, rownames(doc_mat_sparse))
+  if (length(available) == 0) return(list(ids = character(), similarities = numeric(), doc_vectors = NULL, mean_vector = NULL))
+  
+  first_id <- available[1]
+  selected_ids <- c(first_id)
+  selected_mat <- as.matrix(doc_mat_sparse[first_id, , drop = FALSE])
+  sim_values <- c(1.0) # Cosine similarity of a vector with itself is 1.0
+  
+  if (length(available) > 1) {
+    for (cand in available[-1]) {
+      cand_vec <- as.matrix(doc_mat_sparse[cand, , drop = FALSE])
+      sims <- cosine_sim(cand_vec, selected_mat)
+      
+      if (all(is.finite(sims)) && all(sims >= threshold)) {
+        selected_ids <- c(selected_ids, cand)
+        selected_mat <- rbind(selected_mat, cand_vec)
+        # Calculate similarity against the mean vector of selected neighbors
+        mean_vec_current <- as.numeric(colMeans(selected_mat))
+        current_sim <- cosine_sim(cand_vec, matrix(mean_vec_current, nrow = 1))
+        sim_values <- c(sim_values, current_sim)
+      } else {
         break
       }
     }
-    
-    selected <- c(selected, names(sims_sorted)[i])
   }
   
-  selected
+  mean_vec <- as.numeric(colMeans(selected_mat))
+  list(ids = selected_ids, similarities = sim_values, doc_vectors = selected_mat, mean_vector = mean_vec)
 }
 
+# ------------------------
+# Driver for multiple queries
+# ------------------------
+run_for_all_queries <- function(blast_file,
+                               chemical_space_rds,
+                               query_kidera_rds_path,
+                               mean_vector_csv = NULL, # NEUER PARAMETER
+                               lexical_paths = list(GO = NULL, IPR = NULL, HRD = NULL),
+                               output_base = "results",
+                               k_cap = 50,
+                               cosine_threshold = 0.9,
+                               combine_mode = c("sum", "mean_after_weight")) {
+  
+  combine_mode <- match.arg(combine_mode)
+  
+  # Phase 1: Daten laden
+  message("--- Phase 1: Lade Referenzdaten ---")
+  message("Lade vorbereiteten chemischen Raum aus ", chemical_space_rds, "...")
+  chem <- readRDS(chemical_space_rds)
+  
+  # Extract necessary components from the chemical space object
+  chem_mat <- chem$mat
+  svd_mat <- chem$mat[, colnames(chem$mat) %in% chem$svd$names]
+  
+  message("Lade Abfrage-Kidera-Faktoren...")
+  qk <- readRDS(query_kidera_rds_path)
+  qk <- as.data.table(qk)
+  setnames(qk, names(qk)[1], "id")
+  qk[, id := canon_id(id)]
+  k_cols <- grep("^KF\\d+$", names(qk), value = TRUE)
+  stopifnot(length(k_cols) == 10)
 
-named_numeric <- function(names_vec) {
-  v <- numeric(length(names_vec)); names(v) <- names_vec; v
-}
-
-# ---- Load data (unchanged) ----
-axes_GO  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_GO.rds")
-axes_HRD <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_HRD.rds")
-axes_IPR <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/lexical_axes_IPR.rds")
-
-protein_to_tokens_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_IPR.rds")
-protein_to_tokens_go  <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_GO.rds")
-protein_to_tokens_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein_to_tokens_HRD.rds")
-
-get_or_null <- function(x, name) {
-  if (!is.null(x) && !is.null(x[[name]])) x[[name]] else NULL
-}
-
-go_doc_ref  <- get_or_null(axes_GO,  "doc_vectors")
-go_token_mat <- get_or_null(axes_GO, "word_axes")
-go_token_idf <- get_or_null(axes_GO, "idf")
-
-hrd_doc_ref <- get_or_null(axes_HRD, "doc_vectors")
-hrd_token_mat <- get_or_null(axes_HRD, "word_axes")
-hrd_token_idf <- get_or_null(axes_HRD, "idf")
-
-ipr_doc_ref  <- get_or_null(axes_IPR,  "doc_vectors")
-ipr_token_mat <- get_or_null(axes_IPR, "word_axes")
-ipr_token_idf <- get_or_null(axes_IPR, "idf")
-
-go_ref  <- go_doc_ref 
-hrd_ref <- hrd_doc_ref 
-ipr_ref <- ipr_doc_ref
-
-ann_goa <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2goa.rds")
-ann_hrd <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2hrd.rds")
-ann_ipr <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/protein2ipr.rds")
-
-kidera <- readRDS("/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds")
-kidera_ref <- kidera %>% select(id, starts_with("K")) %>% column_to_rownames("id") %>% as.matrix()
-
-svd_ref <- read_csv(
-  "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/svd_reduced_matrix.csv",
-  col_names = c("protein_id", as.character(0:17)),
-  col_types = paste0("c", paste(rep("d", 18), collapse = ""))
-) %>%
-  column_to_rownames("protein_id") %>%
-  as.matrix()
-
-get_protein_tokens <- function(prot_id, type = c("GO", "HRD", "IPR")) {
-  type <- match.arg(type)
-  if (type == "GO") {
-    tokens <- protein_to_tokens_go[[prot_id]]
-  } else if (type == "HRD") {
-    tokens <- protein_to_tokens_hrd[[prot_id]]
-  } else {
-    tokens <- protein_to_tokens_ipr[[prot_id]]
+  # NEU: Lade Mean-Vektor, falls angegeben
+  mean_dt <- NULL
+  if (!is.null(mean_vector_csv)) {
+    mean_dt <- load_mean_vector(mean_vector_csv)
   }
-  if (is.null(tokens)) character(0) else tokens
-}
-
-# Hilfsfunktion zum Entfernen des UniRef50_ Präfix
-strip_uniref_prefix <- function(id) {
-  sub("^UniRef50_", "", id)
-}
-
-# ---- Map tokens to candidate terms (simple lookup) ----
-terms_containing_tokens <- function(tokens, annotation_df, max_terms = 200) {
-  # Find annotation terms that contain any of tokens (word boundaries) - case insensitive
-  if (length(tokens) == 0) return(character(0))
-  pattern <- paste0("\\b(", paste0(sprintf("%s", tokens), collapse = "|"), ")\\b")
-  # search in distinct terms
-  candidate_terms <- annotation_df %>%
-    distinct(term) %>%
-    filter(str_detect(tolower(term), pattern)) %>%
-    pull(term)
-  if (length(candidate_terms) > max_terms) candidate_terms <- candidate_terms[1:max_terms]
-  candidate_terms
-}
-
-# ---- Main function ----
-predict_functions_token_based <- function(protein_list, blast_results, kidera,
-                                          top_tokens = 50,
-                                          debug_dir = NULL) {
-  all_preds <- list()
-  intermediate <- list()
   
-  total <- length(protein_list)
-  message("\nStarting token-based function prediction for ", total, " proteins\n")
+  message("Lade lexikalische Vektoren für die Korpora...")
+  corpora <- list()
+  for (nm in names(lexical_paths)) {
+    p <- lexical_paths[[nm]]
+    if (!is.null(p)) {
+      corpora[[nm]] <- load_lexical_axes(p)
+    }
+  }
   
-  for (i in seq_along(protein_list)) {
-    q <- protein_list[i]
-    message("Processing protein ", i, "/", total, ": ", q)
-    debug_info <- list(protein_id = q)
+  # Phase 2: BLAST-Ergebnisse verarbeiten
+  message("--- Phase 2: Verarbeite BLAST-Ergebnisse ---")
+  # Übergabe des Mean-Vektors an die Funktion
+  w_dt <- compute_norm_gmean_weights(blast_file, mean_dt = mean_dt)
+  query_ids <- unique(w_dt$qid)
+  message(length(query_ids), " Abfrageproteine zur Verarbeitung gefunden.")
+  
+  # Phase 3: Suche nach Nachbarn für jede Abfrage
+  message("--- Phase 3: Starte Nachbarsuche für jede Abfrage ---")
+  results <- list()
+  for (i in 1:length(query_ids)) {
+    query_id <- query_ids[i]
+    message(sprintf("Verarbeite Abfrage %d/%d: %s", i, length(query_ids), query_id))
     
-    hits <- blast_results %>%
-      filter(query == q) %>%
-      mutate(
-        gm_sim = compute_gm_sim(pident, align_length, q_len, s_len)
-      ) %>%
-      filter(!is.na(gm_sim) & gm_sim > 0) %>%
-      arrange(desc(gm_sim)) %>%
-      head(30)
-    
-    debug_info$hits <- hits
-    
-    if (nrow(hits) == 0) {
-      message(" - No valid hits found")
-      all_preds[[q]] <- tibble(protein_id = q, predicted_token = character(), predicted_term = character(), source = character())
-      intermediate[[q]] <- debug_info
+    query_row <- qk[id == query_id]
+    if (nrow(query_row) == 0) {
+      message("  -> Keine Kidera-Faktoren für diese Abfrage gefunden. Überspringe...")
       next
     }
+    q_kidera_vec <- as.numeric(query_row[1, ..k_cols])
     
-    # weights
-    gm_sim_log <- log1p(hits$gm_sim)
-    weight_sum <- sum(gm_sim_log)
-    if (weight_sum < .Machine$double.eps) {
-      message(" - Weight sum near zero, using uniform weights")
-      w <- rep(1/nrow(hits), nrow(hits))
-    } else {
-      w <- gm_sim_log / weight_sum
+    message("  -> Erstelle Abfragevektor...")
+    vq_svd <- combine_hit_vectors(w_dt, svd_mat, query_id, combine_mode = combine_mode)
+    vq_chem <- append_query_kidera(vq_svd, q_kidera_vec)
+    
+    message("  -> Finde die ", k_cap, " nächsten Nachbarn im chemischen Raum...")
+    nn <- RANN::nn2(data = chem_mat, query = matrix(vq_chem, nrow = 1), k = min(k_cap, nrow(chem_mat)))
+    nn_idx <- as.integer(nn$nn.idx[1, ])
+    neighbor_ids <- rownames(chem_mat)[nn_idx]
+    neighbor_ids <- neighbor_ids[neighbor_ids != query_id]
+    
+    per_corpus <- list()
+    for (nm in names(corpora)) {
+      message("  -> Führe lexikalische Filterung für Korpus '", nm, "' durch...")
+      dv <- corpora[[nm]]$doc_vectors
+      res <- collect_neighbors_for_corpus(neighbor_ids, dv, threshold = cosine_threshold)
+      per_corpus[[nm]] <- res
     }
     
-    # For each annotation type do token-based aggregation
-    annotation_types <- c("GO", "HRD", "IPR")
-    token_results <- list()
-    term_results <- list()
+    out_dir <- file.path(output_base, tolower(gsub("[^A-Za-z0-9]+", "_", query_id)))
+    ensure_dir(out_dir)
     
-    for (atype in annotation_types) {
-      if (atype == "GO") {
-        token_mat <- go_token_mat
-        token_idf <- go_token_idf
-        ann_df <- ann_goa
-        prot_to_tokens <- protein_to_tokens_go
-      } else if (atype == "HRD") {
-        token_mat <- hrd_token_mat
-        token_idf <- hrd_token_idf
-        ann_df <- ann_hrd
-        prot_to_tokens <- protein_to_tokens_hrd
-      } else {
-        token_mat <- ipr_token_mat
-        token_idf <- ipr_token_idf
-        ann_df <- ann_ipr
-        prot_to_tokens <- protein_to_tokens_ipr
-      }
-      
-      # If no token matrix available, skip token-based for this type
-      if (is.null(token_mat) || nrow(token_mat) == 0) {
-        message(" - No token matrix for ", atype, "; skipping token-based for this type")
-        token_results[[atype]] <- character(0)
-        term_results[[atype]] <- character(0)
-        next
-      }
-      
-      # Build protein-level token vectors for hits using mapping
-      prot_token_vecs <- list()
-      hit_ids <- hits$subject
-      hit_ids_stripped <- strip_uniref_prefix(hit_ids)
-      
-      # Debug: Zeige IDs, die nicht im Mapping sind
-      missing_in_mapping <- hit_ids_stripped[!hit_ids_stripped %in% names(prot_to_tokens)]
-      if (length(missing_in_mapping) > 0) {
-        message("DEBUG: Folgende Hit-IDs fehlen im Token-Mapping für ", atype, ": ", paste(missing_in_mapping, collapse = ", "))
-      }
-      
-      # Debug: Zeige IDs, die nicht in der Token-Matrix sind
-      missing_in_matrix <- hit_ids_stripped[!hit_ids_stripped %in% rownames(token_mat)]
-      if (length(missing_in_matrix) > 0) {
-        message("DEBUG: Folgende Hit-IDs fehlen in der Token-Matrix für ", atype, ": ", paste(missing_in_matrix, collapse = ", "))
-      }
-      
-      for (h_idx in seq_along(hit_ids)) {
-        hid <- hit_ids_stripped[h_idx]
-        tokens <- prot_to_tokens[[hid]]
-        if (is.null(tokens) || length(tokens) == 0) {
-          prot_token_vecs[[hid]] <- numeric(0)
-        } else {
-          # Summiere die Vektoren der Tokens aus der Matrix
-          valid_tokens <- intersect(tokens, rownames(token_mat))
-          if (length(valid_tokens) == 0) {
-            prot_token_vecs[[hid]] <- numeric(0)
-          } else {
-            vec <- colSums(token_mat[valid_tokens, , drop = FALSE])
-            prot_token_vecs[[hid]] <- vec
-          }
-        }
-      }
-      
-      # Some hits may have no token vectors. Filter them and re-normalize weights accordingly
-      available_hits <- names(prot_token_vecs)[sapply(prot_token_vecs, function(x) length(x) > 0)]
-      # Passe available_hits ebenfalls an (falls nötig)
-      idx_in_hits <- match(available_hits, hit_ids_stripped)
-      w_sub <- w[idx_in_hits]
-      w_sub_sum <- sum(w_sub)
-      if (w_sub_sum <= 0) {
-        w_sub <- rep(1/length(w_sub), length(w_sub))
-      } else {
-        w_sub <- w_sub / w_sub_sum
-      }
-      
-      # Ensure all prot token vectors have same length as token_mat columns
-      dim_tok <- ncol(token_mat)
-      prot_token_matrix <- matrix(0, nrow = length(available_hits), ncol = dim_tok)
-      rownames(prot_token_matrix) <- available_hits
-      for (j in seq_along(available_hits)) {
-        vec <- prot_token_vecs[[available_hits[j]]]
-        if (length(vec) != dim_tok) {
-          # if dimensions differ (shouldn't), try to pad/truncate
-          if (length(vec) == 0) {
-            vec <- rep(0, dim_tok)
-          } else {
-            vec <- head(c(vec, rep(0, dim_tok)), dim_tok)
-          }
-        }
-        prot_token_matrix[j, ] <- vec
-      }
-      
-      # Query token vector: weighted sum of protein token vectors
-      q_token_vec <- colSums(prot_token_matrix * matrix(w_sub, nrow = nrow(prot_token_matrix), ncol = dim_tok))
-      
-      # If q vector is zero, skip similarity
-      if (all(q_token_vec == 0)) {
-        message(" - Query token vector zero for ", atype)
-        token_results[[atype]] <- character(0)
-        term_results[[atype]] <- character(0)
-        next
-      }
-      
-      # Compute cosine similarity between query token vector and all tokens in token_mat
-      denom_q <- sqrt(sum(q_token_vec^2)); if (denom_q == 0) denom_q <- .Machine$double.eps
-      denom_tokens <- sqrt(rowSums(token_mat^2)); denom_tokens[denom_tokens == 0] <- .Machine$double.eps
-      sims_tokens <- as.vector((token_mat %*% q_token_vec) / (denom_tokens * denom_q))
-      names(sims_tokens) <- rownames(token_mat)
-      sims_tokens <- sort(sims_tokens, decreasing = TRUE)
-      
-      top_k <- min(top_tokens, length(sims_tokens))
-      top_tokens_names <- names(sims_tokens)[1:top_k]
-      top_tokens_scores <- sims_tokens[1:top_k]
-      
-      token_results[[atype]] <- tibble(token = top_tokens_names, score = as.numeric(top_tokens_scores))
-      
-      # Map tokens to candidate terms (annotation strings)
-      candidates <- terms_containing_tokens(top_tokens_names, ann_df, max_terms = 500)
-      # Optionally we can rank candidate terms by frequency among neighbors or by aggregated token scores
-      # For simplicity, compute a basic score: how many top tokens appear in the term (weighted)
-      if (length(candidates) == 0) {
-        term_results[[atype]] <- character(0)
-      } else {
-        token_score_named <- setNames(as.numeric(top_tokens_scores), top_tokens_names)
-        term_scores <- sapply(candidates, function(term) {
-          tkns <- unique(tokenize_text(term))
-          common <- intersect(tkns, top_tokens_names)
-          if (length(common) == 0) return(0)
-          sum(token_score_named[common], na.rm = TRUE)
-        })
-        ranked_terms <- candidates[order(term_scores, decreasing = TRUE)]
-        term_results[[atype]] <- ranked_terms
-      }
-      
-      # Save for debugging
-      debug_info[[paste0("tokens_", atype)]] <- token_results[[atype]]
-      debug_info[[paste0("terms_", atype)]] <- term_results[[atype]]
-    } # end for annotation types
-    
-    # Additionally compute doc-based predictions (original approach) for comparison
-    # (keep original neighbors logic)
-    # compute q_doc vectors (weighted sums) if doc matrices available
-    compute_qdoc <- function(ref_mat) {
-      if (is.null(ref_mat)) return(numeric(0))
-      if (!is.matrix(ref_mat) && !is.data.frame(ref_mat)) return(numeric(0))
-      if (nrow(ref_mat) == 0) return(numeric(0))
-      # Entferne Präfix bei den Hit-IDs
-      ids <- intersect(strip_uniref_prefix(hits$subject), rownames(ref_mat))
-      if (length(ids) == 0) return(numeric(0))
-      V <- ref_mat[ids, , drop = FALSE]
-      idx <- match(rownames(V), strip_uniref_prefix(hits$subject))
-      colSums(V * w[idx])
-    }
-    q_go  <- compute_qdoc(go_ref)
-    q_hrd <- compute_qdoc(hrd_ref)
-    q_ipr <- compute_qdoc(ipr_ref)
-    q_kid <- compute_qdoc(kidera_ref)
-    q_svd <- compute_qdoc(svd_ref)
-    
-    # find neighbors (doc-based) using existing stop condition
-    get_tops <- function(q_vec, ref_mat) {
-      if (length(q_vec) == 0 || is.null(ref_mat) || nrow(ref_mat) == 0) return(character(0))
-      get_top_ids_with_stop(q_vec, ref_mat)
-    }
-    tops <- list(
-      GO_doc = get_tops(q_go, go_ref),
-      HRD_doc = get_tops(q_hrd, hrd_ref),
-      IPR_doc = get_tops(q_ipr, ipr_ref),
-      KID_doc = get_tops(q_kid, kidera_ref),
-      SVD_doc = get_tops(q_svd, svd_ref)
-    )
-    
-    # get predictions from doc neighbors (original mapping)
-    preds_doc <- list(
-      GO = unique(c(get_predictions(tops$GO_doc, ann_goa))),
-      HRD = unique(c(get_predictions(tops$HRD_doc, ann_hrd))),
-      IPR = unique(c(get_predictions(tops$IPR_doc, ann_ipr)))
-    )
-    
-    # Format outputs: we will produce both token-based top tokens + mapped terms and doc-term predictions
-    # Create tidy tibble rows for the query:
-    # Token-based: one row per (atype, token, token_score, mapped_terms...) - for simplicity we return joined mapped terms as a single string
-    token_rows <- bind_rows(lapply(names(token_results), function(at) {
-      tr <- token_results[[at]]
-      # Robustere Prüfung:
-      if (is.null(tr) || !is.data.frame(tr) || nrow(tr) == 0) {
-        tibble(protein_id = q, annotation_type = at, token = character(0), token_score = numeric(0), mapped_terms = character(0))
-      } else {
-        mapped_terms_str <- sapply(seq_len(nrow(tr)), function(r) {
-          tkn <- tr$token[r]
-          # terms containing this single token
-          tms <- terms_containing_tokens(tkn, if (at == "GO") ann_goa else if (at == "HRD") ann_hrd else ann_ipr, max_terms = 50)
-          paste0(head(tms, 10), collapse = " | ")
-        })
-        tibble(
-          protein_id = q,
-          annotation_type = at,
-          token = tr$token,
-          token_score = tr$score,
-          mapped_terms = mapped_terms_str
+    rows <- list()
+    for (nm in names(per_corpus)) {
+      ids <- per_corpus[[nm]]$ids
+      sims <- per_corpus[[nm]]$similarities
+      if (length(ids)) {
+        rows[[nm]] <- data.table(
+          query_id = query_id,
+          corpus = nm,
+          neighbor_id = ids,
+          cosine_similarity = sims,
+          included = TRUE
         )
       }
-    }))
+    }
+    neighbor_df <- if (length(rows)) rbindlist(rows, use.names = TRUE, fill = TRUE) else data.table()
     
-    # Doc-based rows
-    doc_rows <- bind_rows(list(
-      GO = tibble(protein_id = q, annotation_type = "GO_doc", predicted_term = preds_doc$GO),
-      HRD = tibble(protein_id = q, annotation_type = "HRD_doc", predicted_term = preds_doc$HRD),
-      IPR = tibble(protein_id = q, annotation_type = "IPR_doc", predicted_term = preds_doc$IPR)
-    ), .id = "tmp") %>% select(-tmp)
+    means_dt <- rbindlist(lapply(names(per_corpus), function(nm) {
+      mv <- per_corpus[[nm]]$mean_vector
+      if (is.null(mv)) return(NULL)
+      data.table(query_id = query_id, corpus = nm, dim = paste0("EW", seq_along(mv)), value = mv)
+    }), use.names = TRUE, fill = TRUE)
     
-    # Save results
-    # final predictions: tokens table + doc_terms table (we return both as separate outputs glued into longer frame)
-    # For convenience, we'll create a 'predicted_term' column in token_rows by using first mapped term if available
-    token_rows <- token_rows %>%
-      mutate(predicted_term = ifelse(mapped_terms == "", NA_character_, mapped_terms))
-    
-    combined_rows <- bind_rows(
-      token_rows %>% select(protein_id, annotation_type, token, token_score, predicted_term),
-      doc_rows %>% rename(annotation_type = annotation_type, token = predicted_term) %>%
-        mutate(token_score = NA_real_) %>%
-        select(protein_id, annotation_type, token, token_score, predicted_term = token)
+    rds_obj <- list(
+      query_id = query_id,
+      chemical_query_vector = vq_chem,
+      chemical_dims = colnames(chem_mat),
+      neighbor_order = neighbor_ids,
+      per_corpus = per_corpus
     )
     
-    all_preds[[q]] <- combined_rows
-    intermediate[[q]] <- debug_info
-    message(" - Token-based prediction produced ", nrow(combined_rows), " rows (including doc-based rows)")
-  } # end loop proteins
-  
-  # Save intermediate results if requested
-  if (!is.null(debug_dir)) {
-    dir.create(debug_dir, showWarnings = FALSE)
-    saveRDS(intermediate, file.path(debug_dir, "intermediate_results_token_based.rds"))
-    message("\nSaved intermediate results to ", file.path(debug_dir, "intermediate_results_token_based.rds"))
+    message("  -> Speichere Ergebnisse in ", out_dir, "...")
+    out_files1 <- save_both(rds_obj, neighbor_df, out_dir, sprintf("%s_output", tolower(query_id)))
+    means_csv <- file.path(out_dir, sprintf("%s_mean_doc_vectors.csv", tolower(query_id)))
+    if (nrow(means_dt)) fwrite(means_dt, means_csv)
+    
+    results[[query_id]] <- list(
+      out_rds = out_files1$rds,
+      out_csv = out_files1$csv,
+      out_means_csv = means_csv,
+      out_dir = out_dir
+    )
   }
   
-  # bind rows while preserving columns
-  final <- bind_rows(all_preds)
-  final
+  message("--- Verarbeitung abgeschlossen ---")
+  results
 }
 
-# ---- Load and prepare BLAST results ----
-blast_results <- read_tsv(
-  "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/diamond_test_1.txt",
-  col_names = c("query", "subject", "q_start", "q_end", "q_len",
-                "s_start", "s_end", "s_len", "pident", "evalue", "bitscore"),
-  col_types = cols(
-    query = col_character(),
-    subject = col_character(),
-    q_start = col_double(),
-    q_end = col_double(),
-    q_len = col_double(),
-    s_start = col_double(),
-    s_end = col_double(),
-    s_len = col_double(),
-    pident = col_double(),
-    evalue = col_double(),
-    bitscore = col_double()
-  )
-) %>%
-  mutate(
-    align_length = abs(q_end - q_start) + 1
-  )
-
-# ---- Run token-based prediction ----
-query_proteins <- unique(blast_results$query)
-predictions_token <- predict_functions_token_based(
-  query_proteins,
-  blast_results,
-  kidera,
-  top_tokens = 50,
-  debug_dir = "debug_results_token"  # set to NULL to disable saving intermediate debug data
+# ------------------------
+# Main entry via command line
+# ------------------------
+option_list <- list(
+  make_option(c("--blast"), type = "character", help = "BLAST tabular file (-f6)"),
+  make_option(c("--chemical_space"), type = "character", help = "RDS file with pre-built chemical space"),
+  make_option(c("--query_kidera"), type = "character", help = "RDS with query Kidera factors"),
+  make_option(c("--mean_vector"), type = "character", default = NULL, help = "CSV file with mean vector values for normalization"), # NEUER PARAMETER
+  make_option(c("--go"), type = "character", default = NULL, help = "RDS with GO lexical axes"),
+  make_option(c("--ipr"), type = "character", default = NULL, help = "RDS with IPR lexical axes"),
+  make_option(c("--hrd"), type = "character", default = NULL, help = "RDS with HRD lexical axes"),
+  make_option(c("--out"), type = "character", default = "results", help = "Output base directory"),
+  make_option(c("--kcap"), type = "integer", default = 50, help = "Number of KD-tree neighbors to consider"),
+  make_option(c("--threshold"), type = "double", default = 0.9, help = "Cosine similarity threshold for lexical gating"),
+  make_option(c("--combine"), type = "character", default = "sum", help = "Combination mode: sum | mean_after_weight")
 )
 
-# ---- Save outputs ----
-write_csv(predictions_token, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/predicted_functions_token_based.csv")
-message("\nSaved token-based predictions to predicted_functions_token_based.csv")
+args <- parse_args(OptionParser(option_list = option_list))
 
+if (!is.null(args$blast) && !is.null(args$chemical_space) && !is.null(args$query_kidera)) {
+  lexical_paths <- list(GO = args$go, IPR = args$ipr, HRD = args$hrd)
+  run_for_all_queries(
+    blast_file = args$blast,
+    chemical_space_rds = args$chemical_space,
+    query_kidera_rds_path = args$query_kidera,
+    mean_vector_csv = args$mean_vector, # Übergabe des neuen Parameters
+    lexical_paths = lexical_paths,
+    output_base = args$out,
+    k_cap = args$kcap,
+    cosine_threshold = args$threshold,
+    combine_mode = args$combine
+  )
+}
