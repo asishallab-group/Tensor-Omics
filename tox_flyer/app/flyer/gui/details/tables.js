@@ -165,7 +165,7 @@ export function getDetailsTableDataMap(...types) {
   ];
 
   headers.Family = [
-    { title: "Identifier", data(geneData) {return geneData.family} },
+    links.family,
     {
       title: "Genes",
       data(geneData, familyIdx) {

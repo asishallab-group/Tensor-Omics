@@ -1,10 +1,19 @@
 :root {
+  /* any mode */
+  --input-size: 34px;
+
+  /* lightmode */
   --icon-background: rgba(127.5, 127.5, 127.5, 0.25);
   --lift-shadow: inset 0px 4px 1px 1px white, inset 0px -3px 1px 1px rgba(204,198,197,.5);
   --header-color: #2c3e50;
   --tab-color-inactive: #1b2631;
   --header-shadow: inset 0px 4px 1px 1px #3c4e60b2;
-  --toggler-color: #2196F3;
+  --toggler-color-checked: #2196F3;
+  --toggler-color-unchecked: #999999;
+  --even-row-color: #f9f9f9;
+  --odd-row-color: #e9e9e9;
+  --hover-row-color: #d9d9d9;
+  --selected-row-color: #b9b9b9;
 }
 
 body.darkmode {
@@ -13,7 +22,12 @@ body.darkmode {
   --header-color: #993600;
   --tab-color-inactive: #802d00;
   --header-shadow: inset 0px 4px 1px 1px #A94610b2;
-  --toggler-color: #ff7a33;
+  --toggler-color-checked: #ff7a33;
+  --toggler-color-unchecked: #797979;
+  --even-row-color: #d9d9d9;
+  --odd-row-color: #c9c9c9;
+  --hover-row-color: #b9b9b9;
+  --selected-row-color: #999999;
 }
 
 :is([disabled]) {
@@ -102,7 +116,7 @@ img.icon {
 #UI > dialog {
   grid-area: dialog;
   width: 60%;
-  height: 60%;
+  /*height: 60%;*/
   pointer-events: auto;
   background: none;
   border: none;
@@ -204,8 +218,8 @@ menu.tabs li:last-child {
 }
 
 .datatable a {
-  color: var(--tab-color-inactive);
   text-decoration: underline;
+  color: var(--header-color);
 }
 
 .datatable thead {
@@ -230,18 +244,18 @@ menu.tabs li:last-child {
 
 /* Zebra striping for readability */
 .datatable tbody tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: var(--even-row-color);
 }
 .datatable tbody tr:nth-child(odd) {
-  background-color: #e9e9e9;
+  background-color: var(--odd-row-color);
 }
 
 .datatable tbody tr:hover {
-  background-color: #d9d9d9;
+  background-color: var(--hover-row-color);
 }
 
 .datatable tbody tr.selected {
-  background-color: #b9b9b9;
+  background-color: var(--selected-row-color);
 }
 
 /* Optional: rounded corners on the top row */
@@ -276,7 +290,7 @@ menu.tabs li:last-child {
 
 .row-selector, #selectAll {
   transform: scale(1.5);
-  accent-color: var(--toggler-color);
+  accent-color: var(--toggler-color-checked);
 }
 
 .center {
@@ -287,7 +301,7 @@ menu.tabs li:last-child {
   position: relative;
   display: inline-block;
   width: 60px;
-  height: 34px;
+  height: var(--input-size);
 }
 
 .toggle input { 
@@ -297,8 +311,8 @@ menu.tabs li:last-child {
 }
 
 input[type=text], input[type=number] {
-  height: 34px;
-  border-radius: 34px;
+  height: var(--input-size);
+  border-radius: var(--input-size);
   padding-left: 1pc;
 }
 
@@ -308,10 +322,22 @@ input[type=text], input[type=number] {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: var(--toggler-color-unchecked);
   -webkit-transition: .4s;
   transition: .4s;
-  border-radius: 34px;
+  border-radius: var(--input-size);
+}
+
+input[type="color"] {
+  appearance: none;            /* Remove default styling */
+  -webkit-appearance: none;    /* Safari/Chrome */
+  -moz-appearance: none;       /* Firefox */
+  border: 2px solid var(--toggler-color-unchecked);
+  border-radius: 4px;
+  width: var(--input-size);
+  height: var(--input-size);
+  padding: 0;
+  background-color: transparent;
 }
 
 .slider:before {
@@ -328,11 +354,11 @@ input[type=text], input[type=number] {
 }
 
 input:checked + .slider {
-  background-color: var(--toggler-color);
+  background-color: var(--toggler-color-checked);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--toggler-color);
+  box-shadow: 0 0 1px var(--toggler-color-checked);
 }
 
 input:checked + .slider:before {
@@ -351,7 +377,7 @@ button {
 button:not([disabled]):hover{
   background-image: -webkit-linear-gradient(top, #fff, #f4f1ee);
   background-image: linear-gradient(top, #fff, #f4f1ee);
-  color: var(--toggler-color);
+  color: var(--toggler-color-checked);
 }
 
 button:not([disabled]):active{

@@ -173,6 +173,7 @@ export function createMasterTable({ elements, familyOnly, parentTable }, getData
     table.TOX_isSelected = function (family, gene) {
       return this.TOX_allSelectorState !== this.TOX_selectedRows.has(this.TOX_rowID(family, gene));
     }
+    table.TOX_paginationStep = paginationStep;
 
     const result = {
       table,
