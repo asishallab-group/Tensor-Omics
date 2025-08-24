@@ -8,7 +8,7 @@ import {
 } from "./tables.js";
 import {
   createMasterTable,
-  createRowSelector,
+  addRowSelector,
   createElement,
   createTableUI
 } from "../dom.js";
@@ -57,7 +57,7 @@ export function appendDetailRow({ family, gene, type }) {
     const table = document.getElementById(type + "DetailsTable");
     table.TOX_elements.push({ family, gene });
     const row = createElement("tr", { id, "tox-family": family, "tox-gene": gene });
-    row.appendChild(createRowSelector(false, family, gene, type));
+    addRowSelector(row, false, family, gene, type)
 
     const dataMap = getDetailsTableDataMap(type);
     for (const cell of dataMap[type]) {
