@@ -4,12 +4,12 @@ export function createButton(options) {
   return createElement("button", {
     type: "button",
     ...options,
-    classes: ["clickable", ...(options.classes ?? [])],
+    classes: ["clickable", "lifted", ...(options.classes ?? [])],
   });
 }
 
 export function createDataTable(options) {
-  return createElement("table", { ...options, classes: ["datatable", "textselect", ...(options.classes ?? [])] });
+  return createElement("table", { ...options, classes: ["datatable", "textselect", "lifted", ...(options.classes ?? [])] });
 }
 
 export function createToggle(checkboxOptions) {

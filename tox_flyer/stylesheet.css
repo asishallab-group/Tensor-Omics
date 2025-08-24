@@ -100,14 +100,8 @@ img.icon {
 }
 
 #mid-right > * {
-  padding: inherit;
-  border-radius: 1pc;
-  box-shadow: inherit;
   width: fit-content;
   font-size: 3dvh;
-  margin-right: 1dvw;
-  font-weight: bold;
-  padding: 1%;
 }
 
 #UI > #top-left {
@@ -147,6 +141,15 @@ menu.tabs li:last-child {
   margin-right: 0;
 }
 
+.lifted {  
+  border: none;
+  background-image: -webkit-linear-gradient(top, #f4f1ee, #fff);
+  background-image: linear-gradient(top, #f4f1ee, #fff);
+  box-shadow: 0px 8px 10px 0px rgba(0, 0, 0, .3), inset 0px 4px 1px 1px white, inset 0px -3px 1px 1px rgba(204,198,197,.5);
+  -webkit-transition: all .1s linear;
+  transition: all .1s linear;
+  margin-bottom: 1pc;
+}
 
 /* Pretty Table Styling */
 .datatable {
@@ -154,7 +157,7 @@ menu.tabs li:last-child {
   width: 100%;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 0.95rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1pc;
 }
 
 .datatable a {
@@ -258,4 +261,28 @@ input:checked + .slider:before {
   -webkit-transform: translateX(26px);
   -ms-transform: translateX(26px);
   transform: translateX(26px);
+}
+
+button {
+  border-radius: 35%;
+  margin: 0 30px 30px 0;
+  width: fit-content;
+  padding: 1pc;
+}
+
+button:not([disabled]):hover{
+  background-image: -webkit-linear-gradient(top, #fff, #f4f1ee);
+  background-image: linear-gradient(top, #fff, #f4f1ee);
+  color:#0088cc;
+}
+
+button:not([disabled]):active{
+  background-image: -webkit-linear-gradient(top, #efedec, #f7f4f4);
+  background-image: linear-gradient(top, #efedec, #f7f4f4);
+  box-shadow: 0 3px 5px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+}
+
+button:not([disabled]):active:after{
+  color:#dbd2d2;
+  text-shadow: 0px -1px 1px #bdb5b4, 0px 1px 1px white;
 }
