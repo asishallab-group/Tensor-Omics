@@ -50,6 +50,21 @@ evolutionary relationships between genes. The pipeline integrates tools for data
 the current implementation details and provides the mathematical formulation of the algorithms used in the
 prototype.
 
+\subsection{The TOX Data Table}
+\label{sec:data_table_theory}
+
+The foundational data structure in Tensor Omics is the \textbf{Data Table}. Unlike a simple spreadsheet, a Data Table is a conceptual grouping of multiple, type-specific 2D arrays that represent datasets read from a source like a CSV file. Because Fortran is a strongly-typed language, data of different types (e.g., integers, reals, characters) cannot be stored in a single matrix. The TOX library solves this by parsing the source data into a collection of distinct, column-major arrays that share the same number of rows.
+
+The process begins by reading the entire CSV file into a single, general-purpose 2D array of strings. This string array acts as an in-memory staging area. From this staging array, users can then extract specific columns into strongly-typed arrays, creating the components of the Data Table:
+\begin{itemize}
+    \item \texttt{integer\_data(:,:)}: An array for integer columns (e.g., gene IDs).
+    \item \texttt{real\_data(:,:)}: An array for real-valued columns (e.g., expression levels, scores).
+    \item \texttt{logical\_data(:,:)}: An array for boolean columns (e.g., status flags).
+    \item \texttt{character\_data(:,:)}: An array for string columns (e.g., gene names).
+    \item \texttt{complex\_data(:,:)}: An array for complex number columns.
+\end{itemize}
+All downstream analyses in TOX operate on these strongly-typed arrays.
+
 
 \subsection{From Raw Data to Expression Vectors}
 
@@ -67,15 +82,12 @@ Thus, each gene is represented as a vector \( \vec{v} \in \mathbb{R}^n \), where
 \subsection{Normalization of Expression Values}
 Raw gene expression data is normalized in the following steps:
 \begin{enumerate}
-  \item Division by gene-wise scale: this normalizes each gene's expression vector to unit root mean square (RMS) length across samples by computing the root mean square:
-  \[
-  \sqrt{\frac{1}{n}\sum_{i=1}^n x_i^2}
-  \]
+    \item Division by gene-wise standard deviation for scale normalization.
     \item Quantile normalization across samples to reduce global expression biases.
     \item Log-transformation: \( x \mapsto \log(1 + x) \) to stabilize variance and suppress outliers.
-    \item For stress response studies, log fold-changes are computed: 
+    \item For stress response studies, log fold-changes are computed:
     \[
-        \Delta_{\text{stress}} = \log(1 + x_{\text{stress}}) - \log(1 + x_{\text{control}})
+        \Delta_{\text{stress}} = \log(1 + x_{\text{stress}}) - \log(1 + x_{\text{control}}) \text{}
     \]
 
 \noindent This effectively makes each stress related axis show the fold change in
@@ -89,10 +101,10 @@ Raw gene expression data is normalized in the following steps:
 To summarize the expression profile of each family, Tensor Omics computes a centroid vector for every group. The centroid represents the average expression pattern of all genes assigned to the family across all conditions or tissues.
 
 \vspace{0.2cm}
-\noindent There are two modes for selecting the set $S_g$ of genes to include in the centroid:
+\noindent There are two modes for selecting the set of genes to include in the centroid:
 \begin{itemize}
-  \item \textbf{Full mode:} All genes assigned to the family are used to compute the centroid.
-  \item \textbf{Orthologs-only mode:} Only genes explicitly marked as orthologs are included in the centroid calculation. This mode is useful for focusing on conserved gene relationships across species.
+    \item \textbf{Full mode:} All genes assigned to the family are used to compute the centroid (mean vector).
+    \item \textbf{Orthologs-only mode:} Only genes explicitly marked as orthologs are included in the centroid calculation. This mode is useful for focusing on conserved gene relationships across species.
 \end{itemize}
 
 \subsection{Euclidean Distance Between Expression Vectors}
@@ -100,7 +112,7 @@ To summarize the expression profile of each family, Tensor Omics computes a cent
 
 The Euclidean distance is used throughout Tensor Omics to quantify the geometric difference between two gene expression vectors, or between a gene and its family centroid. Given two vectors $\vec{v}_1, \vec{v}_2 \in \mathbb{R}^n$, the Euclidean distance is defined as:
 \[
-  d(\vec{v}_1, \vec{v}_2) = \sqrt{\sum_{i=1}^n (v_{1,i} - v_{2,i})^2}
+    d(\vec{v}_1, \vec{v}_2) = \sqrt{\sum_{i=1}^n (v_{1,i} - v_{2,i})^2}
 \]
 This metric measures the straight-line distance between two points in $n$-dimensional space. In the context of gene expression, it reflects the overall magnitude of difference in expression profiles across all samples or conditions.
 
@@ -112,17 +124,17 @@ This metric measures the straight-line distance between two points in $n$-dimens
 To robustly identify genes with divergent expression profiles within their families, Tensor Omics implements an outlier detection procedure based on family-scaled Euclidean distances. The process consists of the following steps:
 
 \begin{enumerate}
-  \item \textbf{Compute Euclidean Distances:} For each gene, calculate the Euclidean distance $d_i$ between its expression vector and the centroid of its assigned family (see Section~\ref{sec:euclidean_distance}).
+    \item \textbf{Compute Euclidean Distances:} For each gene, calculate the Euclidean distance $d_i$ between its expression vector and the centroid of its assigned family (see Section~\ref{sec:euclidean_distance}).
 
-  \item \textbf{Estimate Family-Specific Scaling Factors:} For each family $f$, collect the set of distances $\{d_i\}$ for all genes assigned to $f$. Compute the median and standard deviation of these distances. To account for family size and heterogeneity, a LOESS (locally weighted regression) smoothing is applied to the relationship between family median and standard deviation, yielding a robust scaling factor $s_f$ for each family.
+    \item \textbf{Estimate Family-Specific Scaling Factors:} For each family $f$, we compute a family-specific scaling factor. This can be the maximum distance between any ortholog and the ortholog centroid. For families lacking sufficient orthologs, a LOESS smoothing strategy is used to estimate an appropriate scaling factor based on the family's median intra-member distance.
 
-  \item \textbf{Relative Distance Index (RDI):} For each gene $i$ in family $f$, compute the Relative Distance Index (RDI):
-  \[
-    \mathrm{RDI}_i = \frac{|d_i|}{s_f}
-  \]
-  This normalizes the gene's distance by the expected intra-family variability, making the metric comparable across families of different sizes and variances.
+    \item \textbf{Relative Distance Index (RDI):} For each gene $i$ in family $f$, compute the Relative Distance Index (RDI):
+    \[
+        \mathrm{RDI}_i = \frac{d_i}{d_{scale}} \text{}
+    \]
+    This normalizes the gene's distance by the expected intra-family variability, making the metric comparable across families of different sizes and variances.
 
-  \item \textbf{Outlier Detection:} Genes are flagged as outliers if their RDI exceeds a chosen percentile threshold (typically the 95th percentile) of the empirical RDI distribution. That is, gene $i$ is an outlier if $\mathrm{RDI}_i \geq T$, where $T$ is the threshold value corresponding to the desired percentile.
+    \item \textbf{Outlier Detection:} Genes are flagged as outliers if their RDI exceeds a chosen percentile threshold (typically the 95th percentile) of the empirical RDI distribution. That is, gene $i$ is an outlier if $\mathrm{RDI}_i \geq T$, where $T$ is the threshold value corresponding to the desired percentile.
 \end{enumerate}
 
 \noindent This approach ensures that outlier detection is adaptive to the structure and variability of each gene family, and is robust to differences in family size and dispersion. The LOESS-based scaling is particularly important for families with few members.
@@ -130,44 +142,44 @@ To robustly identify genes with divergent expression profiles within their famil
 \subsection{Tissue Versatility and Specificity}
 \label{sec:tissue_versatility}
 
-\textbf{Tissue Versatility} quantifies how uniformly a gene is expressed across all tissues (or, more generally, axes of the expression space). It is defined as the angle between a gene's expression vector $\vec{v}$ and the space diagonal $\vec{d} = (1, 1, \dots, 1)$ in the positive orthant. The smaller this angle, the greater the tissue (axis) versatility of the gene's expression.
+\textbf{Tissue Versatility} quantifies how uniformly a gene is expressed across all tissues (or, more generally, axes of the expression space). It is defined as the cosine of the angle between a gene's expression vector $\vec{v}$ and the space diagonal $\vec{d} = (1, 1, \dots, 1)$. The smaller this angle (the larger the cosine), the greater the tissue (axis) versatility of the gene's expression.
 
 \vspace{0.5cm}
 \noindent \textbf{Interpretation:}
 \begin{itemize}
-  \item A lower angle means the gene is more evenly expressed across all tissues (high versatility).
-  \item A larger angle means the gene is active in only a few tissues (high specificity).
+    \item A lower angle (cosine closer to 1) means the gene is more evenly expressed across all tissues (high versatility).
+    \item A larger angle (cosine closer to 0) means the gene is active in only a few tissues (high specificity).
 \end{itemize}
 
 \noindent \textbf{Dimensionality Dependence}
 
 \vspace{0.1cm}
-\noindent The maximum angle to the diagonal in the positive orthant depends on the number of tissues $n$. The cosine of this maximum angle (when a gene is expressed in only one tissue) is:
+\noindent The maximum possible angle to the diagonal depends on the number of tissues $n$. The cosine of this angle is minimal when a gene is expressed in only one tissue:
 \[
-  \cos(\varphi_{\text{min}}) = \frac{1}{\sqrt{n}}
+    \cos(\varphi_{\text{max\_angle}}) = \frac{1}{\sqrt{n}}
 \]
 
 \noindent \textbf{Normalized Tissue Versatility}
 
 \vspace{0.1cm}
-\noindent To make versatility comparable across different numbers of tissues, we define a normalized version:
+\noindent To make versatility comparable across datasets with different numbers of tissues, we define a normalized version that scales values into the interval $[0, 1]$:
 \[
-  \text{Tissue Versatility} = \frac{1 - \cos(\varphi)}{1 - \frac{1}{\sqrt{n}}}
+    \text{Tissue Versatility} = \frac{\cos(\varphi) - \frac{1}{\sqrt{n}}}{1 - \frac{1}{\sqrt{n}}}
 \]
-This scales values into the interval $[0, 1]$:
+This maps the cosine values into the interval $[0, 1]$:
 \begin{itemize}
-  \item $0$: perfectly uniform expression (maximum versatility)
-  \item $1$: expression in only one tissue (maximum specificity)
+    \item $1$: perfectly uniform expression (maximum versatility)
+    \item $0$: expression in only one tissue (minimum versatility)
 \end{itemize}
 
 \noindent \textbf{Tissue Specificity}
 
 \vspace{0.1cm}
-\noindent Tissue specificity is defined as the complement of tissue versatility:
+\noindent Tissue specificity is defined as the complement of normalized tissue versatility:
 \[
-  \text{Tissue Specificity} = 1 - \text{Tissue Versatility}
+    \text{Tissue Specificity} = 1 - \text{Tissue Versatility}
 \]
-Values close to 1 indicate high tissue-specificity; values close to 0 indicate broad expression.
+Values close to 1 indicate high tissue-specificity; values close to 0 indicate broad, uniform expression.
 
 \section{Error Handling}
 In case you encounter errors while using TOX, the following error codes may help you identify the issue. The error codes are grouped into categories based on their nature, such as I/O errors, format validation errors, memory errors, and internal errors.
@@ -228,11 +240,143 @@ In case you encounter errors while using TOX, the following error codes may help
 % ===========================
 \section{Implementation Notes}
 
+This section details the practical pipeline for using the TOX library to read and process tabular data. The workflow is consistent across Fortran, Python, and R, starting with reading a CSV file into a staging area of strings and then converting columns to their proper data types.
 
-% ===========================
+\lstset{
+    language=Fortran,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!40!black},
+    stringstyle=\color{purple},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{black!5}
+}
 
+\subsection{Fortran Pipeline}
+In a pure Fortran application, the user follows a two-step process to construct the Data Table.
 
-\bibliographystyle{plain}
-\bibliography{references}
+\begin{enumerate}
+    \item \textbf{Read CSV to Strings:} First, call the \texttt{read\_csv\_to\_strings} subroutine. This reads the entire CSV file into a 2D allocatable array of characters, which serves as the in-memory source for all subsequent operations.
+    \item \textbf{Extract Typed Columns:} Next, call the specific \texttt{read\_*\_columns} subroutines (e.g., \texttt{read\_integer\_columns}, \texttt{read\_real\_columns}) to parse columns from the string array into new, strongly-typed 2D arrays.
+\end{enumerate}
+
+\begin{lstlisting}[language=Fortran, caption={Fortran Data Loading Workflow}]
+PROGRAM tox_fortran_example
+    USE csv_file_reader_module, ONLY: read_csv_to_strings
+    USE csv_read_int_module, ONLY: read_integer_columns
+    USE csv_read_real_module, ONLY: read_real_columns
+    USE csv_parser_module, ONLY: MAX_FIELD_LEN
+    IMPLICIT NONE
+
+    CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: data_str(:,:), header_str(:)
+    INTEGER, ALLOCATABLE :: data_int(:,:)
+    REAL(8), ALLOCATABLE :: data_real(:,:)
+    INTEGER :: status
+    
+    CHARACTER(LEN=*), PARAMETER :: FILENAME = 'my_data.csv'
+    
+    ! 1. Read entire CSV into a 2D string array
+    CALL read_csv_to_strings(FILENAME, .TRUE., ',', header_str, data_str, status)
+    IF (status /= 0) STOP 'Error reading CSV'
+
+    ! 2. Extract specific columns into typed arrays
+    !    Let's say column 1 is Integer IDs, column 3 is Real scores
+    CALL read_integer_columns(data_str, [1], data_int, status)
+    IF (status /= 0) STOP 'Error reading integer columns'
+    
+    CALL read_real_columns(data_str, [3], data_real, status)
+    IF (status /= 0) STOP 'Error reading real columns'
+    
+    ! The typed arrays data_int and data_real are now ready for analysis.
+    PRINT *, 'Successfully processed data.'
+
+END PROGRAM tox_fortran_example
+\end{lstlisting}
+
+\subsection{Python Pipeline}
+The Python workflow is exposed through the \texttt{tensoromics\_functions.py} module. The functions provide a high-level interface that mirrors the Fortran pipeline.
+
+\begin{enumerate}
+    \item \textbf{Read CSV to Strings:} Call the \texttt{read\_csv\_as\_strings} function. It takes the file path and returns the header and a 2D NumPy array of strings.
+    \item \textbf{Extract Typed Columns:} Pass the string NumPy array to the desired conversion functions, such as \texttt{read\_integer\_columns} or \texttt{read\_real\_columns}, along with a list of 1-based column indices to extract. All returned NumPy arrays are read-only for data safety.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption={Python Data Loading Workflow}]
+import numpy as np
+from tensoromics_functions import (
+    read_csv_as_strings,
+    read_integer_columns,
+    read_real_columns
+)
+
+# Define the path to the data file
+filename = 'my_data.csv'
+
+try:
+    # 1. Read the entire CSV into a NumPy array of strings
+    header, data_str = read_csv_as_strings(filename)
+    
+    print("CSV data read successfully as strings:")
+    print(data_str)
+    
+    # 2. Extract specific columns into new, typed NumPy arrays
+    #    Column 1: Integer IDs
+    #    Column 3: Real scores
+    
+    integer_data = read_integer_columns(data_str, columns=[1])
+    real_data = read_real_columns(data_str, columns=[3])
+    
+    print("\nInteger data (column 1):")
+    print(integer_data)
+    
+    print("\nReal data (column 3):")
+    print(real_data)
+    
+    # The typed arrays are now ready for analysis (e.g., with SciPy, pandas)
+
+except (FileNotFoundError, ValueError) as e:
+    print(f"An error occurred: {e}")
+
+\end{lstlisting}
+
+\subsection{R Pipeline}
+The R pipeline first reads the file into a raw, memory-efficient format (an integer array of ASCII codes) and then performs conversions from that raw format.
+
+\begin{enumerate}
+    \item \textbf{Read CSV to Raw ASCII:} Call \texttt{tox.read\_csv\_raw}. This function reads the file and returns a list containing the data as a 3D integer array of ASCII codes. This intermediate format is efficient for passing between functions.
+    \item \textbf{Extract Typed Columns:} Pass the raw data array (\texttt{\$data}) from the previous step to conversion functions like \texttt{tox.read\_integer\_columns} to get typed matrices.
+    \item \textbf{(Optional) Convert to Strings:} For inspection, you can convert the raw ASCII data to a human-readable character matrix using \texttt{tox.convert\_ascii\_to\_strings}.
+\end{enumerate}
+
+\begin{lstlisting}[language=R, caption={R Data Loading Workflow}]
+# Load the TOX API functions
+source("R/tensoromics_functions.R")
+
+filename <- "my_data.csv"
+
+# 1. Read the CSV file into a raw ASCII integer array format
+raw_data_list <- tox.read_csv_raw(filename)
+
+# For user inspection, convert the raw data to a character matrix
+string_matrix <- tox.convert_ascii_to_strings(raw_data_list$data)
+cat("Data as character matrix:\n")
+print(string_matrix)
+
+# 2. Use the raw_data_list$data to extract typed columns
+#    Column 1: Integer IDs
+#    Column 3: Real scores
+integer_matrix <- tox.read_integer_columns(raw_data_list$data, columns = 1)
+real_matrix <- tox.read_real_columns(raw_data_list$data, columns = 3)
+
+cat("\nExtracted integer data (column 1):\n")
+print(integer_matrix)
+
+cat("\nExtracted real data (column 3):\n")
+print(real_matrix)
+
+\end{lstlisting}
 
 \end{document}
