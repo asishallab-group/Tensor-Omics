@@ -2,8 +2,13 @@
 """
 Test script for the user-facing Python API of the Fortran CSV reader.
 """
+
+
 import numpy as np
 import os
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from tensoromics_functions import (
     read_csv_as_strings,
     read_integer_columns,
