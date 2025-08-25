@@ -21,54 +21,59 @@ CONTAINS
         ! Local variables
         INTEGER :: unit_num
         CHARACTER(LEN=MAX_FIELD_LEN*20) :: line
-        CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: all_lines(:), new_lines(:)
-        INTEGER(INT32) :: line_count, current_size, old_size, i
+        CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: all_lines(:)
+        INTEGER(INT32) :: line_count, i
         INTEGER(INT32) :: num_rows, num_cols, header_offset
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: fields(:)
+        INTEGER(INT32) :: io_stat_check
 
         status = 0
         header_offset = 0
 
-        ! --- 1. Read all non-empty lines from the file into a temporary buffer ---
-        OPEN(NEWUNIT=unit_num, FILE=TRIM(filename), STATUS='OLD', ACTION='READ', IOSTAT=status)
-        IF (status /= 0) THEN
+        ! --- 1. First Pass: Open file and count non-empty lines ---
+        OPEN(NEWUNIT=unit_num, FILE=TRIM(filename), STATUS='OLD', ACTION='READ', IOSTAT=io_stat_check)
+        IF (io_stat_check /= 0) THEN
             status = 10 ! File not found
             RETURN
         END IF
 
         line_count = 0
-        current_size = 100
-        ALLOCATE(all_lines(current_size))
-
         DO
-            READ(unit_num, '(A)', IOSTAT=status) line
-            IF (status /= 0) EXIT ! End of file or error
+            READ(unit_num, '(A)', IOSTAT=io_stat_check) line
+            IF (io_stat_check /= 0) EXIT ! End of file or error
             IF (LEN_TRIM(line) > 0) THEN
                 line_count = line_count + 1
-                IF (line_count > current_size) THEN
-                    ! Grow buffer if needed
-                    old_size = current_size
-                    current_size = current_size * 2
-                    ALLOCATE(new_lines(current_size))
-                    new_lines(1:old_size) = all_lines
-                    CALL move_alloc(new_lines, all_lines)
-                END IF
-                all_lines(line_count) = TRIM(line)
+            END IF
+        END DO
+
+        IF (line_count == 0) THEN
+            status = 4 ! Empty file
+            CLOSE(unit_num)
+            RETURN
+        END IF
+
+        ! --- 2. Second Pass: Allocate buffer and read all lines ---
+        REWIND(unit_num)
+        ALLOCATE(all_lines(line_count))
+
+        i = 0
+        DO
+            READ(unit_num, '(A)', IOSTAT=io_stat_check) line
+            IF (io_stat_check /= 0) EXIT
+            IF (LEN_TRIM(line) > 0) THEN
+                i = i + 1
+                all_lines(i) = TRIM(line)
             END IF
         END DO
         CLOSE(unit_num)
 
-        IF (line_count == 0) THEN
-            status = 4 ! Empty file
-            RETURN
-        END IF
-
-        ! --- 2. Process the buffered lines ---
+        ! --- 3. Process the buffered lines ---
         IF (has_header) header_offset = 1
 
         num_rows = line_count - header_offset
         IF (num_rows <= 0) THEN
             status = 5 ! No data rows
+            DEALLOCATE(all_lines)
             RETURN
         END IF
 
@@ -83,7 +88,7 @@ CONTAINS
             CALL parse_line(all_lines(1), delimiter, header_out, status)
         END IF
 
-        ! --- 3. Populate the output data array ---
+        ! --- 4. Populate the output data array ---
         DO i = 1, num_rows
             CALL parse_line(all_lines(i + header_offset), delimiter, fields, status)
             IF (SIZE(fields) == num_cols) THEN
@@ -102,7 +107,7 @@ CONTAINS
 END MODULE csv_file_reader_module
 
 ! =============================================================================
-! C and R Wrapper Subroutines
+! C and R Wrapper Subroutines (Unchanged from original)
 ! =============================================================================
 
 !> @brief C interface for getting CSV dimensions before reading.
@@ -216,6 +221,7 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
     USE, INTRINSIC :: iso_c_binding
     USE csv_file_reader_module, ONLY: read_csv_to_strings
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
+    
     IMPLICIT NONE
     
     INTEGER(C_INT), INTENT(IN) :: filename_ascii(fn_len)
@@ -257,7 +263,7 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
 
     DO j = 1, num_cols
         DO i = 1, num_rows
-            DO k = 1, LEN_TRIM(data_out_f(i,j))
+             DO k = 1, LEN_TRIM(data_out_f(i,j))
                 char_idx = (i - 1) * num_cols * MAX_FIELD_LEN + (j - 1) * MAX_FIELD_LEN + k
                 data_out_ascii(char_idx) = ICHAR(data_out_f(i,j)(k:k))
             END DO
@@ -289,7 +295,7 @@ SUBROUTINE read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_a
 
     ALLOCATE(CHARACTER(LEN=fn_len) :: filename)
     DO i = 1, fn_len
-        filename(i:i) = CHAR(filename_ascii(i))
+         filename(i:i) = CHAR(filename_ascii(i))
     END DO
     delimiter = CHAR(delimiter_ascii)
 
@@ -312,6 +318,6 @@ SUBROUTINE read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_a
             DO k = 1, LEN_TRIM(data_out_f(i,j))
                 data_out_ascii(k, i, j) = ICHAR(data_out_f(i,j)(k:k))
             END DO
-        END DO
+         END DO
     END DO
 END SUBROUTINE read_csv_to_strings_r
