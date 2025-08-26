@@ -213,7 +213,13 @@ In case you encounter errors while using TOX, the following error codes may help
 104 & Could not read number of dimensions. \\
 105 & Could not read array dimensions. \\
 106 & Could not read character length. \\
-107 & Could not read array data. \\[6pt]
+107 & Could not read array data. \\
+112 & Could not write magic number. \\
+113 & Could not write array type code. \\
+114 & Could not write number of dimensions. \\
+115 & Could not write array dimensions. \\
+116 & Could not write character length. \\
+117 & Could not write array data. \\[6pt]
 
 \multicolumn{2}{l}{\textbf{2xx: Format / Input Validation Errors}} \\[3pt]
 200 & Invalid format detected (e.g., magic mismatch or corrupt format). \\
@@ -221,7 +227,8 @@ In case you encounter errors while using TOX, the following error codes may help
 202 & Empty input arrays provided (e.g., zero-length arrays). \\
 203 & Dimension mismatch detected (shape inconsistencies). \\
 204 & NaN or Inf found in input data where not allowed. \\
-205 & Unsupported data type encountered (e.g., complex types). \\[6pt]
+205 & Unsupported data type encountered (e.g., complex types). \\
+206 & Array size mismatch detected \\[6pt]
 
 \multicolumn{2}{l}{\textbf{3xx: Memory Errors}} \\[3pt]
 301 & Memory allocation failed. \\
