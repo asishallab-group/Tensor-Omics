@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8S0WVX2,1,Ubiquitin carboxyl-terminal hydrolase,1
+A0A4Z1PH95,0.9999986645007003,NYN domain-containing protein,1

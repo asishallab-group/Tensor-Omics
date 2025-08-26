@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A6V8HCE6,1,"D-alanine--D-alanine ligase, C-terminal|ATP-grasp fold|S-adenosyl-L-methionine-dependent methyltransferase superfamily|Methyltransferase domain 25",4
+A0A2I4FLX5,0.9951177357457266,Deoxyhypusine synthase|DHS-like NAD/FAD-binding domain superfamily|Deoxyhypusine synthase superfamily,3
+A0A817XZU2,0.8992702120680655,"Tyrosine-specific protein phosphatases domain|Protein-tyrosine phosphatase, active site|Protein-tyrosine phosphatase-like|Protein Tyrosine Phosphatase",4

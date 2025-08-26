@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAP7DC95,1,Toll/interleukin-1 receptor domain-containing protein,1
+A0A1I5YUV5,0.9407642567562388,Type IV pilus assembly protein PilM,1
+C4YA59,0.9914228297199814,Thioredoxin domain-containing protein,1

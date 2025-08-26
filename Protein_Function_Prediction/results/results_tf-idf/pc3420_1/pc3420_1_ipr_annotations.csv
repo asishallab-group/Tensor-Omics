@@ -1,0 +1,5 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+M1B779,1,"Zinc/iron permease|Zinc/iron permease, fungal/plant",2
+A0A0L0RWM0,0.9999999783521203,"Na+/H+ exchanger|Cation/H+ exchanger, transmembrane domain|Cation/H+ exchanger, CPA1 family",3
+A0AAQ4E012,0.9999676104300168,Zinc/iron permease,1
+A0AAV1KF62,0.9999942499829512,Reverse transcriptase domain,1

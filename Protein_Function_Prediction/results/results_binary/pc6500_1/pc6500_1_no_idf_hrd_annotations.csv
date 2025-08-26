@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAD8Y7W9,1,Methyltransferase-like protein 5,1
+A0A6B8KGK2,0.9768936762006587,Hedgehog/Intein (Hint) domain-containing protein,1
+A0AA40P4M3,0.968015161694306,Mechanosensitive ion channel protein MscS,1

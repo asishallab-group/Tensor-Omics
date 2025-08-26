@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8R2M6Q5,1,THAP-type zinc finger|Zinc finger C2H2-type|Zinc finger C2H2 superfamily|THAP-type zinc finger superfamily|THAP domain-containing protein,5
+A0A9R0JF23,0.9838330659225385,Retrotransposon gag domain,1
+A0AA38TAZ9,0.9934078857194446,"Zinc finger, CCHC-type|Retrotransposon gag domain|Ribosomal protein eL30-like superfamily|Zinc finger, CCHC-type superfamily",4
+A0A5N4AAP3,0.9911050860800458,"Low-density lipoprotein (LDL) receptor class A repeat|Seven cysteines, N-terminal|MANSC domain|Low-density lipoprotein (LDL) receptor class A, conserved site|LDL receptor-like superfamily",5
+A0A4U5MEI9,0.9910023484531072,SWIB/MDM2 domain|SWIB domain|SWIB/MDM2 domain superfamily,3

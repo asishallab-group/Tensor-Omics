@@ -1,0 +1,7 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A4Y7M6A0,1,"Large ribosomal subunit protein uL30, bacterial-type|Large ribosomal subunit protein uL30-like, ferredoxin-like fold domain|Large ribosomal subunit protein uL30, ferredoxin-like fold domain superfamily",3
+A0A6L2JYZ9,0.9508779325082678,"Reverse transcriptase domain|Reverse transcriptase/retrotransposon-derived protein, RNase H-like domain|Reverse transcriptase/Diguanylate cyclase domain|DNA/RNA polymerase superfamily|Viral Replication and Maturation Polyprotein",5
+M1FD91,0.9917963903387592,Copper chaperone SCO1/SenC|Thioredoxin domain|Thioredoxin-like superfamily,3
+A0A8J8SZ24,0.9829578925529026,"Glutathione S-transferase, N-terminal|Glutathione S-transferase, C-terminal-like|Thioredoxin-like superfamily|Glutathione S-transferase, C-terminal domain superfamily|Glutathione transferase family|Glutathione S-transferase Theta",6
+F6UU30,0.9906220258526188,"JmjC domain|RmlC-like jelly roll fold|EF-Hand 1, calcium-binding site|Cupin-like domain 8",4
+A0A4R2SVM4,0.9367251374418909,"Integrase, SAM-like, N-terminal|Integrase/recombinase, N-terminal|Core-binding (CB) domain",3

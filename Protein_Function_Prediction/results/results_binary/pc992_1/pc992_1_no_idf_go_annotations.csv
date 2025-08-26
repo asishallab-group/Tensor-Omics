@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A165P0C1,1,hydrolase activity,1
+A0A1D2ND93,0.969693129493049,calcium ion binding|chitinase activity|cell wall macromolecule catabolic process|chitin catabolic process|defense response,5

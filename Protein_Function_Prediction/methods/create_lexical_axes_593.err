@@ -1,0 +1,34 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Processing corpus: GO (50334113 docs)
+[GO] Tokens vor Filtern: 136508361
+[GO] Unique Tokens vor Filtern: 10791
+[GO] Tokens nach Filtern: 130064209
+[GO] Unique Tokens nach Filtern: 10503
+Processing corpus: IPR (44585348 docs)
+[IPR] Tokens vor Filtern: 166294398
+[IPR] Unique Tokens vor Filtern: 38231
+[IPR] Tokens nach Filtern: 158465347
+[IPR] Unique Tokens nach Filtern: 34584
+Processing corpus: HRD (20046820 docs)
+[HRD] Tokens vor Filtern: 67740612
+[HRD] Unique Tokens vor Filtern: 393588
+[HRD] Tokens nach Filtern: 64937335
+[HRD] Unique Tokens nach Filtern: 353389
+Done. Lexical axes built for GO, InterPro & HRDs.

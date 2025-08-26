@@ -1,0 +1,9 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8T6RFG3,1,FldB/FldC dehydratase alpha/beta subunit,1
+G6AXE4,0.9992967178466283,"Domain of unknown function DUF4143|P-loop containing nucleoside triphosphate hydrolase|AAA domain, group 14",3
+A0A3D1MGU9,0.9355445002613029,"Glycosyl transferase, family 1|Glycosyltransferase group 1",2
+A0A7J2QZ34,0.992384338019686,"ABC transporter-like, ATP-binding domain|AAA+ ATPase domain|Oligopeptide/dipeptide ABC transporter, C-terminal|ABC transporter-like, conserved site|P-loop containing nucleoside triphosphate hydrolase|ABC Transporter, Nickel and Peptide Import",6
+A0A925T684,0.8785545091667382,"Glycosyl transferase, family 1",1
+A0A1F8ECT4,0.9997287630467505,von Willebrand factor A-like domain superfamily,1
+A0A4Q3V3R2,0.9823771596640529,Bacterial sugar transferase|Exopolysaccharide biosynthesis polyprenyl glycosylphosphotransferase,2
+A0A5R9F689,0.9628551611891017,Domain of unknown function DUF58,1

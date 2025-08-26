@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAP7DC95,1,signaling receptor activity|plasma membrane|signal transduction|membrane,4
+C4YA59,0.9444466368701697,protein disulfide isomerase activity|response to endoplasmic reticulum stress|endoplasmic reticulum|protein folding,4

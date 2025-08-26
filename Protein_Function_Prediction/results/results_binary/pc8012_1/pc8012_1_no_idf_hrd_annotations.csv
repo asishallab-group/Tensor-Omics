@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+P43280,1,S-adenosylmethionine synthase 1,1
+D3E2I8,0.9998635387542678,Probable tRNA pseudouridine synthase B,1

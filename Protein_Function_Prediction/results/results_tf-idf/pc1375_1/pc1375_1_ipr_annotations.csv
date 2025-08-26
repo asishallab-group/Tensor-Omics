@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A1M5MLN7,1,"Outer membrane protein/outer membrane enzyme PagP, beta-barrel",1
+A0A4Z1PK27,0.9999796659665097,"FAD linked oxidase, N-terminal|Berberine/berberine-like|FAD-binding domain, PCMH-type|FAD-binding, type PCMH, subdomain 2|FAD-binding, type PCMH-like superfamily|FAD-linked Oxidoreductases in Biosynthetic Pathways",6

@@ -1,5 +1,7 @@
-# build_chemical_space.R
+# create_chemical_space.R
 # Date: 2025-08-18
+# Version 1.3.2
+# Author: Aaron Schroeder
 #
 # Overview
 # - This script combines SVD embeddings and Kidera factors into a single,
@@ -39,7 +41,7 @@ ensure_dir <- function(path) {
 # Loading and building data
 # ------------------------
 load_svd_csv <- function(path, id_col = 1L) {
-  message("Lade SVD-Daten aus ", path, "...")
+  message("Loading SVD data from ", path, "...")
   dt <- fread(path)
   if (is.numeric(id_col)) id_col <- names(dt)[id_col]
   stopifnot(id_col %in% names(dt))
@@ -51,12 +53,12 @@ load_svd_csv <- function(path, id_col = 1L) {
   dt <- dt[!is.na(id) & id != ""]
   svd_mat <- as.matrix(dt[, ..num_cols])
   rownames(svd_mat) <- dt$id
-  message("SVD-Daten geladen: ", nrow(svd_mat), " Einträge mit ", ncol(svd_mat), " Dimensionen.")
+  message("SVD data read: ", nrow(svd_mat), " Entries with ", ncol(svd_mat), " dimensions.")
   list(dt = dt, mat = svd_mat, dims = length(num_cols), names = num_cols)
 }
 
 load_kidera_rds <- function(path, id_col = "id") {
-  message("Lade Kidera-Faktoren aus ", path, "...")
+  message("Loading kidera factors from ", path, "...")
   kd <- readRDS(path)
   kd <- as.data.table(kd)
   stopifnot(id_col %in% names(kd))
@@ -65,12 +67,12 @@ load_kidera_rds <- function(path, id_col = "id") {
   k_cols <- grep("^KF\\d+$", names(kd), value = TRUE)
   stopifnot(length(k_cols) == 10)
   setcolorder(kd, c("id", k_cols))
-  message("Kidera-Faktoren geladen: ", nrow(kd), " Einträge.")
+  message("Kidera factors loaded: ", nrow(kd), " entries.")
   list(dt = kd, mat = as.matrix(kd[, ..k_cols]), names = k_cols)
 }
 
 build_chemical_space <- function(svd, kidera) {
-  message("Baue den chemischen Referenzraum auf...")
+  message("Building chemical reference space...")
   svd_dt <- as.data.table(svd$dt)
   kd_dt  <- as.data.table(kidera$dt)
   merged <- merge(svd_dt, kd_dt, by = "id", all.x = TRUE, all.y = FALSE, sort = FALSE)
@@ -82,7 +84,7 @@ build_chemical_space <- function(svd, kidera) {
   chem_cols <- c(svd$names, kidera$names)
   chem_mat <- as.matrix(merged[, ..chem_cols])
   rownames(chem_mat) <- merged$id
-  message("Chemischer Raum aufgebaut: ", nrow(chem_mat), " Proteine mit ", ncol(chem_mat), " Dimensionen.")
+  message("Chemical room build: ", nrow(chem_mat), " proteins with ", ncol(chem_mat), " dimensions.")
   list(dt = merged, mat = chem_mat, dims = ncol(chem_mat), svd = svd, kidera = kidera)
 }
 
@@ -103,9 +105,9 @@ if (!is.null(args$svd) && !is.null(args$kidera)) {
   chem_space <- build_chemical_space(svd, kidera)
   
   ensure_dir(dirname(args$out))
-  message("Speichere chemischen Raum in ", args$out, "...")
+  message("Saving chemical space to ", args$out, "...")
   saveRDS(chem_space, args$out)
-  message("Fertig.")
+  message("Done.")
 } else {
-  stop("Beide --svd und --kidera Argumente müssen angegeben werden.")
+  stop("Both --svd and --kidera must be provided.")
 }

@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAV2VKH6,1,"ATP-grasp fold|ATP-grasp fold, subdomain 1|ATP-dependent Amino Acid Ligase",3
+A0A284VS47,0.9988551991045165,Methyltransferase domain|S-adenosyl-L-methionine-dependent methyltransferase superfamily,2

@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A067K969,1,"Mei2-like, C-terminal RNA recognition motif|Nucleotide-binding alpha-beta plait domain superfamily|RNA-binding domain superfamily",3
+A0A8X7W4P3,0.9683316258625625,"Argonaute, linker 1 domain|Protein argonaute, N-terminal|PAZ domain superfamily",3
+A0A0R0G3X8,0.9878766172628779,"Leucine-rich repeat|Leucine-rich repeat-containing N-terminal, plant-type|Leucine-rich repeat domain superfamily|Polygalacturonase-Inhibiting Protein",4

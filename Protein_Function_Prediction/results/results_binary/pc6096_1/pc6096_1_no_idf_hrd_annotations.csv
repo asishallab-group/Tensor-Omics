@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A178WLB1,1,Transmembrane protein,1
+A0A0S8B7X8,0.9770565451931127,AsmA domain-containing protein,1

@@ -1,0 +1,538 @@
+structure of annotations: protein_id,cosine similarity to current mean vector,annotations_str,n_annotations
+list:
+##################### pc67 ####################
+# MapMan:
+effector receptor *(NLR) | swissprot: Disease resistance protein RPV1 OS=Vitis rotundifolia
+
+# GO:
+A0A353RB62,1,cytoplasm|aminoacyl-tRNA synthetase multienzyme complex|proline-tRNA ligase activity|prolyl-tRNA aminoacylation|ATP binding|aminoacyl-tRNA ligase activity|tRNA aminoacylation for protein translation|nucleotide binding|ligase activity|translation,10
+
+# IPR:
+A0A353RB62,1,"Aminoacyl-tRNA synthetase, class II (G/ P/ S/T)|Proline-tRNA ligase, class IIa, archaeal-type|Aminoacyl-tRNA synthetase, class II|Class II Aminoacyl-tRNA synthetase/Biotinyl protein ligase (BPL) and lipoyl protein ligase (LPL)",4
+
+# HRD:
+A0A385EGF0,1,Uncharacterized protein,1
+
+[Different First Protein -> Annotation for "A0A353RB62" not found in HRD most likely reason]
+
+##################### pc196 ###################
+# MapMan:
+calcium sensor *(CML2/3/++) | swissprot: Probable calcium-binding protein CML31 OS=Oryza sativa subsp. japonica
+
+# GO:
+A0A411DZB4,1,ATP binding|RNA-directed RNA polymerase activity|transferase activity|nucleotidyltransferase activity|RNA-templated transcription,5
+A0A022S0E6,0.9458427450235788,calcium ion binding|cytoplasm|enzyme regulator activity,3
+
+# IPR:
+A0A2N7QPC6,1,"Transcription regulator PadR, N-terminal|Winged helix-like DNA-binding domain superfamily|Winged helix DNA-binding domain superfamily",3
+A0A411DZB4,0.9916930421758575,"RNA-directed RNA polymerase, fingers/palm subdomains, flavivirus|DNA/RNA polymerase superfamily",2
+
+# HRD:
+A0AA38H0E4,1,Integrase zinc-binding domain-containing protein (Fragment),1
+
+##################### pc197 ###################
+# MapMan:
+uridine/cytidine kinase & EC_2.7 transferase transferring phosphorus-containing group & EC_2.4 glycosyltransferase | swissprot: Uridine/cytidine kinase UKL1, chloroplastic OS=Arabidopsis thaliana
+
+# GO:
+A0AAV2VKH6,1,ATP binding|metal ion binding|ligase activity|nucleotide binding|catalytic activity,5
+
+# IPR:
+A0AAV2VKH6,1,"ATP-grasp fold|ATP-grasp fold, subdomain 1|ATP-dependent Amino Acid Ligase",3
+A0A284VS47,0.9988551991045165,Methyltransferase domain|S-adenosyl-L-methionine-dependent methyltransferase superfamily,2
+
+# HRD:
+A0AAV2VKH6,1,ATP-grasp domain-containing protein,1
+A0A284VS47,0.7181839621734007,Methyltransferase type 11,1
+
+#################### pc202 #####################
+# MapMan:
+component *(EXO70) of Exocyst complex | swissprot: Exocyst complex component EXO70B1 OS=Arabidopsis thaliana
+
+# GO:
+A0A1N6F7N0,1,cytoplasm|protein kinase activity|ATP binding|transferase activity|kinase activity|protein serine/threonine kinase activity|nucleotide binding,7
+A0A2M6VNF7,0.9679405609076358,ATP binding|hydrolase activity|helicase activity|nucleotide binding,4
+
+# IPR:
+A0A1N6F7N0,1,"Protein kinase domain|Serine/threonine-protein kinase, active site|Protein kinase-like domain superfamily|Protein kinase, ATP binding site|Cell Cycle and Stress Response Kinase",5
+
+# HRD:
+A0A1N6F7N0,1,Serine/threonine protein kinase,1
+
+#################### pc247 #####################
+# MapMan:
+SIM-type cyclin-dependent kinase inhibitor
+
+# GO:
+A0A8R2M6Q5,1,zinc ion binding|DNA binding,2
+A0AA38TAZ9,0.9621409515560156,zinc ion binding|nucleic acid binding|membrane,3
+
+# IPR:
+A0A8R2M6Q5,1,THAP-type zinc finger|Zinc finger C2H2-type|Zinc finger C2H2 superfamily|THAP-type zinc finger superfamily|THAP domain-containing protein,5
+A0A9R0JF23,0.884365581636111,Retrotransposon gag domain,1
+A0AA38TAZ9,0.9999864764352585,"Zinc finger, CCHC-type|Retrotransposon gag domain|Ribosomal protein eL30-like superfamily|Zinc finger, CCHC-type superfamily",4
+
+# HRD: 
+A0A8B6F7D3,1,Uncharacterized protein,1
+
+################### pc302 ##################
+# MapMan:
+glutathione S-transferase & class phi glutathione S-transferase *(GSTF1/2/++) | swissprot: Glutathione S-transferase F9 OS=Arabidopsis thaliana
+
+# GO:
+A0A4Y7M6A0,1,mitochondrion|large ribosomal subunit|translation|structural constituent of ribosome|ribosome|ribonucleoprotein complex|mitochondrial inner membrane,7
+
+# IPR:
+A0A4Y7M6A0,1,"Large ribosomal subunit protein uL30, bacterial-type|Large ribosomal subunit protein uL30-like, ferredoxin-like fold domain|Large ribosomal subunit protein uL30, ferredoxin-like fold domain superfamily",3
+A0A6L2JYZ9,0.9988869639695653,"Reverse transcriptase domain|Reverse transcriptase/retrotransposon-derived protein, RNase H-like domain|Reverse transcriptase/Diguanylate cyclase domain|DNA/RNA polymerase superfamily|Viral Replication and Maturation Polyprotein",5
+M1FD91,0.9146961615786566,Copper chaperone SCO1/SenC|Thioredoxin domain|Thioredoxin-like superfamily,3
+A0A8J8SZ24,0.9610350700265914,"Glutathione S-transferase, N-terminal|Glutathione S-transferase, C-terminal-like|Thioredoxin-like superfamily|Glutathione S-transferase, C-terminal domain superfamily|Glutathione transferase family|Glutathione S-transferase Theta",6
+F6UU30,0.9639077426482339,"JmjC domain|RmlC-like jelly roll fold|EF-Hand 1, calcium-binding site|Cupin-like domain 8",4
+A0A4R2SVM4,0.9802839639641344,"Integrase, SAM-like, N-terminal|Integrase/recombinase, N-terminal|Core-binding (CB) domain",3
+
+# HRD: 
+A0A1G5X1X1,1,CRISPR-associated protein,1
+A0A4Y7M6A0,0.9991932847511059,Large ribosomal subunit protein uL30m,1
+A0A6L2JYZ9,0.9999370404169315,"Putative reverse transcriptase domain, viral movement protein",1
+M1FD91,0.9998221273535166,Putative copper-binding protein,1
+
+
+################ pc325 ###############
+# MapMan:
+component *(TRM61) of TRM61-TRM6 tRNA adenosine-methyltransferase complex & EC_2.1 transferase transferring one-carbon group
+
+# GO:
+A0A2V7R7U7,1,plasma membrane|lipopolysaccharide transmembrane transporter activity|lipopolysaccharide transport,3
+
+# IPR:
+A0A2V7R7U7,1,"Lipopolysaccharide assembly, LptC-related|Lipopolysaccharide export system protein LptC",2
+
+# HRD:
+A0A078FZ04,1,(rape) hypothetical protein,1
+A0A2V7R7U7,0.9987444155251199,LPS export ABC transporter periplasmic protein LptC,1
+A0A3C0ANL2,0.9480865561478569,Integrase catalytic domain-containing protein,1
+A0A349A3L8,0.9805714621582224,DNA-binding protein,1
+A0A089YU86,0.962319869499881,Bacterial toxin 44 domain-containing protein,1
+H2A3E6,0.9677151359152121,M144 protein,1
+A0AAT9HMG1,0.9671451677890388,Molybdopterin dinucleotide-binding domain-containing protein,1
+A0A4R4ZXU9,0.9765822649011185,DOD-type homing endonuclease domain-containing protein,1
+A0A498HUK2,0.9824662846679961,RING-type domain-containing protein,1
+A0A1I4C3D8,0.9865412410812971,DOD-type homing endonuclease domain-containing protein,1
+A0A1S3NUQ3,0.9284528947726332,WD repeat-containing protein 49-like,1
+
+################ pc346 ###############
+# MapMan:
+anion transporter *(NRT1/PTR) | swissprot: Protein NRT1/ PTR FAMILY 7.1 OS=Arabidopsis thaliana
+
+# GO:
+A0A8R1I142,1,lipid transporter activity|ATPase-coupled transmembrane transporter activity|lipid transport|ABC-type transporter activity|ATP hydrolysis activity|ATP binding|membrane|transmembrane transport|nucleotide binding,9
+A0AAD9J013,0.9924237826122063,ATPase-coupled intramembrane lipid transporter activity|trans-Golgi network|plasma membrane|phospholipid translocation|Golgi organization|ATP hydrolysis activity|ATP binding|membrane|phospholipid transport|nucleotide binding|magnesium ion binding|metal ion binding,12
+
+# IPR:
+A0A8R1I142,1,"ABC transporter-like, ATP-binding domain|AAA+ ATPase domain|ABC-2 type transporter, transmembrane domain|ABC transporter-like, conserved site|ABC transporter A|P-loop containing nucleoside triphosphate hydrolase",6
+
+# HRD:
+A0A8R1I142,1,ABC transporter domain-containing protein,1
+
+################## pc418 #################
+# MapMan:
+EC_3.1 hydrolase acting on ester bond & pectin methylesterase | swissprot: Probable pectinesterase/pectinesterase inhibitor 51 OS=Arabidopsis thaliana
+
+# GO:
+A0A4E9D7X6,1,cell periphery|chitin synthase activity|cell septum|chitin biosynthetic process|hexosyltransferase activity|glycosyltransferase activity|membrane,7
+
+# IPR:
+A0A4E9D7X6,1,Chitin synthase|Pectin lyase fold/virulence factor|Pectin lyase fold|Nucleotide-diphospho-sugar transferases,4
+A0A8K0IRP6,0.9996427930997757,"Small ribosomal subunit protein eS26|Ribosomal protein eS26 superfamily|Nucleotidyltransferase superfamily|Ribosomal protein eS26, conserved site|Poly(A) RNA polymerase, mitochondrial-like, central palm domain",5
+
+# HRD:
+A0A4E9D7X6,1,chitin synthase,1
+A0A8K0IRP6,0.9993289251296835,Putative UDP-xylose transporter 3,1
+
+################## pc483 #################
+# MapMan:
+NAC transcription factor & regulatory protein *(VND) of xylem differentiation | swissprot: NAC domain-containing protein 37 OS=Arabidopsis thaliana
+
+# GO:
+A0A1S3K9F8,1,phospholipid catabolic process|phospholipase D activity|regulation of vesicle-mediated transport|catalytic activity|intracellular signal transduction|phosphatidylinositol binding|phosphatidic acid biosynthetic process|hydrolase activity|lipid catabolic process|lipid metabolic process,10
+A0A7C8J0S2,0.9476332348647087,phosphoric diester hydrolase activity|lipid metabolic process|membrane,3
+
+# IPR:
+A0A1S3K9F8,1,"Phox homology|Phospholipase D/Transphosphatidylase|Pleckstrin homology domain|Phospholipase D family|Phospholipase D, eukaryotic type|PX domain superfamily",6
+A0A7C8J0S2,0.9995597788427684,"PLC-like phosphodiesterase, TIM beta/alpha-barrel domain superfamily|Histone acetyltransferase RTT109-like",2
+
+# HRD:
+A0A1S3K9F8,1,Phospholipase,1
+
+################ pc538 ###################
+# MapMan:
+aconitase & aconitase *(ACO) & EC_4.2 carbon-oxygen lyase | swissprot: Aconitate hydratase, cytoplasmic OS=Cucurbita maxima 
+
+# GO:
+A0A7S0YKK1,1,axoneme|axonemal central apparatus assembly|cilium movement|cell projection|cytoplasm|cilium,6
+A0AAD9WRI7,0.99967987175061,ATP binding|extracellular region|protein kinase activity|transferase activity|kinase activity|membrane|defense response|carbohydrate binding|nucleotide binding|plasma membrane|defense response to oomycetes,11
+
+# IPR:
+A0A7S0YKK1,1,"Immunoglobulin-like fold|Hydrocephalus-inducing-like|HYDIN/VesB/CFA65-like, Ig-like domain",3
+A0AAD9WRI7,0.9931936129050346,"Protein kinase domain|Cysteine-rich secretory protein-related|Venom allergen 5-like|Serine/threonine-protein kinase, active site|Protein kinase-like domain superfamily|CAP domain|Protein kinase, ATP binding site|Allergen V5/Tpx-1-related, conserved site|CAP superfamily|L-type Lectin-Domain Containing Receptor Kinases",10
+A0A8D8TP29,0.943391310141592,"Glucose-methanol-choline oxidoreductase, N-terminal|Glucose-methanol-choline oxidoreductase, C-terminal|Glucose-methanol-choline oxidoreductase|FAD/NAD(P)-binding domain superfamily",4
+
+# HRD:
+A0A7S0YKK1,1,HYDIN/VesB/CFA65-like Ig-like domain-containing protein (Fragment),1
+A0AAD9WRI7,0.8908703073261011,Pathogenesis-related protein 1,1
+
+################ pc992 ###################
+# MapMan:
+alpha amylase *(AMY1/2/3) | swissprot: Alpha-amylase OS=Vigna mungo
+
+# GO:
+A0A165P0C1,1,hydrolase activity,1
+A0A1D2ND93,0.9696931294930491,calcium ion binding|chitinase activity|cell wall macromolecule catabolic process|chitin catabolic process|defense response,5
+
+# IPR:
+A0A165P0C1,1,RHS protein|YD repeat|Rhs repeat-associated core|RHS repeat|AHH domain-containing protein|Type VI secretion system VgrG/RHS,6
+
+# HRD:
+A0A520IFA9,1,Lipocalin-like domain-containing protein,1
+
+################ pc1020 ##################
+# MapMan:
+Pepsin-type protease | swissprot: Probable aspartic proteinase GIP2 OS=Nicotiana benthamiana
+
+# GO: 
+A0A0G1R0A2,1,membrane,1
+A0A5E4P2K4,1,membrane,1
+A0AAE1JRW5,0.9475943504317865,extracellular region|Golgi apparatus|plasma membrane|aspartic-type endopeptidase activity|proteolysis,5
+A0A2T7TME7,0.9709933100522247,membrane,1
+A0A2P5NL04,0.9802654411979503,membrane,1
+A0A931ZQQ4,0.9152309810781297,protein secretion by the type II secretion system|type II protein secretion system complex|membrane,3
+
+# IPR:
+A0A0G1R0A2,1,Prokaryotic N-terminal methylation site|Pilin-like,2
+A0A5E4P2K4,0.9895182377991139,TadE-like domain,1
+A0AAE1JRW5,0.9952111568245539,"Aspartic peptidase A1|Aspartic peptidase domain superfamily|Xylanase inhibitor, C-terminal|Xylanase inhibitor, N-terminal|Peptidase family A1 domain|Xylanase inhibitor I-like",6
+A0A2P5NL04,0.9984767271314966,TadE-like domain,1
+A0A542BQM4,0.989068482674451,Cyclophilin-like domain superfamily|Cyclophilin-like,2
+A0A6A6GMK6,0.9202477042690607,FAS1 domain|FAS1 domain superfamily|Cell adhesion and biosynthesis-related protein,3
+
+# HRD:
+A0A0G1R0A2,1,Prepilin-type N-terminal cleavage/methylation domain-containing protein,1
+A0A5E4P2K4,0.9331074474679968,Flp pilus assembly protein TadG,1
+A0AAE1JRW5,0.9919646366018564,Peptidase A1 domain-containing protein,1
+
+################# pc1088 ##############
+# MapMan:
+group-I formin actin filament elongation factor | swissprot: Formin-like protein 6 OS=Arabidopsis thaliana
+
+# GO:
+A0A8S0WVX2,1,nucleus|cytosol|cysteine-type deubiquitinase activity|protein deubiquitination|peptidase activity|cysteine-type peptidase activity|hydrolase activity|proteolysis,8
+A0A4Z1PH95,0.9508763276979829,guanyl-nucleotide exchange factor activity|nucleus|protein import into nucleus|small GTPase binding,4
+
+# IPR:
+A0A8S0WVX2,1,"Peptidase C19, ubiquitin carboxyl-terminal hydrolase|Ubiquitin specific protease, conserved site|Ubiquitin specific protease UPS, catalytic domain|Papain-like cysteine peptidase superfamily|Ubiquitin carboxyl-terminal hydrolases",5
+
+# HRD:
+A0A8S0WVX2,1,Ubiquitin carboxyl-terminal hydrolase,1
+
+################# pc1375 ##############
+# MapMan:
+CrlRLK1 protein kinase & RALF-peptide receptor *(CrRLK1L) & EC_2.7 transferase transferring phosphorus-containing group | swissprot: Probable receptor-like protein kinase At4g39110 OS=Arabidopsis thaliana
+
+# GO:
+A0A4Z1PK27,1,oxidoreductase activity|FAD binding|flavin adenine dinucleotide binding,3
+
+# IPR:
+A0A1M5MLN7,1,"Outer membrane protein/outer membrane enzyme PagP, beta-barrel",1
+
+# HRD:
+A0A1M5MLN7,1,Outer membrane protein beta-barrel domain-containing protein,1
+A0A4Z1PK27,0.9999900759315787,FAD-binding PCMH-type domain-containing protein,1
+A0A7Y7AFB9,0.9999939553215808,Copper-binding protein MbnP-like domain-containing protein,1
+A0A8H5EZP1,0.9999953801814582,AB hydrolase-1 domain-containing protein,1
+A0A9R1W856,0.9998916888949918,Protein kinase domain-containing protein,1
+
+################# pc1446 #################
+# MapMan:
+CrlRLK1 protein kinase & RALF-peptide receptor *(CrRLK1L) & EC_2.7 transferase transferring phosphorus-containing group | swissprot: Receptor-like protein kinase FERONIA OS=Arabidopsis thaliana
+
+# GO:
+A0AAJ6U1Y7,1,ATP binding|protein kinase activity|transmembrane receptor protein tyrosine kinase activity|transferase activity|kinase activity|protein serine/threonine kinase activity|membrane|nucleotide binding|response to metal ion,9
+
+# IPR:
+A0AAJ6U1Y7,1,"Protein kinase domain|Serine-threonine/tyrosine-protein kinase, catalytic domain|Serine/threonine-protein kinase, active site|Protein kinase-like domain superfamily|Protein kinase, ATP binding site|Malectin-like domain|Receptor-like protein kinase ANXUR1/2-like",7
+A0A226E3P6,0.9426528096569374,"Copper amine oxidase|Copper amine oxidase, catalytic domain|Copper amine oxidase, N2-terminal|Copper amine oxidase, N3-terminal|Copper amine oxidase, N-terminal|Copper amine oxidase, catalytic domain superfamily|Copper amine oxidase, TPQ-binding site",7
+
+# HRD:
+A0AAJ6U1Y7,1,LOW QUALITY PROTEIN: receptor-like protein kinase FERONIA,1
+
+################# pc1643 #################
+# MapMan:
+class tau glutathione S-transferase *(GSTU1/2/++) | swissprot: Probable glutathione S-transferase OS=Glycine max
+
+# GO:
+A0A2Z5UT30,1,ATP binding|membrane,2
+
+# IPR:
+A0A8T6RFG3,1,FldB/FldC dehydratase alpha/beta subunit,1
+G6AXE4,0.9998899575524166,"Domain of unknown function DUF4143|P-loop containing nucleoside triphosphate hydrolase|AAA domain, group 14",3
+
+# HRD:
+A0A8T6RFG3,1,2-hydroxyacyl-CoA dehydratase,1
+G6AXE4,0.9968404307696498,ATPase,1
+A0A2Z5UT30,0.9992494464800337,ABC transporter ATP-binding component,1
+
+############## pc1675 #################
+# MapMan:
+component *(LHCb1/2/3) of LHC-II complex | swissprot: Chlorophyll a-b binding protein 21, chloroplastic OS=Nicotiana tabacum
+
+# GO:
+P09756,1,"chloroplast thylakoid membrane|response to light stimulus|photosynthesis, light harvesting in photosystem I|photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis",13
+P27491,1,"chloroplast thylakoid membrane|response to light stimulus|photosynthesis, light harvesting in photosystem I|photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis",13
+A0A151RTW8,0.9997021979979688,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|chloroplast thylakoid membrane",11
+A0A2I0AJ57,0.999831753452187,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|chloroplast thylakoid membrane",11
+P12333,0.9998954069119202,"chloroplast thylakoid membrane|response to light stimulus|photosynthesis, light harvesting in photosystem I|photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis",13
+P04778,0.9873467134709831,"chloroplast thylakoid membrane|response to light stimulus|photosynthesis, light harvesting in photosystem I|photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|mRNA binding|Golgi apparatus|nucleus|chloroplast thylakoid|protein domain specific binding",18
+P07371,0.9946114286706585,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|protein binding|chloroplast thylakoid membrane",12
+A0AAV9AUF6,0.9981204968726997,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|chloroplast thylakoid membrane",11
+A0A453M5D2,0.9985084784795749,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|chloroplast thylakoid membrane",11
+A0A8T0UX21,0.9987877014860512,"photosynthesis, light harvesting|membrane|metal ion binding|photosystem I|photosystem II|chloroplast|plastid|thylakoid|chlorophyll binding|photosynthesis|chloroplast thylakoid membrane",11
+
+# IPR:
+P09756,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+P27491,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+A0A151RTW8,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+A0A2I0AJ57,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+P12333,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+P04778,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+P07371,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+A0AAV9AUF6,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+A0A453M5D2,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+A0A8T0UX21,1,"Chlorophyll A-B binding protein, plant and chromista|Chlorophyll A-B binding protein",2
+
+
+# HRD:
+P09756,1,"Chlorophyll a-b binding protein 3, chloroplastic",1
+P27491,1,"Chlorophyll a-b binding protein 7, chloroplastic",1
+A0A151RTW8,1,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A2I0AJ57,1,"Chlorophyll a-b binding protein, chloroplastic",1
+P12333,1,"Chlorophyll a-b binding protein, chloroplastic",1
+P04778,1,"Chlorophyll a-b binding protein 1, chloroplastic",1
+P07371,0.9999999999999999,"Chlorophyll a-b binding protein AB80, chloroplastic",1
+A0AAV9AUF6,1,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A453M5D2,1,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A8T0UX21,1,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A7W0NLM3,0.9642050056744835,AtpZ/AtpI family protein,1
+A0A8K0MYY1,0.999641033352587,"Chlorophyll a-b binding protein, chloroplastic",1
+
+##################### pc1885 ##################
+# MapMan:
+LRR-III protein kinase & TruA-type tRNA pseudouridine synthase *(TRUA5) & regulatory peptide receptor kinase *(PRK1) involved in pollen tube guidance & EC_2.7 transferase transferring phosphorus-containing group | swissprot: Pollen receptor-like kinase 1 OS=Arabidopsis thaliana
+
+# GO:
+A0A3M6TXV2,1,cytosol|neurogenesis|cytoplasm,3
+
+# IPR:
+A0A3M6TXV2,1,BTB/POZ domain|SKP1/BTB/POZ domain superfamily|BTB/Kelch-associated|PHR|PHR domain superfamily,5
+A0A1E3PEF3,0.9998503484902559,Tetratricopeptide-like helical domain superfamily|Chs5p-Arf1p binding,2
+A0A0V0XLT7,0.9571421777594954,"Amino acid permease/ SLC12A domain|SLC12A transporter family|SLC12A transporter, C-terminal",3
+A0A0W8DJ65,0.9995847562692108,"Glucose-6-phosphate dehydrogenase|Glucose-6-phosphate dehydrogenase, active site|Glucose-6-phosphate dehydrogenase, NAD-binding|Glucose-6-phosphate dehydrogenase, C-terminal|NAD(P)-binding domain superfamily",5
+A0A7S2R6H8,0.9981874847526777,"Acyltransferase ChoActase/COT/CPT|Chloramphenicol acetyltransferase-like domain superfamily|Choline/carnitine acyltransferase domain|Choline/Carnitine o-acyltransferase, domain 2|Carnitine o-acyltransferase, N-terminal",5
+U4UCB9,0.911324112425042,"Thioredoxin domain|Thioredoxin, conserved site|Thioredoxin-like superfamily|Thioredoxin-related transmembrane domain-containing protein",4
+I1K654,0.9357905793405732,"Protein kinase domain|Serine-threonine/tyrosine-protein kinase, catalytic domain|Leucine-rich repeat|Protein kinase-like domain superfamily|Leucine-rich repeat-containing N-terminal, plant-type|Leucine-rich repeat domain superfamily|Pollen receptor-like kinase 1-6/SFR4-like",7
+
+# HRD:
+A0A3M6TXV2,1,BTB domain-containing protein,1
+A0A1E3PEF3,0.9375071019652463,Chaps-domain-containing protein,1
+
+################# pc2317 ##################
+# MapMan:
+EC_4.2 carbon-oxygen lyase & mono-/sesquiterpene-/diterpene synthase | swissprot: (-)-germacrene D synthase OS=Vitis vinifera
+
+# GO:
+A0AAP7DC95,1,signaling receptor activity|plasma membrane|signal transduction|membrane,4
+C4YA59,0.8821220418024508,protein disulfide isomerase activity|response to endoplasmic reticulum stress|endoplasmic reticulum|protein folding,4
+
+# IPR:
+A0AAP7DC95,1,Toll/interleukin-1 receptor homology (TIR) domain|Toll/interleukin-1 receptor homology (TIR) domain superfamily,2
+
+# HRD:
+A0AAP7DC95,1,Toll/interleukin-1 receptor domain-containing protein,1
+A0A1I5YUV5,0.9407642567562388,Type IV pilus assembly protein PilM,1
+C4YA59,0.9914228297199814,Thioredoxin domain-containing protein,1
+
+################### pc3076 #####################
+# MapMan:
+MYB class-R2R3 subgroup-10/24 transcription factor & serine O-acetyltransferase *(SAT) & EC_2.3 acyltransferase | swissprot: Transcription factor MYB93 OS=Arabidopsis thaliana
+
+# GO:
+A0A8S9JZZ6,1,hydrolase activity,1
+
+# IPR:
+A0A8S9JZZ6,1,Sialate O-acetylesterase domain|SGNH hydrolase superfamily|Carbohydrate Esterase 6,3
+
+# HRD:
+A0A8S9JZZ6,1,Sialate O-acetylesterase domain-containing protein,1
+
+
+################### pc3257 #####################
+# MapMan:
+component *(bL22m) of large mitoribosomal-subunit proteome
+
+# GO:
+A0A522V3P5,1,"oxidoreductase activity, acting on CH or CH2 groups, with an iron-sulfur protein as acceptor|oxidoreductase activity",2
+
+# IPR:
+A0A522V3P5,1,"Coenzyme F420 hydrogenase/dehydrogenase beta subunit, N-terminal|Coenzyme F420 hydrogenase/dehydrogenase beta subunit, C-terminal|4Fe-4S ferredoxin-type, iron-sulphur binding domain|4Fe-4S ferredoxin, iron-sulphur binding, conserved site|Oxidoreductase FRHB/FDHB/HCAR-like",5
+A0A7J6N6Q4,0.983961880955679,"Small GTPase|Tudor domain|Malic enzyme, N-terminal domain|Malic enzyme, NAD-binding|Malic enzyme, conserved site|P-loop containing nucleoside triphosphate hydrolase|NAD(P)-binding domain superfamily|Malic enzyme, N-terminal domain superfamily|Aminoacid dehydrogenase-like, N-terminal domain superfamily",9
+
+# HRD:
+A0A522V3P5,1,4Fe-4S ferredoxin-type domain-containing protein,1
+
+#################### pc3420 #################
+# MapMan:
+iron/zinc/manganese/cobalt cation transporter *(IRT1/ZIP1/++) & subclass-X1 metal cation transporter *(IRT1) | swissprot: Zinc transporter 5 OS=Arabidopsis thaliana
+
+# GO:
+M1B779,1,zinc ion transmembrane transporter activity|plasma membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|membrane|metal ion transport|transmembrane transport|monoatomic ion transport|monoatomic cation transmembrane transport|inorganic cation transmembrane transport|transition metal ion transport,11
+A0A0L0RWM0,0.9877493328564342,fungal-type vacuole membrane|early endosome|late endosome|sodium:proton antiporter activity|potassium:proton antiporter activity|regulation of intracellular pH|potassium ion transmembrane transport|vacuolar acidification|membrane|antiporter activity|proton transmembrane transport|monoatomic cation transport|sodium ion transport|regulation of pH|transmembrane transport|monoatomic ion transport|sodium ion transmembrane transport,17
+A0AAQ4E012,0.9939461861315588,zinc ion transmembrane transporter activity|zinc ion transmembrane transport|intracellular zinc ion homeostasis|metal ion transmembrane transporter activity|membrane|metal ion transport|transmembrane transport,7
+A0AAF6B2J2,0.8573197186652347,plasma membrane|membrane,2
+A0A9W8DRK9,0.9965163218690699,zinc ion transmembrane transporter activity|plasma membrane|membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|metal ion transport|transmembrane transport|monoatomic ion transport|transition metal ion transport,9
+A0A314KID4,0.9976563020967238,zinc ion transmembrane transporter activity|plasma membrane|membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|metal ion transport|transmembrane transport|monoatomic ion transport|monoatomic cation transmembrane transport|inorganic cation transmembrane transport|transition metal ion transport,11
+A0A6H5IVH9,0.9912396959357421,plasma membrane|monoatomic cation transmembrane transporter activity|monoatomic cation transport|membrane|monoatomic ion transport|monoatomic cation transmembrane transport,6
+A0AAV8GCT9,0.8698474419064324,membrane,1
+F0V9H1,0.8822354533178748,membrane,1
+
+# IPR:
+M1B779,1,"Zinc/iron permease|Zinc/iron permease, fungal/plant",2
+
+# HRD:
+M1B779,1,Zinc/iron transporter,1
+
+##################### pc3921 ###################
+# MapMan:
+methylation reader *(ECT1/2/3) | swissprot: YTH domain-containing protein ECT2 OS=Arabidopsis thaliana
+
+# GO:
+A0A067K969,1,nucleic acid binding,1
+
+# IPR:
+A0A067K969,1,"Mei2-like, C-terminal RNA recognition motif|Nucleotide-binding alpha-beta plait domain superfamily|RNA-binding domain superfamily",3
+A0A8X7W4P3,0.9683316258625612,"Argonaute, linker 1 domain|Protein argonaute, N-terminal|PAZ domain superfamily",3
+A0A0R0G3X8,0.9878766172628773,"Leucine-rich repeat|Leucine-rich repeat-containing N-terminal, plant-type|Leucine-rich repeat domain superfamily|Polygalacturonase-Inhibiting Protein",4
+
+# HRD:
+A0A067K969,1,Mei2-like C-terminal RNA recognition motif domain-containing protein,1
+A0A8X7W4P3,0.9999545049827616,Argonaute linker 1 domain-containing protein,1
+
+###################### pc5043 ######################
+# MapMan:
+regulatory protein *(SEOR1/2/3) involved in phloem development | swissprot: Protein SIEVE ELEMENT OCCLUSION B OS=Arabidopsis thaliana
+
+# GO:
+A0AAN9LD97,1,phloem development,1
+
+# IPR:
+A0AAN9LD97,1,"Sieve element occlusion, N-terminal|Sieve element occlusion, C-terminal|Protein SIEVE ELEMENT OCCLUSION",3
+
+# HRD:
+A0AAN9LD97,1,Protein SIEVE ELEMENT OCCLUSION B,1
+A0A7X6UIA2,0.976892418827424,ASCH domain-containing protein,1
+
+###################### pc5638 ######################
+# MapMan:
+3-ketoacyl-CoA synthase *(KCS) | swissprot: 3-ketoacyl-CoA synthase 2 OS=Arabidopsis thaliana
+
+# GO:
+A0A8T0DCA8,1,membrane-membrane adaptor activity|piecemeal microautophagy of the nucleus|phagophore|phagophore assembly site|phosphatidylinositol-3-phosphate binding|reticulophagy|glycophagy|autophagosome assembly|autophagy of mitochondrion|autophagy|endoplasmic reticulum|lipid transport|phagophore assembly site membrane|endoplasmic reticulum membrane,14
+A0AAE1TJB6,0.8996710870937517,plasma membrane|axon|cell-cell adhesion|axon guidance|membrane|anatomical structure morphogenesis|cell differentiation|cell adhesion,8
+
+# IPR:
+A0A8T0DCA8,1,Autophagy-related protein 2,1
+
+# HRD:
+A0A8T0DCA8,1,Autophagy-related protein 2 (Fragment),1
+A0AAE1TJB6,0.860970870507089,Roundabout homolog 2-like,1
+
+#################### pc6096 ######################
+# MapMan:
+histone *(H2A/HTA) | swissprot: Probable histone H2A.1 OS=Arabidopsis thaliana
+
+# GO:
+A0A178WLB1,1,membrane,1
+A0A0S8B7X8,0.9867358216473252,plasma membrane|regulation of protein targeting to membrane|membrane,3
+
+# IPR:
+A0A178WLB1,1,VTT domain-containing protein,1
+A0A0S8B7X8,0.9889304359520081,AsmA|AsmA-related,2
+
+# HRD:
+A0A178WLB1,1,Transmembrane protein,1
+A0A0S8B7X8,0.9770565451931127,AsmA domain-containing protein,1
+
+#################### pc6500 ######################
+# MapMan:
+plasmodesmal protein *(PDLP) | swissprot: Plasmodesmata-located protein 2 OS=Arabidopsis thaliana
+
+# GO:
+A0AAD8Y7W9,1,transferase activity|rRNA (adenine-N6-)-methyltransferase activity|rRNA methylation|methyltransferase activity|methylation|nucleic acid binding|S-adenosylmethionine-dependent methyltransferase activity,7
+A0A813DTN6,0.9957504477903953,peptidyl-prolyl cis-trans isomerase activity|cytoplasm|cyclosporin A binding|protein folding|isomerase activity,5
+
+# IPR:
+A0AAD8Y7W9,1,"DNA methylase, N-6 adenine-specific, conserved site|Methyltransferase small domain|S-adenosyl-L-methionine-dependent methyltransferase superfamily|rRNA N6-Adenosine-Methyltransferase/Polyamine Synthase",4
+A0A813DTN6,0.995626232048867,"Peptidyl-prolyl cis-trans isomerase, PpiC-type|Cyclophilin-type peptidyl-prolyl cis-trans isomerase domain|Cyclophilin-like domain superfamily|Peptidyl-prolyl cis-trans isomerase domain superfamily",4
+
+# HRD:
+A0AAD8Y7W9,1,Methyltransferase-like protein 5,1
+A0A6B8KGK2,0.9768936762006587,Hedgehog/Intein (Hint) domain-containing protein,1
+A0AA40P4M3,0.968015161694306,Mechanosensitive ion channel protein MscS,1
+
+#################### pc7658 ######################
+# MapMan:
+5,10-methylene-THF reductase & component *(MLH1) of MLH1-PMS1 heterodimer & component *(MLH1) of MutLy endonuclease heterodimer & EC_1.5 oxidoreductase acting on CH-NH group of donor | swissprot: Probable methylenetetrahydrofolate reductase (NADH) OS=Oryza sativa subsp. japonica 
+
+# GO:
+A0A6V8HCE6,1,D-alanine-D-alanine ligase activity|ATP binding|metal ion binding|ligase activity|nucleotide binding,5
+
+# IPR:
+A0A6V8HCE6,1,"D-alanine--D-alanine ligase, C-terminal|ATP-grasp fold|S-adenosyl-L-methionine-dependent methyltransferase superfamily|Methyltransferase domain 25",4
+A0A2I4FLX5,0.9992111478992106,Deoxyhypusine synthase|DHS-like NAD/FAD-binding domain superfamily|Deoxyhypusine synthase superfamily,3
+
+# HRD:
+A0A6V8HCE6,1,ATP-grasp domain-containing protein,1
+
+#################### pc8012 ######################
+# MapMan:
+S-adenosyl methionine synthetase & EC_2.5 transferase transferring alkyl or aryl group, other than methyl group | swissprot: S-adenosylmethionine synthase OS=Phaseolus lunatus
+
+# GO:
+P43280,1,methionine adenosyltransferase activity|cytosol|S-adenosylmethionine biosynthetic process|ATP binding|transferase activity|cytoplasm|metal ion binding|one-carbon metabolic process|nucleotide binding,9
+D3E2I8,0.9573438339527218,box H/ACA sno(s)RNA 3'-end processing|pseudouridine synthase activity|mRNA pseudouridine synthesis|rRNA pseudouridine synthesis|snRNA pseudouridine synthesis|pseudouridine synthesis|RNA modification|RNA processing|RNA binding|isomerase activity|tRNA processing|tRNA pseudouridine(55) synthase activity|tRNA pseudouridine synthesis,13
+A0A8S1C178,0.9823015230768339,cytoplasm|protein ubiquitination|zinc ion binding|metal ion binding|ubiquitin-protein transferase activity|transferase activity|Notch signaling pathway,7
+P43281,0.9900744313322273,methionine adenosyltransferase activity|cytosol|S-adenosylmethionine biosynthetic process|ATP binding|transferase activity|cytoplasm|metal ion binding|one-carbon metabolic process|nucleotide binding,9
+A0A074YWU5,0.9364756868271091,cellular response to oxidative stress|glutathione-disulfide reductase (NADPH) activity|mitochondrion|cytosol|cell redox homeostasis|glutathione metabolic process|flavin adenine dinucleotide binding|thioredoxin-disulfide reductase (NADPH) activity|oxidoreductase activity|cellular oxidant detoxification,10
+A0A5E4Q036,0.8283153111446342,alkaline phosphatase activity|phosphatase activity|side of membrane|hydrolase activity|plasma membrane|metal ion binding|membrane,7
+A0A8B7PM27,0.9877226312466719,ATP binding|methionine adenosyltransferase activity|S-adenosylmethionine biosynthetic process|transferase activity|metal ion binding|one-carbon metabolic process|nucleotide binding,7
+A0A173XVY0,0.9841543406712203,FMN binding|oxidoreductase activity|iron-sulfur cluster binding,3
+
+# IPR:
+P43280,1,"S-adenosylmethionine synthetase|S-adenosylmethionine synthetase, N-terminal|S-adenos
+ylmethionine synthetase, central domain|S-adenosylmethionine synthetase, C-terminal|S-adenosylmethionine synthetase, conserved site|S-adenosylmethionine synthetase superfamily",6
+D3E2I8,0.9982650419704291,"PUA domain|Pseudouridine synthase II, N-terminal|Uncharacterised domain CHP00451|tRNA pseudouridine synthase B family|Dyskerin-like|PUA-like superfamily|Pseudouridine synthase, catalytic domain superfamily|Probable tRNA pseudouridine synthase B, archaeal|tRNA pseudouridylate synthase B, C-terminal|PUA domain superfamily",10
+A0A8S1C178,0.9933019021712649,"Zinc finger, ZZ-type|Zinc finger, RING-type|Ankyrin repeat|Mib-herc2|Zinc finger, RING/FYVE/PHD-type|Ankyrin repeat-containing domain superfamily|Mib/herc2 domain superfamily|Mind bomb, SH3 repeat domain|Zinc finger, ZZ-type superfamily",9
+P43281,0.9970290496448423,"S-adenosylmethionine synthetase|S-adenosylmethionine synthetase, N-terminal|S-adenosylmethionine synthetase, central domain|S-adenosylmethionine synthetase, C-terminal|S-adenosylmethionine synthetase, conserved site|S-adenosylmethionine synthetase superfamily",6
+A0A074YWU5,0.9893250559651793,"Pyridine nucleotide-disulphide oxidoreductase, dimerisation domain|Thioredoxin/glutathione reductase selenoprotein|FAD/NAD-linked reductase, dimerisation domain superfamily|FAD/NAD(P)-binding domain|FAD/NAD(P)-binding domain superfamily|Glutathione reductase/thioredoxin reductase-like",6
+A0A5E4Q036,0.9999130056156325,"Alkaline phosphatase|Alkaline-phosphatase-like, core domain superfamily|Alkaline phosphatase, active site",3
+A0A8B7PM27,0.9957357679830898,"S-adenosylmethionine synthetase|S-adenosylmethionine synthetase, N-terminal|S-adenosylmethionine synthetase, central domain|S-adenosylmethionine synthetase, C-terminal|S-adenosylmethionine synthetase, conserved site|S-adenosylmethionine synthetase superfamily",6
+A0A173XVY0,0.9951910224315009,"NADH:flavin oxidoreductase/NADH oxidase, N-terminal|Aldolase-type TIM barrel|FAD/NAD(P)-binding domain|FAD/NAD(P)-binding domain superfamily|NADH:flavin oxidoreductase/NADH oxidase",5
+J3MVI8,0.9944498705903753,FKBP-type peptidyl-prolyl cis-trans isomerase domain|Nucleoplasmin-like domain|Peptidyl-prolyl cis-trans isomerase domain superfamily,3
+A0AAV4WG03,0.994671404828246,"S-adenosylmethionine synthetase|S-adenosylmethionine synthetase, N-terminal|S-adenosylmethionine synthetase, central domain|S-adenosylmethionine synthetase, C-terminal|S-adenosylmethionine synthetase, conserved site|S-adenosylmethionine synthetase superfamily",6
+A0AAD5G289,0.9956781228861421,"S-adenosylmethionine synthetase|S-adenosylmethionine synthetase, N-terminal|S-adenosylmethionine synthetase, central domain|S-adenosylmethionine synthetase, C-terminal|S-adenosylmethionine synthetase, conserved site|S-adenosylmethionine synthetase superfamily",6
+A0A1Q8QD09,0.9954634142553642,"Integrase, catalytic domain|DNA breaking-rejoining enzyme, catalytic core|Integrase-like, catalytic domain superfamily",3
+A0A293M0L8,0.8606903316439166,Laminin G domain|Laminin domain II|Concanavalin A-like lectin/glucanase domain superfamily|Neurexin-related cell adhesion and synaptic protein,4
+A0A7M5X480,0.8772569097757964,CoA-transferase family III|CoA-transferase family III domain 1 superfamily|CoA-transferase family III domain 3 superfamily|CoA-transferase III domain-containing protein,4
+A0AAV5V2G1,0.989657830975745,WD40/YVTN repeat-like-containing domain superfamily|WD40-repeat-containing domain superfamily,2
+
+# HRD:
+P43280,1,S-adenosylmethionine synthase 1,1
+D3E2I8,0.9998635387542678,Probable tRNA pseudouridine synthase B,1

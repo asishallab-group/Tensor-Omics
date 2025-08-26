@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A067K969,1,Mei2-like C-terminal RNA recognition motif domain-containing protein,1
+A0A8X7W4P3,0.9999545049827616,Argonaute linker 1 domain-containing protein,1

@@ -1,0 +1,131 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Processing: pc67_1
+  GO: 1 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc196_1
+  GO: 2 reference proteins
+  IPR: 2 reference proteins
+  HRD: 1 reference proteins
+Processing: pc197_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 2 reference proteins
+Processing: pc202_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc247_1
+  GO: 2 reference proteins
+  IPR: 3 reference proteins
+  HRD: 1 reference proteins
+Processing: pc302_1
+  GO: 1 reference proteins
+  IPR: 6 reference proteins
+  HRD: 4 reference proteins
+Processing: pc325_1
+  GO: 1 reference proteins
+  IPR: 1 reference proteins
+  HRD: 11 reference proteins
+Processing: pc346_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc418_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 2 reference proteins
+Processing: pc483_1
+  GO: 2 reference proteins
+  IPR: 2 reference proteins
+  HRD: 1 reference proteins
+Processing: pc538_1
+  GO: 2 reference proteins
+  IPR: 3 reference proteins
+  HRD: 2 reference proteins
+Processing: pc992_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc1020_1
+  GO: 6 reference proteins
+  IPR: 6 reference proteins
+  HRD: 3 reference proteins
+Processing: pc1088_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc1375_1
+  GO: 1 reference proteins
+  IPR: 1 reference proteins
+  HRD: 5 reference proteins
+Processing: pc1446_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 1 reference proteins
+Processing: pc1643_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 3 reference proteins
+Processing: pc1675_1
+  GO: 10 reference proteins
+  IPR: 10 reference proteins
+  HRD: 12 reference proteins
+Processing: pc1885_1
+  GO: 1 reference proteins
+  IPR: 7 reference proteins
+  HRD: 2 reference proteins
+Processing: pc2317_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 3 reference proteins
+Processing: pc3076_1
+  GO: 1 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc3257_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 1 reference proteins
+Processing: pc3420_1
+  GO: 9 reference proteins
+  IPR: 1 reference proteins
+  HRD: 1 reference proteins
+Processing: pc3921_1
+  GO: 1 reference proteins
+  IPR: 3 reference proteins
+  HRD: 2 reference proteins
+Processing: pc5043_1
+  GO: 1 reference proteins
+  IPR: 1 reference proteins
+  HRD: 2 reference proteins
+Processing: pc5638_1
+  GO: 2 reference proteins
+  IPR: 1 reference proteins
+  HRD: 2 reference proteins
+Processing: pc6096_1
+  GO: 2 reference proteins
+  IPR: 2 reference proteins
+  HRD: 2 reference proteins
+Processing: pc6500_1
+  GO: 2 reference proteins
+  IPR: 2 reference proteins
+  HRD: 3 reference proteins
+Processing: pc7658_1
+  GO: 1 reference proteins
+  IPR: 2 reference proteins
+  HRD: 1 reference proteins
+Processing: pc8012_1
+  GO: 8 reference proteins
+  IPR: 15 reference proteins
+  HRD: 2 reference proteins

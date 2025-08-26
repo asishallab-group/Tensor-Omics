@@ -1,0 +1,9 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+P43280,1,methionine adenosyltransferase activity|cytosol|S-adenosylmethionine biosynthetic process|ATP binding|transferase activity|cytoplasm|metal ion binding|one-carbon metabolic process|nucleotide binding,9
+D3E2I8,0.9573438339527226,box H/ACA sno(s)RNA 3'-end processing|pseudouridine synthase activity|mRNA pseudouridine synthesis|rRNA pseudouridine synthesis|snRNA pseudouridine synthesis|pseudouridine synthesis|RNA modification|RNA processing|RNA binding|isomerase activity|tRNA processing|tRNA pseudouridine(55) synthase activity|tRNA pseudouridine synthesis,13
+A0A8S1C178,0.9823015230768346,cytoplasm|protein ubiquitination|zinc ion binding|metal ion binding|ubiquitin-protein transferase activity|transferase activity|Notch signaling pathway,7
+P43281,0.9900744313322271,methionine adenosyltransferase activity|cytosol|S-adenosylmethionine biosynthetic process|ATP binding|transferase activity|cytoplasm|metal ion binding|one-carbon metabolic process|nucleotide binding,9
+A0A074YWU5,0.9364756868271096,cellular response to oxidative stress|glutathione-disulfide reductase (NADPH) activity|mitochondrion|cytosol|cell redox homeostasis|glutathione metabolic process|flavin adenine dinucleotide binding|thioredoxin-disulfide reductase (NADPH) activity|oxidoreductase activity|cellular oxidant detoxification,10
+A0A5E4Q036,0.828315311144637,alkaline phosphatase activity|phosphatase activity|side of membrane|hydrolase activity|plasma membrane|metal ion binding|membrane,7
+A0A8B7PM27,0.987722631246672,ATP binding|methionine adenosyltransferase activity|S-adenosylmethionine biosynthetic process|transferase activity|metal ion binding|one-carbon metabolic process|nucleotide binding,7
+A0A173XVY0,0.9841543406712207,FMN binding|oxidoreductase activity|iron-sulfur cluster binding,3

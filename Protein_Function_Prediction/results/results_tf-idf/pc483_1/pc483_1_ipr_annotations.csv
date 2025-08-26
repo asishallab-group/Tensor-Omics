@@ -1,0 +1,9 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A1S3K9F8,1,"Phox homology|Phospholipase D/Transphosphatidylase|Pleckstrin homology domain|Phospholipase D family|Phospholipase D, eukaryotic type|PX domain superfamily",6
+A0A7C8J0S2,0.9946103104503614,"PLC-like phosphodiesterase, TIM beta/alpha-barrel domain superfamily|Histone acetyltransferase RTT109-like",2
+F4P4A4,0.9688479306206371,"G-patch domain|Tuftelin interacting protein, N-terminal domain|GCF, C-terminal|TFP11/STIP/Ntr1",4
+A0A4Y9XQV1,0.9712795387283986,"Integrase, catalytic core|Ribonuclease H-like superfamily|Reverse transcriptase, RNA-dependent DNA polymerase|GAG-pre-integrase domain|Ribonuclease H superfamily|Retrotransposon Ty1/copia-like|DNA/RNA polymerase superfamily|Retrovirus-related Pol polyprotein from transposon TNT 1-94-like, beta-barrel domain",8
+A0A2V9ZY32,0.9467282531449587,"Gp5/Type VI secretion system Vgr protein, OB-fold domain|Type VI secretion system, RhsGE-associated Vgr protein|Type VI secretion system, RhsGE-associated Vgr family subset|Vgr protein, OB-fold domain superfamily|Type VI secretion system VgrG/RHS|Gp5/Type VI secretion system Vgr, C-terminal trimerisation domain",6
+A0A6A4Y0Q6,0.9711189052498176,"Integrase, catalytic core|Ribonuclease H-like superfamily|Ribonuclease H superfamily|Retrotransposon Ty1/copia-like",4
+A0A8K0JTP8,0.9847354946205459,"AP endonuclease 1|Endonuclease/exonuclease/phosphatase|AP endonuclease 1, conserved site|Endonuclease/exonuclease/phosphatase superfamily",4
+A0A7J0G7R8,0.9934953753477961,Domain of unknown function DUF3741|Domain of unknown function DUF4378,2

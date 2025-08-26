@@ -1,0 +1,4 @@
+query_id,corpus,neighbor_id,cosine_similarity,included
+PC538_1,GO,A0A7S0YKK1,1,TRUE
+PC538_1,IPR,A0A7S0YKK1,1,TRUE
+PC538_1,HRD,A0A7S0YKK1,1,TRUE

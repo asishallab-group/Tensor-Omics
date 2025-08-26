@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8R1I142,1,ABC transporter domain-containing protein,1
+A0AAD9J013,0.9640168010956881,Phospholipid-transporting ATPase,1
+A0A2E1Q5T1,0.9825143741278695,Glycosyl transferase,1

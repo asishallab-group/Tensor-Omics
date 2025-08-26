@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A7S0YKK1,1,"Immunoglobulin-like fold|Hydrocephalus-inducing-like|HYDIN/VesB/CFA65-like, Ig-like domain",3
+A0AAD9WRI7,0.9931936129050352,"Protein kinase domain|Cysteine-rich secretory protein-related|Venom allergen 5-like|Serine/threonine-protein kinase, active site|Protein kinase-like domain superfamily|CAP domain|Protein kinase, ATP binding site|Allergen V5/Tpx-1-related, conserved site|CAP superfamily|L-type Lectin-Domain Containing Receptor Kinases",10
+A0A8D8TP29,0.9433913101415929,"Glucose-methanol-choline oxidoreductase, N-terminal|Glucose-methanol-choline oxidoreductase, C-terminal|Glucose-methanol-choline oxidoreductase|FAD/NAD(P)-binding domain superfamily",4

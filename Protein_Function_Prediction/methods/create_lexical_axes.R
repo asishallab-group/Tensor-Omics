@@ -1,4 +1,5 @@
-# Version 1.4.3 - Ohne Filterung, mit angepasster Tokenisierung
+# Version 1.4.3
+# Author: Aaron Schroeder
 library(dplyr)
 library(tidyr)
 library(tibble)
@@ -11,7 +12,7 @@ library(irlba)
 library(progressr)
 library(pbapply)
 
-# Aktiviert globale Fortschrittsanzeige
+# Progressbar
 handlers(global = TRUE)
 handlers("txtprogressbar")
 
@@ -37,21 +38,20 @@ clean_doc <- function(text) {
     str_squish()
 }
 
-# Neue Tokenizer-Funktion für HRD und IPR (an Leerzeichen, Semikolon, Punkten)
 tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
   if (name == "GO") {
     tokens_list <- str_split(texts, pattern)
   } else {
-    # Für HRD und IPR an typischen Trennzeichen splitten
     tokens_list <- str_split(texts, "[\\s.;,]+")
   }
 
-  # Entferne leere Tokens
+  # remove empty tokens
   tokens_list <- map(tokens_list, ~ .x[.x != ""])
   
-  message("[", name, "] Tokens vor Filtern: ", sum(lengths(tokens_list)))
-  message("[", name, "] Unique Tokens vor Filtern: ", length(unique(unlist(tokens_list))))
+  message("[", name, "] Tokens before filtering: ", sum(lengths(tokens_list)))
+  message("[", name, "] Unique Tokens before filtering: ", length(unique(unlist(tokens_list))))
 
+  # clean out IDs like A917CF at the end of sequences or just number identifiers
   tibble(
     protein_id = protein_ids,
     tokens_list = tokens_list
@@ -67,7 +67,7 @@ tokenize_custom <- function(protein_ids, texts, pattern, name = NULL) {
 
 splitter_go <- "[\\s.,:]+"
 
-# Funktion zur Erstellung der Achsen ohne Filterung
+# Create leixcal axes
 build_axes <- function(docs, name) {
   message("Processing corpus: ", name, " (", length(docs[[2]]), " docs)")
   
@@ -88,11 +88,11 @@ build_axes <- function(docs, name) {
   if (name == "GO") {
     dt <- tokenize_custom(protein_ids, texts, splitter_go, name)
   } else {
-    dt <- tokenize_custom(protein_ids, texts, NULL, name)  # Pattern nicht benötigt für HRD/IPR
+    dt <- tokenize_custom(protein_ids, texts, NULL, name)
   }
 
-  message("[", name, "] Tokens nach Filtern: ", nrow(dt))
-  message("[", name, "] Unique Tokens nach Filtern: ", n_distinct(dt$token))
+  message("[", name, "] Tokens after filtering: ", nrow(dt))
+  message("[", name, "] Unique Tokens after filtering: ", n_distinct(dt$token))
 
   p("Counting term frequencies")
   wf_doc <- dt %>% count(protein_id, token, name = "tf")
@@ -107,6 +107,12 @@ build_axes <- function(docs, name) {
   sv <- irlba(cooc, nv = nv)
   vars <- sv$d^2 / sum(sv$d^2)
   k <- min(which(cumsum(vars) >= 0.90))
+
+  if(name == "GO"){
+	  k <- max(k, 4)
+  } else {
+	  k <- max(k, 2)
+  }
 
   U <- sv$u[, 1:k, drop = FALSE] 
   colnames(U) <- paste0("EW", 1:k)

@@ -1,0 +1,11 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A067K969,1,"Mei2-like, C-terminal RNA recognition motif|Nucleotide-binding alpha-beta plait domain superfamily|RNA-binding domain superfamily",3
+A0A8X7W4P3,0.9903871933850389,"Argonaute, linker 1 domain|Protein argonaute, N-terminal|PAZ domain superfamily",3
+A0A0R0G3X8,0.9999319258148937,"Leucine-rich repeat|Leucine-rich repeat-containing N-terminal, plant-type|Leucine-rich repeat domain superfamily|Polygalacturonase-Inhibiting Protein",4
+A0A9D4VM20,0.9986669740054597,Kinesin motor domain|P-loop containing nucleoside triphosphate hydrolase|Kinesin motor domain superfamily|Kinesin-like protein KIF15/KIN-12,4
+A0A2U9R8R7,0.9952476693363587,La-type HTH domain|Winged helix-like DNA-binding domain superfamily|Winged helix DNA-binding domain superfamily|La domain containing protein,4
+A0A7G9W719,0.9856199376215574,"NodB homology domain|Glycoside hydrolase/deacetylase, beta/alpha-barrel|Polysaccharide deacetylase, ArnD subfamily",3
+A0A7D9IQP8,0.974062262452576,"cDENN domain|dDENN domain|uDENN domain|Tripartite DENN domain|DENN domain-containing protein 1A/1B/1C|DENN domain, C-terminal lobe",6
+A0A6P5JV78,0.9825064557206759,"Type I phosphodiesterase/nucleotide pyrophosphatase/phosphate transferase|Alkaline-phosphatase-like, core domain superfamily",2
+A0A4Z1T5V2,0.9693432818081607,"Ubiquitin-conjugating enzyme E2, catalytic core domain|Ubiquitin-conjugating enzyme/RWD-like|Ubiquitin-conjugating enzyme, active site|Ubiquitin-conjugating enzyme",4
+A0A9D4K6R3,0.9962810074745776,Fork head domain|Fork head domain conserved site1|Fork head domain conserved site 2|Winged helix-like DNA-binding domain superfamily|Winged helix DNA-binding domain superfamily|Forkhead box domain-containing protein,6

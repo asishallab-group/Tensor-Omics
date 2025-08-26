@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAV2VKH6,1,"ATP-grasp fold|ATP-grasp fold, subdomain 1|ATP-dependent Amino Acid Ligase",3
+A0A284VS47,0.9957281560920684,Methyltransferase domain|S-adenosyl-L-methionine-dependent methyltransferase superfamily,2
+A0A6N7EZ84,0.9991792818341957,"Zinc finger, DNA glycosylase/AP lyase-type|Small ribosomal subunit protein uS13-like, H2TH|Formamidopyrimidine-DNA glycosylase, catalytic domain|DNA glycosylase/AP lyase, H2TH DNA-binding|DNA glycosylase/AP lyase, zinc finger domain, DNA-binding site|Formamidopyrimidine-DNA glycosylase|MutM-like, N-terminal",7
+A0A2N2J4P6,0.9990495225113918,Immunoglobulin-like fold,1
+A0AAD8G5K0,0.9518919496084921,"Zinc finger, RING-type|Six-bladed beta-propeller, TolB-like|Zinc finger, RING/FYVE/PHD-type|Zinc finger, RING-type, conserved site|Zinc finger, RING-type, eukaryotic|TRIM45/56/19-like",6

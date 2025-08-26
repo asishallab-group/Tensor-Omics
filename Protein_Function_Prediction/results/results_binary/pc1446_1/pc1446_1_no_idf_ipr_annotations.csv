@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAJ6U1Y7,1,"Protein kinase domain|Serine-threonine/tyrosine-protein kinase, catalytic domain|Serine/threonine-protein kinase, active site|Protein kinase-like domain superfamily|Protein kinase, ATP binding site|Malectin-like domain|Receptor-like protein kinase ANXUR1/2-like",7
+A0A226E3P6,0.9426528096569378,"Copper amine oxidase|Copper amine oxidase, catalytic domain|Copper amine oxidase, N2-terminal|Copper amine oxidase, N3-terminal|Copper amine oxidase, N-terminal|Copper amine oxidase, catalytic domain superfamily|Copper amine oxidase, TPQ-binding site",7

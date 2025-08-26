@@ -1,4 +1,6 @@
 # Protein Function Prediction Pipeline (SVD + Kidera + Lexical Consistency)
+# Version 4.3.3
+# Author: Aaron Schroeder
 # Date: 2025-08-18
 #
 # Overview
@@ -16,9 +18,6 @@
 #     * "sum": conventional weighted combination:  sum_i w_i * v_i     (default)
 #     * "mean_after_weight": mean over weighted vectors: (1/n) * sum_i w_i * v_i
 # - Designed for very large reference sets, but memory limits apply. Consider chunking if needed.
-#
-# Neu:
-# - Ein Referenz-Mittelwert-Vektor kann angegeben werden, um eine neue Normalisierung durchzuführen.
 
 suppressPackageStartupMessages({
   require(data.table)
@@ -57,33 +56,32 @@ save_both <- function(obj, df, out_dir, base_name) {
 # Loading reference data
 # ------------------------
 load_lexical_axes <- function(path) {
-  message("Lade lexikalische Achsen aus ", path, "...")
+  message("Loading lexical axes from: ", path, "...")
   ax <- readRDS(path)
   if (!"doc_vectors" %in% names(ax)) stop("lexical axes RDS missing 'doc_vectors'")
   dv <- ax$doc_vectors
   if (!is.null(rownames(dv))) {
     rownames(dv) <- canon_id(rownames(dv))
   }
-  message("Lexikalische Achsen geladen: ", nrow(dv), " Einträge.")
+  message("Lexical axes loaded: ", nrow(dv), " Entries.")
   list(doc_vectors = dv, explained_variance = ax$explained_variance)
 }
 
-# NEUE FUNKTION: Mean-Vektor laden und vorbereiten
+# Load mean vector
 load_mean_vector <- function(path) {
-  message("Lade Mean-Vektor aus ", path, "...")
+  message("Loading named mean vector ", path, "...")
   mean_dt <- fread(path)
-  # Wir nehmen an, die erste Spalte ist die Protein-ID und die zweite der Vektorwert
+  # assume first column is protein_id and second one is the vector
   setnames(mean_dt, names(mean_dt)[1:2], c("Protein_ID", "Mean_Vector_Value"))
   mean_dt[, Protein_ID := canon_id(Protein_ID)]
   setkey(mean_dt, Protein_ID)
-  message("Mean-Vektor geladen: ", nrow(mean_dt), " Einträge.")
+  message("Mean vector loaded: ", nrow(mean_dt), " Entries.")
   mean_dt
 }
 
 
-# Geänderte Funktion: calculate_norm_gmean_weights
 compute_norm_gmean_weights <- function(blast_file, mean_dt = NULL) {
-  message("Verarbeite BLAST-Ergebnisse aus ", blast_file, "...")
+  message("Processing blast results from ", blast_file, "...")
   cols <- c("qseqid","sseqid","qstart","qend","qlen",
             "sstart","send","slen","pident","evalue","bitscore")
   dt <- data.table::fread(blast_file, sep = "\t", header = FALSE, col.names = cols)
@@ -96,7 +94,7 @@ compute_norm_gmean_weights <- function(blast_file, mean_dt = NULL) {
                        c("sid","qid","overlap_b","pident_b"))
   dt_back <- dt_back[, .(qid, sid, overlap_b, pident_b)]
   
-  # Korrigierter Merge-Vorgang
+  
   merged <- dt[dt_back, on = .(qid = sid, sid = qid)]
   
   merged[is.na(overlap_b), overlap_b := 0.1]
@@ -106,26 +104,26 @@ compute_norm_gmean_weights <- function(blast_file, mean_dt = NULL) {
   merged[, gmean := gm(c(overlap, overlap_b, pident, pident_b)), by = 1:nrow(merged)]
   merged <- merged[is.finite(gmean) & gmean > 0]
 
-  # NEUE Logik: Wenn ein Mean-Vektor vorhanden ist, diesen für die Normalisierung verwenden
+  # If mean vector is provided (this should be the case) use it
   if (!is.null(mean_dt)) {
-    message("Wende neue Normalisierungslogik an...")
-    # Hole die Mean-Werte für alle sids aus der Tabelle
+    message("Using mean vector...")
+
     merged[, mean_val := mean_dt[.(sid), Mean_Vector_Value]]
     merged[is.na(mean_val), mean_val := 0] # Falls eine ID nicht im Mean-Vektor ist, 0 verwenden
 
-    # Berechne den Normalisierungsfaktor pro query_id
+    # calculate norm factor
     merged[, norm_factor := sum(gmean), by = qid]
 
-    # Berechne die finalen Gewichte
+    # get final weights
     merged[, w := (gmean - mean_val) / norm_factor]
     merged[norm_factor == 0, w := 0] # Division by zero vermeiden
 
   } else {
-    # Ursprüngliche Logik, falls kein Mean-Vektor angegeben ist
+    # If no vector provided, use pseudo weights based on geom_mean
     merged[, w := gmean / sum(gmean), by = qid]
   }
 
-  message("BLAST-Gewichtungen berechnet.")
+  message("Calculated blast weights")
   merged[, .(id = sid, w, qid)]
 }
 
@@ -174,6 +172,7 @@ collect_neighbors_for_corpus <- function(neighbor_ids, doc_mat_sparse, threshold
   selected_mat <- as.matrix(doc_mat_sparse[first_id, , drop = FALSE])
   sim_values <- c(1.0) # Cosine similarity of a vector with itself is 1.0
   
+  # check cosine for each neighbor to all neighbors that are currently in the set
   if (length(available) > 1) {
     for (cand in available[-1]) {
       cand_vec <- as.matrix(doc_mat_sparse[cand, , drop = FALSE])
@@ -202,25 +201,27 @@ collect_neighbors_for_corpus <- function(neighbor_ids, doc_mat_sparse, threshold
 run_for_all_queries <- function(blast_file,
                                chemical_space_rds,
                                query_kidera_rds_path,
-                               mean_vector_csv = NULL, # NEUER PARAMETER
+                               mean_vector_csv = NULL,
                                lexical_paths = list(GO = NULL, IPR = NULL, HRD = NULL),
                                output_base = "results",
+                               # cap at 50 to avoid unneccessary computations
                                k_cap = 50,
+                               # default = 0.9, this should work fine but might miss some relevant factors, consider using 0.8
                                cosine_threshold = 0.9,
                                combine_mode = c("sum", "mean_after_weight")) {
   
   combine_mode <- match.arg(combine_mode)
   
-  # Phase 1: Daten laden
-  message("--- Phase 1: Lade Referenzdaten ---")
-  message("Lade vorbereiteten chemischen Raum aus ", chemical_space_rds, "...")
+  # load data
+  message("--- Phase 1: Loading references ---")
+  message("Loading chemical space from ", chemical_space_rds, "...")
   chem <- readRDS(chemical_space_rds)
   
   # Extract necessary components from the chemical space object
   chem_mat <- chem$mat
   svd_mat <- chem$mat[, colnames(chem$mat) %in% chem$svd$names]
   
-  message("Lade Abfrage-Kidera-Faktoren...")
+  message("Loading query kidera factors...")
   qk <- readRDS(query_kidera_rds_path)
   qk <- as.data.table(qk)
   setnames(qk, names(qk)[1], "id")
@@ -234,7 +235,7 @@ run_for_all_queries <- function(blast_file,
     mean_dt <- load_mean_vector(mean_vector_csv)
   }
   
-  message("Lade lexikalische Vektoren für die Korpora...")
+  message("Loading lexical vectors...")
   corpora <- list()
   for (nm in names(lexical_paths)) {
     p <- lexical_paths[[nm]]
@@ -244,39 +245,40 @@ run_for_all_queries <- function(blast_file,
   }
   
   # Phase 2: BLAST-Ergebnisse verarbeiten
-  message("--- Phase 2: Verarbeite BLAST-Ergebnisse ---")
+  message("--- Phase 2: Processing blast results ---")
   # Übergabe des Mean-Vektors an die Funktion
   w_dt <- compute_norm_gmean_weights(blast_file, mean_dt = mean_dt)
   query_ids <- unique(w_dt$qid)
-  message(length(query_ids), " Abfrageproteine zur Verarbeitung gefunden.")
+  message(length(query_ids), " query proteins found.")
   
   # Phase 3: Suche nach Nachbarn für jede Abfrage
-  message("--- Phase 3: Starte Nachbarsuche für jede Abfrage ---")
+  message("--- Phase 3: Starting neighborhood search ---")
   results <- list()
   for (i in 1:length(query_ids)) {
     query_id <- query_ids[i]
-    message(sprintf("Verarbeite Abfrage %d/%d: %s", i, length(query_ids), query_id))
+    message(sprintf("Processing query %d/%d: %s", i, length(query_ids), query_id))
     
     query_row <- qk[id == query_id]
     if (nrow(query_row) == 0) {
-      message("  -> Keine Kidera-Faktoren für diese Abfrage gefunden. Überspringe...")
+      message("  -> No kidera factors found; skipping query protein...")
       next
     }
     q_kidera_vec <- as.numeric(query_row[1, ..k_cols])
     
-    message("  -> Erstelle Abfragevektor...")
+    message("  -> creating vector...")
     vq_svd <- combine_hit_vectors(w_dt, svd_mat, query_id, combine_mode = combine_mode)
     vq_chem <- append_query_kidera(vq_svd, q_kidera_vec)
     
-    message("  -> Finde die ", k_cap, " nächsten Nachbarn im chemischen Raum...")
+    message("  -> Finding ", k_cap, " nearest neighbors in the chemical space...")
     nn <- RANN::nn2(data = chem_mat, query = matrix(vq_chem, nrow = 1), k = min(k_cap, nrow(chem_mat)))
     nn_idx <- as.integer(nn$nn.idx[1, ])
     neighbor_ids <- rownames(chem_mat)[nn_idx]
     neighbor_ids <- neighbor_ids[neighbor_ids != query_id]
+    message("  -> Top 10 neighbors in the chemical space: ", paste(head(neighbor_ids, 10), collapse = ", "))
     
     per_corpus <- list()
     for (nm in names(corpora)) {
-      message("  -> Führe lexikalische Filterung für Korpus '", nm, "' durch...")
+      message("  -> Leical analysis for '", nm, "'...")
       dv <- corpora[[nm]]$doc_vectors
       res <- collect_neighbors_for_corpus(neighbor_ids, dv, threshold = cosine_threshold)
       per_corpus[[nm]] <- res
@@ -315,7 +317,7 @@ run_for_all_queries <- function(blast_file,
       per_corpus = per_corpus
     )
     
-    message("  -> Speichere Ergebnisse in ", out_dir, "...")
+    message("  -> Saving results in ", out_dir, "...")
     out_files1 <- save_both(rds_obj, neighbor_df, out_dir, sprintf("%s_output", tolower(query_id)))
     means_csv <- file.path(out_dir, sprintf("%s_mean_doc_vectors.csv", tolower(query_id)))
     if (nrow(means_dt)) fwrite(means_dt, means_csv)
@@ -328,7 +330,7 @@ run_for_all_queries <- function(blast_file,
     )
   }
   
-  message("--- Verarbeitung abgeschlossen ---")
+  message("--- All Proteins processed ---")
   results
 }
 

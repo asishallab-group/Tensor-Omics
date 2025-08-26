@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A520IFA9,1,Lipocalin-like domain-containing protein,1
+A0A165P0C1,0.8347817825851366,Putative deoxyribonuclease RhsC,1

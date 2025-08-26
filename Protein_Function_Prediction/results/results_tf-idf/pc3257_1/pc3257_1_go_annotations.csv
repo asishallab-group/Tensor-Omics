@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A522V3P5,1,"oxidoreductase activity, acting on CH or CH2 groups, with an iron-sulfur protein as acceptor|oxidoreductase activity",2
+A0A7J6N6Q4,0.9905479328697587,"malic enzyme activity|malate dehydrogenase (decarboxylating) (NAD+) activity|mitochondrion|malate metabolic process|oxidoreductase activity, acting on the CH-OH group of donors, NAD or NADP as acceptor|GTP binding|GTPase activity|NAD binding|metal ion binding|oxidoreductase activity",10

@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A2N7QPC6,1,"Transcription regulator PadR, N-terminal|Winged helix-like DNA-binding domain superfamily|Winged helix DNA-binding domain superfamily",3
+A0A411DZB4,0.9325038276894831,"RNA-directed RNA polymerase, fingers/palm subdomains, flavivirus|DNA/RNA polymerase superfamily",2

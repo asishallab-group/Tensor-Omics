@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8R2M6Q5,1,THAP-type zinc finger|Zinc finger C2H2-type|Zinc finger C2H2 superfamily|THAP-type zinc finger superfamily|THAP domain-containing protein,5
+A0A9R0JF23,0.8843655816361194,Retrotransposon gag domain,1
+A0AA38TAZ9,0.9999864764352586,"Zinc finger, CCHC-type|Retrotransposon gag domain|Ribosomal protein eL30-like superfamily|Zinc finger, CCHC-type superfamily",4

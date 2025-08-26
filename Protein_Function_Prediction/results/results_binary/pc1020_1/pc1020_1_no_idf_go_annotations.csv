@@ -1,0 +1,7 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A0G1R0A2,1,membrane,1
+A0A5E4P2K4,0.9999999999999999,membrane,1
+A0AAE1JRW5,0.9475943504317865,extracellular region|Golgi apparatus|plasma membrane|aspartic-type endopeptidase activity|proteolysis,5
+A0A2T7TME7,0.9709933100522241,membrane,1
+A0A2P5NL04,0.9802654411979499,membrane,1
+A0A931ZQQ4,0.91523098107813,protein secretion by the type II secretion system|type II protein secretion system complex|membrane,3

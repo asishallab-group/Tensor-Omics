@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8T6RFG3,1,2-hydroxyacyl-CoA dehydratase,1
+G6AXE4,0.9999840589998648,ATPase,1
+A0A2Z5UT30,0.9855761667775096,ABC transporter ATP-binding component,1
+A0A3D1MGU9,0.9996040806533931,Glycosyl transferase family 1 domain-containing protein,1
+A0A7J2QZ34,0.9984821766251156,ATP-binding cassette domain-containing protein,1

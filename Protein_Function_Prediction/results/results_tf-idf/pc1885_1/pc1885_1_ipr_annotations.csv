@@ -1,0 +1,7 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A3M6TXV2,1,BTB/POZ domain|SKP1/BTB/POZ domain superfamily|BTB/Kelch-associated|PHR|PHR domain superfamily,5
+A0A1E3PEF3,0.9994447136935228,Tetratricopeptide-like helical domain superfamily|Chs5p-Arf1p binding,2
+A0A0V0XLT7,0.9970246782407415,"Amino acid permease/ SLC12A domain|SLC12A transporter family|SLC12A transporter, C-terminal",3
+A0A0W8DJ65,0.9959365789399005,"Glucose-6-phosphate dehydrogenase|Glucose-6-phosphate dehydrogenase, active site|Glucose-6-phosphate dehydrogenase, NAD-binding|Glucose-6-phosphate dehydrogenase, C-terminal|NAD(P)-binding domain superfamily",5
+A0A7S2R6H8,0.9999399263760057,"Acyltransferase ChoActase/COT/CPT|Chloramphenicol acetyltransferase-like domain superfamily|Choline/carnitine acyltransferase domain|Choline/Carnitine o-acyltransferase, domain 2|Carnitine o-acyltransferase, N-terminal",5
+U4UCB9,0.9876114372741227,"Thioredoxin domain|Thioredoxin, conserved site|Thioredoxin-like superfamily|Thioredoxin-related transmembrane domain-containing protein",4

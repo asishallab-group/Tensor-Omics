@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8R1I142,1,lipid transporter activity|ATPase-coupled transmembrane transporter activity|lipid transport|ABC-type transporter activity|ATP hydrolysis activity|ATP binding|membrane|transmembrane transport|nucleotide binding,9
+A0AAD9J013,0.9683467025996644,ATPase-coupled intramembrane lipid transporter activity|trans-Golgi network|plasma membrane|phospholipid translocation|Golgi organization|ATP hydrolysis activity|ATP binding|membrane|phospholipid transport|nucleotide binding|magnesium ion binding|metal ion binding,12

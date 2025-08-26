@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AA38H0E4,1,Integrase zinc-binding domain-containing protein (Fragment),1
+A0A2N7QPC6,0.9034774722401036,Transcriptional regulator YqjI,1
+A0A411DZB4,0.8591256682758697,Nonstructural protein NS5 (Fragment),1

@@ -1,4 +1,5 @@
-#Version 1.3.2
+# Version 1.3.2
+# Author: Aaron Schroeder
 library(data.table)
 library(doParallel)
 library(dplyr)

@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A1S3K9F8,1,"Phox homology|Phospholipase D/Transphosphatidylase|Pleckstrin homology domain|Phospholipase D family|Phospholipase D, eukaryotic type|PX domain superfamily",6
+A0A7C8J0S2,0.9995597788427685,"PLC-like phosphodiesterase, TIM beta/alpha-barrel domain superfamily|Histone acetyltransferase RTT109-like",2

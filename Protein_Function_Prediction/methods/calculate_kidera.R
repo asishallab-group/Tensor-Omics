@@ -1,10 +1,11 @@
 #Version 1.2.7
+#Author: Aaron Schroeder
 
-library(Biostrings)     # Für effizientes Einlesen der FASTA
-library(Peptides)       # Für kideraFactors()
-library(future.apply)   # Für Parallelisierung
-library(tibble)         # Für hübsche Dataframes
-library(dplyr)          # Für Datenmanipulation
+library(Biostrings)     # For efficient reading of fasta
+library(Peptides)       # for kideraFactors()
+library(future.apply)   # for parallel
+library(tibble)         # for dataframes
+library(dplyr)          # For efficient data modification
 
 # Parallel-Plan with 8 Workers
 plan(multisession, workers = 8)
@@ -18,13 +19,13 @@ ids <- names(aa)
 seqs <- as.character(aa)
 cat("Numbers of loaded sequences:", length(seqs), "\n")
 
-# IDs säubern: 'UniRef50_' entfernen und alles nach Leerzeichen abschneiden
+# Clean IDs
 ids_clean <- sub("^UniRef50_", "", sub(" .*", "", ids))
 
-# Funktion zur sicheren Kidera-Faktoren-Berechnung mit AA-Säuberung
+# calc kideras
 safe_kidera <- function(seq) {
   if (nchar(seq) == 0) {
-    # Falls nach Reinigung nichts übrig bleibt: NA-Vektor zurückgeben
+	# if sequence empty return NA
     return(rep(NA_real_, 10))
   }
   tryCatch(
@@ -40,14 +41,14 @@ cat("Done. Creating Matrix...\n")
 kidera_matrix <- do.call(rbind, kidera_list)
 colnames(kidera_matrix) <- paste0("KF", 1:10)
 
-# Dataframe zusammenbauen mit id + Kidera-Faktoren
+# Build result data frame
 kidera_df <- as_tibble(kidera_matrix) %>%
   mutate(id = ids_clean, .before = 1) %>%
   filter(if_all(starts_with("KF"), ~ !is.na(.x)))
 
 cat("Final dataframe with: ", nrow(kidera_df), "valid sequences.\n")
 
-# Speichern
+# save
 saveRDS(kidera_df, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/material/kidera_factors_uniref50_morethan1_ref_prots.rds")
 cat("Data saved.\n")
 

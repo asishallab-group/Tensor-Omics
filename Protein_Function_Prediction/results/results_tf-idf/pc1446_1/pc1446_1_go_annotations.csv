@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAJ6U1Y7,1,ATP binding|protein kinase activity|transmembrane receptor protein tyrosine kinase activity|transferase activity|kinase activity|protein serine/threonine kinase activity|membrane|nucleotide binding|response to metal ion,9
+A0A226E3P6,0.9284617468842512,"copper ion binding|primary methylamine oxidase activity|amine metabolic process|quinone binding|metal ion binding|oxidoreductase activity|oxidoreductase activity, acting on the CH-NH2 group of donors, oxygen as acceptor",7

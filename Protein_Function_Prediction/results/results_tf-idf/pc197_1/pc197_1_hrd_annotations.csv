@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAV2VKH6,1,ATP-grasp domain-containing protein,1
+A0A284VS47,0.9989458788758713,Methyltransferase type 11,1
+A0A6N7EZ84,0.9963932143831176,Formamidopyrimidine-DNA glycosylase,1
+A0A2N2J4P6,0.9999986717768345,Fibronectin type-III domain-containing protein,1
+A0AAD8G5K0,0.9828044888138892,RING-type E3 ubiquitin transferase,1

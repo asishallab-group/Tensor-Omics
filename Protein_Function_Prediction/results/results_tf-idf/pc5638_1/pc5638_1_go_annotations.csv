@@ -1,0 +1,5 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8T0DCA8,1,membrane-membrane adaptor activity|piecemeal microautophagy of the nucleus|phagophore|phagophore assembly site|phosphatidylinositol-3-phosphate binding|reticulophagy|glycophagy|autophagosome assembly|autophagy of mitochondrion|autophagy|endoplasmic reticulum|lipid transport|phagophore assembly site membrane|endoplasmic reticulum membrane,14
+A0AAE1TJB6,0.9515168515076452,plasma membrane|axon|cell-cell adhesion|axon guidance|membrane|anatomical structure morphogenesis|cell differentiation|cell adhesion,8
+A0A093YZ39,0.9569788581596982,membrane,1
+A0AAZ3RYL4,0.9709320177102897,extracellular region|membrane,2

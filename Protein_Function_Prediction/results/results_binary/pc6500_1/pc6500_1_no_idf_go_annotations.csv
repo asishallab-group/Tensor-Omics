@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAD8Y7W9,1,transferase activity|rRNA (adenine-N6-)-methyltransferase activity|rRNA methylation|methyltransferase activity|methylation|nucleic acid binding|S-adenosylmethionine-dependent methyltransferase activity,7
+A0A813DTN6,0.9957504477903953,peptidyl-prolyl cis-trans isomerase activity|cytoplasm|cyclosporin A binding|protein folding|isomerase activity,5

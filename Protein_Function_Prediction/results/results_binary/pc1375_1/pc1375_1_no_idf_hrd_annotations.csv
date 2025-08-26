@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A1M5MLN7,1,Outer membrane protein beta-barrel domain-containing protein,1
+A0A4Z1PK27,0.9999900759315787,FAD-binding PCMH-type domain-containing protein,1
+A0A7Y7AFB9,0.9999939553215808,Copper-binding protein MbnP-like domain-containing protein,1
+A0A8H5EZP1,0.9999953801814582,AB hydrolase-1 domain-containing protein,1
+A0A9R1W856,0.9998916888949918,Protein kinase domain-containing protein,1

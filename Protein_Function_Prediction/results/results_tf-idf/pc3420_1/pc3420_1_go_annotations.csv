@@ -1,0 +1,10 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+M1B779,1,zinc ion transmembrane transporter activity|plasma membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|membrane|metal ion transport|transmembrane transport|monoatomic ion transport|monoatomic cation transmembrane transport|inorganic cation transmembrane transport|transition metal ion transport,11
+A0A0L0RWM0,0.9958604553930637,fungal-type vacuole membrane|early endosome|late endosome|sodium:proton antiporter activity|potassium:proton antiporter activity|regulation of intracellular pH|potassium ion transmembrane transport|vacuolar acidification|membrane|antiporter activity|proton transmembrane transport|monoatomic cation transport|sodium ion transport|regulation of pH|transmembrane transport|monoatomic ion transport|sodium ion transmembrane transport,17
+A0AAQ4E012,0.9919909719514878,zinc ion transmembrane transporter activity|zinc ion transmembrane transport|intracellular zinc ion homeostasis|metal ion transmembrane transporter activity|membrane|metal ion transport|transmembrane transport,7
+A0AAF6B2J2,0.8905668434076874,plasma membrane|membrane,2
+A0A9W8DRK9,0.9970263273648098,zinc ion transmembrane transporter activity|plasma membrane|membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|metal ion transport|transmembrane transport|monoatomic ion transport|transition metal ion transport,9
+A0A314KID4,0.9994961639383757,zinc ion transmembrane transporter activity|plasma membrane|membrane|zinc ion transmembrane transport|metal ion transmembrane transporter activity|metal ion transport|transmembrane transport|monoatomic ion transport|monoatomic cation transmembrane transport|inorganic cation transmembrane transport|transition metal ion transport,11
+A0A6H5IVH9,0.9883056533790775,plasma membrane|monoatomic cation transmembrane transporter activity|monoatomic cation transport|membrane|monoatomic ion transport|monoatomic cation transmembrane transport,6
+A0AAV8GCT9,0.8818676245199251,membrane,1
+F0V9H1,0.8831219660325872,membrane,1

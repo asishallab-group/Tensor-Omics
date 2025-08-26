@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A6V8HCE6,1,"D-alanine--D-alanine ligase, C-terminal|ATP-grasp fold|S-adenosyl-L-methionine-dependent methyltransferase superfamily|Methyltransferase domain 25",4
+A0A2I4FLX5,0.9992111478992107,Deoxyhypusine synthase|DHS-like NAD/FAD-binding domain superfamily|Deoxyhypusine synthase superfamily,3

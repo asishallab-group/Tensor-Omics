@@ -1,0 +1,13 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+P09756,1,"Chlorophyll a-b binding protein 3, chloroplastic",1
+P27491,1.0000000000000002,"Chlorophyll a-b binding protein 7, chloroplastic",1
+A0A151RTW8,1.0000000000000002,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A2I0AJ57,1.0000000000000002,"Chlorophyll a-b binding protein, chloroplastic",1
+P12333,1.0000000000000002,"Chlorophyll a-b binding protein, chloroplastic",1
+P04778,1.0000000000000002,"Chlorophyll a-b binding protein 1, chloroplastic",1
+P07371,0.9999999999993864,"Chlorophyll a-b binding protein AB80, chloroplastic",1
+A0AAV9AUF6,0.9999999999999869,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A453M5D2,0.9999999999999897,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A8T0UX21,0.9999999999999917,"Chlorophyll a-b binding protein, chloroplastic",1
+A0A7W0NLM3,0.9953617423804877,AtpZ/AtpI family protein,1
+A0A8K0MYY1,0.9999334930963479,"Chlorophyll a-b binding protein, chloroplastic",1

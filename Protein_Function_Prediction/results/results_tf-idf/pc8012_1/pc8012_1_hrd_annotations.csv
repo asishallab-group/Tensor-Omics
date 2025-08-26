@@ -1,0 +1,13 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+P43280,1,S-adenosylmethionine synthase 1,1
+D3E2I8,0.9895150903538148,Probable tRNA pseudouridine synthase B,1
+A0A8S5TWX6,0.9595186885153009,TFIIB zinc-binding,1
+A0A8S1C178,0.9939412796147652,RING-type E3 ubiquitin transferase,1
+P43281,0.9996346434660549,S-adenosylmethionine synthase 2,1
+A0A074YWU5,0.9982589310166395,thioredoxin-disulfide reductase,1
+A0A5E4Q036,0.9639541923196295,Alkaline phosphatase,1
+A0A8B7PM27,0.9996911524441543,S-adenosylmethionine synthase,1
+A0A173XVY0,0.999185267023894,NADH oxidase,1
+J3MVI8,0.9943957074505773,peptidylprolyl isomerase,1
+A0AAV4WG03,0.9997166149663489,S-adenosylmethionine synthase,1
+A0AAD5G289,0.9974718339854223,methionine adenosyltransferase,1

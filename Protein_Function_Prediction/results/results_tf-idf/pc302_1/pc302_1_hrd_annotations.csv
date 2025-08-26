@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A1G5X1X1,1,CRISPR-associated protein,1
+A0A4Y7M6A0,0.9999210980850478,Large ribosomal subunit protein uL30m,1
+A0A6L2JYZ9,0.9925148758778366,"Putative reverse transcriptase domain, viral movement protein",1
+M1FD91,0.9991555103330718,Putative copper-binding protein,1
+A0A8J8SZ24,0.9730922971772661,Glutathione S-transferase,1

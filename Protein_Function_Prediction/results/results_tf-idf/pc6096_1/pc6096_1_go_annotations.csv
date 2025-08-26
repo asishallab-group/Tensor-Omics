@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A178WLB1,1,membrane,1
+A0A0S8B7X8,0.9978827368574485,plasma membrane|regulation of protein targeting to membrane|membrane,3

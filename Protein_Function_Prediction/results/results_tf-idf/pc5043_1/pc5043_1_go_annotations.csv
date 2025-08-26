@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAN9LD97,1,phloem development,1
+E1R6V2,0.9999931954466903,sigma factor activity|regulation of DNA-templated transcription|DNA-templated transcription initiation|DNA-binding transcription factor activity|regulation of DNA-templated transcription initiation,5
+A0A4D6KUB7,0.9704764006258867,phloem development,1

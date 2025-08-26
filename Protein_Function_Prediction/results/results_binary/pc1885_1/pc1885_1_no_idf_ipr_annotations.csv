@@ -1,0 +1,8 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A3M6TXV2,1,BTB/POZ domain|SKP1/BTB/POZ domain superfamily|BTB/Kelch-associated|PHR|PHR domain superfamily,5
+A0A1E3PEF3,0.9998503484902559,Tetratricopeptide-like helical domain superfamily|Chs5p-Arf1p binding,2
+A0A0V0XLT7,0.9571421777594941,"Amino acid permease/ SLC12A domain|SLC12A transporter family|SLC12A transporter, C-terminal",3
+A0A0W8DJ65,0.9995847562692108,"Glucose-6-phosphate dehydrogenase|Glucose-6-phosphate dehydrogenase, active site|Glucose-6-phosphate dehydrogenase, NAD-binding|Glucose-6-phosphate dehydrogenase, C-terminal|NAD(P)-binding domain superfamily",5
+A0A7S2R6H8,0.9981874847526778,"Acyltransferase ChoActase/COT/CPT|Chloramphenicol acetyltransferase-like domain superfamily|Choline/carnitine acyltransferase domain|Choline/Carnitine o-acyltransferase, domain 2|Carnitine o-acyltransferase, N-terminal",5
+U4UCB9,0.9113241124250453,"Thioredoxin domain|Thioredoxin, conserved site|Thioredoxin-like superfamily|Thioredoxin-related transmembrane domain-containing protein",4
+I1K654,0.935790579340574,"Protein kinase domain|Serine-threonine/tyrosine-protein kinase, catalytic domain|Leucine-rich repeat|Protein kinase-like domain superfamily|Leucine-rich repeat-containing N-terminal, plant-type|Leucine-rich repeat domain superfamily|Pollen receptor-like kinase 1-6/SFR4-like",7

@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A178WLB1,1,VTT domain-containing protein,1
+A0A0S8B7X8,0.9889304359520076,AsmA|AsmA-related,2

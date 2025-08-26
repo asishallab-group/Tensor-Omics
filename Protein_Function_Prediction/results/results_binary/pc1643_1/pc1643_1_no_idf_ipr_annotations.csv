@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8T6RFG3,1,FldB/FldC dehydratase alpha/beta subunit,1
+G6AXE4,0.9998899575524166,"Domain of unknown function DUF4143|P-loop containing nucleoside triphosphate hydrolase|AAA domain, group 14",3

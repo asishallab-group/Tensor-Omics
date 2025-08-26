@@ -1,0 +1,6 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAP7DC95,1,Toll/interleukin-1 receptor homology (TIR) domain|Toll/interleukin-1 receptor homology (TIR) domain superfamily,2
+A0A1I5YUV5,0.9377598953165027,Type IV pilus inner membrane component PilM,1
+C4YA59,0.9953312602261629,Thioredoxin domain|Thioredoxin-like superfamily,2
+A0A0M5JHN6,0.963647552974477,"Ribonuclease H-like superfamily|Exonuclease, RNase T/DNA polymerase III|Ribonuclease H superfamily",3
+A0A326TT26,0.9977440764538419,Tetratricopeptide-like helical domain superfamily|Tetratricopeptide repeat|P-loop containing nucleoside triphosphate hydrolase,3

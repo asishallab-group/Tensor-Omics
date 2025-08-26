@@ -1,0 +1,12 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A078FZ04,1,(rape) hypothetical protein,1
+A0A2V7R7U7,0.9987444155251199,LPS export ABC transporter periplasmic protein LptC,1
+A0A3C0ANL2,0.9480865561478569,Integrase catalytic domain-containing protein,1
+A0A349A3L8,0.9805714621582224,DNA-binding protein,1
+A0A089YU86,0.962319869499881,Bacterial toxin 44 domain-containing protein,1
+H2A3E6,0.9677151359152121,M144 protein,1
+A0AAT9HMG1,0.9671451677890388,Molybdopterin dinucleotide-binding domain-containing protein,1
+A0A4R4ZXU9,0.9765822649011185,DOD-type homing endonuclease domain-containing protein,1
+A0A498HUK2,0.9824662846679961,RING-type domain-containing protein,1
+A0A1I4C3D8,0.9865412410812971,DOD-type homing endonuclease domain-containing protein,1
+A0A1S3NUQ3,0.9284528947726332,WD repeat-containing protein 49-like,1

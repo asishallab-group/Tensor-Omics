@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A411DZB4,1,ATP binding|RNA-directed RNA polymerase activity|transferase activity|nucleotidyltransferase activity|RNA-templated transcription,5
+A0A022S0E6,0.9458427450235788,calcium ion binding|cytoplasm|enzyme regulator activity,3

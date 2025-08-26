@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A078FZ04,1,(rape) hypothetical protein,1
+A0A2V7R7U7,0.9990966593721193,LPS export ABC transporter periplasmic protein LptC,1

@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0AAV2VKH6,1,ATP-grasp domain-containing protein,1
+A0A284VS47,0.7181839621734007,Methyltransferase type 11,1

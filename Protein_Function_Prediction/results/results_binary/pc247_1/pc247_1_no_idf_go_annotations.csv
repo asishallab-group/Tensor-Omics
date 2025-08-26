@@ -1,0 +1,3 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A8R2M6Q5,1,zinc ion binding|DNA binding,2
+A0AA38TAZ9,0.9621409515560162,zinc ion binding|nucleic acid binding|membrane,3

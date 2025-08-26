@@ -1,0 +1,5 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+M1B779,1,Zinc/iron transporter,1
+A0A0L0RWM0,0.999847311782989,Cation/H+ exchanger transmembrane domain-containing protein,1
+A0AAQ4E012,0.9480898943555087,Zinc transporter,1
+A0AAV1KF62,0.9994434431455409,Reverse transcriptase domain-containing protein,1

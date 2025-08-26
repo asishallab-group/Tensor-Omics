@@ -1,0 +1,8 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A0G1R0A2,1,Prokaryotic N-terminal methylation site|Pilin-like,2
+A0A5E4P2K4,0.9680227821143468,TadE-like domain,1
+A0AAE1JRW5,0.9999999690935855,"Aspartic peptidase A1|Aspartic peptidase domain superfamily|Xylanase inhibitor, C-terminal|Xylanase inhibitor, N-terminal|Peptidase family A1 domain|Xylanase inhibitor I-like",6
+A0A2P5NL04,0.9753783156799761,TadE-like domain,1
+A0A542BQM4,0.9846170696679238,Cyclophilin-like domain superfamily|Cyclophilin-like,2
+A0A6A6GMK6,0.9573414197974386,FAS1 domain|FAS1 domain superfamily|Cell adhesion and biosynthesis-related protein,3
+A0A931ZQQ4,0.9949103509468921,Type II secretion system protein GspH-like|Prokaryotic N-terminal methylation site|Pilin-like|Type IV Pilus and Type II Secretion System Core,4

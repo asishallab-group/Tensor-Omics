@@ -1,0 +1,4 @@
+protein_id,cosine_similarity,annotations_str,n_annotations
+A0A4E9D7X6,1,chitin synthase,1
+A0A8K0IRP6,0.9964500044682254,Putative UDP-xylose transporter 3,1
+A0A9W6AZF6,0.999615747730212,ABC transporter domain-containing protein,1

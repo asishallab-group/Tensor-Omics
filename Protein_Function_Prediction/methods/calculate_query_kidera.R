@@ -1,10 +1,11 @@
-#Version 1.2.7
+#Version 1.0.0
+#Author: Aaron Schroder
 
-library(Biostrings)     # Für effizientes Einlesen der FASTA
-library(Peptides)       # Für kideraFactors()
-library(future.apply)   # Für Parallelisierung
-library(tibble)         # Für hübsche Dataframes
-library(dplyr)          # Für Datenmanipulation
+library(Biostrings)     # For efficient reading of fasta
+library(Peptides)       # for kideraFactors()
+library(future.apply)   # for parallel
+library(tibble)         # for dataframes
+library(dplyr)          # for data modification
 
 # Parallel-Plan with 8 Workers
 plan(multisession, workers = 8)
@@ -18,15 +19,16 @@ ids <- names(aa)
 seqs <- as.character(aa)
 cat("Numbers of loaded sequences:", length(seqs), "\n")
 
-# IDs säubern: 'UniRef50_' entfernen und alles nach Leerzeichen abschneiden
+# clean IDs
 ids_clean <- sub("^UniRef50_", "", sub(" .*", "", ids))
 
-# Funktion zur sicheren Kidera-Faktoren-Berechnung mit AA-Säuberung
+# calc kidera
 safe_kidera <- function(seq) {
-  # Nicht-Standard-AAs entfernen (X, B, Z, etc.)
-  seq_clean <- gsub("[^ACDEFGHIKLMNPQRSTVWY]", "", seq)
+  # remove non-standard Amino acids
+  # This is not needed since kideraFactors() ignores them automatically
+  # seq_clean <- gsub("[^ACDEFGHIKLMNPQRSTVWY]", "", seq)
   if (nchar(seq_clean) == 0) {
-    # Falls nach Reinigung nichts übrig bleibt: NA-Vektor zurückgeben
+    # if sequence is empty after cleaning return NA
     return(rep(NA_real_, 10))
   }
   tryCatch(
@@ -42,14 +44,14 @@ cat("Done. Creating Matrix...\n")
 kidera_matrix <- do.call(rbind, kidera_list)
 colnames(kidera_matrix) <- paste0("KF", 1:10)
 
-# Dataframe zusammenbauen mit id + Kidera-Faktoren
+# Build data frame
 kidera_df <- as_tibble(kidera_matrix) %>%
   mutate(id = ids_clean, .before = 1) %>%
   filter(if_all(starts_with("KF"), ~ !is.na(.x)))
 
 cat("Final dataframe with: ", nrow(kidera_df), "valid sequences.\n")
 
-# Speichern
+# save
 saveRDS(kidera_df, "/media/BioNAS2/Tensor_Omics/Protein_Function_Prediction/results/query_kidera.rds")
 cat("Data saved.\n")
 
