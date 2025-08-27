@@ -213,13 +213,7 @@ In case you encounter errors while using TOX, the following error codes may help
 104 & Could not read number of dimensions. \\
 105 & Could not read array dimensions. \\
 106 & Could not read character length. \\
-107 & Could not read array data. \\
-112 & Could not write magic number. \\
-113 & Could not write array type code. \\
-114 & Could not write number of dimensions. \\
-115 & Could not write array dimensions. \\
-116 & Could not write character length. \\
-117 & Could not write array data. \\[6pt]
+107 & Could not read array data. \\[6pt]
 
 \multicolumn{2}{l}{\textbf{2xx: Format / Input Validation Errors}} \\[3pt]
 200 & Invalid format detected (e.g., magic mismatch or corrupt format). \\
@@ -227,8 +221,7 @@ In case you encounter errors while using TOX, the following error codes may help
 202 & Empty input arrays provided (e.g., zero-length arrays). \\
 203 & Dimension mismatch detected (shape inconsistencies). \\
 204 & NaN or Inf found in input data where not allowed. \\
-205 & Unsupported data type encountered (e.g., complex types). \\
-206 & Array size mismatch detected \\[6pt]
+205 & Unsupported data type encountered (e.g., complex types). \\[6pt]
 
 \multicolumn{2}{l}{\textbf{3xx: Memory Errors}} \\[3pt]
 301 & Memory allocation failed. \\
@@ -268,7 +261,6 @@ In a pure Fortran application, the user follows a two-step process to construct 
 \begin{enumerate}
     \item \textbf{Read CSV to Strings:} First, call the \texttt{read\_csv\_to\_strings} subroutine. This reads the entire CSV file into a 2D allocatable array of characters, which serves as the in-memory source for all subsequent operations.
     \item \textbf{Extract Typed Columns:} Next, call the specific \texttt{read\_*\_columns} subroutines (e.g., \texttt{read\_integer\_columns}, \texttt{read\_real\_columns}) to parse columns from the string array into new, strongly-typed 2D arrays.
-\end{enumerate}
 
 \begin{lstlisting}[language=Fortran, caption={Fortran Data Loading Workflow}]
 PROGRAM tox_fortran_example
@@ -301,7 +293,27 @@ PROGRAM tox_fortran_example
     PRINT *, 'Successfully processed data.'
 
 END PROGRAM tox_fortran_example
+
 \end{lstlisting}
+
+    \item \textbf{TODO Functions relating section 1.2 - 1.4}
+    
+    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{distance\_to\_centroid} function with the following parameters: total number of genes, total number of gene families, expression vector dimension $d$, expression vector matrix, family centroid matrix, and gene-to-family mapping array. For each gene in the expression vector matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a distance array containing the distance value for each expression vector.
+\begin{lstlisting}[language=Fortran, caption={Distance to Centroid Calculation}]
+pure subroutine distance_to_centroid(n_genes, n_families, genes, centroids, gene_to_fam, distances, d)
+\end{lstlisting}
+
+    \item \textbf{Detect Gene Outliers:} Call the \texttt{detect\_outliers} function with the following parameters: total number of genes, total number of families, distances between genes and centroids, and gene-to-family mapping array. Additionally, pass the required arrays for sorting: work array, permutation array, stack left, and stack right array. For loess smoothing, provide loess x, loess y, and loess n parameters. Optionally, specify a percentile value to set the outlier detection threshold (default: 95). The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a boolean array indicating whether each gene is an outlier.
+\begin{lstlisting}[language=Fortran, caption={Gene Outlier Calculation}]
+pure subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)
+\end{lstlisting}
+
+    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{compute\_tissue\_versatility} function with the following parameters: number of tissue axes (dimension), total number of expression vectors, total number of selected axes, total number of selected expression vectors, expression vector matrix, logical array of selected axes, and logical array of selected expression vectors. The function returns two arrays: the first contains tissue versatility values for each gene normalized to $[0,1]$, and the second contains the angle between each gene and the space diagonal.
+\begin{lstlisting}[language=Fortran, caption={Tissue Versatility Calculation}]
+pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
+\end{lstlisting}
+
+\end{enumerate}
 
 \subsection{Python Pipeline}
 The Python workflow is exposed through the \texttt{tensoromics\_functions.py} module. The functions provide a high-level interface that mirrors the Fortran pipeline.
@@ -309,7 +321,6 @@ The Python workflow is exposed through the \texttt{tensoromics\_functions.py} mo
 \begin{enumerate}
     \item \textbf{Read CSV to Strings:} Call the \texttt{read\_csv\_as\_strings} function. It takes the file path and returns the header and a 2D NumPy array of strings.
     \item \textbf{Extract Typed Columns:} Pass the string NumPy array to the desired conversion functions, such as \texttt{read\_integer\_columns} or \texttt{read\_real\_columns}, along with a list of 1-based column indices to extract. All returned NumPy arrays are read-only for data safety.
-\end{enumerate}
 
 \begin{lstlisting}[language=Python, caption={Python Data Loading Workflow}]
 import numpy as np
@@ -349,6 +360,25 @@ except (FileNotFoundError, ValueError) as e:
 
 \end{lstlisting}
 
+\item \textbf{TODO Functions relating section 1.2 - 1.4}
+
+    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{tox\_distance\_to\_centroid} function with the following parameters: gene expression data as a flat array (number of genes $\times$ dimension), family centroids as a flat array (number of families $\times$ dimension), gene-to-family mapping array where each value represents the family index in the family centroids for the corresponding gene, and the dimension value needed to split the data arrays into separate rows. For each gene in the gene vector matrix, the function computes the Euclidean distance to its corresponding family centroid. The function returns a read-only distance array containing the distance value for each gene vector.    
+\begin{lstlisting}[language=Python, caption={Python Distance to Centroid Calculation}]
+def tox_distance_to_centroid(genes, centroids, gene_to_fam, d)
+\end{lstlisting}
+
+    \item \textbf{Detect Gene Outliers:} Call the \texttt{tox\_detect\_outliers} function with the following parameters: distance array containing gene distances to centroids, gene-to-family mapping array, and an optional percentile threshold value (default: 95.0). The function executes a complete pipeline to compute family scaling, calculate relative distance indices (RDI), and identify outliers based on the percentile threshold. The function returns a read-only dictionary containing the outlier boolean values and intermediate results.
+\begin{lstlisting}[language=Python, caption={Python Gene Outlier Calculation}]
+def tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+\end{lstlisting}
+
+    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{tox\_calculate\_tissue\_versatility} function with the following parameters: expression vector matrix, boolean array for vector selection, and boolean array for axis selection. The function returns a read-only dictionary containing two arrays. The first array contains the tissue versatility values of each gene normalized to $[0,1]$. The second array contains the angle between each gene and the space diagonal.
+\begin{lstlisting}[language=Python, caption={Python Tissue Versatility Calculation}]
+def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
+\end{lstlisting}
+
+\end{enumerate}
+
 \subsection{R Pipeline}
 The R pipeline first reads the file into a raw, memory-efficient format (an integer array of ASCII codes) and then performs conversions from that raw format.
 
@@ -356,7 +386,6 @@ The R pipeline first reads the file into a raw, memory-efficient format (an inte
     \item \textbf{Read CSV to Raw ASCII:} Call \texttt{tox.read\_csv\_raw}. This function reads the file and returns a list containing the data as a 3D integer array of ASCII codes. This intermediate format is efficient for passing between functions.
     \item \textbf{Extract Typed Columns:} Pass the raw data array (\texttt{\$data}) from the previous step to conversion functions like \texttt{tox.read\_integer\_columns} to get typed matrices.
     \item \textbf{(Optional) Convert to Strings:} For inspection, you can convert the raw ASCII data to a human-readable character matrix using \texttt{tox.convert\_ascii\_to\_strings}.
-\end{enumerate}
 
 \begin{lstlisting}[language=R, caption={R Data Loading Workflow}]
 # Load the TOX API functions
@@ -385,5 +414,25 @@ cat("\nExtracted real data (column 3):\n")
 print(real_matrix)
 
 \end{lstlisting}
+
+
+\item \textbf{TODO Functions relating section 1.2 - 1.4}
+
+    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{tox\_distance\_to\_centroid} function with the following parameters: gene expression data matrix (number of genes $\times$ dimension), family centroids matrix (number of families $\times$ dimension), gene-to-family mapping integer vector where each value represents the family index in the family centroids for the corresponding gene, and the dimension value needed to split the data vectors into separate rows. For each gene in the gene vector matrix, the function computes the Euclidean distance to its corresponding family centroid. The function returns a numeric vector of distances from each gene to its family centroid.    
+\begin{lstlisting}[language=R, caption={R Distance to Centroid Calculation}]
+tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d)
+\end{lstlisting}
+
+    \item \textbf{Detect Gene Outliers:} Call the \texttt{tox\_detect\_outliers} function with the following parameters: distances numeric vector containing gene distances to centroids, gene-to-family integer vector mapping, total number of families, and an optional percentile threshold value (default: 95.0). The function executes a complete pipeline to compute family scaling, calculate relative distance indices (RDI), and identify outliers based on the percentile threshold. The function returns a list containing the outlier boolean values and intermediate results.    
+\begin{lstlisting}[language=R, caption={R Gene Outlier Calculation}]
+tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0)
+\end{lstlisting}
+
+    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{tox\_calculate\_tissue\_versatility} function with the following parameters: expression vector matrix, logical vector for vector selection, and logical vector for axis selection. The function returns a list containing two numeric vectors and two integer values. The numeric vectors contain the tissue versatility values of each gene normalized to $[0,1]$ and the angle between each gene and the space diagonal. The integer values represent the number of vectors processed and the number of axes used in the calculation.
+\begin{lstlisting}[language=R, caption={R Tissue Versatility Calculation}]
+tox_calculate_tissue_versatility <- function(expression_vectors, vector_selection, axis_selection)
+\end{lstlisting}
+
+\end{enumerate}
 
 \end{document}
