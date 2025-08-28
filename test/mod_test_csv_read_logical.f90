@@ -1,10 +1,10 @@
-!> @brief Unit test suite for csv_read_logical_module and its wrappers.
+!> Unit test suite for csv_read_logical_module and its wrappers.
 MODULE mod_test_csv_read_logical
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE, INTRINSIC :: iso_c_binding
     USE csv_read_logical_module, ONLY: read_logical_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    USE asserts, ONLY: assert_equal_int, assert_equal_size, assert_true, assert_false
+    USE asserts, ONLY: assert_equal_int, assert_true, assert_false
 
     IMPLICIT NONE
     PUBLIC
@@ -63,13 +63,13 @@ CONTAINS
         all_tests = get_all_tests_csv_read_logical()
         WRITE(*, '(A)') "--- Running Suite: csv_read_logical (named tests) ---"
         DO i = 1, SIZE(test_names)
-            found = .false.
+            found = .FALSE.
             DO j = 1, SIZE(all_tests)
                 IF (TRIM(test_names(i)) == TRIM(all_tests(j)%name)) THEN
                     WRITE(*, '(A, A, A)', ADVANCE='NO') "  Running test: ", TRIM(all_tests(j)%name), "..."
                     CALL all_tests(j)%test_proc()
                     WRITE(*, '(A)') " PASSED"
-                    found = .true.
+                    found = .TRUE.
                     EXIT
                 END IF
             END DO
@@ -111,7 +111,7 @@ CONTAINS
         INTEGER(C_INT) :: cols_to_read(2)
 
         ! Arrange
-        str_arr(1,1) = "T"; str_arr(1,2) = "F"
+        str_arr(1,1) = "T";      str_arr(1,2) = "F"
         str_arr(2,1) = ".TRUE."; str_arr(2,2) = ".FALSE."
         ALLOCATE(ascii_flat_in(2 * 2 * MAX_FIELD_LEN))
         ascii_flat_in = 0
@@ -132,11 +132,12 @@ CONTAINS
 
         ! Assert
         CALL assert_equal_int(status, 0, "c_wrapper: status")
-        ! CORRECTED: Explicitly convert LOGICAL(C_BOOL) to default LOGICAL for assertion.
-        CALL assert_true(LOGICAL(logical_data_out(1)), "c_wrapper: val(1,1)")  ! T
-        CALL assert_true(LOGICAL(logical_data_out(3)), "c_wrapper: val(2,1)")  ! .TRUE.
-        CALL assert_false(LOGICAL(logical_data_out(2)), "c_wrapper: val(1,2)") ! F
-        CALL assert_false(LOGICAL(logical_data_out(4)), "c_wrapper: val(2,2)") ! .FALSE.
+
+        ! Assert with correct column-major indexing for the flattened output array
+        CALL assert_true(LOGICAL(logical_data_out(1)), "c_wrapper: val(1,1)")  ! Fortran (1,1) -> "T"
+        CALL assert_true(LOGICAL(logical_data_out(2)), "c_wrapper: val(2,1)")  ! Fortran (2,1) -> ".TRUE."
+        CALL assert_false(LOGICAL(logical_data_out(3)), "c_wrapper: val(1,2)") ! Fortran (1,2) -> "F"
+        CALL assert_false(LOGICAL(logical_data_out(4)), "c_wrapper: val(2,2)") ! Fortran (2,2) -> ".FALSE."
 
         DEALLOCATE(ascii_flat_in, logical_data_out)
     END SUBROUTINE test_read_logical_cols_c_wrapper

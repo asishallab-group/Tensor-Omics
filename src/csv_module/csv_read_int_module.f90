@@ -1,7 +1,8 @@
-!> @brief A module to convert specified columns from a 2D string array into a 2D integer array.
+!> Module to convert specified columns from a 2D string array into a 2D integer array.
 MODULE csv_read_int_module
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
+    USE tox_errors, ONLY: ERR_OK, ERR_EMPTY_INPUT, ERR_INVALID_INPUT, ERR_INVALID_FORMAT, set_ok, set_err_once
     IMPLICIT NONE
 
     PRIVATE
@@ -9,27 +10,30 @@ MODULE csv_read_int_module
 
 CONTAINS
 
-    !> @brief Reads specified columns from a string array and converts them to integers.
+    !> Reads specified columns from a string array and converts them to integers.
+    !| Non-convertible fields are set to -9999 and an error status is flagged.
     SUBROUTINE read_integer_columns(data_in, cols_to_read, int_data_out, status)
+        !| Input 2D array of strings.
         CHARACTER(LEN=MAX_FIELD_LEN), INTENT(IN) :: data_in(:,:)
+        !| 1D array of 1-based column indices to convert.
         INTEGER(INT32), INTENT(IN) :: cols_to_read(:)
+        !| Output 2D array of integers.
         INTEGER(INT32), ALLOCATABLE, INTENT(OUT) :: int_data_out(:,:)
+        !| Output status code.
         INTEGER(INT32), INTENT(OUT) :: status
 
-        ! Local variables
         INTEGER(INT32) :: num_rows, num_cols_in, num_cols_out
         INTEGER(INT32) :: i, j, col_idx
         INTEGER(INT32) :: read_stat
-        ! CORRECTED: Added a temporary variable for the internal read.
         CHARACTER(LEN=MAX_FIELD_LEN) :: temp_field
 
-        status = 0
+        CALL set_ok(status)
         num_rows = SIZE(data_in, DIM=1)
         num_cols_in = SIZE(data_in, DIM=2)
         num_cols_out = SIZE(cols_to_read)
 
         IF (num_rows == 0 .OR. num_cols_out == 0) THEN
-            status = 1 ! No data to process
+            status = ERR_EMPTY_INPUT
             RETURN
         END IF
 
@@ -38,19 +42,17 @@ CONTAINS
         DO j = 1, num_cols_out
             col_idx = cols_to_read(j)
             IF (col_idx < 1 .OR. col_idx > num_cols_in) THEN
-                status = 2 ! Column index out of bounds
-                int_data_out(:, j) = -9999 ! Fill with an error value
+                CALL set_err_once(status, ERR_INVALID_INPUT)
+                int_data_out(:, j) = -9999
                 CYCLE
             END IF
 
             DO i = 1, num_rows
-                ! CORRECTED: Use the temporary variable for the READ statement.
                 temp_field = TRIM(data_in(i, col_idx))
                 READ(temp_field, *, IOSTAT=read_stat) int_data_out(i, j)
                 IF (read_stat /= 0) THEN
-                    ! Handle conversion error, e.g., set to a default error value
                     int_data_out(i, j) = -9999
-                    status = 3 ! At least one conversion error occurred
+                    CALL set_err_once(status, ERR_INVALID_FORMAT)
                 END IF
             END DO
         END DO
@@ -63,7 +65,8 @@ END MODULE csv_read_int_module
 ! C and R Wrapper Subroutines
 ! =============================================================================
 
-!> @brief C interface for reading integer columns from a flat character array.
+!> C interface for reading integer columns from a flat character array.
+!| !! When using this C wrapper function, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.
 SUBROUTINE read_integer_columns_c(data_in_ascii, num_rows, num_cols_in, &
                                   cols_to_read, num_cols_to_read, &
                                   int_data_out, status) &
@@ -73,21 +76,25 @@ SUBROUTINE read_integer_columns_c(data_in_ascii, num_rows, num_cols_in, &
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
     IMPLICIT NONE
 
-    ! --- C Interoperable Arguments ---
+    !| Input flat array of ASCII codes representing the 2D string data.
     INTEGER(C_INT), INTENT(IN) :: data_in_ascii(*)
-    INTEGER(C_INT), VALUE, INTENT(IN) :: num_rows, num_cols_in, num_cols_to_read
+    !| Number of rows and columns in the input data.
+    INTEGER(C_INT), VALUE, INTENT(IN) :: num_rows, num_cols_in
+    !| Number of columns to read.
+    INTEGER(C_INT), VALUE, INTENT(IN) :: num_cols_to_read
+    !| 1D array of 1-based column indices to convert.
     INTEGER(C_INT), INTENT(IN) :: cols_to_read(*)
+    !| Output buffer for the converted integers.
     INTEGER(C_INT), INTENT(OUT) :: int_data_out(*)
+    !| Output status code.
     INTEGER(C_INT), INTENT(OUT) :: status
 
-    ! --- Fortran Local Variables ---
     CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: data_in_fortran(:,:)
     INTEGER(C_INT), ALLOCATABLE :: cols_to_read_fortran(:)
     INTEGER(C_INT), ALLOCATABLE :: int_data_out_fortran(:,:)
     INTEGER(C_INT) :: fortran_status
     INTEGER :: i, j, k, char_idx
 
-    ! --- 1. Reconstruct Fortran arrays from flat C arrays ---
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
     data_in_fortran = ' '
     DO j = 1, num_cols_in
@@ -103,49 +110,53 @@ SUBROUTINE read_integer_columns_c(data_in_ascii, num_rows, num_cols_in, &
     ALLOCATE(cols_to_read_fortran(num_cols_to_read))
     cols_to_read_fortran = cols_to_read(1:num_cols_to_read)
 
-    ! --- 2. Call the core Fortran subroutine ---
     CALL read_integer_columns(data_in_fortran, cols_to_read_fortran, int_data_out_fortran, fortran_status)
     status = fortran_status
 
-    ! --- 3. Copy the Fortran result back to the C output buffer ---
     IF (ALLOCATED(int_data_out_fortran)) THEN
         DO j = 1, num_cols_to_read
             DO i = 1, num_rows
-                char_idx = (i - 1) * num_cols_to_read + j
-                int_data_out(char_idx) = int_data_out_fortran(i, j)
+                int_data_out((j - 1) * num_rows + i) = int_data_out_fortran(i, j)
             END DO
         END DO
     END IF
 
-    ! --- 4. Cleanup ---
     DEALLOCATE(data_in_fortran, cols_to_read_fortran)
     IF (ALLOCATED(int_data_out_fortran)) DEALLOCATE(int_data_out_fortran)
 
 END SUBROUTINE read_integer_columns_c
 
 
-!> @brief R interface for reading integer columns.
+!> R interface for reading integer columns.
+!| !! When using this R wrapper function, copies of the arrays will be created. No direct modification of the original R objects occurs.
 SUBROUTINE read_integer_columns_r(data_in_ascii, num_rows, num_cols_in, &
                                   cols_to_read, num_cols_to_read, &
                                   int_data_out, status)
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE csv_read_int_module, ONLY: read_integer_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
+    USE tox_errors, ONLY: set_ok
     IMPLICIT NONE
 
-    ! --- R Interoperable Arguments ---
+    !| Input 3D array of ASCII codes (MAX_FIELD_LEN, num_rows, num_cols_in).
     INTEGER(INT32), INTENT(IN) :: data_in_ascii(MAX_FIELD_LEN, num_rows, num_cols_in)
-    INTEGER(INT32), INTENT(IN) :: num_rows, num_cols_in, num_cols_to_read
+    !| Number of rows and columns in the input data.
+    INTEGER(INT32), INTENT(IN) :: num_rows, num_cols_in
+    !| Number of columns to read.
+    INTEGER(INT32), INTENT(IN) :: num_cols_to_read
+    !| 1D array of 1-based column indices to convert.
     INTEGER(INT32), INTENT(IN) :: cols_to_read(num_cols_to_read)
+    !| Output buffer for the converted integers.
     INTEGER(INT32), INTENT(OUT) :: int_data_out(num_rows, num_cols_to_read)
+    !| Output status code.
     INTEGER(INT32), INTENT(OUT) :: status
 
-    ! --- Fortran Local Variables ---
     CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: data_in_fortran(:,:)
     INTEGER(INT32), ALLOCATABLE :: int_data_out_fortran(:,:)
     INTEGER :: i, j, k
 
-    ! --- 1. Convert ASCII integer array to Fortran character array ---
+    CALL set_ok(status)
+
     ALLOCATE(data_in_fortran(num_rows, num_cols_in))
     DO j = 1, num_cols_in
         DO i = 1, num_rows
@@ -157,15 +168,12 @@ SUBROUTINE read_integer_columns_r(data_in_ascii, num_rows, num_cols_in, &
         END DO
     END DO
 
-    ! --- 2. Call the core Fortran subroutine ---
     CALL read_integer_columns(data_in_fortran, cols_to_read, int_data_out_fortran, status)
 
-    ! --- 3. Copy the result to the R output buffer ---
     IF (ALLOCATED(int_data_out_fortran)) THEN
         int_data_out = int_data_out_fortran
     END IF
 
-    ! --- 4. Cleanup ---
     DEALLOCATE(data_in_fortran)
     IF (ALLOCATED(int_data_out_fortran)) DEALLOCATE(int_data_out_fortran)
 

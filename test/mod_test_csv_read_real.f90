@@ -1,10 +1,10 @@
-!> @brief Unit test suite for csv_read_real_module and its wrappers.
+!> Unit test suite for csv_read_real_module and its wrappers.
 MODULE mod_test_csv_read_real
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32, REAL64
     USE, INTRINSIC :: iso_c_binding
     USE csv_read_real_module, ONLY: read_real_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    USE asserts, ONLY: assert_equal_int, assert_equal_size, assert_equal_real
+    USE asserts, ONLY: assert_equal_int, assert_equal_real
 
     IMPLICIT NONE
     PUBLIC
@@ -63,13 +63,13 @@ CONTAINS
         all_tests = get_all_tests_csv_read_real()
         WRITE(*, '(A)') "--- Running Suite: csv_read_real (named tests) ---"
         DO i = 1, SIZE(test_names)
-            found = .false.
+            found = .FALSE.
             DO j = 1, SIZE(all_tests)
                 IF (TRIM(test_names(i)) == TRIM(all_tests(j)%name)) THEN
                     WRITE(*, '(A, A, A)', ADVANCE='NO') "  Running test: ", TRIM(all_tests(j)%name), "..."
                     CALL all_tests(j)%test_proc()
                     WRITE(*, '(A)') " PASSED"
-                    found = .true.
+                    found = .TRUE.
                     EXIT
                 END IF
             END DO

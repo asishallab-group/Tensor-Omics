@@ -1,4 +1,5 @@
 !> Unit test suite for csv_read_char_module and its wrappers.
+!| This file is already compatible with the new asserts.f90 module.
 MODULE mod_test_csv_read_char
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE, INTRINSIC :: iso_c_binding
@@ -113,8 +114,7 @@ CONTAINS
         DO j = 1, num_cols
             DO i = 1, num_rows
                 DO k = 1, LEN_TRIM(str_arr(i,j))
-                    ! Corrected formula for COLUMN-MAJOR memory layout
-                    char_idx = (j - 1) * num_rows * MAX_FIELD_LEN + (i - 1) * MAX_FIELD_LEN + k
+                    char_idx = (i - 1) * num_cols * MAX_FIELD_LEN + (j - 1) * MAX_FIELD_LEN + k
                     ascii_flat_in(char_idx) = ICHAR(str_arr(i,j)(k:k))
                 END DO
             END DO

@@ -1,15 +1,14 @@
-!> @brief Unit test suite for csv_read_int_module and its wrappers.
+!> Unit test suite for csv_read_int_module and its wrappers.
 MODULE mod_test_csv_read_int
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE, INTRINSIC :: iso_c_binding
     USE csv_read_int_module, ONLY: read_integer_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    USE asserts, ONLY: assert_equal_int, assert_equal_size
+    USE asserts, ONLY: assert_equal_int
 
     IMPLICIT NONE
     PUBLIC
 
-    ! Import C wrapper for testing
     INTERFACE
         SUBROUTINE read_integer_columns_c(data_in_flat, num_rows, num_cols_in, &
                                           cols_to_read, num_cols_to_read, &
@@ -106,11 +105,10 @@ CONTAINS
         INTEGER(C_INT) :: status, i, j, k, char_idx
         INTEGER(C_INT) :: cols_to_read(1)
 
-        ! Arrange: Create a flat C-style ASCII array
         str_arr(1,1) = "123"; str_arr(1,2) = "456"
         str_arr(2,1) = "789"; str_arr(2,2) = "999"
         ALLOCATE(ascii_flat_in(2 * 2 * MAX_FIELD_LEN))
-        ascii_flat_in = 0 ! Null terminate strings
+        ascii_flat_in = 0
         DO j = 1, 2
             DO i = 1, 2
                 DO k = 1, LEN_TRIM(str_arr(i,j))
@@ -123,10 +121,8 @@ CONTAINS
         ALLOCATE(int_data_out(2 * 1))
         cols_to_read = [2]
 
-        ! Act
         CALL read_integer_columns_c(ascii_flat_in, 2, 2, cols_to_read, 1, int_data_out, status)
 
-        ! Assert
         CALL assert_equal_int(status, 0, "c_wrapper: status")
         CALL assert_equal_int(int_data_out(1), 456, "c_wrapper: val(1,1)")
         CALL assert_equal_int(int_data_out(2), 999, "c_wrapper: val(2,1)")

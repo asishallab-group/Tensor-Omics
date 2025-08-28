@@ -67,7 +67,7 @@ SUBROUTINE read_character_columns_c(data_in_ascii, num_rows, num_cols_in, &
     IMPLICIT NONE
 
     !| Input flat array of ASCII codes representing the 2D string data.
-    INTEGER(C_INT), INTENT(IN), TARGET :: data_in_ascii(*)
+    INTEGER(C_INT), INTENT(IN) :: data_in_ascii(*)
     !| Number of rows in the input data.
     INTEGER(C_INT), VALUE, INTENT(IN) :: num_rows, num_cols_in
     !| Number of columns to read.
@@ -79,15 +79,23 @@ SUBROUTINE read_character_columns_c(data_in_ascii, num_rows, num_cols_in, &
     !| Output status code.
     INTEGER(C_INT), INTENT(OUT) :: status
 
-    CHARACTER(LEN=MAX_FIELD_LEN), POINTER :: data_in_fortran(:,:)
-    CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: char_data_out_fortran(:,:)
+    CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: data_in_fortran(:,:), char_data_out_fortran(:,:)
     INTEGER(C_INT), ALLOCATABLE :: cols_to_read_fortran(:)
     INTEGER(C_INT) :: fortran_status
     INTEGER :: i, j, k, char_idx, total_out_size
 
-    ! Create a zero-copy Fortran pointer to the C data
-    CALL c_f_pointer(c_loc(data_in_ascii(1)), data_in_fortran, &
-                     SHAPE=[num_rows, num_cols_in])
+    ! Revert to manual, row-major copy for robustness
+    ALLOCATE(data_in_fortran(num_rows, num_cols_in))
+    data_in_fortran = ' '
+    DO j = 1, num_cols_in
+        DO i = 1, num_rows
+            DO k = 1, MAX_FIELD_LEN
+                char_idx = (i - 1) * num_cols_in * MAX_FIELD_LEN + (j - 1) * MAX_FIELD_LEN + k
+                IF (data_in_ascii(char_idx) == 0) EXIT
+                data_in_fortran(i, j)(k:k) = CHAR(data_in_ascii(char_idx))
+            END DO
+        END DO
+    END DO
 
     ALLOCATE(cols_to_read_fortran(num_cols_to_read))
     cols_to_read_fortran = cols_to_read(1:num_cols_to_read)
@@ -111,7 +119,7 @@ SUBROUTINE read_character_columns_c(data_in_ascii, num_rows, num_cols_in, &
         END DO
     END IF
 
-    DEALLOCATE(cols_to_read_fortran)
+    DEALLOCATE(data_in_fortran, cols_to_read_fortran)
     IF (ALLOCATED(char_data_out_fortran)) DEALLOCATE(char_data_out_fortran)
 
 END SUBROUTINE read_character_columns_c

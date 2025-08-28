@@ -1,10 +1,10 @@
-!> @brief Unit test suite for csv_read_complex_module and its wrappers.
+!> Unit test suite for csv_read_complex_module and its wrappers.
 MODULE mod_test_csv_read_complex
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32, REAL64
     USE, INTRINSIC :: iso_c_binding
     USE csv_read_complex_module, ONLY: read_complex_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    USE asserts, ONLY: assert_equal_int, assert_equal_size, assert_equal_complex
+    USE asserts, ONLY: assert_equal_int, assert_equal_complex
 
     IMPLICIT NONE
     PUBLIC
