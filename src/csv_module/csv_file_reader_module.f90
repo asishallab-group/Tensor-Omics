@@ -1,6 +1,6 @@
-!> @brief A module to read a CSV file into a 2D array of strings.
+!> Module to read a CSV file into a 2D array of strings.
 MODULE csv_file_reader_module
-    USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
+    USE, INTRINSIc :: iso_fortran_env, ONLY: INT32
     USE csv_parser_module, ONLY: parse_line, MAX_FIELD_LEN
     IMPLICIT NONE
 
@@ -9,16 +9,22 @@ MODULE csv_file_reader_module
 
 CONTAINS
 
-    !> @brief Reads a CSV file and returns its content as a 2D array of strings.
+    !> Reads a CSV file and returns its content as a 2D array of strings.
+    !| Reads all non-empty lines in a first pass, allocates memory, and populates the output arrays in a second pass.
     SUBROUTINE read_csv_to_strings(filename, has_header, delimiter, header_out, data_out, status)
+        !| Path to the input CSV file.
         CHARACTER(LEN=*), INTENT(IN) :: filename
+        !| Flag indicating if the file has a header row.
         LOGICAL, INTENT(IN) :: has_header
+        !| Single character used to separate fields.
         CHARACTER(LEN=1), INTENT(IN) :: delimiter
+        !| Output array for the header row.
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE, INTENT(OUT) :: header_out(:)
+        !| Output 2D array for the data rows.
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE, INTENT(OUT) :: data_out(:,:)
+        !| Output status code (0 for success).
         INTEGER(INT32), INTENT(OUT) :: status
 
-        ! Local variables
         INTEGER :: unit_num
         CHARACTER(LEN=MAX_FIELD_LEN*20) :: line
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: all_lines(:)
@@ -30,29 +36,27 @@ CONTAINS
         status = 0
         header_offset = 0
 
-        ! --- 1. First Pass: Open file and count non-empty lines ---
         OPEN(NEWUNIT=unit_num, FILE=TRIM(filename), STATUS='OLD', ACTION='READ', IOSTAT=io_stat_check)
         IF (io_stat_check /= 0) THEN
-            status = 10 ! File not found
+            status = 10
             RETURN
         END IF
 
         line_count = 0
         DO
             READ(unit_num, '(A)', IOSTAT=io_stat_check) line
-            IF (io_stat_check /= 0) EXIT ! End of file or error
+            IF (io_stat_check /= 0) EXIT
             IF (LEN_TRIM(line) > 0) THEN
                 line_count = line_count + 1
             END IF
         END DO
 
         IF (line_count == 0) THEN
-            status = 4 ! Empty file
+            status = 4
             CLOSE(unit_num)
             RETURN
         END IF
 
-        ! --- 2. Second Pass: Allocate buffer and read all lines ---
         REWIND(unit_num)
         ALLOCATE(all_lines(line_count))
 
@@ -67,34 +71,29 @@ CONTAINS
         END DO
         CLOSE(unit_num)
 
-        ! --- 3. Process the buffered lines ---
         IF (has_header) header_offset = 1
 
         num_rows = line_count - header_offset
         IF (num_rows <= 0) THEN
-            status = 5 ! No data rows
+            status = 5
             DEALLOCATE(all_lines)
             RETURN
         END IF
 
-        ! Determine number of columns from the first data line
         CALL parse_line(all_lines(1 + header_offset), delimiter, fields, status)
         num_cols = SIZE(fields)
         DEALLOCATE(fields)
 
-        ! Allocate output arrays
         ALLOCATE(data_out(num_rows, num_cols))
         IF (has_header) THEN
             CALL parse_line(all_lines(1), delimiter, header_out, status)
         END IF
 
-        ! --- 4. Populate the output data array ---
         DO i = 1, num_rows
             CALL parse_line(all_lines(i + header_offset), delimiter, fields, status)
             IF (SIZE(fields) == num_cols) THEN
                 data_out(i, :) = fields
             ELSE
-                ! Handle jagged data - fill with empty strings for this row
                 data_out(i, :) = ""
             END IF
             DEALLOCATE(fields)
@@ -107,10 +106,10 @@ CONTAINS
 END MODULE csv_file_reader_module
 
 ! =============================================================================
-! C and R Wrapper Subroutines (Unchanged from original)
+! C and R Wrapper Subroutines
 ! =============================================================================
 
-!> @brief C interface for getting CSV dimensions before reading.
+!> C interface for getting CSV dimensions before reading.
 SUBROUTINE get_csv_dims_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
                           num_rows, num_cols, status) &
                           BIND(C, NAME='get_csv_dims_c')
@@ -118,11 +117,20 @@ SUBROUTINE get_csv_dims_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
     USE csv_parser_module, ONLY: parse_line, MAX_FIELD_LEN
     IMPLICIT NONE
 
+    !| Input ASCII codes of the filename.
     INTEGER(C_INT), INTENT(IN) :: filename_ascii(*)
+    !| Length of the filename.
     INTEGER(C_INT), VALUE, INTENT(IN) :: fn_len
+    !| Flag indicating if the file has a header.
     LOGICAL(C_BOOL), VALUE, INTENT(IN) :: has_header
+    !| ASCII code of the delimiter character.
     INTEGER(C_INT), VALUE, INTENT(IN) :: delimiter_ascii
-    INTEGER(C_INT), INTENT(OUT) :: num_rows, num_cols, status
+    !| Output for number of data rows.
+    INTEGER(C_INT), INTENT(OUT) :: num_rows
+    !| Output for number of columns.
+    INTEGER(C_INT), INTENT(OUT) :: num_cols
+    !| Output status code.
+    INTEGER(C_INT), INTENT(OUT) :: status
 
     CHARACTER(LEN=:), ALLOCATABLE :: filename
     CHARACTER(LEN=1) :: delimiter
@@ -164,17 +172,27 @@ SUBROUTINE get_csv_dims_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
     DEALLOCATE(fields)
 END SUBROUTINE get_csv_dims_c
 
-!> @brief R interface for getting CSV dimensions before reading.
+!> R interface for getting CSV dimensions before reading.
 SUBROUTINE get_csv_dims_r(filename_ascii, fn_len, has_header, delimiter_ascii, &
                           num_rows, num_cols, status)
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE csv_parser_module, ONLY: parse_line, MAX_FIELD_LEN
     IMPLICIT NONE
 
+    !| Input ASCII codes of the filename.
     INTEGER(INT32), INTENT(IN) :: filename_ascii(fn_len)
-    INTEGER(INT32), INTENT(IN) :: fn_len, delimiter_ascii
+    !| Length of the filename.
+    INTEGER(INT32), INTENT(IN) :: fn_len
+    !| Flag indicating if the file has a header.
     LOGICAL, INTENT(IN) :: has_header
-    INTEGER(INT32), INTENT(OUT) :: num_rows, num_cols, status
+    !| ASCII code of the delimiter character.
+    INTEGER(INT32), INTENT(IN) :: delimiter_ascii
+    !| Output for number of data rows.
+    INTEGER(INT32), INTENT(OUT) :: num_rows
+    !| Output for number of columns.
+    INTEGER(INT32), INTENT(OUT) :: num_cols
+    !| Output status code.
+    INTEGER(INT32), INTENT(OUT) :: status
     
     CHARACTER(LEN=:), ALLOCATABLE :: filename
     CHARACTER(LEN=1) :: delimiter
@@ -214,7 +232,7 @@ SUBROUTINE get_csv_dims_r(filename_ascii, fn_len, has_header, delimiter_ascii, &
     DEALLOCATE(fields)
 END SUBROUTINE get_csv_dims_r
 
-!> @brief C interface for reading a CSV into a flat character array.
+!> C interface for reading a CSV into a flat character array.
 SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
                                  header_out_ascii, data_out_ascii, status) &
                                  BIND(C, NAME='read_csv_to_strings_c')
@@ -224,11 +242,19 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
     
     IMPLICIT NONE
     
+    !| Input ASCII codes of the filename.
     INTEGER(C_INT), INTENT(IN) :: filename_ascii(fn_len)
+    !| Length of the filename.
     INTEGER(C_INT), VALUE, INTENT(IN) :: fn_len
+    !| Flag indicating if the file has a header.
     LOGICAL(C_BOOL), VALUE, INTENT(IN) :: has_header
+    !| ASCII code of the delimiter character.
     INTEGER(C_INT), VALUE, INTENT(IN) :: delimiter_ascii
-    INTEGER(C_INT), INTENT(OUT) :: header_out_ascii(*), data_out_ascii(*)
+    !| Output buffer for the header as a flat array of ASCII codes.
+    INTEGER(C_INT), INTENT(OUT) :: header_out_ascii(*)
+    !| Output buffer for the data as a flat array of ASCII codes.
+    INTEGER(C_INT), INTENT(OUT) :: data_out_ascii(*)
+    !| Output status code.
     INTEGER(C_INT), INTENT(OUT) :: status
 
     CHARACTER(LEN=:), ALLOCATABLE :: filename
@@ -271,7 +297,7 @@ SUBROUTINE read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_a
     END DO
 END SUBROUTINE read_csv_to_strings_c
 
-!> @brief R interface for reading a CSV into a 3D integer array of ASCII codes.
+!> R interface for reading a CSV into a 3D integer array of ASCII codes.
 SUBROUTINE read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_ascii, &
                                  num_rows, num_cols, header_out_ascii, data_out_ascii, status)
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
@@ -279,13 +305,23 @@ SUBROUTINE read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_a
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
     IMPLICIT NONE
     
-    ! CORRECTED: Added num_rows and num_cols as inputs and used them in declarations.
+    !| Input ASCII codes of the filename.
     INTEGER(INT32), INTENT(IN) :: filename_ascii(fn_len)
-    INTEGER(INT32), INTENT(IN) :: fn_len, num_rows, num_cols
+    !| Length of the filename.
+    INTEGER(INT32), INTENT(IN) :: fn_len
+    !| Number of data rows in the file.
+    INTEGER(INT32), INTENT(IN) :: num_rows
+    !| Number of columns in the file.
+    INTEGER(INT32), INTENT(IN) :: num_cols
+    !| Flag indicating if the file has a header.
     LOGICAL, INTENT(IN) :: has_header
+    !| ASCII code of the delimiter character.
     INTEGER(INT32), INTENT(IN) :: delimiter_ascii
+    !| Output buffer for the header as a 2D array of ASCII codes.
     INTEGER(INT32), INTENT(OUT) :: header_out_ascii(MAX_FIELD_LEN, num_cols)
+    !| Output buffer for the data as a 3D array of ASCII codes.
     INTEGER(INT32), INTENT(OUT) :: data_out_ascii(MAX_FIELD_LEN, num_rows, num_cols)
+    !| Output status code.
     INTEGER(INT32), INTENT(OUT) :: status
 
     CHARACTER(LEN=:), ALLOCATABLE :: filename

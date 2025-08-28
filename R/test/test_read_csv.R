@@ -1,7 +1,7 @@
 # test_read_csv.R
 
 # Source the new API functions
-source("tensoromics_functions.R")
+source("R/tensoromics_functions.R")
 
 test_full_pipeline <- function() {
   cat("=== Testing Full CSV Reading Pipeline via R API ===\n")

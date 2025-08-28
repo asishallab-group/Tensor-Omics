@@ -1,6 +1,7 @@
-!> @brief A module for parsing lines from a CSV file.
+!> Module for parsing lines from delimited text files.
 MODULE csv_parser_module
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
+    USE tox_errors, ONLY: set_ok
     IMPLICIT NONE
 
     PRIVATE
@@ -10,11 +11,16 @@ MODULE csv_parser_module
 
 CONTAINS
 
-    !> @brief Parses a single line of text into an array of fields.
+    !> Parses a single line of text into an array of fields.
+    !| Correctly handles delimiters inside parentheses, e.g., for complex numbers.
     SUBROUTINE parse_line(line, delim, fields, status)
+        !| The input character string to be parsed.
         CHARACTER(LEN=*), INTENT(IN) :: line
+        !| The single character delimiter to split the line by.
         CHARACTER(LEN=1), INTENT(IN) :: delim
+        !| Output allocatable array of strings containing the parsed fields.
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE, INTENT(OUT) :: fields(:)
+        !| Output status code (0 for success).
         INTEGER(INT32), INTENT(OUT) :: status
 
         CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: temp_fields(:)
@@ -22,7 +28,7 @@ CONTAINS
         INTEGER(INT32) :: paren_level
         CHARACTER(LEN=LEN(line)) :: trimmed_line
 
-        status = 0
+        CALL set_ok(status)
         trimmed_line = TRIM(line)
         
         n_fields = 1
@@ -63,7 +69,8 @@ END MODULE csv_parser_module
 ! C and R Wrapper Subroutines (External)
 ! =============================================================================
 
-!> @brief C interface for parsing a single line.
+!> C interface for parsing a single line.
+!| !! When using this C wrapper function, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.
 SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
                         fields_out_ascii, num_fields_out, status) &
                         BIND(C, NAME='parse_line_c')
@@ -71,12 +78,19 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
     USE csv_parser_module, ONLY: parse_line, MAX_FIELD_LEN
     IMPLICIT NONE
 
-    ! --- C Arguments ---
+    !| Input ASCII codes of the line to parse.
     INTEGER(C_INT), INTENT(IN) :: line_ascii(*)
-    INTEGER(C_INT), VALUE, INTENT(IN) :: line_len, delimiter_ascii
-    INTEGER(C_INT), INTENT(OUT) :: fields_out_ascii(*), num_fields_out, status
+    !| Length of the input line.
+    INTEGER(C_INT), VALUE, INTENT(IN) :: line_len
+    !| ASCII code of the delimiter character.
+    INTEGER(C_INT), VALUE, INTENT(IN) :: delimiter_ascii
+    !| Output buffer for parsed fields as a flat array of ASCII codes.
+    INTEGER(C_INT), INTENT(OUT) :: fields_out_ascii(*)
+    !| Output number of fields found.
+    INTEGER(C_INT), INTENT(OUT) :: num_fields_out
+    !| Output status code.
+    INTEGER(C_INT), INTENT(OUT) :: status
 
-    ! --- Fortran Local Variables ---
     CHARACTER(LEN=:), ALLOCATABLE :: line_f
     CHARACTER(LEN=1) :: delimiter_f
     CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: fields_f(:)
@@ -84,14 +98,12 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
     INTEGER(C_INT) :: total_out_size
     INTEGER(C_INT) :: fortran_status
 
-    ! --- 1. Convert C inputs to Fortran types ---
     ALLOCATE(CHARACTER(LEN=line_len) :: line_f)
     DO i = 1, line_len
         line_f(i:i) = CHAR(line_ascii(i))
     END DO
     delimiter_f = CHAR(delimiter_ascii)
 
-    ! --- 2. Call the core Fortran subroutine ---
     CALL parse_line(line_f, delimiter_f, fields_f, fortran_status)
     status = fortran_status
     IF (status /= 0) THEN
@@ -99,7 +111,6 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
         RETURN
     END IF
 
-    ! --- 3. Copy Fortran results back to C buffer ---
     num_fields_out = SIZE(fields_f)
     total_out_size = num_fields_out * MAX_FIELD_LEN
     DO i = 1, total_out_size
@@ -113,38 +124,42 @@ SUBROUTINE parse_line_c(line_ascii, line_len, delimiter_ascii, &
         END DO
     END DO
 
-    ! --- 4. Cleanup ---
     DEALLOCATE(line_f, fields_f)
 END SUBROUTINE parse_line_c
 
-!> @brief R interface for parsing a single line.
+!> R interface for parsing a single line.
+!| !! When using this R wrapper function, copies of the arrays will be created. No direct modification of the original R objects occurs.
 SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
                         fields_out_ascii, num_fields_out, status)
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE csv_parser_module, ONLY: parse_line, MAX_FIELD_LEN
     IMPLICIT NONE
 
-    ! --- R Arguments ---
+    !| Input ASCII codes of the line to parse.
     INTEGER(INT32), INTENT(IN) :: line_ascii(line_len)
-    INTEGER(INT32), INTENT(IN) :: line_len, delimiter_ascii
+    !| Length of the input line.
+    INTEGER(INT32), INTENT(IN) :: line_len
+    !| ASCII code of the delimiter character.
+    INTEGER(INT32), INTENT(IN) :: delimiter_ascii
+    !| Output buffer for parsed fields as a 2D array of ASCII codes.
     INTEGER(INT32), INTENT(OUT) :: fields_out_ascii(MAX_FIELD_LEN, *)
-    INTEGER(INT32), INTENT(OUT) :: num_fields_out, status
+    !| Output number of fields found.
+    INTEGER(INT32), INTENT(OUT) :: num_fields_out
+    !| Output status code.
+    INTEGER(INT32), INTENT(OUT) :: status
 
-    ! --- Fortran Local Variables ---
     CHARACTER(LEN=:), ALLOCATABLE :: line_f
     CHARACTER(LEN=1) :: delimiter_f
     CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: fields_f(:)
     INTEGER :: i, k
     INTEGER(INT32) :: fortran_status
 
-    ! --- 1. Convert R inputs to Fortran types ---
     ALLOCATE(CHARACTER(LEN=line_len) :: line_f)
     DO i = 1, line_len
         line_f(i:i) = CHAR(line_ascii(i))
     END DO
     delimiter_f = CHAR(delimiter_ascii)
 
-    ! --- 2. Call the core Fortran subroutine ---
     CALL parse_line(line_f, delimiter_f, fields_f, fortran_status)
     status = fortran_status
     IF (status /= 0) THEN
@@ -152,7 +167,6 @@ SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
         RETURN
     END IF
     
-    ! --- 3. Copy Fortran results back to R buffer ---
     num_fields_out = SIZE(fields_f)
     DO i = 1, num_fields_out
         fields_out_ascii(:, i) = 0
@@ -163,6 +177,5 @@ SUBROUTINE parse_line_r(line_ascii, line_len, delimiter_ascii, &
         END DO
     END DO
 
-    ! --- 4. Cleanup ---
     DEALLOCATE(line_f, fields_f)
 END SUBROUTINE parse_line_r

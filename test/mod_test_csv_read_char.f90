@@ -1,21 +1,21 @@
-!> @brief Unit test suite for csv_read_char_module and its wrappers.
+!> Unit test suite for csv_read_char_module and its wrappers.
 MODULE mod_test_csv_read_char
     USE, INTRINSIC :: iso_fortran_env, ONLY: INT32
     USE, INTRINSIC :: iso_c_binding
     USE csv_read_char_module, ONLY: read_character_columns
     USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    USE asserts, ONLY: assert_equal_int, assert_equal_size, assert_string_equal
+    USE asserts, ONLY: assert_equal_int, assert_string_equal
 
     IMPLICIT NONE
     PUBLIC
 
     INTERFACE
         SUBROUTINE read_character_columns_c(data_in_ascii, num_rows, num_cols_in, &
-                                            cols_to_read, num_cols_to_read, &
-                                            char_data_out_ascii, status) &
-                                            BIND(C, NAME='read_character_columns_c')
+                                             cols_to_read, num_cols_to_read, &
+                                             char_data_out_ascii, status) &
+                                             BIND(C, NAME='read_character_columns_c')
             USE, INTRINSIC :: iso_c_binding
-            INTEGER(C_INT), INTENT(IN) :: data_in_ascii(*)
+            INTEGER(C_INT), INTENT(IN), TARGET :: data_in_ascii(*)
             INTEGER(C_INT), VALUE, INTENT(IN) :: num_rows, num_cols_in, num_cols_to_read
             INTEGER(C_INT), INTENT(IN) :: cols_to_read(*)
             INTEGER(C_INT), INTENT(OUT) :: char_data_out_ascii(*)
@@ -63,13 +63,13 @@ CONTAINS
         all_tests = get_all_tests_csv_read_char()
         WRITE(*, '(A)') "--- Running Suite: csv_read_char (named tests) ---"
         DO i = 1, SIZE(test_names)
-            found = .false.
+            found = .FALSE.
             DO j = 1, SIZE(all_tests)
                 IF (TRIM(test_names(i)) == TRIM(all_tests(j)%name)) THEN
                     WRITE(*, '(A, A, A)', ADVANCE='NO') "  Running test: ", TRIM(all_tests(j)%name), "..."
                     CALL all_tests(j)%test_proc()
                     WRITE(*, '(A)') " PASSED"
-                    found = .true.
+                    found = .TRUE.
                     EXIT
                 END IF
             END DO
@@ -103,33 +103,35 @@ CONTAINS
         INTEGER(C_INT), ALLOCATABLE :: ascii_flat_in(:), ascii_flat_out(:)
         INTEGER(C_INT) :: status, i, j, k, char_idx
         INTEGER(C_INT) :: cols_to_read(1)
+        INTEGER(C_INT), PARAMETER :: num_rows = 2, num_cols = 2, num_cols_out = 1
 
         ! Arrange
         str_arr(1,1) = "A1"; str_arr(1,2) = "B1"
         str_arr(2,1) = "A2"; str_arr(2,2) = "B2"
-        ALLOCATE(ascii_flat_in(2 * 2 * MAX_FIELD_LEN))
+        ALLOCATE(ascii_flat_in(num_rows * num_cols * MAX_FIELD_LEN))
         ascii_flat_in = 0
-        DO j = 1, 2
-            DO i = 1, 2
+        DO j = 1, num_cols
+            DO i = 1, num_rows
                 DO k = 1, LEN_TRIM(str_arr(i,j))
-                    char_idx = (i - 1) * 2 * MAX_FIELD_LEN + (j - 1) * MAX_FIELD_LEN + k
+                    ! Corrected formula for COLUMN-MAJOR memory layout
+                    char_idx = (j - 1) * num_rows * MAX_FIELD_LEN + (i - 1) * MAX_FIELD_LEN + k
                     ascii_flat_in(char_idx) = ICHAR(str_arr(i,j)(k:k))
                 END DO
             END DO
         END DO
         
-        ALLOCATE(ascii_flat_out(2 * 1 * MAX_FIELD_LEN))
+        ALLOCATE(ascii_flat_out(num_rows * num_cols_out * MAX_FIELD_LEN))
         cols_to_read = [2]
 
         ! Act
-        CALL read_character_columns_c(ascii_flat_in, 2, 2, cols_to_read, 1, ascii_flat_out, status)
+        CALL read_character_columns_c(ascii_flat_in, num_rows, num_cols, cols_to_read, num_cols_out, ascii_flat_out, status)
 
         ! Assert: Reconstruct Fortran string from C output for comparison
         CALL assert_equal_int(status, 0, "c_wrapper: status")
         str_out = ' '
-        DO i = 1, 2
+        DO i = 1, num_rows
             DO k = 1, MAX_FIELD_LEN
-                char_idx = (i - 1) * 1 * MAX_FIELD_LEN + (1 - 1) * MAX_FIELD_LEN + k
+                char_idx = (i - 1) * num_cols_out * MAX_FIELD_LEN + k
                 IF (ascii_flat_out(char_idx) == 0) EXIT
                 str_out(i,1)(k:k) = CHAR(ascii_flat_out(char_idx))
             END DO
