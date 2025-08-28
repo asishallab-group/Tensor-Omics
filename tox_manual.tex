@@ -297,20 +297,221 @@ END PROGRAM tox_fortran_example
 \end{lstlisting}
 
     \item \textbf{TODO Functions relating section 1.2 - 1.4}
+
     
-    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{distance\_to\_centroid} function with the following parameters: total number of genes, total number of gene families, expression vector dimension $d$, expression vector matrix, family centroid matrix, and gene-to-family mapping array. For each gene in the expression vector matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a distance array containing the distance value for each expression vector.
+    \item \textbf{Calculate Distance to Centroid}
+     
+    For each gene in the expression vector matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a distances array containing the distance value for each expression vector to its family centroid.
+    Call the \texttt{distance\_to\_centroid} function with the following arguments:
+    
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_families integer(int32)}: Total number of gene families
+        \item \texttt{genes real(real64)}: Gene expression matrix (\texttt{d $\times$ n\_genes})
+        \item \texttt{centroids real(real64)}: Family centroid matrix (\texttt{d $\times$ n\_genes})
+        \item \texttt{gene\_to\_fam integer(int32)}: Gene-to-family mapping array with the length of \texttt{n\_genes} (1-based indexing)
+        \item \texttt{d integer(int32)}: Expression vector dimension 
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{distances real(real64)}: Array of distances for each gene with length of \texttt{n\_genes}
+    \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Distance to Centroid Calculation}]
-pure subroutine distance_to_centroid(n_genes, n_families, genes, centroids, gene_to_fam, distances, d)
+call distance_to_centroid(n_genes, n_families, genes, centroids, gene_to_fam, distances, d)
 \end{lstlisting}
 
-    \item \textbf{Detect Gene Outliers:} Call the \texttt{detect\_outliers} function with the following parameters: total number of genes, total number of families, distances between genes and centroids, and gene-to-family mapping array. Additionally, pass the required arrays for sorting: work array, permutation array, stack left, and stack right array. For loess smoothing, provide loess x, loess y, and loess n parameters. Optionally, specify a percentile value to set the outlier detection threshold (default: 95). The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a boolean array indicating whether each gene is an outlier.
+\begin{enumerate}
+    \item \textbf{Calculate Euclidean Distance}
+    
+    Alternatively you can calculate a single Euclidean distance between two vectors manually by calling \texttt{euclidean\_distance} function with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{vec1 real(real64):} First expression vector as array with length of dimension \texttt{d}
+        \item \texttt{vec2 real(real64):} Second expression vector as array with length of dimension \texttt{d}
+        \item \texttt{d integer(int32):} Dimension value 
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{result real(real64):} Euclidean distance value between \texttt{vec1} and \texttt{vec2}
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Euclidean distance calculation}]
+call euclidean_distance(vec1, vec2, d, result)
+\end{lstlisting}
+\end{enumerate}
+
+    \item \textbf{Detect Gene Outliers}
+
+    The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a boolean array indicating whether each gene is an outlier.
+    Call the \texttt{detect\_outliers} function with the following arguments:
+    
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_families integer(int32)}: Total number of gene families
+        \item \texttt{distances real(real64)}: Array of distances for each gene to its centroid with length of \texttt{n\_genes}
+        \item \texttt{gene\_to\_fam integer(int32)}: Gene-to-family mapping array with the length of \texttt{n\_genes} (1-based indexing)
+        \item \textbf{(Optional)} \texttt{percentile real(real64)}: Percentile threshold value for outlier detection (default is 95)
+    \end{itemize}
+
+    \textbf{Input / Output arguments:}
+    \begin{itemize}
+        \item \texttt{work\_array real(real64)}: Work array for sorting with length of \texttt{n\_genes} 
+        \item \texttt{perm integer(int32)}: Permutation array for sorting with length of \texttt{n\_genes}
+        \item \texttt{stack\_left integer(int32)}: Stack array for left indices during sorting with length of \texttt{n\_genes}
+        \item \texttt{stack\_right integer(int32)}: Stack array for right indices during sorting with length of \texttt{n\_genes}
+        \item \texttt{loess\_x real(real64)}: Reference x-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{loess\_y real(real64)}: Reference y-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{loess\_n integer(int32)}: Indices of reference points used for smoothing with length of \texttt{n\_families}
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{is\_outlier logical}: Boolean array with length of \texttt{n\_genes} indicating whether each gene is an outlier
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+    
 \begin{lstlisting}[language=Fortran, caption={Gene Outlier Calculation}]
-pure subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)
+call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)
 \end{lstlisting}
 
-    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{compute\_tissue\_versatility} function with the following parameters: number of tissue axes (dimension), total number of expression vectors, total number of selected axes, total number of selected expression vectors, expression vector matrix, logical array of selected axes, and logical array of selected expression vectors. The function returns two arrays: the first contains tissue versatility values for each gene normalized to $[0,1]$, and the second contains the angle between each gene and the space diagonal.
+\textbf{Alternatively you can calculate each step of \texttt{detect\_outliers} manually with the following functions:}
+\begin{enumerate}
+    \item \textbf{Compute Family Scaling}
+    
+    The function calculates a scaling factor for each gene family by computing the median and standard deviation of gene-to-centroid distances within each family, then applies LOESS smoothing to these values.
+    Call the \texttt{compute\_family\_scaling} function with the following arguments:
+    
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_families integer(int32)}: Total number of gene families
+        \item \texttt{distances real(real64)}: Array of distances for each gene to its centroid with length of \texttt{n\_genes}
+        \item \texttt{gene\_to\_fam integer(int32)}: Gene-to-family mapping array with the length of \texttt{n\_genes} (1-based indexing)
+    \end{itemize}
+
+    \textbf{Input / Output arguments:}
+    \begin{itemize}
+        \item \texttt{loess\_x real(real64)}: Reference x-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{loess\_y real(real64)}: Reference y-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{indices\_used integer(int32)}: Indices of reference points used for smoothing with length of \texttt{n\_families}
+        \item \texttt{perm\_tmp integer(int32)}: Permutation array for sorting with length of \texttt{n\_genes}
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{dscale real(real64)}: Array of scaling factors per family with length of \texttt{n\_families}
+        \item \texttt{family\_distances real(real64)}: Temporary work array with length of \texttt{n\_genes} to store distances of genes within each family during calculation
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Compute Family Scaling}]
+call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
+\end{lstlisting}
+
+    \item \textbf{Compute Family Scaling Helper}
+    
+    This helper function allocates internal arrays for easier usage and calls \texttt{compute\_family\_scaling}. Call the \texttt{compute\_family\_scaling\_alloc} function with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_families integer(int32)}: Total number of gene families
+        \item \texttt{distances real(real64)}: Array of distances for each gene to its centroid with length of \texttt{n\_genes}
+        \item \texttt{gene\_to\_fam integer(int32)}: Gene-to-family mapping array with the length of \texttt{n\_genes} (1-based indexing)
+    \end{itemize}
+
+    \textbf{Input / Output arguments:}
+    \begin{itemize}
+        \item \texttt{loess\_x real(real64)}: Reference x-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{loess\_y real(real64)}: Reference y-coordinates for loess smoothing with length of \texttt{n\_families}
+        \item \texttt{indices\_used integer(int32)}: Indices of reference points used for smoothing with length of \texttt{n\_families}
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{dscale real(real64)}: Array of scaling factors per family with length of \texttt{n\_families}
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Compute Family Scaling}]
+call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, ierr)
+\end{lstlisting}
+
+    \item \textbf{Compute Relative Distance Index (RDI)}
+
+    The function calculates the Relative Distance Index (RDI) for each gene by dividing its Eculidean distance to the family centroid by the scaling factor of its family. Call the \texttt{compute\_rdi} function with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{distances real(real64)}: Array of distances for each gene to its centroid with length of \texttt{n\_genes}
+        \item \texttt{gene\_to\_fam integer(int32)}: Gene-to-family mapping array with the length of \texttt{n\_genes} (1-based indexing)
+        \item \texttt{dscale real(real64)}: Array of scaling factors per family with length of \texttt{n\_families}
+    \end{itemize}
+
+    \textbf{Input / Output arguments:}
+    \begin{itemize}
+        \item \texttt{sorted\_rdi real(real64)}: Work array for sorting with length of \texttt{n\_genes}
+        \item \texttt{perm integer(int32)}: Pre-initialized (1: \texttt{n\_genes}) permutation array for sorting with length of \texttt{n\_genes}
+        \item \texttt{stack\_left integer(int32)}: Stack array for sorting with length of \texttt{n\_genes}
+        \item \texttt{stack\_right integer(int32)}: Stack array for sorting with length of \texttt{n\_genes}
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{rdi real(real64}: Array of RDI values for each gene with length of \texttt{n\_genes}
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Compute Relative Distance Index (RDI)}]
+call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
+\end{lstlisting}
+
+    \item \textbf{Identify Outliers}
+
+    The function identifies outliers based on the top percentile of RDI values. Call the \texttt{identify\_outliers} function with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{rdi real(real64}: Array of RDI values for each gene with length of \texttt{n\_genes}
+        \item \texttt{sorted\_rdi real(real64}: Array of sorted RDI values for each gene with legnth of \texttt{n\_genes}  - \textbf{this array must be filtered to remove negatives and be sorted in ascending order!}
+        \item \textbf{(Optional)} \texttt{percentile real(real64)}: Percentile threshold value for outlier detection (default is 95)
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{is\_outlier logical}: Boolean array with length of \texttt{n\_genes} indicating whether each gene is an outlier
+        \item \texttt{threshold}: Actual threshold value used for outlier detection
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Identify Outliers}]
+call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Compute Normalized Tissue Versatility}
+
+    The function calculates a normalized tissue versatility score for selected gene expression vectors. It is based on the angle between each gene expression vector and the space diagonal. Versatility is normalized to [0, 1], where 0 means uniform expression 1 means expression in only one axis. Call the \texttt{compute\_tissue\_versatility} function with the following parameters:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_vectors integer(int32)}: Total number of expression vectors
+        \item \texttt{n\_selected\_axes integer(int32)}: Total number of selected axes
+        \item \texttt{n\_selected\_vectors integer(int32)}: Total number of selected vectors
+        \item \texttt{expression\_vectors real(real64)}: Expression vector matrix with size \texttt{n\_axes $\times$ n\_vectors}
+        \item \texttt{exp\_vecs\_selection\_index logical}: Logical array with length of \texttt{n\_vectors} to specify which vectors should be included in the calculation
+        \item \texttt{axes\_selection logical}: Logical array with length of \texttt{n\_axes} to specify which axes should be included in the calculation
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{tissue\_versatilities real(real64)}: Array with the length of \texttt{n\_selected\_vectors} containing the calculated tissue versatilities
+        \item \texttt{tissue\_angles\_deg real(real64)}: Array with the length of \texttt{n\_selected\_vectors} containing the calculated angles in degrees
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Tissue Versatility Calculation}]
-pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
+call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
 \end{lstlisting}
 
 \end{enumerate}
@@ -362,19 +563,169 @@ except (FileNotFoundError, ValueError) as e:
 
 \item \textbf{TODO Functions relating section 1.2 - 1.4}
 
-    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{tox\_distance\_to\_centroid} function with the following parameters: gene expression data as a flat array (number of genes $\times$ dimension), family centroids as a flat array (number of families $\times$ dimension), gene-to-family mapping array where each value represents the family index in the family centroids for the corresponding gene, and the dimension value needed to split the data arrays into separate rows. For each gene in the gene vector matrix, the function computes the Euclidean distance to its corresponding family centroid. The function returns a read-only distance array containing the distance value for each gene vector.    
+    \item \textbf{Calculate Distance to Centroid}
+     
+    For each gene in the gene expression matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a read-only distances array containing the distance value for each expression vector to its family centroid.
+    Call the \texttt{tox\_distance\_to\_centroid} function with the following arguments:
+    
+    \begin{itemize}
+        \item \texttt{genes}: Gene expression matrix array with size of (\texttt{n\_genes $\times$ d})
+        \item \texttt{centroids}: Family centroid matrix array with size of (\texttt{n\_families $\times$ d})
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the length of \texttt{n\_genes} (0 = no family, \textgreater 0 = family index)
+        \item \texttt{d}: Gene expression matrix dimension as number
+    \end{itemize}
 \begin{lstlisting}[language=Python, caption={Python Distance to Centroid Calculation}]
-def tox_distance_to_centroid(genes, centroids, gene_to_fam, d)
+tox_distance_to_centroid(genes, centroids, gene_to_fam, d)
 \end{lstlisting}
 
-    \item \textbf{Detect Gene Outliers:} Call the \texttt{tox\_detect\_outliers} function with the following parameters: distance array containing gene distances to centroids, gene-to-family mapping array, and an optional percentile threshold value (default: 95.0). The function executes a complete pipeline to compute family scaling, calculate relative distance indices (RDI), and identify outliers based on the percentile threshold. The function returns a read-only dictionary containing the outlier boolean values and intermediate results.
+\begin{enumerate}
+    \item \textbf{Calculate Euclidean Distance}
+    
+    Alternatively you can calculate a single Euclidean distance between two vectors manually by calling \texttt{tox\_euclidean\_distance} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{vec1:} First vector as array
+        \item \texttt{vec2:} Second vector as array
+    \end{itemize}
+
+    \textbf{Both vectors must have same length!}
+
+\begin{lstlisting}[language=Python, caption={Python Euclidean distance calculation}]
+tox_euclidean_distance(vec1, vec2)
+\end{lstlisting}
+\end{enumerate}
+
+\item \textbf{Detect Gene Outliers}
+
+    The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a read-only dictionary containing the outlier boolean values and intermediate results.
+    Call the \texttt{tox\_detect\_outliers} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{distances}: Array of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same length as the distances array (0 = no family, \textgreater 0 = family index)
+        \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold value for outlier detection (default is 95)
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{outliers}: Boolean array indicating wheter each gene in an outlier
+        \item \textbf{loess\_x}: Array of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Array of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{loess\_n}: Array with numbers of genes in each family used to compute the corresponding median and standard deviation
+    \end{itemize}
+    
 \begin{lstlisting}[language=Python, caption={Python Gene Outlier Calculation}]
-def tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
 \end{lstlisting}
 
-    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{tox\_calculate\_tissue\_versatility} function with the following parameters: expression vector matrix, boolean array for vector selection, and boolean array for axis selection. The function returns a read-only dictionary containing two arrays. The first array contains the tissue versatility values of each gene normalized to $[0,1]$. The second array contains the angle between each gene and the space diagonal.
+\textbf{Alternatively you can calculate each step of \texttt{tox\_detect\_outliers} manually with the following functions:}
+\begin{enumerate}
+    \item \textbf{Compute Family Scaling}
+    
+    The function calculates a scaling factor for each gene family by computing the median and standard deviation of gene-to-centroid distances within each family, then applies LOESS smoothing to these values.
+    Call the \texttt{tox\_compute\_family\_scaling} function with the following arguments:
+    
+    \begin{itemize}
+        \item \texttt{distances}: Array of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same length as the distances array (0 = no family, \textgreater 0 = family index)
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{dscale}: Array of scaling factors per family
+        \item \textbf{loess\_x}: Array of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Array of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{indices\_used}: Array of indices of families that have been included in the calculation
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Compute Family Scaling}]
+tox_compute_family_scaling(distances, gene_to_fam)
+\end{lstlisting}
+
+    \item \textbf{Compute Family Scaling (Expert Version)}
+    
+    This function is the expert version of \texttt{tox\_detect\_outliers} and requires pre-allocated work arrays for maximum performance and control. It can be used when you need fine-grained control over memory allocation or you are calling this function many times in a tight loop. Call the \texttt{tox\_compute\_family\_scaling\_expert} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{distances}: Array of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same length as the distances array (0 = no family, \textgreater 0 = family index)
+        \item \texttt{perm\_tmp}: Permutation array for sorting with the same length as the distances array
+        \item \texttt{stack\_left\_tmp}: Stack array for sorting with the same length as the distances array
+        \item \texttt{stack\_right\_tmp}: Stack array for sorting with the same length as the distances array
+        \item \texttt{family\_distances}: Work array for sorting with the same length as the distances array
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{dscale}: Array of scaling factors per family
+        \item \textbf{loess\_x}: Array of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Array of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{indices\_used}: Array of indices of families that have been included in the calculation
+        \item \textbf{perm\_tmp}: Permutation array for sorting
+        \item \textbf{stack\_left\_tmp}: Stack array for sorting
+        \item \textbf{stack\_right\_tmp}: Stack array for sorting
+        \item \textbf{family\_distances}: Work array for sorting
+        
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Compute Family Scaling (Expert Version)}]
+tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
+\end{lstlisting}
+
+    \item \textbf{Compute Relative Distance Index (RDI)}
+
+    The function calculates the Relative Distance Index (RDI) for each gene by dividing its Euclidean distance to the family centroid by the scaling factor of its family. The function returns a numpy array with RDI values for each gene. Call the \texttt{tox\_compute\_rdi} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{distances}: Array of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same length as the distances array (0 = no family, \textgreater 0 = family index)
+        \item \textbf{dscale}: Array of scaling factors per family
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Compute Relative Distance Index (RDI)}]
+tox_compute_rdi(distances, gene_to_fam, dscale)
+\end{lstlisting}
+
+    \item \textbf{Identify Outliers}
+
+    The function identifies outliers based on the top percentile of RDI values. Call the \texttt{tox\_identify\_outliers} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{rdi}: Array of RDI values for each gene
+        \item \textbf{(Optional)} \texttt{threshold}: Fixed RDI threshold number (if None, percentile value is used)
+        \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold number for outlier detection (default is 95)
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \texttt{outliers}: Boolean array indicating whether each gene is an outlier
+        \item \texttt{threshold}: Actual threshold value used for outlier detection
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Identify Outliers}]
+tox_identify_outliers(rdi, threshold=None, percentile=95.0)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Compute Normalized Tissue Versatility:} 
+
+    The function calculates a normalized tissue versatility score for selected gene expression vectors. It is based on the angle between each gene expression vector and the space diagonal. Versatility is normalized to [0, 1], where 0 means uniform expression 1 means expression in only one axis. Call the \texttt{tox\_compute\_tissue\_versatility} function with the following parameters:
+
+    \begin{itemize}
+    \item \texttt{expression\_vectors}: Expression vector matrix array with size \texttt{n\_axes $\times$ n\_vectors}
+    \item \texttt{vector\_selection}: Logical array with length of \texttt{n\_vectors} to specify which vectors should be included in the calculation
+    \item \texttt{axes\_selection}: Logical array with length of \texttt{n\_axes} to specify which axes should be included in the calculation
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \texttt{tissue\_versatilities}: Array containing the calculated tissue versatilities for selected vectors
+        \item \texttt{tissue\_angles\_deg}: Array containing the calculated angles in degrees for selected vectors
+        \item \texttt{n\_selected\_vectors}: Number of vectors processed
+        \item \texttt{n\_selected\_axes}: Number of axes used in calculation
+    \end{itemize}
+    
 \begin{lstlisting}[language=Python, caption={Python Tissue Versatility Calculation}]
-def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
+tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
 
 \end{enumerate}
@@ -418,19 +769,177 @@ print(real_matrix)
 
 \item \textbf{TODO Functions relating section 1.2 - 1.4}
 
-    \item \textbf{Calculate Distance to Centroid:} Call the \texttt{tox\_distance\_to\_centroid} function with the following parameters: gene expression data matrix (number of genes $\times$ dimension), family centroids matrix (number of families $\times$ dimension), gene-to-family mapping integer vector where each value represents the family index in the family centroids for the corresponding gene, and the dimension value needed to split the data vectors into separate rows. For each gene in the gene vector matrix, the function computes the Euclidean distance to its corresponding family centroid. The function returns a numeric vector of distances from each gene to its family centroid.    
+    \item \textbf{Calculate Distance to Centroid}
+     
+    For each gene in the gene expression matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a numeric vector of distances from each gene to its family centroid.
+    Call the \texttt{tox\_distance\_to\_centroid} function with the following arguments:
+    
+    \begin{itemize}
+        \item \texttt{genes}: Gene expression matrix with size of (\texttt{n\_genes $\times$ d})
+        \item \texttt{centroids}: Family centroid matrix with size of (\texttt{n\_families $\times$ d})
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping integer vector with the length of \texttt{n\_genes} (0 = no family, \textgreater 0 = family index)
+        \item \texttt{d}: Gene expression matrix dimension as integer
+    \end{itemize}
 \begin{lstlisting}[language=R, caption={R Distance to Centroid Calculation}]
-tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d)
+tox_distance_to_centroid(genes, centroids, gene_to_fam, d)
 \end{lstlisting}
 
-    \item \textbf{Detect Gene Outliers:} Call the \texttt{tox\_detect\_outliers} function with the following parameters: distances numeric vector containing gene distances to centroids, gene-to-family integer vector mapping, total number of families, and an optional percentile threshold value (default: 95.0). The function executes a complete pipeline to compute family scaling, calculate relative distance indices (RDI), and identify outliers based on the percentile threshold. The function returns a list containing the outlier boolean values and intermediate results.    
+\begin{enumerate}
+    \item \textbf{Calculate Euclidean Distance}
+    
+    Alternatively you can calculate a single Euclidean distance between two vectors manually by calling \texttt{tox\_euclidean\_distance} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{vec1:} First vector
+        \item \texttt{vec2:} Second vector
+    \end{itemize}
+
+    \textbf{Both vectors must have same length!}
+
+\begin{lstlisting}[language=R, caption={R Euclidean distance calculation}]
+tox_euclidean_distance(vec1, vec2)
+\end{lstlisting}
+\end{enumerate}
+
+\item \textbf{Detect Gene Outliers}
+
+    The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a list of components containing the outlier boolean values and intermediate results.
+    Call the \texttt{tox\_detect\_outliers} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{distances}: Numeric vector of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping integer vector mapping with the same length as the distances vector (0 = no family, \textgreater 0 = family index)
+        \item \texttt{n\_families}: Integer number of families
+        \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold value for outlier detection (default is 95.0)
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{is\_outlier}: Logical vector indicating whether each gene in an outlier
+        \item \textbf{loess\_x}: Numeric vector of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Numeric vector of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{loess\_n}: Integer vector with numbers of genes in each family used to compute the corresponding median and standard deviation
+    \end{itemize}
+    
 \begin{lstlisting}[language=R, caption={R Gene Outlier Calculation}]
-tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0)
+tox_detect_outliers(distances, gene_to_fam, n_families, percentile)
 \end{lstlisting}
 
-    \item \textbf{Compute Normalized Tissue Versatility:} Call the \texttt{tox\_calculate\_tissue\_versatility} function with the following parameters: expression vector matrix, logical vector for vector selection, and logical vector for axis selection. The function returns a list containing two numeric vectors and two integer values. The numeric vectors contain the tissue versatility values of each gene normalized to $[0,1]$ and the angle between each gene and the space diagonal. The integer values represent the number of vectors processed and the number of axes used in the calculation.
+\textbf{Alternatively you can calculate each step of \texttt{tox\_detect\_outliers} manually with the following functions:}
+\begin{enumerate}
+    \item \textbf{Compute Family Scaling}
+    
+    The function calculates a scaling factor for each gene family by computing the median and standard deviation of gene-to-centroid distances within each family, then applies LOESS smoothing to these values.
+    Call the \texttt{tox\_compute\_family\_scaling} function with the following arguments:
+    
+    \begin{itemize}
+        \item \texttt{distances}: Numeric vector of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping integer vector mapping with the same length as the distances vector (0 = no family, \textgreater 0 = family index)
+        \item \texttt{n\_families}: Integer number of families
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{dscale}: Numeric vector of scaling factors per family
+        \item \textbf{loess\_x}: Numeric vector of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Numeric vector of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{indices\_used}: Integer vector of indices of families that have been included in the calculation
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Compute Family Scaling}]
+tox_compute_family_scaling(distances, gene_to_fam, n_families)
+\end{lstlisting}
+
+    \item \textbf{Compute Family Scaling (Expert Version)}
+    
+    This function is the expert version of \texttt{tox\_detect\_outliers} and requires pre-allocated work arrays for maximum performance and control. It can be used when you need fine-grained control over memory allocation or you are calling this function many times in a tight loop. Call the \texttt{tox\_compute\_family\_scaling\_expert} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{distances}: Numeric vector of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping integer vector mapping with the same length as the distances vector (0 = no family, \textgreater 0 = family index)
+        \item \texttt{n\_families}: Integer number of families
+        \item \texttt{perm\_tmp}: Permutation integer vector for sorting with the same length as distances
+        \item \texttt{stack\_left\_tmp}: Stack integer vector for sorting with the same length as distances
+        \item \texttt{stack\_right\_tmp}: Stack integer vector for sorting with the same length as distances
+        \item \texttt{family\_distances}: Work integer vector for sorting with the same length as distances
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+       \item \textbf{dscale}: Numeric vector of scaling factors per family
+        \item \textbf{loess\_x}: Numeric vector of x coordinates used as reference points for LOESS smoothing (median distance)
+        \item \textbf{loess\_y}: Numeric vector of y coordinates used as reference points for LOESS smoothing (standard deviation)
+        \item \textbf{indices\_used}: Integer vector of indices of families that have been included in the calculation
+        \item \textbf{perm\_tmp}: Permutation vector for sorting
+        \item \textbf{stack\_left\_tmp}: Stack vector for sorting
+        \item \textbf{stack\_right\_tmp}: Stack vector for sorting
+        \item \textbf{family\_distances}: Work vector for sorting
+        
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Compute Family Scaling (Expert Version)}]
+tox_compute_family_scaling_expert(distances, gene_to_fam, n_families, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
+\end{lstlisting}
+
+    \item \textbf{Compute Relative Distance Index (RDI)}
+
+    The function calculates the Relative Distance Index (RDI) for each gene by dividing its Euclidean distance to the family centroid by the scaling factor of its family. Call the \texttt{tox\_compute\_rdi} function with the following arguments:
+
+    \begin{itemize}
+       \item \texttt{distances}: Numeric vector of distances for each gene to its centroid
+        \item \texttt{gene\_to\_fam}: Gene-to-family mapping integer vector mapping with the same length as the distances vector (0 = no family, \textgreater 0 = family index)
+        \item \textbf{dscale}: Numeric vector of scaling factors per family
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \texttt{rdi}: Numeric vector containing the RDI value for each gene
+        \item \texttt{sorted\_rdi}: Numeric vector containing the RDI values sorted in ascending order
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Compute Relative Distance Index (RDI)}]
+tox_compute_rdi(distances, gene_to_fam, dscale)
+\end{lstlisting}
+
+    \item \textbf{Identify Outliers}
+
+    The function identifies outliers based on the top percentile of RDI values. Call the \texttt{tox\_identify\_outliers} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{rdi}: Numeric vector containing the RDI value for each gene
+        \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold number for outlier detection (default is 95.0)
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \texttt{is\_outlier}: Logical vector indicating whether each gene is an outlier
+        \item \texttt{threshold}: Actual threshold value used for outlier detection
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Identify Outliers}]
+tox_identify_outliers(rdi, percentile)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Compute Normalized Tissue Versatility:} 
+
+    The function calculates a normalized tissue versatility score for selected gene expression vectors. It is based on the angle between each gene expression vector and the space diagonal. Versatility is normalized to [0, 1], where 0 means uniform expression 1 means expression in only one axis. Call the \texttt{tox\_compute\_tissue\_versatility} function with the following parameters:
+
+    \begin{itemize}
+    \item \texttt{expression\_vectors}: Numeric matrix array with size \texttt{n\_axes $\times$ n\_vectors}
+    \item \texttt{vector\_selection}: Logical vector with length of \texttt{n\_vectors} to specify which vectors should be included in the calculation
+    \item \texttt{axes\_selection}: Logical vector with length of \texttt{n\_axes} to specify which axes should be included in the calculation
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \texttt{tissue\_versatilities}: Numeric vector containing the calculated tissue versatilities for selected vectors
+        \item \texttt{tissue\_angles\_deg}: Numeric vector containing the calculated angles in degrees for selected vectors
+        \item \texttt{n\_selected\_vectors}: Integer number of vectors processed
+        \item \texttt{n\_selected\_axes}: Integer number of axes used in calculation
+    \end{itemize}
+    
 \begin{lstlisting}[language=R, caption={R Tissue Versatility Calculation}]
-tox_calculate_tissue_versatility <- function(expression_vectors, vector_selection, axis_selection)
+tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
 
 \end{enumerate}
