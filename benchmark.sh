@@ -20,9 +20,13 @@ echo "Detected alignment: $ALIGN"
 
 # Detect compiler and flags
 if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -fopenmp-target-do-concurrent -fopt-info-vec -qopt-report -Minfo -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+  FLAGS="-O3 -fopenmp-target-do-concurrent -qopt-report -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   MODULE_FLAG="-module $BUILD_DIR"
   COMPILER="ifx"
+elif [[ "$FC" == "nvfortran" ]]; then
+  FLAGS="-O2 -Mconcur -Mstack_arrays -fPIC -fopenmp -stdpar=multicore"
+  MODULE_FLAG="-module $BUILD_DIR"
+  COMPILER="nvfortran"
 else
   FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
   MODULE_FLAG="-J$BUILD_DIR"
@@ -52,7 +56,7 @@ fi
 echo "Compiling test modules..."
 # Then compile test/ modules using .mod files from build/
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
-  -I$BUILD_DIR -c $SOURCE_DIR/*.f90
+  -I$BUILD_DIR -c $SOURCE_DIR/*.[fF]90
 
 compilation_result=$?
 echo "Test compilation exit code: $compilation_result"

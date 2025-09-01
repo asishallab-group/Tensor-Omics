@@ -24,6 +24,9 @@ if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
   FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   MODULE_FLAG="-module $BUILD_DIR"
   COMPILER="ifx"
+elif [[ "$FC" == "nvfortran" ]]; then
+  FLAGS="-O2 -Mconcur -Mstack_arrays -fPIC -fopenmp -stdpar=multicore"
+  COMPILER="nvfortran"
 else
   FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
   MODULE_FLAG="-J$BUILD_DIR"
