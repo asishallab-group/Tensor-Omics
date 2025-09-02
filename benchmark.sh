@@ -4,37 +4,20 @@ SOURCE_DIR="src/parallelization_experiment"
 BUILD_DIR="build"
 EXECUTABLE="$BUILD_DIR/benchmark"
 
-# Detect alignment - FIX: Initialize with default value
-ALIGN=32
-if lscpu | grep -q amx; then
-  ALIGN=128
-elif lscpu | grep -q avx512; then
-  ALIGN=64
-elif lscpu | grep -q avx2; then
-  ALIGN=32
-elif lscpu | grep -q sse2; then
-  ALIGN=16
-fi
+source build_utils.sh
+
+COMPILER=$(get_compiler)
+FLAGS=$(get_flags)
+ALIGN=$(get_alignment)
+MODULE_FLAG=$(get_module_flag $BUILD_DIR)
 
 echo "Detected alignment: $ALIGN"
-
-# Detect compiler and flags
-if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -fopenmp-target-do-concurrent -qopt-report -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  MODULE_FLAG="-module $BUILD_DIR"
-  COMPILER="ifx"
-elif [[ "$FC" == "nvfortran" ]]; then
-  FLAGS="-O2 -Mconcur -Mstack_arrays -fPIC -fopenmp -stdpar=multicore"
-  MODULE_FLAG="-module $BUILD_DIR"
-  COMPILER="nvfortran"
-else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
-  MODULE_FLAG="-J$BUILD_DIR"
-  COMPILER="gfortran"
-fi
-
 echo "Compiling src/"
 bash build.sh
+check_exit_code "Build failed"
+
+check_build parallelization_experiment.mod
+check_exit_code "Missing module"
 
 echo "Using compiler: $COMPILER"
 
@@ -53,19 +36,16 @@ if [ -e "$EXECUTABLE" ]; then
   rm -rf "$EXECUTABLE"
 fi
 
-echo "Compiling test modules..."
-# Then compile test/ modules using .mod files from build/
+echo "Compiling modules..."
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
   -I$BUILD_DIR -c $SOURCE_DIR/*.[fF]90
-
-compilation_result=$?
-echo "Test compilation exit code: $compilation_result"
-
 
 # Move object files to build/
 mv *.o $BUILD_DIR/ 2>/dev/null || true
 mv *.mod $BUILD_DIR/ 2>/dev/null || true
 
+check_build "*parallelization_experiment*.o" "*benchmark*.o" "*benchmark*.o"
+check_exit_code "Module compilation failed"
 
 echo "Linking executable..."
 # Finally link everything together
@@ -73,8 +53,13 @@ $COMPILER $FLAGS -I$BUILD_DIR \
   $BUILD_DIR/*parallelization_experiment*.o \
   $BUILD_DIR/*benchmark*.o -o $EXECUTABLE
 
-linking_result=$?
-echo "Linking exit code: $linking_result"
+check_exit_code "Executable compilation failed"
+
+for arg in "$@"; do
+  if [[ "$arg" == "norun" ]]; then
+    exit
+  fi
+done
 
 echo "Running benchmark..."
 # Run the executable

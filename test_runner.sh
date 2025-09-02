@@ -5,36 +5,17 @@ TEST_DIR="test"
 BUILD_DIR="build"
 EXECUTABLE="$BUILD_DIR/run_tests"
 
-# Detect alignment - FIX: Initialize with default value
-ALIGN=32
-if lscpu | grep -q amx; then
-  ALIGN=128
-elif lscpu | grep -q avx512; then
-  ALIGN=64
-elif lscpu | grep -q avx2; then
-  ALIGN=32
-elif lscpu | grep -q sse2; then
-  ALIGN=16
-fi
+source build_utils.sh
+
+COMPILER=$(get_compiler)
+FLAGS=$(get_flags)
+ALIGN=$(get_alignment)
+MODULE_FLAG=$(get_module_flag $BUILD_DIR)
 
 echo "Detected alignment: $ALIGN"
-
-# Detect compiler and flags
-if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  MODULE_FLAG="-module $BUILD_DIR"
-  COMPILER="ifx"
-elif [[ "$FC" == "nvfortran" ]]; then
-  FLAGS="-O2 -Mconcur -Mstack_arrays -fPIC -fopenmp -stdpar=multicore"
-  COMPILER="nvfortran"
-else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
-  MODULE_FLAG="-J$BUILD_DIR"
-  COMPILER="gfortran"
-fi
-
 echo "Compiling src/"
-bash build.sh 
+bash build.sh
+check_exit_code "Build failed"
 
 echo "Using compiler: $COMPILER"
 
@@ -56,16 +37,15 @@ fi
 echo "Compiling test modules..."
 # Then compile test/ modules using .mod files from build/
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
-  -I$BUILD_DIR -I$SOURCE_DIR -I$TEST_DIR \
+  -I$BUILD_DIR \
   -c $TEST_DIR/*.f90
-
-compilation_result=$?
-echo "Test compilation exit code: $compilation_result"
-
 
 # Move object files to build/
 mv *.o $BUILD_DIR/ 2>/dev/null || true
 mv *.mod $BUILD_DIR/ 2>/dev/null || true
+
+check_build "*.o" "*.mod"
+check_exit_code "Module compilation failed"
 
 
 echo "Linking executable..."
@@ -73,8 +53,7 @@ echo "Linking executable..."
 $COMPILER $FLAGS -I$BUILD_DIR \
   $BUILD_DIR/*.o -o $EXECUTABLE
 
-linking_result=$?
-echo "Linking exit code: $linking_result"
+check_exit_code "Executable compilation failed"
 
 echo "Running tests..."
 # Run the executable
