@@ -13,9 +13,45 @@ module asserts
   public :: assert_sorted_real, assert_same_shape, assert_string_equal
   public :: assert_string_contains, assert_allclose_array_real
   public :: assert_sum_equal, assert_unique_int, assert_permutation
-  public :: assert_equal_complex
+  public :: assert_equal_complex, assert_not_equal_complex, assert_equal_array_complex
 
 contains
+
+  !> Assert that two complex numbers are equal within a tolerance.
+  subroutine assert_equal_complex(a, b, tol, msg)
+    complex(real64), intent(in) :: a, b
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (abs(a - b) > tol) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), &
+           " (got ", a, ", expected ", b, ", tol=", tol, ")"
+      stop 1
+    end if
+  end subroutine
+
+  !> Assert that two complex numbers are not equal within a tolerance.
+  subroutine assert_not_equal_complex(a, b, tol, msg)
+    complex(real64), intent(in) :: a, b
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (abs(a - b) <= tol) then
+      write(error_unit,*) "ASSERTION FAILED (should not be equal): ", trim(msg)
+      stop 1
+    end if
+  end subroutine
+
+  !> Assert that two complex arrays are equal within a tolerance.
+  subroutine assert_equal_array_complex(a, b, n, tol, msg)
+    complex(real64), intent(in) :: a(n), b(n)
+    integer, intent(in) :: n
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (any(abs(a - b) > tol)) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), &
+           " (complex arrays differ, tol=", tol, ")"
+      stop 1
+    end if
+  end subroutine
 
   !> Assert that a logical condition is true.
   subroutine assert_true(cond, msg)
@@ -159,18 +195,6 @@ contains
       end if
     end do
   end subroutine
-
-    !> Assert that two complex numbers are equal within a tolerance.
-  subroutine assert_equal_complex(a, b, tol, msg)
-      complex(real64), intent(in) :: a, b
-      real(real64), intent(in) :: tol
-      character(*), intent(in) :: msg
-      if (abs(real(a) - real(b)) > tol .or. abs(aimag(a) - aimag(b)) > tol) then
-          write(error_unit,*) "ASSERTION FAILED: ", trim(msg), &
-          " (got (", real(a), ",", aimag(a), "), expected (", real(b), ",", aimag(b), "), tol=", tol, ")"
-          stop 1
-      end if
-  end subroutine assert_equal_complex
 
   !> Assert that a real array is sorted in non-decreasing order.
   subroutine assert_sorted_real(arr, n, msg)

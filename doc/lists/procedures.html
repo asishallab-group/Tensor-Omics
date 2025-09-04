@@ -1,0 +1,628 @@
+<!-- -*- mode: jinja2 -*- -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="TensorOmics Developers" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>All Procedures &ndash; TensorOmics
+</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Font Awesome -->
+    <link href="../css/fontawesome.min.css" rel="stylesheet">
+    <link href="../css/brands.min.css" rel="stylesheet">
+    <link href="../css/regular.min.css" rel="stylesheet">
+    <link href="../css/solid.min.css" rel="stylesheet">
+    <link href="../css/v4-font-face.min.css" rel="stylesheet">
+    <link href="../css/v4-shims.min.css" rel="stylesheet">
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { equationNumbers: { autoNumber: "AMS" } }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML" async
+            integrity="sha256-DViIOMYdwlM/axqoGDPeUyf0urLoHMN4QACBKyB58Uw=" crossorigin="anonymous"></script>
+    <!-- Other scripts and stylesheets -->
+    <link href="../css/local.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <script src="../js/svg-pan-zoom.min.js"></script>
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <div class="container-fluid mb-sm-4 mb-xl-2">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
+                  aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon">
+          </button>
+
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="../lists/files.html">Source Files</a>
+                  </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/modules.html">Modules</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/procedures.html">Procedures</a>
+                </li>
+            </ul>
+              <div class="d-flex align-items-end flex-grow-1">
+                <form action="../search.html" role="search" class="ms-auto">
+                  <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+                </form>
+              </div>
+          </div><!--/.nav-collapse -->
+        </div>
+      </nav>
+    </div>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12" id='text'>
+			 <h1>Procedures</h1>
+			 <table class="table table-striped">
+			 <thead><tr><th>Procedure</th><th>Location</th><th>Procedure Type</th><th>Description</th></tr></thead>
+			 <tbody>
+			   <tr>
+                 <td><a href='../proc/c_char_1d_as_string.html'>c_char_1d_as_string</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 1D c_char array to string</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_char_2d_as_string.html'>c_char_2d_as_string</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 2D c_char array to 1D string array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_char_as_char.html'>c_char_as_char</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_char value to fortran character, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_complex_as_complex.html'>c_complex_as_complex</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_double_complex value to fortran complex(real64), elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_double_as_real64.html'>c_double_as_real64</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_double value to real64, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_int_as_int32.html'>c_int_as_int32</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_int value to int32, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_int_as_logical.html'>c_int_as_logical</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_int value to logical, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_fchange.html'>calc_fchange</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate <code>log2 fold changes</code> between condition and control columns.
+For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
+by subtracting the expression value in the control column from the corresponding
+value in the condition column, for all genes.</p><a href="../proc/calc_fchange.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_fchange_c.html'>calc_fchange_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for fold change calculation.
+Provides a C/Python-compatible interface to the fold change calculation routine.
+Suitable for use with ctypes. Computes log2 fold changes between condition and control columns for all genes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_fchange_r.html'>calc_fchange_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for fold change calculation.
+Provides an interface for R (.Fortran) and Fortran code to call the fold change calculation routine.
+Computes log2 fold changes between condition and control columns for all genes. Arguments match R's .Fortran calling convention.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg.html'>calc_tiss_avg</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate tissue averages by averaging replicates within each group.
+For each group of tissue replicates, this subroutine computes the average
+expression per gene. The input matrix is column-major, flattened as a 1D array.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg_c.html'>calc_tiss_avg_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for tissue average calculation.
+Provides a C/Python-compatible interface to the tissue average calculation routine.
+Suitable for use with ctypes. Computes average expression per gene for each group of tissue replicates.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg_r.html'>calc_tiss_avg_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for tissue average calculation.
+Provides an interface for R (.Fortran) and Fortran code to call the tissue average calculation routine.
+Computes average expression per gene for each group of tissue replicates. Arguments match R's .Fortran calling convention.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/char_as_c_char.html'>char_as_c_char</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a character value to c_char, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/complex_as_c_complex.html'>complex_as_c_complex</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a fortran complex(real64) value to c_double_complex, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling.html'>compute_family_scaling</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute family scaling factors (dscale) to normalize distances.
+Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_alloc.html'>compute_family_scaling_alloc</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper routine that allocates internal arrays and calls compute_family_scaling.
+This makes usage easier since users don't need to care about internal array requirements.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_c.html'>compute_family_scaling_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_family_scaling (main version with automatic allocation).
+Calls compute_family_scaling_alloc with C-compatible types for external interface.
+This is the recommended version for most users as it handles memory allocation automatically.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_expert_c.html'>compute_family_scaling_expert_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+Calls compute_family_scaling with C-compatible types for external interface.
+This version requires pre-allocated work arrays for maximum performance and control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_expert_r.html'>compute_family_scaling_expert_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+Calls compute_family_scaling with standard Fortran types for R interface.
+This version requires pre-allocated work arrays for maximum performance and control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_r.html'>compute_family_scaling_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_family_scaling (main version with automatic allocation).
+Calls compute_family_scaling_alloc with standard Fortran types for R interface.
+This is the recommended version for most users as it handles memory allocation automatically.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi.html'>compute_rdi</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the hybrid RDI for each gene.
+RDI = Euclidean distance / family scaling factor</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi_c.html'>compute_rdi_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_rdi.
+Calls compute_rdi with C-compatible types for external interface.
+Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi_r.html'>compute_rdi_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_rdi.
+Calls compute_rdi with standard Fortran types for R interface.
+Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a></td>
+                 <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the shift vector field for all genes.
+Computes the shift vectors by substracting the corresponding family centroid from the expression vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field_c.html'>compute_shift_vector_field_c</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors.f90.html'>tox_shift_vectors.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for <code>compute_shift_vector_field</code>.
+Exposes <code>compute_shift_vector_field</code> to C via iso_c_binding types with explicit dimensions.
+When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field_r.html'>compute_shift_vector_field_r</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors.f90.html'>tox_shift_vectors.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for <code>compute_shift_vector_field</code>
+Calls <code>compute_shift_vector_field</code> with standard Fortran types for R interface.
+When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs..</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility.html'>compute_tissue_versatility</a></td>
+                 <td><a href='../module/avmod.html'>avmod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Computes normalized tissue versatility for selected expression vectors.
+The metric is based on the angle between each gene expression vector and the space diagonal.
+Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility_c.html'>compute_tissue_versatility_c</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_tissue_versatility.
+Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility_r.html'>compute_tissue_versatility_r</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_tissue_versatility.
+Calls compute_tissue_versatility with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers.html'>detect_outliers</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Main routine to detect outliers using RDI and LOESS-based scaling.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_c.html'>detect_outliers_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for detect_outliers.
+Calls detect_outliers with C-compatible types for external interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_r.html'>detect_outliers_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for detect_outliers.
+Calls detect_outliers with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid.html'>distance_to_centroid</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute distance from each gene to its corresponding family centroid.
+For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid_c.html'>distance_to_centroid_c</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for distance_to_centroid.
+Exposes distance_to_centroid to C via iso_c_binding types.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid_r.html'>distance_to_centroid_r</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for distance_to_centroid.
+Calls distance_to_centroid with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance.html'>euclidean_distance</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the Euclidean distance between two vectors.
+Calculates the L2 norm: result = sqrt(sum((vec1_i - vec2_i)^2))</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance_c.html'>euclidean_distance_c</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for euclidean_distance.
+Exposes euclidean_distance to C via iso_c_binding types.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance_r.html'>euclidean_distance_r</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for euclidean_distance.
+Calls euclidean_distance with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers.html'>identify_outliers</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Identify gene outliers based on the top percentile of RDI values.
+Expects sorted_rdi to be filtered (no negative values) and sorted in ascending order before calling.
+If sorted_rdi contains negatives or is not sorted, results may be invalid.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers_c.html'>identify_outliers_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for identify_outliers.
+Calls identify_outliers with C-compatible types for external interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers_r.html'>identify_outliers_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for identify_outliers.
+Calls identify_outliers with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/int32_as_c_int.html'>int32_as_c_int</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a int32 value to c_int, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_err.html'>is_err</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>check if the error code indicates error</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_ok.html'>is_ok</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>check if the error code indicates success</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d.html'>loess_smooth_2d</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Performs LOESS smoothing on a set of data points.
+Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
+The user must pre-filter data and provide only valid indices in indices_used.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d_c.html'>loess_smooth_2d_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for loess_smooth_2d.
+Direct wrapper - user must pre-filter indices in C before calling.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d_r.html'>loess_smooth_2d_r</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for loess_smooth_2d.
+Direct wrapper - user must pre-filter indices in R before calling.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation.html'>log2_transformation</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
+This subroutine performs element-wise <code>log2(x + 1)</code> transformation on a
+matrix flattened in column-major order. The <code>log2</code> is computed via:
+<code>log(x + 1) / log(2)</code>, which is numerically equivalent and avoids the
+non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation_c.html'>log2_transformation_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for log2 transformation.
+Provides a C/Python-compatible interface to the log2 transformation routine.
+Expects flat arrays, matching C calling conventions. Suitable for use with ctypes.
+Applies log2(x+1) to each element of the input matrix.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation_r.html'>log2_transformation_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for log2 transformation.
+Provides an interface for R (.Fortran) and Fortran code to call the log2 transformation routine.
+Applies log2(x+1) to each element of the input matrix. Arguments match R's .Fortran calling convention and expect flat arrays.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/logical_as_c_int.html'>logical_as_c_int</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a logical value to c_int, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev.html'>normalize_by_std_dev</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
+across tissues (not classical standard deviation).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev_c.html'>normalize_by_std_dev_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for normalization by standard deviation.
+Provides a C/Python-compatible interface to the normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev_r.html'>normalize_by_std_dev_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for normalization by standard deviation.
+Provides an interface for R (.Fortran) and Fortran code to call the normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization.html'>quantile_normalization</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Quantile normalization of a gene expression matrix (F42-compliant).
+Computes average expression per rank across tissues.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization_c.html'>quantile_normalization_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for quantile normalization.
+Provides a C/Python-compatible interface to the quantile normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization_r.html'>quantile_normalization_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for quantile normalization.
+Provides an interface for R (.Fortran) and Fortran code to call the quantile normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_char.html'>quicksort_char</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for character arrays.
+Lexicographic quicksort using string comparison, indirect via <code>perm</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_int.html'>quicksort_int</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for integer arrays.
+Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <code>quicksort_real</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_real.html'>quicksort_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for real arrays.
+Sorts indirectly using the permutation vector <code>perm</code>. Manual stack replaces recursion.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/real64_as_c_double.html'>real64_as_c_double</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a real64 value to c_double, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_err.html'>set_err</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code to specific code</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_err_once.html'>set_err_once</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code only if it is currently OK, use to prevent overwriting first error</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_ok.html'>set_ok</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code to OK, use at beginning of procedures</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/sort_array.html'>sort_array</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_character.html'>sort_character</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a character array indirectly using quicksort.
+Uses lexicographic ordering and permutation vector sorting.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_integer.html'>sort_integer</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort an integer array indirectly using quicksort.
+Similar to <code>sort_real</code>, but for integer input.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_real.html'>sort_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a real array indirectly using quicksort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a string to 1D c_char array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/string_as_c_char_2d.html'>string_as_c_char_2d</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 1D string array to 2D c_char array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/swap_int.html'>swap_int</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Swap two integer values in-place.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/which.html'>which</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Finds the indices of the true values in a logical mask.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/which_c.html'>which_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for which.
+Converts integer mask to logical and calls which.</p></td>
+               </tr>
+			 </tbody></table>
+             
+        </div>
+      </div>
+      <hr>
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+        <div class="row justify-content-between">
+          <div class="col">
+            <p>
+              TensorOmics
+ was developed by TensorOmics Developers<br>              &copy; 2025 
+</p>
+          </div>
+          <div class="col">
+            <p class="text-end">
+              Documentation generated by
+              <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
+ on "2025-09-03 14:21 +0000"             </p>
+          </div>
+        </div>
+        <br>
+      </div> <!-- /container -->
+    </footer>
+  </body>
+</html>

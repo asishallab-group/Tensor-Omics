@@ -1,0 +1,16 @@
+FROM archlinux:latest
+
+# Always update keyring first to avoid verification failures
+RUN pacman -Sy --noconfirm archlinux-keyring && \
+    pacman -Syu --noconfirm && \
+    pacman -S --noconfirm gcc-fortran && \
+    pacman -Scc --noconfirm
+
+# Install fpm binary
+RUN curl -L --output /usr/local/bin/fpm \
+  https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12 && \
+  chmod a+x /usr/local/bin/fpm
+
+WORKDIR /opt
+
+CMD ["/bin/bash"]

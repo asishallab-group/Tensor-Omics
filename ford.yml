@@ -1,0 +1,5 @@
+project: TensorOmics
+output_dir: doc
+author: TensorOmics Developers
+print_creation_date: true
+creation_date: "%Y-%m-%d %H:%M %z"

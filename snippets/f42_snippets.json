@@ -1,0 +1,241 @@
+
+{
+  "Parallel Loop": {
+    "prefix": "f42:do-parallel",
+    "body": [
+      "integer :: ${1:i}",
+      "integer :: ${2:N}",
+      "integer :: start_${1:i}, end_${1:i}",
+      "",
+      "${2:N} = ${3:10}",
+      "",
+      "! ----------------------",
+      "! START OF PARALLEL LOOP",
+      "! ----------------------",
+      "#ifdef USE_COARRAY",
+      "  start_${1:i} = (this_image() - 1) * ${2:N} / num_images() + 1",
+      "  end_${1:i}   = min(this_image() * ${2:N} / num_images(), ${2:N})",
+      "  do ${1:i} = start_${1:i}, end_${1:i}",
+      "",
+      "#elif defined(USE_OPENMP)",
+      "  !$$omp parallel do private(${1:i})",
+      "  do ${1:i} = 1, ${2:N}",
+      "",
+      "#else",
+      "  do ${1:i} = 1, ${2:N}",
+      "#endif",
+      "",
+      "! BODY OF THE PARALLEL LOOP",
+      "! -----------------------------",
+      "    ${4:! Your code here}",
+      "! -----------------------------",
+      "! END BODY OF THE PARALLEL LOOP",
+      "",
+      "  end do",
+      "",
+      "#ifdef USE_COARRAY",
+      "  sync all",
+      "#endif",
+      "",
+      "#ifdef USE_OPENMP",
+      "  !$$omp end parallel do",
+      "#endif",
+      "! --------------------",
+      "! END OF PARALLEL LOOP",
+      "! --------------------",
+      "$0"
+    ],
+    "description": "Unified parallel loop for Coarray, OpenMP, or serial fallback with tab stops"
+  },
+  "Fortran call to sort_array": {
+    "prefix": "f42:sort_array",
+    "body": [
+      "! Fortran sort - automatically selects implementation based on data type",
+      "call sort_array(array, perm, stack_left, stack_right)"
+    ],
+    "description": "Generic interface that resolves to appropriate sort function"
+  },
+  "Fortran call to which": {
+    "prefix": "f42:which",
+    "body": [
+      "! Fortran call to which subroutine",
+      "call which(mask, n, idx_out, m_max, m_out)"
+    ],
+    "description": "Call which subroutine in Fortran (logical mask, returns indices and count)"
+  },
+  "Python call to which": {
+    "prefix": "f42:py_which",
+    "body": [
+	  "lib.which_c.argtypes = [",
+      "    ctypes.POINTER(ctypes.c_int32), # mask",
+	  "    ctypes.c_int32,                 # n",
+      "    ctypes.POINTER(ctypes.c_int32), # idx_out",
+      "    ctypes.c_int32,                 # m_max",
+      "    ctypes.POINTER(ctypes.c_int32)  # m_out",
+      "]",
+      "lib.which_c.restype = None",
+      "lib.which_c(mask, n, idx_out, m_max, m_out)"
+    ],
+    "description": "Call which utility in Python (Fortran-compatible, uses ctypes to call Fortran subroutine)"
+  },
+  "Fortran call to loess_smooth_2d": {
+    "prefix": "f42:loess",
+    "body": [
+      "! Fortran call to loess_smooth_2d",
+      "call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, & ",
+      "                   kernel_sigma, kernel_cutoff, y_out)"
+    ],
+    "description": "Call loess_smooth_2d subroutine in Fortran"
+  },
+  "R call to loess_smooth_2d_r": {
+    "prefix": "f42:R_loess",
+    "body": [
+      "result <- .Fortran(\"loess_smooth_2d_r\",",
+      "  n_total = as.integer(${1:n_total}),",
+      "  n_target = as.integer(${2:n_target}),",
+      "  x_ref = as.double(${3:x_ref}),",
+      "  y_ref = as.double(${4:y_ref}),",
+      "  indices_used = as.integer(${5:indices_used}),",
+      "  n_used = as.integer(${6:n_used}),",
+      "  x_query = as.double(${7:x_query}),",
+      "  kernel_sigma = as.double(${8:kernel_sigma}),",
+      "  kernel_cutoff = as.double(${9:kernel_cutoff}),",
+      "  y_out = as.double(${10:y_out}),"
+    ],
+    "description": "Call loess_smooth_2d_r Fortran function from R"
+  },
+  "Python call to loess_smooth_2d_c": {
+    "prefix": "f42:py_loess",
+    "body": [
+	  "lib.loess_smooth_2d_c.argtypes = [",
+      "    ctypes.c_int, # n_total",
+	  "    ctypes.c_int, # n_target",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'), # x_ref",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'), # y_ref",
+      "    np.ctypeslib.ndpointer(dtype=np.int32, flags='C_CONTIGUOUS'), # indices_used",
+      "    ctypes.c_int,  # n_used",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'), # x_query",
+      "    ctypes.c_double, # kernel_sigma",
+	  "    ctypes.c_double, # kernel_cutoff",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'), # y_out",
+      "]",
+      "lib.loess_smooth_2d_c.restype = None",
+      "lib.loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, ",
+      "                   kernel_sigma, kernel_cutoff, y_out)"
+
+    ],
+    "description": "Call loess_smooth_2d_c from Python using ctypes"
+  },
+
+  "Convert c_double to real64": {
+    "prefix": "f42:c_double_as_real64",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_double_as_real64(${1:c_val}, ${2:f_val})"
+    ]
+  },
+
+  "Convert real64 to c_double": {
+    "prefix": "f42:real64_as_c_double",
+    "body":  [
+      "! Convert to fortran type",
+      "call real64_as_c_double(${1:f_val}, ${2:c_val})"
+    ]
+  },
+
+  "Convert c_complex to complex": {
+    "prefix": "f42:c_complex_as_complex",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_complex_as_complex(${1:c_val}, ${2:f_val})"
+    ]
+  },
+
+  "Convert complex to c_complex": {
+    "prefix": "f42:complex_as_c_complex",
+    "body":  [
+      "! Convert to fortran type",
+      "call complex_as_c_complex(${1:f_val}, ${2:c_val})"
+    ]
+  },
+
+  "Convert c_int to int32": {
+    "prefix": "f42:c_int_as_int32",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_int_as_int32(${1:c_val}, ${2:f_val})"
+    ]
+  },
+
+  "Convert int32 to c_int": {
+    "prefix": "f42:int32_as_c_int",
+    "body":  [
+      "! Convert to fortran type",
+      "call int32_as_c_int(${1:f_val}, ${2:c_val})"
+    ]
+  },
+
+  "Convert c_int to logical": {
+    "prefix": "f42:c_int_as_logical",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_int_as_logical(${1:c_val}, ${2:f_val})"
+    ]
+  },
+
+  "Convert logical to c_int": {
+    "prefix": "f42:logical_as_c_int",
+    "body":  [
+      "! Convert to fortran type",
+      "call logical_as_c_int(${1:f_val}, ${2:c_val})"
+    ]
+  },
+
+  "Convert c_char to char": {
+    "prefix": "f42:c_char_as_char",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_char_as_char(${1:c_val}, ${2:f_val})"
+    ]
+  },
+
+  "Convert char to c_char": {
+    "prefix": "f42:char_as_c_char",
+    "body":  [
+      "! Convert to fortran type",
+      "call char_as_c_char(${1:f_val}, ${2:c_val})"
+    ]
+  },
+
+  "Convert c_char_1d to string": {
+    "prefix": "f42:c_char_1d_as_string",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_char_1d_as_string(${1:c_char_array}, ${2:str_out})"
+    ]
+  },
+
+  "Convert string to c_char_1d": {
+    "prefix": "f42:string_as_c_char_1d",
+    "body":  [
+      "! Convert to fortran type",
+      "call string_as_c_char_1d(${1:str}, ${2:c_char_array})"
+    ]
+  },
+
+  "Convert c_char_2d to string": {
+    "prefix": "f42:c_char_2d_as_string",
+    "body":  [
+      "! Convert to fortran type",
+      "call c_char_2d_as_string(${1:c_char_array}, ${2:str_out})"
+    ]
+  },
+
+  "Convert string to c_char_2d": {
+    "prefix": "f42:string_as_c_char_2d",
+    "body":  [
+      "! Convert to fortran type",
+      "call string_as_c_char_2d(${1:strings}, ${2:c_char_array})"
+    ]
+  }
+}
