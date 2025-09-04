@@ -14,17 +14,19 @@ module tox_errors
   !------------------------------
   integer(int32), parameter :: ERR_FILE_OPEN          = 101   
     !! could not open file
-  integer(int32), parameter :: ERR_READ_MAGIC         = 102
+  integer(int32), parameter :: ERR_FILE_EMPTY         = 102
+    !! file is empty
+  integer(int32), parameter :: ERR_READ_MAGIC         = 103
     !! could not read magic number
-  integer(int32), parameter :: ERR_READ_TYPE          = 103   
+  integer(int32), parameter :: ERR_READ_TYPE          = 104   
     !! could not read array type code
-  integer(int32), parameter :: ERR_READ_NDIMS         = 104   
+  integer(int32), parameter :: ERR_READ_NDIMS         = 105
     !! could not read number of dimensions
-  integer(int32), parameter :: ERR_READ_DIMS          = 105  
+  integer(int32), parameter :: ERR_READ_DIMS          = 106
     !! could not read array dimensions
-  integer(int32), parameter :: ERR_READ_CHARLEN       = 106
+  integer(int32), parameter :: ERR_READ_CHARLEN       = 107
     !! could not read character length
-  integer(int32), parameter :: ERR_READ_DATA          = 107   
+  integer(int32), parameter :: ERR_READ_DATA          = 108
     !! could not read array data
   integer(int32), parameter :: ERR_WRITE_MAGIC        = 112
     !! could not write magic number

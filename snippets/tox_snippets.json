@@ -730,50 +730,50 @@
   "tox:set_could_not_read_magic": {
     "prefix": "tox:set_could_not_read_magic",
     "body": [
-      "! Set error code to 102 (Could not read magic number)",
+      "! Set error code to 103 (Could not read magic number)",
       "call set_err_once(ierr, ERR_READ_MAGIC)"
     ],
-    "description": "Set error code to 102 (Could not read magic number)"
+    "description": "Set error code to 103 (Could not read magic number)"
   },
   "tox:set_could_not_read_type_code": {
     "prefix": "tox:set_could_not_read_type_code",
     "body": [
-      "! Set error code to 103 (Could not read type code)",
+      "! Set error code to 104 (Could not read type code)",
       "call set_err_once(ierr, ERR_READ_TYPE)"
     ],
-    "description": "Set error code to 103 (Could not read type code)"
+    "description": "Set error code to 104 (Could not read type code)"
   },
   "tox:set_could_not_read_ndims": {
     "prefix": "tox:set_could_not_read_ndims",
     "body": [
-      "! Set error code to 104 (Could not read number of dimensions)",
+      "! Set error code to 105 (Could not read number of dimensions)",
       "call set_err_once(ierr, ERR_READ_NDIMS)"
     ],
-    "description": "Set error code to 104 (Could not read number of dimensions)"
+    "description": "Set error code to 105 (Could not read number of dimensions)"
   },
   "tox:set_could_not_read_dims": {
     "prefix": "tox:set_could_not_read_dims",
     "body": [
-      "! Set error code to 105 (Could not read array dimensions)",
+      "! Set error code to 106 (Could not read array dimensions)",
       "call set_err_once(ierr, ERR_READ_DIMS)"
     ],
-    "description": "Set error code to 105 (Could not read array dimensions)"
+    "description": "Set error code to 106 (Could not read array dimensions)"
   },
   "tox:set_could_not_read_charlen": {
     "prefix": "tox:set_could_not_read_charlen",
     "body": [
-      "! Set error code to 106 (Could not read character length)",
+      "! Set error code to 107 (Could not read character length)",
       "call set_err_once(ierr, ERR_READ_CHARLEN)"
     ],
-    "description": "Set error code to 106 (Could not read character length)"
+    "description": "Set error code to 107 (Could not read character length)"
   },
   "tox:set_could_not_read_data": {
     "prefix": "tox:set_could_not_read_data",
     "body": [
-      "! Set error code to 107 (Could not read array data)",
+      "! Set error code to 108 (Could not read array data)",
       "call set_err_once(ierr, ERR_READ_DATA)"
     ],
-    "description": "Set error code to 107 (Could not read array data)"
+    "description": "Set error code to 108 (Could not read array data)"
   },
   "tox:set_invalid_format": {
     "prefix": "tox:set_invalid_format",
@@ -871,12 +871,13 @@
       "  msg <- switch(as.character(ierr),",
       "    # I/O errors",
       "    '101' = \"Could not open file.\",",
-      "    '102' = \"Could not read magic number.\",",
-      "    '103' = \"Could not read type code.\",",
-      "    '104' = \"Could not read number of dimensions.\",",
-      "    '105' = \"Could not read array dimensions\",",
-      "    '106' = \"Could not read character length.\",",
-      "    '107' = \"Could not read array data.\",",
+      "    '102' = \"File is empty.\",",
+      "    '103' = \"Could not read magic number.\",",
+      "    '104' = \"Could not read type code.\",",
+      "    '105' = \"Could not read number of dimensions.\",",
+      "    '106' = \"Could not read array dimensions\",",
+      "    '107' = \"Could not read character length.\",",
+      "    '108' = \"Could not read array data.\",",
       "    # ADD MORE HERE",
       "    ",
       "    # FORMAT ERRORS",
@@ -913,12 +914,13 @@
       "    msg = {",
       "        # I/O errors",
       "        101: \"Could not open file.\",",
-      "        102: \"Could not read magic number.\",",
-      "        103: \"Could not read type code.\",",
-      "        104: \"Could not read number of dimensions.\",",
-      "        105: \"Could not read array dimensions.\",",
-      "        106: \"Could not read character length.\",",
-      "        107: \"Could not read array data.\",",
+      "        102: \"File is empty.\",",
+      "        103: \"Could not read magic number.\",",
+      "        104: \"Could not read type code.\",",
+      "        105: \"Could not read number of dimensions.\",",
+      "        106: \"Could not read array dimensions.\",",
+      "        107: \"Could not read character length.\",",
+      "        108: \"Could not read array data.\",",
       "",
       "        # FORMAT ERRORS",
       "        200: \"Invalid format detected.\",",
