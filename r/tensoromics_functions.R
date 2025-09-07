@@ -1,6 +1,6 @@
 # === Load the shared library ===
-dyn.load("build/libtensor-omics.so")
-
+# dyn.load("build/libtensor-omics.so")
+dyn.load("/mnt/datos/Documentos/tensor_omics/check_code/tensor-omics/build/libtensor-omics.so")
 #' Check error code and throw informative error if needed
 #' 
 #' @param ierr Error code from Fortran routine
