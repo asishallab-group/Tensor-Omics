@@ -85,7 +85,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for procedures.">14 statements</a>
+                 title=" 1.0% of total for procedures.">15 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -145,7 +145,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack)  
+    <h2> subroutine quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -178,7 +178,7 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -193,7 +193,7 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~6"></span>
+              <span class="anchor" id="variable-n_tissues~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -208,7 +208,7 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~7"></span>
+              <span class="anchor" id="variable-input_matrix~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -238,10 +238,10 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_col~2"></span>
+              <span class="anchor" id="variable-temp_col~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -253,10 +253,10 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rank_means~2"></span>
+              <span class="anchor" id="variable-rank_means~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -268,10 +268,10 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~14"></span>
+              <span class="anchor" id="variable-perm~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -283,10 +283,10 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~14"></span>
+              <span class="anchor" id="variable-stack_left~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -298,10 +298,10 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~14"></span>
+              <span class="anchor" id="variable-stack_right~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -313,7 +313,7 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_stack~2"></span>
+              <span class="anchor" id="variable-max_stack~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -324,6 +324,21 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
             <td><strong>max_stack</strong></td>
             <td>
                 <p>Stack size for sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -360,7 +375,7 @@ Provides an interface for R (.Fortran) and Fortran code to call the quantile nor
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-09-04 16:16 +0000"             </p>
+ on "2025-09-04 16:56 +0000"             </p>
           </div>
         </div>
         <br>

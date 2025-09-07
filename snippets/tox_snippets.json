@@ -19,7 +19,7 @@
       "prefix": "tox:norm_by_std_dev",
       "body": [
         "! Normalize expression values using sqrt(mean(x^2)) across tissues",
-        "call normalize_by_std_dev_r(n_genes, n_tissues, input_matrix, output_matrix)"
+        "call normalize_by_std_dev_r(n_genes, n_tissues, input_matrix, output_matrix, ierr)"
       ],
       "description": "Invoke normalization by standard deviation"
     },
@@ -29,7 +29,7 @@
       "body": [
         "! Quantile normalization - makes distributions identical across tissues",
         "call quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, &",
-        "                           temp_col, rank_means, perm, stack_left, stack_right, max_stack)"
+        "                           temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)"
       ],
       "description": "Invoke quantile normalization with rank averaging"
     },
@@ -38,7 +38,7 @@
       "prefix": "tox:norm_log2_trans",
       "body": [
         "! Apply log2(x + 1) transformation to stabilize variance",
-        "call log2_transformation_r(n_genes, n_tissues, input_matrix, output_matrix)"
+        "call log2_transformation_r(n_genes, n_tissues, input_matrix, output_matrix, ierr)"
       ],
       "description": "Apply log2(x + 1) transformation to expression data"
     },
@@ -47,7 +47,7 @@
       "prefix": "tox:norm_tiss_avg",
       "body": [
         "! Calculate tissue averages by grouping replicates",
-        "call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix)"
+        "call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)"
       ],
       "description": "Calculate average expression per tissue group from replicates"
     },
@@ -56,7 +56,7 @@
     "prefix": "tox:norm_fchange",
     "body": [
       "! Calculate log2 fold changes between condition and control pairs",
-      "call calc_fchange_r(n_genes, n_pairs, control_cols, cond_cols, i_matrix, o_matrix)"
+      "call calc_fchange_r(n_genes, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)"
     ],
     "description": "Calculate log2 fold changes between condition-control pairs"
   },
@@ -133,7 +133,9 @@
     "                  as.integer(${1:n_genes}),",
     "                  as.integer(${2:n_tissues}),",
     "                  ${3:input_vector},",
-    "                  output_vector = numeric(length(${3:input_vector})))"
+    "                  output_vector = numeric(length(${3:input_vector})))",
+    "                  ierr = as.integer(0))"
+
     ],
     "description": "Call normalize_by_std_dev_r Fortran function from R"
   },
@@ -150,7 +152,8 @@
       "                  perm = as.integer(1:${1:n_genes}),",
       "                  stack_left = integer(max(2 * ${1:n_genes}, 2)),",
       "                  stack_right = integer(max(2 * ${1:n_genes}, 2)),",
-      "                  max_stack = as.integer(max(2 * ${1:n_genes}, 2)))"
+      "                  max_stack = as.integer(max(2 * ${1:n_genes}, 2)))",
+      "                  ierr = as.integer(0))"
     ],
     "description": "Call quantile_normalization_r Fortran function from R"
   },
@@ -162,7 +165,8 @@
     "                  as.integer(${1:n_genes}),",
     "                  as.integer(${2:n_tissues}),",
     "                  ${3:input_vector},",
-    "                  output_vector = numeric(length(${3:input_vector})))"
+    "                  output_vector = numeric(length(${3:input_vector})))",
+    "                  ierr = as.integer(0))"
     ],
     "description": "Call log2_transformation_r Fortran function from R"
   },
@@ -176,7 +180,8 @@
     "                  as.integer(${3:group_starts}),",
     "                  as.integer(${4:group_counts}),",
     "                  ${5:input_matrix},",
-    "                  output_matrix = numeric(${1:n_genes} * ${2:n_groups}))"
+    "                  output_matrix = numeric(${1:n_genes} * ${2:n_groups}))",
+    "                  ierr = as.integer(0))"
     ],
     "description": "Call calc_tiss_avg_r Fortran function from R"
   },
@@ -190,7 +195,8 @@
     "                  as.integer(${3:control_cols}),",
     "                  as.integer(${4:condition_cols}),",
     "                  ${5:input_matrix},",
-    "                  output_matrix = numeric(${1:n_genes} * ${2:n_pairs}))"
+    "                  output_matrix = numeric(${1:n_genes} * ${2:n_pairs}))",
+    "                  ierr = as.integer(0))"
     ],
     "description": "Call calc_fchange_r Fortran function from R"
   },
@@ -243,9 +249,10 @@
     "        ctypes.c_int, # n_tissues",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # input_matrix",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # output_matrix",
+    "        ctypes.POINTER(ctypes.c_int)  # ierr",
     "    ]",
     "    lib.normalize_by_std_dev_c.restype = None",
-    "    lib.normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix)"
+    "    lib.normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ctypes.byref(ierr))"
     ],
 
     "description": "Setup normalize_by_std_dev_c function binding"
@@ -264,10 +271,11 @@
     "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"), # perm",
     "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"), # stack_left",
     "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"), # stack_right",
-    "        ctypes.c_int, max_stack",
+    "        ctypes.c_int, # max_stack",
+    "        ctypes.POINTER(ctypes.c_int)  # ierr",
     "    ]",
     "    lib.quantile_normalization_c.restype = None",
-    "    lib.quantile_normalization_c(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack)"
+    "    lib.quantile_normalization_c(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ctypes.byref(ierr))"
     ],
     "description": "Setup quantile_normalization_c function binding"
   },
@@ -280,9 +288,10 @@
     "        ctypes.c_int, # n_tissues",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # input_matrix",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # output_matrix",
+    "        ctypes.POINTER(ctypes.c_int)  # ierr",
     "    ]",
     "    lib.log2_transformation_c.restype = None",
-    "    lib.log2_transformation_c(n_genes, n_tissues, input_matrix, output_matrix)"
+    "    lib.log2_transformation_c(n_genes, n_tissues, input_matrix, output_matrix, ctypes.byref(ierr))"
 
     ],
     "description": "Setup log2_transformation_c function binding"
@@ -298,9 +307,10 @@
     "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"), # group_c",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # input_matrix",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # output_matrix",
+    "        ctypes.POINTER(ctypes.c_int)  # ierr",
     "    ]",
     "    lib.calc_tiss_avg_c.restype = None",
-    "    lib.calc_tiss_avg_c(n_genes, n_grps, group_s, group_c, input_matrix, output_matrix)"
+    "    lib.calc_tiss_avg_c(n_genes, n_grps, group_s, group_c, input_matrix, output_matrix, ctypes.byref(ierr))"
 
     ],
     "description": "Setup calc_tiss_avg_c function binding"
@@ -317,9 +327,10 @@
     "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"), cond_cols",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), i_matrix",
     "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), o_matrix",
+    "        ctypes.POINTER(ctypes.c_int)  # ierr",
     "    ]",
     "    lib.calc_fchange_c.restype = None",
-    "    lib.calc_fchange_c(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix)"
+    "    lib.calc_fchange_c(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ctypes.byref(ierr))"
     ],
     "description": "Setup calc_fchange_c function binding"
   },
