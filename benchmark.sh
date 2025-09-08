@@ -51,7 +51,7 @@ echo "Linking executable..."
 # Finally link everything together
 $COMPILER $FLAGS -I$BUILD_DIR \
   $BUILD_DIR/*parallelization_experiment*.o \
-  $BUILD_DIR/*benchmark*.o -o $EXECUTABLE
+  $BUILD_DIR/*benchmark*.o $BUILD_DIR/*error_handling*.o $BUILD_DIR/*f42_utils*.o $BUILD_DIR/*tox_normalization*.o -o $EXECUTABLE
 
 check_exit_code "Executable compilation failed"
 
