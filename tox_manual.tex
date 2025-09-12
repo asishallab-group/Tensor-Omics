@@ -298,13 +298,167 @@ END PROGRAM tox_fortran_example
 
 \end{lstlisting}
 
-    \item \textbf{TODO Functions relating section 1.2 - 1.4}
+    \item \textbf{TODO Functions relating section 1.2 }
 
-    \item \textbf{TODO Normalize by Standard Deviation} 
+    \item \textbf{Normalization of Expression Values}
+
+    The subroutine runs a complete normalization pipeline on gene expression data. It first applies standard deviation normalization, then quantile normalization, 
+    followed by replicate averaging, and finally a log2 transformation. The result is returned in the \texttt{buf\_log} array, which contains the fully normalized 
+    expression values. Additionally intermediate results of the performed calculations are available in output buffer arrays.
+    Call the \texttt{normalization\_pipeline} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_tissues integer(int32)}: Number of axes (tissues / dimensions)
+        \item \texttt{input\_matrix real(real64)}: Expression vector matrix with size \texttt{n\_genes $\times$ n\_tissues}
+        \item \texttt{max\_stack integer(int32)}: Stack size for quicksort
+        \item \texttt{group\_s integer(int32)}: Start column index for each replicate group (\texttt{n\_grps)}
+        \item \texttt{group\_c integer(int32)}: Number of columns per replicate group (\texttt{n\_grps}) 
+        \item \texttt{n\_grps integer(int32)}: Number of replicate groups
+    \end{itemize}
+    
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{buf\_stddev real(real64)}: Buffer for std dev normalization (\texttt{n\_genes} * \texttt{n\_tissues})
+        \item \texttt{buf\_quant real(real64)}: Buffer for quantile normalization (\texttt{n\_genes} * \texttt{n\_tissues})
+        \item \texttt{buf\_avg real(real64)}: Buffer for replicate averaging (\texttt{n\_genes} * \texttt{n\_grps})
+        \item \texttt{buf\_log real(real64)}: Buffer for log2(x+1) transformation (\texttt{n\_genes} * \texttt{n\_grps})
+        \item \texttt{temp\_col real(real64)}: Temporary column vector for sorting (\texttt{n\_genes})
+        \item \texttt{rank\_means real(real64)}: Buffer for rank means (\texttt{n\_genes})
+        \item \texttt{perm integer(int32)}: Permutation vector for sorting (\texttt{n\_genes})
+        \item \texttt{stack\_left integer(int32)}: Left stack for quicksort (\texttt{max\_stack})
+        \item \texttt{stack\_right integer(int32)}: Right stack for quicksort (\texttt{max\_stack})
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+
+\begin{lstlisting}[language=Fortran, caption={Normalization Pipeline}]
+call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+\end{lstlisting}
+   
+    \textbf{Alternatively you can calculate each step of the normalization pipeline manually by calling the following subroutines in sequence:}
+\begin{enumerate} 
+    \item \textbf{Normalize by Standard Deviation}
+
+    The subroutine normalizes each gene's expression vector using \texttt{sqrt(mean(x\textasciicircum 2))} across tissues (not classical standard deviation).
+    Call the \texttt{normalize\_by\_std\_dev} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Number of genes (rows)
+        \item \texttt{n\_tissues integer(int32)}: Number of tissues (columns)
+        \item \texttt{input\_matrix real(real64)}: Flattened input matrix of gene expression values (column-major)
+    \end{itemize}
+    	\textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{output\_matrix real(real64)}: Output normalized matrix (same shape as input)
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Standard Deviation Normalization}]
+call normalize_by_std_dev(n_genes, n_tissues, input_matrix, output_matrix, ierr)
+\end{lstlisting}
+
+    \item \textbf{Quantile Normalization}
+
+    The subroutine performs quantile normalization of a gene expression matrix (F42-compliant) and computes average expression per rank across tissues.
+    Call the \texttt{quantile\_normalization} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Number of genes (rows)
+        \item \texttt{n\_tissues integer(int32)}: Number of tissues (columns)
+        \item \texttt{input\_matrix real(real64)}: Flattened input matrix (column-major)
+        \item \texttt{max\_stack integer(int32)}: Stack size passed from R
+    \end{itemize}
+    	\textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{output\_matrix real(real64)}: Output normalized matrix (same shape as input)
+        \item \texttt{temp\_col real(real64)}: Temporary vector for column sorting (size \texttt{n\_genes})
+        \item \texttt{rank\_means real(real64)}: Preallocated vector to store rank means (size \texttt{n\_genes})
+        \item \texttt{perm integer(int32)}: Permutation vector (size \texttt{n\_genes})
+        \item \texttt{stack\_left integer(int32)}: Manual quicksort stack ($\geq log2(\texttt{n\_genes}) + 10$)
+        \item \texttt{stack\_right integer(int32)}: Manual quicksort stack (same size as stack\_left)
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Quantile Normalization}]
+call quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+\end{lstlisting}
+
+    \item \textbf{Calculate Tissue Averages}
+
+    The subroutine calculates tissue averages by averaging replicates within each group. For each group of tissue replicates, it computes the average expression per gene. The input matrix is column-major, flattened as a 1D array.
+    Call the \texttt{calc\_tiss\_avg} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_gene integer(int32)}: Number of genes (rows)
+        \item \texttt{n\_grps integer(int32)}: Number of tissue groups
+        \item \texttt{group\_s integer(int32)}: Start column index for each group (length: \texttt{n\_grps})
+        \item \texttt{group\_c integer(int32)}: Number of columns per group (length: \texttt{n\_grps})
+        \item \texttt{input\_matrix real(real64)}: Flattened input matrix (length: \texttt{n\_gene} * sum(\texttt{group\_c}))
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{output\_matrix real(real64)}: Flattened output matrix (length: \texttt{n\_gene} * \texttt{n\_grps})
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Tissue Averages Calculation}]
+call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+\end{lstlisting}
+
+    \item \textbf{Log2 Transformation}
+
+    The subroutine applies \texttt{log2(x + 1)} transformation to each element of the input matrix. This is computed via \texttt{log(x + 1) / log(2)} for compatibility with WebAssembly (WASM).
+    Call the \texttt{log2\_transformation} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Number of genes (rows)
+        \item \texttt{n\_tissues integer(int32)}: Number of tissues (columns)
+        \item \texttt{input\_matrix real(real64)}: Flattened input matrix (size: \texttt{n\_genes} * \texttt{n\_tissues})
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{output\_matrix real(real64)}: Output matrix (same size as input)
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Log2 Transformation}]
+call log2_transformation(n_genes, n_tissues, input_matrix, output_matrix, ierr)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Calculate Fold Change}
+
+    If fold change calculation is needed, this subroutine can be used after normalization.
+    The subroutine calculates \texttt{log2} fold changes between condition and control columns. For each control-condition 
+    pair, this subroutine computes the \texttt{log2} fold change by subtracting the expression value 
+    in the control column from the corresponding value in the condition column, for all genes.
+    Call the \texttt{calc\_fchange} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{n\_genes integer(int32)}: Total number of genes
+        \item \texttt{n\_cols integer(int32)}: Number of columns in the input matrix
+        \item \texttt{n\_pairs integer(int32)}: Number of control-condition pairs
+        \item \texttt{control\_cols integer(int32)}: Control column indices (length \texttt{n\_pairs})
+        \item \texttt{cond\_cols integer(int32)}: Condition column indices (length \texttt{n\_pairs})
+        \item \texttt{i\_matrix real(real64)}: Input matrix, flattened (length: \texttt{n\_genes} $\times$ \texttt{n\_cols})
+    \end{itemize}
+
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{o\_matrix real(real64)}: Output matrix for fold changes (length: \texttt{n\_genes} $\times$ \texttt{n\_pairs})
+        \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section} )
+    \end{itemize}
+
+\begin{lstlisting}[language=Fortran, caption={Fold Change Calculation}]
+call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+\end{lstlisting}    
 
     \item \textbf{Calculation of family Centroids}
 
-    The function computes the centroid (mean expression vector) for each gene family in a gene expression dataset. It iterates over all families, selects the relevant genes for each family and calculates the mean vector for each family. There are two possible modes to use. To use all genes for calculation, select \texttt{all} mode. If you want to specify relevant genes for calculation, select \texttt{orthologs} mode. It is important that you provide a logical \texttt{ortholog\_set} array when using \texttt{orthologs} mode. Call the \texttt{group\_centroid} function with the following arguments:
+    The subroutine computes the centroid (mean expression vector) for each gene family in a gene expression dataset. It iterates over all families, selects the relevant genes for each family and calculates the mean vector for each family. There are two possible modes to use. To use all genes for calculation, select \texttt{all} mode. If you want to specify relevant genes for calculation, select \texttt{orthologs} mode. It is important that you provide a logical \texttt{ortholog\_set} array when using \texttt{orthologs} mode. Call the \texttt{group\_centroid} subroutine with the following arguments:
     
     \textbf{Input arguments:}
     \begin{itemize}
@@ -331,7 +485,7 @@ call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_famil
 \begin{enumerate}
     \item \textbf{Calculate Mean Vector}
     
-    Alternatively you can calculate a single mean vector for a given set of vectors by calling the \texttt{mean\_vector} function directly with the following arguments: 
+    Alternatively you can calculate a single mean vector for a given set of vectors by calling the \texttt{mean\_vector} subroutine directly with the following arguments: 
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -355,8 +509,8 @@ call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_g
     
     \item \textbf{Calculate Distance to Centroid}
      
-    For each gene in the expression vector matrix, the function computes the Euclidean distance to its corresponding family centroid and returns a distances array containing the distance value for each expression vector to its family centroid.
-    Call the \texttt{distance\_to\_centroid} function with the following arguments:
+    For each gene in the expression vector matrix, the subroutine computes the Euclidean distance to its corresponding family centroid and returns a distances array containing the distance value for each expression vector to its family centroid.
+    Call the \texttt{distance\_to\_centroid} subroutine with the following arguments:
     
     \textbf{Input arguments:}
     \begin{itemize}
@@ -378,7 +532,7 @@ call distance_to_centroid(n_genes, n_families, genes, centroids, gene_to_fam, di
 \begin{enumerate}
     \item \textbf{Calculate Euclidean Distance}
     
-    Alternatively you can calculate a single Euclidean distance between two vectors manually by calling \texttt{euclidean\_distance} function with the following arguments:
+    Alternatively you can calculate a single Euclidean distance between two vectors manually by calling \texttt{euclidean\_distance} subroutine with the following arguments:
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -398,8 +552,8 @@ call euclidean_distance(vec1, vec2, d, result)
 
     \item \textbf{Detect Gene Outliers}
 
-    The function first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a boolean array indicating whether each gene is an outlier.
-    Call the \texttt{detect\_outliers} function with the following arguments:
+    The subroutine first computes family scaling, then calculates relative distance indices (RDI) and identifies outliers based on the specified percentile threshold. It returns a boolean array indicating whether each gene is an outlier.
+    Call the \texttt{detect\_outliers} subroutine with the following arguments:
     
     \textbf{Input arguments:}
     \begin{itemize}
@@ -431,12 +585,12 @@ call euclidean_distance(vec1, vec2, d, result)
 call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)
 \end{lstlisting}
 
-\textbf{Alternatively you can calculate each step of \texttt{detect\_outliers} manually with the following functions:}
+\textbf{Alternatively you can calculate each step of \texttt{detect\_outliers} manually with the following subroutine:}
 \begin{enumerate}
     \item \textbf{Compute Family Scaling}
     
-    The function calculates a scaling factor for each gene family by computing the median and standard deviation of gene-to-centroid distances within each family, then applies LOESS smoothing to these values.
-    Call the \texttt{compute\_family\_scaling} function with the following arguments:
+    The subroutine calculates a scaling factor for each gene family by computing the median and standard deviation of gene-to-centroid distances within each family, then applies LOESS smoothing to these values.
+    Call the \texttt{compute\_family\_scaling} subroutine with the following arguments:
     
     \textbf{Input arguments:}
     \begin{itemize}
@@ -466,7 +620,7 @@ call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale,
 
     \item \textbf{Compute Family Scaling Helper}
     
-    This helper function allocates internal arrays for easier usage and calls \texttt{compute\_family\_scaling}. Call the \texttt{compute\_family\_scaling\_alloc} function with the following arguments:
+    This helper subroutine allocates internal arrays for easier usage and calls \texttt{compute\_family\_scaling}. Call the \texttt{compute\_family\_scaling\_alloc} subroutine with the following arguments:
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -494,7 +648,7 @@ call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, d
 
     \item \textbf{Compute Relative Distance Index (RDI)}
 
-    The function calculates the Relative Distance Index (RDI) for each gene by dividing its Eculidean distance to the family centroid by the scaling factor of its family. Call the \texttt{compute\_rdi} function with the following arguments:
+    The subroutine calculates the Relative Distance Index (RDI) for each gene by dividing its Eculidean distance to the family centroid by the scaling factor of its family. Call the \texttt{compute\_rdi} subroutine with the following arguments:
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -522,7 +676,7 @@ call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm,
 
     \item \textbf{Identify Outliers}
 
-    The function identifies outliers based on the top percentile of RDI values. Call the \texttt{identify\_outliers} function with the following arguments:
+    The subroutine identifies outliers based on the top percentile of RDI values. Call the \texttt{identify\_outliers} subroutine with the following arguments:
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -545,7 +699,7 @@ call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percenti
 
     \item \textbf{Compute Normalized Tissue Versatility}
 
-    The function calculates a normalized tissue versatility score for selected gene expression vectors. It is based on the angle between each gene expression vector and the space diagonal. Versatility is normalized to [0, 1], where 0 means uniform expression 1 means expression in only one axis. Call the \texttt{compute\_tissue\_versatility} function with the following parameters:
+    The subroutine calculates a normalized tissue versatility score for selected gene expression vectors. It is based on the angle between each gene expression vector and the space diagonal. Versatility is normalized to [0, 1], where 0 means uniform expression 1 means expression in only one axis. Call the \texttt{compute\_tissue\_versatility} subroutine with the following parameters:
 
     \textbf{Input arguments:}
     \begin{itemize}
@@ -615,7 +769,126 @@ except (FileNotFoundError, ValueError) as e:
 
 \end{lstlisting}
 
-\item \textbf{TODO Functions relating section 1.2 - 1.4}
+\item \textbf{TODO Functions relating section 1.2}
+
+    \item \textbf{Normalization of Expression Values}
+
+    The function runs a complete normalization pipeline on gene expression data. It first applies standard deviation normalization, then quantile normalization, 
+    followed by replicate averaging, and finally a log2 transformation. The result is returned in an array, which contains the fully normalized 
+    expression values.
+    Call the \texttt{tox\_normalization\_pipeline} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: Numeric expression vector matrix with size \texttt{genes $\times$ tissues}
+        \item \texttt{group\_starts}: Integer array, start column index for each replicate group (1-based)
+        \item \texttt{group\_counts}: Integer array, number of columns per replicate group
+    \end{itemize}
+    
+    \textbf{Return:}
+    \begin{itemize}
+        \item Numpy array with log2(x+1) normalized expression with size (genes $\times$ groups)
+    \end{itemize}
+
+\begin{lstlisting}[language=Fortran, caption={Python Normalization Pipeline}]
+tox_normalization_pipeline(input_matrix, group_starts, group_counts)
+\end{lstlisting}
+   
+    \textbf{Alternatively you can calculate each step of the normalization pipeline manually by calling the following functions in sequence:}
+\begin{enumerate} 
+    \item \textbf{Normalize by Standard Deviation}
+
+    The function normalizes each gene's expression vector using \texttt{sqrt(mean(x\textasciicircum 2))} across tissues (not classical standard deviation).
+    Call the \texttt{tox\_normalize\_by\_std\_dev} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numpy array: Contains a normalized matrix with same dimensions as input
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Standard Deviation Normalization}]
+tox_normalize_by_std_dev(input_matrix)
+\end{lstlisting}
+
+    \item \textbf{Quantile Normalization}
+
+    The function performs quantile normalization of a gene expression matrix (F42-compliant) and computes average expression per rank across tissues.
+    Call the \texttt{tox\_quantile\_normalization} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numpy array: Quantile-normalized matrix with same dimensions as input
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Quantile Normalization}]
+tox_quantile_normalization(input_matrix)
+\end{lstlisting}
+
+    \item \textbf{Calculate Tissue Averages}
+
+    The function calculates tissue averages by averaging replicates within each group. For each group of tissue replicates, it computes the average expression per gene. The input matrix is column-major, flattened as a 1D array.
+    Call the \texttt{tox\_calculate\_tissue\_averages} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissue replicates as columns
+        \item \texttt{group\_starts}: Array of starting column indices for each group (1-based for Fortran)
+        \item \texttt{group\_counts}: Array of counts for each group
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numpy array: Matrix with genes as rows and averaged tissues as columns
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Tissue Averages Calculation}]
+tox_calculate_tissue_averages(input_matrix, group_starts, group_counts)
+\end{lstlisting}
+
+    \item \textbf{Log2 Transformation}
+
+    The function applies \texttt{log2(x + 1)} transformation to each element of the input matrix. This is computed via \texttt{log(x + 1) / log(2)} for compatibility with WebAssembly (WASM).
+    Call the \texttt{tox\_log2\_transformation} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numpy array: Log2-transformed matrix with same dimensions as input
+    \end{itemize}
+\begin{lstlisting}[language=Python, caption={Python Log2 Transformation}]
+tox_log2_transformation(input_matrix)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Calculate Fold Change}
+
+    If fold change calculation is needed, this function can be used after normalization.
+    The function calculates \texttt{log2} fold changes between condition and control columns. For each control-condition 
+    pair, this function computes the \texttt{log2} fold change by subtracting the expression value 
+    in the control column from the corresponding value in the condition column, for all genes.
+    Call the \texttt{tox\_calculate\_fold\_changes} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues/conditions as columns
+        \item \texttt{control\_cols}: Array of control column indices (1-based for Fortran)
+        \item \texttt{condition\_cols}: Array of condition column indices (1-based for Fortran)
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numpy array: Matrix with genes as rows and fold change values as columns
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Fold Change Calculation}]
+tox_calculate_fold_changes(input_matrix, control_cols, condition_cols)
+\end{lstlisting}    
 
     \item \textbf{Calculation of family Centroids}
 
@@ -861,7 +1134,166 @@ print(real_matrix)
 \end{lstlisting}
 
 
-\item \textbf{TODO Functions relating section 1.2 - 1.4}
+\item \textbf{TODO Functions relating section 1.2}
+
+\item \textbf{Normalization of Expression Values}
+
+    The function runs a complete normalization pipeline on gene expression data. It first applies standard deviation normalization, then quantile normalization, 
+    followed by replicate averaging, and finally a log2 transformation. The result is returned in an array, which contains the fully normalized 
+    expression values.
+    Call the \texttt{tox\_normalization\_pipeline} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: Numeric expression vector matrix with size \texttt{genes $\times$ tissues}
+        \item \texttt{group\_s}: Integer vector: start column index for each replicate group (1-based)
+        \item \texttt{group\_c}: Integer vector: number of columns per replicate group
+    \end{itemize}
+    
+    \textbf{Return:}
+    \begin{itemize}
+        \item Numeric matrix: log2(x+1) normalized expression
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Normalization Pipeline}]
+tox_normalization_pipeline(input_matrix, group_s, group_c)
+\end{lstlisting}
+   
+    \textbf{Alternatively you can calculate each step of the normalization pipeline manually by calling the following functions in sequence:}
+\begin{enumerate} 
+    \item \textbf{Normalize by Standard Deviation}
+
+    The function normalizes each gene's expression vector using \texttt{sqrt(mean(x\textasciicircum 2))} across tissues (not classical standard deviation).
+    Call the \texttt{tox\_normalize\_by\_std\_dev} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A normalized numeric matrix with the same dimensions and names as the input
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Standard Deviation Normalization}]
+tox_normalize_by_std_dev(input_matrix)
+\end{lstlisting}
+
+    \item \textbf{Quantile Normalization}
+
+    The function performs quantile normalization of a gene expression matrix (F42-compliant) and computes average expression per rank across tissues.
+    Call the \texttt{tox\_quantile\_normalization} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A quantile-normalized numeric matrix with the same dimensions and names as the input
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Quantile Normalization}]
+tox_quantile_normalization(input_matrix)
+\end{lstlisting}
+
+    \item \textbf{Calculate Tissue Averages}
+
+    The function calculates tissue averages by averaging replicates within each group. For each group of tissue replicates, it computes the average expression per gene. The input matrix is column-major, flattened as a 1D array.
+    Call the \texttt{tox\_calculate\_tissue\_averages} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{df}: A data frame or matrix with genes as rows and tissue replicates as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A data frame with genes as rows and averaged tissues as columns
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Tissue Averages Calculation}]
+tox_calculate_tissue_averages(df)
+\end{lstlisting}
+
+    \item \textbf{Log2 Transformation}
+
+    The function applies \texttt{log2(x + 1)} transformation to each element of the input matrix. This is computed via \texttt{log(x + 1) / log(2)} for compatibility with WebAssembly (WASM).
+    Call the \texttt{tox\_log2\_transformation} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+    \end{itemize}
+    
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A numeric matrix with log2-transformed expression values, preserving the same dimensions and names as the input.
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={R Log2 Transformation}]
+tox_log2_transformation(input_matrix)
+\end{lstlisting}    
+\end{enumerate}
+
+\textbf{Additionally there are two helpfer functions to improve the data quality and prevent calculation errors:}
+\begin{enumerate}
+    \item \textbf{Diagnose Data Quality}
+    
+    The function checks your gene expression matrix for common data quality issues, such as missing values (NA), infinite values, NaNs, zeros, and negative values. It provides a summary of these problems, lists affected genes, and reports basic statistics like minimum, maximum, and mean values. Use this function to quickly assess the quality of your data before running normalization or analysis steps. Call the \texttt{tox\_diagnose\_data\_quality} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues as columns
+        \item (Optional) \texttt{show\_details}: Logical indicating whether to show detailed information (default is TRUE)
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A list with diagnostic information about the data quality
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Diagnose Data Quality}]
+tox_diagnose_data_quality(input_matrix, show_details)
+\end{lstlisting}
+
+    \item \textbf{Clean Data for Normalization}
+    
+    The function prepares your gene expression matrix for normalization by handling problematic values. It can remove or impute NA, NaN, and Inf values, filter out genes with all zero values, and optionally convert very small values to zero. You can choose different strategies for dealing with missing data, ensuring your matrix is clean and ready for downstream analysis. Call the \texttt{tox\_clean\_data\_for\_normalization} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{df\_matrix}: A numeric matrix with genes as rows and tissues as columns
+        \item (Optional) \texttt{remove\_all\_zero\_genes}: Logical, whether to remove genes that are all zeros (default = TRUE)
+        \item (Optional) \texttt{na\_strategy}: Strategy for handling NA values: "remove\_genes", "remove\_samples", "impute\_zero", "impute\_mean" (default = "remove\_genes"
+        \item (Optional) \texttt{min\_expression\_threshold}: Minimum expression value to consider (values below this become 0 and default is 0)
+        \item (Optional) \texttt{convert\_small\_to\_zero}: Logical, wheter very small numbers should be converted to zero (default = FALSE)
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A cleaned matrix ready for normalization
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Clean Data for Normalization}]
+tox_diagnose_data_quality(df_matrix, remove_all_zero_genes, na_strategy, min_expression_threshold, convert_small_to_zero)
+\end{lstlisting}
+    
+\end{enumerate}
+
+    \item \textbf{Calculate Fold Change}
+
+    If fold change calculation is needed, this function can be used after normalization.
+    The function calculates \texttt{log2} fold changes between condition and control columns. For each control-condition 
+    pair, this function computes the \texttt{log2} fold change by subtracting the expression value 
+    in the control column from the corresponding value in the condition column, for all genes.
+    Call the \texttt{tox\_calculate\_fold\_changes} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{df}: A data frame with genes as rows and tissues/conditions as columns
+        \item \texttt{control\_pattern}: A string pattern to detect control columns
+        \item \texttt{condition\_patterns}: A character vector with patterns to detect condition columns
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item A data frame with genes as rows and log2 fold change values as columns
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Fold Change Calculation}]
+tox_calculate_fc_by_patterns(df, control_pattern, condition_patterns)
+\end{lstlisting}
 
 \item \textbf{Calculation of family Centroids}
 
