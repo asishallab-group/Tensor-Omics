@@ -765,24 +765,9 @@ Where N represents the array dimension (1-5).
           \textbf{Intent:} \texttt{out} \\
           \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
 \end{itemize}
-
-\textbf{Deserialization Functions Parameters:}
-\begin{itemize}
-    \item \texttt{arr} (output): The array to be populated with deserialized data. \\
-          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
-          \textbf{Dimensions:} 1D to 5D \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
-    
-    \item \texttt{filename} (input): The name of the binary file to read. \\
-          \textbf{Type:} \texttt{character(len=*)} \\
-          \textbf{Intent:} \texttt{in}
-    
-    \item \texttt{ierr} (output): Error code indicating operation status. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
-\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Example usage of a serialize function}]
+call serialize_int_2d(array, "test_file.bin", ierr)
+\end{lstlisting}
 
 \item \textbf{Metadata Retrieval Function Parameters:}
 \begin{itemize}
@@ -815,6 +800,46 @@ Where N represents the array dimension (1-5).
 \end{itemize}
 \begin{lstlisting}[language=fortran, caption={Usage of metadata retrieval}]
 call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
+\end{lstlisting}
+
+\textbf{Deserialization Functions Parameters:}
+\begin{itemize}
+    \item \texttt{arr} (output): The array to be populated with deserialized data. \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
+          \textbf{Dimensions:} 1D to 5D \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
+    
+    \item \texttt{filename} (input): The name of the binary file to read. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+\end{itemize}
+\begin{lstlisting}[language=fortran, caption={Example usage of a deserialize function}]
+call deserialize_int_2d(array, "test_file.bin", ierr)
+\end{lstlisting}
+\begin{lstlisting}[language=fortran, caption={Full example}]
+integer(int32), allocatable :: kallisto_expression(:,:), kallisto_expression_2(:,:)
+integer(int32) :: dims(5)
+integer(int32) :: ndims, ierr, max_dims
+character(len=64) :: fname
+
+!Assume array is filled with data
+
+call serialize_real_2d(kallisto_expression, "kallisto_data_v1.bin", ierr)
+if(.not. is_ok(ierr)) error stop ierr
+
+!Reading the data again
+call get_array_metadata("kallisto_data_v1.bin", dims, max_dims, ndims, ierr)
+if(.not. is_ok(ierr)) error stop ierr
+allocate(kallisto_expression_2(dims(1), dims(2))
+
+call deserialize_real_2d(kallisto_expression_2, "kallisto_data_v1.bin", ierr)
+if(.not. is_ok(ierr)) error stop ierr
 \end{lstlisting}
 
 	\item \textbf{Error Handling}
