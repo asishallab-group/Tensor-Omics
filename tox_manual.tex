@@ -722,6 +722,114 @@ call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percenti
 call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
 \end{lstlisting}
 
+\item \textbf{Array Serialization and Deserialization Module}
+
+The array serialization and deserialization module provides comprehensive routines for efficiently storing and retrieving multi-dimensional arrays of various data types.
+
+\begin{enumerate}
+
+\item \textbf{General Architecture}
+
+The module supports three data types (integer, real, and character) across dimensions 1 through 5. All routines follow a consistent naming convention and parameter structure for ease of use.
+
+\item \textbf{Supported Functions}
+
+\begin{itemize}
+    \item \texttt{serialize\_int\_Nd(arr, filename, ierr)} - Serialize N-dimensional integer arrays
+    \item \texttt{deserialize\_int\_Nd(arr, filename, ierr)} - Deserialize N-dimensional integer arrays
+    \item \texttt{serialize\_real\_Nd(arr, filename, ierr)} - Serialize N-dimensional real arrays
+    \item \texttt{deserialize\_real\_Nd(arr, filename, ierr)} - Deserialize N-dimensional real arrays
+    \item \texttt{serialize\_char\_Nd(arr, filename, ierr)} - Serialize N-dimensional character arrays
+    \item \texttt{deserialize\_char\_Nd(arr, filename, ierr)} - Deserialize N-dimensional character arrays
+    \item \texttt{get\_array\_metadata(filename, dims, max\_dims, ndims, ierr, [clen])} - Retrieve array metadata from files
+\end{itemize}
+
+Where N represents the array dimension (1-5).
+
+\item \textbf{Detailed Parameter Specifications}
+
+\textbf{Serialization Functions Parameters:}
+\begin{itemize}
+    \item \texttt{arr} (input): The array to be serialized. \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
+          \textbf{Dimensions:} 1D to 5D \\
+          \textbf{Intent:} \texttt{in} \\
+          \textbf{Note:} \textit{clen} has to be the size of the arrays elements
+    
+    \item \texttt{filename} (input): The name of the binary file to create. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+\end{itemize}
+
+\textbf{Deserialization Functions Parameters:}
+\begin{itemize}
+    \item \texttt{arr} (output): The array to be populated with deserialized data. \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
+          \textbf{Dimensions:} 1D to 5D \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
+    
+    \item \texttt{filename} (input): The name of the binary file to read. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+\end{itemize}
+
+\item \textbf{Metadata Retrieval Function Parameters:}
+\begin{itemize}
+    \item \texttt{filename} (input): The name of the binary file to read metadata from. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{dims} (output): Array containing the dimensions of the stored array. \\
+          \textbf{Type:} \texttt{integer(int32), dimension(max\_dims)} \\
+          \textbf{Intent:} \texttt{out}
+          \textbf{Note:} Must be preallocated, recommended with size 5
+    
+    \item \texttt{max\_dims} (input): Size of the dims array (typically 5 for maximum supported dimensions). \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ndims} (output): Number of dimensions actually used by the array. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+    
+    \item \texttt{clen} (output, optional): For character arrays, the length of character elements. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Note:} This parameter is only used and required for character arrays
+\end{itemize}
+\begin{lstlisting}[language=fortran, caption={Usage of metadata retrieval}]
+call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
+\end{lstlisting}
+
+	\item \textbf{Error Handling}
+
+All functions return an error code through the \texttt{ierr} parameter. The error handling utility \hyperref[sec:error-handling]{tox errors} provides functions to check and interpret these codes.
+
+	\item \textbf{Implementation Notes}
+
+	\begin{itemize}
+    	\item All routines are implemented in standard Fortran for interoperability
+    		\item The module uses allocatable arrays for flexible memory management
+    		\item File operations use Fortran's native unformatted I/O for efficiency
+    		\item Error handling is consistent across all functions for predictable behavior
+	\end{itemize}
+\end{enumerate}
 \end{enumerate}
 
 \subsection{Python Pipeline}
