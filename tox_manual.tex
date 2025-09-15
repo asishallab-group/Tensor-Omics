@@ -1228,6 +1228,98 @@ tox_identify_outliers(rdi, threshold=None, percentile=95.0)
 tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
 
+\item \textbf{Python Interface for Array Serialization and Deserialization}
+
+The Python interface provides bindings to the Fortran serialization and deserialization routines, enabling efficient handling of multi-dimensional arrays.This interface supports NumPy arrays with native data type compatibility and Fortran-style column-major memory layout.
+
+\begin{enumerate}
+\item \textbf{General Architecture}
+
+The Python module \texttt{tensoromics\_functions} provides six main functions for array handling:
+
+\begin{itemize}
+    \item \texttt{tox\_serialize\_int\_nd(array, filename)} - Serialize N-dimensional integer arrays
+    \item \texttt{tox\_deserialize\_int\_nd(filename)} - Deserialize N-dimensional integer arrays
+    \item \texttt{tox\_serialize\_real\_nd(array, filename)} - Serialize N-dimensional real arrays
+    \item \texttt{tox\_deserialize\_real\_nd(filename)} - Deserialize N-dimensional real arrays
+    \item \texttt{tox\_serialize\_char\_nd(array, filename)} - Serialize N-dimensional character arrays
+    \item \texttt{tox\_deserialize\_char\_nd(filename)} - Deserialize N-dimensional character arrays
+    \item \texttt{get\_array\_metadata(filename)} - Retrieve array dimensions and metadata
+\end{itemize}
+
+\item \textbf{Array Functions}
+
+\textbf{Serialization Functions:}
+\begin{itemize}
+    \item \texttt{array} (input): NumPy array to be serialized \\
+          \textbf{Type:} \texttt{numpy.ndarray} with dtype \texttt{np.int32} or \texttt{np.float64}, for characters: \texttt{U5} \\
+          \textbf{Layout:} Column-major (Fortran) order (\texttt{order='F'}) \\
+          \textbf{Dimensions:} Since the array is being passed flat, theoretically all dimensions are supported, but practical use cases are typically 1D to 5D
+    
+    \item \texttt{filename} (input): Name of the binary file to create \\
+          \textbf{Type:} \texttt{str}
+\end{itemize}
+\begin{lstlisting}[language=Python, caption={Example usage of serialization function}]
+tox_serialize_int_nd(int_array, filename)
+tox_serialize_real_nd(real_array, filename)
+\end{lstlisting}
+
+\textbf{Deserialization Functions:}
+\begin{itemize}
+    \item \texttt{filename} (input): Name of the binary file to read \\
+          \textbf{Type:} \texttt{str}
+
+    \item \textbf{Return Value:} Deserialized NumPy array \\
+          \textbf{Type:} \texttt{numpy.ndarray} with original dtype and dimensions \\
+          \textbf{Layout:} Column-major (Fortran) order
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Example usage of deserialization function}]
+restored_int = tox_deserialize_int_nd(filename)
+restored_real = tox_deserialize_real_nd(filename)
+\end{lstlisting}
+
+\item \textbf{Implementation Details}
+
+\begin{itemize}
+    \item The Python interface uses Fortran-style column-major array ordering for optimal compatibility
+    \item All arrays are converted to the appropriate Fortran data types before serialization
+    \item The interface automatically handles metadata including dimensions and data types
+    \item Error handling is implemented through Python exceptions
+\end{itemize}
+
+\item \textbf{Usage Example}
+
+\begin{lstlisting}[language=Python, caption={Full example of serialization and deserialization}]
+# Real array example
+real_array = np.array([1.5, 2.3, 3.2, 4.0, 5.0], dtype=np.float64, order='F')
+tox_serialize_real_nd(real_array, "test_real_1d.bin")
+restored_real = tox_deserialize_real_nd("test_real_1d.bin")
+
+# Character array example with metadata
+char_array = np.asfortranarray(["hello", "world"], dtype='U5')
+tox_serialize_char_nd(char_array, "test_char_1d.bin")
+
+restored_char = tox_deserialize_char_nd("test_char_1d.bin")
+
+# Multi-dimensional examples
+int_2d = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32, order='F')
+tox_serialize_int_nd(int_2d, "test_int_2d.bin")
+
+restored_2d = tox_deserialize_int_nd("test_int_2d.bin")
+\end{lstlisting}
+
+\item \textbf{Compatibility Notes}
+
+\begin{itemize}
+    \item Requires NumPy installation
+    \item Arrays must use Fortran-style column-major ordering
+    \item Character arrays must use fixed-length string data types
+    \item The interface supports N dimensions, but practical use cases are typically 1D to 5D
+    \item Data types are restricted to int32, float64, and U5 for characters
+\end{itemize}
+\end{enumerate}
+
 \end{enumerate}
 
 \subsection{R Pipeline}
@@ -1642,6 +1734,101 @@ tox_identify_outliers(rdi, percentile)
 tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
 
+\item \textbf{R Interface for Array Serialization and Deserialization}
+
+The R interface provides bindings to the Fortran serialization and deserialization routines, enabling efficient handling of multi-dimensional arrays for statistical computing and bioinformatics applications. This interface supports R arrays, matrices, and vectors with automatic type conversion to compatible Fortran data types.
+\begin{enumerate}
+\item{General Architecture}
+
+The R package provides six main functions for array handling:
+
+\begin{itemize}
+    \item \texttt{tox\_serialize\_int\_array(array, filename)} - Serialize N-dimensional integer arrays
+    \item \texttt{tox\_deserialize\_int\_array(filename)} - Deserialize N-dimensional integer arrays
+    \item \texttt{tox\_serialize\_real\_array(array, filename)} - Serialize N-dimensional real arrays
+    \item \texttt{tox\_deserialize\_real\_array(filename)} - Deserialize N-dimensional real arrays
+    \item \texttt{tox\_serialize\_char\_array(array, filename)} - Serialize N-dimensional character arrays
+    \item \texttt{tox\_deserialize\_char\_array(filename)} - Deserialize N-dimensional character arrays
+\end{itemize}
+
+\item \textbf{Array Functions}
+
+\textbf{Serialization Functions:}
+\begin{itemize}
+    \item \texttt{array} (input): R array, matrix, or vector to be serialized \\
+          \textbf{Type:} \texttt{integer} or \texttt{numeric} (double precision), or characters \\
+          \textbf{Dimensions:} Theoretically are N dimensions supported, but typical use cases should not exceed 5 dimensions \\
+    
+    \item \texttt{filename} (input): Name of the binary file to create \\
+          \textbf{Type:} \texttt{character}
+\end{itemize}
+\begin{lstlisting}[language=R, caption={R Array Serialization Example}]
+tox_serialize_int_array(array, filename)
+tox_serialize_real_array(array, filename)
+tox_serialize_char_array(array, filename)
+\end{lstlisting}
+
+\textbf{Deserialization Functions:}
+\begin{itemize}
+    \item \texttt{filename} (input): Name of the binary file to read \\
+          \textbf{Type:} \texttt{character}
+    
+    \item \textbf{Return Value:} Deserialized R array with original dimensions \\
+          \textbf{Type:} \texttt{array}, \texttt{matrix}, or \texttt{vector} \\
+          \textbf{Data Type:} Same as original
+\end{itemize}
+\begin{lstlisting}[language=R, caption={R Array Deserialization Example}]
+restored_int <- tox_deserialize_int_array(filename)
+restored_real <- tox_deserialize_real_array(filename)
+restored_char <- tox_deserialize_char_array(filename)
+\end{lstlisting}
+
+\item \textbf{Implementation Details}
+
+\begin{itemize}
+    \item The R interface automatically converts between R data types and Fortran-compatible formats
+    \item Integer vectors are converted to 32-bit integers
+    \item Numeric vectors are converted to 64-bit floating point
+    \item Character arrays handle variable-length strings with automatic padding
+    \item All array dimensions are preserved during serialization/deserialization
+    \item The interface handles both regular arrays and matrices seamlessly
+\end{itemize}
+
+\subsubsection*{Usage Example}
+
+\begin{lstlisting}[language=R, caption={Full example of serialization and deserialization in R}]
+tox_serialize_int_array(arr1, fn("int1d.bin"))
+restored <- tox_deserialize_int_array(fn("int1d.bin"))
+
+# Real array example
+arr2 <- matrix(runif(12), nrow = 3, ncol = 4)
+tox_serialize_real_array(arr2, fn("real2d.bin"))
+restored <- tox_deserialize_real_array(fn("real2d.bin"))
+
+# Character array example
+arr3 <- c("GENE1", "BRCA1", "TP53", "EGFR")
+tox_serialize_char_array(arr3, fn("char1d.bin"))
+restored <- tox_deserialize_char_array(fn("char1d.bin"))
+\end{lstlisting}
+
+\subsubsection*{Performance Characteristics}
+
+\begin{itemize}
+    \item Efficient memory mapping between R arrays and Fortran memory structures
+    \item Minimal data copying between R and Fortran layers
+    \item Optimized binary format for large scientific datasets
+    \item Support for arrays exceeding available memory through file-based storage
+\end{itemize}
+
+\item \textbf{Compatibility Notes}
+
+\begin{itemize}
+    \item Requires R with appropriate Fortran bindings
+    \item Supports standard R data types (integer, numeric, character)
+    \item Preserves array attributes and dimensions during serialization
+    \item Character arrays maintain content but may have padding removed upon deserialization
+\end{itemize}
+\end{enumerate}
 \end{enumerate}
 
 \end{document}
