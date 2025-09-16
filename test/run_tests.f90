@@ -11,13 +11,7 @@ program main
   use mod_test_tissue_versatility
   use mod_test_shift_vectors
   use mod_test_tox_conversions
-  use mod_test_csv_parser
   use mod_test_csv_file_reader
-  use mod_test_csv_read_int
-  use mod_test_csv_read_real
-  use mod_test_csv_read_logical
-  use mod_test_csv_read_char
-  use mod_test_csv_read_complex
 
   implicit none
 
@@ -90,13 +84,7 @@ contains
     call add_suite("tissue_versatility", run_all_tests_tissue_versatility, run_named_tests_tissue_versatility)
     call add_suite("shift_vectors", run_all_tests_shift_vectors, run_named_tests_shift_vectors)
     call add_suite("tox_conversions", run_all_tests_tox_conversions, run_named_tests_tox_conversions)
-    call add_suite("csv_parser", run_all_tests_csv_parser, run_named_tests_csv_parser)
     call add_suite("csv_file_reader", run_all_tests_csv_file_reader, run_named_tests_csv_file_reader)
-    call add_suite("csv_read_int", run_all_tests_csv_read_int, run_named_tests_csv_read_int)
-    call add_suite("csv_read_real", run_all_tests_csv_read_real, run_named_tests_csv_read_real)
-    call add_suite("csv_read_logical", run_all_tests_csv_read_logical, run_named_tests_csv_read_logical)
-    call add_suite("csv_read_char", run_all_tests_csv_read_char, run_named_tests_csv_read_char)
-    call add_suite("csv_read_complex", run_all_tests_csv_read_complex, run_named_tests_csv_read_complex)
 
   end subroutine initialize_suites
 

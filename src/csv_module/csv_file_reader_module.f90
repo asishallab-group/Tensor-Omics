@@ -1,52 +1,70 @@
- !> Module to read a CSV file into a 2D array of strings.
-module csv_file_reader_module
-  use, intrinsic :: iso_fortran_env, only: int32
-  use csv_parser_module, only: parse_line, MAX_FIELD_LEN
-  use tox_errors, only: set_ok, set_err_once, is_ok, ERR_FILE_OPEN, ERR_EMPTY_INPUT
-  implicit none
+!> Module for reading heterogeneous CSV tables into type-banded arrays and providing fast accessors.
+module tox_csv_file_reader
+  use, intrinsic :: iso_fortran_env, only: int32, real64
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_FILE_EMPTY, set_ok, set_err_once, is_ok
 
 contains
-  !> Reads a CSV file and returns its content as a 2D array of strings.
-  !| Reads all non-empty lines in a first pass, allocates memory, and populates the output arrays in a second pass.
-  subroutine read_csv_to_strings(filename, has_header, delimiter, header_out, data_out, ierr)
-    !| Path to the input CSV file.
-    character(len=*), intent(in) :: filename
-    !| Flag indicating if the file has a header row.
+
+  !> Reads a table from a CSV file into type-banded arrays
+  subroutine read_table(file_path, column_types, has_header, int_cols, real_cols, char_cols, &
+                             logical_cols, complex_cols, header, metadata, ierr, sep_char, column_names)
+    implicit none
+    !-------------------------------------------------------------
+    ! Reads a heterogeneous table from a CSV file and fills type-banded arrays.
+    ! Args:
+    !   file_path      : Path to the CSV file (input)
+    !   column_types   : 1D int array, type for each column (1=int, 2=real, 3=char, 4=logical, 5=complex) (input)
+    !   has_header     : logical, true if first line contains column names (input)
+    !   int_cols       : 2D int array, output for integer columns
+    !   real_cols      : 2D real array, output for real columns
+    !   char_cols      : 2D char array, output for character columns
+    !   logical_cols   : 2D logical array, output for logical columns
+    !   complex_cols   : 2D complex array, output for complex columns
+    !   header         : 1D char array, output column names
+    !   metadata       : 2D int array, output metadata (row 1: type, row 2: index in type array)
+    !   ierr           : int, error code (output)
+    !   sep_char       : optional character, column separator (input, default ',')
+    !   column_names   : optional 1D char array, overrides header line if provided (input)
+    !-------------------------------------------------------------
+    character(len=*), intent(in) :: file_path
+    integer(int32), intent(in) :: column_types(:)
     logical, intent(in) :: has_header
-    !| Single character used to separate fields.
-    character(len=1), intent(in) :: delimiter
-    !| Output array for the header row.
-    character(len=MAX_FIELD_LEN), allocatable, intent(out) :: header_out(:)
-    !| Output 2D array for the data rows.
-    character(len=MAX_FIELD_LEN), allocatable, intent(out) :: data_out(:, :)
-    !| Output error code (0 for success).
+    integer(int32), intent(out) :: int_cols(:,:)
+    real(real64), intent(out) :: real_cols(:,:)
+    character(len=*), intent(out) :: char_cols(:,:)
+    logical, intent(out) :: logical_cols(:,:)
+    complex(real64), intent(out) :: complex_cols(:,:)
+    character(len=*), intent(out) :: header(:)
+    integer(int32), intent(out) :: metadata(:,:)
     integer(int32), intent(out) :: ierr
+    character(len=*), intent(in), optional :: sep_char
+    character(len=*), intent(in), optional :: column_names(:) !//TODO clarify if both should be optional and in what order
 
     ! Local variables
-    integer :: file_unit
-    character(len=MAX_FIELD_LEN * 20) :: line
-    integer(int32) :: i, data_offset
-    integer(int32) :: num_rows, num_cols
-    character(len=MAX_FIELD_LEN), allocatable :: fields(:)
-    integer(int32) :: io_error
+    integer(int32) :: current_row, current_column, n_columns, n_rows, col_type, type_index, file_unit, data_offset, io_err, i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, current_pos, sep_pos, k, l
+    character(len=1024) :: line, field
+    character(len=1) :: sep
 
-    ! Initialize error code.
-    call set_ok(ierr)
+    !//TODO Error handling for not equal lengths of column_types, column_names, header, metadata dimensions
 
-    data_offset = 0
+    ! Step 1: Set separator (optional argument)
+    if (present(sep_char)) then
+      sep = sep_char(1:1)
+    else
+      sep = ','
+    end if
 
-    ! Open file and check for error.
-    open (newunit=file_unit, file=trim(filename), status='old', action='read', iostat=io_error)
-    if (.not. is_ok(io_error)) then
-      call set_err_once(ierr, ERR_FILE_OPEN)
-      close (file_unit)
+    ! Step 2: Open file
+    open(unit=file_unit, file=file_path, status='old', action='read', iostat=io_err)
+    if (io_err /= 0) then
+      print *, 'Error opening file: ', file_path !//TODO better error handling
       return
     end if
 
     ! Check for empty file.
-    read (file_unit, '(A)', iostat=io_error) line
-    if (.not. is_ok(io_error)) then
-      call set_err_once(ierr, ERR_EMPTY_INPUT)
+    read (file_unit, '(A)', iostat=io_err) line
+    if (.not. is_ok(io_err)) then
+      call set_err_once(ierr, ERR_FILE_EMPTY)
       close (file_unit)
       return
     end if
@@ -56,315 +74,197 @@ contains
 
     ! Skip initial comment lines starting with '#'.
     do
-      read (file_unit, '(A)', iostat=io_error) line
-      if (.not. is_ok(io_error)) exit
-      data_offset = data_offset + 1
+      read (file_unit, '(A)', iostat=io_err) line
+      if (.not. is_ok(io_err)) exit
       if (len_trim(line) > 0) then
         if (line(1:1) /= '#') exit
       end if
-    end do
-
-    ! Check for empty lines after comments and before header / data.
-    if (len_trim(line) == 0) then
-      do
-        read (file_unit, '(A)', iostat=io_error) line
-        if ((.not. is_ok(io_error)) .or. len_trim(line) /= 0) exit
-      end do
-    end if
-
-    ! Check for header and infer number of columns (either through header or first data row fields).
-    if (has_header) then
-      call parse_line(line, delimiter, header_out, ierr)
       data_offset = data_offset + 1
-      num_cols = size(header_out)
-    else
-      call parse_line(line, delimiter, fields, ierr)
-      num_cols = size(fields)
-      backspace(file_unit)
+    end do
+
+    ! Step 3: Read header or use provided column_names
+    if (present(column_names)) then
+      ! Use provided column names
+      header = column_names
+    else if (has_header) then
+      data_offset = data_offset + 1
+      ! Split header line by separator
+      n_columns = size(column_types)
+      current_column = 1
+      current_row = 1
+      do while (current_column <= n_columns)
+        ! Find next separator or end of line
+        type_index = index(line(current_row:), sep)
+        if (type_index == 0) then
+          header(current_column) = adjustl(trim(line(current_row:)))
+          exit
+        else
+          header(current_column) = adjustl(trim(line(current_row:current_row+type_index-2)))
+          current_row = current_row + type_index
+        end if
+        current_column = current_column + 1
+      end do
     end if
 
-    ! Count number of rows for allocation of data_out.
-    num_rows = 0
-    do
-      read (file_unit, '(A)', iostat=io_error) line
-      if (.not. is_ok(io_error)) exit
-      if (len_trim(line) > 0) num_rows = num_rows + 1
-    end do
-
-    allocate(data_out(num_rows, num_cols))
-
-    ! Go back in the file to the first line of data.
+    ! Go back to the start of the file and skip first offset lines (comments and header if present)
+    print *, "Data offset: ", data_offset
     rewind(file_unit)
-    do i = 1, data_offset
-      read (file_unit, '(A)', iostat=io_error)
+    do current_row = 1, data_offset
+      read(file_unit, '(A)', iostat=io_err) line
+      if (io_err /= 0) exit !//TODO better error handling
     end do
 
-    ! Read all non-empty lines into data_out.
-    do i = 1, num_rows
-      read (file_unit, '(A)', iostat=io_error) line
-      if (len_trim(line) > 0) then
-        call parse_line(line, delimiter, fields, ierr)
-        if (size(fields) == num_cols) then
-          data_out(i, :) = fields
+    ! Step 4: Count number of rows
+    n_rows = 0
+    do
+      read(file_unit, '(A)', iostat=io_err) line
+      if (io_err /= 0) exit
+      n_rows = n_rows + 1
+    end do
+    rewind(file_unit)
+    if (has_header .and. .not. present(column_names)) then
+      read(file_unit, '(A)', iostat=io_err) line ! skip header
+    end if
+
+    !//TODO clarify which structure complex numbers should have
+    ! Step 5: Read data rows and fill type-banded arrays
+    metadata = 0
+    n_columns = size(column_types)
+    do current_row = 1, n_rows
+      ! Read the next line
+      read(file_unit, '(A)', iostat=io_err) line
+      if (io_err /= 0) exit !//TODO better error handling
+      ! Reset column indices for each type
+      i_col_int = 1
+      i_col_real = 1
+      i_col_char = 1
+      i_col_logical = 1
+      i_col_complex = 1
+      ! Reset inline separator position
+      current_pos = 1
+      ! Go through each column in the line
+      do current_column = 1, n_columns
+
+        ! Find next separator or end of line
+        sep_pos = index(line(current_pos:), sep)
+
+        ! If no separator found, take rest of line
+        if (sep_pos == 0) then
+          field = adjustl(trim(line(current_pos:)))
         else
-          data_out(i, :) = ""
+          ! Extract field using current position and separator position
+          field = adjustl(trim(line(current_pos:current_pos+sep_pos-2)))
         end if
-      end if
-      deallocate (fields)
-    end do
-  end subroutine read_csv_to_strings
 
-end module csv_file_reader_module
+        ! Read column type to store value in appropriate array
+        col_type = column_types(current_column)
 
-! =============================================================================
-! C and R Wrapper Subroutines
-! =============================================================================
+        select case (col_type)
+        case (1) ! int
+          read(field, *, iostat=io_err) int_cols(current_row, i_col_int)
+          ! If first time this column type is encountered, set metadata
+          if (metadata(1, current_column) == 0) then
+            metadata(1, current_column) = 1
+            metadata(2, current_column) = i_col_int
+          end if
+          ! Increment column index for next int column
+          i_col_int = i_col_int + 1
+        
+        case (2) ! real
+          read(field, *, iostat=io_err) real_cols(current_row, i_col_real)
+          ! If first time this column type is encountered, set metadata
+          if (metadata(1, current_column) == 0) then
+            metadata(1, current_column) = 2
+            metadata(2, current_column) = i_col_real
+          end if
+          ! Increment column index for next real column
+          i_col_real = i_col_real + 1
 
-!> C interface for getting CSV dimensions before reading.
-subroutine get_csv_dims_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
-                          num_rows, num_cols, ierr) &
-  bind(c, name='get_csv_dims_c')
-  use, intrinsic :: iso_c_binding
-  use csv_parser_module, only: parse_line, MAX_FIELD_LEN
-  implicit none
+        case (3) ! char
+          read(field, *, iostat=io_err) char_cols(current_row, i_col_char)
+          ! If first time this column type is encountered, set metadata
+          if (metadata(1, current_column) == 0) then
+            metadata(1, current_column) = 3
+            metadata(2, current_column) = i_col_char
+          end if
+          ! Increment column index for next char column
+          i_col_char = i_col_char + 1
 
-  !| Input ASCII codes of the filename.
-  integer(c_int), intent(in) :: filename_ascii(*)
-  !| Length of the filename.
-  integer(c_int), value, intent(in) :: fn_len
-  !| Flag indicating if the file has a header.
-  logical(c_bool), value, intent(in) :: has_header
-  !| ASCII code of the delimiter character.
-  integer(c_int), value, intent(in) :: delimiter_ascii
-  !| Output for number of data rows.
-  integer(c_int), intent(out) :: num_rows
-  !| Output for number of columns.
-  integer(c_int), intent(out) :: num_cols
-  !| Output error code.
-  integer(c_int), intent(out) :: ierr
+        case (4) ! logical
+          ! Read logical column 
+          ! (fortran interprets T, t, TRUE, true, .true. or 1 as .true.)
+          ! (fortran interprets F, f, FALSE, false, .false. or 0 as .false.)
+          read(field, *, iostat=io_err) logical_cols(current_row, i_col_logical)
+          ! If first time this column type is encountered, set metadata
+          if (metadata(1, current_column) == 0) then
+            metadata(1, current_column) = 4
+            metadata(2, current_column) = i_col_logical
+          end if
+          ! Increment column index for next logical column
+          i_col_logical = i_col_logical + 1
 
-  character(len=:), allocatable :: filename
-  character(len=1) :: delimiter
-  character(len=4096) :: line
-  character(len=max_field_len), allocatable :: fields(:)
-  integer :: i, unit, f_stat, line_count, header_offset
-  logical :: has_header_f
+        end select
 
-  has_header_f = has_header
-  allocate (character(len=fn_len) :: filename)
-  do i = 1, fn_len
-    filename(i:i) = char(filename_ascii(i))
-  end do
-  delimiter = char(delimiter_ascii)
+        ! Increment current position for next field if separator found
+        if (sep_pos == 0) then
+          exit
+        else
+          current_pos = current_pos + sep_pos
+        end if
 
-  num_rows = 0; num_cols = 0; ierr = 0; line_count = 0; header_offset = 0
-
-  open (newunit=unit, file=trim(filename), status='old', action='read', iostat=f_stat)
-  if (f_stat /= 0) then; ierr = 10; return; end if
-
-  do
-    read (unit, '(A)', iostat=f_stat) line
-    if (f_stat /= 0) exit
-    if (len_trim(line) > 0) line_count = line_count + 1
-  end do
-  rewind (unit)
-
-  if (line_count == 0) then; ierr = 4; close (unit); return; end if
-  if (has_header_f) header_offset = 1
-  num_rows = line_count - header_offset
-  if (num_rows <= 0) then; ierr = 5; close (unit); return; end if
-
-  if (has_header_f) read (unit, '(A)')
-  read (unit, '(A)') line
-  close (unit)
-
-  call parse_line(line, delimiter, fields, f_stat)
-  num_cols = size(fields)
-  deallocate (fields)
-end subroutine get_csv_dims_c
-
-!> R interface for getting CSV dimensions before reading.
-subroutine get_csv_dims_r(filename_ascii, fn_len, has_header, delimiter_ascii, &
-                          num_rows, num_cols, ierr)
-  use, intrinsic :: iso_fortran_env, only: int32
-  use csv_parser_module, only: parse_line, MAX_FIELD_LEN
-  implicit none
-
-  !| Input ASCII codes of the filename.
-  integer(int32), intent(in) :: filename_ascii(fn_len)
-  !| Length of the filename.
-  integer(int32), intent(in) :: fn_len
-  !| Flag indicating if the file has a header.
-  logical, intent(in) :: has_header
-  !| ASCII code of the delimiter character.
-  integer(int32), intent(in) :: delimiter_ascii
-  !| Output for number of data rows.
-  integer(int32), intent(out) :: num_rows
-  !| Output for number of columns.
-  integer(int32), intent(out) :: num_cols
-  !| Output error code.
-  integer(int32), intent(out) :: ierr
-
-  character(len=:), allocatable :: filename
-  character(len=1) :: delimiter
-  character(len=4096) :: line
-  character(len=MAX_FIELD_LEN), allocatable :: fields(:)
-  integer :: i, unit, f_stat, line_count, header_offset
-
-  allocate (character(len=fn_len) :: filename)
-  do i = 1, fn_len
-    filename(i:i) = char(filename_ascii(i))
-  end do
-  delimiter = char(delimiter_ascii)
-
-  num_rows = 0; num_cols = 0; ierr = 0; line_count = 0; header_offset = 0
-
-  open (newunit=unit, file=trim(filename), status='old', action='read', iostat=f_stat)
-  if (f_stat /= 0) then; ierr = 10; return; end if
-
-  do
-    read (unit, '(A)', iostat=f_stat) line
-    if (f_stat /= 0) exit
-    if (len_trim(line) > 0) line_count = line_count + 1
-  end do
-  rewind (unit)
-
-  if (line_count == 0) then; ierr = 4; close (unit); return; end if
-  if (has_header) header_offset = 1
-  num_rows = line_count - header_offset
-  if (num_rows <= 0) then; ierr = 5; close (unit); return; end if
-
-  if (has_header) read (unit, '(A)')
-  read (unit, '(A)') line
-  close (unit)
-
-  call parse_line(line, delimiter, fields, f_stat)
-  num_cols = size(fields)
-  deallocate (fields)
-end subroutine get_csv_dims_r
-
-!> C interface for reading a CSV into a flat character array.
-subroutine read_csv_to_strings_c(filename_ascii, fn_len, has_header, delimiter_ascii, &
-                                 header_out_ascii, data_out_ascii, ierr) &
-  bind(c, name='read_csv_to_strings_c')
-  use, intrinsic :: iso_c_binding
-  use csv_file_reader_module, only: read_csv_to_strings
-  use csv_parser_module, only: MAX_FIELD_LEN
-
-  implicit none
-
-  !| Input ASCII codes of the filename.
-  integer(c_int), intent(in) :: filename_ascii(fn_len)
-  !| Length of the filename.
-  integer(c_int), value, intent(in) :: fn_len
-  !| Flag indicating if the file has a header.
-  logical(c_bool), value, intent(in) :: has_header
-  !| ASCII code of the delimiter character.
-  integer(c_int), value, intent(in) :: delimiter_ascii
-  !| Output buffer for the header as a flat array of ASCII codes.
-  integer(c_int), intent(out) :: header_out_ascii(*)
-  !| Output buffer for the data as a flat array of ASCII codes.
-  integer(c_int), intent(out) :: data_out_ascii(*)
-  !| Output error code.
-  integer(c_int), intent(out) :: ierr
-
-  character(len=:), allocatable :: filename
-  character(len=1) :: delimiter
-  character(len=MAX_FIELD_LEN), allocatable :: header_out_f(:), data_out_f(:, :)
-  integer(c_int) :: f_stat
-  integer :: i, j, k, char_idx, num_rows, num_cols
-  logical :: has_header_f
-
-  has_header_f = has_header
-  allocate (character(len=fn_len) :: filename)
-  do i = 1, fn_len
-    filename(i:i) = char(filename_ascii(i))
-  end do
-  delimiter = char(delimiter_ascii)
-
-  call read_csv_to_strings(filename, has_header_f, delimiter, header_out_f, data_out_f, f_stat)
-  ierr = f_stat
-  if (ierr /= 0) return
-
-  num_rows = size(data_out_f, dim=1)
-  num_cols = size(data_out_f, dim=2)
-
-  if (has_header_f) then
-    do i = 1, num_cols
-      do k = 1, len_trim(header_out_f(i))
-        char_idx = (i - 1)*max_field_len + k
-        header_out_ascii(char_idx) = ichar(header_out_f(i) (k:k))
       end do
     end do
-  end if
 
-  do j = 1, num_cols
-    do i = 1, num_rows
-      do k = 1, len_trim(data_out_f(i, j))
-        char_idx = (i - 1)*num_cols*MAX_FIELD_LEN + (j - 1)*MAX_FIELD_LEN + k
-        data_out_ascii(char_idx) = ichar(data_out_f(i, j) (k:k))
-      end do
-    end do
-  end do
-end subroutine read_csv_to_strings_c
+    close(file_unit)
 
-!> R interface for reading a CSV into a 3D integer array of ASCII codes.
-subroutine read_csv_to_strings_r(filename_ascii, fn_len, has_header, delimiter_ascii, &
-                                 num_rows, num_cols, header_out_ascii, data_out_ascii, ierr)
-  use, intrinsic :: iso_fortran_env, only: int32
-  use csv_file_reader_module, only: read_csv_to_strings
-  use csv_parser_module, only: MAX_FIELD_LEN
-  implicit none
+  end subroutine read_table
 
-  !| Input ASCII codes of the filename.
-  integer(int32), intent(in) :: filename_ascii(fn_len)
-  !| Length of the filename.
-  integer(int32), intent(in) :: fn_len
-  !| Number of data rows in the file.
-  integer(int32), intent(in) :: num_rows
-  !| Number of columns in the file.
-  integer(int32), intent(in) :: num_cols
-  !| Flag indicating if the file has a header.
-  logical, intent(in) :: has_header
-  !| ASCII code of the delimiter character.
-  integer(int32), intent(in) :: delimiter_ascii
-  !| Output buffer for the header as a 2D array of ASCII codes.
-  integer(int32), intent(out) :: header_out_ascii(MAX_FIELD_LEN, num_cols)
-  !| Output buffer for the data as a 3D array of ASCII codes.
-  integer(int32), intent(out) :: data_out_ascii(MAX_FIELD_LEN, num_rows, num_cols)
-  !| Output error code.
-  integer(int32), intent(out) :: ierr
+  !> Getter functions for column access by name or index
+  !pure function get_real_column(name_or_index, real_cols, header, metadata) result(col)
+   ! implicit none
+    ! ...existing code...
+  !end function get_real_column
 
-  character(len=:), allocatable :: filename
-  character(len=1) :: delimiter
-  character(len=max_field_len), allocatable :: header_out_f(:), data_out_f(:, :)
-  integer :: i, j, k
+  !pure function get_int_column(name_or_index, int_cols, header, metadata) result(col)
+   ! implicit none
+    ! ...existing code...
+  !end function get_int_column
 
-  allocate (character(len=fn_len) :: filename)
-  do i = 1, fn_len
-    filename(i:i) = char(filename_ascii(i))
-  end do
-  delimiter = char(delimiter_ascii)
+  !pure function get_char_column(name_or_index, char_cols, header, metadata) result(col)
+   ! implicit none
+    ! ...existing code...
+  !end function get_char_column
 
-  call read_csv_to_strings(filename, has_header, delimiter, header_out_f, data_out_f, ierr)
-  if (ierr /= 0) return
+  !pure function get_logical_column(name_or_index, logical_cols, header, metadata) result(col)
+   ! implicit none
+    ! ...existing code...
+!  end function get_logical_column
 
-  header_out_ascii = 0
-  data_out_ascii = 0
+  !pure function get_complex_column(name_or_index, complex_cols, header, metadata) result(col)
+  !  implicit none
+    ! ...existing code...
+!  end function get_complex_column
 
-  if (has_header) then
-    do i = 1, num_cols
-      do k = 1, len_trim(header_out_f(i))
-        header_out_ascii(k, i) = ichar(header_out_f(i) (k:k))
-      end do
-    end do
-  end if
+  !> Serialization and deserialization routines using serial_array_module
+  ! pure subroutine serialize_table()
+  !   implicit none
+  !   ! ...implementation to be added...
+  ! end subroutine serialize_table
 
-  do j = 1, num_cols
-    do i = 1, num_rows
-      do k = 1, len_trim(data_out_f(i, j))
-        data_out_ascii(k, i, j) = ichar(data_out_f(i, j) (k:k))
-      end do
-    end do
-  end do
-end subroutine read_csv_to_strings_r
+  ! pure subroutine deserialize_table()
+  !   implicit none
+  !   ! ...implementation to be added...
+  ! end subroutine deserialize_table
+
+  !> Serialization and deserialization routines using serial_array_module
+  !pure subroutine serialize_table(...)
+  !  implicit none
+    ! ...existing code...
+  !end subroutine serialize_table
+
+  !pure subroutine deserialize_table(...)
+  !  implicit none
+    ! ...existing code...
+  !end subroutine deserialize_table
+
+end module tox_csv_file_reader
