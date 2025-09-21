@@ -65,20 +65,23 @@ contains
 
   !> Test correct mapping between families and genes.
   subroutine test_sample_table()
-    integer(int32) :: int_cols(2,1), i, j
+    integer(int32) :: int_cols(2,2), i, j
     real(real64) :: real_cols(2,2)
     character(len=64) :: char_cols(2,1)
     logical :: logical_cols(2,1)
-    complex(real64) :: complex_cols(2,5)
-    character(len=64) :: header(1)
-    integer(int32) :: metadata(2,5)
+    complex(real64) :: complex_cols(2,1)
+    character(len=64) :: header(7)
+    integer(int32) :: metadata(2,7)
     integer(int32) :: ierr
-    call read_table("test.csv", [1, 2, 3, 2, 4], .false., int_cols, real_cols, char_cols, &
+    integer(int32) :: single_int_col(2)
+    call read_table("test.csv", [1, 2, 3, 2, 4, 1, 5], .false., int_cols, real_cols, char_cols, &
                              logical_cols, complex_cols, header, metadata, ierr)
+
+    ! call get_int_column(int_cols, header, metadata, ierr)
     
     print *, "Integer Columns:"
     do i = 1, 2
-      do j = 1, 1
+      do j = 1, 2
         print *, "Row ", i, ", Col ", j, ": ", int_cols(i, j)
       end do
     end do
@@ -104,11 +107,29 @@ contains
       end do
     end do
 
+    print *, "Complex Columns:"
     do i = 1, 2
-      do j = 1, 5
+      do j = 1, 1
+        print *, "Row ", i, ", Col ", j, ": ", complex_cols(i, j)
+      end do
+    end do
+
+    do i = 1, 2
+      do j = 1, 7
         print *, "Metadata Row ", i, ", Col ", j, ": ", metadata(i, j)
       end do
     end do
+
+    do i=1, 7
+      print *, "Header ", i, ": ", header(i)
+    end do
+
+    call get_int_column(int_cols, metadata, 6, single_int_col, ierr)
+    if (is_ok(ierr)) then
+      print *, "Single Integer Column (Index 6): ", single_int_col
+    else
+      print *, "Error retrieving single integer column: ", ierr
+    end if
   end subroutine test_sample_table
 
 end module mod_test_csv_file_reader
