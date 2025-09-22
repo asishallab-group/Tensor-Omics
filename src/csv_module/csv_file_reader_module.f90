@@ -50,20 +50,20 @@ contains
     
     ! Check header array dimension
     if (size(header) /= n_columns) then
-      set_err_once(ierr, ERR_DIM_MISMATCH)
+      call set_err_once(ierr, ERR_DIM_MISMATCH)
       return
     end if
     
     ! Check metadata array dimensions
     if (size(metadata, 1) /= 2 .or. size(metadata, 2) /= n_columns) then
-      set_err_once(ierr, ERR_DIM_MISMATCH)
+      call set_err_once(ierr, ERR_DIM_MISMATCH)
       return
     end if
     
     ! Check column_names dimension if present
     if (present(column_names)) then
       if (size(column_names) /= n_columns) then
-        set_err_once(ierr, ERR_DIM_MISMATCH)
+        call set_err_once(ierr, ERR_DIM_MISMATCH)
         return
       end if
     end if
@@ -78,7 +78,7 @@ contains
     ! Open file
     open(unit=file_unit, file=file_path, status='old', action='read', iostat=io_err)
     if (.not. is_ok(io_err)) then
-      set_err_once(ierr, ERR_FILE_OPEN)
+      call set_err_once(ierr, ERR_FILE_OPEN)
       return
     end if
 
@@ -133,7 +133,7 @@ contains
     do current_row = 1, data_offset
       read(file_unit, '(A)', iostat=io_err) line
       if (.not. is_ok(io_err)) then
-        set_err_once(ierr, ERR_INVALID_INPUT)
+        call set_err_once(ierr, ERR_INVALID_INPUT)
         exit
       end if
     end do
@@ -278,8 +278,98 @@ contains
 
   end subroutine read_table
 
+  !> Get integer column by original table index
+  pure subroutine get_int_column_by_index(int_cols, metadata, index, single_int_column, ierr)
+    implicit none
+
+    !| 2D int array, integer columns from read_table
+    integer(int32), intent(in) :: int_cols(:,:)
+    !| 2D int array, metadata from read_table
+    integer(int32), intent(in) :: metadata(:,:)
+    !| Original table column index
+    integer(int32), intent(in) :: index
+    !| 1D int array, extracted column
+    integer(int32), intent(out) :: single_int_column(:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: type_band_index
+    
+    ! Initialize error code
+    call set_ok(ierr)
+    
+    ! Check if index is valid
+    if (index < 1 .or. index > size(metadata, 2)) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+    
+    ! Check if the column at this index is actually an integer column
+    if (metadata(1, index) /= 1) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column is not an integer type
+      return
+    end if
+    
+    ! Get the type-band index for this column
+    type_band_index = metadata(2, index)
+    
+    ! Check if type-band index is valid
+    if (type_band_index < 1 .or. type_band_index > size(int_cols, 2)) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+    
+    ! Extract the column from int_cols
+    single_int_column = int_cols(:, type_band_index)
+    
+  end subroutine get_int_column_by_index
+
+  !> Get integer column by column name
+  pure subroutine get_int_column_by_name(int_cols, metadata, header, name, single_int_column, ierr)
+    implicit none
+
+    !| 2D int array, integer columns from read_table
+    integer(int32), intent(in) :: int_cols(:,:)
+    !| 2D int array, metadata from read_table
+    integer(int32), intent(in) :: metadata(:,:)
+    !| 1D char array, column names from read_table
+    character(len=*), intent(in) :: header(:)
+    !| Column name to search for
+    character(len=*), intent(in) :: name
+    !| 1D int array, extracted column
+    integer(int32), intent(out) :: single_int_column(:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: i, found_index
+    
+    ! Initialize error code
+    call set_ok(ierr)
+    
+    ! Search for the column name in header
+    found_index = 0
+    do i = 1, size(header)
+      if (trim(adjustl(header(i))) == trim(adjustl(name))) then
+        found_index = i
+        exit
+      end if
+    end do
+    
+    ! Check if column name was found
+    if (found_index == 0) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column name not found
+      return
+    end if
+    
+    ! Call the by_index version with the found index
+    call get_int_column_by_index(int_cols, metadata, found_index, single_int_column, ierr)
+    
+  end subroutine get_int_column_by_name
+
   !> Get real column by original table index
-  pure subroutine get_real_column(real_cols, metadata, index, single_real_column, ierr)
+  pure subroutine get_real_column_by_index(real_cols, metadata, index, single_real_column, ierr)
     implicit none
 
     !| 2D real array, real columns from read_table
@@ -323,57 +413,53 @@ contains
     ! Extract the column from real_cols
     single_real_column = real_cols(:, type_band_index)
     
-  end subroutine get_real_column
+  end subroutine get_real_column_by_index
 
-  !> Get integer column by original table index
-  pure subroutine get_int_column(int_cols, metadata, index, single_int_column, ierr)
+  !> Get real column by column name
+  pure subroutine get_real_column_by_name(real_cols, metadata, header, name, single_real_column, ierr)
     implicit none
 
-    !| 2D int array, integer columns from read_table
-    integer(int32), intent(in) :: int_cols(:,:)
+    !| 2D real array, real columns from read_table
+    real(real64), intent(in) :: real_cols(:,:)
     !| 2D int array, metadata from read_table
     integer(int32), intent(in) :: metadata(:,:)
-    !| Original table column index
-    integer(int32), intent(in) :: index
-    !| 1D int array, extracted column
-    integer(int32), intent(out) :: single_int_column(:)
+    !| 1D char array, column names from read_table
+    character(len=*), intent(in) :: header(:)
+    !| Column name to search for
+    character(len=*), intent(in) :: name
+    !| 1D real array, extracted column
+    real(real64), intent(out) :: single_real_column(:)
     !| Error code: 0 - success, non-zero = error
     integer(int32), intent(out) :: ierr
     
     ! Local variables
-    integer(int32) :: type_band_index
+    integer(int32) :: i, found_index
     
     ! Initialize error code
-    set_ok(ierr)
+    call set_ok(ierr)
     
-    ! Check if index is valid
-    if (index < 1 .or. index > size(metadata, 2)) then
-      set_err_once(ierr, ERR_INVALID_INPUT)
+    ! Search for the column name in header
+    found_index = 0
+    do i = 1, size(header)
+      if (trim(adjustl(header(i))) == trim(adjustl(name))) then
+        found_index = i
+        exit
+      end if
+    end do
+    
+    ! Check if column name was found
+    if (found_index == 0) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column name not found
       return
     end if
     
-    ! Check if the column at this index is actually an integer column
-    if (metadata(1, index) /= 1) then
-      set_err_once(ierr, ERR_INVALID_INPUT)  ! Column is not an integer type
-      return
-    end if
+    ! Call the by_index version with the found index
+    call get_real_column_by_index(real_cols, metadata, found_index, single_real_column, ierr)
     
-    ! Get the type-band index for this column
-    type_band_index = metadata(2, index)
-    
-    ! Check if type-band index is valid
-    if (type_band_index < 1 .or. type_band_index > size(int_cols, 2)) then
-      set_err_once(ierr, ERR_INVALID_INPUT)
-      return
-    end if
-    
-    ! Extract the column from int_cols
-    single_int_column = int_cols(:, type_band_index)
-    
-  end subroutine get_int_column
+  end subroutine get_real_column_by_name
 
   !> Get character column by original table index
-  pure subroutine get_char_column(char_cols, metadata, index, single_char_column, ierr)
+  pure subroutine get_char_column_by_index(char_cols, metadata, index, single_char_column, ierr)
     implicit none
 
     !| 2D char array, character columns from read_table
@@ -417,10 +503,53 @@ contains
     ! Extract the column from char_cols
     single_char_column = char_cols(:, type_band_index)
     
-  end subroutine get_char_column
+  end subroutine get_char_column_by_index
+
+  !> Get character column by column name
+  pure subroutine get_char_column_by_name(char_cols, metadata, header, name, single_char_column, ierr)
+    implicit none
+
+    !| 2D char array, character columns from read_table
+    character(len=*), intent(in) :: char_cols(:,:)
+    !| 2D int array, metadata from read_table
+    integer(int32), intent(in) :: metadata(:,:)
+    !| 1D char array, column names from read_table
+    character(len=*), intent(in) :: header(:)
+    !| Column name to search for
+    character(len=*), intent(in) :: name
+    !| 1D char array, extracted column
+    character(len=*), intent(out) :: single_char_column(:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: i, found_index
+    
+    ! Initialize error code
+    call set_ok(ierr)
+    
+    ! Search for the column name in header
+    found_index = 0
+    do i = 1, size(header)
+      if (trim(adjustl(header(i))) == trim(adjustl(name))) then
+        found_index = i
+        exit
+      end if
+    end do
+    
+    ! Check if column name was found
+    if (found_index == 0) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column name not found
+      return
+    end if
+    
+    ! Call the by_index version with the found index
+    call get_char_column_by_index(char_cols, metadata, found_index, single_char_column, ierr)
+    
+  end subroutine get_char_column_by_name
 
   !> Get logical column by original table index
-  pure subroutine get_logical_column(logical_cols, metadata, index, single_logical_column, ierr)
+  pure subroutine get_logical_column_by_index(logical_cols, metadata, index, single_logical_column, ierr)
     implicit none
 
     !| 2D logical array, logical columns from read_table
@@ -464,10 +593,53 @@ contains
     ! Extract the column from logical_cols
     single_logical_column = logical_cols(:, type_band_index)
     
-  end subroutine get_logical_column
+  end subroutine get_logical_column_by_index
+
+  !> Get logical column by column name
+  pure subroutine get_logical_column_by_name(logical_cols, metadata, header, name, single_logical_column, ierr)
+    implicit none
+
+    !| 2D logical array, logical columns from read_table
+    logical, intent(in) :: logical_cols(:,:)
+    !| 2D int array, metadata from read_table
+    integer(int32), intent(in) :: metadata(:,:)
+    !| 1D char array, column names from read_table
+    character(len=*), intent(in) :: header(:)
+    !| Column name to search for
+    character(len=*), intent(in) :: name
+    !| 1D logical array, extracted column
+    logical, intent(out) :: single_logical_column(:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: i, found_index
+    
+    ! Initialize error code
+    call set_ok(ierr)
+    
+    ! Search for the column name in header
+    found_index = 0
+    do i = 1, size(header)
+      if (trim(adjustl(header(i))) == trim(adjustl(name))) then
+        found_index = i
+        exit
+      end if
+    end do
+    
+    ! Check if column name was found
+    if (found_index == 0) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column name not found
+      return
+    end if
+    
+    ! Call the by_index version with the found index
+    call get_logical_column_by_index(logical_cols, metadata, found_index, single_logical_column, ierr)
+    
+  end subroutine get_logical_column_by_name
 
   !> Get complex column by original table index
-  pure subroutine get_complex_column(complex_cols, metadata, index, single_complex_column, ierr)
+  pure subroutine get_complex_column_by_index(complex_cols, metadata, index, single_complex_column, ierr)
     implicit none
 
     !| 2D complex array, complex columns from read_table
@@ -511,7 +683,50 @@ contains
     ! Extract the column from complex_cols
     single_complex_column = complex_cols(:, type_band_index)
     
-  end subroutine get_complex_column
+  end subroutine get_complex_column_by_index
+
+  !> Get complex column by column name
+  pure subroutine get_complex_column_by_name(complex_cols, metadata, header, name, single_complex_column, ierr)
+    implicit none
+
+    !| 2D complex array, complex columns from read_table
+    complex(real64), intent(in) :: complex_cols(:,:)
+    !| 2D int array, metadata from read_table
+    integer(int32), intent(in) :: metadata(:,:)
+    !| 1D char array, column names from read_table
+    character(len=*), intent(in) :: header(:)
+    !| Column name to search for
+    character(len=*), intent(in) :: name
+    !| 1D complex array, extracted column
+    complex(real64), intent(out) :: single_complex_column(:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: i, found_index
+    
+    ! Initialize error code
+    call set_ok(ierr)
+    
+    ! Search for the column name in header
+    found_index = 0
+    do i = 1, size(header)
+      if (trim(adjustl(header(i))) == trim(adjustl(name))) then
+        found_index = i
+        exit
+      end if
+    end do
+    
+    ! Check if column name was found
+    if (found_index == 0) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)  ! Column name not found
+      return
+    end if
+    
+    ! Call the by_index version with the found index
+    call get_complex_column_by_index(complex_cols, metadata, found_index, single_complex_column, ierr)
+    
+  end subroutine get_complex_column_by_name
 
   !> Serialization and deserialization routines using serial_array_module
   ! pure subroutine serialize_table()

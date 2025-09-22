@@ -74,8 +74,10 @@ contains
     integer(int32) :: metadata(2,7)
     integer(int32) :: ierr
     integer(int32) :: single_int_col(2)
+    character(len=64), dimension(7) :: column_names
+    column_names = [character(len=64) :: "my first col", "bal col", "CharCol", "LogicalCol", "ComplexCol", "RealCol2", "IntCol2"]
     call read_table("test.csv", [1, 2, 3, 2, 4, 1, 5], .false., int_cols, real_cols, char_cols, &
-                             logical_cols, complex_cols, header, metadata, ierr)
+                             logical_cols, complex_cols, header, metadata, ierr, '|')
 
     ! call get_int_column(int_cols, header, metadata, ierr)
     
@@ -124,7 +126,7 @@ contains
       print *, "Header ", i, ": ", header(i)
     end do
 
-    call get_int_column(int_cols, metadata, 6, single_int_col, ierr)
+    call get_int_column_by_index(int_cols, metadata, 6, single_int_col, ierr)
     if (is_ok(ierr)) then
       print *, "Single Integer Column (Index 6): ", single_int_col
     else
