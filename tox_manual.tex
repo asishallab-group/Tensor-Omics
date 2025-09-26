@@ -722,6 +722,151 @@ call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percenti
 call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
 \end{lstlisting}
 
+\item \textbf{Binary Search Trees for 1D Range Queries}
+\label{sec:binary_search_trees}
+
+Binary Search Trees provide efficient indexing and range query capabilities for one-dimensional data using flat array implementations for optimal memory performance.
+
+\textbf{Fortran BST Implementation}
+
+\begin{enumerate}
+    \item \textbf{Build BST Index}
+    
+    Constructs a Binary Search Tree index by sorting the input values and storing permutation indices. Uses an efficient stack-based sorting algorithm.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{values real(real64)}: 1D array of values to index
+        \item \texttt{num\_values integer(int32)}: Number of elements
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{sorted\_indices integer(int32)}: Permutation indices after sorting (1-based)
+        \item \texttt{left\_stack, right\_stack integer(int32)}: Sorting workspace
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+call build_bst_index(values, num_values, sorted_indices, left_stack, right_stack, ierr)
+\end{lstlisting}
+
+    \item \textbf{Get Sorted Value}
+    
+    Retrieves the value at a specific position in the sorted order defined by the BST index.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{values real(real64)}: Original values array
+        \item \texttt{sorted\_indices integer(int32)}: BST index array (1-based)
+        \item \texttt{position integer(int32)}: Position in sorted order (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{sorted\_value real(real64)}: Value at specified position
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+sorted_value = get_sorted_value(values, sorted_indices, position, ierr)
+\end{lstlisting}
+
+    \item \textbf{BST Range Query}
+    
+    Efficiently finds all values within a specified range using the precomputed BST index.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{values real(real64)}: Original values array
+        \item \texttt{sorted\_indices integer(int32)}: BST index array (1-based)
+        \item \texttt{num\_values integer(int32)}: Number of elements
+        \item \texttt{lower\_bound, upper\_bound real(real64)}: Range boundaries
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{output\_indices integer(int32)}: Indices of matching values (1-based)
+        \item \texttt{num\_matches integer(int32)}: Number of matches found
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+call bst_range_query(values, sorted_indices, num_values, lower_bound, upper_bound, &
+                   output_indices, num_matches, ierr)
+\end{lstlisting}
+\end{enumerate}
+
+\item \textbf{k-d Trees for Multi-Dimensional Indexing}
+\label{sec:kd_trees}
+
+k-d trees provide efficient space partitioning for multi-dimensional data with support for both Euclidean and spherical geometries.
+
+\textbf{Fortran k-d Tree Implementation}
+
+\begin{enumerate}
+    \item \textbf{Build k-d Tree Index}
+    
+    Constructs a k-d tree index using stack-based non-recursive partitioning along specified dimensions.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{points real(real64)}: Data points matrix (dimensions × points)
+        \item \texttt{num\_dimensions integer(int32)}: Number of dimensions
+        \item \texttt{num\_points integer(int32)}: Number of points
+        \item \texttt{dimension\_order integer(int32)}: Dimension ordering for splitting (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{kd\_indices integer(int32)}: Output index array (1-based)
+        \item \texttt{workspace integer(int32)}: Workspace array
+        \item \texttt{value\_buffer real(real64)}: Value buffer for sorting
+        \item \texttt{permutation integer(int32)}: Permutation array
+        \item \texttt{left\_stack, right\_stack integer(int32)}: Sorting stacks
+        \item \texttt{recursion\_stack integer(int32)}: Recursion stack
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+call build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_order, &
+                  workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
+\end{lstlisting}
+
+    \item \textbf{Build Spherical k-d Tree}
+    
+    Specialized k-d tree construction optimized for unit vectors on hyperspheres.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{vectors real(real64)}: Unit vectors matrix (dimensions × vectors)
+        \item \texttt{num\_dimensions integer(int32)}: Number of dimensions
+        \item \texttt{num\_vectors integer(int32)}: Number of vectors
+        \item \texttt{dimension\_order integer(int32)}: Dimension ordering for splitting (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{sphere\_indices integer(int32)}: Output index array (1-based)
+        \item Various workspace arrays (same as build\_kd\_index)
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+call build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, dimension_order, &
+                      workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
+\end{lstlisting}
+
+    \item \textbf{Get Point from k-d Index}
+    
+    Retrieves point coordinates from specified position in k-d tree ordering.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{points real(real64)}: Original points matrix
+        \item \texttt{kd\_indices integer(int32)}: k-d tree index array (1-based)
+        \item \texttt{position integer(int32)}: Position in index (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{point\_values real(real64)}: Retrieved point values
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran]
+call get_kd_point(points, kd_indices, position, point_values, ierr)
+\end{lstlisting}
+\end{enumerate}
+
 \item \textbf{Array Serialization and Deserialization Module}
 
 The array serialization and deserialization module provides comprehensive routines for efficiently storing and retrieving multi-dimensional arrays of various data types.
@@ -1228,6 +1373,90 @@ tox_identify_outliers(rdi, threshold=None, percentile=95.0)
 tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
 
+\item \textbf{Python BST Interface}
+
+\begin{enumerate}
+    \item \textbf{Build BST Index}
+    
+    Python wrapper for building BST index from NumPy arrays. Automatically converts from Fortran 1-based to Python 0-based indexing.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{values numpy.ndarray}: 1D array of float64 values
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{np.array}: Permutation indices (0-based Python indices)
+    \end{itemize}
+\begin{lstlisting}[language=Python]
+indices = build_bst_index(values)
+\end{lstlisting}
+
+    \item \textbf{BST Range Query}
+    
+    Performs range queries on BST index. Accepts and returns Python 0-based indices.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{values numpy.ndarray}: Original values array
+        \item \texttt{indices numpy.ndarray}: BST index array from build\_bst\_index (0-based)
+        \item \texttt{lower\_bound float}: Lower bound of range (inclusive)
+        \item \texttt{upper\_bound float}: Upper bound of range (inclusive)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{tuple}: (matching\_indices, count) where indices are 0-based
+    \end{itemize}
+\begin{lstlisting}[language=Python]
+matching_indices, count = bst_range_query(values, indices, lower_bound, upper_bound)
+\end{lstlisting}
+
+    \item \textbf{Get Sorted Value}
+    
+    \textbf{Note:} This function is not implemented as a separate Python function. Use direct array indexing instead:
+\begin{lstlisting}[language=Python]
+value = values[indices[position]]  # position is 0-based
+\end{lstlisting}
+\end{enumerate}
+\item \textbf{Python k-d Tree Interface}
+
+\begin{enumerate}
+    \item \textbf{Build k-d Tree Index}
+    
+    Python interface for constructing k-d trees. Requires Fortran-ordered arrays and returns 0-based indices.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{points numpy.ndarray}: 2D array of points (dimensions × n\_points) in Fortran order
+        \item \texttt{dimension\_order numpy.ndarray}: Dimension ordering (1-based Fortran indices, optional)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{np.array}: Permutation indices (0-based Python indices)
+    \end{itemize}
+\begin{lstlisting}[language=Python]
+kd_indices = build_kd_index(points, dimension_order)
+\end{lstlisting}
+
+    \item \textbf{Build Spherical k-d Tree}
+    
+    Alias for build\_kd\_index with the same parameters and behavior.
+    
+    \textbf{Input:} Same as build\_kd\_index
+    \textbf{Output:} Same as build\_kd\_index
+\begin{lstlisting}[language=Python]
+sphere_indices = build_spherical_kd(vectors, dimension_order)
+\end{lstlisting}
+
+    \item \textbf{Get Point from k-d Index}
+    
+    \textbf{Note:} This function is not implemented as a separate Python function. Use direct array indexing instead:
+\begin{lstlisting}[language=Python]
+point = points[:, kd_indices[position]]  # position is 0-based
+\end{lstlisting}
+\end{enumerate}
+
+
 \item \textbf{Python Interface for Array Serialization and Deserialization}
 
 The Python interface provides bindings to the Fortran serialization and deserialization routines, enabling efficient handling of multi-dimensional arrays.This interface supports NumPy arrays with native data type compatibility and Fortran-style column-major memory layout.
@@ -1733,6 +1962,120 @@ tox_identify_outliers(rdi, percentile)
 \begin{lstlisting}[language=R, caption={R Tissue Versatility Calculation}]
 tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
 \end{lstlisting}
+
+\item \textbf{R BST Interface}
+
+\begin{enumerate}
+    \item \textbf{Build BST Index}
+    
+    R interface for building BST index. Uses R's native 1-based indexing.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{x numeric}: Vector of real values
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{integer}: Permutation indices (1-based R indices)
+    \end{itemize}
+\begin{lstlisting}[language=R]
+ix <- build_bst_index(x)
+\end{lstlisting}
+
+    \item \textbf{BST Range Query}
+    
+    Performs range queries on BST index. Returns a list with components.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{x numeric}: Original values vector
+        \item \texttt{ix integer}: BST index vector from build\_bst\_index (1-based)
+        \item \texttt{lo numeric}: Lower bound of range (inclusive)
+        \item \texttt{hi numeric}: Upper bound of range (inclusive)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{list}: Contains indices and count components
+    \end{itemize}
+\begin{lstlisting}[language=R]
+result <- bst_range_query(x, ix, lo, hi)
+indices <- result$indices  # 1-based indices
+count <- result$count
+\end{lstlisting}
+
+    \item \textbf{Get Sorted Value}
+    
+    Retrieves value from sorted position using R 1-based indexing.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{x numeric}: Original values vector
+        \item \texttt{ix integer}: BST index vector (1-based)
+        \item \texttt{position integer}: Position in sorted order (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{numeric}: Value at specified position
+    \end{itemize}
+\begin{lstlisting}[language=R]
+value <- get_sorted_value(x, ix, position)
+\end{lstlisting}
+\end{enumerate}
+\item \textbf{R k-d Tree Interface}
+
+\begin{enumerate}
+    \item \textbf{Build k-d Tree Index}
+    
+    R interface for k-d tree construction. Input matrix dimensions are rows=dimensions, columns=points.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{X matrix}: Matrix of points (nrow = dimensions, ncol = n\_points)
+        \item \texttt{dim\_order integer}: Dimension ordering (1-based, optional)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{integer}: Permutation indices (1-based R indices)
+    \end{itemize}
+\begin{lstlisting}[language=R]
+kd_ix <- build_kd_index(X, dim_order)
+\end{lstlisting}
+
+    \item \textbf{Build Spherical k-d Tree}
+    
+    R interface for spherical k-d tree construction with separate implementation.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{V matrix}: Matrix of vectors (nrow = dimensions, ncol = n\_vectors)
+        \item \texttt{dim\_order integer}: Dimension ordering (1-based, optional)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{integer}: Permutation indices (1-based R indices)
+    \end{itemize}
+\begin{lstlisting}[language=R]
+sphere_ix <- build_spherical_kd(V, dim_order)
+\end{lstlisting}
+
+    \item \textbf{Get Point from k-d Index}
+    
+    Retrieves point from k-d tree using R matrix indexing.
+    
+    \textbf{Input:}
+    \begin{itemize}
+        \item \texttt{X matrix}: Original points matrix
+        \item \texttt{kd\_ix integer}: k-d tree index vector (1-based)
+        \item \texttt{position integer}: Position in k-d tree order (1-based)
+    \end{itemize}
+    \textbf{Output:}
+    \begin{itemize}
+        \item \texttt{numeric}: Point values as vector
+    \end{itemize}
+\begin{lstlisting}[language=R]
+point <- get_kd_point(X, kd_ix, position)
+\end{lstlisting}
+\end{enumerate}
 
 \item \textbf{R Interface for Array Serialization and Deserialization}
 
