@@ -1,32 +1,353 @@
 # === Load the shared library ===
-dyn.load("build/libtensor-omics.so")
+dyn.load("./build/libtensor-omics.so")
+source("r/error_handling.R")
 
-#' Check error code and throw informative error if needed
-#' 
-#' @param ierr Error code from Fortran routine
-tox_errors <- function(ierr) {
-  msg <- switch(
-    as.character(ierr),
-    "0" = NULL,
-    "101" = "File could not be opened",
-    "102" = "File is empty",
-    "103" = "Could not read magic number",
-    "104" = "Could not read array type code",
-    "105" = "Could not read array dimension number",
-    "106" = "Could not read array dimensions",
-    "107" = "Could not read character length",
-    "108" = "Could not read array data",
-    "200" = "Invalid file format (magic number mismatch)",
-    "201" = "Invalid input parameters",
-    "202" = "No axes selected (empty input)",
-    "5002" = "File not open or unit not connected",
-    "9999" = "Unknown error",
-    paste("Unknown Fortran error code:", ierr)
-  )
+tox_get_array_metadata <- function(filename, max_dims = 5, with_clen = FALSE) {
+  ascii <- utf8ToInt(filename)
+  dims <- integer(max_dims)
+  ndims <- integer(1)
+  ierr <- integer(1)
+  dims_out_capacity <- integer(1)
+  dims_out_capacity = max_dims
+  clen <- integer(1)
   
-  if (!is.null(msg)) {
-    stop(msg)
+  res <- .Fortran("get_array_metadata_r",
+                  as.integer(ascii),                          # filename_ascii
+                  as.integer(length(ascii)),                  # fn_len
+                  dims,                                        # dims_out
+                  as.integer(dims_out_capacity),
+                  ndims,                                        # ndims
+                  ierr,                                       # ierr
+                  clen)     
+                                                    # clen
+  check_err_code(res[[6]])  # ierr
+
+  if(with_clen){
+    return(list(
+      dims = res[[3]][1:res[[5]]],  # dims_out[1:ndims]
+      ndim = res[[5]],              # ndims
+      clen = res[[7]]               # clen
+    ))
   }
+  else{
+    return(list(
+      dims = res[[3]][1:res[[5]]],  # dims_out[1:ndims]
+      ndim = res[[5]]              # ndims
+    ))
+  }
+}
+
+#' Build BST index (1D)
+build_bst_index <- function(x) {
+  if (!is.numeric(x)) {
+    stop("Input x must be numeric")
+  }
+  
+  n <- as.integer(length(x))
+  ix <- integer(n)
+  stack_left <- integer(n)
+  stack_right <- integer(n)
+  ierr <- integer(1)
+
+  res <- .Fortran("build_bst_index_r",
+                  x = as.double(x),
+                  n = n,
+                  ix = ix,
+                  stack_left = stack_left,
+                  stack_right = stack_right,
+                  ierr = ierr)
+
+  check_err_code(res$ierr)
+
+  res$ix
+}
+
+#' BST range query
+bst_range_query <- function(x, ix, lo, hi) {
+  if (length(x) != length(ix)) {
+    stop("Length of x and ix must match")
+  }
+  
+  n <- as.integer(length(x))
+  out_ix <- integer(n)
+  out_n <- integer(1)
+  ierr <- integer(1)
+  
+  res <- .Fortran("bst_range_query_r",
+                  x = as.double(x), 
+                  ix = as.integer(ix), 
+                  n = n, 
+                  lo = as.double(lo), 
+                  hi = as.double(hi), 
+                  out_ix = out_ix, 
+                  out_n = out_n,
+                  ierr = ierr)
+  check_err_code(res$ierr)
+  list(indices = res$out_ix[1:res$out_n], count = res$out_n)
+}
+
+#' Get sorted value from BST index
+get_sorted_value <- function(x, ix, position) {
+  if (position < 1 || position > length(ix)) {
+    stop("Position must be between 1 and length(ix)")
+  }
+  x[ix[position]]
+}
+
+#' Build KD-Tree index (multidimensional)
+build_kd_index <- function(X, dim_order = NULL) {
+  if (!is.matrix(X)) {
+    stop("Input X must be a matrix")
+  }
+  
+  d <- as.integer(nrow(X))
+  n <- as.integer(ncol(X))
+  
+  if (is.null(dim_order)) {
+    dim_order <- 1:d  # Default: use dimensions in order
+  }
+  
+  if (length(dim_order) != d) {
+    stop("dim_order length must match number of dimensions")
+  }
+  
+  kd_ix <- integer(n)
+  work <- integer(n)
+  subarray <- double(n)
+  perm <- integer(n)
+  stack_left <- integer(n)
+  stack_right <- integer(n)
+  ierr <- integer(1)
+  
+  res <- .Fortran("build_kd_index_r",
+                  X = as.double(X), 
+                  d = d, 
+                  n = n, 
+                  kd_ix = kd_ix, 
+                  dim_order = as.integer(dim_order), 
+                  work = work, 
+                  subarray = subarray, 
+                  perm = perm, 
+                  stack_left = stack_left, 
+                  stack_right = stack_right,
+                  ierr = ierr)
+  check_err_code(res$ierr)
+  res$kd_ix
+}
+
+#' Build Spherical KD-Tree index
+build_spherical_kd <- function(V, dim_order = NULL) {
+  if (!is.matrix(V)) {
+    stop("Input V must be a matrix")
+  }
+  
+  d <- as.integer(nrow(V))
+  n <- as.integer(ncol(V))
+  
+  if (is.null(dim_order)) {
+    dim_order <- 1:d  # Default: use dimensions in order
+  }
+  
+  if (length(dim_order) != d) {
+    stop("dim_order length must match number of dimensions")
+  }
+  
+  sphere_ix <- integer(n)
+  work <- integer(n)
+  subarray <- double(n)
+  perm <- integer(n)
+  stack_left <- integer(n)
+  stack_right <- integer(n)
+  ierr <- integer(1)
+  
+  res <- .Fortran("build_spherical_kd_r",
+                  V = as.double(V), 
+                  d = d, 
+                  n = n, 
+                  sphere_ix = sphere_ix, 
+                  dim_order = as.integer(dim_order), 
+                  work = work, 
+                  subarray = subarray, 
+                  perm = perm, 
+                  stack_left = stack_left, 
+                  stack_right = stack_right,
+                  ierr = ierr)
+  check_err_code(res$ierr)
+  res$sphere_ix
+}
+
+#' Get point from KD-Tree index
+get_kd_point <- function(X, kd_ix, position) {
+  if (position < 1 || position > length(kd_ix)) {
+    stop("Position must be between 1 and length(kd_ix)")
+  }
+  if (ncol(X) < max(kd_ix)) {
+    stop("KD index contains invalid indices for matrix X")
+  }
+  X[, kd_ix[position]]
+}
+
+# deserializes an integer array from a file, reads array dimensions first and then creates a proper array
+# That is then being filled by fortran
+tox_deserialize_int_array <- function(filename, max_dims = 5) {
+    ascii <- utf8ToInt(filename)
+
+    meta <- tox_get_array_metadata(filename, max_dims)
+    total_size <- prod(meta$dims)
+
+    flat <- integer(total_size)
+    ndim <- integer(1)
+    ierr <- integer(1)
+
+    res <- .Fortran("deserialize_int_r",
+                flat_arr = flat,
+                arr_size = as.integer(total_size),
+                filename_ascii = as.integer(ascii),
+                fn_len = as.integer(length(ascii)),
+                ierr = ierr)
+    check_err_code(res$ierr)
+
+    array(res$flat_arr[1:prod(meta$dims)], dim = meta$dims)
+}
+
+# Deserializes a real array from a file, reads array dimensions first and then creates a proper array
+# That is then being filled by fortran
+tox_deserialize_real_array <- function(filename, max_dims = 5) {
+    ascii <- utf8ToInt(filename)
+
+    meta <- tox_get_array_metadata(filename, max_dims)
+    total_size <- prod(meta$dims)
+
+    flat <- double(total_size)
+    dims <- as.integer(meta$dims)
+    ndim <- integer(1)
+    ierr <- integer(1)
+
+    res <- .Fortran("deserialize_real_flat_r",
+                flat_arr = flat,
+                arr_size = as.integer(total_size),
+                filename_ascii = as.integer(ascii),
+                fn_len = as.integer(length(ascii)),
+                ierr = ierr)
+    check_err_code(res$ierr)
+    array(res$flat_arr[1:prod(meta$dims)], dim = meta$dims)
+}
+
+# Deserializes a character array from a file, reads array dimensions and character length first
+# Then creates a proper array that is then being filled by fortran
+# Note that the array needs to be translated back to characters
+tox_deserialize_char_array <- function(filename, max_dims = 5) {
+  ascii <- utf8ToInt(filename)
+  dims <- integer(max_dims)
+  ndim <- integer(1)
+  clen <- integer(1)
+  ierr <- integer(1)
+  # Load metadata dimensions + clen
+  meta <- tox_get_array_metadata(filename, max_dims, with_clen = TRUE)
+
+  actual_dims <- meta$dims
+  clen <- meta$clen
+  total_array_size <- prod(actual_dims)
+  cat("actual_dims:", actual_dims, "clen:", clen, "\n")
+
+  ascii_arr <- integer(clen * total_array_size)
+
+  res <- .Fortran("deserialize_char_flat_r",
+    ascii_arr = ascii_arr,
+    arr_size = as.integer(clen * total_array_size),
+    filename_ascii = ascii,
+    fn_len = as.integer(length(ascii)),
+    ierr = ierr
+  )
+  check_err_code(res$ierr)
+  # translate ASCII back to char
+  mat <- matrix(res$ascii_arr, nrow = clen)
+  chars <- apply(mat, 2, function(col) rawToChar(as.raw(col[col > 0])))
+
+  array(chars, dim = meta$dims[1:meta$ndim])
+}
+
+
+# BASE R arrays are column-major just like fortran, so no serialization is needed for the array structure.
+# Array can simply be passed with with as.integer()
+tox_serialize_int_array <- function(arr, filename) {
+  flat <- as.integer(arr)
+  dims <- if (is.null(dim(arr))) {
+    as.integer(length(arr))  # 1D-Vector
+  } else {
+    as.integer(dim(arr))
+  }
+  ndim <- as.integer(length(dims))
+  ascii <- utf8ToInt(filename)
+  ierr <- integer(1)
+
+  res <- .Fortran("serialize_int_flat_r",
+           arr = flat,
+           array_size = length(flat),
+           dims = dims,
+           ndim = ndim,
+           filename_ascii = as.integer(ascii),
+           fn_len = as.integer(length(ascii)),
+           ierr = ierr)
+  check_err_code(res$ierr)
+}
+
+# BASE R arrays are column-major just like fortran, so no serialization is needed for the array structure.
+# Array can simply be passed with with as.double() to pass it in a flat format.
+tox_serialize_real_array <- function(arr, filename) {
+  flat <- as.double(arr)
+
+  dims <- if (is.null(dim(arr))) {
+    as.integer(length(arr))  # 1D-Vector
+  } else {
+    as.integer(dim(arr))
+  }
+
+  ndim <- as.integer(length(dims))
+  ascii <- utf8ToInt(filename)
+  ierr <- integer(1)
+
+  res <- .Fortran("serialize_real_flat_r",
+           arr = flat,
+           array_size = length(flat),
+           dims = dims,
+           ndim = ndim,
+           filename_ascii = as.integer(ascii),
+           fn_len = as.integer(length(ascii)),
+           ierr = ierr)
+  check_err_code(res$ierr)
+}
+
+# Serializes a character array to a file, encoding it as an integer matrix
+# Each character is converted to its ASCII integer representation
+# The matrix is then serialized with Fortran
+tox_serialize_char_array <- function(arr, filename) {
+  stopifnot(is.character(arr))
+  arr <- as.array(arr)
+  dims <- dim(arr)
+  if (is.null(dims)) dims <- length(arr)
+  clen <- max(nchar(arr, type = "chars"))
+  ierr <- integer(1)
+
+  # encode to integer matrix
+  # Chars can not be passed via .Fortran directly
+  mat <- matrix(0L, nrow = clen, ncol = length(arr))
+  for (i in seq_along(arr)) {
+    chars <- utf8ToInt(substr(arr[i], 1, clen))
+    mat[seq_along(chars), i] <- chars
+  }
+
+  res <- .Fortran("serialize_char_flat_r",
+    ascii_arr = as.integer(mat),
+    array_size = length(mat),
+    dims = as.integer(dims),
+    ndim = as.integer(length(dims)),
+    clen = as.integer(clen),
+    filename_ascii = utf8ToInt(filename),
+    fn_len = nchar(filename),
+    ierr = ierr
+  )
+  check_err_code(res$ierr)
 }
 
 #' Normalize gene expression values by standard deviation
@@ -52,6 +373,7 @@ tox_normalize_by_std_dev <- function(input_matrix) {
   # Prepare the input vector (flatten matrix column-major) and allocate output space
   input_vector <- as.numeric(as.vector(input_matrix))
   output_vector <- numeric(n_genes * n_tissues)
+  ierr <- as.integer(0)
 
   # Validate input data before calling Fortran
   if (any(is.na(input_vector))) {
@@ -66,13 +388,15 @@ tox_normalize_by_std_dev <- function(input_matrix) {
 
   # Call the Fortran subroutine
   result <- .Fortran("normalize_by_std_dev_r",
-               as.integer(n_genes),
-               as.integer(n_tissues),
-               input_vector,
-               output_vector)
+               n_genes = as.integer(n_genes),
+               n_tissues = as.integer(n_tissues),
+               input_vector = input_vector,
+               output_vector = output_vector,
+               ierr = ierr)
 
-  matrix(result[[4]], nrow = n_genes, ncol = n_tissues,
-         dimnames = dimnames(input_matrix))
+  check_err_code(result$ierr)
+  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues,
+         dimnames = dimnames(input_matrix)))
 
 }
 
@@ -101,12 +425,12 @@ tox_quantile_normalization <- function(input_matrix) {
   rank_means <- numeric(n_genes)
   perm <- integer(n_genes)
 
-  # Estimar tamaño máximo para la pila (según pseudocódigo: log2(n) + 10)
+  # Estimate maximum stack size (per pseudocode: log2(n) + 10)
   max_stack <- as.integer(ceiling(log2(n_genes)) + 10)
   stack_left <- integer(max_stack)
   stack_right <- integer(max_stack)
+  ierr <- as.integer(0)
 
-  # Fortran interop: asegurar tipos
   storage.mode(input_vector) <- "double"
   storage.mode(output_vector) <- "double"
   storage.mode(temp_col) <- "double"
@@ -115,25 +439,22 @@ tox_quantile_normalization <- function(input_matrix) {
   storage.mode(stack_left) <- "integer"
   storage.mode(stack_right) <- "integer"
 
-  # Initialize first stack entry manually
-  # stack_left[1] <- 1L
-  # stack_right[1] <- n_genes
-
   result <- .Fortran("quantile_normalization_r",
-    as.integer(n_genes),
-    as.integer(n_tissues),
-    input_vector,
-    output_vector,
-    temp_col,
-    rank_means,
-    perm,
-    stack_left,
-    stack_right,
-    as.integer(max_stack)
+    n_genes = as.integer(n_genes),
+    n_tissues = as.integer(n_tissues),
+    input_vector = input_vector,
+    output_vector = output_vector,
+    temp_col = temp_col,
+    rank_means = rank_means,
+    perm = perm,
+    stack_left = stack_left,
+    stack_right = stack_right,
+    max_stack = as.integer(max_stack),
+    ierr = ierr
   )
-
-  matrix(result[[4]], nrow = n_genes, ncol = n_tissues,
-         dimnames = dimnames(input_matrix))
+  check_err_code(result$ierr)
+  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues,
+         dimnames = dimnames(input_matrix)))
 }
 
 
@@ -165,17 +486,19 @@ tox_log2_transformation <- function(input_matrix) {
   # Prepare the input vector (flatten matrix column-major) and allocate output space
   input_vector <- as.numeric(as.vector(input_matrix))
   output_vector <- numeric(n_genes * n_tissues)
+  ierr <- as.integer(0)
 
   # Call the Fortran subroutine
   result <- .Fortran("log2_transformation_r",
-               as.integer(n_genes),
-               as.integer(n_tissues),
-               input_vector,
-               output_vector)
+               n_genes = as.integer(n_genes),
+               n_tissues = as.integer(n_tissues),
+               input_vector = input_vector,
+               output_vector = output_vector,
+               ierr = ierr)
 
-  # Reconstruct the transformed matrix
-  matrix(result[[4]], nrow = n_genes, ncol = n_tissues,
-  dimnames = dimnames(input_matrix))
+  check_err_code(result$ierr)
+  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues,
+  dimnames = dimnames(input_matrix)))
 
   # # Restore row and column names
   # colnames(normalized_matrix) <- col_names
@@ -238,62 +561,44 @@ tox_parse_tissue_group <- function(colname) {
 #' @examples
 #' averaged_df <- tox_calculate_tissue_averages(df)
 tox_calculate_tissue_averages <- function(df) {
-  n_genes <- nrow(df)      # Number of genes (rows)
-  n_columns <- ncol(df)    # Number of columns (tissues)
-
-  # --- Parse all column names to find their corresponding tissue group ---
-  tissue_groups <- sapply(colnames(df), tox_parse_tissue_group)
-
-  # --- Identify unique tissue groups ---
+  n_genes <- nrow(df)
+  n_columns <- ncol(df)
+  tissue_groups <- as.character(sapply(colnames(df), tox_parse_tissue_group))
   unique_groups <- unique(tissue_groups)
   n_groups <- length(unique_groups)
-
-  # --- Initialize mapping for groups ---
   group_starts <- integer(n_groups)
   group_counts <- integer(n_groups)
-
-  # --- Sort the dataframe by tissue group name ---
   df_sorted <- df[, order(tissue_groups)]
   sorted_tissue_groups <- tissue_groups[order(tissue_groups)]
-
-  current_group <- sorted_tissue_groups[1]
+  current_group <- as.character(sorted_tissue_groups[1])
   group_starts[1] <- 1
   group_counts[1] <- 1
   group_idx <- 1
-
-  # --- Build group_starts and group_counts arrays ---
   for (i in 2:length(sorted_tissue_groups)) {
-    if (sorted_tissue_groups[i] == current_group) {
+    if (!is.na(sorted_tissue_groups[i]) && !is.na(current_group) && as.character(sorted_tissue_groups[i]) == as.character(current_group)) {
       group_counts[group_idx] <- group_counts[group_idx] + 1
-    } else
-      {
+    } else {
       group_idx <- group_idx + 1
       group_starts[group_idx] <- i
       group_counts[group_idx] <- 1
-      current_group <- sorted_tissue_groups[i]
+      current_group <- as.character(sorted_tissue_groups[i])
     }
   }
-
-  # --- Prepare input vector and allocate output space ---
   input_vector <- as.numeric(as.vector(as.matrix(df_sorted)))
   output_vector <- numeric(n_genes * n_groups)
-
-  # --- Call the Fortran subroutine to calculate averages ---
+  ierr <- as.integer(0)
   result <- .Fortran("calc_tiss_avg_r",
-               as.integer(n_genes),
-               as.integer(n_groups),
-               as.integer(group_starts),
-               as.integer(group_counts),
-               as.numeric(input_vector),
-               as.numeric(output_vector))
-
-  # --- Reconstruct output matrix ---
-  output_matrix <- matrix(result[[6]], nrow = n_genes, ncol = n_groups)
-
-  # --- Restore column and row names ---
+               n_genes = as.integer(n_genes),
+               n_groups = as.integer(n_groups),
+               group_starts = as.integer(group_starts),
+               group_counts = as.integer(group_counts),
+               input_vector = as.numeric(input_vector),
+               output_vector = as.numeric(output_vector),
+               ierr = ierr)
+  check_err_code(result$ierr)
+  output_matrix <- matrix(result$output_vector, nrow = n_genes, ncol = n_groups)
   colnames(output_matrix) <- unique_groups
   rownames(output_matrix) <- rownames(df)
-
   return(as.data.frame(output_matrix))
 }
 
@@ -379,22 +684,20 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
   # --- Prepare input and output vectors ---
   input_vector <- as.numeric(as.vector(as.matrix(df)))
   output_vector <- numeric(n_genes * n_pairs)
-
-  print(control_cols)
-  print(condition_cols)
-  print(head(input_vector))
+  ierr <- as.integer(0)
   # --- Call Fortran subroutine to calculate fold changes ---
   result <- .Fortran("calc_fchange_r",
-               as.integer(n_genes),
-               as.integer(n_columns),   # Pass n_cols as required by Fortran
-               as.integer(n_pairs),
-               as.integer(control_cols),
-               as.integer(condition_cols),
-               input_vector,
-               output_vector)
-
+               n_genes = as.integer(n_genes),
+               n_columns = as.integer(n_columns),
+               n_pairs = as.integer(n_pairs),
+               control_cols = as.integer(control_cols),
+               condition_cols = as.integer(condition_cols),
+               input_vector = input_vector,
+               output_vector = output_vector,
+               ierr = ierr)
+  check_err_code(result$ierr)
   # --- Reconstruct the fold change matrix ---
-  output_matrix <- matrix(result[[7]], nrow = n_genes, ncol = n_pairs)
+  output_matrix <- matrix(result$output_vector, nrow = n_genes, ncol = n_pairs)
   colnames(output_matrix) <- condition_labels
   rownames(output_matrix) <- rownames(df)
 
@@ -649,6 +952,62 @@ tox_clean_data_for_normalization <- function(df_matrix,
   return(df_matrix)
 }
 
+
+
+#' Complete normalization pipeline for gene expression data (up to log2(x+1))
+#'
+#' This function wraps the Fortran subroutine `normalization_pipeline_r`.
+#' It performs std dev normalization, quantile normalization, replicate averaging, and log2(x+1) transformation.
+#'
+#' @param input_matrix Numeric matrix (genes x tissues)
+#' @param group_s Integer vector: start column index for each replicate group (1-based)
+#' @param group_c Integer vector: number of columns per replicate group
+#' @return Numeric matrix: log2(x+1) normalized expression
+tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
+  n_genes <- nrow(input_matrix)
+  n_tissues <- ncol(input_matrix)
+  n_grps <- length(group_s)
+
+  # Flatten input matrix (column-major)
+  input_vector <- as.numeric(as.vector(input_matrix))
+  buf_stddev <- numeric(n_genes * n_tissues)
+  buf_quant <- numeric(n_genes * n_tissues)
+  buf_avg <- numeric(n_genes * n_grps)
+  buf_log <- numeric(n_genes * n_grps)
+  temp_col <- numeric(n_genes)
+  rank_means <- numeric(n_genes)
+  perm <- integer(n_genes)
+  max_stack <- as.integer(ceiling(log2(n_genes)) + 10)
+  stack_left <- integer(max_stack)
+  stack_right <- integer(max_stack)
+  storage.mode(group_s) <- "integer"
+  storage.mode(group_c) <- "integer"
+  ierr <- as.integer(0)
+  result <- .Fortran("normalization_pipeline_r",
+      n_genes = as.integer(n_genes),
+      n_tissues = as.integer(n_tissues),
+      input_vector = input_vector,
+      buf_stddev = buf_stddev,
+      buf_quant = buf_quant,
+      buf_avg = buf_avg,
+      buf_log = buf_log,
+      temp_col = temp_col,
+      rank_means = rank_means,
+      perm = perm,
+      stack_left = stack_left,
+      stack_right = stack_right,
+      max_stack = as.integer(max_stack),
+      group_s = group_s,
+      group_c = group_c,
+      n_grps = as.integer(n_grps),
+      ierr = ierr
+  )
+  check_err_code(result$ierr)
+  return(matrix(result$buf_log, nrow = n_genes, ncol = n_grps))
+
+}
+
+
 # ===================================================================
 # TISSUE VERSATILITY FUNCTIONS
 # ===================================================================
@@ -695,7 +1054,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   n_vectors <- ncol(expression_vectors)
   n_selected_vectors <- sum(vector_selection)
   n_selected_axes <- sum(axis_selection)
-  
+
   # Validate dimensions
   if (length(vector_selection) != n_vectors) {
     stop("vector_selection length must match number of columns in expression_vectors")
@@ -723,7 +1082,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
                      ierr = ierr)
   
   # Check for errors and throw informative messages
-  tox_errors(result$ierr)
+  check_err_code(result$ierr)
   
   # Return structured result (no ierr since we checked for errors)
   return(list(
@@ -774,7 +1133,7 @@ tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
   )
   
   # Check for errors and throw informative messages
-  tox_errors(result$error_code)
+  check_err_code(result$error_code)
   
   return(list(
     dscale = result$dscale,
@@ -857,7 +1216,7 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
   )
   
   # Check for errors and throw informative messages
-  tox_errors(result$error_code)
+  check_err_code(result$error_code)
   
   return(list(
     dscale = result$dscale,
@@ -1014,7 +1373,7 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
   )
   
   # Check for errors and throw informative messages
-  tox_errors(result$error_code)
+  check_err_code(result$error_code)
   
   return(list(
     is_outlier = result$is_outlier,
@@ -1088,7 +1447,7 @@ tox_loess_smooth_2d <- function(x_ref, y_ref, x_query, indices_used = NULL,
   )
   
   # Check for errors and throw informative messages
-  tox_errors(result$ierr)
+  check_err_code(result$ierr)
   
   return(list(
     y_out = result$y_out,
@@ -1205,7 +1564,6 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 # SHIFT VECTOR FIELD FUNCTIONS
 # ===================================================================
 #' Calculate Shift Vector Field 
-
 #' Computes the shift vector field for each gene expression vector based on its family centroid.
 #' The shift vector is defined as the difference between the gene expression vector and its corresponding family centroid,
 #' starting at the expression vector and pointing to its family centroid.
@@ -1214,9 +1572,8 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 #' @param expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
 #' @param family_centroids: Matrix where each column is a family centroid vector (n_axes x n_families)
 #' @param gene_to_centroid: Array mapping each gene to its corresponding family centroid ID in family_centroids (length n_vectors)
-#'
-#' @return List containing:
-#'   \item{shift_vectors}{The computed shift vectors for each gene expression vector}
+#' 
+#' @return shift_vectors: The computed shift vectors for each gene expression vector
 #'
 
 tox_compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_centroid) {
@@ -1261,12 +1618,289 @@ tox_compute_shift_vector_field <- function(expression_vectors, family_centroids,
                      ierr = ierr)
   
   # Check for errors and throw informative messages
-  tox_errors(result$ierr)
+  check_err_code(result$ierr)
   
   # Return structured result (no ierr since we checked for errors)
-  return(list(
-    shift_vectors = result$shift_vectors
-  ))
+  return(result$shift_vectors)
+}
+
+#' Calculate signed clock hand angle between two normalized vectors
+#' 
+#' @param v1 First normalized vector in RAP space
+#' @param v2 Second normalized vector in RAP space
+#' @param selected_axes_for_signed Indices of 3 axes for directionality (ignored if dim <= 3)
+#' @return Signed angle in radians [-π, π]
+tox_clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed = c(1, 2, 3)) {
+  # Argument validation
+  if (!is.numeric(v1) || !is.numeric(v2)) {
+    stop("Both v1 and v2 must be numeric vectors")
+  }
+  n_dims <- length(v1)
+  if (length(v2) != n_dims) {
+    stop("Vectors must have the same dimension")
+  }
+  # For 2D and 3D, Fortran ignores selected_axes_for_signed, but requires length 3
+  if (n_dims <= 3) {
+    selected_axes_for_signed <- c(1, 2, 1)
+  } else {
+    if (length(selected_axes_for_signed) != 3) {
+      stop("selected_axes_for_signed must have exactly 3 elements for n_dims > 3")
+    }
+    if (any(selected_axes_for_signed < 1 | selected_axes_for_signed > n_dims)) {
+      stop("selected_axes_for_signed indices must be in [1, n_dims] for n_dims > 3")
+    }
+  }
+  ierr <- as.integer(0)
+  # Call Fortran wrapper
+  result <- .Fortran("clock_hand_angle_between_vectors_r",
+                    v1 = as.double(v1),
+                    v2 = as.double(v2),
+                    n_dims = as.integer(n_dims),
+                    signed_angle = as.double(0),
+                    selected_axes_for_signed = as.integer(selected_axes_for_signed),
+                    ierr = ierr)
+  # Error handling
+
+  check_err_code(result$ierr)
+  
+  return(result$signed_angle)
+}
+
+#' Calculate signed clock hand angles for multiple vector pairs
+#' 
+#' @param origins Matrix of origin vectors (n_dims x n_vecs)
+#' @param targets Matrix of target vectors (n_dims x n_vecs)
+#' @param vecs_selection_mask Logical vector indicating which pairs to compute
+#' @param selected_axes_for_signed Indices of 3 axes for directionality
+#' @return Vector of signed angles in radians [-π, π]
+tox_clock_hand_angles_for_shift_vectors <- function(origins, targets, 
+                                               vecs_selection_mask = NULL,
+                                               selected_axes_for_signed = c(1, 2, 3)) {
+  if (!is.matrix(origins) || !is.matrix(targets)) {
+    stop("origins and targets must be matrices")
+  }
+  if (!identical(dim(origins), dim(targets))) {
+    stop("origins and targets must have the same dimensions")
+  }
+  n_dims <- nrow(origins)
+  n_vecs <- ncol(origins)
+  # Default selection mask (all TRUE)
+  if (is.null(vecs_selection_mask)) {
+    vecs_selection_mask <- rep(TRUE, n_vecs)
+  }
+  if (length(vecs_selection_mask) != n_vecs) {
+    stop("vecs_selection_mask length must equal number of vector pairs")
+  }
+  n_selected_vecs <- sum(vecs_selection_mask)
+  # For 2D and 3D, Fortran ignores selected_axes_for_signed, but requires length 3
+  if (n_dims <= 3) {
+    selected_axes_for_signed <- c(1, 2, 1)
+  } else {
+    if (length(selected_axes_for_signed) != 3) {
+      stop("selected_axes_for_signed must have exactly 3 elements for n_dims > 3")
+    }
+    if (any(selected_axes_for_signed < 1 | selected_axes_for_signed > n_dims)) {
+      stop("selected_axes_for_signed indices must be in [1, n_dims] for n_dims > 3")
+    }
+  }
+  ierr <- as.integer(0)
+  # Call Fortran wrapper
+  result <- .Fortran("clock_hand_angles_for_shift_vectors_r",
+                    origins = as.double(origins),
+                    targets = as.double(targets),
+                    n_dims = as.integer(n_dims),
+                    n_vecs = as.integer(n_vecs),
+                    vecs_selection_mask = as.logical(vecs_selection_mask),
+                    n_selected_vecs = as.integer(n_selected_vecs),
+                    selected_axes_for_signed = as.integer(selected_axes_for_signed),
+                    signed_angles = as.double(rep(0, n_selected_vecs)),
+                    ierr = ierr)
+  check_err_code(result$ierr)
+  return(result$signed_angles)
+}
+
+#' Calculate relative axis contributions from a shift vector
+#'
+#' This function wraps the Fortran subroutine `relative_axes_changes_from_shift_vector_r`
+#' to compute the relative axis contributions for a given shift vector in RAP space.
+#'
+#' @param shift_vector Numeric vector representing the shift in RAP space.
+#' @return Numeric vector of relative axis contributions (sums to 1).
+relative_axes_changes_from_shift_vector <- function(vec) {
+  if (all(vec == 0)) {
+    return(rep(0, length(vec)))
+  }
+  n_dims <- length(vec)
+  res <- .Fortran('relative_axes_changes_from_shift_vector_r',
+                  as.double(vec),
+                  as.integer(n_dims),
+                  contrib = double(n_dims),
+                  err = as.integer(0))
+  check_err_code(res$err)
+  return(res$contrib)
+}
+
+#' Calculate relative axis contributions from an expression vector
+#'
+#' This function wraps the Fortran subroutine `relative_axes_expression_from_expression_vector_r`
+#' to compute the relative axis contributions for a given expression vector in RAP space.
+#'
+#' @param expression_vector Numeric vector representing the expression in RAP space.
+#' @return Numeric vector of relative axis contributions (sums to 1).
+relative_axes_expression_from_expression_vector <- function(vec) {
+  if (all(vec == 0)) {
+    return(rep(0, length(vec)))
+  }
+  n_dims <- length(vec)
+  res <- .Fortran('relative_axes_expression_from_expression_vector_r',
+                  as.double(vec),
+                  as.integer(n_dims),
+                  contrib = double(n_dims),
+                  err = as.integer(0))
+  check_err_code(res$err)
+  return(res$contrib)
+}
+
+
+omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection_mask) {
+  n_selected_vecs <- sum(vecs_selection_mask == 1)
+  n_selected_axes <- sum(axes_selection_mask == 1)
+  ierr <- as.integer(0)
+  res <- .Fortran("omics_vector_RAP_projection_r",
+                  vecs = as.double(vecs),
+                  n_axes = as.integer(nrow(vecs)),
+                  n_vecs = as.integer(ncol(vecs)),
+                  vecs_selection_mask = as.integer(vecs_selection_mask),
+                  n_selected_vecs = n_selected_vecs,
+                  axes_selection_mask = as.integer(axes_selection_mask),
+                  n_selected_axes = n_selected_axes,
+                  projections = matrix(as.double(1), nrow = n_selected_axes, ncol = n_selected_vecs),
+                  ierr = ierr)
+  check_err_code(res$ierr)
+  return(res$projections)
+}
+
+omics_field_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection_mask) {
+  n_selected_vecs <- sum(vecs_selection_mask == 1)
+  n_selected_axes <- sum(axes_selection_mask == 1)
+  ierr <- as.integer(0)
+  res <- .Fortran("omics_field_RAP_projection_r",
+                  vecs = as.double(vecs),
+                  n_axes = as.integer(nrow(vecs) / 2),
+                  n_vecs = as.integer(ncol(vecs)),
+                  vecs_selection_mask = as.integer(vecs_selection_mask),
+                  n_selected_vecs = n_selected_vecs,
+                  axes_selection_mask = as.integer(axes_selection_mask),
+                  n_selected_axes = n_selected_axes,
+                  projections = matrix(as.double(1), nrow = n_selected_axes, ncol = n_selected_vecs),
+                  ierr = ierr)
+  check_err_code(res$ierr)
+  return(res$projections)
+}
+
+# ===================================================================
+# GENE CENTROIDS FUNCTIONS
+# ===================================================================
+#' Calculate Gene Centroids
+
+#' Computes the centroids for each gene family based on the expression vectors of its member genes.
+#' This function automatically checks for errors and throws informative exceptions.
+#'
+#' @param expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
+#' @param gene_to_family: Array mapping each gene to its corresponding family ID (length n_vectors)
+#' @param n_families: Total number of gene families
+#' @param ortholog_set: Logical array indicating if a gene is part of a specific subset (e.g., orthologs)
+#' @param mode: Character string indicating the mode of operation ('all' or 'ortho')
+#'
+#' @return List containing:
+#'   \item{centroid_matrix}{The computed centroids for each gene family}
+#'
+
+tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, ortholog_set, mode = 'all') {
+  
+  # 1) Validate inputs
+  if (!is.matrix(expression_vectors) || !is.numeric(expression_vectors)) {
+    stop("`expression_vectors` must be a numeric matrix.")
+  }
+  n_axes <- nrow(expression_vectors)
+  n_genes <- ncol(expression_vectors)
+
+  if (!is.integer(gene_to_family) || length(gene_to_family) != n_genes) {
+    stop("`gene_to_family` must be an integer vector of length n_genes.")
+  }
+  if (!is.logical(ortholog_set) || length(ortholog_set) != n_genes) {
+    stop("`ortholog_set` must be a logical vector of length n_genes.")
+  }
+  if (!mode %in% c('all', 'ortho')) {
+    stop("`mode` must be either 'all' or 'ortho'.")
+  }
+
+  # 2) Prepare inputs/outputs for Fortran
+  use_all_mode <- (mode == 'all')
+  centroid_matrix_out <- matrix(0.0, nrow = n_axes, ncol = n_families)
+  selected_indices_ws <- integer(n_genes) # Workspace buffer
+  ierr <- as.integer(0)
+  # 3) Call Fortran
+  result <- .Fortran("group_centroid_r",
+                     expression_vectors = as.double(expression_vectors),
+                     n_axes = as.integer(n_axes),
+                     n_genes = as.integer(n_genes),
+                     gene_to_family = as.integer(gene_to_family),
+                     num_families = as.integer(n_families),
+                     centroid_matrix = centroid_matrix_out,
+                     use_all_mode = as.logical(use_all_mode),
+                     ortholog_set = as.logical(ortholog_set),
+                     selected_indices = selected_indices_ws,
+                     selected_indices_len = as.integer(n_genes),
+                     ierr = ierr)
+  
+  # Check for errors and throw informative messages
+  check_err_code(result$ierr)
+
+  # 4) Return the populated output matrix (no ierr since we checked for errors)
+  return(result$centroid_matrix)
+}
+
+#' Compute the element-wise mean for a given set of gene expression vectors
+#'
+#' This function wraps the Fortran subroutine `mean_vector_r`
+#' to compute the centroid (mean vector) for a selected set of genes.
+#'
+#' @param expression_vectors Numeric matrix (n_axes x n_genes) of gene expression vectors
+#' @param gene_indices Integer vector of column indices of selected genes (1-based)
+#'
+#' @return Numeric vector of length n_axes representing the computed centroid
+#'
+
+tox_mean_vector <- function(expression_vectors, gene_indices) {
+  # Validate inputs
+  if (!is.matrix(expression_vectors) || !is.numeric(expression_vectors)) {
+    stop("`expression_vectors` must be a numeric matrix.")
+  }
+  n_axes <- nrow(expression_vectors)
+  n_genes <- ncol(expression_vectors)
+  n_selected_genes <- length(gene_indices)
+  if (!is.integer(gene_indices) || any(gene_indices < 1) || any(gene_indices > n_genes)) {
+    stop("`gene_indices` must be integer indices between 1 and n_genes.")
+  }
+
+  centroid_col <- numeric(n_axes)
+  ierr <- as.integer(0)
+  
+  # Call Fortran wrapper
+  result <- .Fortran("mean_vector_r",
+                     expression_vectors = as.double(expression_vectors),
+                     n_axes = as.integer(n_axes),
+                     n_genes = as.integer(n_genes),
+                     gene_indices = as.integer(gene_indices),
+                     n_selected_genes = as.integer(n_selected_genes),
+                     centroid_col = centroid_col,
+                     ierr = ierr)
+  
+  # Check for errors and throw informative messages
+  check_err_code(result$ierr)
+  
+  return(result$centroid_col)
 }
 
 

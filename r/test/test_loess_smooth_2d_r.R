@@ -196,8 +196,9 @@ test_loess_invalid_dimensions <- function() {
     tox_loess_smooth_2d(numeric(0), numeric(0), x_query, indices_used, 1.0, 3.0)
   }, error = function(e) {
     error_caught <<- TRUE
+    print(paste("Caught expected error:", e$message))
     # Check that the error message contains expected text
-    stopifnot(grepl("Invalid input|No axes selected", e$message))
+    stopifnot(grepl("Empty input arrays provided.", e$message))
   })
   stopifnot(error_caught)  # Make sure an error was actually thrown
   
@@ -376,14 +377,3 @@ test_loess_invalid_indices()
 # Expert function test
 test_family_scaling_expert()
 
-
-cat("\n==========================================================\n")
-cat("              ALL TESTS COMPLETED\n")
-cat("==========================================================\n")
-cat("If you see this message, all LOESS smooth 2D tests passed! ✓\n")
-cat("Summary:\n")
-cat("- 15 comprehensive test cases based on Fortran test suite\n")
-cat("- Core functionality: constant input, linear trend, outlier suppression, etc.\n")
-cat("- Error handling: invalid dimensions, parameters, and indices\n")
-cat("- Expert function: family scaling with pre-allocated work arrays\n")
-cat("- All tests use the loess_smooth_2d R wrapper function\n")

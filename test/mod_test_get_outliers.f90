@@ -127,7 +127,7 @@ contains
     real(real64) :: threshold
     integer(int32) :: i
     rdi = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
-    ! rdi = [0.1, 0.2, 0.3, 0.4] already sorted and no negatives
+    ! rdi = [0.1, 0.2, 0.3, 0.4] is already sorted and there are no negatives
     sorted_rdi = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, 75.0_real64)
     call assert_true(is_outlier(4), "Highest RDI is outlier")
@@ -428,7 +428,7 @@ contains
     real(real64) :: sorted_rdi(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
-    ! rdi = [0.1, 0.2, 0.3, 0.4] ya está ordenado y no hay negativos
+    ! rdi = [0.1, 0.2, 0.3, 0.4] is already sorted and there are no negatives
     sorted_rdi = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold)
     ! At 95th percentile, only the highest value should be outlier

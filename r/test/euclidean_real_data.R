@@ -144,6 +144,7 @@ run_real_data_example <- function() {
   results_with_families <- results_df[results_df$has_family, ]
   
   # Save results
+  if (!dir.exists("results")) dir.create("results", recursive = TRUE)
   output_file <- file.path("results/distance_to_centroids_fortran.tsv")
   write_tsv(results_with_families, output_file)
   

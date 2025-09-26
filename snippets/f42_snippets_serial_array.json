@@ -1,0 +1,587 @@
+{
+    "R call to get_array_metadata":{
+        "prefix": "f42:R_get_array_metadata",
+        "body": [
+            "tox_get_array_metadata <- function(filename, max_dims = 5, with_clen = FALSE) {",
+            "    ascii <- utf8ToInt(filename)",
+            "    dims <- integer(max_dims)",
+            "    ndims <- integer(1)",
+            "    ierr <- integer(1)",
+            "",    
+            "    if (with_clen) {",
+            "        clen <- integer(1)",
+            "        res <- .Fortran(\"get_array_metadata_r\",",
+            "                        as.integer(ascii),          # filename_ascii",
+            "                        as.integer(length(ascii)),  # fn_len",
+            "                        dims,                       # dims_out",
+            "                        ndims,                      # ndims",
+            "                        ierr,                       # ierr", 
+            "                        clen)                       # clen (present)",
+            "",        
+            "        check_err_code(res[[5]])  # ierr",
+            "        return(list(",
+            "        dims = res[[3]][1:res[[4]]],  # dims_out[1:ndims]",
+            "        ndim = res[[4]],              # ndims",
+            "        clen = res[[6]]               # clen",
+            "        ))",
+            "",        
+            "    } else {",
+            "        res <- .Fortran(\"get_array_metadata_r\",",
+            "                        as.integer(ascii),          # filename_ascii",
+            "                        as.integer(length(ascii)),  # fn_len",
+            "                        dims,                       # dims_out",
+            "                        ndims,                      # ndims",
+            "                        ierr)                       # ierr (no clen)",
+            "",        
+            "        check_err_code(res[[5]])  # ierr",
+            "        return(list(",
+            "            dims = res[[3]][1:res[[4]]],  # dims_out[1:ndims]",
+            "            ndim = res[[4]]               # ndims",
+            "        ))",
+            "    }",
+            "}"
+        ],
+        "description": "R call to get metadata from a serialized array file"
+    },
+    "R call to deserialize_int_array":{
+        "prefix": "f42:R_deserialize_int_array",
+        "body": [
+            "# Use get_array_metadata to read dimensions before assigning array",
+            "res <- .Fortran(\"deserialize_int_r\",",
+            "    flat_arr = flat,",
+            "    arr_size = as.integer(total_size),",
+            "    filename_ascii = as.integer(ascii),",
+            "    fn_len = as.integer(length(ascii)),",
+            "    ierr = ierr)",
+            "check_err_code(res$ierr)",
+            "",
+            "array(res$flat_arr[1:prod(meta$dims)], dim = meta$dims)"
+        ],
+        "description": "Deserilizes an integer array."
+    },
+    "R call to deserialize_real_array":{
+        "prefix": "f42:R_deserialize_int_array",
+        "body": [
+            "# Use get_array_metadata to read dimensions before assigning array",
+            "res <- .Fortran(\"deserialize_real_flat_r\",",
+            "    flat_arr = flat,",
+            "    arr_size = as.integer(total_size),",
+            "    filename_ascii = as.integer(ascii),",
+            "    fn_len = as.integer(length(ascii)),",
+            "    ierr = ierr)",
+            "check_err_code(res$ierr)",
+            "",
+            "array(res$flat_arr[1:prod(meta$dims)], dim = meta$dims)"
+        ],
+        "description": "Deserilizes a real(double array."
+    },
+    "R call to deserialize_char_array":{
+        "prefix": "f42:R_deserialize_char_array",
+        "body": [
+            "res <- .Fortran(\"deserialize_char_flat_r\",",
+            "    ascii_arr = ascii_arr,",
+            "    arr_size = as.integer(clen * total_array_size),",
+            "    filename_ascii = ascii,",
+            "    fn_len = as.integer(length(ascii)),",
+            "    ierr = ierr",
+            ")",
+            "check_err_code(res$ierr)",
+            "# translate ASCII back to char",
+            "mat <- matrix(res$ascii_arr, nrow = clen)",
+            "chars <- apply(mat, 2, function(col) rawToChar(as.raw(col[col > 0])))",
+            "",
+            "array(chars, dim = meta$dims[1:meta$ndim])"
+        ],
+        "description": "Deserializes a character array from a given file"
+    },
+    "R call to serialize an integer array":{
+        "prefix": "f42:R_serialize_int_array",
+        "body": [
+            "res <- .Fortran(\"serialize_int_flat_r\",",
+            "       arr = flat,",
+            "       array_size = length(flat),",
+            "       dims = dims,",
+            "       ndim = ndim,",
+            "       filename_ascii = as.integer(ascii),",
+            "       fn_len = as.integer(length(ascii)),",
+            "       ierr = ierr)",
+            "check_err_code(res$ierr)"
+        ],
+        "description": "Serializes an n dimensional array of type integer to a binary file"
+    },
+    "R call to serialize a real array":{
+        "prefix": "f42:R_serialize_real_array",
+        "body": [
+            "res <- .Fortran(\"serialize_real_flat_r\",",
+            "       arr = flat,",
+            "       array_size = length(flat),",
+            "       dims = dims,",
+            "       ndim = ndim,",
+            "       filename_ascii = as.integer(ascii),",
+            "       fn_len = as.integer(length(ascii)),",
+            "       ierr = ierr)",
+            "check_err_code(res$ierr)"
+        ],
+        "description": "Serializes an n dimensional array of type real to a binary file"
+    },
+    "R call to serialize a char array": {
+        "prefix": "f42:R_serialize_char_array",
+        "body":[
+            "res <- .Fortran(\"serialize_char_flat_r\",",
+            "       ascii_arr = as.integer(mat),",
+            "       array_size = length(mat),",
+            "       dims = as.integer(dims),",
+            "       ndim = as.integer(length(dims)),",
+            "       clen = as.integer(clen),",
+            "       filename_ascii = utf8ToInt(filename),",
+            "       fn_len = nchar(filename),",
+            "       ierr = ierr",
+            ")",
+            "check_err_code(res$ierr)"
+        ],
+        "description": "Serializes an n dimensional array of type character to a binary file"
+    },
+    "Python call to get_array_dims":{
+        "prefix": "f42:Python_get_array_dims",
+        "body": [
+            "arrays_lib.get_array_metadata_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"), # filename_ascii",
+            "    ctypes.c_int,                                                         # fn_len",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"), # dims_out",
+            "    ctypes.POINTER(ctypes.c_int),                                         # ndims",
+            "    ctypes.POINTER(ctypes.c_int),                                         # ierr",
+            "    ctypes.POINTER(ctypes.c_int)                                          # clen",
+            "]",
+            "arrays_lib.get_array_metadata_C.restype = None",
+            "",
+            "# call",
+            "arrays_lib.get_array_metadata_C(",
+            "    filename_ascii,",
+            "    fn_len,",
+            "    dims_out,",
+            "    ctypes.byref(ndims),",
+            "    ctypes.byref(ierr),",
+            "    ctypes.byref(clen)",
+            ")",
+            "",
+            "check_err_code(ierr.value)",
+            "",
+            "if with_clen:",
+            "    return dims_out[:ndims.value], clen.value",
+            "else:",
+            "    return dims_out[:ndims.value]"
+        ],
+        "description": "Return metadata from a saved array"
+    },
+    "Python call to serialize_int_array":{
+        "prefix": "f42:Python_serialize_int_array",
+        "body": [
+            "arrays_lib.serialize_int_nd_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # arr",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # dims",
+            "    ctypes.c_int,  # ndim",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # filename_ascii",
+            "    ctypes.c_int,  # fn_len",
+            "    ctypes.POINTER(ctypes.c_int) ",
+            "]",
+            "arrays_lib.serialize_int_nd_C.restype = None",
+            "",
+            "# call function",
+            "arrays_lib.serialize_int_nd_C(",
+            "    flat,",
+            "    dims,",
+            "    ndim,",
+            "    filename_ascii,",
+            "    fn_len,",
+            "    ctypes.byref(ierr)",
+            ")",
+            "",
+            "check_err_code(ierr.value)"
+        ],
+        "description": "Serializes a given integer array of n-dimensions to a binary file"
+    },
+    "Python call to deserialize_int_array": {
+        "prefix": "f42:Python_deserialize_int_array",
+        "body": [
+            "#Use get_array_dims first to get correct dimensions for the output array filled by fortran",
+            "arrays_lib.deserialize_int_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # arr",
+            "    ctypes.c_int,                                                          # total size",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # filename_ascii",
+            "    ctypes.c_int,                                                           # fn_len",
+            "    ctypes.POINTER(ctypes.c_int)",
+            "]",
+            "arrays_lib.deserialize_int_C.restype = None",
+            "arrays_lib.deserialize_int_C(arr, total_size, ascii_arr, fn_len, ctypes.byref(ierr))",
+            "check_err_code(ierr.value)",
+            "return arr.reshape(dims, order='F') "
+        ],
+        "description": "deserializes an integer array from a file to its original shape"
+    },
+    "Python call to serialize_real_array": {
+        "prefix": "f42:Python_serialize_real_array",
+        "body": [
+            "arrays_lib.serialize_real_nd_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags=\"C_CONTIGUOUS\"), # arr",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # dims",
+            "    ctypes.c_int,  # ndim",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # filename_ascii",
+            "    ctypes.c_int,  # fn_len",
+            "    ctypes.POINTER(ctypes.c_int)  # ierr",
+            "]",
+            "arrays_lib.serialize_real_nd_C.restype = None",
+
+            "arrays_lib.serialize_real_nd_C(",
+            "    flat,",
+            "    dims,",
+            "    ndim,",
+            "    filename_ascii,",
+            "    fn_len,",
+            "    ctypes.byref(ierr)",
+            ")",
+            "check_err_code(ierr.value)"
+        ],
+        "description": "Serializes a n-dimensional array of type real to a binary file"
+    },
+    "Python call to deserialize_real_array": {
+        "prefix": "f42:Python_deserialize_real_array",
+        "body": [
+            "#Use get_array_dims first to get correct dimensions for the output array filled by fortran",
+            "arrays_lib.deserialize_real_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags=\"C_CONTIGUOUS\"),  # arr",
+            "    ctypes.c_int,                                                          # total size",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # filename_ascii",
+            "    ctypes.c_int,                                                           # fn_len",
+            "    ctypes.POINTER(ctypes.c_int)  # ierr",
+            "]",
+            "arrays_lib.deserialize_real_C.restype = None",
+            "arrays_lib.deserialize_real_C(arr, total_size, ascii_arr, fn_len, ctypes.byref(ierr))",
+            "check_err_code(ierr.value)",
+            "return arr.reshape(dims, order='F')"
+        ],
+        "description": "deserializes an array of type real from a given file"
+    },
+    "Python call to serialize_char_array": {
+        "prefix": "f42:Python_serialize_char_array",
+        "body": [
+            "arrays_lib.serialize_char_flat_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # ascii_ptr",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # dims",
+            "    ctypes.c_int,                                                          # ndim",
+            "    ctypes.c_int,                                                          # clen",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # filename_ascii",
+            "    ctypes.c_int,                                                           # fn_len",
+            "    ctypes.POINTER(ctypes.c_int)                                           # ierr",
+            "]",
+            "arrays_lib.serialize_char_flat_C.restype = None",
+            "",
+            "arrays_lib.serialize_char_flat_C(",
+            "    ascii_ptr,",
+            "    dims,",
+            "    ndim,",
+            "    clen,",
+            "    filename_ascii,",
+            "    fn_len,",
+            "    ctypes.byref(ierr)",
+            ")",
+            "check_err_code(ierr.value)"
+        ],
+        "description": "serializes a n-dimensional char array to a given file"
+    },
+    "Python call to deserialize_char_array": {
+        "prefix": "f42:Python_deserialize_char_array",
+        "body": [
+            "arrays_lib.deserialize_char_flat_C.argtypes = [",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # ascii_arr",
+            "    ctypes.c_int,           # clen",
+            "    ctypes.c_int,           # total",
+            "    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags=\"C_CONTIGUOUS\"),  # filename_ascii",
+            "    ctypes.c_int,           # fn_len",
+            "    ctypes.POINTER(ctypes.c_int)                                           # ierr",
+            "]",
+            "arrays_lib.deserialize_char_flat_C.restype = None",
+            "",
+            "arrays_lib.deserialize_char_flat_C(",
+            "    ascii_arr,",
+            "    clen,",
+            "    total,",
+            "    filename_ascii,",
+            "    fn_len,",
+            "    ctypes.byref(ierr)",
+            ")",
+            "check_err_code(ierr.value)",
+            "",
+            "# empty array",
+            "if total == 0:",
+            "    return np.empty(tuple(dims), dtype=f'U{clen}')",
+            "",
+            "# 1) per elemnt one block of \"clen\" codes",
+            "codes_2d = ascii_arr.reshape((total, clen), order='C')",
+            "",
+            "# 2) ASCII -> Strings per Element",
+            "strings_1d = np.array(",
+            "    [''.join(chr(c) for c in row if c > 0) for row in codes_2d],",
+            "    dtype=f'U{clen}'",
+            ")",
+            "",
+            "# 3) reshape to target",
+            "result = strings_1d.reshape(tuple(dims), order='F')",
+            "return result"
+        ],
+        "description": "Deserializes a character array of n dimensions from a binary file"
+    },
+    "Fortran call to serialize_int_1D": {
+        "prefix":"f42:Fortran_serialize_int_1D",
+        "body":[
+            "call serialize_int_1D(array, filename, ierr)"
+        ],
+        "description":"Writes a 1D integer array to a binary file"
+    },
+    "Fortran call to serialize_int_2D": {
+        "prefix":"f42:Fortran_serialize_int_2D",
+        "body":[
+            "call serialize_int_2D(array, filename, ierr)"
+        ],
+        "description":"Serializes a 2D integer array to a binary file"
+    },
+    "Fortran call to serialize_int_3D": {
+        "prefix":"f42:Fortran_serialize_int_3D",
+        "body":[
+            "call serialize_int_3D(array, filename, ierr)"
+        ],
+        "description":"Serializes a 3D integer array to a binary file"
+    },
+    "Fortran call to serialize_int_4D": {
+        "prefix":"f42:Fortran_serialize_int_4D",
+        "body":[
+            "call serialize_int_4D(array, filename, ierr)"
+        ],
+        "description":"Serializes a 4D integer array to a binary file"
+    },
+    "Fortran call to serialize_int_5D": {
+        "prefix":"f42:Fortran_serialize_int_5D",
+        "body":[
+            "call serialize_int_5D(array, filename, ierr)"
+        ],
+        "description":"Serializes a 5D integer array to a binary file"
+    },
+    "Fortran call to serialize_real_1D": {
+        "prefix":"f42:Fortran_serialize_real_1D",
+        "body":[
+            "call serialize_real_1D(array, filename, ierr)"
+        ],
+        "description":"Writes a 1D real array to a binary file"
+    },
+    "Fortran call to serialize_real_2D": {
+        "prefix":"f42:Fortran_serialize_real_2D",
+        "body":[
+            "call serialize_real_2D(array, filename, ierr)"
+        ],
+        "description":"Serializes a 2D real array to a binary file"
+    },
+    "Fortran call to serialize_real_3D": {
+        "prefix":"f42:Fortran_serialize_real_3D",
+        "body":[
+            "call serialize_real_3D(array, filename, ierr)"
+        ],
+        "description":"Writes a 3D real array to a binary file"
+    },
+    "Fortran call to serialize_real_4D": {
+        "prefix":"f42:Fortran_serialize_real_4D",
+        "body":[
+            "call serialize_real_4D(array, filename, ierr)"
+        ],
+        "description":"Writes a 4D real array to a binary file"
+    },
+    "Fortran call to serialize_real_5D": {
+        "prefix":"f42:Fortran_serialize_real_5D",
+        "body":[
+            "call serialize_real_5D(array, filename, ierr)"
+        ],
+        "description":"Writes a 5D real array to a binary file"
+    },
+    "Fortran call to serialize_char_1D": {
+        "prefix":"f42:Fortran_serialize_char_1D",
+        "body":[
+            "call serialize_char_1D(array, filename, ierr)"
+        ],
+        "description":"Writes a 1D char array to a binary file"
+    },
+    "Fortran call to serialize_char_2D": {
+        "prefix":"f42:Fortran_serialize_char_2D",
+        "body":[
+            "call serialize_char_2D(array, filename, ierr)"
+        ],
+        "description":"Writes a 2D char array to a binary file"
+    },
+    "Fortran call to serialize_char_3D": {
+        "prefix":"f42:Fortran_serialize_char_3D",
+        "body":[
+            "call serialize_char_3D(array, filename, ierr)"
+        ],
+        "description":"Writes a 3D char array to a binary file"
+    },
+    "Fortran call to serialize_char_4D": {
+        "prefix":"f42:Fortran_serialize_char_4D",
+        "body":[
+            "call serialize_char_4D(array, filename, ierr)"
+        ],
+        "description":"Writes a 4D char array to a binary file"
+    },
+    "Fortran call to serialize_char_5D": {
+        "prefix":"f42:Fortran_serialize_char_5D",
+        "body":[
+            "call serialize_char_5D(array, filename, ierr)"
+        ],
+        "description":"Writes a 5D char array to a binary file"
+    },
+    "Fortran call to deserialize_int_1D": {
+        "prefix":"f42:Fortran_deserialize_int_1D",
+        "body":[
+            "call deserialize_int_1D(array, filename, ierr)"
+        ],
+        "description":"reads a 1D integer array from a binary file"
+    },
+    "Fortran call to deserialize_int_2D": {
+        "prefix":"f42:Fortran_deserialize_int_2D",
+        "body":[
+            "call deserialize_int_2D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 2D integer array from a binary file"
+    },
+    "Fortran call to deserialize_int_3D": {
+        "prefix":"f42:Fortran_deserialize_int_3D",
+        "body":[
+            "call deserialize_int_3D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 3D integer array from a binary file"
+    },
+    "Fortran call to deserialize_int_4D": {
+        "prefix":"f42:Fortran_deserialize_int_4D",
+        "body":[
+            "call deserialize_int_4D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 4D integer array from a binary file"
+    },
+    "Fortran call to deserialize_int_5D": {
+        "prefix":"f42:Fortran_deserialize_int_5D",
+        "body":[
+            "call deserialize_int_5D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 5D integer array from a binary file"
+    },
+    "Fortran call to deserialize_real_1D": {
+        "prefix":"f42:Fortran_deserialize_real_1D",
+        "body":[
+            "call deserialize_real_1D(array, filename, ierr)"
+        ],
+        "description":"Reads a 1D real array from a binary file"
+    },
+    "Fortran call to deserialize_real_2D": {
+        "prefix":"f42:Fortran_deserialize_real_2D",
+        "body":[
+            "call deserialize_real_2D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 2D real array from a binary file"
+    },
+    "Fortran call to deserialize_real_3D": {
+        "prefix":"f42:Fortran_deserialize_real_3D",
+        "body":[
+            "call deserialize_real_3D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 3D real array from a binary file"
+    },
+    "Fortran call to deserialize_real_4D": {
+        "prefix":"f42:Fortran_deserialize_real_4D",
+        "body":[
+            "call deserialize_real_4D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 4D real array from a binary file"
+    },
+    "Fortran call to deserialize_real_5D": {
+        "prefix":"f42:Fortran_deserialize_real_5D",
+        "body":[
+            "call deserialize_real_5D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 5D real array from a binary file"
+    },
+    "Fortran call to deserialize_char_1D": {
+        "prefix":"f42:Fortran_deserialize_char_1D",
+        "body":[
+            "call deserialize_char_1D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 1D char array from a binary file"
+    },
+    "Fortran call to deserialize_char_2D": {
+        "prefix":"f42:Fortran_deserialize_char_2D",
+        "body":[
+            "call deserialize_char_2D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 2D char array from a binary file"
+    },
+    "Fortran call to deserialize_char_3D": {
+        "prefix":"f42:Fortran_deserialize_char_3D",
+        "body":[
+            "call deserialize_char_3D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 3D char array from a binary file"
+    },
+    "Fortran call to deserialize_char_4D": {
+        "prefix":"f42:Fortran_deserialize_char_4D",
+        "body":[
+            "call deserialize_char_4D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 4D char array from a binary file"
+    },
+    "Fortran call to deserialize_char_5D": {
+        "prefix":"f42:Fortran_deserialize_char_5D",
+        "body":[
+            "call deserialize_char_5D(array, filename, ierr)"
+        ],
+        "description":"Deserializes a 5D char array from a binary file"
+    },
+    "Fortran call to write_file_header":{
+        "prefix":"f42:write_file_header",
+        "body": [
+            "!The unit is opened by the writing function and is returned open if no error occurs",
+            "call write_file_header(filename, unit, ARRAY_TYPE, ndims, dims, ierr)"
+        ],
+        "description": "Opens unit and writes file header"
+    },
+    "Fortran call to convert ascii_to_string":{
+        "prefix":"f42:ascii_to_string",
+        "body":[
+            "call ascii_to_string(string_ascii, string_len, result_string)"
+        ],
+        "description": "Converts a 1D ascii array to a string"
+    },
+    "Fortran call to check ioerror":{
+        "prefix": "f42:check_io_error",
+        "body": [
+            "check_okay_ioerror(ioerror, ierr, msg, unit)"
+        ],
+        "description": "Checks if a given ioerror is okay, if not closes the unit and sets ierr to the passed message"
+    },
+    "Fortran call to check dimensions": {
+        "prefix": "f42:check_dimensions",
+        "body": [
+            "check_okay_dims(dims, expected, ierr)"
+        ],
+        "description": "Checks if number of dimensions matches the expected number of dimensions"
+    },
+    "Fortran call to read_file_header":{
+        "prefix":"f42:read_file_header",
+        "body":[
+            "!Opens the unit and reads the file header, if no error occurs the open unit is returned",
+            "read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)"
+        ],
+        "description": "Opens unit and reads the file header"
+    },
+    "Fortran call to convert string_to_ascii array":{
+        "prefix":"f42:string_to_ascii_arr",
+        "body": [
+            "string_to_ascii_arr(flat, array_size, ascii_arr, clen)"
+        ],
+        "description": "Converts 1D string array to 1D ascii array"
+    }
+}

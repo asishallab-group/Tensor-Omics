@@ -41,6 +41,3 @@ check_err_code <- function(ierr) {
   )
   stop(msg)
 }
-
-check_err_code(0)  # No error
-

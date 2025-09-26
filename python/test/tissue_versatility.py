@@ -115,7 +115,7 @@ def test_invalid_input_no_axes():
     except RuntimeError as e:
         error_raised = True
         # Check that the error message contains the expected text
-        assert "No axes selected" in str(e)
+        assert "Empty input arrays provided." in str(e)
     assert error_raised, "Expected RuntimeError was not raised"
     print("test_invalid_input_no_axes passed")
 
