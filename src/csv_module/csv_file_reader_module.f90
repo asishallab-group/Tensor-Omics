@@ -2,6 +2,13 @@
 module tox_csv_file_reader
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_FILE_OPEN, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok
+  use serialize_int, only: serialize_int_2d
+  use serialize_real, only: serialize_real_2d
+  use serialize_char, only: serialize_char_1d, serialize_char_2d
+  use array_utils, only: write_file_header, read_file_header
+  use int_deserialize_mod, only: deserialize_int_1d, deserialize_int_2d
+  use real_deserialize_mod, only: deserialize_real_1d, deserialize_real_2d
+  use char_deserialize_mod, only: deserialize_char_1d, deserialize_char_2d
 
 contains
 
@@ -39,7 +46,7 @@ contains
 
     !| Local variables
     integer(int32) :: current_row, current_column, n_columns, n_rows, col_type, type_index, file_unit, data_offset, io_err, i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, current_pos, sep_pos, close_paren_pos, k, l
-    character(len=1024) :: line, field
+    character(len=8192) :: line, field ! //TODO what size should this be? maybe as input argument?
     character(len=1) :: sep
 
     ! Initialize error code
@@ -729,25 +736,342 @@ contains
   end subroutine get_complex_column_by_name
 
   !> Serialization and deserialization routines using serial_array_module
-  ! pure subroutine serialize_table()
-  !   implicit none
-  !   ! ...implementation to be added...
-  ! end subroutine serialize_table
+  !> Serialize the type-banded arrays from a CSV table to binary files
+  subroutine serialize_table(filename_prefix, int_cols, real_cols, char_cols, &
+                           logical_cols, complex_cols, header, metadata, ierr)
+    implicit none
+    
+    !| Base filename prefix (extensions will be added automatically)
+    character(len=*), intent(in) :: filename_prefix
+    !| 2D int array, integer columns to serialize
+    integer(int32), intent(in) :: int_cols(:,:)
+    !| 2D real array, real columns to serialize  
+    real(real64), intent(in) :: real_cols(:,:)
+    !| 2D char array, character columns to serialize
+    character(len=*), intent(in) :: char_cols(:,:)
+    !| 2D logical array, logical columns to serialize
+    logical, intent(in) :: logical_cols(:,:)
+    !| 2D complex array, complex columns to serialize
+    complex(real64), intent(in) :: complex_cols(:,:)
+    !| 1D char array, column names/headers
+    character(len=*), intent(in) :: header(:)
+    !| 2D int array, metadata (row 1: type, row 2: index in type array)
+    integer(int32), intent(in) :: metadata(:,:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    character(len=1024) :: filename
+    integer(int32) :: local_ierr
+    
+    call set_ok(ierr)
+    call set_ok(local_ierr)
+    
+    ! Serialize integer columns if present
+    if (size(int_cols, 1) > 0 .and. size(int_cols, 2) > 0) then
+      filename = trim(filename_prefix) // '_int_cols.dat'
+      call serialize_int_2d(int_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize real columns if present
+    if (size(real_cols, 1) > 0 .and. size(real_cols, 2) > 0) then
+      filename = trim(filename_prefix) // '_real_cols.dat'
+      call serialize_real_2d(real_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize character columns if present
+    if (size(char_cols, 1) > 0 .and. size(char_cols, 2) > 0) then
+      filename = trim(filename_prefix) // '_char_cols.dat'
+      call serialize_char_2d(char_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize logical columns using direct file operations
+    if (size(logical_cols, 1) > 0 .and. size(logical_cols, 2) > 0) then
+      filename = trim(filename_prefix) // '_logical_cols.dat'
+      call serialize_logical_2d(logical_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize complex columns using direct file operations  
+    if (size(complex_cols, 1) > 0 .and. size(complex_cols, 2) > 0) then
+      filename = trim(filename_prefix) // '_complex_cols.dat'
+      call serialize_complex_2d(complex_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize header (column names)
+    if (size(header) > 0) then
+      filename = trim(filename_prefix) // '_header.dat'
+      call serialize_char_1d(header, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Serialize metadata
+    filename = trim(filename_prefix) // '_metadata.dat'
+    call serialize_int_2d(metadata, filename, local_ierr)
+    if (.not. is_ok(local_ierr)) then
+      call set_err_once(ierr, local_ierr)
+      return
+    end if
+    
+  end subroutine serialize_table
 
-  ! pure subroutine deserialize_table()
-  !   implicit none
-  !   ! ...implementation to be added...
-  ! end subroutine deserialize_table
+  !> Deserialize type-banded arrays from binary files back into CSV table format
+  subroutine deserialize_table(filename_prefix, int_cols, real_cols, char_cols, &
+                              logical_cols, complex_cols, header, metadata, ierr)
+    implicit none
+    
+    !| Base filename prefix (extensions will be added automatically)
+    character(len=*), intent(in) :: filename_prefix
+    !| 2D int array, output for deserialized integer columns
+    integer(int32), intent(out) :: int_cols(:,:)
+    !| 2D real array, output for deserialized real columns  
+    real(real64), intent(out) :: real_cols(:,:)
+    !| 2D char array, output for deserialized character columns
+    character(len=*), intent(out) :: char_cols(:,:)
+    !| 2D logical array, output for deserialized logical columns
+    logical, intent(out) :: logical_cols(:,:)
+    !| 2D complex array, output for deserialized complex columns
+    complex(real64), intent(out) :: complex_cols(:,:)
+    !| 1D char array, output for column names/headers
+    character(len=*), intent(out) :: header(:)
+    !| 2D int array, output for metadata (row 1: type, row 2: index in type array)
+    integer(int32), intent(out) :: metadata(:,:)
+    !| Error code: 0 - success, non-zero = error
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    character(len=1024) :: filename
+    integer(int32) :: local_ierr
+    logical :: file_exists
+    
+    call set_ok(ierr)
+    call set_ok(local_ierr)
+    
+    ! First, always deserialize metadata to understand the table structure
+    filename = trim(filename_prefix) // '_metadata.dat'
+    inquire(file=filename, exist=file_exists)
+    if (.not. file_exists) then
+      call set_err_once(ierr, ERR_FILE_OPEN)
+      return
+    end if
+    call deserialize_int_2d(metadata, filename, local_ierr)
+    if (.not. is_ok(local_ierr)) then
+      call set_err_once(ierr, local_ierr)
+      return
+    end if
+    
+    ! Deserialize header (column names)
+    filename = trim(filename_prefix) // '_header.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists) then
+      call deserialize_char_1d(header, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Deserialize integer columns if file exists
+    filename = trim(filename_prefix) // '_int_cols.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists .and. size(int_cols, 1) > 0 .and. size(int_cols, 2) > 0) then
+      call deserialize_int_2d(int_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Deserialize real columns if file exists
+    filename = trim(filename_prefix) // '_real_cols.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists .and. size(real_cols, 1) > 0 .and. size(real_cols, 2) > 0) then
+      call deserialize_real_2d(real_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Deserialize character columns if file exists
+    filename = trim(filename_prefix) // '_char_cols.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists .and. size(char_cols, 1) > 0 .and. size(char_cols, 2) > 0) then
+      call deserialize_char_2d(char_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Deserialize logical columns if file exists
+    filename = trim(filename_prefix) // '_logical_cols.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists .and. size(logical_cols, 1) > 0 .and. size(logical_cols, 2) > 0) then
+      call deserialize_logical_2d(logical_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    ! Deserialize complex columns if file exists  
+    filename = trim(filename_prefix) // '_complex_cols.dat'
+    inquire(file=filename, exist=file_exists)
+    if (file_exists .and. size(complex_cols, 1) > 0 .and. size(complex_cols, 2) > 0) then
+      call deserialize_complex_2d(complex_cols, filename, local_ierr)
+      if (.not. is_ok(local_ierr)) then
+        call set_err_once(ierr, local_ierr)
+        return
+      end if
+    end if
+    
+    end subroutine deserialize_table
 
-  !> Serialization and deserialization routines using serial_array_module
-  !pure subroutine serialize_table(...)
-  !  implicit none
-    ! ...existing code...
-  !end subroutine serialize_table
+  ! //TODO Will be replaced by array_utils implementations in future releases
+  !> Serialize a 2D logical array to a binary file using the array_utils pattern
+  subroutine serialize_logical_2d(arr, filename, ierr)
+    implicit none
+    logical, intent(in) :: arr(:,:)
+    character(len=*), intent(in) :: filename
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: unit, ioerror
+    integer(int32) :: dims(2)
+    integer(int32), parameter :: ARRAY_TYPE_LOGICAL = 4
+    
+    dims = shape(arr)
+    call set_ok(ierr)
+    call set_ok(ioerror)
+    
+    ! Use array_utils to write header
+    call write_file_header(filename, unit, ARRAY_TYPE_LOGICAL, 2, dims, ierr)
+    if (.not. is_ok(ierr)) return
+    
+    ! Write the logical array data
+    write(unit, iostat=ioerror) arr
+    if (.not. is_ok(ioerror)) then
+      call set_err_once(ierr, ioerror)
+    end if
+    close(unit)
+  end subroutine serialize_logical_2d
 
-  !pure subroutine deserialize_table(...)
-  !  implicit none
-    ! ...existing code...
-  !end subroutine deserialize_table
+  ! //TODO Will be replaced by array_utils implementations in future releases
+  !> Serialize a 2D complex array to a binary file using the array_utils pattern
+  subroutine serialize_complex_2d(arr, filename, ierr)
+    implicit none
+    complex(real64), intent(in) :: arr(:,:)
+    character(len=*), intent(in) :: filename
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: unit, ioerror
+    integer(int32) :: dims(2)
+    integer(int32), parameter :: ARRAY_TYPE_COMPLEX = 5
+    
+    dims = shape(arr)
+    call set_ok(ierr)
+    call set_ok(ioerror)
+    
+    ! Use array_utils to write header
+    call write_file_header(filename, unit, ARRAY_TYPE_COMPLEX, 2, dims, ierr)
+    if (.not. is_ok(ierr)) return
+    
+    ! Write the complex array data
+    write(unit, iostat=ioerror) arr
+    if (.not. is_ok(ioerror)) then
+      call set_err_once(ierr, ioerror)
+    end if
+    close(unit)
+  end subroutine serialize_complex_2d
+
+  ! //TODO Will be replaced by array_utils implementations in future releases
+  !> Deserialize a 2D logical array from a binary file using the array_utils pattern
+  subroutine deserialize_logical_2d(arr, filename, ierr)
+    implicit none
+    logical, intent(out) :: arr(:,:)
+    character(len=*), intent(in) :: filename
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: unit, type_code, ndims, clen, ioerror
+    integer(int32), allocatable :: dims(:)
+    
+    call set_ok(ierr)
+    
+    ! Use array_utils to read header
+    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
+    if (.not. is_ok(ierr)) return
+    
+    ! Verify dimensions match
+    if (ndims /= 2) then
+      call set_err_once(ierr, ERR_DIM_MISMATCH)
+      close(unit)
+      return
+    end if
+    
+    ! Read the logical array data
+    read(unit, iostat=ioerror) arr
+    if (.not. is_ok(ioerror)) then
+      call set_err_once(ierr, ioerror)
+    end if
+    close(unit)
+  end subroutine deserialize_logical_2d
+
+  ! //TODO Will be replaced by array_utils implementations in future releases
+  !> Deserialize a 2D complex array from a binary file using the array_utils pattern
+  subroutine deserialize_complex_2d(arr, filename, ierr)
+    implicit none
+    complex(real64), intent(out) :: arr(:,:)
+    character(len=*), intent(in) :: filename
+    integer(int32), intent(out) :: ierr
+    
+    ! Local variables
+    integer(int32) :: unit, type_code, ndims, clen, ioerror
+    integer(int32), allocatable :: dims(:)
+    
+    call set_ok(ierr)
+    
+    ! Use array_utils to read header
+    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
+    if (.not. is_ok(ierr)) return
+    
+    ! Verify dimensions match
+    if (ndims /= 2) then
+      call set_err_once(ierr, ERR_DIM_MISMATCH)
+      close(unit)
+      return
+    end if
+    
+    ! Read the complex array data
+    read(unit, iostat=ioerror) arr
+    if (.not. is_ok(ioerror)) then
+      call set_err_once(ierr, ioerror)
+    end if
+    close(unit)
+  end subroutine deserialize_complex_2d
 
 end module tox_csv_file_reader
