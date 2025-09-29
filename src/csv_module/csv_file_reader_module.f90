@@ -1,7 +1,7 @@
 !> Module for reading heterogeneous CSV tables into type-banded arrays and providing fast accessors.
 module tox_csv_file_reader
   use, intrinsic :: iso_fortran_env, only: int32, real64
-  use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_FILE_OPEN, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok
   use serialize_int, only: serialize_int_2d
   use serialize_real, only: serialize_real_2d
   use serialize_char, only: serialize_char_1d, serialize_char_2d
@@ -44,13 +44,19 @@ contains
     !| Optional 1D char array, overrides header line if provided
     character(len=*), intent(in), optional :: column_names(:)
 
+    ! // TODO: Implement quotes handling for complex numbers
+    ! // TODO: Check different reading approach: insted of large line buffer, use stream input of file for continous reading
+
     !| Local variables
-    integer(int32) :: current_row, current_column, n_columns, n_rows, col_type, type_index, file_unit, data_offset, io_err, i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, current_pos, sep_pos, close_paren_pos, k, l
-    character(len=8192) :: line, field ! //TODO what size should this be? maybe as input argument?
+    integer(int32) :: current_char, current_row, current_column, n_columns, col_type, type_index, file_unit, data_offset, io_err
+    integer(int32) :: i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, current_pos, sep_pos, close_paren_pos
+    character(len=8192) :: line ! //TODO what size should this be? maybe as input argument?
+    character(len=64) :: field ! //TODO what size should this be? maybe as input argument?
     character(len=1) :: sep
 
-    ! Initialize error code
+    ! Initialize error codes
     call set_ok(ierr)
+    call set_ok(io_err)
     
     ! Error handling for dimension mismatches
     n_columns = size(column_types)
@@ -81,8 +87,9 @@ contains
     else
       sep = ','
     end if
-
+    
     ! Open file
+    file_unit = 10
     open(unit=file_unit, file=file_path, status='old', action='read', iostat=io_err)
     if (.not. is_ok(io_err)) then
       call set_err_once(ierr, ERR_FILE_OPEN)
@@ -100,6 +107,9 @@ contains
     ! Go back to the beginning of the file.
     rewind(file_unit)
 
+    ! Initialize data offset (number of lines to skip at the start of the file)
+    data_offset = 0
+
     ! Skip initial comment lines starting with '#'.
     do
       read (file_unit, '(A)', iostat=io_err) line
@@ -114,30 +124,36 @@ contains
     if (present(column_names)) then
       ! Use provided column names
       header = column_names
-    else if (has_header) then
+    end if
+    if (has_header) then
       data_offset = data_offset + 1
-      ! Split header line by separator
-      n_columns = size(column_types)
-      current_column = 1
-      current_row = 1
-      do while (current_column <= n_columns)
-        ! Find next separator or end of line
-        type_index = index(line(current_row:), sep)
-        if (type_index == 0) then
-          header(current_column) = adjustl(trim(line(current_row:)))
-          exit
-        else
-          header(current_column) = adjustl(trim(line(current_row:current_row+type_index-2)))
-          current_row = current_row + type_index
-        end if
-        current_column = current_column + 1
-      end do
+
+      if(.not. present(column_names)) then
+        ! Split header line by separator
+        n_columns = size(column_types)
+        current_char = 1
+        do current_column = 1, n_columns
+          ! Find next separator or end of line
+          type_index = index(line(current_char:), sep)
+          ! If no separator found, take rest of line
+          if (type_index == 0) then
+            header(current_column) = adjustl(trim(line(current_char:)))
+            ! Check if we have fewer columns than expected
+            if (current_column < n_columns) then
+              call set_err_once(ierr, ERR_DIM_MISMATCH)
+            end if
+            exit
+          else
+            header(current_column) = adjustl(trim(line(current_char:current_char+type_index-2)))
+            current_char = current_char + type_index
+          end if
+        end do
+      end if
     end if
 
     ! Go back to the start of the file and skip first offset lines (comments and header if present)
-    print *, "Data offset: ", data_offset
     rewind(file_unit)
-    do current_row = 1, data_offset
+    do current_char = 1, data_offset
       read(file_unit, '(A)', iostat=io_err) line
       if (.not. is_ok(io_err)) then
         call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -154,6 +170,7 @@ contains
       read(file_unit, '(A)', iostat=io_err) line
       if (.not. is_ok(io_err)) exit
       current_row = current_row + 1
+
       ! Reset column indices for each type
       i_col_int = 1
       i_col_real = 1
@@ -168,8 +185,15 @@ contains
         ! Find next separator or end of line
         ! First, extract the field normally to check for complex numbers
         sep_pos = index(line(current_pos:), sep)
+        ! If no separator found, take rest of line
         if (sep_pos == 0) then
           field = adjustl(trim(line(current_pos:)))
+          if (len_trim(field) == 0) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)  ! Empty field found
+          end if
+          if (current_column < n_columns) then
+            call set_err_once(ierr, ERR_DIM_MISMATCH)  ! Fewer columns than expected
+          end if
         else
           field = adjustl(trim(line(current_pos:current_pos+sep_pos-2)))
         end if
