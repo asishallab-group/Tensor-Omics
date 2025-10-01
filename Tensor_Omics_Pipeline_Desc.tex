@@ -3,7 +3,15 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{geometry}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=cyan,
+    filecolor=magenta,      
+    urlcolor=blue,
+    }
 \geometry{margin=2.5cm}
+
 \title{Tensor Omics: Core Preprocessing, Analysis Pipeline, and Geometric Tools
   for Semantic Interpretation}
 \author{Asis Hallab, ``el Bobito''}
@@ -1053,5 +1061,91 @@ for k = 2 to MAX_PARALOGS:
 
 \noindent
 This algorithm achieves robust and scalable detection of subfunctionalization and dosage patterns by systematic, bitmask-driven dynamic programming with domain-motivated pruning rules.
+
+\section{Detection of Explanatory Contributions via ``Explanatory Contribution Analysis''}
+
+The nickname we give this ``Factor–Response Trajectory Analysis'' or
+``Explanatory Contribution Analysis'' is
+\href{https://en.wikipedia.org/wiki/Ur\%C3\%B0r}{Urd}.
+
+This section formalizes the Urd methodology, a Tensor Geometrics module to quantify the explanatory contribution of candidate factors (axes or linear combinations of axes) to one or multiple dependent variables. The method operates on discrete trajectories (time points or ordered conditions) and provides two complementary perspectives: (i) overall explanatory contribution integrated across the entire trajectory, and (ii) local spike contributions at individual time points.
+
+\subsection{Goal of the Method}
+
+The goal of Urd is to detect and quantify whether a factor (or a defined linear combination of factors) provides significant explanatory power for a dependent variable or a defined linear combination of dependent variables. The method supports:
+\begin{enumerate}
+    \item Assessing explanatory power over the \textbf{whole trajectory}, i.e. whether a factor consistently aligns with the dependent variable across time.
+    \item Detecting \textbf{local spikes}, i.e. individual time points where a factor exerts unusually strong explanatory influence.
+    \item Applying an \textbf{empirical significance criterion} using percentile thresholds derived from the data (e.g., top five percent).
+\end{enumerate}
+
+\subsection{Overall Trajectory Contribution}
+
+Given a factor trajectory $x(t)$ and a dependent trajectory $y(t)$ with $t=1,\dots,T$ discrete time points:
+
+\begin{enumerate}
+    \item \textbf{Magnitude-aware contribution (dosage-sensitive):}
+    \[
+        C = \frac{\sum_{t=1}^T x(t) \, y(t)}{\sqrt{\sum_{t=1}^T x(t)^2} \cdot \sqrt{\sum_{t=1}^T y(t)^2}}.
+    \]
+    This metric measures the cosine similarity of $x$ and $y$, capturing both pattern alignment and magnitude.
+
+    \item \textbf{Direction-only contribution (RAP-normalized):}
+    Normalize each trajectory to unit length:
+    \[
+        \tilde{x}(t) = \frac{x(t)}{\sqrt{\sum_{t=1}^T x(t)^2}}, 
+        \quad
+        \tilde{y}(t) = \frac{y(t)}{\sqrt{\sum_{t=1}^T y(t)^2}}.
+    \]
+    The contribution is then computed as
+    \[
+        C_{\text{RAP}} = \sum_{t=1}^T \tilde{x}(t) \, \tilde{y}(t).
+    \]
+    This metric captures purely angular alignment, independent of absolute amplitude.
+\end{enumerate}
+
+\subsection{Local Spike Contributions}
+
+At each discrete time point $t$, Urd defines a spike score:
+
+\begin{enumerate}
+    \item \textbf{Magnitude-aware spike:}
+    \[
+        s(t) = x(t)\,y(t).
+    \]
+    \item \textbf{Direction-only spike (RAP-normalized):}
+    \[
+        \tilde{s}(t) = \frac{x(t)\,y(t)}{\sqrt{\sum_{\tau=1}^T x(\tau)^2}\,\sqrt{\sum_{\tau=1}^T y(\tau)^2}}.
+    \]
+\end{enumerate}
+
+Spike distributions can be pooled across time points, individuals, or factors, depending on the analysis design.
+
+\subsection{Empirical Significance Criterion}
+
+Urd employs empirical thresholding to distinguish significant contributions:
+\begin{enumerate}
+    \item Construct the empirical distribution of contributions $C$ (for whole-trajectory analysis) or spikes $s(t)$ (for local analysis).
+    \item Define the \textbf{top five percentile} of the distribution as the threshold. Contributions or spikes exceeding this threshold are deemed significant.
+    \item Alternative thresholds (e.g., top ten percentile, permutation-based nulls) can be applied depending on dataset size and variance structure.
+\end{enumerate}
+
+\subsection{Extensions and Options}
+
+\begin{enumerate}
+    \item \textbf{Linear combinations of factors:} Urd supports multivariate predictors by forming a factor matrix $X(t)$ with columns $x_i(t)$. Contributions are then computed by projecting $y(t)$ into the subspace spanned by $X(t)$ using least-squares regression.
+    \item \textbf{Multiple dependent variables:} If $y(t)$ is multidimensional, contributions are defined via Frobenius norm or by projection onto linear combinations $c^\top y(t)$, where $c$ is user-defined or derived empirically (e.g., by principal component analysis).
+    \item \textbf{Stability improvements:} With few time points, stability of percentile thresholds can be improved by pooling across individuals, applying short-window smoothing (e.g., three-point rolling averages), or using permutation-based null distributions.
+\end{enumerate}
+
+\subsection{Summary}
+
+Urd provides an efficient and explainable framework for:
+\begin{enumerate}
+    \item Quantifying how strongly a factor explains a dependent variable across an entire trajectory.
+    \item Detecting when in time a factor exerts unusually strong influence.
+    \item Applying empirical, percentile-based thresholds to control for noise and experimental biases.
+\end{enumerate}
+The method is linear-algebraic, computationally efficient, and applicable to both univariate and multivariate factor/response settings.
 
 \end{document}
