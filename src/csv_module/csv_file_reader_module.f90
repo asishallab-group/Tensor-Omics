@@ -44,7 +44,7 @@ contains
     !| Optional 1D char array, overrides header line if provided
     character(len=*), intent(in), optional :: column_names(:)
 
-    ! // TODO: Implement quotes handling for complex numbers
+    
     ! // TODO: Check different reading approach: insted of large line buffer, use stream input of file for continous reading
 
     !| Local variables
@@ -218,82 +218,49 @@ contains
         ! Read column type to store value in appropriate array
         col_type = column_types(current_column)
 
+        ! Read field into appropriate type-banded array and increment column index
         select case (col_type)
         case (1) ! int
           read(field, *, iostat=io_err) int_cols(current_row, i_col_int)
-          ! If first time this column type is encountered, set metadata
-          if (metadata(1, current_column) == 0) then
-            metadata(1, current_column) = 1
-            metadata(2, current_column) = i_col_int
-            ! Generate header name if none provided
-            if (.not. has_header .and. .not. present(column_names)) then
-              write(header(current_column), '(I0,A)') current_column, '_int'
-            end if
-          end if
-          ! Increment column index for next int column
+          type_index = i_col_int
           i_col_int = i_col_int + 1
-        
         case (2) ! real
           read(field, *, iostat=io_err) real_cols(current_row, i_col_real)
-          ! If first time this column type is encountered, set metadata
-          if (metadata(1, current_column) == 0) then
-            metadata(1, current_column) = 2
-            metadata(2, current_column) = i_col_real
-            ! Generate header name if none provided
-            if (.not. has_header .and. .not. present(column_names)) then
-              write(header(current_column), '(I0,A)') current_column, '_real'
-            end if
-          end if
-          ! Increment column index for next real column
+          type_index = i_col_real
           i_col_real = i_col_real + 1
-
         case (3) ! char
           read(field, *, iostat=io_err) char_cols(current_row, i_col_char)
-          ! If first time this column type is encountered, set metadata
-          if (metadata(1, current_column) == 0) then
-            metadata(1, current_column) = 3
-            metadata(2, current_column) = i_col_char
-            ! Generate header name if none provided
-            if (.not. has_header .and. .not. present(column_names)) then
-              write(header(current_column), '(I0,A)') current_column, '_char'
-            end if
-          end if
-          ! Increment column index for next char column
+          type_index = i_col_char
           i_col_char = i_col_char + 1
-
         case (4) ! logical
           ! Read logical column 
           ! (fortran interprets T, t, TRUE, true, .true. or 1 as .true.)
           ! (fortran interprets F, f, FALSE, false, .false. or 0 as .false.)
           read(field, *, iostat=io_err) logical_cols(current_row, i_col_logical)
-          ! If first time this column type is encountered, set metadata
-          if (metadata(1, current_column) == 0) then
-            metadata(1, current_column) = 4
-            metadata(2, current_column) = i_col_logical
-            ! Generate header name if none provided
-            if (.not. has_header .and. .not. present(column_names)) then
-              write(header(current_column), '(I0,A)') current_column, '_logical'
-            end if
-          end if
-          ! Increment column index for next logical column
+          type_index = i_col_logical
           i_col_logical = i_col_logical + 1
-
         case (5) ! complex
           ! Complex numbers are expected in the form (a,b) for a + bi
           read(field, *, iostat=io_err) complex_cols(current_row, i_col_complex)
-          ! If first time this column type is encountered, set metadata
-          if (metadata(1, current_column) == 0) then
-            metadata(1, current_column) = 5
-            metadata(2, current_column) = i_col_complex
-            ! Generate header name if none provided
-            if (.not. has_header .and. .not. present(column_names)) then
-              write(header(current_column), '(I0,A)') current_column, '_complex'
-            end if
-          end if
-          ! Increment column index for next complex column
+          type_index = i_col_complex
           i_col_complex = i_col_complex + 1
-
         end select
+
+        ! Set metadata and generate header if first time this column type is encountered
+        if (metadata(1, current_column) == 0) then
+          metadata(1, current_column) = col_type
+          metadata(2, current_column) = type_index
+          ! Generate header name if none provided
+          if (.not. has_header .and. .not. present(column_names)) then
+            select case (col_type)
+            case (1); write(header(current_column), '(I0,A)') current_column, '_int'
+            case (2); write(header(current_column), '(I0,A)') current_column, '_real'
+            case (3); write(header(current_column), '(I0,A)') current_column, '_char'
+            case (4); write(header(current_column), '(I0,A)') current_column, '_logical'
+            case (5); write(header(current_column), '(I0,A)') current_column, '_complex'
+            end select
+          end if
+        end if
 
         ! Increment current position for next field if separator found
         if (sep_pos == 0) then

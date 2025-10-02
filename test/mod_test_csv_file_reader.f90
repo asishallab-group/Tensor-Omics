@@ -26,23 +26,24 @@ contains
 
   !> Get array of all available tests.
   function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(11)
+    type(test_case) :: all_tests(12)
     all_tests(1) = test_case("test_all_data_types_with_header", test_all_data_types_with_header)
     all_tests(2) = test_case("test_all_data_types_without_header", test_all_data_types_without_header)
     all_tests(3) = test_case("test_all_data_types_with_column_names", test_all_data_types_with_column_names)
     all_tests(4) = test_case("test_column_names_override_header", test_column_names_override_header)
-    all_tests(5) = test_case("test_tsv_with_tab_separator", test_tsv_with_tab_separator)
-    all_tests(6) = test_case("test_inconsistent_separators_error", test_inconsistent_separators_error)
-    all_tests(7) = test_case("test_empty_fields_error", test_empty_fields_error)
-    all_tests(8) = test_case("test_empty_column_names", test_empty_column_names)
-    all_tests(9) = test_case("test_empty_column_types", test_empty_column_types)
-    all_tests(10) = test_case("test_getter_functions", test_getter_functions)
-    all_tests(11) = test_case("test_serialization_deserialization", test_serialization_deserialization)
+    all_tests(5) = test_case("test_csv_with_comments", test_csv_with_comments)
+    all_tests(6) = test_case("test_tsv_with_tab_separator", test_tsv_with_tab_separator)
+    all_tests(7) = test_case("test_inconsistent_separators_error", test_inconsistent_separators_error)
+    all_tests(8) = test_case("test_empty_fields_error", test_empty_fields_error)
+    all_tests(9) = test_case("test_empty_column_names", test_empty_column_names)
+    all_tests(10) = test_case("test_empty_column_types", test_empty_column_types)
+    all_tests(11) = test_case("test_getter_functions", test_getter_functions)
+    all_tests(12) = test_case("test_serialization_deserialization", test_serialization_deserialization)
   end function get_all_tests
 
   !> Run all CSV file reader tests.
   subroutine run_all_tests_csv_file_reader()
-    type(test_case) :: all_tests(11)
+    type(test_case) :: all_tests(12)
     integer(int32) :: i
     all_tests = get_all_tests()
     do i = 1, size(all_tests)
@@ -55,7 +56,7 @@ contains
   !> Run specific CSV file reader tests by name.
   subroutine run_named_tests_csv_file_reader(test_names)
     character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(11)
+    type(test_case) :: all_tests(12)
     integer(int32) :: i, j
     logical :: found
     all_tests = get_all_tests()
@@ -430,6 +431,89 @@ contains
     end if
 
   end subroutine test_column_names_override_header
+
+  !> Test with comments at the start of the file (lines starting with #)
+  subroutine test_csv_with_comments()
+    ! Define arrays for mixed data types - 3 columns (5 rows x 3 cols)
+    integer(int32) :: int_cols(5, 1), expected_int_cols(5, 1)
+    real(real64) :: real_cols(5, 1), expected_real_cols(5, 1)  
+    character(len=64) :: char_cols(5, 1), expected_char_cols(5, 1)
+    logical :: logical_cols(5, 0)  ! No logical columns in this test
+    complex(real64) :: complex_cols(5, 0)  ! No complex columns in this test
+    character(len=64) :: header(3), expected_header(3)
+    integer(int32) :: metadata(2, 3), expected_metadata(2, 3)
+    integer(int32) :: ierr, i, file_unit, io_status
+    character(len=*), parameter :: test_file = "test_csv_comments_temp.csv"
+    
+    ! Column types: int, real, char
+    integer(int32) :: column_types(3) = [1, 2, 3]
+    
+    ! Create temporary test CSV file with comments at the start
+    open(newunit=file_unit, file=test_file, status='replace', action='write', iostat=io_status)
+    if (is_err(io_status)) then
+      print *, "Error creating test CSV file with comments"
+      stop 1
+    end if
+    
+    ! Write comment lines at the start
+    write(file_unit, '(A)') "# This is a test CSV file with comments"
+    write(file_unit, '(A)') "# Author: Test Suite"
+    write(file_unit, '(A)') "# Date: 2025-10-02"
+    write(file_unit, '(A)') "# Description: Sample data for testing CSV reader with comments"
+    write(file_unit, '(A)') "#"
+    write(file_unit, '(A)') "# Column descriptions:"
+    write(file_unit, '(A)') "# ID: Integer identifier"
+    write(file_unit, '(A)') "# Value: Real number value"
+    write(file_unit, '(A)') "# Name: Character name"
+    write(file_unit, '(A)') "#"
+    
+    ! Write CSV header
+    write(file_unit, '(A)') "ID,Value,Name"
+    
+    ! Write CSV data rows
+    write(file_unit, '(A)') "1,1.1,Alpha"
+    write(file_unit, '(A)') "2,2.2,Beta"
+    write(file_unit, '(A)') "3,3.3,Gamma"
+    write(file_unit, '(A)') "4,4.4,Delta"
+    write(file_unit, '(A)') "5,5.5,Epsilon"
+    
+    close(file_unit)
+
+    ! Set expected values
+    do i = 1, 5
+      expected_int_cols(i, 1) = i
+    end do
+    
+    do i = 1, 5
+      expected_real_cols(i, 1) = real(i, real64) + real(i, real64) / 10.0_real64  ! 1.1, 2.2, 3.3, 4.4, 5.5
+    end do
+    
+    expected_char_cols(:, 1) = [character(len=64) :: "Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
+
+    expected_header = [character(len=64) :: "ID", "Value", "Name"]
+
+    expected_metadata = reshape([1, 1, 2, 1, 3, 1], [2, 3])
+
+    ! Read the CSV file (should skip comment lines automatically)
+    call read_table(test_file, column_types, .true., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+    
+    ! Check that reading was successful and compare all data to expected values
+    call assert_equal_int(ierr, ERR_OK, "CSV reading with comments should succeed")
+
+    call assert_equal_array_int(int_cols, expected_int_cols, 5, "Integer column should match")
+    call assert_equal_array_real(real_cols, expected_real_cols, 5, 1.0e-10_real64, "Real column should match")
+    call assert_equal_array_char(char_cols, expected_char_cols, 64, 5, "Character column should match")
+    call assert_equal_array_char(header, expected_header, 64, 3, "Headers should match")
+    call assert_equal_array_int(metadata, expected_metadata, 6, "Metadata should match")
+
+    ! Clean up temporary test file
+    open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
+    if (is_ok(io_status)) then
+      close(file_unit, status='delete')
+    end if
+
+  end subroutine test_csv_with_comments
 
   !> Test CSV reader with TSV file format using tab separator
   subroutine test_tsv_with_tab_separator()
