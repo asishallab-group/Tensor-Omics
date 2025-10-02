@@ -45,8 +45,7 @@ contains
     character(len=*), intent(in), optional :: column_names(:)
 
     
-    ! // TODO: replace .not. is ok with is_err checks
-    ! // TODO: update "/t" as tab seperator character
+    ! // TODO: split into multiple files for readability
 
     !| Local variables
     integer(int32) :: current_row, current_column, n_columns, col_type, type_index, file_unit, io_err
@@ -98,7 +97,7 @@ contains
     ! Open file as stream for character-by-character reading
     file_unit = 10
     open(unit=file_unit, file=file_path, status='old', action='read', access='stream', iostat=io_err)
-    if (.not. is_ok(io_err)) then
+    if (is_err(io_err)) then
       call set_err_once(ierr, ERR_FILE_OPEN)
       return
     end if
@@ -107,7 +106,7 @@ contains
 
     ! Check for empty file by trying to read first character
     read(file_unit, POS=stream_pos, iostat=io_err) char_read
-    if (.not. is_ok(io_err)) then
+    if (is_err(io_err)) then
       call set_err_once(ierr, ERR_FILE_EMPTY)
       close(file_unit)
       return
@@ -115,7 +114,7 @@ contains
 
     ! Skip comment lines starting with '#'
     call skip_comment_lines(file_unit, stream_pos, io_err)
-    if (.not. is_ok(io_err)) then
+    if (is_err(io_err)) then
       call set_err_once(ierr, ERR_INVALID_INPUT)
       close(file_unit)
       return
@@ -128,7 +127,7 @@ contains
       ! Skip header line if it exists in file
       if (has_header) then
         call skip_line(file_unit, stream_pos, io_err)
-        if (.not. is_ok(io_err)) then
+        if (is_err(io_err)) then
           call set_err_once(ierr, ERR_INVALID_INPUT)
           close(file_unit)
           return
@@ -137,7 +136,7 @@ contains
     else if (has_header) then
       ! Read header from file
       call read_header_line(file_unit, sep, stream_pos, header, n_columns, io_err)
-      if (.not. is_ok(io_err)) then
+      if (is_err(io_err)) then
         call set_err_once(ierr, ERR_INVALID_INPUT)
         close(file_unit)
         return
@@ -162,7 +161,7 @@ contains
       ! Read each field in the current row
       do current_column = 1, n_columns
         call read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
-        if (.not. is_ok(io_err) .or. end_of_file) then
+        if (is_err(io_err) .or. end_of_file) then
           ! End of file at start of line is normal
           if (current_column == 1) then 
             exit
@@ -213,7 +212,7 @@ contains
         end select
 
         ! Check for read error
-        if (.not. is_ok(io_err)) then
+        if (is_err(io_err)) then
           call set_err_once(ierr, ERR_INVALID_INPUT)
           close(file_unit)
           return
@@ -748,7 +747,7 @@ contains
     if (size(int_cols, 1) > 0 .and. size(int_cols, 2) > 0) then
       filename = trim(filename_prefix) // '_int_cols.dat'
       call serialize_int_2d(int_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -758,7 +757,7 @@ contains
     if (size(real_cols, 1) > 0 .and. size(real_cols, 2) > 0) then
       filename = trim(filename_prefix) // '_real_cols.dat'
       call serialize_real_2d(real_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -768,7 +767,7 @@ contains
     if (size(char_cols, 1) > 0 .and. size(char_cols, 2) > 0) then
       filename = trim(filename_prefix) // '_char_cols.dat'
       call serialize_char_2d(char_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -778,7 +777,7 @@ contains
     if (size(logical_cols, 1) > 0 .and. size(logical_cols, 2) > 0) then
       filename = trim(filename_prefix) // '_logical_cols.dat'
       call serialize_logical_2d(logical_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -788,7 +787,7 @@ contains
     if (size(complex_cols, 1) > 0 .and. size(complex_cols, 2) > 0) then
       filename = trim(filename_prefix) // '_complex_cols.dat'
       call serialize_complex_2d(complex_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -798,7 +797,7 @@ contains
     if (size(header) > 0) then
       filename = trim(filename_prefix) // '_header.dat'
       call serialize_char_1d(header, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -807,7 +806,7 @@ contains
     ! Serialize metadata
     filename = trim(filename_prefix) // '_metadata.dat'
     call serialize_int_2d(metadata, filename, local_ierr)
-    if (.not. is_ok(local_ierr)) then
+    if (is_err(local_ierr)) then
       call set_err_once(ierr, local_ierr)
       return
     end if
@@ -854,7 +853,7 @@ contains
       return
     end if
     call deserialize_int_2d(metadata, filename, local_ierr)
-    if (.not. is_ok(local_ierr)) then
+    if (is_err(local_ierr)) then
       call set_err_once(ierr, local_ierr)
       return
     end if
@@ -864,7 +863,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists) then
       call deserialize_char_1d(header, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -875,7 +874,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(int_cols, 1) > 0 .and. size(int_cols, 2) > 0) then
       call deserialize_int_2d(int_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -886,7 +885,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(real_cols, 1) > 0 .and. size(real_cols, 2) > 0) then
       call deserialize_real_2d(real_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -897,7 +896,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(char_cols, 1) > 0 .and. size(char_cols, 2) > 0) then
       call deserialize_char_2d(char_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -908,7 +907,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(logical_cols, 1) > 0 .and. size(logical_cols, 2) > 0) then
       call deserialize_logical_2d(logical_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -919,7 +918,7 @@ contains
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(complex_cols, 1) > 0 .and. size(complex_cols, 2) > 0) then
       call deserialize_complex_2d(complex_cols, filename, local_ierr)
-      if (.not. is_ok(local_ierr)) then
+      if (is_err(local_ierr)) then
         call set_err_once(ierr, local_ierr)
         return
       end if
@@ -946,11 +945,11 @@ contains
     
     ! Use array_utils to write header
     call write_file_header(filename, unit, ARRAY_TYPE_LOGICAL, 2, dims, ierr)
-    if (.not. is_ok(ierr)) return
+    if (is_err(ierr)) return
     
     ! Write the logical array data
     write(unit, iostat=ioerror) arr
-    if (.not. is_ok(ioerror)) then
+    if (is_err(ioerror)) then
       call set_err_once(ierr, ioerror)
     end if
     close(unit)
@@ -975,11 +974,11 @@ contains
     
     ! Use array_utils to write header
     call write_file_header(filename, unit, ARRAY_TYPE_COMPLEX, 2, dims, ierr)
-    if (.not. is_ok(ierr)) return
+    if (is_err(ierr)) return
     
     ! Write the complex array data
     write(unit, iostat=ioerror) arr
-    if (.not. is_ok(ioerror)) then
+    if (is_err(ioerror)) then
       call set_err_once(ierr, ioerror)
     end if
     close(unit)
@@ -1001,7 +1000,7 @@ contains
     
     ! Use array_utils to read header
     call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+    if (is_err(ierr)) return
     
     ! Verify dimensions match
     if (ndims /= 2) then
@@ -1012,7 +1011,7 @@ contains
     
     ! Read the logical array data
     read(unit, iostat=ioerror) arr
-    if (.not. is_ok(ioerror)) then
+    if (is_err(ioerror)) then
       call set_err_once(ierr, ioerror)
     end if
     close(unit)
@@ -1034,7 +1033,7 @@ contains
     
     ! Use array_utils to read header
     call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+    if (is_err(ierr)) return
     
     ! Verify dimensions match
     if (ndims /= 2) then
@@ -1045,7 +1044,7 @@ contains
     
     ! Read the complex array data
     read(unit, iostat=ioerror) arr
-    if (.not. is_ok(ioerror)) then
+    if (is_err(ioerror)) then
       call set_err_once(ierr, ioerror)
     end if
     close(unit)
@@ -1066,12 +1065,12 @@ contains
 
     do
       read(file_unit, POS=stream_pos, iostat=io_err) char_read
-      if (.not. is_ok(io_err)) return
+      if (is_err(io_err)) return
       if (char_read == '#') then
         ! Skip rest of comment line
         call skip_line(file_unit, stream_pos, io_err)
-        if (.not. is_ok(io_err)) return
-      else 
+        if (is_err(io_err)) return
+      else
         return
       end if
     end do
@@ -1089,7 +1088,7 @@ contains
     call set_ok(io_err)
     do
       read(file_unit, POS=stream_pos, iostat=io_err) char_read
-      if (.not. is_ok(io_err)) return
+      if (is_err(io_err)) return
       stream_pos = stream_pos + 1
       if (char_read == char(10)) then ! LF
         return
@@ -1123,7 +1122,7 @@ contains
     
     do col_idx = 1, n_columns
       call read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
-      if (.not. is_ok(io_err) .or. end_of_file) return
+      if (is_err(io_err) .or. end_of_file) return
       header(col_idx) = adjustl(trim(field))
       
       if (end_of_line) then
@@ -1160,7 +1159,7 @@ contains
     
     do
       read(file_unit, POS=stream_pos, iostat=io_err) char_read
-      if (.not. is_ok(io_err)) then
+      if (is_err(io_err)) then
         end_of_file = .true.
         return
       end if
