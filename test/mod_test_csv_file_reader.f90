@@ -22,9 +22,6 @@ module mod_test_csv_file_reader
 
 contains
 
-! // TODO: Check again with real big csv files
-! // TODO: Check with "\t" for tab separator
-
   !> Get array of all available tests.
   function get_all_tests() result(all_tests)
     type(test_case) :: all_tests(14)
@@ -530,7 +527,7 @@ contains
     integer(int32) :: metadata(2, 5), expected_metadata(2, 5)
     integer(int32) :: ierr, i, file_unit, io_status
     character(len=*), parameter :: test_file = "test_data_temp.tsv"
-    character(len=1), parameter :: tab_char = char(9)  ! ASCII code 9 is TAB
+    character(len=1) :: tab_char = char(9)
     
     ! Column types: int, real, char, logical, complex
     integer(int32) :: column_types(5) = [1, 2, 3, 4, 5]
@@ -577,7 +574,7 @@ contains
     expected_metadata = reshape([1, 1, 2, 1, 3, 1, 4, 1, 5, 1], [2, 5])
 
     call read_table(test_file, column_types, .true., int_cols, real_cols, char_cols, &
-                    logical_cols, complex_cols, header, metadata, ierr, tab_char)
+                    logical_cols, complex_cols, header, metadata, ierr, '\t')
     
     ! Check that reading was successful
     call assert_equal_int(ierr, ERR_OK, "TSV reading should succeed")

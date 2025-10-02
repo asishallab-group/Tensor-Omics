@@ -51,7 +51,7 @@ contains
     !| Local variables
     integer(int32) :: current_row, current_column, n_columns, col_type, type_index, file_unit, io_err
     integer(int32) :: i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, stream_pos
-    character(len=256) :: field ! Field buffer - much smaller than line buffer
+    character(len=256) :: field
     character(len=1) :: sep, char_read
     logical :: end_of_file, end_of_line, in_complex
 
@@ -84,7 +84,13 @@ contains
 
     ! Set separator (optional argument)
     if (present(sep_char)) then
-      sep = sep_char(1:1)
+      if (len_trim(sep_char) == 0) then
+        sep = ','
+      else if (trim(sep_char) == '\t') then
+        sep = char(9)  ! ASCII code 9 is TAB
+      else 
+        sep = sep_char(1:1)
+      end if
     else
       sep = ','
     end if
