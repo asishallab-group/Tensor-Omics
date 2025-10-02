@@ -48,11 +48,11 @@ contains
     ! // TODO: Check different reading approach: insted of large line buffer, use stream input of file for continous reading
 
     !| Local variables
-    integer(int32) :: current_char, current_row, current_column, n_columns, col_type, type_index, file_unit, data_offset, io_err
-    integer(int32) :: i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, current_pos, sep_pos, close_paren_pos
-    character(len=8192) :: line ! //TODO what size should this be? maybe as input argument?
-    character(len=64) :: field ! //TODO what size should this be? maybe as input argument?
-    character(len=1) :: sep
+    integer(int32) :: current_row, current_column, n_columns, col_type, type_index, file_unit, io_err
+    integer(int32) :: i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, stream_pos
+    character(len=256) :: field ! Field buffer - much smaller than line buffer
+    character(len=1) :: sep, char_read
+    logical :: end_of_file, end_of_line, in_complex
 
     ! Initialize error codes
     call set_ok(ierr)
@@ -88,131 +88,91 @@ contains
       sep = ','
     end if
     
-    ! Open file
+    ! Open file as stream for character-by-character reading
     file_unit = 10
-    open(unit=file_unit, file=file_path, status='old', action='read', iostat=io_err)
+    open(unit=file_unit, file=file_path, status='old', action='read', access='stream', iostat=io_err)
     if (.not. is_ok(io_err)) then
       call set_err_once(ierr, ERR_FILE_OPEN)
       return
     end if
 
-    ! Check for empty file.
-    read (file_unit, '(A)', iostat=io_err) line
+    stream_pos = 1  ! Position in stream for reading
+
+    ! Check for empty file by trying to read first character
+    read(file_unit, POS=stream_pos, iostat=io_err) char_read
     if (.not. is_ok(io_err)) then
       call set_err_once(ierr, ERR_FILE_EMPTY)
-      close (file_unit)
+      close(file_unit)
       return
     end if
 
-    ! Go back to the beginning of the file.
-    rewind(file_unit)
+    ! Skip comment lines starting with '#'
+    call skip_comment_lines(file_unit, stream_pos, io_err)
+    if (.not. is_ok(io_err)) then
+      call set_err_once(ierr, ERR_INVALID_INPUT)
+      close(file_unit)
+      return
+    end if
 
-    ! Initialize data offset (number of lines to skip at the start of the file)
-    data_offset = 0
-
-    ! Skip initial comment lines starting with '#'.
-    do
-      read (file_unit, '(A)', iostat=io_err) line
-      if (.not. is_ok(io_err)) exit
-      if (len_trim(line) > 0) then
-        if (line(1:1) /= '#') exit
-      end if
-      data_offset = data_offset + 1
-    end do
-
-    ! Read header or use provided column_names
+    ! Read header if present
     if (present(column_names)) then
       ! Use provided column names
       header = column_names
-    end if
-    if (has_header) then
-      data_offset = data_offset + 1
-
-      if(.not. present(column_names)) then
-        ! Split header line by separator
-        n_columns = size(column_types)
-        current_char = 1
-        do current_column = 1, n_columns
-          ! Find next separator or end of line
-          type_index = index(line(current_char:), sep)
-          ! If no separator found, take rest of line
-          if (type_index == 0) then
-            header(current_column) = adjustl(trim(line(current_char:)))
-            ! Check if we have fewer columns than expected
-            if (current_column < n_columns) then
-              call set_err_once(ierr, ERR_DIM_MISMATCH)
-            end if
-            exit
-          else
-            header(current_column) = adjustl(trim(line(current_char:current_char+type_index-2)))
-            current_char = current_char + type_index
-          end if
-        end do
+      ! Skip header line if it exists in file
+      if (has_header) then
+        call skip_line(file_unit, stream_pos, io_err)
+        if (.not. is_ok(io_err)) then
+          call set_err_once(ierr, ERR_INVALID_INPUT)
+          close(file_unit)
+          return
+        end if
       end if
-    end if
-
-    ! Go back to the start of the file and skip first offset lines (comments and header if present)
-    rewind(file_unit)
-    do current_char = 1, data_offset
-      read(file_unit, '(A)', iostat=io_err) line
+    else if (has_header) then
+      ! Read header from file
+      call read_header_line(file_unit, sep, stream_pos, header, n_columns, io_err)
       if (.not. is_ok(io_err)) then
         call set_err_once(ierr, ERR_INVALID_INPUT)
-        exit
+        close(file_unit)
+        return
       end if
-    end do
+    end if
 
     ! Read data rows and fill type-banded arrays
     metadata = 0
     n_columns = size(column_types)
-    current_row = 0
-    do while (.true.)
-      ! Read the next line
-      read(file_unit, '(A)', iostat=io_err) line
-      if (.not. is_ok(io_err)) exit
-      current_row = current_row + 1
-
+    current_row = 1
+    end_of_file = .false.
+    
+    do while (.not. end_of_file)
+      
       ! Reset column indices for each type
       i_col_int = 1
       i_col_real = 1
       i_col_char = 1
       i_col_logical = 1
       i_col_complex = 1
-      ! Reset inline separator position
-      current_pos = 1
-      ! Go through each column in the line
+      
+      ! Read each field in the current row
       do current_column = 1, n_columns
-
-        ! Find next separator or end of line
-        ! First, extract the field normally to check for complex numbers
-        sep_pos = index(line(current_pos:), sep)
-        ! If no separator found, take rest of line
-        if (sep_pos == 0) then
-          field = adjustl(trim(line(current_pos:)))
-          if (len_trim(field) == 0) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)  ! Empty field found
+        call read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
+        if (.not. is_ok(io_err) .or. end_of_file) then
+          if (current_column == 1) then
+            ! End of file at start of line is normal
+            current_row = current_row - 1
+            exit
+          else
+            ! End of file in middle of line is an error
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            close(file_unit)
+            return
           end if
-          if (current_column < n_columns) then
-            call set_err_once(ierr, ERR_DIM_MISMATCH)  ! Fewer columns than expected
-          end if
-        else
-          field = adjustl(trim(line(current_pos:current_pos+sep_pos-2)))
         end if
-        
-        ! Special handling for complex numbers (field starts with '(' after trimming)
-        if (len_trim(field) > 0 .and. field(1:1) == '(') then
-          ! For complex numbers, find closing ')' instead of separator
-          close_paren_pos = index(line(current_pos:), ')')
-          if (close_paren_pos > 0) then
-            ! Include the closing parenthesis in the field
-            field = adjustl(trim(line(current_pos:current_pos+close_paren_pos-1)))
-            ! Find the actual separator after the closing parenthesis
-            sep_pos = index(line(current_pos+close_paren_pos:), sep)
-            if (sep_pos > 0) then
-              sep_pos = sep_pos + close_paren_pos
-            else
-              sep_pos = 0  ! No separator after complex number
-            end if
-          end if
+
+        ! Check for empty field
+        if (len_trim(field) == 0) then
+          call set_err_once(ierr, ERR_INVALID_INPUT)  ! Empty field found
+          close(file_unit)
+          return
         end if
 
         ! Read column type to store value in appropriate array
@@ -246,6 +206,13 @@ contains
           i_col_complex = i_col_complex + 1
         end select
 
+        ! Check for read error
+        if (.not. is_ok(io_err)) then
+          call set_err_once(ierr, ERR_INVALID_INPUT)
+          close(file_unit)
+          return
+        end if
+
         ! Set metadata and generate header if first time this column type is encountered
         if (metadata(1, current_column) == 0) then
           metadata(1, current_column) = col_type
@@ -262,14 +229,27 @@ contains
           end if
         end if
 
-        ! Increment current position for next field if separator found
-        if (sep_pos == 0) then
+        ! Check if we've reached end of line
+        if (end_of_line) then
+          ! Verify we read all expected columns
+          if (current_column < n_columns) then
+            call set_err_once(ierr, ERR_DIM_MISMATCH)  ! Fewer columns than expected
+            close(file_unit)
+            return
+          end if
           exit
-        else
-          current_pos = current_pos + sep_pos
         end if
-
       end do
+      
+      ! If we read all columns but didn't hit end of line, there are too many columns
+      if (.not. end_of_line .and. current_column == n_columns) then
+        call set_err_once(ierr, ERR_DIM_MISMATCH)  ! More columns than expected
+        close(file_unit)
+        return
+      end if
+
+      current_row = current_row + 1
+      stream_pos = stream_pos + 1
     end do
 
     close(file_unit)
@@ -1064,5 +1044,166 @@ contains
     end if
     close(unit)
   end subroutine deserialize_complex_2d
+
+  ! Helper subroutines for stream-based CSV reading
+
+  !> Skip comment lines starting with '#' in stream
+  subroutine skip_comment_lines(file_unit, stream_pos,io_err)
+    implicit none
+    integer(int32), intent(in) :: file_unit
+    integer(int32), intent(inout) :: stream_pos
+    integer(int32), intent(out) :: io_err
+    
+    character(len=1) :: char_read
+    
+    call set_ok(io_err)
+
+    do
+      read(file_unit, POS=stream_pos, iostat=io_err) char_read
+      if (.not. is_ok(io_err)) return
+      if (char_read == '#') then
+        ! Skip rest of comment line
+        call skip_line(file_unit, stream_pos, io_err)
+        if (.not. is_ok(io_err)) return
+      else 
+        return
+      end if
+    end do
+  end subroutine skip_comment_lines
+
+  !> Skip to end of current line
+  subroutine skip_line(file_unit, stream_pos, io_err)
+    implicit none
+    integer(int32), intent(in) :: file_unit
+    integer(int32), intent(out) :: io_err
+    integer(int32), intent(inout) :: stream_pos
+
+    character(len=1) :: char_read
+    
+    call set_ok(io_err)
+    do
+      read(file_unit, POS=stream_pos, iostat=io_err) char_read
+      if (.not. is_ok(io_err)) return
+      stream_pos = stream_pos + 1
+      if (char_read == char(10)) then ! LF
+        return
+      else if (char_read == char(13)) then ! CR
+        ! Check for CR-LF combination
+        read(file_unit, POS=stream_pos, iostat=io_err) char_read
+        if (is_ok(io_err) .and. char_read /= char(10)) then
+          ! Not CR-LF, back up one character
+          stream_pos = stream_pos - 1
+        end if
+        return
+      end if
+    end do
+  end subroutine skip_line
+
+  !> Read header line from stream
+  subroutine read_header_line(file_unit, sep, stream_pos, header, n_columns, io_err)
+    implicit none
+    integer(int32), intent(in) :: file_unit
+    character(len=1), intent(in) :: sep
+    integer(int32), intent(inout) :: stream_pos
+    character(len=*), intent(out) :: header(:)
+    integer(int32), intent(in) :: n_columns
+    integer(int32), intent(out) :: io_err
+    
+    character(len=256) :: field
+    logical :: end_of_line, end_of_file
+    integer(int32) :: col_idx
+    
+    call set_ok(io_err)
+    
+    do col_idx = 1, n_columns
+      call read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
+      if (.not. is_ok(io_err) .or. end_of_file) return
+      header(col_idx) = adjustl(trim(field))
+      
+      if (end_of_line) then
+        if (col_idx < n_columns) then
+          call set_err_once(io_err, ERR_DIM_MISMATCH)
+        end if
+        stream_pos = stream_pos + 1
+        return
+      end if
+    end do
+  end subroutine read_header_line
+
+  !> Read a single field from stream
+  subroutine read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
+    implicit none
+    integer(int32), intent(in) :: file_unit
+    character(len=1), intent(in) :: sep
+    integer(int32), intent(inout) :: stream_pos
+    character(len=*), intent(out) :: field
+    logical, intent(out) :: end_of_line, end_of_file
+    integer(int32), intent(out) :: io_err
+    
+    character(len=1) :: char_read
+    integer(int32) :: field_pos, paren_count
+    logical :: in_complex
+    
+    call set_ok(io_err)
+    field = ''
+    field_pos = 1
+    end_of_line = .false.
+    end_of_file = .false.
+    in_complex = .false.
+    paren_count = 0
+    
+    do
+      read(file_unit, POS=stream_pos, iostat=io_err) char_read
+      if (.not. is_ok(io_err)) then
+        end_of_file = .true.
+        return
+      end if
+      
+      ! Handle line endings
+      if (char_read == char(10)) then ! LF
+        end_of_line = .true.
+        return
+      else if (char_read == char(13)) then ! CR
+        ! Check for CR-LF combination
+        stream_pos = stream_pos + 1
+        read(file_unit, POS=stream_pos, iostat=io_err) char_read
+        if (is_ok(io_err) .and. char_read /= char(10)) then
+          ! Not CR-LF, back up one character
+          stream_pos = stream_pos - 1
+        end if
+        end_of_line = .true.
+        return
+      end if
+      
+      ! Track parentheses for complex numbers
+      if (char_read == '(') then
+        in_complex = .true.
+        paren_count = paren_count + 1
+      else if (char_read == ')') then
+        paren_count = paren_count - 1
+        if (paren_count <= 0) then
+          in_complex = .false.
+          paren_count = 0
+        end if
+      end if
+      
+      ! Check for separator (only if not inside parentheses)
+      if (.not. in_complex .and. char_read == sep) then
+        stream_pos = stream_pos + 1
+        return
+      end if
+      
+      ! Add character to field
+      if (field_pos <= len(field)) then
+        field(field_pos:field_pos) = char_read
+        field_pos = field_pos + 1
+        stream_pos = stream_pos + 1
+      else
+        ! Field buffer overflow
+        call set_err_once(io_err, ERR_INVALID_INPUT)
+        return
+      end if
+    end do
+  end subroutine read_field
 
 end module tox_csv_file_reader
