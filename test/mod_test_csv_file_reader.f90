@@ -3,7 +3,7 @@
 module mod_test_csv_file_reader
   use asserts
   use tox_csv_file_reader
-  use tox_errors, only: ERR_OK, ERR_FILE_EMPTY, is_err, is_ok
+  use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, is_err, is_ok
   use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
   public
@@ -22,8 +22,8 @@ module mod_test_csv_file_reader
 
 contains
 
-! // TODO: Check for explicit error codes not only /= 0
 ! // TODO: Check again with real big csv files
+! // TODO: Check with "\t" for tab separator
 
   !> Get array of all available tests.
   function get_all_tests() result(all_tests)
@@ -640,7 +640,7 @@ contains
                     logical_cols, complex_cols, header, metadata, ierr)
     
     ! Check that reading failed with an appropriate error code
-    call assert_not_equal_int(ierr, ERR_OK, "CSV reading should fail due to inconsistent separators")
+    call assert_equal_int(ierr, ERR_INVALID_INPUT, "CSV reading should fail due to inconsistent separators")
     
     ! Clean up temporary test file
     open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
@@ -690,7 +690,7 @@ contains
                     logical_cols, complex_cols, header, metadata, ierr)
     
     ! Check that reading failed with an appropriate error code
-    call assert_not_equal_int(ierr, ERR_OK, "CSV reading should fail due to empty fields")
+    call assert_equal_int(ierr, ERR_INVALID_INPUT, "CSV reading should fail due to empty fields")
 
     ! Clean up temporary test file
     open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
@@ -738,7 +738,7 @@ contains
                     logical_cols, complex_cols, header, metadata, ierr, ',', column_names)
     
     ! Check that reading failed with an appropriate error code
-    call assert_not_equal_int(ierr, ERR_OK, "CSV reading should fail due to empty column names array")
+    call assert_equal_int(ierr, ERR_DIM_MISMATCH, "CSV reading should fail due to empty column names array")
     ! Clean up temporary test file
     open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
     if (is_ok(io_status)) then
@@ -786,7 +786,7 @@ contains
                     logical_cols, complex_cols, header, metadata, ierr, ',', column_names)
     
     ! Check that reading failed with an appropriate error code
-    call assert_not_equal_int(ierr, ERR_OK, "CSV reading should fail due to empty column types array")
+    call assert_equal_int(ierr, ERR_DIM_MISMATCH, "CSV reading should fail due to empty column types array")
     ! Clean up temporary test file
     open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
     if (is_ok(io_status)) then
