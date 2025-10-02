@@ -3,7 +3,7 @@
 module mod_test_csv_file_reader
   use asserts
   use tox_csv_file_reader
-  use tox_errors, only: ERR_OK, is_err, is_ok
+  use tox_errors, only: ERR_OK, ERR_FILE_EMPTY, is_err, is_ok
   use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
   public
@@ -22,11 +22,12 @@ module mod_test_csv_file_reader
 
 contains
 
-! // TODO: Check for empty csv file
+! // TODO: Check for explicit error codes not only /= 0
+! // TODO: Check again with real big csv files
 
   !> Get array of all available tests.
   function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     all_tests(1) = test_case("test_all_data_types_with_header", test_all_data_types_with_header)
     all_tests(2) = test_case("test_all_data_types_without_header", test_all_data_types_without_header)
     all_tests(3) = test_case("test_all_data_types_with_column_names", test_all_data_types_with_column_names)
@@ -37,13 +38,15 @@ contains
     all_tests(8) = test_case("test_empty_fields_error", test_empty_fields_error)
     all_tests(9) = test_case("test_empty_column_names", test_empty_column_names)
     all_tests(10) = test_case("test_empty_column_types", test_empty_column_types)
-    all_tests(11) = test_case("test_getter_functions", test_getter_functions)
-    all_tests(12) = test_case("test_serialization_deserialization", test_serialization_deserialization)
+    all_tests(11) = test_case("test_empty_csv_file", test_empty_csv_file)
+    all_tests(12) = test_case("test_different_line_breaks", test_different_line_breaks)
+    all_tests(13) = test_case("test_getter_functions", test_getter_functions)
+    all_tests(14) = test_case("test_serialization_deserialization", test_serialization_deserialization)
   end function get_all_tests
 
   !> Run all CSV file reader tests.
   subroutine run_all_tests_csv_file_reader()
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     integer(int32) :: i
     all_tests = get_all_tests()
     do i = 1, size(all_tests)
@@ -56,7 +59,7 @@ contains
   !> Run specific CSV file reader tests by name.
   subroutine run_named_tests_csv_file_reader(test_names)
     character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     integer(int32) :: i, j
     logical :: found
     all_tests = get_all_tests()
@@ -791,6 +794,179 @@ contains
     end if
 
   end subroutine test_empty_column_types
+
+    !> Test error handling with empty CSV file
+  subroutine test_empty_csv_file()
+    ! Define minimal arrays for the test
+    integer(int32) :: int_cols(5, 1)
+    real(real64) :: real_cols(5, 1)  
+    character(len=64) :: char_cols(5, 1)
+    logical :: logical_cols(5, 1)
+    complex(real64) :: complex_cols(5, 1)
+    character(len=64) :: header(5)
+    integer(int32) :: metadata(2, 5)
+    integer(int32) :: ierr, file_unit, io_status
+    character(len=*), parameter :: test_file = "test_empty_csv_temp.csv"
+    
+    ! Column types: int, real, char, logical, complex (5 columns expected)
+    integer(int32) :: column_types(5) = [1, 2, 3, 4, 5]
+    
+    ! Create an empty CSV file
+    open(newunit=file_unit, file=test_file, status='replace', action='write', iostat=io_status)
+    if (is_err(io_status)) then
+      print *, "Error creating empty test CSV file"
+      stop 1
+    end if
+    
+    ! Close the file immediately without writing anything (creates empty file)
+    close(file_unit)
+
+    ! Try to read the empty CSV file (should fail with ERR_FILE_EMPTY)
+    call read_table(test_file, column_types, .true., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+    
+    ! Check that reading failed with the specific empty file error code
+    call assert_equal_int(ierr, ERR_FILE_EMPTY, "CSV reading should fail for empty file")
+    
+    ! Also test without header
+    call read_table(test_file, column_types, .false., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+    
+    ! Check that reading failed again for empty file
+    call assert_equal_int(ierr, ERR_FILE_EMPTY, "CSV reading should fail for empty file (no header)")
+
+    ! Clean up temporary test file
+    open(newunit=file_unit, file=test_file, status='old', iostat=io_status)
+    if (is_ok(io_status)) then
+      close(file_unit, status='delete')
+    end if
+
+  end subroutine test_empty_csv_file
+
+  !> Test CSV reader with different line break types (LF, CR, CR-LF)
+  subroutine test_different_line_breaks()
+    ! Define arrays for a simple 3x3 CSV test
+    integer(int32) :: int_cols(3, 1), expected_int_cols(3, 1)
+    real(real64) :: real_cols(3, 1), expected_real_cols(3, 1)  
+    character(len=64) :: char_cols(3, 1), expected_char_cols(3, 1)
+    logical :: logical_cols(3, 0)  ! No logical columns in this test
+    complex(real64) :: complex_cols(3, 0)  ! No complex columns in this test
+    character(len=64) :: header(3), expected_header(3)
+    integer(int32) :: metadata(2, 3), expected_metadata(2, 3)
+    integer(int32) :: ierr, i, file_unit, io_status
+    
+    ! Column types: int, real, char
+    integer(int32) :: column_types(3) = [1, 2, 3]
+    
+    ! Define line break characters
+    character(len=1), parameter :: LF = char(10)      ! Unix/Linux
+    character(len=1), parameter :: CR = char(13)      ! Classic Mac
+    character(len=2), parameter :: CRLF = char(13) // char(10)  ! Windows
+    
+    ! Test files for each line break type
+    character(len=*), parameter :: test_file_lf = "test_linebreaks_lf_temp.csv"
+    character(len=*), parameter :: test_file_cr = "test_linebreaks_cr_temp.csv"
+    character(len=*), parameter :: test_file_crlf = "test_linebreaks_crlf_temp.csv"
+    
+    ! Set up expected data (same for all line break tests)
+    expected_int_cols(:, 1) = [10, 20, 30]
+    expected_real_cols(:, 1) = [1.1_real64, 2.2_real64, 3.3_real64]
+    expected_char_cols(:, 1) = [character(len=64) :: "Alpha", "Beta", "Gamma"]
+    expected_header = [character(len=64) :: "ID", "Value", "Name"]
+    expected_metadata = reshape([1, 1, 2, 1, 3, 1], [2, 3])
+
+    ! Test 1: LF line breaks (Unix/Linux style)
+    open(newunit=file_unit, file=test_file_lf, status='replace', action='write', &
+         access='stream', iostat=io_status)
+    if (is_err(io_status)) then
+      print *, "Error creating LF test CSV file"
+      stop 1
+    end if
+    
+    ! Write data with explicit LF line breaks
+    write(file_unit) "ID,Value,Name" // LF
+    write(file_unit) "10,1.1,Alpha" // LF
+    write(file_unit) "20,2.2,Beta" // LF
+    write(file_unit) "30,3.3,Gamma" // LF
+    close(file_unit)
+
+    ! Read LF file
+    call read_table(test_file_lf, column_types, .true., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+    
+    call assert_equal_int(ierr, ERR_OK, "CSV reading with LF line breaks should succeed")
+    call assert_equal_array_int(int_cols, expected_int_cols, 3, "Integer column should match (LF)")
+    call assert_equal_array_real(real_cols, expected_real_cols, 3, 1.0e-10_real64, "Real column should match (LF)")
+    call assert_equal_array_char(char_cols, expected_char_cols, 64, 3, "Character column should match (LF)")
+    call assert_equal_array_char(header, expected_header, 64, 3, "Headers should match (LF)")
+
+    ! Test 2: CR line breaks (Classic Mac style)
+    open(newunit=file_unit, file=test_file_cr, status='replace', action='write', &
+         access='stream', iostat=io_status)
+    if (is_err(io_status)) then
+      print *, "Error creating CR test CSV file"
+      stop 1
+    end if
+    
+    ! Write data with explicit CR line breaks
+    write(file_unit) "ID,Value,Name" // CR
+    write(file_unit) "10,1.1,Alpha" // CR
+    write(file_unit) "20,2.2,Beta" // CR
+    write(file_unit) "30,3.3,Gamma" // CR
+    close(file_unit)
+
+    ! Read CR file
+    call read_table(test_file_cr, column_types, .true., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+
+    call assert_equal_int(ierr, ERR_OK, "CSV reading with CR line breaks should succeed")
+    call assert_equal_array_int(int_cols, expected_int_cols, 3, "Integer column should match (CR)")
+    call assert_equal_array_real(real_cols, expected_real_cols, 3, 1.0e-10_real64, "Real column should match (CR)")
+    call assert_equal_array_char(char_cols, expected_char_cols, 64, 3, "Character column should match (CR)")
+    call assert_equal_array_char(header, expected_header, 64, 3, "Headers should match (CR)")
+
+    ! Test 3: CR-LF line breaks (Windows style)
+    open(newunit=file_unit, file=test_file_crlf, status='replace', action='write', &
+         access='stream', iostat=io_status)
+    if (is_err(io_status)) then
+      print *, "Error creating CR-LF test CSV file"
+      stop 1
+    end if
+    
+    ! Write data with explicit CR-LF line breaks
+    write(file_unit) "ID,Value,Name" // CRLF
+    write(file_unit) "10,1.1,Alpha" // CRLF
+    write(file_unit) "20,2.2,Beta" // CRLF
+    write(file_unit) "30,3.3,Gamma" // CRLF
+    close(file_unit)
+
+    ! Read CR-LF file
+    call read_table(test_file_crlf, column_types, .true., int_cols, real_cols, char_cols, &
+                    logical_cols, complex_cols, header, metadata, ierr)
+    
+    call assert_equal_int(ierr, ERR_OK, "CSV reading with CR-LF line breaks should succeed")
+    call assert_equal_array_int(int_cols, expected_int_cols, 3, "Integer column should match (CR-LF)")
+    call assert_equal_array_real(real_cols, expected_real_cols, 3, 1.0e-10_real64, "Real column should match (CR-LF)")
+    call assert_equal_array_char(char_cols, expected_char_cols, 64, 3, "Character column should match (CR-LF)")
+    call assert_equal_array_char(header, expected_header, 64, 3, "Headers should match (CR-LF)")
+
+    ! Clean up temporary test files
+    open(newunit=file_unit, file=test_file_lf, status='old', iostat=io_status)
+    if (is_ok(io_status)) then
+      close(file_unit, status='delete')
+    end if
+    
+    open(newunit=file_unit, file=test_file_cr, status='old', iostat=io_status)
+    if (is_ok(io_status)) then
+      close(file_unit, status='delete')
+    end if
+    
+    open(newunit=file_unit, file=test_file_crlf, status='old', iostat=io_status)
+    if (is_ok(io_status)) then
+      close(file_unit, status='delete')
+    end if
+
+  end subroutine test_different_line_breaks
 
   !> Test getter functions for all data types
   subroutine test_getter_functions()

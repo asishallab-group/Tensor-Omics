@@ -1,7 +1,7 @@
 !> Module for reading heterogeneous CSV tables into type-banded arrays and providing fast accessors.
 module tox_csv_file_reader
   use, intrinsic :: iso_fortran_env, only: int32, real64
-  use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok, is_err
   use serialize_int, only: serialize_int_2d
   use serialize_real, only: serialize_real_2d
   use serialize_char, only: serialize_char_1d, serialize_char_2d
@@ -45,7 +45,8 @@ contains
     character(len=*), intent(in), optional :: column_names(:)
 
     
-    ! // TODO: Check different reading approach: insted of large line buffer, use stream input of file for continous reading
+    ! // TODO: replace .not. is ok with is_err checks
+    ! // TODO: update "/t" as tab seperator character
 
     !| Local variables
     integer(int32) :: current_row, current_column, n_columns, col_type, type_index, file_unit, io_err
@@ -156,9 +157,8 @@ contains
       do current_column = 1, n_columns
         call read_field(file_unit, sep, stream_pos, field, end_of_line, end_of_file, io_err)
         if (.not. is_ok(io_err) .or. end_of_file) then
-          if (current_column == 1) then
-            ! End of file at start of line is normal
-            current_row = current_row - 1
+          ! End of file at start of line is normal
+          if (current_column == 1) then 
             exit
           else
             ! End of file in middle of line is an error
@@ -1167,10 +1167,13 @@ contains
         ! Check for CR-LF combination
         stream_pos = stream_pos + 1
         read(file_unit, POS=stream_pos, iostat=io_err) char_read
-        if (is_ok(io_err) .and. char_read /= char(10)) then
-          ! Not CR-LF, back up one character
-          stream_pos = stream_pos - 1
+        if (char_read == char(10)) then
+          ! If it is CR-LF, just continue
+          stream_pos = stream_pos + 1
+        else if (is_err(io_err)) then
+          call set_ok(io_err)
         end if
+        stream_pos = stream_pos - 1
         end_of_line = .true.
         return
       end if
