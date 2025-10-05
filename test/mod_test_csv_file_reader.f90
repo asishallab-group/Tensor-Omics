@@ -3,6 +3,9 @@
 module mod_test_csv_file_reader
   use asserts
   use tox_csv_file_reader
+  use tox_csv_type_band_getters
+  use tox_csv_table_serialization
+  use tox_csv_table_deserialization
   use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_FILE_EMPTY, ERR_DIM_MISMATCH, is_err, is_ok
   use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
@@ -650,10 +653,10 @@ contains
   !> Test CSV reader error handling with empty fields
   subroutine test_empty_fields_error()
     ! Define minimal arrays for the test
-    integer(int32) :: int_cols(3, 1)
-    real(real64) :: real_cols(3, 1)  
-    character(len=64) :: char_cols(3, 1)
-    logical :: logical_cols(3, 1)
+    integer(int32) :: int_cols(5, 1)
+    real(real64) :: real_cols(5, 1)  
+    character(len=64) :: char_cols(5, 1)
+    logical :: logical_cols(5, 1)
     complex(real64) :: complex_cols(0, 0)  ! No complex columns in this test
     character(len=64) :: header(4)
     integer(int32) :: metadata(2, 4)
@@ -674,11 +677,11 @@ contains
     write(file_unit, '(A)') "IntCol,RealCol,CharCol,LogicalCol"
     
     ! Write data rows with EMPTY fields
-    write(file_unit, '(A)') ",1.5,A,T"
-    write(file_unit, '(A)') "2,,B,F"
-    write(file_unit, '(A)') "3,3.5,,T"
-    write(file_unit, '(A)') "4,4.5,D,"
-    write(file_unit, '(A)') ",,E,"
+    write(file_unit, '(A)') "1,1.5,A,T"
+    write(file_unit, '(A)') "2,   ,B,F"
+    write(file_unit, '(A)') "2,3.5,F,T"
+    write(file_unit, '(A)') "4,4.5,,F"
+    write(file_unit, '(A)') "1,1.2,E, "
     
     close(file_unit)
 
@@ -965,7 +968,7 @@ contains
 
   end subroutine test_different_line_breaks
 
-  !> Test getter functions for all data types
+   !> Test getter functions for all data types
   subroutine test_getter_functions()
     ! Define arrays for all 5 data types - 1 column of each type (5 rows x 1 col each)
     integer(int32) :: int_cols(5, 1), expected_int_cols(5, 1)
