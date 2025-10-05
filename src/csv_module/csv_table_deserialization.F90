@@ -9,8 +9,6 @@ module tox_csv_table_deserialization
 
 contains
 
-!// TODO: error handling for empty file
-
 !> Deserialize type-banded arrays from binary files back into CSV table format
   subroutine deserialize_table(filename_prefix, int_cols, real_cols, char_cols, &
                               logical_cols, complex_cols, header, metadata, ierr)
@@ -37,11 +35,9 @@ contains
     
     ! Local variables
     character(len=1024) :: filename
-    integer(int32) :: local_ierr
     logical :: file_exists
     
     call set_ok(ierr)
-    call set_ok(local_ierr)
     
     ! First, always deserialize metadata to understand the table structure
     filename = trim(filename_prefix) // '_metadata.dat'
@@ -50,76 +46,55 @@ contains
       call set_err_once(ierr, ERR_FILE_OPEN)
       return
     end if
-    call deserialize_int_2d(metadata, filename, local_ierr)
-    if (is_err(local_ierr)) then
-      call set_err_once(ierr, local_ierr)
-      return
-    end if
+    call deserialize_int_2d(metadata, filename, ierr)
+    if (is_err(ierr)) return
     
     ! Deserialize header (column names)
     filename = trim(filename_prefix) // '_header.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists) then
-      call deserialize_char_1d(header, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_char_1d(header, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     ! Deserialize integer columns if file exists
     filename = trim(filename_prefix) // '_int_cols.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(int_cols, 1) > 0 .and. size(int_cols, 2) > 0) then
-      call deserialize_int_2d(int_cols, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_int_2d(int_cols, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     ! Deserialize real columns if file exists
     filename = trim(filename_prefix) // '_real_cols.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(real_cols, 1) > 0 .and. size(real_cols, 2) > 0) then
-      call deserialize_real_2d(real_cols, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_real_2d(real_cols, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     ! Deserialize character columns if file exists
     filename = trim(filename_prefix) // '_char_cols.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(char_cols, 1) > 0 .and. size(char_cols, 2) > 0) then
-      call deserialize_char_2d(char_cols, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_char_2d(char_cols, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     ! Deserialize logical columns if file exists
     filename = trim(filename_prefix) // '_logical_cols.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(logical_cols, 1) > 0 .and. size(logical_cols, 2) > 0) then
-      call deserialize_logical_2d(logical_cols, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_logical_2d(logical_cols, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     ! Deserialize complex columns if file exists  
     filename = trim(filename_prefix) // '_complex_cols.dat'
     inquire(file=filename, exist=file_exists)
     if (file_exists .and. size(complex_cols, 1) > 0 .and. size(complex_cols, 2) > 0) then
-      call deserialize_complex_2d(complex_cols, filename, local_ierr)
-      if (is_err(local_ierr)) then
-        call set_err_once(ierr, local_ierr)
-        return
-      end if
+      call deserialize_complex_2d(complex_cols, filename, ierr)
+      if (is_err(ierr)) return
     end if
     
     end subroutine deserialize_table

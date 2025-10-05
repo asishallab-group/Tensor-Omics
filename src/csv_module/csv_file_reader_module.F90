@@ -44,9 +44,6 @@ contains
     !| Optional 1D char array, overrides header line if provided
     character(len=*), intent(in), optional :: column_names(:)
 
-    
-    ! // TODO: test for empty fields and throw error
-
     !| Local variables
     integer(int32) :: current_row, current_column, n_columns, col_type, type_index, file_unit, io_err
     integer(int32) :: i_col_int, i_col_real, i_col_char, i_col_logical, i_col_complex, stream_pos
