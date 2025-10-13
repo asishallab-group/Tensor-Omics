@@ -1,6 +1,4 @@
-# Research Lab Book
-# Lab Book Entry — 2025-10-07 
-**git-tag:** 2.47.0.windows.1
+
  
 
 ---
