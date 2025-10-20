@@ -85,7 +85,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 6.9% of total for modules and submodules.">73 statements</a>
+                 title=" 3.6% of total for modules and submodules.">85 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -119,7 +119,19 @@
         <div id="sidebar">
       <h3>Contents</h3>
   
-  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#vars-0"
+         aria-expanded="false" aria-controls="vars-0">
+         <h4 class="card-header bg-primary text-white">Variables</h4>
+      </a>
+      <div id="vars-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#variable-group_orthologs">GROUP_ORTHOLOGS</a>
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#variable-group_all">GROUP_ALL</a>
+        </div>
+      </div>
+    </div>
+
   
   
   
@@ -176,6 +188,57 @@
       <br>
 
 
+        <section>
+          <h2>Variables</h2>
+            <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+<th></th><th scope="col">Initial</th>        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-group_orthologs"></span>
+              integer(kind=int32),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>GROUP_ORTHOLOGS</strong></td>
+<td> =</td>
+                <td>0</td>
+            <td>
+                
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-group_all"></span>
+              integer(kind=int32),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>GROUP_ALL</strong></td>
+<td> =</td>
+                <td>1</td>
+            <td>
+                
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+        </section>
+        <br>
 
 
 
@@ -219,7 +282,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~4"></span>
+              <span class="anchor" id="variable-n_axes~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -294,7 +357,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~22"></span>
+              <span class="anchor" id="variable-ierr~82"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -315,7 +378,7 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid"></span> <h3>public pure subroutine <a href='../proc/group_centroid.html'>group_centroid</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, use_all_mode, ortholog_set, selected_indices, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid"></span> <h3>public pure subroutine <a href='../proc/group_centroid.html'>group_centroid</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, selected_indices, ierr, ortholog_set)  
 </h3></div>
     <div class="card-body">
           
@@ -349,7 +412,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~5"></span>
+              <span class="anchor" id="variable-n_axes~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -424,32 +487,17 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-use_all_mode"></span>
-              logical,
+              <span class="anchor" id="variable-mode"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>use_all_mode</strong></td>
+            <td><strong>mode</strong></td>
             <td>
-<p>A logical flag; if true, all genes in a family are used.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ortholog_set"></span>
-              logical,
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ortholog_set</strong>(n_genes)</td>
-            <td>
-<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
+<p>A integer constant indicating the mode of operation ("all" or "orthologs").</p>
             </td>
         </tr>
         <tr>
@@ -469,7 +517,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~23"></span>
+              <span class="anchor" id="variable-ierr~83"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -480,6 +528,21 @@
             <td><strong>ierr</strong></td>
             <td>
 <p>Error code: 0 - success, non-zero = error</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ortholog_set"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ortholog_set</strong>(n_genes)</td>
+            <td>
+<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
             </td>
         </tr>
     </tbody>
@@ -512,7 +575,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-09-04 16:56 +0000"             </p>
+ on "2025-09-29 07:27 +0000"             </p>
           </div>
         </div>
         <br>

@@ -25,8 +25,7 @@ def test_correct_family_mapping():
         [3.0, 2.0, 1.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 3], dtype=np.int32)
-    res = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    shift_vectors = res['shift_vectors']
+    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
     # Expected: rows 0..2 = centroid, rows 3..5 = shift
     expected_centroids = np.array([
         [5.0, 4.0, 3.0],
@@ -77,8 +76,7 @@ def test_zero_distance():
         [3.0, 6.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2], dtype=np.int32)
-    res = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    shift_vectors = res['shift_vectors']
+    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
     expected_shift_vectors = np.array([
         [1.0, 4.0],
         [2.0, 5.0],
@@ -101,8 +99,7 @@ def test_multiple_genes_per_family():
         [20.0, 40.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 1, 2], dtype=np.int32)
-    res = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    shift_vectors = res['shift_vectors']
+    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
     expected_shift_vectors = np.array([
         [10.0, 30.0, 10.0, 30.0],
         [20.0, 40.0, 20.0, 40.0],
@@ -123,8 +120,7 @@ def test_single_gene_per_family():
         [20.0, 40.0, 60.0, 80.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 3, 4], dtype=np.int32)
-    res = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    shift_vectors = res['shift_vectors']
+    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
     expected_shift_vectors = np.array([
         [10.0, 30.0, 50.0, 70.0],
         [20.0, 40.0, 60.0, 80.0],
@@ -144,7 +140,7 @@ def test_dimension_edge_cases():
         tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
     except RuntimeError as e:
         error_raised = True
-        assert "empty input" in str(e)
+        assert "Empty input arrays provided." in str(e)
     assert error_raised, "Expected RuntimeError was not raised"
     print("test_dimension_edge_cases passed")
 

@@ -67,7 +67,7 @@ print(head(averaged_df))
 
 # Create final normalized dataframe with averages
 normalized_df <- data.frame(gene_id = gene_ids, averaged_df)
-
+if (!dir.exists("results")) dir.create("results", recursive = TRUE)
 write.table(normalized_df, output_file, sep = "\t", row.names = FALSE, quote = FALSE)
 
 cat("Normalization pipeline completed successfully!\n")

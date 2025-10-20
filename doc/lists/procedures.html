@@ -81,6 +81,83 @@
 			 <thead><tr><th>Procedure</th><th>Location</th><th>Procedure Type</th><th>Description</th></tr></thead>
 			 <tbody>
 			   <tr>
+                 <td><a href='../proc/ascii_to_string.html'>ascii_to_string</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>subroutine to convert an ASCII array to a string</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query.html'>bst_range_query</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform a 1D range query over the sorted index.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query_c.html'>bst_range_query_C</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper using C for getting range query usable by python</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query_r.html'>bst_range_query_r</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for getting range query usable by R</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index.html'>build_bst_index</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build the BST index by sorting indices using values in x.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index_c.html'>build_bst_index_C</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper using C for building BST index usable by python</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index_r.html'>build_bst_index_r</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for building BST index usable by R</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index.html'>build_kd_index</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build a k-d tree index using a stack-based, non-recursive approach.
+Initialize kd_indices to 1:num_points (original indices)
+Choose split dimension by cycling through dimension_order
+Find median index
+Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
+Push right and left intervals onto stack</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_c.html'>build_kd_index_C</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface for building KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_r.html'>build_kd_index_r</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for building KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_spherical_kd.html'>build_spherical_kd</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build spherical k-d tree index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_spherical_kd_r.html'>build_spherical_kd_r</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for building spherical KD index</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/c_char_1d_as_string.html'>c_char_1d_as_string</a></td>
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
@@ -178,6 +255,64 @@ Computes average expression per gene for each group of tissue replicates. Argume
                  <td><p>Converts a character value to c_char, elemental -&gt; any shape</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/check_okay_dims.html'>check_okay_dims</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>check if array dimensions match the expected dimensions</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_okay_ioerror.html'>check_okay_ioerror</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Check I/O error and set ierr accordingly</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_okay_ndims.html'>check_okay_ndims</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors.html'>clock_hand_angle_between_vectors</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+Calculates the signed rotation angle between two normalized vectors in RAP space.
+For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors_c.html'>clock_hand_angle_between_vectors_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors_r.html'>clock_hand_angle_between_vectors_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute signed rotation angles between RAP-projected and normalized vector pairs.
+Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
+This measures both magnitude and directionality of angular separation in RAP space.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors_c.html'>clock_hand_angles_for_shift_vectors_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors_r.html'>clock_hand_angles_for_shift_vectors_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/complex_as_c_complex.html'>complex_as_c_complex</a></td>
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
@@ -253,6 +388,13 @@ Calls compute_rdi with standard Fortran types for R interface.
 Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_relative_axis_contributions.html'>compute_relative_axis_contributions</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a></td>
                  <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
                  <td>Subroutine</td>
@@ -296,6 +438,145 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
                  <td>Subroutine</td>
                  <td><p>R wrapper for compute_tissue_versatility.
 Calls compute_tissue_versatility with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/cross_product_orientation_sign.html'>cross_product_orientation_sign</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Function</td>
+                 <td><p>Compute orientation sign from cross product of two vectors, using selected axes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_1d.html'>deserialize_char_1d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 1D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_2d.html'>deserialize_char_2d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_3d.html'>deserialize_char_3d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_4d.html'>deserialize_char_4d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_5d.html'>deserialize_char_5d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat.html'>deserialize_char_flat</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to deserialize a flat character array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat_c.html'>deserialize_char_flat_C</a></td>
+                 <td><a href='../sourcefile/deserialize_char.f90.html'>deserialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize a flat character array from a file</p><a href="../proc/deserialize_char_flat_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat_r.html'>deserialize_char_flat_r</a></td>
+                 <td><a href='../sourcefile/deserialize_char.f90.html'>deserialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to deserialize a flat character array from a file and return it as an ASCII array callable by R</p><a href="../proc/deserialize_char_flat_r.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_1d.html'>deserialize_int_1d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Deserialize a flat integer array from a file
+Directly deserialize a 1D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_2d.html'>deserialize_int_2d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_3d.html'>deserialize_int_3d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_4d.html'>deserialize_int_4d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_5d.html'>deserialize_int_5d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_c.html'>deserialize_int_C</a></td>
+                 <td><a href='../sourcefile/deserialize_int.f90.html'>deserialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize an integer array from a file</p><a href="../proc/deserialize_int_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_r.html'>deserialize_int_r</a></td>
+                 <td><a href='../sourcefile/deserialize_int.f90.html'>deserialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for deserializing an integer array from a file</p><a href="../proc/deserialize_int_r.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_1d.html'>deserialize_real_1d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 1D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_2d.html'>deserialize_real_2d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_3d.html'>deserialize_real_3d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_4d.html'>deserialize_real_4d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_5d.html'>deserialize_real_5d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_c.html'>deserialize_real_C</a></td>
+                 <td><a href='../sourcefile/deserialize_real.f90.html'>deserialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize a real array from a file</p><a href="../proc/deserialize_real_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_flat_r.html'>deserialize_real_flat_r</a></td>
+                 <td><a href='../sourcefile/deserialize_real.f90.html'>deserialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R binding for the subroutine to deserialize a flat real array from a file</p><a href="../proc/deserialize_real_flat_r.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/detect_outliers.html'>detect_outliers</a></td>
@@ -358,6 +639,36 @@ Exposes euclidean_distance to C via iso_c_binding types.</p></td>
                  <td>Subroutine</td>
                  <td><p>R wrapper for euclidean_distance.
 Calls euclidean_distance with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata.html'>get_array_metadata</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Get the metadata of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata_c.html'>get_array_metadata_C</a></td>
+                 <td><a href='../sourcefile/array_utils.f90.html'>array_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to get the dimensions of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata_r.html'>get_array_metadata_r</a></td>
+                 <td><a href='../sourcefile/array_utils.f90.html'>array_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to get the dimensions of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_kd_point.html'>get_kd_point</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Get point from KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_sorted_value.html'>get_sorted_value</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Function</td>
+                 <td><p>Get the value at the sorted position.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/group_centroid.html'>group_centroid</a></td>
@@ -538,6 +849,48 @@ Provides a C/Python-compatible interface to the normalization routine.</p></td>
 Provides an interface for R (.Fortran) and Fortran code to call the normalization routine.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection.html'>omics_field_RAP_projection</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection_c.html'>omics_field_RAP_projection_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection_r.html'>omics_field_RAP_projection_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection.html'>omics_vector_RAP_projection</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection_c.html'>omics_vector_RAP_projection_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection_r.html'>omics_vector_RAP_projection_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/project_selected_vecs_onto_rap.html'>project_selected_vecs_onto_rap</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Projects selected vectors onto its RAP</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/quantile_normalization.html'>quantile_normalization</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
@@ -580,10 +933,216 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
 Sorts indirectly using the permutation vector <code>perm</code>. Manual stack replaces recursion.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/read_file_header.html'>read_file_header</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Opens unit and reads file header with all metadata from given file</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/real64_as_c_double.html'>real64_as_c_double</a></td>
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
                  <td><p>Converts a real64 value to c_double, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector.html'>relative_axes_changes_from_shift_vector</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector_c.html'>relative_axes_changes_from_shift_vector_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector_r.html'>relative_axes_changes_from_shift_vector_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector.html'>relative_axes_expression_from_expression_vector</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+Wrapper for single RAP-projected expression vectors</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector_c.html'>relative_axes_expression_from_expression_vector_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector_r.html'>relative_axes_expression_from_expression_vector_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_1d.html'>serialize_char_1d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_2d.html'>serialize_char_2d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_3d.html'>serialize_char_3d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_4d.html'>serialize_char_4d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_5d.html'>serialize_char_5d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_flat_c.html'>serialize_char_flat_C</a></td>
+                 <td><a href='../sourcefile/serialize_char.f90.html'>serialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to serialize a flat character array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_flat_r.html'>serialize_char_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_char.f90.html'>serialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>serializes a flat character array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_nd.html'>serialize_char_nd</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a character array of arbitrary dimensions to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p><a href="../proc/serialize_char_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_1d.html'>serialize_int_1d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_2d.html'>serialize_int_2d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_3d.html'>serialize_int_3d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_4d.html'>serialize_int_4d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_5d.html'>serialize_int_5d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_flat_r.html'>serialize_int_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_int.f90.html'>serialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
+R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_nd.html'>serialize_int_nd</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.</p><a href="../proc/serialize_int_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_nd_c.html'>serialize_int_nd_C</a></td>
+                 <td><a href='../sourcefile/serialize_int.f90.html'>serialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to serialize a flat integer array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_1d.html'>serialize_real_1d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_2d.html'>serialize_real_2d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_3d.html'>serialize_real_3d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_4d.html'>serialize_real_4d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_5d.html'>serialize_real_5d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_flat_r.html'>serialize_real_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_real.f90.html'>serialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
+R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_nd.html'>serialize_real_nd</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>@brief Writes serialized real array from R to file with metdata.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_nd_c.html'>serialize_real_nd_C</a></td>
+                 <td><a href='../sourcefile/serialize_real.f90.html'>serialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/set_err.html'>set_err</a></td>
@@ -643,10 +1202,22 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td><p>Converts a 1D string array to 2D c_char array</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/string_to_ascii_arr.html'>string_to_ascii_arr</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>converts a string array to an ascii array</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/swap_int.html'>swap_int</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Swap two integer values in-place.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_dimension_size.html'>validate_dimension_size</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/which.html'>which</a></td>
@@ -660,6 +1231,12 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td>Subroutine</td>
                  <td><p>C wrapper for which.
 Converts integer mask to logical and calls which.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/write_file_header.html'>write_file_header</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Opens unit and writes fileheader with all metadata to the given filename</p></td>
                </tr>
 			 </tbody></table>
              
@@ -680,7 +1257,7 @@ Converts integer mask to logical and calls which.</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-09-04 16:56 +0000"             </p>
+ on "2025-09-29 07:27 +0000"             </p>
           </div>
         </div>
         <br>

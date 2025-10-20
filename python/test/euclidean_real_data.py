@@ -206,6 +206,7 @@ def run_real_data_example():
     print(f"Invalid distances (-1): {sum(distances == -1)}")
     
     # Save results
+    os.makedirs("results", exist_ok=True)
     output_file = "results/distance_to_centroids_python.tsv"
     results_with_families.to_csv(output_file, sep='\t', index=False)
     

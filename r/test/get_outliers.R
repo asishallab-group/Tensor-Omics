@@ -252,7 +252,7 @@ test_detect_outliers_invalid_families <- function() {
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains expected text
-    stopifnot(grepl("Invalid input", e$message))
+    stopifnot(grepl("Invalid input provided", e$message))
   })
   stopifnot(error_caught)  # Make sure an error was actually thrown
   

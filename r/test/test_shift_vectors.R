@@ -7,8 +7,7 @@ test_correct_family_mapping <- function() {
   expression_vectors <- matrix(c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15), nrow=3, ncol=5)
   family_centroids <- matrix(c(5,4,3,2,1,0, -1,-2,-3), nrow=3, ncol=3)
   gene_to_centroid <- c(2,3,1,3,1) # 1-based
-  res <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  shift_vectors <- matrix(res$shift_vectors, nrow=6, ncol=5)
+  shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
   # Expected: rows 1:3 = centroid, rows 4:6 = shift
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
@@ -39,8 +38,7 @@ test_zero_distance <- function() {
   expression_vectors <- matrix(c(1,2,3,4,5,6), nrow=3, ncol=2)
   family_centroids <- matrix(c(1,2,3,4,5,6), nrow=3, ncol=2)
   gene_to_centroid <- c(1,2)
-  res <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  shift_vectors <- matrix(res$shift_vectors, nrow=6, ncol=2)
+  shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
@@ -53,8 +51,7 @@ test_multiple_genes_per_family <- function() {
   expression_vectors <- matrix(1:8, nrow=2, ncol=4)
   family_centroids <- matrix(c(10,20,30,40), nrow=2, ncol=2)
   gene_to_centroid <- c(1,2,1,2)
-  res <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  shift_vectors <- matrix(res$shift_vectors, nrow=4, ncol=4)
+  shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
@@ -67,8 +64,7 @@ test_single_gene_per_family <- function() {
   expression_vectors <- matrix(1:8, nrow=2, ncol=4)
   family_centroids <- matrix(seq(10,80,10), nrow=2, ncol=4)
   gene_to_centroid <- c(1,2,3,4)
-  res <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  shift_vectors <- matrix(res$shift_vectors, nrow=4, ncol=4)
+  shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)

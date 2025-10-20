@@ -60,7 +60,6 @@
     ],
     "description": "Calculate log2 fold changes between condition-control pairs"
   },
-
   "Call to euclidean_distance": {
     "prefix": "tox:euclidean_distance",
     "body": [
@@ -69,7 +68,6 @@
     ],
     "description": "Invoke Euclidean distance calculation between two vectors"
   },
-
   "Call to distance_to_centroid": {
     "prefix": "tox:distance_to_centroid",
     "body": [
@@ -79,7 +77,6 @@
     ],
     "description": "Invoke distance calculation from genes to family centroids"
   },
-  
   "Wrapper R": {
     "prefix": "wrapper_r",
     "body": [
@@ -94,7 +91,7 @@
   "Wrapper C/Python": {
     "prefix": "wrapper_c",
     "body": [
-    "! -- use this snippet or helper_c_srapper.py to generate the C wrapper",
+      "! -- use this snippet or helper_c_srapper.py to generate the C wrapper",
       "subroutine ${1:core_name}_c(${2:args}) bind(C, name=\"${1:core_name}_c\")",
       "  use iso_c_binding",
       "  use ${3:module}",
@@ -126,7 +123,7 @@
     ],
     "description": "Map flat array to 2D with c_f_pointer"
   },
-    "R call to normalize_by_std_dev": {
+  "R call to normalize_by_std_dev": {
     "prefix": "tox:R_norm_by_std_dev",
     "body": [
     "result <- .Fortran(\"normalize_by_std_dev_r\",",
@@ -157,7 +154,6 @@
     ],
     "description": "Call quantile_normalization_r Fortran function from R"
   },
-  
   "R call to log2_transformation": {
     "prefix": "tox:R_norm_log2_trans",
     "body": [
@@ -170,7 +166,6 @@
     ],
     "description": "Call log2_transformation_r Fortran function from R"
   },
-  
   "R call to calc_tiss_avg": {
     "prefix": "tox:R_calc_tiss_avg",
     "body": [
@@ -185,7 +180,6 @@
     ],
     "description": "Call calc_tiss_avg_r Fortran function from R"
   },
-  
   "R call to calc_fchange": {
     "prefix": "tox:R_calc_fchange",
     "body": [
@@ -200,47 +194,43 @@
     ],
     "description": "Call calc_fchange_r Fortran function from R"
   },
-
   "R call to euclidean_distance between 2 vectors": {
     "prefix": "tox:R_euclidean_distance",
     "body": [
-    "result <- .Fortran(\"euclidean_distance_r\",",
-    "                  vec1 = as.double(${1:vector1}),",
-    "                  vec2 = as.double(${2:vector2}),",
-    "                  d = as.integer(${3:dimension}),",
-    "                  result = as.double(0.0))"
+      "result <- .Fortran(\"euclidean_distance_r\",",
+      "                  vec1 = as.double(${1:vector1}),",
+      "                  vec2 = as.double(${2:vector2}),",
+      "                  d = as.integer(${3:dimension}),",
+      "                  result = as.double(0.0))"
     ],
     "description": "Call euclidean_distance_r Fortran function from R"
   },
-
   "R call to distance_to_centroid": {
     "prefix": "tox:R_distance_to_centroid",
     "body": [
-    "result <- .Fortran(\"distance_to_centroid_r\",",
-    "                  n_genes = as.integer(${1:n_genes}),",
-    "                  n_families = as.integer(${2:n_families}),",
-    "                  genes = as.double(${3:gene_matrix}),",
-    "                  centroids = as.double(${4:centroid_matrix}),",
-    "                  gene_to_fam = as.integer(${5:gene_to_family}),",
-    "                  distances = as.double(numeric(${1:n_genes})),",
-    "                  d = as.integer(${6:dimension}))"
+      "result <- .Fortran(\"distance_to_centroid_r\",",
+      "                  n_genes = as.integer(${1:n_genes}),",
+      "                  n_families = as.integer(${2:n_families}),",
+      "                  genes = as.double(${3:gene_matrix}),",
+      "                  centroids = as.double(${4:centroid_matrix}),",
+      "                  gene_to_fam = as.integer(${5:gene_to_family}),",
+      "                  distances = as.double(numeric(${1:n_genes})),",
+      "                  d = as.integer(${6:dimension}))"
     ],
     "description": "Call distance_to_centroid_r Fortran function from R"
   },
-  
   "Load libraries for C": {
     "prefix": "tox:load_c_libs",
     "body": [
-    "import numpy as np",
-    "import ctypes",
-    "",
-    "# Load library",
-    "ctypes.CDLL(\"libgomp.so.1\", mode=ctypes.RTLD_GLOBAL)",
-    "lib = ctypes.CDLL(\"build/libtensor-omics.so\")"
+      "import numpy as np",
+      "import ctypes",
+      "",
+      "# Load library",
+      "ctypes.CDLL(\"libgomp.so.1\", mode=ctypes.RTLD_GLOBAL)",
+      "lib = ctypes.CDLL(\"build/libtensor-omics.so\")"
     ],
     "description": "TOX Python imports and library loading"
   },
-
   "C call to normalize_by_std_dev": {
     "prefix": "tox:C_norm_by_std_dev",
     "body": [
@@ -254,10 +244,8 @@
     "    lib.normalize_by_std_dev_c.restype = None",
     "    lib.normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ctypes.byref(ierr))"
     ],
-
     "description": "Setup normalize_by_std_dev_c function binding"
   },
-
   "C call to quantile_normalization": {
     "prefix": "tox:C_quantile_norm",
     "body": [
@@ -279,7 +267,6 @@
     ],
     "description": "Setup quantile_normalization_c function binding"
   },
-
   "C call to log2_transformation": {
     "prefix": "tox:C_norm_log2_trans",
     "body": [
@@ -296,7 +283,6 @@
     ],
     "description": "Setup log2_transformation_c function binding"
   },
-
   "C call to calc_tiss_avg": {
     "prefix": "tox:C_calc_tiss_avg",
     "body": [
@@ -315,7 +301,6 @@
     ],
     "description": "Setup calc_tiss_avg_c function binding"
   },
-
   "C call to calc_fchange": {
     "prefix": "tox:C_calc_fchange",
     "body": [
@@ -334,42 +319,39 @@
     ],
     "description": "Setup calc_fchange_c function binding"
   },
-
   "C call to euclidean_distance": {
     "prefix": "tox:C_euclidean_distance",
     "body": [
-    "    lib.euclidean_distance_c.argtypes = [",
-    "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # vec1",
-    "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # vec2",
-    "        ctypes.c_int, # dimension",
-    "        ctypes.POINTER(ctypes.c_double) # result",
-    "    ]",
-    "    lib.euclidean_distance_c.restype = None",
-    "    lib.euclidean_distance_c(vec1, vec2, dimension, result)"
-
+      "    lib.euclidean_distance_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # vec1",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # vec2",
+      "        ctypes.c_int, # dimension",
+      "        ctypes.POINTER(ctypes.c_double) # result",
+      "    ]",
+      "    lib.euclidean_distance_c.restype = None",
+      "    lib.euclidean_distance_c(vec1, vec2, dimension, result)"
     ],
     "description": "Setup euclidean_distance_c function binding"
   },
-
   "C call to distance_to_centroid": {
-  "prefix": "tox:C_distance_to_centroid",
+    "prefix": "tox:C_distance_to_centroid",
     "body": [
-    "    lib.distance_to_centroid_c.argtypes = [",
-    "    ctypes.c_int,  # n_genes",
-    "    ctypes.c_int,  # n_families",
-    "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # genes",
-    "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # centroids",
-    "    np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),    # gene_to_fam",
-    "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # distances",
-    "    ctypes.c_int   # dimension",
-    "    ]",
-    "    lib.distance_to_centroid_c.restype = None",
-    "    lib.distance_to_centroid_c(n_genes, n_families, genes, centroids, gene_to_fam, distances, dimension)"
-
+      "def setup_distance_to_centroid():",
+      "    \"\"\"Setup distance to centroid function\"\"\"",
+      "    dist_to_centroid = lib.distance_to_centroid_c",
+      "    dist_to_centroid.argtypes = [",
+      "        ctypes.c_int, ctypes.c_int,",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),",
+      "        ctypes.c_int",
+      "    ]",
+      "    dist_to_centroid.restype = None",
+      "    return dist_to_centroid"
     ],
     "description": "Setup distance_to_centroid_c function binding"
   },
-
   "Call to compute_family_scaling": {
     "prefix": "tox:compute_family_scaling",
     "body": [
@@ -397,7 +379,6 @@
     ],
     "description": "Call compute_rdi Fortran subroutine for gene outlier detection"
   },
-
   "Call to identify_outliers": {
     "prefix": "tox:identify_outliers",
     "body": [
@@ -406,7 +387,6 @@
     ],
     "description": "Call identify_outliers Fortran subroutine for gene outlier detection"
   },
-
   "Call to detect_outliers": {
     "prefix": "tox:detect_outliers",
     "body": [
@@ -443,7 +423,7 @@
       ")"
     ],
     "description": "Call compute_family_scaling_r Fortran function from R, with explicit array initializations"
-  },  
+  },
   "R call to compute family scaling expert level": {
     "prefix": "tox:R_compute_family_scaling_expert",
     "body": [
@@ -566,8 +546,7 @@
     ],
     "description": "Call detect_outliers_r Fortran function from R, with explicit array initializations"
   },
-
-    "C call for compute_family_scaling expert level": {
+  "C call for compute_family_scaling expert level": {
     "prefix": "tox:setup_py_compute_family_scaling_expert_c",
     "body": [
       "    lib.compute_family_scaling_expert_c.argtypes = [",
@@ -586,13 +565,11 @@
       "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),    # error_code (1,)",
       "    ]",
       "    lib.compute_family_scaling_expert_c.restype = None",
-      "    lib.compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, error_code)",
-
-      "    return func"
+      "    lib.compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, error_code)"
     ],
     "description": "Setup compute_family_scaling_expert_c function binding for Python/ctypes"
   },
-    "C call for compute_family_scaling": {
+  "C call for compute_family_scaling": {
     "prefix": "tox:setup_py_compute_family_scaling_c",
     "body": [
       "    lib.compute_family_scaling_c.argtypes = [",
@@ -607,9 +584,7 @@
       "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),    # error_code (1,)",
       "    ]",
       "    lib.compute_family_scaling_c.restype = None",
-      "    lib.compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, error_code)",
-
-      "    return func"
+      "    lib.compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, error_code)"
     ],
     "description": "Setup compute_family_scaling_c function binding for Python/ctypes"
   },
@@ -674,6 +649,200 @@
       "    lib.detect_outliers_c(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, workspace_weights, workspace_values, error_code, percentile)"
     ],
     "description": "Setup detect_outliers_c function binding for Python/ctypes"
+  },
+  "Call to clock_hand_angle_between_vectors": {
+    "prefix": "tox:clock_hand_angle_between_vectors",
+    "body": [
+      "call clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, selected_axes_for_signed)"
+    ],
+    "description": "Invoke clock hand angle calculation between vectors"
+  },
+  "Call to clock_hand_angles_for_shift_vectors": {
+    "prefix": "tox:clock_hand_angles_for_shift_vectors",
+    "body": [
+      "call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles)"
+    ],
+    "description": "Invoke clock hand angles calculation for shift vectors"
+  },
+  "R call to clock_hand_angle_between_vectors": {
+    "prefix": "tox:R_clock_hand_angle_between_vectors",
+    "body": [
+      "result <- .Fortran(\"clock_hand_angle_between_vectors_r\",",
+      "                  v1 = as.double(v1),",
+      "                  v2 = as.double(v2),",
+      "                  n_dims = as.integer(n_dims),",
+      "                  signed_angle = as.double(0),",
+      "                  selected_axes_for_signed = as.integer(selected_axes_for_signed))"
+    ],
+    "description": "Call clock_hand_angle_between_vectors Fortran function from R"
+  },
+  "R call to clock_hand_angles_for_shift_vectors": {
+    "prefix": "tox:R_clock_hand_angles_for_shift_vectors",
+    "body": [
+      "result <- .Fortran(\"clock_hand_angles_for_shift_vectors_r\",",
+      "                  origins = as.double(origins),",
+      "                  targets = as.double(targets),",
+      "                  n_dims = as.integer(n_dims),",
+      "                  n_vecs = as.integer(n_vecs),",
+      "                  vecs_selection_mask = as.logical(vecs_selection_mask),",
+      "                  n_selected_vecs = as.integer(n_selected_vecs),",
+      "                  selected_axes_for_signed = as.integer(selected_axes_for_signed),",
+      "                  signed_angles = as.double(signed_angles))"
+    ],
+    "description": "Call clock_hand_angles_for_shift_vectors Fortran function from R"
+  },
+  "C call for clock_hand_angle_between_vectors": {
+    "prefix": "tox:setup_py_clock_hand_angle_between_vectors_c",
+    "body": [
+      "    lib.clock_hand_angle_between_vectors_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # v1",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # v2",
+      "        ctypes.c_int,  # n_dims",
+      "        ctypes.POINTER(ctypes.c_double),  # signed_angle (scalar)",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # selected_axes_for_signed",
+      "    ]",
+      "    lib.clock_hand_angle_between_vectors_c.restype = None",
+      "    lib.clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle, selected_axes_for_signed)"
+    ],
+    "description": "Setup clock_hand_angle_between_vectors function binding for Python/ctypes"
+  },
+  "C call for clock_hand_angles_for_shift_vectors": {
+    "prefix": "tox:setup_py_clock_hand_angles_for_shift_vectors_c",
+    "body": [
+      "    lib.clock_hand_angles_for_shift_vectors_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # origins",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # targets",
+      "        ctypes.c_int,  # n_dims",
+      "        ctypes.c_int,  # n_vecs",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # vecs_selection_mask",
+      "        ctypes.c_int,  # n_selected_vecs",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # selected_axes_for_signed",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # signed_angles",
+      "    ]",
+      "    lib.clock_hand_angles_for_shift_vectors_c.restype = None",
+      "    lib.clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles)"
+    ],
+    "description": "Setup clock_hand_angles_for_shift_vectors function binding for Python/ctypes"
+  },
+  "Call to relative_axes_changes_from_shift_vector": {
+    "prefix": "tox:relative_axes_changes_from_shift_vector",
+    "body": [
+      "! Compute relative axis contributions from a shift vector (RAP space)",
+      "call relative_axes_changes_from_shift_vector(vec, n_dims, contrib)"
+    ],
+    "description": "Invoke relative axis contributions calculation from shift vector"
+  },
+  "R call to relative_axes_changes_from_shift_vector": {
+    "prefix": "tox:R_relative_axes_changes_from_shift_vector",
+    "body": [
+      "result <- .Fortran(\"relative_axes_changes_from_shift_vector_r\",",
+      "                  vec = as.double(vec),",
+      "                  n_dims = as.integer(n_dims),",
+      "                  contrib = as.double(numeric(n_dims)))"
+    ],
+    "description": "Call relative_axes_changes_from_shift_vector Fortran function from R"
+  },
+  "C call for relative_axes_changes_from_shift_vector": {
+    "prefix": "tox:setup_py_relative_axes_changes_from_shift_vector_c",
+    "body": [
+      "    lib.relative_axes_changes_from_shift_vector_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # vec",
+      "        ctypes.c_int,  # n_dims",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # contrib",
+      "    ]",
+      "    lib.relative_axes_changes_from_shift_vector_c.restype = None",
+      "    lib.relative_axes_changes_from_shift_vector_c(vec, n_dims, contrib)"
+    ],
+    "description": "Setup relative_axes_changes_from_shift_vector function binding for Python/ctypes"
+  },
+  "C call for relative_axes_expression_from_expression_vector": {
+    "prefix": "tox:setup_py_relative_axes_expression_from_expression_vector_c",
+    "body": [
+      "    lib.relative_axes_expression_from_expression_vector_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # vec",
+      "        ctypes.c_int,  # n_dims",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),  # contrib",
+      "    ]",
+      "    lib.relative_axes_expression_from_expression_vector_c.restype = None",
+      "    lib.relative_axes_expression_from_expression_vector_c(vec, n_dims, contrib)"
+    ],
+    "description": "Setup relative_axes_expression_from_expression_vector function binding for Python/ctypes"
+  },
+  "R set up call function for omics_vector_RAP_projection": {
+    "prefix": "tox:r_omics_vector_RAP_projection",
+    "body": [
+      "  n_selected_vecs <- sum(vecs_selection_mask == 1)",
+      "  n_selected_axes <- sum(axes_selection_mask == 1)",
+      "  res <- .Fortran(\"omics_vector_RAP_projection_r\",",
+      "                  vecs = as.double(vecs),",
+      "                  n_axes = as.integer(nrow(vecs)),",
+      "                  n_vecs = as.integer(ncol(vecs)),",
+      "                  vecs_selection_mask = as.integer(vecs_selection_mask),",
+      "                  n_selected_vecs = n_selected_vecs,",
+      "                  axes_selection_mask = as.integer(axes_selection_mask),",
+      "                  n_selected_axes = n_selected_axes,",
+      "                  projections = matrix(as.double(1), nrow = n_selected_axes, ncol = n_selected_vecs),",
+      "                  ierr = as.integer(0))"
+    ],
+    "description": "Setup omics_vector_RAP_projection function binding with ierr error handling"
+  },
+  "R set up call function for omics_field_RAP_projection": {
+    "prefix": "tox:r_omics_field_RAP_projection",
+    "body": [
+      "  n_selected_vecs <- sum(vecs_selection_mask == 1)",
+      "  n_selected_axes <- sum(axes_selection_mask == 1)",
+      "  res <- .Fortran(\"omics_field_RAP_projection_r\",",
+      "                  vecs = as.double(vecs),",
+      "                  n_axes = as.integer(nrow(vecs) / 2),",
+      "                  n_vecs = as.integer(ncol(vecs)),",
+      "                  vecs_selection_mask = as.integer(vecs_selection_mask),",
+      "                  n_selected_vecs = n_selected_vecs,",
+      "                  axes_selection_mask = as.integer(axes_selection_mask),",
+      "                  n_selected_axes = n_selected_axes,",
+      "                  projections = matrix(as.double(1), nrow = n_selected_axes, ncol = n_selected_vecs),",
+      "                  ierr = as.integer(0))"
+    ],
+    "description": "Setup omics_field_RAP_projection function binding with ierr error handling"
+  },
+  "Python set up call function for omics_vector_RAP_projection": {
+    "prefix": "tox:py_omics_vector_RAP_projection",
+    "body": [
+      "# Setup omics_vector_RAP_projection_c call (with ierr error handling)",
+      "omics_vector_RAP_projection_c.argtypes = [",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"F_CONTIGUOUS\"),  # vecs",
+      "    ctypes.c_int,  # n_axes",
+      "    ctypes.c_int,  # n_vecs",
+      "    np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # vecs_selection_mask",
+      "    ctypes.c_int,  # n_selected_vecs",
+      "    np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # axes_selection_mask",
+      "    ctypes.c_int,  # n_selected_axes",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"F_CONTIGUOUS\"),  # projections",
+      "    ctypes.POINTER(ctypes.c_int)  # ierr",
+      "]",
+      "omics_vector_RAP_projection_c.restype = None",
+      "omics_vector_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ctypes.byref(ierr))"
+    ],
+    "description": "Setup and call omics_vector_RAP_projection_c"
+  },
+  "Python set up call function for omics_field_RAP_projection": {
+    "prefix": "tox:py_omics_field_RAP_projection",
+    "body": [
+      "# Setup omics_field_RAP_projection_c call (with ierr error handling)",
+      "omics_field_RAP_projection_c.argtypes = [",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"F_CONTIGUOUS\"),  # vecs",
+      "    ctypes.c_int,  # n_axes",
+      "    ctypes.c_int,  # n_vecs",
+      "    np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # vecs_selection_mask",
+      "    ctypes.c_int,  # n_selected_vecs",
+      "    np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),  # axes_selection_mask",
+      "    ctypes.c_int,  # n_selected_axes",
+      "    np.ctypeslib.ndpointer(dtype=np.float64, flags=\"F_CONTIGUOUS\"),  # projections",
+      "    ctypes.POINTER(ctypes.c_int)  # ierr",
+      "]",
+      "omics_field_RAP_projection_c.restype = None",
+      "omics_field_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ctypes.byref(ierr))"
+    ],
+    "description": "Setup and call omics_field_RAP_projection_c"
   },
   "Call to tissue_versatility": {
     "prefix": "tox:tissue_versatility",

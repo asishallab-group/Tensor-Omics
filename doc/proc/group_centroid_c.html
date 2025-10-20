@@ -85,7 +85,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.6% of total for procedures.">24 statements</a>
+                 title=" 1.0% of total for procedures.">34 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -145,7 +145,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine group_centroid_c(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, use_all_mode, ortholog_set, selected_indices, selected_indices_len, ierr) bind(c, name='group_centroid_c')  
+    <h2>pure subroutine group_centroid_c(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, ortholog_set, selected_indices, selected_indices_len, ierr) bind(c, name='group_centroid_c')  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -153,7 +153,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -181,9 +183,9 @@
               <span class="anchor" id="variable-expression_vectors~7"></span>
               real(kind=c_double),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>expression_vectors</strong>(n_axes,n_genes)</td>
@@ -193,7 +195,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~7"></span>
+              <span class="anchor" id="variable-n_axes~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -226,9 +228,9 @@
               <span class="anchor" id="variable-gene_to_family~2"></span>
               integer(kind=c_int),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>gene_to_family</strong>(n_genes)</td>
@@ -256,9 +258,9 @@
               <span class="anchor" id="variable-centroid_matrix~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(out),</td>
+<td>intent(out)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>centroid_matrix</strong>(n_axes,n_families)</td>
@@ -268,17 +270,17 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-use_all_mode~2"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-mode~2"></span>
+              character(len=c_char),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              value
+              
             </td>
             <td>::</td>
-            <td><strong>use_all_mode</strong></td>
+            <td><strong>mode</strong>(10)</td>
             <td>
-                <p>Integer flag from C (0=false, non-zero=true) to use all genes.</p>
+                <p>A character array indicating the mode of operation ('orthologs' or 'all').</p>
             </td>
         </tr>
         <tr>
@@ -286,9 +288,9 @@
               <span class="anchor" id="variable-ortholog_set~2"></span>
               integer(kind=c_int),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>ortholog_set</strong>(n_genes)</td>
@@ -301,9 +303,9 @@
               <span class="anchor" id="variable-selected_indices~2"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out),</td>
+<td>intent(out)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>selected_indices</strong>(selected_indices_len)</td>
@@ -328,7 +330,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~25"></span>
+              <span class="anchor" id="variable-ierr~85"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out)</td>
@@ -375,7 +377,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-09-04 16:56 +0000"             </p>
+ on "2025-09-29 07:27 +0000"             </p>
           </div>
         </div>
         <br>

@@ -25,22 +25,27 @@ if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
   MODULE_FLAG="-module $BUILD_DIR"
   COMPILER="ifx"
 else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
+  FLAGS="-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   MODULE_FLAG="-J$BUILD_DIR"
   COMPILER="gfortran"
 fi
 
-echo "Compiling src/"
-bash build.sh 
-
-echo "Using compiler: $COMPILER"
-
 MAX_PERF_FLAG=""
+TEST_ARGS=()
+BUILD_ARGS=()
 for arg in "$@"; do
   if [[ "$arg" == "--max-performance" ]]; then
     MAX_PERF_FLAG="-DMAX_PERFORMANCE"
+    BUILD_ARGS+=("$arg")
+  else
+    TEST_ARGS+=("$arg")
   fi
 done
+
+echo "Compiling src/"
+bash build.sh "${BUILD_ARGS[@]}"
+
+echo "Using compiler: $COMPILER"
 
 mkdir -p $BUILD_DIR
 
@@ -74,5 +79,8 @@ linking_result=$?
 echo "Linking exit code: $linking_result"
 
 echo "Running tests..."
-# Run the executable
-$EXECUTABLE "$@"
+# Run the executable with filtered arguments (excluding --max-performance)
+$EXECUTABLE "${TEST_ARGS[@]}"
+
+# Clean up test files if they exist
+rm -f test_*arr*.bin

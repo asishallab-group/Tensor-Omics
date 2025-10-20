@@ -128,7 +128,7 @@ test_epsilon_threshold_protection <- function() {
   cat("test_epsilon_threshold_protection passed\n")
 }
 
-# 11. Invalid input: no axes selected (should throw error with code 202)
+# 11. Invalid input: Empty input arrays provided. (should throw error with code 202)
 test_invalid_input_no_axes <- function() {
   expr <- matrix(c(1,2,3), nrow=3, ncol=1)
   error_caught <- FALSE
@@ -137,7 +137,7 @@ test_invalid_input_no_axes <- function() {
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains the expected text
-    stopifnot(grepl("No axes selected", e$message))
+    stopifnot(grepl("Empty input arrays provided.", e$message))
   })
   stopifnot(error_caught)  # Make sure an error was actually thrown
   cat("test_invalid_input_no_axes passed\n")

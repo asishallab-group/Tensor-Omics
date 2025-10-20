@@ -18,7 +18,7 @@ if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
   FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   COMPILER="ifx"
 else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
+  FLAGS="-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   COMPILER="gfortran"
 fi
 
@@ -55,6 +55,7 @@ for compiler_dir in build/${COMPILER}_*; do
 done
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
+echo "Flags used: $FLAGS $MAX_PERF_FLAG"
 
 # Verify that we have the necessary files for test_runner.sh
 mod_count=$(find build -name "*.mod" | wc -l)
