@@ -11,7 +11,7 @@ This directory includes frequently used or testable units of logic reused across
         "description": "Insert a call to subroutine_name with brief explanation"
     }
 }
-```
+```S
 ---
 
 ### How to Add Snippets in VSCode
