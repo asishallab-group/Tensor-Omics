@@ -1,8 +1,0 @@
---2025-09-29 21:26:02--  https://ftp.gnu.org/gnu/gcc/gcc-15.1.0/gcc-15.1.0.tar.gz
-Resolving ftp.gnu.org (ftp.gnu.org)... 209.51.188.20, 2001:470:142:3::b
-Connecting to ftp.gnu.org (ftp.gnu.org)|209.51.188.20|:443... connected.
-HTTP request sent, awaiting response... 200 OK
-Length: 171315772 (163M) [application/x-gzip]
-Saving to: ‘gcc-15.1.0.tar.gz’
-
-gcc-15.1.0.tar.gz    36%[======>             ]  60,15M  15,4KB/s    eta 89m 15sgcc-15.1.0.tar.gz    36%[======>             ]  60,16M  14,8KB/s    eta 89m 15s
