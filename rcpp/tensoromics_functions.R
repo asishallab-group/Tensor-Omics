@@ -164,3 +164,51 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
     n_selected_axes = result$n_selected_axes
   ))
 }
+
+# ===================================================================
+# NORMALIZATION FUNCTIONS
+# ===================================================================
+
+tox_normalize_by_std_dev <- function(input) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  result <- normalize_by_std_dev_rcpp(input)
+  return(result)
+}
+
+tox_quantile_normalization <- function(input, max_stack = 10000) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  if (!is.numeric(max_stack)) stop("max_stack must be numeric")
+  result <- quantile_normalization_rcpp(input, as.integer(max_stack))
+  if (!is.null(result$ierr) && result$ierr != 0) check_err_code(result$ierr)
+  return(result)
+}
+
+tox_normalize_data <- function(input, group_s, group_c, max_stack = 10000) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  if (!is.integer(group_s)) group_s <- as.integer(group_s)
+  if (!is.integer(group_c)) group_c <- as.integer(group_c)
+  result <- tox_normalize_data_rcpp(input, group_s, group_c, as.integer(max_stack))
+  if (result$ierr != 0) check_err_code(result$ierr)
+  return(result)
+}
+
+tox_log2_transformation <- function(input) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  result <- log2_transformation_rcpp(input)
+  return(result)
+}
+
+tox_calc_tiss_avg <- function(input, group_s, group_c) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  result <- calc_tiss_avg_rcpp(input, as.integer(group_s), as.integer(group_c))
+  return(result)
+}
+
+tox_calc_fchange <- function(input, control_cols, cond_cols) {
+  if (!is.matrix(input)) stop("Input must be a matrix")
+  result <- calc_fchange_rcpp(input, as.integer(control_cols), as.integer(cond_cols))
+  return(result)
+}
+
+cat("✓ Added normalization functions successfully\n")
+
