@@ -1,3 +1,4 @@
+
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -174,14 +175,17 @@ List tox_normalize_data_rcpp(NumericMatrix input, IntegerVector group_s, Integer
     IntegerVector stack_right(max_stack);
     int ierr = 0;
 
-    normalize_tox_data_c(&n_genes, &n_tissues, input.begin(),
-                         buf_stddev.begin(), buf_quant.begin(),
-                         buf_avg.begin(), buf_log.begin(),
-                         temp_col.begin(), rank_means.begin(), perm.begin(),
-                         stack_left.begin(), stack_right.begin(), &max_stack,
-                         group_s.begin(), group_c.begin(), &n_grps, &ierr);
+     /* Call the Fortran normalization pipeline (named in Fortran as
+         normalization_pipeline_c). Older code expected normalize_tox_data_c;
+         use the existing exported symbol normalization_pipeline_c. */
+     normalization_pipeline_c(&n_genes, &n_tissues, input.begin(),
+                                     buf_stddev.begin(), buf_quant.begin(),
+                                     buf_avg.begin(), buf_log.begin(),
+                                     temp_col.begin(), rank_means.begin(), perm.begin(),
+                                     stack_left.begin(), stack_right.begin(), &max_stack,
+                                     group_s.begin(), group_c.begin(), &n_grps, &ierr);
 
-    if (ierr != 0) stop("normalize_tox_data_c returned error code " + std::to_string(ierr));
+     if (ierr != 0) stop("normalization_pipeline_c returned error code " + std::to_string(ierr));
 
     return List::create(
         Named("buf_stddev") = buf_stddev,
