@@ -151,6 +151,8 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   # Call Rcpp wrapper
   result <- tox_calculate_tissue_versatility_rcpp(expression_vectors, vector_selection, axis_selection)
   
+  result$tissue_versatilities <- pmin(1, pmax(0, result$tissue_versatilities))
+
   # Check for errors
   if (result$ierr != 0) {
     check_err_code(result$ierr)
