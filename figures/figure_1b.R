@@ -115,7 +115,7 @@ text(
 text(
   orth[1],
   orth[2],
-  label = TeX('$\\varphi(\\textit{o})$'),
+  label = TeX('$\\delta(\\textit{o})$'),
   pos = 4,
   offset = 2.25,
   col = colors[[1]],
@@ -155,7 +155,7 @@ text(
 text(
   dupl[1] + .1,
   dupl[2],
-  label = TeX('$\\varphi(\\textit{p})$'),
+  label = TeX('$\\delta(\\textit{p})$'),
   pos = 3,
   offset = 1.25,
   col = colors[[2]],
