@@ -875,17 +875,21 @@ The array serialization and deserialization module provides comprehensive routin
 
 \item \textbf{General Architecture}
 
-The module supports three data types (integer, real, and character) across dimensions 1 through 5. All routines follow a consistent naming convention and parameter structure for ease of use.
+The module supports five data types (integer, real, character, logical and complex) across dimensions 1 through 5. All routines follow a consistent naming convention and parameter structure for ease of use.
 
 \item \textbf{Supported Functions}
 
 \begin{itemize}
-    \item \texttt{serialize\_int\_Nd(arr, filename, ierr)} - Serialize N-dimensional integer arrays
-    \item \texttt{deserialize\_int\_Nd(arr, filename, ierr)} - Deserialize N-dimensional integer arrays
-    \item \texttt{serialize\_real\_Nd(arr, filename, ierr)} - Serialize N-dimensional real arrays
-    \item \texttt{deserialize\_real\_Nd(arr, filename, ierr)} - Deserialize N-dimensional real arrays
-    \item \texttt{serialize\_char\_Nd(arr, filename, ierr)} - Serialize N-dimensional character arrays
-    \item \texttt{deserialize\_char\_Nd(arr, filename, ierr)} - Deserialize N-dimensional character arrays
+    \item \texttt{serialize\_int\_Nd(arr, filename, ierr)} - Serialize N-dimensional integer arrays.
+    \item \texttt{deserialize\_int\_Nd(arr, filename, ierr)} - Deserialize N-dimensional integer arrays.
+    \item \texttt{serialize\_real\_Nd(arr, filename, ierr)} - Serialize N-dimensional real arrays.
+    \item \texttt{deserialize\_real\_Nd(arr, filename, ierr)} - Deserialize N-dimensional real arrays.
+    \item \texttt{serialize\_char\_Nd(arr, filename, ierr)} - Serialize N-dimensional character arrays.
+    \item \texttt{deserialize\_char\_Nd(arr, filename, ierr)} - Deserialize N-dimensional character arrays.
+    \item \texttt{serialize\_logical\_Nd(arr, filename, ierr)} - Serialize N-dimensional logical arrays.
+    \item \texttt{deserialize\_logical\_Nd(arr, filename, ierr)} - Deserialize N-dimensional logical arrays.
+    \item \texttt{serialize\_complex\_Nd(arr, filename, ierr)} - Serialize N-dimensional complex arrays.
+    \item \texttt{deserialize\_complex\_Nd(arr, filename, ierr)} - Deserialize N-dimensional complex arrays.
     \item \texttt{get\_array\_metadata(filename, dims, max\_dims, ndims, ierr, [clen])} - Retrieve array metadata from files
 \end{itemize}
 
@@ -896,7 +900,7 @@ Where N represents the array dimension (1-5).
 \textbf{Serialization Functions Parameters:}
 \begin{itemize}
     \item \texttt{arr} (input): The array to be serialized. \\
-          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt(logical) or \texttt{complex} \\
           \textbf{Dimensions:} 1D to 5D \\
           \textbf{Intent:} \texttt{in} \\
           \textbf{Note:} \textit{clen} has to be the size of the arrays elements
@@ -950,7 +954,7 @@ call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
 \textbf{Deserialization Functions Parameters:}
 \begin{itemize}
     \item \texttt{arr} (output): The array to be populated with deserialized data. \\
-          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, or \texttt{character(len=clen)} \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt{logical}, or \texttt{complex} \\
           \textbf{Dimensions:} 1D to 5D \\
           \textbf{Intent:} \texttt{out} \\
           \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
@@ -1464,15 +1468,19 @@ The Python interface provides bindings to the Fortran serialization and deserial
 \begin{enumerate}
 \item \textbf{General Architecture}
 
-The Python module \texttt{tensoromics\_functions} provides six main functions for array handling:
+The Python module \texttt{tensoromics\_functions} provides ten main functions for array handling:
 
 \begin{itemize}
-    \item \texttt{tox\_serialize\_int\_nd(array, filename)} - Serialize N-dimensional integer arrays
-    \item \texttt{tox\_deserialize\_int\_nd(filename)} - Deserialize N-dimensional integer arrays
-    \item \texttt{tox\_serialize\_real\_nd(array, filename)} - Serialize N-dimensional real arrays
-    \item \texttt{tox\_deserialize\_real\_nd(filename)} - Deserialize N-dimensional real arrays
-    \item \texttt{tox\_serialize\_char\_nd(array, filename)} - Serialize N-dimensional character arrays
-    \item \texttt{tox\_deserialize\_char\_nd(filename)} - Deserialize N-dimensional character arrays
+    \item \texttt{tox\_serialize\_int\_nd(array, filename)} - Serialize N-dimensional integer arrays.
+    \item \texttt{tox\_deserialize\_int\_nd(filename)} - Deserialize N-dimensional integer arrays.
+    \item \texttt{tox\_serialize\_real\_nd(array, filename)} - Serialize N-dimensional real arrays.
+    \item \texttt{tox\_deserialize\_real\_nd(filename)} - Deserialize N-dimensional real arrays.
+    \item \texttt{tox\_serialize\_char\_nd(array, filename)} - Serialize N-dimensional character arrays.
+    \item \texttt{tox\_deserialize\_char\_nd(filename)} - Deserialize N-dimensional character arrays.
+    \item \texttt{tox\_serialize\_logical\_nd(array, filename)} - Serialize N-dimensional logical arrays.
+    \item \texttt{tox\_deserialize\_logical\_nd(filename)} - Deserialize N-dimensional logical arrays.
+    \item \texttt{tox\_serialize\_complex\_nd(array, filename)} - Serialize N-dimensional complex arrays.
+    \item \texttt{tox\_deserialize\_complex\_nd(filename)} - Deserialize N-dimensional complex arrays.
     \item \texttt{get\_array\_metadata(filename)} - Retrieve array dimensions and metadata
 \end{itemize}
 
@@ -1481,7 +1489,14 @@ The Python module \texttt{tensoromics\_functions} provides six main functions fo
 \textbf{Serialization Functions:}
 \begin{itemize}
     \item \texttt{array} (input): NumPy array to be serialized \\
-          \textbf{Type:} \texttt{numpy.ndarray} with dtype \texttt{np.int32} or \texttt{np.float64}, for characters: \texttt{U5} \\
+          \textbf{Type:} \texttt{numpy.ndarray} with dtype:
+          \begin{itemize}
+            \item \texttt{np.int32} for integer
+            \item \texttt{np.float64} for float values
+            \item \texttt{U5} for characters
+            \item \texttt{boolean} for logical
+            \item \texttt{np.complex128} for complex numbers
+          \end{itemize}
           \textbf{Layout:} Column-major (Fortran) order (\texttt{order='F'}) \\
           \textbf{Dimensions:} Since the array is being passed flat, theoretically all dimensions are supported, but practical use cases are typically 1D to 5D
     
@@ -2083,7 +2098,7 @@ The R interface provides bindings to the Fortran serialization and deserializati
 \begin{enumerate}
 \item{General Architecture}
 
-The R package provides six main functions for array handling:
+The R package provides ten main functions for array handling:
 
 \begin{itemize}
     \item \texttt{tox\_serialize\_int\_array(array, filename)} - Serialize N-dimensional integer arrays
@@ -2092,6 +2107,10 @@ The R package provides six main functions for array handling:
     \item \texttt{tox\_deserialize\_real\_array(filename)} - Deserialize N-dimensional real arrays
     \item \texttt{tox\_serialize\_char\_array(array, filename)} - Serialize N-dimensional character arrays
     \item \texttt{tox\_deserialize\_char\_array(filename)} - Deserialize N-dimensional character arrays
+    \item \texttt{tox\_serialize\_logical\_array(array, filename)} - Serialize N-dimensional logical array
+    \item \texttt{tox\_deserialize\_logical\_array(filename)} - Deserialize N-dimensional logical array
+    \item \texttt{tox\_serialize\_complex\_array(array, filename)} - Serialize N-dimensional complex array
+    \item \texttt{tox\_deserialize\_complex\_array(filename)} - Deserialize N-dimensional complex array
 \end{itemize}
 
 \item \textbf{Array Functions}
@@ -2099,8 +2118,15 @@ The R package provides six main functions for array handling:
 \textbf{Serialization Functions:}
 \begin{itemize}
     \item \texttt{array} (input): R array, matrix, or vector to be serialized \\
-          \textbf{Type:} \texttt{integer} or \texttt{numeric} (double precision), or characters \\
-          \textbf{Dimensions:} Theoretically are N dimensions supported, but typical use cases should not exceed 5 dimensions \\
+          \textbf{Type:} 
+          \begin{itemize}
+            \item \texttt{Integer} 
+            \item \texttt{Numeric} (double precision)
+            \item \texttt{Characters}
+            \item \texttt{Logical}
+            \item \texttt{Complex}
+          \end{itemize}
+        \textbf{Dimensions:} Theoretically are N dimensions supported, but typical use cases should not exceed 5 dimensions \\
     
     \item \texttt{filename} (input): Name of the binary file to create \\
           \textbf{Type:} \texttt{character}
@@ -2167,7 +2193,7 @@ restored <- tox_deserialize_char_array(fn("char1d.bin"))
 
 \begin{itemize}
     \item Requires R with appropriate Fortran bindings
-    \item Supports standard R data types (integer, numeric, character)
+    \item Supports standard R data types (integer, numeric, character, logical, complex)
     \item Preserves array attributes and dimensions during serialization
     \item Character arrays maintain content but may have padding removed upon deserialization
 \end{itemize}
