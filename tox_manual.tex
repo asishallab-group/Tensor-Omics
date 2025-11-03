@@ -267,9 +267,971 @@ This section details the practical pipeline for using the TOX library to read an
 }
 
 \subsection{Fortran Pipeline}
-In a pure Fortran application, the user follows a two-step process to construct the Data Table.
 
 \begin{enumerate}
+\item \textbf{Data Reading and Processing} \\
+All arrays read have dependencies to each other. The gene ids array stores the ids, column number seven of the expression vectors belongs to entry number seven
+in the gene ids. Entry number nine in the gene to family mapping array, belongs to entry nine in the gene ids. These dependencies must be given at any time, therefore, only
+the provided functions shall be used to modify arrays in any form. For error code details please check \hyperref[sec:error-handling]{error handling section}.
+\begin{enumerate}
+    \item Reading Data
+    \begin{itemize}
+    \item \textbf{Read Gene IDs from TSV File}
+
+Reads gene identifiers from a TSV file containing expression data. Typically reads from the first column after skipping header rows.
+Call the \texttt{read\_gene\_ids\_from\_tsv\_file} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{filename character(len=*)}: Path to the TSV file
+        \item \texttt{n\_header\_rows integer(int32)}: Number of header rows to skip (typically 1)
+        \item \texttt{gene\_col integer(int32)}: Column index containing gene IDs (typically 1)
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{gene\_ids character(len=*)}: Pre-allocated array for gene identifiers
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Read Gene IDs from TSV File}]
+character(len=256) :: gene_ids(n_genes)  ! Pre-allocate with expected size
+integer(int32) :: ierr
+
+call read_gene_ids_from_tsv_file('expression_data.tsv', gene_ids, 1, 1, ierr)
+    \end{lstlisting}
+
+    \item \textbf{Read Expression Vectors}
+
+Reads expression data from one or more TSV/CSV files and populates a pre-allocated 2D array (samples x genes). Uses hashmap for efficient gene ID matching and validates for finite values.
+Call the \texttt{read\_expression\_vectors} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{file\_list character(len=*)}: Array of file paths to read from
+        \item \texttt{gene\_ids character(len=*)}: Reference gene IDs for validation and matching
+        \item \texttt{expression\_vectors real(real64)}: Pre-allocated 2D array for expression data
+        \item \texttt{n\_header\_rows integer(int32)}: Number of header rows to skip
+        \item \texttt{gene\_col integer(int32)}: Column index containing gene IDs
+        \item \texttt{value\_cols integer(int32)}: Array of column indices containing expression values
+        \item \texttt{start\_row integer(int32)}: Starting row index in expression\_vectors array
+        \item \texttt{delimiter character(len=1), optional}: Column delimiter (default: tab)
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{expression\_vectors real(real64)}: Pre-allocated 2D array for expression data populated with data
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Read Expression Vectors}]
+! Pre-allocate arrays
+real(real64) :: expr_data(n_samples, n_genes)
+
+! Read TSV file with tab delimiter (default)
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, value_cols, 1, ierr)
+
+! Read CSV file with comma delimiter
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, value_cols, 1, ierr, ',')
+    \end{lstlisting}
+
+    \item \textbf{Read OrthoFinder Family Mapping}
+
+Reads gene family assignments from OrthoFinder output TSV file and creates mapping arrays between genes and families. The \texttt{gene\_to\_fam} array contains for each gene the index
+of it's family. Uses hashmap for efficient gene lookup.
+Call the \texttt{read\_orthofinder\_file} subroutine with the following arguments:
+
+    \textbf{Input arguments:}
+    \begin{itemize}
+        \item \texttt{filename character(len=*)}: Path to OrthoFinder TSV file
+        \item \texttt{gene\_ids character(len=*)}: Pre-allocated array of gene IDs to match
+    \end{itemize}
+    \textbf{Output arguments:}
+    \begin{itemize}
+        \item \texttt{family\_ids character(len=*)}: Pre-allocated array for family identifiers
+        \item \texttt{gene\_to\_fam integer(int32)}: Pre-allocated array for gene to family mapping
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Read OrthoFinder Family Mapping}]
+character(len=256) :: family_ids(n_families)  ! Pre-allocate with expected family count
+integer(int32) :: gene_to_fam(n_genes)     ! Pre-allocate with gene count
+integer(int32) :: ierr
+
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam, ierr)
+    \end{lstlisting}
+
+    \textbf{Important Implementation Details:}
+    \begin{itemize}
+        \item All output arrays must be pre-allocated with the correct dimensions and sizes
+        \item Uses hashmap data structure for O(1) gene ID lookups
+        \item Validates for finite values (rejects NaN and Inf) in expression data
+        \item Handles both TSV (tab-separated) and CSV (comma-separated) formats, gene\_to\_fam array uses 1-based indexing for family assignments (0 indicates unassigned)
+    \end{itemize}
+
+    \textbf{Typical Data Reading Workflow:}
+    \begin{lstlisting}[language=Fortran, caption={Complete Data Reading Workflow}]
+! 1. Pre-allocate arrays
+
+! 2. Read gene IDs from expression file
+call read_gene_ids_from_tsv_file('expression.tsv', gene_ids, 1, 1, ierr)
+
+! 3. Read expression data (columns 2-68 contain sample data)
+character(len=256) :: files(1) = ['expression.tsv']
+
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, samples, 1, ierr)
+
+! 4. Read family mapping from OrthoFinder
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam, ierr)
+    \end{lstlisting}
+\end{itemize}
+
+
+\item \textbf{Data Filtering and Validation}
+\begin{itemize}
+\item \textbf{Get Unassigned Genes Mask}
+
+Creates a logical mask identifying genes that have no family assignment (gene\_to\_fam value $=$ 0).
+Call the \texttt{get\_unassigned\_mask} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_to\_fam integer(int32)}: Gene to family mapping array
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{mask logical}: Logical mask array (same size as gene\_to\_fam)
+    \item \texttt{n\_genes\_kept integer(int32)}: Number of genes with family assignments
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Create Unassigned Genes Mask}]
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept, ierr
+
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+! unassigned_mask(i) = .true. if gene i has family assignment
+! n_kept = count of genes with family assignments
+\end{lstlisting}
+
+\item \textbf{Apply Unassigned Mask}
+
+Filters out genes without family assignments from all data arrays (gene\_ids, expression\_vectors, gene\_to\_fam).
+Arrays are reallocated to the filtered size.
+Call the \texttt{apply\_unassigned\_mask} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{mask logical}: Logical mask from get\_unassigned\_mask
+    \item \texttt{n\_genes\_kept integer(int32)}: Number of genes to keep (from get\_unassigned\_mask)
+\end{itemize}
+\textbf{Input/Output arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=*), allocatable}: Gene IDs array (reallocated)
+    \item \texttt{expression\_vectors real(real64), allocatable}: Expression data matrix (reallocated)
+    \item \texttt{gene\_to\_fam integer(int32), allocatable}: Gene to family mapping (reallocated)
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Filter Unassigned Genes}]
+character(len=256), allocatable :: gene_ids(n_genes)
+real(real64), allocatable :: expr_data(n_samples,n_genes)
+integer(int32), allocatable :: gene_to_fam(n_genes)
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept, ierr
+
+! First create the mask
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+
+! Then apply it to filter all arrays
+call apply_unassigned_mask(gene_ids, expr_data, gene_to_fam, &
+                          unassigned_mask, n_kept, ierr)
+! Arrays are now reallocated to size n_kept
+\end{lstlisting}
+
+\item \textbf{Validate Data Structure}
+
+Performs comprehensive validation of data dimensions and consistency across all arrays.
+Call the \texttt{validate\_data\_structure} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{n\_genes integer(int32)}: Number of genes
+    \item \texttt{n\_families integer(int32)}: Number of gene families  
+    \item \texttt{n\_samples integer(int32)}: Number of samples
+    \item \texttt{gene\_ids character(len=*)}: Gene identifier array
+    \item \texttt{family\_ids character(len=*)}: Family identifier array
+    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping
+    \item \texttt{expression real(real64)}: Expression data matrix
+    \item \texttt{centroids real(real64)}: Family centroids matrix
+    \item \texttt{shift\_vectors real(real64)}: Shift vectors matrix
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Validate Data Structure}]
+call validate_data_structure(n_genes, n_families, n_samples, gene_ids, &
+                           family_ids, gene_to_fam, expr_data, &
+                           centroids, shift_vectors, ierr)
+\end{lstlisting}
+
+\item \textbf{Validate Expression Data}
+
+Validates expression data matrix for NaN, Inf, and optionally negative values.
+Call the \texttt{validate\_expression\_data} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{expression real(real64)}: Expression data matrix to validate
+    \item \texttt{allow\_negative logical}: Whether to allow negative expression values
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Validate Expression Data}]
+! Validate expression data (disallow negative values)
+call validate_expression_data(expr_data, .false., ierr)
+
+! Validate allowing negative values (e.g., for log-fold changes)
+call validate_expression_data(expr_data, .true., ierr)
+\end{lstlisting}
+
+\item \textbf{Validate Empty Strings}
+
+Validates that a string array contains no empty or whitespace-only entries.
+Call the \texttt{validate\_empty\_strings} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{string\_array character(len=*)}: String array to validate
+    \item \texttt{array\_name character(len=*)}: Name for error messages   
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Validate String Array}]
+call validate_empty_strings(gene_ids, "Gene IDs", ierr)
+call validate_empty_strings(family_ids, "Family IDs", ierr)
+\end{lstlisting}
+
+\item \textbf{Validate Gene to Family Mapping}
+
+Validates that all gene to family indices are within valid range (1 to n\_families).
+Call the \texttt{validate\_gene\_to\_family\_mapping} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping array
+    \item \texttt{n\_families integer(int32)}: Number of valid families
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Validate Gene-Family Mapping}]
+call validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
+\end{lstlisting}
+
+\item \textbf{Validate String Array Uniqueness}
+
+Validates that all entries in a string array are unique (no duplicates). Uses a hashet implementation internally for O(n) runtime.
+Call the \texttt{validate\_string\_array\_uniqueness} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{string\_array character(len=*)}: String array to check for duplicates
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Validate Unique Strings}]
+call validate_string_array_uniqueness(gene_ids, ierr)
+call validate_string_array_uniqueness(family_ids, ierr)
+\end{lstlisting}
+\end{itemize}
+
+\item \textbf{Data Accessors}
+\begin{itemize}
+\item \textbf{Get Gene Index}
+
+Finds the array index for a given gene identifier.
+Call the \texttt{get\_gene\_index} function with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=*)}: Array of gene identifiers
+    \item \texttt{gene\_id character(len=*)}: Gene ID to find
+\end{itemize}
+\textbf{Return value:}
+\begin{itemize}
+    \item \texttt{index integer(int32)}: Array index (1-based) or 0 if not found
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Find Gene Index}]
+integer(int32) :: gene_idx
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+if (gene_idx > 0) then
+    ! Gene found at position gene_idx
+else
+    ! Gene not found
+end if
+\end{lstlisting}
+
+\item \textbf{Get Family Index}
+
+Finds the array index for a given family identifier.
+Call the \texttt{get\_family\_index} function with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{family\_ids character(len=*)}: Array of family identifiers
+    \item \texttt{family\_id character(len=*)}: Family ID to find
+\end{itemize}
+\textbf{Return value:}
+\begin{itemize}
+    \item \texttt{index integer(int32)}: Array index (1-based) or 0 if not found
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Find Family Index}]
+integer(int32) :: fam_idx
+
+fam_idx = get_family_index(family_ids, 'OG0000001')
+\end{lstlisting}
+
+\item \textbf{Get Family for Gene Index}
+
+Retrieves the family index for a given gene index.
+Call the \texttt{get\_family\_for\_gene\_index} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_index integer(int32)}: Gene array index (1-based)
+    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping array
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{family\_index integer(int32)}: Family array index (1-based)
+    \item \texttt{ierr integer(int32)}: Error code 
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Get Family for Gene}]
+integer(int32) :: gene_idx, fam_idx, ierr
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+call get_family_for_gene_index(gene_idx, gene_to_fam, fam_idx, ierr)
+\end{lstlisting}
+
+\item \textbf{Get Family Centroid}
+
+Retrieves the centroid expression profile for a given family.
+Call the \texttt{get\_family\_centroid} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{family\_index integer(int32)}: Family array index (1-based)
+    \item \texttt{family\_centroids real(real64)}: Family centroids matrix
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{ierr integer(int32)}: Error code
+    \item \texttt{centroid\_vector real(real64)}: Centroid expression profile
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Get Family Centroid}]
+real(real64) :: centroid_vector(n_samples)
+integer(int32) :: fam_idx, ierr
+
+fam_idx = get_family_index(family_ids, 'OG0000001')
+call get_family_centroid(fam_idx, centroids, centroid_vector, ierr)
+\end{lstlisting}
+
+\textbf{Complete Validation Workflow:}
+\begin{lstlisting}[language=Fortran, caption={Complete Data Validation Workflow}]
+integer(int32) :: ierr
+
+! 1. Filter unassigned genes
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+call apply_unassigned_mask(gene_ids, expr_data, gene_to_fam, &
+                          unassigned_mask, n_kept, ierr)
+
+! 2. Validate individual components
+call validate_empty_strings(gene_ids, "Gene IDs", ierr)
+call validate_empty_strings(family_ids, "Family IDs", ierr)
+call validate_string_array_uniqueness(gene_ids, ierr)
+call validate_string_array_uniqueness(family_ids, ierr)
+call validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
+call validate_expression_data(expr_data, .false., ierr)
+
+! 3. Comprehensive structure validation
+call validate_data_structure(n_genes, n_families, n_samples, gene_ids, &
+                           family_ids, gene_to_fam, expr_data, &
+                           centroids, shift_vectors, ierr)
+
+! 4. Use accessors for data retrieval
+integer(int32) :: gene_idx, fam_idx
+real(real64) :: centroid(n_samples)
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+call get_family_for_gene_index(gene_idx, gene_to_fam, fam_idx, ierr)
+call get_family_centroid(fam_idx, centroids, centroid, ierr)
+\end{lstlisting}
+\end{itemize}
+
+\item \textbf{Standard Archive Operations}
+\begin{itemize}
+\item \textbf{Save Tox Data Archive}
+
+Saves multiple data arrays to a ZIP archive with automatic manifest creation and temporary file management. Handles any combination of available standard data arrays.
+This function can only be used with standard gene expression data. If other data needs to be saved, see section "Non-standard archive operations".
+Call the \texttt{save\_tox\_data} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{zip\_filename character(len=*)}: Output ZIP file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Optional input arguments (provide both array and filename for each data type):}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=*)}: Gene IDs array
+    \item \texttt{gene\_ids\_file character(len=*)}: Internal filename for gene IDs
+    \item \texttt{expression real(real64)}: Expression data matrix
+    \item \texttt{expression\_file character(len=*)}: Internal filename for expression data
+    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping
+    \item \texttt{gene\_to\_family\_file character(len=*)}: Internal filename for mapping
+    \item \texttt{family\_ids character(len=*)}: Family IDs array
+    \item \texttt{family\_ids\_file character(len=*)}: Internal filename for family IDs
+    \item \texttt{family\_centroids real(real64)}: Family centroids matrix
+    \item \texttt{family\_centroids\_file character(len=*)}: Internal filename for centroids
+    \item \texttt{shift\_vectors real(real64)}: Shift vectors matrix
+    \item \texttt{shift\_vectors\_file character(len=*)}: Internal filename for shift vectors
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Complete Data Archive}]
+integer(int32) :: ierr
+
+! Save all available data arrays
+call save_tox_data("complete_data.zip", ierr, &
+                  gene_ids=gene_ids, gene_ids_file="genes.bin", &
+                  expression=expr_data, expression_file="expression.bin", &
+                  gene_to_family=gene_to_fam, gene_to_family_file="mapping.bin", &
+                  family_ids=family_ids, family_ids_file="families.bin", &
+                  family_centroids=centroids, family_centroids_file="centroids.bin", &
+                  shift_vectors=shift_vecs, shift_vectors_file="shifts.bin")
+\end{lstlisting}
+
+\begin{lstlisting}[language=Fortran, caption={Save Partial Data Archive}]
+! Save only gene IDs and expression data
+call save_tox_data("expression_only.zip", ierr, &
+                  gene_ids=gene_ids, gene_ids_file="genes.bin", &
+                  expression=expr_data, expression_file="expression.bin")
+
+! Save only family-related data
+call save_tox_data("families_only.zip", ierr, &
+                  family_ids=family_ids, family_ids_file="families.bin", &
+                  family_centroids=centroids, family_centroids_file="centroids.bin")
+\end{lstlisting}
+
+\item \textbf{Read Tox Data Archive}
+
+Reads data arrays from a ZIP archive created with \texttt{save\_tox\_data}. Automatically handles array allocation based on archive contents. The function will try to read
+all requested arrays (optional arguments that are provided) from the given archive. If an array can not be found in the archive, the output arrays wont be allocated or returned.
+Call the \texttt{read\_tox\_data} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{zip\_filename character(len=*)}: Input ZIP file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Optional output arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=:), allocatable}: Gene IDs array
+    \item \texttt{expression real(real64), allocatable}: Expression data matrix
+    \item \texttt{gene\_to\_family integer(int32), allocatable}: Gene to family mapping
+    \item \texttt{family\_ids character(len=:), allocatable}: Family IDs array
+    \item \texttt{family\_centroids real(real64), allocatable}: Family centroids matrix
+    \item \texttt{shift\_vectors real(real64), allocatable}: Shift vectors matrix
+\end{itemize}
+\textbf{Optional filename output arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids\_file character(len=:), allocatable}: Internal filename used
+    \item \texttt{expression\_file character(len=:), allocatable}: Internal filename used
+    \item \texttt{gene\_to\_family\_file character(len=:), allocatable}: Internal filename used
+    \item \texttt{family\_ids\_file character(len=:), allocatable}: Internal filename used
+    \item \texttt{family\_centroids\_file character(len=:), allocatable}: Internal filename used
+    \item \texttt{shift\_vectors\_file character(len=:), allocatable}: Internal filename used
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Read Complete Data Archive}]
+character(len=:), allocatable :: loaded_gene_ids(:), loaded_family_ids(:)
+real(real64), allocatable :: loaded_expr(:,:), loaded_centroids(:,:)
+real(real64), allocatable :: loaded_shifts(:,:)
+integer(int32), allocatable :: loaded_gene_to_fam(:)
+integer(int32) :: ierr
+
+! Read all available data from archive
+call read_tox_data("complete_data.zip", ierr, &
+                  gene_ids=loaded_gene_ids, &
+                  expression=loaded_expr, &
+                  gene_to_family=loaded_gene_to_fam, &
+                  family_ids=loaded_family_ids, &
+                  family_centroids=loaded_centroids, &
+                  shift_vectors=loaded_shifts)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Fortran, caption={Read Partial Data Archive}]
+! Read only specific arrays (others remain unallocated)
+call read_tox_data("expression_only.zip", ierr, &
+                  gene_ids=loaded_gene_ids, &
+                  expression=loaded_expr)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Fortran, caption={Read with Filename Retrieval}]
+character(len=:), allocatable :: actual_gene_file, actual_expr_file
+integer(int32) :: ierr
+
+! Get both data and internal filenames
+call read_tox_data("complete_data.zip", ierr, &
+                  gene_ids=loaded_gene_ids, gene_ids_file=actual_gene_file, &
+                  expression=loaded_expr, expression_file=actual_expr_file)
+\end{lstlisting}
+\end{itemize}
+
+\item \textbf{Non-Standard Archive Operations}
+\begin{itemize}
+
+\item \textbf{Create Custom ZIP Archive}
+\label{sec:custom_archive}
+
+Creates a ZIP archive from arbitrary files with key-based manifest for non-standard data.
+Call the \texttt{create\_zip\_archive} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{zip\_filename character(len=*)}: Output ZIP file name
+    \item \texttt{keys character(len=*)}: Array of keys for manifest entries
+    \item \texttt{filenames character(len=*)}: Array of file paths to include
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Create Custom Archive}]
+character(len=32) :: keys(3) = ['test_data_1', 'test_data_2', 'test_data_3']
+character(len=256) :: files(3) = ['test_data_1.bin', 'test_2.bin', 'test_3.bin']
+integer(int32) :: ierr
+
+call create_zip_archive("custom_data.zip", keys, files, ierr)
+\end{lstlisting}
+
+\item \textbf{Extract ZIP Archive}
+
+Extracts all files from a ZIP archive to the disk in the current directory and returns key-value pairs from the manifest.
+Call the \texttt{extract\_zip\_archive} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{zip\_filename character(len=*)}: Input ZIP file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{keys character(len=:), allocatable}: Array of keys from manifest
+    \item \texttt{filenames character(len=:), allocatable}: Array of extracted filenames
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Extract Custom Archive}]
+character(len=:), allocatable :: archive_keys(:), archive_files(:)
+integer(int32) :: ierr
+
+call extract_zip_archive("custom_data.zip", archive_keys, archive_files, ierr)
+\end{lstlisting}
+
+\textbf{Complete Archive Workflow:}
+\begin{lstlisting}[language=Fortran, caption={Complete Archive Management Workflow}]
+integer(int32) :: ierr
+
+! 1. Save processed data
+call save_tox_data("analysis_results.zip", ierr, &
+                  gene_ids=gene_ids, gene_ids_file="genes.bin", &
+                  expression=expr_data, expression_file="expression.bin", &
+                  family_centroids=centroids, family_centroids_file="centroids.bin")
+
+! 2. Later, read the data back
+character(len=:), allocatable :: loaded_genes(:)
+real(real64), allocatable :: loaded_expr(:,:), loaded_centroids(:,:)
+call read_tox_data("analysis_results.zip", ierr, &
+                  gene_ids=loaded_genes, &
+                  expression=loaded_expr, &
+                  family_centroids=loaded_centroids)
+
+! 3. Create custom archive with additional results
+character(len=32) :: custom_keys(2) = ['data_1', 'data_2']
+character(len=256) :: custom_files(2) = ['data_1_v2.bin', 'data_2_v1.bin']
+call create_zip_archive("full_analysis.zip", custom_keys, custom_files, ierr)
+
+! 4. Extract and verify custom archive
+character(len=:), allocatable :: extracted_keys(:), extracted_files(:)
+call extract_zip_archive("full_analysis.zip", extracted_keys, extracted_files, ierr)
+\end{lstlisting}
+
+\textbf{Key Features of Archive Operations:}
+\begin{itemize}
+    \item \textbf{Automatic Memory Management}: Arrays automatically allocated to correct sizes
+    \item \textbf{Flexible Data Selection}: Save/read any combination of data arrays
+    \item \textbf{Cross-Platform Compatibility}: Archives work across R, Python, and Fortran implementations
+    \item \textbf{Manifest-Based}: Automatic tracking of file contents and relationships
+    \item \textbf{Temporary File Handling}: Automatic cleanup of intermediate files
+    \item \textbf{Error Recovery}: Comprehensive error checking and reporting
+\end{itemize}
+
+\textbf{Archive Structure:}
+\begin{verbatim}
+archive.zip
+|- manifest.txt          (key=filename mappings)
+|- genes.bin            (gene IDs, if provided)
+|- expression.bin       (expression data, if provided)
+|- mapping.bin          (gene to family, if provided)
+|- families.bin         (family IDs, if provided)
+|- centroids.bin        (family centroids, if provided)
+|- shifts.bin           (shift vectors, if provided)
+\end{verbatim}
+\end{itemize}
+
+\item \textbf{Individual Array Save/Load Operations}
+\begin{itemize}
+\item \textbf{Save Gene IDs}
+
+Saves a gene IDs array to a binary file with automatic character length preservation.
+Call the \texttt{save\_gene\_ids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=*)}: Array of gene identifiers
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Gene IDs Array}]
+character(len=256) :: gene_ids(10000)
+integer(int32) :: ierr
+
+call save_gene_ids(gene_ids, 'gene_ids.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Gene IDs}
+
+Loads a gene IDs array from a binary file with automatic allocation and character length detection.
+Call the \texttt{load\_gene\_ids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{gene\_ids character(len=:), allocatable}: Loaded gene IDs array
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Gene IDs Array}]
+character(len=:), allocatable :: loaded_gene_ids(:)
+integer(int32) :: ierr
+
+call load_gene_ids(loaded_gene_ids, 'gene_ids.bin', ierr)
+! loaded_gene_ids automatically allocated with correct size and character length
+\end{lstlisting}
+
+\item \textbf{Save Expression Vectors}
+
+Saves an expression data matrix to a binary file.
+Call the \texttt{save\_expression\_vectors} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{expression real(real64)}: 2D expression data matrix
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Expression Data}]
+real(real64) :: expr_data(n_samples, n_genes)
+integer(int32) :: ierr
+
+call save_expression_vectors(expr_data, 'expression.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Expression Vectors}
+
+Loads an expression data matrix from a binary file with automatic allocation.
+Call the \texttt{load\_expression\_vectors} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{expression real(real64), allocatable}: Loaded expression data matrix
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Expression Data}]
+real(real64), allocatable :: loaded_expr(:,:)
+integer(int32) :: ierr
+
+call load_expression_vectors(loaded_expr, 'expression.bin', ierr)
+! loaded_expr automatically allocated as (samples x genes)
+\end{lstlisting}
+
+\item \textbf{Save Gene to Family Mapping}
+
+Saves a gene to family mapping array to a binary file.
+Call the \texttt{save\_gene\_to\_family} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping array
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Gene-Family Mapping}]
+integer(int32) :: gene_to_fam(n_genes)
+integer(int32) :: ierr
+
+call save_gene_to_family(gene_to_fam, 'gene_to_fam.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Gene to Family Mapping}
+
+Loads a gene to family mapping array from a binary file with automatic allocation.
+Call the \texttt{load\_gene\_to\_family} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{gene\_to\_family integer(int32), allocatable}: Loaded gene to family mapping
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Gene-Family Mapping}]
+integer(int32), allocatable :: loaded_gene_to_fam(:)
+integer(int32) :: ierr
+
+call load_gene_to_family(loaded_gene_to_fam, 'gene_to_fam.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Save Family IDs}
+
+Saves a family IDs array to a binary file with automatic character length preservation.
+Call the \texttt{save\_family\_ids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{family\_ids character(len=*)}: Array of family identifiers
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Family IDs}]
+character(len=256) :: family_ids(n_families)
+integer(int32) :: ierr
+
+call save_family_ids(family_ids, 'family_ids.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Family IDs}
+
+Loads a family IDs array from a binary file with automatic allocation and character length detection.
+Call the \texttt{load\_family\_ids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{family\_ids character(len=:), allocatable}: Loaded family IDs array
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Family IDs}]
+character(len=:), allocatable :: loaded_family_ids(:)
+integer(int32) :: ierr
+
+call load_family_ids(loaded_family_ids, 'family_ids.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Save Family Centroids}
+
+Saves a family centroids matrix to a binary file.
+Call the \texttt{save\_family\_centroids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{family\_centroids real(real64)}: 2D family centroids matrix
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Family Centroids}]
+real(real64) :: centroids(67, 15512)
+integer(int32) :: ierr
+
+call save_family_centroids(centroids, 'centroids.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Family Centroids}
+
+Loads a family centroids matrix from a binary file with automatic allocation.
+Call the \texttt{load\_family\_centroids} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{family\_centroids real(real64), allocatable}: Loaded family centroids matrix
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Family Centroids}]
+real(real64), allocatable :: loaded_centroids(:,:)
+integer(int32) :: ierr
+
+call load_family_centroids(loaded_centroids, 'centroids.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Save Shift Vectors}
+
+Saves a shift vectors matrix to a binary file.
+Call the \texttt{save\_shift\_vectors} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{shift\_vectors real(real64)}: 2D shift vectors matrix
+    \item \texttt{filename character(len=*)}: Output binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Save Shift Vectors}]
+real(real64) :: shift_vecs(134, 88327)  ! 2xsamples x genes
+integer(int32) :: ierr
+
+call save_shift_vectors(shift_vecs, 'shift_vectors.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Load Shift Vectors}
+
+Loads a shift vectors matrix from a binary file with automatic allocation.
+Call the \texttt{load\_shift\_vectors} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Input binary file name
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{shift\_vectors real(real64), allocatable}: Loaded shift vectors matrix
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Load Shift Vectors}]
+real(real64), allocatable :: loaded_shifts(:,:)
+integer(int32) :: ierr
+
+call load_shift_vectors(loaded_shifts, 'shift_vectors.bin', ierr)
+\end{lstlisting}
+
+\item \textbf{Get Array Metadata}
+
+Retrieves metadata (dimensions, character length) from a binary file without loading the entire array.
+Call the \texttt{get\_array\_metadata} subroutine with the following arguments:
+
+\textbf{Input arguments:}
+\begin{itemize}
+    \item \texttt{filename character(len=*)}: Binary file name to inspect
+    \item \texttt{max\_dims integer(int32)}: Maximum number of dimensions to return
+    \item \texttt{ierr integer(int32)}: Error code
+\end{itemize}
+\textbf{Output arguments:}
+\begin{itemize}
+    \item \texttt{dims integer(int32)}: Array dimensions
+    \item \texttt{ndims integer(int32)}: Number of dimensions
+    \item \texttt{char\_len integer(int32), optional}: Character length for string arrays
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Inspect Array File Metadata}]
+integer(int32) :: dims(5), ndims, char_len, ierr
+
+! Get metadata for gene IDs file
+call get_array_metadata('gene_ids.bin', dims, 5, ndims, ierr, char_len)
+if (is_ok(ierr)) then
+    print *, "Dimensions:", dims(1:ndims)
+    print *, "Character length:", char_len
+end if
+
+! Get metadata for expression data file
+call get_array_metadata('expression.bin', dims, 5, ndims, ierr)
+if (is_ok(ierr)) then
+    print *, "Expression data shape:", dims(1), "x", dims(2)
+end if
+\end{lstlisting}
+
+\textbf{Complete Individual Array Workflow:}
+\begin{lstlisting}[language=Fortran, caption={Individual Array Save/Load Workflow}]
+integer(int32) :: ierr
+
+! 1. Save individual arrays
+call save_gene_ids(gene_ids, 'gene_ids.bin', ierr)
+call save_expression_vectors(expr_data, 'expression.bin', ierr)
+call save_gene_to_family(gene_to_fam, 'mapping.bin', ierr)
+call save_family_ids(family_ids, 'families.bin', ierr)
+call save_family_centroids(centroids, 'centroids.bin', ierr)
+call save_shift_vectors(shift_vecs, 'shifts.bin', ierr)
+
+! 2. Check file metadata before loading
+integer(int32) :: dims(5), ndims, char_len
+call get_array_metadata('expression.bin', dims, 5, ndims, ierr)
+if (is_ok(ierr) .and. ndims == 2) then
+    print *, "Will load expression data:", dims(1), "samples x", dims(2), "genes"
+end if
+
+! 3. Load arrays (automatic allocation)
+character(len=:), allocatable :: loaded_genes(:)
+real(real64), allocatable :: loaded_expr(:,:)
+integer(int32), allocatable :: loaded_mapping(:)
+character(len=:), allocatable :: loaded_families(:)
+real(real64), allocatable :: loaded_centroids(:,:)
+real(real64), allocatable :: loaded_shifts(:,:)
+
+call load_gene_ids(loaded_genes, 'gene_ids.bin', ierr)
+call load_expression_vectors(loaded_expr, 'expression.bin', ierr)
+call load_gene_to_family(loaded_mapping, 'mapping.bin', ierr)
+call load_family_ids(loaded_families, 'families.bin', ierr)
+call load_family_centroids(loaded_centroids, 'centroids.bin', ierr)
+call load_shift_vectors(loaded_shifts, 'shifts.bin', ierr)
+
+! 4. Verify loaded data
+print *, "Loaded", size(loaded_genes), "genes"
+print *, "Loaded expression data:", size(loaded_expr, 1), "x", size(loaded_expr, 2)
+print *, "Loaded", size(loaded_families), "families"
+\end{lstlisting}
+
+\textbf{Manual Archive Creation with Individual Arrays:}
+\begin{lstlisting}[language=Fortran, caption={Manual Archive Creation}]
+integer(int32) :: ierr
+
+! 1. Save arrays to individual files
+call save_gene_ids(gene_ids, 'temp_genes.bin', ierr)
+call save_expression_vectors(expr_data, 'temp_expr.bin', ierr)
+
+! 2. Create custom archive with specific keys
+character(len=32) :: keys(2) = ['gene_data', 'expression_data']
+character(len=256) :: files(2) = ['temp_genes.bin', 'temp_expr.bin']
+call create_zip_archive('manual_archive.zip', keys, files, ierr)
+
+! 3. Clean up temporary files (optional)
+call delete_file('temp_genes.bin', ierr)
+call delete_file('temp_expr.bin', ierr)
+\end{lstlisting}
+
+\textbf{Key Features of Individual Array Operations:}
+\begin{itemize}
+    \item \textbf{Automatic Allocation}: Output arrays automatically allocated to correct sizes
+    \item \textbf{Character Length Preservation}: String arrays maintain original character lengths
+    \item \textbf{Metadata Inspection}: Check array properties without loading data
+    \item \textbf{Binary Format}: Efficient storage for large datasets
+    \item \textbf{Error Handling}: Comprehensive error checking for file operations
+    \item \textbf{Memory Efficient}: Can process arrays larger than available memory
+\end{itemize}
+
+\textbf{Performance Considerations:}
+\begin{itemize}
+    \item Binary format provides fast I/O for large arrays
+    \item Automatic dimension detection eliminates manual size tracking
+    \item Character length preservation avoids fixed-width string limitations
+    \item Suitable for datasets with millions of genes and thousands of samples
+\end{itemize}
+\end{itemize}
+\end{enumerate}
+
+In a pure Fortran application, the user follows a two-step process to construct the Data Table.
     \item \textbf{Read CSV to Strings:} First, call the \texttt{read\_csv\_to\_strings} subroutine. This reads the entire CSV file into a 2D allocatable array of characters, which serves as the in-memory source for all subsequent operations.
     \item \textbf{Extract Typed Columns:} Next, call the specific \texttt{read\_*\_columns} subroutines (e.g., \texttt{read\_integer\_columns}, \texttt{read\_real\_columns}) to parse columns from the string array into new, strongly-typed 2D arrays.
 
