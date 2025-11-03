@@ -7,7 +7,8 @@ contains
   !> Complete normalization pipeline for gene expression data.
   !! Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
   !! Final result is in buf_log. If fold change is needed, call calc_fchange separately.
-  pure subroutine normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+  subroutine normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, &
+    k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr)
 
     !| Number of genes (rows)
     integer(int32), intent(in) :: n_genes
@@ -41,6 +42,24 @@ contains
     integer(int32), intent(in) :: group_s(n_grps)
     !| Number of columns per replicate group (n_grps)
     integer(int32), intent(in) :: group_c(n_grps)
+    ! Add new workspace arguments for KNN smoothing
+    integer(int32), intent(in) :: k_neighbors
+    real(real64), intent(out) :: median_coords(1, n_genes)
+    real(real64), intent(out) :: std_values(1, n_genes)
+    real(real64), intent(out) :: smoothed_std(1, n_genes)
+    integer(int32), intent(out) :: kd_indices(n_genes)
+    integer(int32), intent(out) :: dimension_order(1)
+    integer(int32), intent(inout) :: neighbors(k_neighbors)
+    real(real64), intent(inout) :: distances(k_neighbors)
+    integer(int32), intent(inout) :: workspace(n_genes)
+    real(real64), intent(inout) :: value_buffer(n_genes)
+    integer(int32), intent(inout) :: permutation_knn(n_genes)
+    integer(int32), intent(inout) :: left_stack_knn(n_genes)
+    integer(int32), intent(inout) :: right_stack_knn(n_genes)
+    real(real64), intent(inout) :: gene_values(n_tissues)
+    integer(int32), intent(inout) :: bst_indices(n_tissues)
+    integer(int32), intent(inout) :: bst_left(n_tissues)
+    integer(int32), intent(inout) :: bst_right(n_tissues)
     !| Error code
     integer(int32), intent(out) :: ierr
 
@@ -51,8 +70,16 @@ contains
       return
     end if
 
-    ! Step 1: Normalize per-gene by std dev
-    call normalize_by_std_dev(n_genes, n_tissues, input_matrix, buf_stddev, ierr)
+    ! Error handling
+    call set_ok(ierr)
+    if (n_genes <= 0 .or. n_tissues <= 0 .or. n_grps <= 0 .or. max_stack <= 0) then
+      call set_err(ierr, ERR_EMPTY_INPUT)
+      return
+    end if
+
+    ! Step 1: Normalize per-gene by KNN-smoothed std dev
+    call normalize_by_knn_smoothed_std(n_genes, n_tissues, input_matrix, buf_stddev, &
+      k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr)
     if (is_err(ierr)) return
 
     ! Step 2: Quantile normalization
@@ -112,6 +139,153 @@ contains
       end do
 
   end subroutine normalize_by_std_dev
+
+  !> Normalizes each gene's expression using KNN-smoothed standard deviation.
+  !| This routine computes the median and empirical std dev for each gene,
+  !| then uses KNN smoothing to smooth the std devs based on median neighbors.
+  !| The median coordinates remain fixed during smoothing.
+  subroutine normalize_by_knn_smoothed_std(n_genes, n_tissues, input_matrix, output_matrix, &
+                                          k_neighbors, median_coords, std_values, smoothed_std, &
+                                          kd_indices, dimension_order, neighbors, distances, &
+                                          workspace, value_buffer, permutation, left_stack, right_stack, &
+                                          gene_values, bst_indices, bst_left, bst_right, ierr)
+      use knn_smoothing, only: smooth_vectors_gaussian_adaptive
+      use binary_search_tree, only: build_bst_index, get_sorted_value
+      implicit none
+
+      !| Number of genes (rows)
+      integer(int32), intent(in) :: n_genes
+      !| Number of tissues (columns)  
+      integer(int32), intent(in) :: n_tissues
+      !| Flattened input matrix of gene expression values (column-major)
+      real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
+      !| Output normalized matrix (same shape as input)
+      real(real64), intent(out) :: output_matrix(n_genes * n_tissues)
+      !| Number of neighbors for KNN smoothing
+      integer(int32), intent(in) :: k_neighbors
+      
+      ! Workspace arrays for KNN (input/output)
+      !| Median expression per gene (coordinates for KNN) - fixed during smoothing
+      real(real64), intent(out) :: median_coords(1, n_genes)
+      !| Empirical std dev per gene (values to be smoothed)
+      real(real64), intent(out) :: std_values(1, n_genes)
+      !| KNN-smoothed std dev values (result of smoothing)
+      real(real64), intent(out) :: smoothed_std(1, n_genes)
+      
+      ! Buffers for k-d tree and smoothing (required by KNN algorithm)
+      integer(int32), intent(out) :: kd_indices(n_genes)
+      integer(int32), intent(out) :: dimension_order(1)
+      integer(int32), intent(inout) :: neighbors(k_neighbors)
+      real(real64), intent(inout) :: distances(k_neighbors)
+      integer(int32), intent(inout) :: workspace(n_genes)
+      real(real64), intent(inout) :: value_buffer(n_genes)
+      integer(int32), intent(inout) :: permutation(n_genes)
+      integer(int32), intent(inout) :: left_stack(n_genes)
+      integer(int32), intent(inout) :: right_stack(n_genes)
+      
+      ! Additional workspace arrays for BST median calculation (pre-allocated by caller)
+      !| Temporary array for gene values across tissues (n_tissues)
+      real(real64), intent(inout) :: gene_values(n_tissues)
+      !| BST sorted indices for median calculation (n_tissues)
+      integer(int32), intent(inout) :: bst_indices(n_tissues)
+      !| BST left stack for sorting (n_tissues)
+      integer(int32), intent(inout) :: bst_left(n_tissues)
+      !| BST right stack for sorting (n_tissues)
+      integer(int32), intent(inout) :: bst_right(n_tissues)
+      
+      !| Error code
+      integer(int32), intent(out) :: ierr
+
+      ! Local variables
+      integer(int32) :: i_gene, i_tissue, median_idx, bst_ierr
+      real(real64) :: gene_median, gene_std, temp_sum, median1, median2
+
+      ! Error handling
+      call set_ok(ierr)
+      if (n_genes <= 0 .or. n_tissues <= 0 .or. k_neighbors <= 0) then
+        call set_err(ierr, ERR_INVALID_INPUT)
+        return
+      end if
+      
+      if (k_neighbors > n_genes) then
+        call set_err(ierr, ERR_INVALID_INPUT)
+        return
+      end if
+
+      ! === STEP 1: Calculate median and empirical std dev for each gene ===
+      ! Note: All workspace arrays (gene_values, bst_indices, bst_left, bst_right) 
+      ! are pre-allocated by caller for maximum efficiency
+      do i_gene = 1, n_genes
+          ! Extract gene values across tissues
+          do i_tissue = 1, n_tissues
+              gene_values(i_tissue) = input_matrix((i_tissue-1)*n_genes + i_gene)
+          end do
+          
+          ! Calculate median using BST (reuse existing infrastructure)
+          call build_bst_index(gene_values, n_tissues, bst_indices, bst_left, bst_right, bst_ierr)
+          
+          if (bst_ierr /= 0) then
+              call set_err(ierr, bst_ierr)
+              return
+          end if
+          
+          ! Calculate median based on array size (odd/even)
+          if (mod(n_tissues, 2) == 1) then
+              ! Odd number: median is middle element
+              median_idx = (n_tissues + 1) / 2
+              gene_median = get_sorted_value(gene_values, bst_indices, median_idx, bst_ierr)
+          else
+              ! Even number: median is average of two middle elements
+              median_idx = n_tissues / 2
+              median1 = get_sorted_value(gene_values, bst_indices, median_idx, bst_ierr)
+              median2 = get_sorted_value(gene_values, bst_indices, median_idx + 1, bst_ierr)
+              gene_median = (median1 + median2) * 0.5_real64
+          end if
+          
+          if (bst_ierr /= 0) then
+              call set_err(ierr, bst_ierr)
+              return
+          end if
+          
+          ! Calculate empirical standard deviation using proper median
+          temp_sum = 0.0_real64
+          do i_tissue = 1, n_tissues
+              temp_sum = temp_sum + (gene_values(i_tissue) - gene_median)**2
+          end do
+          gene_std = sqrt(temp_sum / real(n_tissues, real64))
+          
+          ! Store coordinates (median) and values (std dev) for KNN
+          median_coords(1, i_gene) = gene_median
+          std_values(1, i_gene) = gene_std
+      end do
+
+      ! === STEP 2: Apply KNN smoothing to std dev values based on median coordinates ===
+      ! median_coords = X coordinates (fixed during smoothing)
+      ! std_values = Y values (to be smoothed)
+      ! smoothed_std = result after KNN smoothing
+      
+      call smooth_vectors_gaussian_adaptive(median_coords, std_values, smoothed_std, &
+                                           1, 1, n_genes, k_neighbors, &
+                                           kd_indices, dimension_order, neighbors, distances, &
+                                           workspace, value_buffer, permutation, left_stack, right_stack, ierr)
+      
+      if (is_err(ierr)) return
+
+      ! === STEP 3: Normalize each gene using the KNN-smoothed std dev ===
+      do i_gene = 1, n_genes
+          gene_std = smoothed_std(1, i_gene)
+          
+          ! Avoid division by zero
+          if (gene_std <= 1.0e-12_real64) gene_std = 1.0_real64
+          
+          ! Normalize gene across all tissues using smoothed std dev
+          do i_tissue = 1, n_tissues
+              output_matrix((i_tissue-1)*n_genes + i_gene) = &
+                  input_matrix((i_tissue-1)*n_genes + i_gene) / gene_std
+          end do
+      end do
+
+  end subroutine normalize_by_knn_smoothed_std
 
   !> Quantile normalization of a gene expression matrix (F42-compliant).
   !| Computes average expression per rank across tissues.
@@ -366,6 +540,52 @@ subroutine normalize_by_std_dev_r(n_genes, n_tissues, input_matrix, output_matri
   
 end subroutine normalize_by_std_dev_r
 
+!> R/Fortran wrapper for KNN-smoothed std dev normalization.
+!| Provides an interface for R (.Fortran) to call the KNN-smoothed normalization routine.
+subroutine normalize_by_knn_smoothed_std_r(n_genes, n_tissues, input_matrix, output_matrix, &
+                                          k_neighbors, median_coords, std_values, smoothed_std, &
+                                          kd_indices, dimension_order, neighbors, distances, &
+                                          workspace, value_buffer, permutation, left_stack, right_stack, &
+                                          gene_values, bst_indices, bst_left, bst_right, ierr)
+  use tox_normalization
+  !| Number of genes (rows)
+  integer(int32), intent(in) :: n_genes
+  !| Number of tissues (columns)
+  integer(int32), intent(in) :: n_tissues
+  !| Input matrix (n_genes x n_tissues)
+  real(real64), intent(in)  :: input_matrix(n_genes, n_tissues)
+  !| Output normalized matrix (same shape as input)
+  real(real64), intent(out) :: output_matrix(n_genes, n_tissues)
+  !| Number of neighbors for KNN smoothing
+  integer(int32), intent(in) :: k_neighbors
+  
+  ! Workspace arrays (R will pass these pre-allocated)
+  real(real64), intent(out) :: median_coords(1, n_genes)
+  real(real64), intent(out) :: std_values(1, n_genes)
+  real(real64), intent(out) :: smoothed_std(1, n_genes)
+  integer(int32), intent(out) :: kd_indices(n_genes)
+  integer(int32), intent(out) :: dimension_order(1)
+  integer(int32), intent(inout) :: neighbors(k_neighbors)
+  real(real64), intent(inout) :: distances(k_neighbors)
+  integer(int32), intent(inout) :: workspace(n_genes)
+  real(real64), intent(inout) :: value_buffer(n_genes)
+  integer(int32), intent(inout) :: permutation(n_genes)
+  integer(int32), intent(inout) :: left_stack(n_genes)
+  integer(int32), intent(inout) :: right_stack(n_genes)
+  real(real64), intent(inout) :: gene_values(n_tissues)
+  integer(int32), intent(inout) :: bst_indices(n_tissues)
+  integer(int32), intent(inout) :: bst_left(n_tissues)
+  integer(int32), intent(inout) :: bst_right(n_tissues)
+  integer(int32), intent(out) :: ierr
+  
+  call normalize_by_knn_smoothed_std(n_genes, n_tissues, input_matrix, output_matrix, &
+                                    k_neighbors, median_coords, std_values, smoothed_std, &
+                                    kd_indices, dimension_order, neighbors, distances, &
+                                    workspace, value_buffer, permutation, left_stack, right_stack, &
+                                    gene_values, bst_indices, bst_left, bst_right, ierr)
+  
+end subroutine normalize_by_knn_smoothed_std_r
+
 !> C/Python wrapper for normalization by standard deviation.
 !| Provides a C/Python-compatible interface to the normalization routine.
 subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="normalize_by_std_dev_c")
@@ -385,6 +605,54 @@ subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matri
   call normalize_by_std_dev(n_genes, n_tissues, input_matrix, output_matrix, ierr)
 
 end subroutine normalize_by_std_dev_c
+
+!> C/Python wrapper for KNN-smoothed std dev normalization.
+!| Provides a C/Python-compatible interface to the KNN-smoothed normalization routine.
+subroutine normalize_by_knn_smoothed_std_c(n_genes, n_tissues, input_matrix, output_matrix, &
+                                          k_neighbors, median_coords, std_values, smoothed_std, &
+                                          kd_indices, dimension_order, neighbors, distances, &
+                                          workspace, value_buffer, permutation, left_stack, right_stack, &
+                                          gene_values, bst_indices, bst_left, bst_right, ierr) &
+                                          bind(C, name="normalize_by_knn_smoothed_std_c")
+  use iso_c_binding, only : c_int, c_double, c_f_pointer, c_loc
+  use tox_normalization
+  !| Number of genes (rows)
+  integer(c_int), value :: n_genes
+  !| Number of tissues (columns)
+  integer(c_int), value :: n_tissues
+  !| Number of neighbors for KNN smoothing
+  integer(c_int), value :: k_neighbors
+  !| Input matrix (flattened, n_genes * n_tissues)
+  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
+  !| Output normalized matrix (flattened, same shape as input)
+  real(c_double), intent(out), target :: output_matrix(n_genes * n_tissues)
+  
+  ! Workspace arrays (C will pass these pre-allocated)
+  real(c_double), intent(out), target :: median_coords(1 * n_genes)
+  real(c_double), intent(out), target :: std_values(1 * n_genes)
+  real(c_double), intent(out), target :: smoothed_std(1 * n_genes)
+  integer(c_int), intent(out), target :: kd_indices(n_genes)
+  integer(c_int), intent(out), target :: dimension_order(1)
+  integer(c_int), intent(inout), target :: neighbors(k_neighbors)
+  real(c_double), intent(inout), target :: distances(k_neighbors)
+  integer(c_int), intent(inout), target :: workspace(n_genes)
+  real(c_double), intent(inout), target :: value_buffer(n_genes)
+  integer(c_int), intent(inout), target :: permutation(n_genes)
+  integer(c_int), intent(inout), target :: left_stack(n_genes)
+  integer(c_int), intent(inout), target :: right_stack(n_genes)
+  real(c_double), intent(inout), target :: gene_values(n_tissues)
+  integer(c_int), intent(inout), target :: bst_indices(n_tissues)
+  integer(c_int), intent(inout), target :: bst_left(n_tissues)
+  integer(c_int), intent(inout), target :: bst_right(n_tissues)
+  integer(c_int), intent(out) :: ierr
+
+  call normalize_by_knn_smoothed_std(n_genes, n_tissues, input_matrix, output_matrix, &
+                                    k_neighbors, median_coords, std_values, smoothed_std, &
+                                    kd_indices, dimension_order, neighbors, distances, &
+                                    workspace, value_buffer, permutation, left_stack, right_stack, &
+                                    gene_values, bst_indices, bst_left, bst_right, ierr)
+
+end subroutine normalize_by_knn_smoothed_std_c
 
 
 !> R/Fortran wrapper for quantile normalization.
@@ -598,44 +866,46 @@ end subroutine calc_fchange_c
 !| Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
 !| Final result is in buf_log. If fold change is needed, call calc_fchange separately.
 
-subroutine normalization_pipeline_r(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+subroutine normalization_pipeline_r(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, &
+    k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr)
   use tox_normalization
-  !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
-  !| Number of tissues (columns)
   integer(int32), intent(in) :: n_tissues
-  !| Number of replicate groups
   integer(int32), intent(in) :: n_grps
-  !| Flattened input matrix (n_genes * n_tissues), column-major
-  real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
-  !| Buffer for std dev normalization (n_genes * n_tissues)
-  real(real64), intent(out) :: buf_stddev(n_genes * n_tissues)
-  !| Buffer for quantile normalization (n_genes * n_tissues)
-  real(real64), intent(out) :: buf_quant(n_genes * n_tissues)
-  !| Buffer for replicate averaging (n_genes * n_grps)
-  real(real64), intent(out) :: buf_avg(n_genes * n_grps)
-  !| Buffer for log2(x+1) transformation (n_genes * n_grps)
-  real(real64), intent(out) :: buf_log(n_genes * n_grps)
-  !| Temporary column vector for sorting (n_genes)
-  real(real64), intent(out) :: temp_col(n_genes)
-  !| Buffer for rank means (n_genes)
-  real(real64), intent(out) :: rank_means(n_genes)
-  !| Permutation vector for sorting (n_genes)
-  integer(int32), intent(out) :: perm(n_genes)
-  !| Stack size for quicksort
   integer(int32), intent(in) :: max_stack
-  !| Left stack for quicksort (max_stack)
+  real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
+  real(real64), intent(out) :: buf_stddev(n_genes * n_tissues)
+  real(real64), intent(out) :: buf_quant(n_genes * n_tissues)
+  real(real64), intent(out) :: buf_avg(n_genes * n_grps)
+  real(real64), intent(out) :: buf_log(n_genes * n_grps)
+  real(real64), intent(out) :: temp_col(n_genes)
+  real(real64), intent(out) :: rank_means(n_genes)
+  integer(int32), intent(out) :: perm(n_genes)
   integer(int32), intent(out) :: stack_left(max_stack)
-  !| Right stack for quicksort (max_stack)
   integer(int32), intent(out) :: stack_right(max_stack)
-  !| Start column index for each replicate group (n_grps)
   integer(int32), intent(in) :: group_s(n_grps)
-  !| Number of columns per replicate group (n_grps)
   integer(int32), intent(in) :: group_c(n_grps)
-  !| Error code
+  integer(int32), intent(in) :: k_neighbors
+  real(real64), intent(out) :: median_coords(1, n_genes)
+  real(real64), intent(out) :: std_values(1, n_genes)
+  real(real64), intent(out) :: smoothed_std(1, n_genes)
+  integer(int32), intent(out) :: kd_indices(n_genes)
+  integer(int32), intent(out) :: dimension_order(1)
+  integer(int32), intent(inout) :: neighbors(k_neighbors)
+  real(real64), intent(inout) :: distances(k_neighbors)
+  integer(int32), intent(inout) :: workspace(n_genes)
+  real(real64), intent(inout) :: value_buffer(n_genes)
+  integer(int32), intent(inout) :: permutation_knn(n_genes)
+  integer(int32), intent(inout) :: left_stack_knn(n_genes)
+  integer(int32), intent(inout) :: right_stack_knn(n_genes)
+  real(real64), intent(inout) :: gene_values(n_tissues)
+  integer(int32), intent(inout) :: bst_indices(n_tissues)
+  integer(int32), intent(inout) :: bst_left(n_tissues)
+  integer(int32), intent(inout) :: bst_right(n_tissues)
   integer(int32), intent(out) :: ierr
 
-  call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+  call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, &
+    k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr)
 
 end subroutine normalization_pipeline_r
 
@@ -644,43 +914,45 @@ end subroutine normalization_pipeline_r
 !| Suitable for use with ctypes. Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
 !| Final result is in buf_log. If fold change is needed, call calc_fchange separately.
 
-subroutine normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr) bind(C, name="normalization_pipeline_c")
+subroutine normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, &
+    k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr) bind(C, name="normalization_pipeline_c")
   use iso_c_binding, only : c_int, c_double, c_bool
   use tox_normalization
-  !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_genes
-  !| Number of tissues (columns)
   integer(c_int), intent(in), value :: n_tissues
-  !| Number of replicate groups
   integer(c_int), intent(in), value :: n_grps
-  !| Flattened input matrix (n_genes * n_tissues), column-major
-  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
-  !| Buffer for std dev normalization (n_genes * n_tissues)
-  real(c_double), intent(out), target :: buf_stddev(n_genes * n_tissues)
-  !| Buffer for quantile normalization (n_genes * n_tissues)
-  real(c_double), intent(out), target :: buf_quant(n_genes * n_tissues)
-  !| Buffer for replicate averaging (n_genes * n_grps)
-  real(c_double), intent(out), target :: buf_avg(n_genes * n_grps)
-  !| Buffer for log2(x+1) transformation (n_genes * n_grps)
-  real(c_double), intent(out), target :: buf_log(n_genes * n_grps)
-  !| Temporary column vector for sorting (n_genes)
-  real(c_double), intent(out), target :: temp_col(n_genes)
-  !| Buffer for rank means (n_genes)
-  real(c_double), intent(out), target :: rank_means(n_genes)
-  !| Permutation vector for sorting (n_genes)
-  integer(c_int), intent(out), target :: perm(n_genes)
-  !| Stack size for quicksort
   integer(c_int), intent(in), value :: max_stack
-  !| Left stack for quicksort (max_stack)
+  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
+  real(c_double), intent(out), target :: buf_stddev(n_genes * n_tissues)
+  real(c_double), intent(out), target :: buf_quant(n_genes * n_tissues)
+  real(c_double), intent(out), target :: buf_avg(n_genes * n_grps)
+  real(c_double), intent(out), target :: buf_log(n_genes * n_grps)
+  real(c_double), intent(out), target :: temp_col(n_genes)
+  real(c_double), intent(out), target :: rank_means(n_genes)
+  integer(c_int), intent(out), target :: perm(n_genes)
   integer(c_int), intent(out), target :: stack_left(max_stack)
-  !| Right stack for quicksort (max_stack)
   integer(c_int), intent(out), target :: stack_right(max_stack)
-  !| Start column index for each replicate group (n_grps)
   integer(c_int), intent(in), target :: group_s(n_grps)
-  !| Number of columns per replicate group (n_grps)
   integer(c_int), intent(in), target :: group_c(n_grps)
-  !| Error code
+  integer(c_int), intent(in), value :: k_neighbors
+  real(c_double), intent(out), target :: median_coords(1 * n_genes)
+  real(c_double), intent(out), target :: std_values(1 * n_genes)
+  real(c_double), intent(out), target :: smoothed_std(1 * n_genes)
+  integer(c_int), intent(out), target :: kd_indices(n_genes)
+  integer(c_int), intent(out), target :: dimension_order(1)
+  integer(c_int), intent(inout), target :: neighbors(k_neighbors)
+  real(c_double), intent(inout), target :: distances(k_neighbors)
+  integer(c_int), intent(inout), target :: workspace(n_genes)
+  real(c_double), intent(inout), target :: value_buffer(n_genes)
+  integer(c_int), intent(inout), target :: permutation_knn(n_genes)
+  integer(c_int), intent(inout), target :: left_stack_knn(n_genes)
+  integer(c_int), intent(inout), target :: right_stack_knn(n_genes)
+  real(c_double), intent(inout), target :: gene_values(n_tissues)
+  integer(c_int), intent(inout), target :: bst_indices(n_tissues)
+  integer(c_int), intent(inout), target :: bst_left(n_tissues)
+  integer(c_int), intent(inout), target :: bst_right(n_tissues)
   integer(c_int), intent(out) :: ierr
 
-  call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+  call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, &
+    k_neighbors, median_coords, std_values, smoothed_std, kd_indices, dimension_order, neighbors, distances, workspace, value_buffer, permutation_knn, left_stack_knn, right_stack_knn, gene_values, bst_indices, bst_left, bst_right, ierr)
 end subroutine normalization_pipeline_c

@@ -424,8 +424,6 @@ tox_quantile_normalization <- function(input_matrix) {
   temp_col <- numeric(n_genes)
   rank_means <- numeric(n_genes)
   perm <- integer(n_genes)
-
-  # Estimate maximum stack size (per pseudocode: log2(n) + 10)
   max_stack <- as.integer(ceiling(log2(n_genes)) + 10)
   stack_left <- integer(max_stack)
   stack_right <- integer(max_stack)
@@ -599,7 +597,7 @@ tox_calculate_tissue_averages <- function(df) {
   output_matrix <- matrix(result$output_vector, nrow = n_genes, ncol = n_groups)
   colnames(output_matrix) <- unique_groups
   rownames(output_matrix) <- rownames(df)
-  return(as.data.frame(output_matrix))
+  return(output_matrix)
 }
 
 #' Prepare control and condition column indices based on naming patterns
@@ -766,41 +764,13 @@ tox_diagnose_data_quality <- function(input_matrix, show_details = TRUE) {
   )
   
   if (show_details) {
-    cat("=== DATA QUALITY DIAGNOSTICS ===\n")
-    cat("Matrix dimensions:", n_genes, "genes x", n_tissues, "tissues (", total_values, "total values)\n\n")
-    
-    cat("Problem summary:\n")
-    cat("  - NA values:", na_count, "(", round(100*na_count/total_values, 2), "%)\n")
-    cat("  - Infinite values:", inf_count, "(", round(100*inf_count/total_values, 2), "%)\n")
-    cat("  - NaN values:", nan_count, "(", round(100*nan_count/total_values, 2), "%)\n")
-    cat("  - Zero values:", zero_count, "(", round(100*zero_count/total_values, 2), "%)\n")
-    cat("  - Negative values:", negative_count, "(", round(100*negative_count/total_values, 2), "%)\n\n")
-    
+
     cat("Problematic genes:\n")
     cat("  - Genes with NA:", length(genes_with_na), "\n")
     cat("  - Genes with Inf:", length(genes_with_inf), "\n") 
     cat("  - Genes with NaN:", length(genes_with_nan), "\n")
     cat("  - Genes all zero:", length(genes_all_zero), "\n\n")
     
-    if (na_count == 0 && inf_count == 0 && nan_count == 0) {
-      cat("Data range:\n")
-      cat("  - Min value:", min_val, "\n")
-      cat("  - Max value:", max_val, "\n")
-      cat("  - Mean value:", mean_val, "\n\n")
-    }
-    
-    # Show examples of problematic genes
-    if (length(genes_with_na) > 0) {
-      cat("First few genes with NA values:\n")
-      print(head(genes_with_na, 5))
-      cat("\n")
-    }
-    
-    if (length(genes_with_inf) > 0) {
-      cat("First few genes with infinite values:\n")
-      print(head(genes_with_inf, 5))
-      cat("\n")
-    }
   }
   
   return(invisible(diagnostics))
@@ -963,44 +933,111 @@ tox_clean_data_for_normalization <- function(df_matrix,
 #' @param group_s Integer vector: start column index for each replicate group (1-based)
 #' @param group_c Integer vector: number of columns per replicate group
 #' @return Numeric matrix: log2(x+1) normalized expression
-tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
+tox_normalization_pipeline <- function(input_matrix, group_s, group_c, k_neighbors = 3L) {
   n_genes <- nrow(input_matrix)
   n_tissues <- ncol(input_matrix)
-  n_grps <- length(group_s)
 
-  # Flatten input matrix (column-major)
-  input_vector <- as.numeric(as.vector(input_matrix))
+  tissue_groups <- as.character(sapply(colnames(input_matrix), tox_parse_tissue_group))
+  # print(table(tissue_groups))
+  unique_groups <- unique(tissue_groups)
+  n_groups <- length(unique_groups)
+  group_starts <- integer(n_groups)
+  group_counts <- integer(n_groups)
+  df_sorted <- input_matrix[, order(tissue_groups)]
+  # print(head(df_sorted))
+  sorted_tissue_groups <- tissue_groups[order(tissue_groups)]
+  current_group <- as.character(sorted_tissue_groups[1])
+  group_starts[1] <- 1
+  group_counts[1] <- 1
+  group_idx <- 1
+  for (i in 2:length(sorted_tissue_groups)) {
+    if (!is.na(sorted_tissue_groups[i]) && !is.na(current_group) && as.character(sorted_tissue_groups[i]) == as.character(current_group)) {
+      group_counts[group_idx] <- group_counts[group_idx] + 1
+    } else {
+      group_idx <- group_idx + 1
+      group_starts[group_idx] <- i
+      group_counts[group_idx] <- 1
+      current_group <- as.character(sorted_tissue_groups[i])
+    }
+  }
+  # input_vector <- as.numeric(as.vector(input_matrix))
+  input_vector <- as.numeric(as.vector(as.matrix(df_sorted)))
+  # print(head(input_vector))
+  # print(group_starts)
+  # print(group_counts)
+  # print(sum(group_counts))
+  # print(n_tissues)
+  # print(ncol(df_sorted))
+  # print(sorted_tissue_groups)
+
+  max_stack <- as.integer(ceiling(log2(n_genes)) + 10)
+
+  # Buffers for each step
   buf_stddev <- numeric(n_genes * n_tissues)
   buf_quant <- numeric(n_genes * n_tissues)
-  buf_avg <- numeric(n_genes * n_grps)
-  buf_log <- numeric(n_genes * n_grps)
+  buf_avg <- numeric(n_genes * n_groups)
+  buf_log <- numeric(n_genes * n_groups)
   temp_col <- numeric(n_genes)
   rank_means <- numeric(n_genes)
   perm <- integer(n_genes)
-  max_stack <- as.integer(ceiling(log2(n_genes)) + 10)
   stack_left <- integer(max_stack)
   stack_right <- integer(max_stack)
-  storage.mode(group_s) <- "integer"
-  storage.mode(group_c) <- "integer"
+
+  # Workspace for KNN smoothing and BST
+  median_coords <- numeric(n_genes)
+  std_values <- numeric(n_genes)
+  smoothed_std <- numeric(n_genes)
+  kd_indices <- integer(n_genes)
+  dimension_order <- integer(1)
+  neighbors <- integer(k_neighbors)
+  distances <- numeric(k_neighbors)
+  workspace <- integer(n_genes)
+  value_buffer <- numeric(n_genes)
+  permutation_knn <- integer(n_genes)
+  left_stack_knn <- integer(n_genes)
+  right_stack_knn <- integer(n_genes)
+  gene_values <- numeric(n_tissues)
+  bst_indices <- integer(n_tissues)
+  bst_left <- integer(n_tissues)
+  bst_right <- integer(n_tissues)
+
   ierr <- as.integer(0)
+
   result <- .Fortran("normalization_pipeline_r",
-      n_genes = as.integer(n_genes),
-      n_tissues = as.integer(n_tissues),
-      input_vector = input_vector,
-      buf_stddev = buf_stddev,
-      buf_quant = buf_quant,
-      buf_avg = buf_avg,
-      buf_log = buf_log,
-      temp_col = temp_col,
-      rank_means = rank_means,
-      perm = perm,
-      stack_left = stack_left,
-      stack_right = stack_right,
-      max_stack = as.integer(max_stack),
-      group_s = group_s,
-      group_c = group_c,
-      n_grps = as.integer(n_grps),
-      ierr = ierr
+    n_genes = as.integer(n_genes),
+    n_tissues = as.integer(n_tissues),
+    input_matrix = input_vector,
+    buf_stddev = buf_stddev,
+    buf_quant = buf_quant,
+    buf_avg = buf_avg,
+    buf_log = buf_log,
+    temp_col = temp_col,
+    rank_means = rank_means,
+    perm = perm,
+    stack_left = stack_left,
+    stack_right = stack_right,
+    max_stack = as.integer(max_stack),
+    group_s = as.integer(group_starts),
+    group_c = as.integer(group_counts),
+    n_groups = as.integer(n_groups),
+    k_neighbors = as.integer(k_neighbors),
+    median_coords = median_coords,
+    std_values = std_values,
+    smoothed_std = smoothed_std,
+    kd_indices = kd_indices,
+    dimension_order = dimension_order,
+    neighbors = neighbors,
+    distances = distances,
+    workspace = workspace,
+    value_buffer = value_buffer,
+    permutation_knn = permutation_knn,
+    left_stack_knn = left_stack_knn,
+    right_stack_knn = right_stack_knn,
+    gene_values = gene_values,
+    bst_indices = bst_indices,
+    bst_left = bst_left,
+    bst_right = bst_right,
+    ierr = ierr
   )
   check_err_code(result$ierr)
   return(matrix(result$buf_log, nrow = n_genes, ncol = n_grps))
@@ -1277,7 +1314,7 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
   
   return(list(
     rdi = result$rdi,
-    sorted_rdi = result$sorted_rdi
+    sorted_rdi = result$sorted_rdi[result$perm]
   ))
 }
 
@@ -1302,6 +1339,7 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
     sorted_rdi <- c(sorted_rdi, rep(0, n_genes - length(sorted_rdi)))
   }
   
+  # print(sorted_rdi)
   # Prepare output arrays
   is_outlier <- logical(n_genes)
   threshold <- double(1)
@@ -1494,6 +1532,7 @@ tox_euclidean_distance <- function(vec1, vec2) {
   return(fortran_result$result)
 }
 
+
 #' Calculate distances from genes to their family centroids
 #' 
 #' Computes the Euclidean distance from each gene to its corresponding family centroid.
@@ -1573,15 +1612,16 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 #' @param family_centroids: Matrix where each column is a family centroid vector (n_axes x n_families)
 #' @param gene_to_centroid: Array mapping each gene to its corresponding family centroid ID in family_centroids (length n_vectors)
 #' 
-#' @return shift_vectors: The computed shift vectors for each gene expression vector
+#' @return List containing:
+#'   \item{shift_vectors}{The computed shift vectors for each gene expression vector}
 #'
 
 tox_compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_centroid) {
+
   # Input validation
   if (!is.matrix(expression_vectors)) {
     stop("expression_vectors must be a matrix")
   }
-
   if (!is.matrix(family_centroids)) {
     stop("family_centroids must be a matrix")
   }
@@ -1621,8 +1661,11 @@ tox_compute_shift_vector_field <- function(expression_vectors, family_centroids,
   check_err_code(result$ierr)
   
   # Return structured result (no ierr since we checked for errors)
-  return(result$shift_vectors)
+  return(list(
+    shift_vectors = result$shift_vectors
+  ))
 }
+
 
 #' Calculate signed clock hand angle between two normalized vectors
 #' 
@@ -1781,8 +1824,16 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 }
 
 omics_field_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection_mask) {
+
+  str(vecs)
+  # Forzar conversión si no es matriz
+  if (!is.matrix(vecs)) {
+    vecs <- as.matrix(vecs)
+  }
+  
   n_selected_vecs <- sum(vecs_selection_mask == 1)
   n_selected_axes <- sum(axes_selection_mask == 1)
+  
   ierr <- as.integer(0)
   res <- .Fortran("omics_field_RAP_projection_r",
                   vecs = as.double(vecs),
@@ -1797,6 +1848,7 @@ omics_field_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection
   check_err_code(res$ierr)
   return(res$projections)
 }
+
 
 # ===================================================================
 # GENE CENTROIDS FUNCTIONS
@@ -1911,4 +1963,189 @@ tox_mean_vector <- function(expression_vectors, gene_indices) {
   check_err_code(result$ierr)
   
   return(result$centroid_col)
+}
+
+
+#' KNN-smoothed normalization for gene expression values
+#'
+#' @param input_matrix Numeric matrix (genes x tissues)
+#' @param k_neighbors Integer, número de vecinos KNN (default: 3)
+#' @return Numeric matrix: normalizada por KNN-smoothed std
+#' @examples
+#' normalized <- tox_normalize_by_knn_smoothed_std(input_matrix, k_neighbors=3)
+tox_normalize_by_knn_smoothed_std <- function(input_matrix, k_neighbors = 3L) {
+  n_genes <- nrow(input_matrix)
+  n_tissues <- ncol(input_matrix)
+
+  # Buffers and workspace
+  input_vector <- as.numeric(as.vector(input_matrix))
+  output_vector <- numeric(n_genes * n_tissues)
+  median_coords <- numeric(n_genes)
+  std_values <- numeric(n_genes)
+  smoothed_std <- numeric(n_genes)
+  kd_indices <- integer(n_genes)
+  dimension_order <- integer(1)
+  neighbors <- integer(k_neighbors)
+  distances <- numeric(k_neighbors)
+  workspace <- integer(n_genes)
+  value_buffer <- numeric(n_genes)
+  permutation_knn <- integer(n_genes)
+  left_stack_knn <- integer(n_genes)
+  right_stack_knn <- integer(n_genes)
+  gene_values <- numeric(n_tissues)
+  bst_indices <- integer(n_tissues)
+  bst_left <- integer(n_tissues)
+  bst_right <- integer(n_tissues)
+  ierr <- as.integer(0)
+
+  result <- .Fortran("normalize_by_knn_smoothed_std_r",
+    n_genes = as.integer(n_genes),
+    n_tissues = as.integer(n_tissues),
+    input_vector = input_vector,
+    output_vector = output_vector,
+    k_neighbors = as.integer(k_neighbors),
+    median_coords = median_coords,
+    std_values = std_values,
+    smoothed_std = smoothed_std,
+    kd_indices = kd_indices,
+    dimension_order = dimension_order,
+    neighbors = neighbors,
+    distances = distances,
+    workspace = workspace,
+    value_buffer = value_buffer,
+    permutation_knn = permutation_knn,
+    left_stack_knn = left_stack_knn,
+    right_stack_knn = right_stack_knn,
+    gene_values = gene_values,
+    bst_indices = bst_indices,
+    bst_left = bst_left,
+    bst_right = bst_right,
+    ierr = ierr
+  )
+  check_err_code(result$ierr)
+  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues,
+         dimnames = dimnames(input_matrix)))
+}
+
+
+tox_angle_to_centroid <- function(genes, centroids, gene_to_family) {
+  n_genes <- ncol(genes)
+  d <- nrow(genes)
+
+  # Tomar el centroide correspondiente a cada gen
+  matched_centroids <- centroids[, gene_to_family, drop = FALSE]
+
+  # Producto punto entre columnas
+  dot_prod <- colSums(genes * matched_centroids)
+
+  # Normas
+  norm_genes <- sqrt(colSums(genes^2))
+  norm_centroids <- sqrt(colSums(matched_centroids^2))
+
+  cos_theta <- dot_prod / (norm_genes * norm_centroids)
+  cos_theta <- pmin(pmax(cos_theta, -1), 1)  # clamp numérico
+  angles <- acos(cos_theta)
+
+  return(angles)
+}
+
+
+tox_circular_sd_per_family <- function(genes, centroids, gene_to_family) {
+  d <- nrow(genes)
+  n_genes <- ncol(genes)
+  n_families <- ncol(centroids)
+
+  # Vectores de diferencia Δ_i = p_i - c_fam
+  delta <- genes - centroids[, gene_to_family, drop = FALSE]
+
+  # Normalizar Δ_i a longitud 1 (unitarios)
+  norms <- sqrt(colSums(delta^2))
+  # evitar división por cero
+  norms[norms == 0] <- NA_real_
+  unit_vectors <- sweep(delta, 2, norms, "/")
+
+  # Inicializar resultados
+  R <- numeric(n_families)
+  s_c <- numeric(n_families)
+
+  for (f in seq_len(n_families)) {
+    idx <- which(gene_to_family == f)
+    if (length(idx) <= 1) {
+      R[f] <- NA_real_
+      s_c[f] <- NA_real_
+      next
+    }
+
+    # Media de los vectores unitarios
+    mean_vec <- rowMeans(unit_vectors[, idx, drop = FALSE], na.rm = TRUE)
+    R[f] <- sqrt(sum(mean_vec^2))
+
+    # Circular standard deviation
+    if (R[f] > 0) {
+      s_c[f] <- sqrt(-2 * log(R[f]))
+    } else {
+      s_c[f] <- NA_real_
+    }
+  }
+
+  return(list(R = R, s_c = s_c))
+}
+
+# angles: vector de longitud n_genes (radianes 0–pi), puede tener NA
+# s_c:    vector de longitud n_families (circular SD por familia)
+# g2f:    gene_to_family (longitud n_genes), índices 1..n_families
+tox_scaled_angles <- function(angles, s_c, g2f, eps = 1e-12) {
+  stopifnot(length(angles) == length(g2f))
+  # extrae el s_c de la familia de cada gen
+  sc_per_gene <- s_c[g2f]
+  # evitar división por cero (familias con R≈1 → s_c≈0)
+  sc_per_gene[!is.na(sc_per_gene) & sc_per_gene < eps] <- NA_real_
+  # z_i = theta_i / s_c_F
+  z <- angles / sc_per_gene
+  # Si angle es NA o s_c es NA → z será NA (correcto)
+  z
+}
+
+# z: vector de z-scores angulares (puede tener NA)
+# p: percentil en [0,1], p.ej. 0.95 para 95%
+tox_angle_outliers <- function(z, p = 0.95) {
+  z_valid <- z[is.finite(z)]  # quita NA/Inf si los hubiera
+  if (length(z_valid) == 0L) {
+    return(list(
+      threshold = NA_real_,
+      is_outlier = rep(FALSE, length(z)),
+      z = z
+    ))
+  }
+  thr <- as.numeric(stats::quantile(z_valid, probs = p, na.rm = TRUE, type = 7))
+  is_out <- (z >= thr) & is.finite(z)
+  list(threshold = thr, is_outlier = is_out, z = z)
+}
+
+
+#' Calculate angle (in radians) between two vectors
+#'
+#' Computes the angle between two numeric vectors of the same dimension.
+#' Returns a value in [0, pi] radians.
+#'
+#' @param vec1 First numeric vector
+#' @param vec2 Second numeric vector (same length as vec1)
+#' @return Numeric value: angle in radians between vec1 and vec2
+#' @examples
+#' angle <- tox_angle_between_vectors(c(1,0), c(0,1)) # pi/2
+#' angle <- tox_angle_between_vectors(c(1,1), c(1,-1)) # pi/2
+#' angle <- tox_angle_between_vectors(c(1,0,0), c(0,1,0)) # pi/2
+#' 
+tox_angle_between_vectors <- function(vec1, vec2) {
+
+  dot_prod <- sum(vec1 * vec2)
+  norm1 <- sqrt(sum(vec1^2))
+  norm2 <- sqrt(sum(vec2^2))
+  if (norm1 == 0 || norm2 == 0) {
+    return(NA_real_)
+  }
+  cos_theta <- dot_prod / (norm1 * norm2)
+  cos_theta <- pmin(pmax(cos_theta, -1), 1) # clamp numérico
+  angle <- acos(cos_theta)
+  return(angle)
 }
