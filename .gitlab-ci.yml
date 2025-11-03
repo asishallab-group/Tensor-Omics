@@ -3,27 +3,47 @@ stages:
   - generate-docs
 
 image: archlinux:latest
-before_script:
-  # install gfortran, python, pip, git
-  - pacman -Sy --noconfirm archlinux-keyring
-  - pacman -Syu --noconfirm
-  - pacman -S --noconfirm gcc-fortran python python-pip git
+
+.install-r: &install-r
+  - pacman -S --noconfirm r make
   - pacman -Scc --noconfirm
+  - R --version
+  # install Rcpp, readr
+  - Rscript -e 'install.packages("Rcpp", repos="https://cloud.r-project.org")'
+  - Rscript -e 'install.packages("readr", repos="https://cloud.r-project.org")'
+  - Rscript -e 'installed.packages()[, c("Package", "Version")]'
 
-  # install fpm
-  - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
-  - chmod a+x /usr/local/bin/fpm
-
-  # install ford
+.install-python: &install-python
+  - pacman -S --noconfirm python python-pip
+  - pacman -Scc --noconfirm
   - python -m venv .venv
   - source .venv/bin/activate
   - pip install --upgrade pip
-  - pip install ford
+  - pip install numpy pandas
+  - pip list
+  - python --version
+  - pip --version
 
+.install-fortran: &install-fortran
+  - pacman -S --noconfirm gcc-fortran
+  - pacman -Scc --noconfirm
+  # install fpm
+  - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+  - chmod a+x /usr/local/bin/fpm
+  - gfortran --version
+
+  # install ifx
+  - curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/466b0d65-e502-4172-9e06-24c565029b96/intel-fortran-compiler-2025.2.1.9_offline.sh -o install_ifx.sh
+  - bash install_ifx.sh -a -s --eula accept
+  - source /opt/intel/oneapi/setvars.sh
+  - ifx --version
+
+.install-git: &install-git
+  - pacman -S --noconfirm git
+  - pacman -Scc --noconfirm
   # set up git
   - git config --global user.email "ci-bot@yourdomain.com"
   - git config --global user.name "CI Bot"
-  - git remote set-url origin @gitlab.com/your-namespace/your-project.git
   - |
     function git-push() {
       git add -f "${@:2}"
@@ -31,12 +51,10 @@ before_script:
       git push https://oauth2:${JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_BRANCH
     }
 
-  # show versions
-  - echo "Versions:"
-  - python --version
-  - pip --version
-  - ford --version
-  - gfortran --version
+before_script:
+  # update system
+  - pacman -Sy --noconfirm archlinux-keyring
+  - pacman -Syu --noconfirm
 
 run-tests:
   stage: run-tests
@@ -47,7 +65,6 @@ run-tests:
         - src/**
         - test/**
         - test_runner.sh
-      when: always
 
     # trigger only when a MR to 'main' is created and src/ or test/ changed
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
@@ -55,26 +72,21 @@ run-tests:
         - src/**
         - test/**
         - test_runner.sh
-      when: always
 
     # prevent running on other branches outside MR context
     - when: never
 
   script:
-    # install ifx
-    - curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/466b0d65-e502-4172-9e06-24c565029b96/intel-fortran-compiler-2025.2.1.9_offline.sh -o install_ifx.sh
-    - bash install_ifx.sh -a -s --eula accept
-    - source /opt/intel/oneapi/setvars.sh
+    - *install-fortran
+    - *install-r
+    - *install-python
 
-    # run tests using ifx
-    - echo Run tests with ifx
-    - FC=ifx bash test_runner.sh
-    - echo Run tests with gfortran
-
-    # run tests using gfortran
-    - bash test_runner.sh
-
-
+    - |
+      for compiler in ifx gfortran; do
+        FC=$compiler bash test_runner.sh
+        for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+        for i in python/test/*.py; do echo ; echo $i ; python $i ; done
+      done
 generate-docs:  # generate documentation after tests have passed
   stage: generate-docs
   rules:
@@ -83,15 +95,20 @@ generate-docs:  # generate documentation after tests have passed
         - src/**
         - test/**
         - ford.yml
-      when: always
     - when: never
   needs:
     - job: run-tests
       optional: true  # if ford.yml was changed, the test stage does not exist in the pipeline
   script:
+    # install ford
+    - *install-python
+    - pip install ford
+    - ford --version
+
     # generate docs
     - ford ford.yml
     - echo "generated documentation successfully"
 
     # add and commit changes to docs folder
+    - *install-git
     - git-push "Update generated documentation" doc
