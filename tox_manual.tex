@@ -1391,7 +1391,7 @@ tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_sele
 \begin{enumerate}
     \item \textbf{Build BST Index}
     
-    Python wrapper for building BST index from NumPy arrays. Automatically converts from Fortran 1-based to Python 0-based indexing.
+    Python wrapper for building BST index from NumPy arrays. Note that indices are 1-based an need to be converted for correct usage in python.
     
     \textbf{Input:}
     \begin{itemize}
@@ -1399,36 +1399,38 @@ tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_sele
     \end{itemize}
     \textbf{Output:}
     \begin{itemize}
-        \item \texttt{np.array}: Permutation indices (0-based Python indices)
+        \item \texttt{np.array}: Permutation indices (1-based Fortran indices)
     \end{itemize}
 \begin{lstlisting}[language=Python]
-indices = build_bst_index(values)
+# - 1 at the end converts from fortrans 1-based indexing to pythons 0-based
+indices = build_bst_index(values) - 1
 \end{lstlisting}
 
     \item \textbf{BST Range Query}
     
-    Performs range queries on BST index. Accepts and returns Python 0-based indices.
+    Performs range queries on BST index. Accepts and returns Fortran 1-based indices.
     
     \textbf{Input:}
     \begin{itemize}
         \item \texttt{values numpy.ndarray}: Original values array
-        \item \texttt{indices numpy.ndarray}: BST index array from build\_bst\_index (0-based)
+        \item \texttt{indices numpy.ndarray}: BST index array from build\_bst\_index (1-based)
         \item \texttt{lower\_bound float}: Lower bound of range (inclusive)
         \item \texttt{upper\_bound float}: Upper bound of range (inclusive)
     \end{itemize}
     \textbf{Output:}
     \begin{itemize}
-        \item \texttt{tuple}: (matching\_indices, count) where indices are 0-based
+        \item \texttt{Dictionary}: (matching\_indices, count) where indices are 1-based
     \end{itemize}
 \begin{lstlisting}[language=Python]
-matching_indices, count = bst_range_query(values, indices, lower_bound, upper_bound)
+# + 1 is added because of 0-based indexing. If the indices are already 1 based, this is not necessary
+res = bst_range_query(values, indices + 1, lower_bound, upper_bound)
 \end{lstlisting}
 
     \item \textbf{Get Sorted Value}
     
     \textbf{Note:} This function is not implemented as a separate Python function. Use direct array indexing instead:
 \begin{lstlisting}[language=Python]
-value = values[indices[position]]  # position is 0-based
+value = values[indices[position]]  # position is 1-based
 \end{lstlisting}
 \end{enumerate}
 \item \textbf{Python k-d Tree Interface}
@@ -1436,7 +1438,7 @@ value = values[indices[position]]  # position is 0-based
 \begin{enumerate}
     \item \textbf{Build k-d Tree Index}
     
-    Python interface for constructing k-d trees. Requires Fortran-ordered arrays and returns 0-based indices.
+    Python interface for constructing k-d trees. Requires Fortran-ordered arrays and returns 1-based indices.
     
     \textbf{Input:}
     \begin{itemize}
@@ -1445,7 +1447,7 @@ value = values[indices[position]]  # position is 0-based
     \end{itemize}
     \textbf{Output:}
     \begin{itemize}
-        \item \texttt{np.array}: Permutation indices (0-based Python indices)
+        \item \texttt{np.array}: Permutation indices (1-based Python indices)
     \end{itemize}
 \begin{lstlisting}[language=Python]
 kd_indices = build_kd_index(points, dimension_order)
@@ -1465,7 +1467,7 @@ sphere_indices = build_spherical_kd(vectors, dimension_order)
     
     \textbf{Note:} This function is not implemented as a separate Python function. Use direct array indexing instead:
 \begin{lstlisting}[language=Python]
-point = points[:, kd_indices[position]]  # position is 0-based
+point = points[:, kd_indices[position - 1]]  # position is 1-based
 \end{lstlisting}
 \end{enumerate}
 
