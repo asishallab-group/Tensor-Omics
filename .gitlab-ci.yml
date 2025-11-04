@@ -25,7 +25,7 @@ image: archlinux:latest
   - pip --version
 
 .install-fortran: &install-fortran
-  - pacman -S --noconfirm gcc-fortran
+  - pacman -S --noconfirm gcc-fortran libzip xxhash
   - pacman -Scc --noconfirm
   # install fpm
   - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
