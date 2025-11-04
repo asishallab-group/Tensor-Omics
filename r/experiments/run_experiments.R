@@ -9,11 +9,12 @@ source("r/tensoromics_functions.R")
 source("r/experiments/helper_functions.R")
 
 # --- General experiment configuration ---
-experiment <- "drosophila"
+experiment <- "mammalian_sum"
 outliers_or_complete <- "outliers"  # options: "outliers" or "complete"
+type_test <- "t_test" # options: "t_test" or "wilcoxon"
 
 # Create output directories
-results_dir <- file.path("results", experiment, outliers_or_complete)  
+results_dir <- file.path("results")  
 if (!dir.exists(results_dir)) {
   dir.create(results_dir, recursive = TRUE)
 }
@@ -23,7 +24,7 @@ material_dir <- file.path("material", experiment)
 modes = c("all", "orthologs")      # how centroids should be calculated
 stds = c("knn")                    # "std" or "knn" for normalization
 source_copy_analysis <- TRUE       # whether to run source-copy comparisons
-calculate_fc <- TRUE              # whether to compute fold changes
+calculate_fc <- FALSE              # whether to compute fold changes
 control_pattern <- "dietM"         # only needed when calculate_fc is TRUE
 condition_patterns <- c("dietP")   # only needed when calculate_fc is TRUE
 
@@ -195,7 +196,9 @@ for (m in modes) {
       axis_contribs_df = axis_contribs_df_dist,
       histogram = histogram_dist,
       outliers = outliers_dist,
-      experiment = experiment
+      experiment = experiment,
+      type_test = type_test
+      
     )
 
     # ==========================================================
@@ -220,7 +223,8 @@ for (m in modes) {
       axis_contribs_df = axis_contribs_df_angle,
       histogram = histogram_angle,
       outliers = outliers_angle,
-      experiment = experiment
+      experiment = experiment,
+      type_test = type_test
     )
 
     # ==========================================================
@@ -246,6 +250,7 @@ for (m in modes) {
         histogram = sc_histogram_dist,
         outliers = sc_outliers_dist,
         experiment = experiment,
+        type_test = type_test,
         source_copy = TRUE
       )
 
@@ -268,6 +273,7 @@ for (m in modes) {
         histogram = sc_histogram_angle,
         outliers = sc_outliers_angle,
         experiment = experiment,
+        type_test = type_test,
         source_copy = TRUE
       )
     }
@@ -281,7 +287,7 @@ for (m in modes) {
                length(union(outlier_ids_dist, outlier_ids_angle))
 
     title_plot <- paste0(outliers_or_complete, " analysis - ", experiment, " - ", mode)
-    pdf(file.path(results_dir, paste0(experiment, "_", outliers_or_complete, "_", mode, ".pdf")),
+    pdf(file.path(results_dir, paste0(experiment, "_", type_test, "_", outliers_or_complete, "_", mode, ".pdf")),
         width = 10, height = 7)
 
     grid.newpage()

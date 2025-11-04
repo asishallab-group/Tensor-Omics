@@ -1,11 +1,3 @@
-library(ggplot2)
-library(ggpubr)
-library(data.table)
-library(wordcloud)
-library(tm)
-library(dplyr)
-library(grid)
-library(VennDiagram)
 # ================================================================
 #  Libraries
 # ================================================================
@@ -551,7 +543,7 @@ make_histogram_plot <- function(histogram, outliers, analysis_type) {
 # Returns:
 #   - A list of ggplot2 objects for all plots.
 # ================================================================
-make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers, experiment, source_copy = FALSE) {
+make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers, experiment, type_test, source_copy = FALSE) {
 
   # ------------------------------------------------------------
   # Define consistent color palette and group order
@@ -592,13 +584,13 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
     data, x="group", y="distance", fill="group", color="group",
     labels=group_labels, title=title_distance,
     ylab="Distance", comparisons=comparisons,
-    palette=fill_colors
+    palette=fill_colors, type_test = type_test
   )
   p_distance_species <- make_violin_plot(
     data, x="group", y="distance", fill="group", color="group",
     labels=group_labels, title=title_distance,
     ylab="Distance", comparisons=comparisons,
-    palette=fill_colors, facet_by="species"
+    palette=fill_colors, facet_by="species", type_test = type_test
   )
 
   # ------------------------------------------------------------
@@ -624,13 +616,13 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
     data, x="group", y="tissue_angle_deg", fill="group", color="group",
     labels=group_labels_v, title=paste("Tissue versatility ", aux_title),
     ylab="Tissue Angle (Degrees)", comparisons=comparisons,
-    palette=fill_colors_v, abs=TRUE
+    palette=fill_colors_v, abs=TRUE, type_test = type_test
   )
   p_versatility_species <- make_violin_plot(
     data, x="group", y="tissue_angle_deg", fill="group", color="group",
     labels=group_labels_v, title=paste("Tissue versatility ", aux_title),
     ylab="Tissue Angle (Degrees)", comparisons=comparisons,
-    palette=fill_colors_v, facet_by="species", abs=TRUE
+    palette=fill_colors_v, facet_by="species", abs=TRUE, type_test = type_test
   )
 
   # ------------------------------------------------------------
@@ -641,14 +633,14 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
     fill="group", color="group", labels=group_labels_v,
     title=paste("Change in tissue versatility", aux_title),
     ylab="Change in Tissue Angle (Degrees)",
-    comparisons=comparisons, palette=fill_colors_v, abs=TRUE
+    comparisons=comparisons, palette=fill_colors_v, abs=TRUE, type_test = type_test
   )
   p_change_vers_species <- make_violin_plot(
     data, x="group", y="change_in_tissue_versatility",
     fill="group", color="group", labels=group_labels_v,
     title=paste("Change in tissue versatility", aux_title),
     ylab="Change in Tissue Angle (Degrees)",
-    comparisons=comparisons, palette=fill_colors_v, facet_by="species", abs=TRUE
+    comparisons=comparisons, palette=fill_colors_v, facet_by="species", abs=TRUE, type_test = type_test
   )
 
   # ------------------------------------------------------------
@@ -659,14 +651,14 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
     fill="group", color="group", labels=group_labels_v,
     title=paste("Change in tissue preference", aux_title),
     ylab="Change in Tissue Preference (Degrees)",
-    comparisons=comparisons, palette=fill_colors_v, abs=TRUE
+    comparisons=comparisons, palette=fill_colors_v, abs=TRUE, type_test = type_test
   )
   p_change_pref_species <- make_violin_plot(
     data, x="group", y="change_in_tissue_preference",
     fill="group", color="group", labels=group_labels_v,
     title=paste("Change in tissue preference", aux_title),
     ylab="Change in Tissue Preference (Degrees)",
-    comparisons=comparisons, palette=fill_colors_v, facet_by="species", abs=TRUE
+    comparisons=comparisons, palette=fill_colors_v, facet_by="species", abs=TRUE, type_test = type_test
   )
 
   # ------------------------------------------------------------
@@ -687,7 +679,8 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
   p_axis_contribs <- make_tissue_boxplot_with_significance(
     df = axis_contribs_df,
     fill_colors = fill_colors_v,
-    title = c("Relative axis change from shift vectors", aux_title)
+    title = c("Relative axis change from shift vectors", aux_title),
+    type_test = type_test
   )
 
   # ------------------------------------------------------------
@@ -710,10 +703,10 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
 
 
 # ================================================================
-#  Function: calculate_wilcox_pvalues
+#  Function: calculate_pvalues
 # ---------------------------------------------------------------
 # Description:
-#   Performs pairwise Wilcoxon rank-sum tests (Mann–Whitney U)
+#   Performs pairwise Wilcoxon/t rank-sum tests (Mann–Whitney U)
 #   between specified groups for a given numeric variable.
 #   Adds significance labels ("***", "**", "*", "ns") based on p-value thresholds.
 #
@@ -727,7 +720,7 @@ make_all_analysis_plots <- function(data, axis_contribs_df, histogram, outliers,
 #   - Data frame with columns:
 #       group1, group2, p.value, signif
 # ================================================================
-calculate_wilcox_pvalues <- function(data, group_col, value_col, comparisons) {
+calculate_pvalues <- function(data, group_col, value_col, comparisons, type_test) {
   group_col <- rlang::sym(group_col)
   value_col <- rlang::sym(value_col)
 
@@ -740,14 +733,20 @@ calculate_wilcox_pvalues <- function(data, group_col, value_col, comparisons) {
   # If fewer than two groups exist, return empty
   if (length(unique(df$group)) < 2) return(data.frame())
 
-  # Perform Wilcoxon tests for each group pair
+  # Perform Wilcoxon/t tests for each group pair
   results <- tryCatch({
     lapply(comparisons, function(pair) {
       x <- df$value[df$group == pair[1]]
       y <- df$value[df$group == pair[2]]
 
       if (length(x) > 0 && length(y) > 0) {
-        test <- wilcox.test(x, y, alternative = "less")
+        test <- if (type_test == "wilcoxon") {
+          wilcox.test(x, y, alternative = "less")
+        } else if (type_test == "t_test") {
+          t.test(x, y, alternative = "less")
+        } else {
+          stop("type_test must be either 'wilcoxon' or 't_test'")
+        }
         data.frame(group1 = pair[1], group2 = pair[2], p.value = test$p.value)
       } else {
         NULL
@@ -769,10 +768,10 @@ calculate_wilcox_pvalues <- function(data, group_col, value_col, comparisons) {
 
 
 # ================================================================
-#  Function: calculate_wilcox_intra_tissue
+#  Function: calculate_pvalue_intra_tissue
 # ---------------------------------------------------------------
 # Description:
-#   Performs Wilcoxon tests for each tissue independently,
+#   Performs Wilcoxon/t tests for each tissue independently,
 #   comparing predefined group pairs (Ortholog vs Non-Tandem, etc.)
 #   within each tissue level.
 #
@@ -783,10 +782,10 @@ calculate_wilcox_pvalues <- function(data, group_col, value_col, comparisons) {
 #   - value_col: Name of the numeric variable column (string).
 #
 # Returns:
-#   - Data frame of Wilcoxon test results per tissue:
+#   - Data frame of Wilcoxon/t test results per tissue:
 #       tissue, group1, group2, p.value, signif
 # ================================================================
-calculate_wilcox_intra_tissue <- function(data, tissue_col, group_col, value_col) {
+calculate_pvalue_intra_tissue <- function(data, tissue_col, group_col, value_col, type_test) {
   tissue_col <- rlang::sym(tissue_col)
 
   # Define all relevant group comparisons
@@ -806,10 +805,10 @@ calculate_wilcox_intra_tissue <- function(data, tissue_col, group_col, value_col
   # Skip if fewer than two groups exist
   if (length(unique(df$group)) < 2) return(data.frame())
 
-  # Apply pairwise Wilcoxon tests within each tissue
+  # Apply pairwise statistical tests within each tissue
   results <- df %>%
     dplyr::group_by(tissue) %>%
-    dplyr::group_modify(~ calculate_wilcox_pvalues(.x, "group", "value", comparisons)) %>%
+    dplyr::group_modify(~ calculate_pvalues(.x, "group", "value", comparisons, type_test)) %>%
     dplyr::ungroup()
 
   results
@@ -822,7 +821,7 @@ calculate_wilcox_intra_tissue <- function(data, tissue_col, group_col, value_col
 # Description:
 #   Creates a violin + box + jitter plot with optional faceting,
 #   per-group counts (n-labels), and significance annotations
-#   derived from Wilcoxon tests.
+#   derived from Wilcoxon/t tests.
 #
 # Arguments:
 #   - data: Input data frame.
@@ -853,7 +852,8 @@ make_violin_plot <- function(
   palette,
   facet_by = NULL,
   reverse_y = FALSE,
-  abs = FALSE
+  abs = FALSE,
+  type_test
 ) {
   # ------------------------------------------------------------
   # Count sample sizes per group (and optionally per facet)
@@ -884,12 +884,12 @@ make_violin_plot <- function(
   if (!is.null(facet_by)) {
     facet_col <- rlang::sym(facet_by)
 
-    # Compute Wilcoxon results within each facet
+    # Compute statistical test results within each facet
     pvals <- data %>%
       dplyr::group_by(!!facet_col) %>%
       dplyr::group_modify(~{
         pv <- tryCatch({
-          calculate_wilcox_pvalues(.x, x, y, comparisons)
+          calculate_pvalues(.x, x, y, comparisons, type_test)
         }, error = function(e) data.frame())
         if (nrow(pv) > 0) pv[[facet_by]] <- unique(.x[[facet_by]])[1]
         pv
@@ -914,7 +914,7 @@ make_violin_plot <- function(
   } else {
     # Global test (no facets)
     pvals <- tryCatch({
-      calculate_wilcox_pvalues(data, x, y, comparisons)
+      calculate_pvalues(data, x, y, comparisons, type_test)
     }, error = function(e) data.frame())
 
     # Ensure proper structure even if no p-values are available
@@ -1019,7 +1019,7 @@ make_violin_plot <- function(
 # ==========================================================
 # Function: make_tissue_boxplot_with_significance
 # Purpose:
-#   Creates a tissue-level boxplot with significance markers (from Wilcoxon tests)
+#   Creates a tissue-level boxplot with significance markers 
 #   and sample size ("n=") annotations per group. It dynamically adjusts label
 #   positions depending on the number of groups.
 # ==========================================================
@@ -1030,11 +1030,12 @@ make_tissue_boxplot_with_significance <- function(
   group_col = "group",
   fill_colors,
   title = "Relative axis change from shift vectors",
-  ylab = "Normalized vector change"
+  ylab = "Normalized vector change",
+  type_test
 ) {
 
-  # --- 1. Compute Wilcoxon significance values for each tissue ---
-  pvals_tissue <- calculate_wilcox_intra_tissue(df, tissue_col, group_col, value_col)
+  # --- 1. Compute statistical significance values for each tissue ---
+  pvals_tissue <- calculate_pvalue_intra_tissue(df, tissue_col, group_col, value_col, type_test)
 
   # Ensure pvals_tissue exists even when no results are available
   if (ncol(pvals_tissue) == 0) {
