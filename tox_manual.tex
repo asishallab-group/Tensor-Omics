@@ -2120,7 +2120,7 @@ validate_gene_to_family_mapping(gene_to_fam, n_families)
     Call the \texttt{validate\_expression\_data} function with the following arguments:
 
     \begin{itemize}
-        \item \texttt{expression\_vectors}: 2D array of expression data (n_sampels × n_genes)
+        \item \texttt{expression\_vectors}: 2D array of expression data (n\_sampels x n\_genes)
         \item \textbf{(Optional)} \texttt{check\_non\_negative}: Whether to check for non-negative values (default: True)
     \end{itemize}
 
@@ -2134,7 +2134,7 @@ validate_expression_data(expression_vectors, check_non_negative=True)
     Call the \texttt{validate\_family\_centroids} function with the following arguments:
 
     \begin{itemize}
-        \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
+        \item \texttt{family\_centroids}: 2D array of family centroids (samples x families)
     \end{itemize}
 
 \begin{lstlisting}[language=Python, caption={Python Validate Family Centroids}]
@@ -2147,8 +2147,8 @@ validate_family_centroids(family_centroids)
     Call the \texttt{validate\_shift\_vectors} function with the following arguments:
 
     \begin{itemize}
-        \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
-        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{shift\_vectors}: 2D array of shift vectors (samples × genes)
+        \item \texttt{expression\_vectors}: 2D array of expression data (samples × genes)
         \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
         \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
         \item \texttt{n\_genes}: Number of genes
@@ -2185,7 +2185,7 @@ validate_string_array_uniqueness(strings)
         \item \texttt{gene\_ids}: Array of gene IDs
         \item \texttt{gene\_family\_ids}: Array of family IDs
         \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
-        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{expression\_vectors}: 2D array of expression data (samples × genes)
         \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
         \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
     \end{itemize}
@@ -2206,9 +2206,9 @@ validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_id
         \item \texttt{gene\_ids}: Array of gene IDs
         \item \texttt{gene\_family\_ids}: Array of family IDs
         \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
-        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{expression\_vectors}: 2D array of expression data (samples × genes)
         \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
-        \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
+        \item \texttt{shift\_vectors}: 2D array of shift vectors (samples × genes)
     \end{itemize}
 
 \begin{lstlisting}[language=Python, caption={Python Validate All Data}]
@@ -2221,8 +2221,6 @@ validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gen
 filter_result = filter_unassigned_genes(gene_to_fam)
 mask = np.array(filter_result['mask'], dtype=bool)
 n_genes_kept = filter_result['n_genes_kept']
-
-print(f"Filtered from {len(gene_to_fam)} to {n_genes_kept} genes")
 
 # Apply filter to all gene-based arrays
 filtered_gene_ids = gene_ids[mask]
@@ -2248,13 +2246,12 @@ validate_all_data(
     filtered_gene_ids, family_ids, filtered_gene_to_fam,
     filtered_expression, family_centroids, shift_vectors
 )
-
-print("All data validations passed successfully")
 \end{lstlisting}
 
 \item \textbf{Create Zip Archive (Low-Level)}
 
-    The low-level function creates a zip archive from keys and filenames, directly calling the Fortran backend. Use this function for custom data serialization scenarios or when you need fine-grained control over archive creation.
+    The low-level function creates a zip archive from keys and filenames, directly calling the Fortran backend. Use this function for custom data. 
+    Note that the identifiers at position $i$ belongs to position $i$ of the filenames. All files named in the filenames have to be saved to the disk before the function is called. For more details on how to save arrays, see section array serialization and deserialization.
     Call the \texttt{create\_zip\_archive} function with the following arguments:
 
     \begin{itemize}
@@ -2269,7 +2266,8 @@ create_zip_archive(zip_filename, keys, filenames)
 
 \item \textbf{Extract Zip Archive}
 
-    The function extracts a zip archive created by \texttt{create\_zip\_archive} and returns a dictionary mapping data keys to extracted filenames. This is useful for accessing individual files from custom archives.
+    The function extracts a zip archive created by \texttt{create\_zip\_archive} and returns a dictionary mapping data keys to extracted filenames. All extracted files will be written to the disk.
+    For more details on how to continue working with the files, see section array serialization and deserialization.
     Call the \texttt{extract\_zip\_archive} function with the following arguments:
 
     \begin{itemize}
@@ -2287,7 +2285,7 @@ extract_zip_archive(zip_filename)
 
 \item \textbf{Save TOX Data (High-Level)}
 
-    The high-level function saves TOX data to a zip archive, handling validation, serialization, and archive creation for standard-conform tox gene data. This function automatically manages temporary files and cleanup.
+    The high-level function saves TOX data to a zip archive, handling serialization, and archive creation for standard-conform tox gene data. This function automatically manages temporary files and cleanup.
     Call the \texttt{save\_tox\_data} function with the following arguments:
 
     \begin{itemize}
@@ -2307,7 +2305,7 @@ save_tox_data(zip_filename, gene_ids=None, expression_vectors=None, gene_to_fam=
 
 \item \textbf{Read TOX Data}
 
-    The function reads data from a zip archive created by \texttt{save\_tox\_data}, extracting and deserializing the requested data components for standard-conform tox gene data. This function automatically handles file extraction and cleanup.
+    The function reads data from a zip archive created by \texttt{save\_tox\_data}, extracting and deserializing the requested data components for standard-conform tox gene data. This function automatically handles file extraction, cleanup and array allocation.
     Call the \texttt{read\_tox\_data} function with the following arguments:
 
     \begin{itemize}
@@ -2369,30 +2367,20 @@ loaded_data = read_tox_data(
     load_expression_vectors=True,
     load_gene_to_fam=True
 )
-
-# Access loaded data
-print(f"Loaded {len(loaded_data['gene_ids'])} genes")
-print(f"Expression matrix: {loaded_data['expression_vectors'].shape}")
 \end{lstlisting}
 
 \begin{lstlisting}[language=Python, caption={Python Custom Archive Creation and Extraction}]
 # Create custom archive with non-standard data
 create_zip_archive(
     zip_filename="custom_data.zip",
-    keys=["3d_tensor", "metadata", "results"],
-    filenames=["tensor_data.bin", "meta.txt", "analysis_results.bin"]
+    keys=["3d_tensor", "results"],
+    filenames=["tensor_data.bin", "analysis_results.bin"]
 )
 
 # Extract and access custom archive
 file_mapping = extract_zip_archive("custom_data.zip")
 print("Files in archive:", file_mapping)
-# Output: {'3d_tensor': 'tensor_data.bin', 'metadata': 'meta.txt', 'results': 'analysis_results.bin'}
-
-# Access specific files
-if 'metadata' in file_mapping:
-    with open(file_mapping['metadata'], 'r') as f:
-        metadata = f.read()
-        print("Metadata:", metadata)
+# Output: {'3d_tensor': 'tensor_data.bin', 'results': 'analysis_results.bin'}
 \end{lstlisting}
 
 \begin{lstlisting}[language=Python, caption={Python Mixed Standard and Custom Data Archiving}]
