@@ -1981,6 +1981,439 @@ All functions return an error code through the \texttt{ierr} parameter. The erro
 The Python workflow is exposed through the \texttt{tensoromics\_functions.py} module. The functions provide a high-level interface that mirrors the Fortran pipeline.
 
 \begin{enumerate}
+
+    \item \textbf{Read Gene IDs from TSV File}
+
+    The function reads gene identifiers from a tab-separated value (TSV) file, extracting specific gene IDs from a designated column while skipping header rows. This function is typically used as the first step in processing gene expression data to obtain the complete list of gene identifiers.
+    Call the \texttt{read\_gene\_ids\_from\_tsv\_file} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{filename}: Path to the TSV file containing gene IDs (string or list with single file)
+        \item \texttt{n\_genes}: Total number of genes in the file
+        \item \texttt{gene\_ids\_len}: Maximum character length for each gene ID
+        \item \texttt{n\_header\_rows}: Number of header rows to skip at the beginning of the file
+        \item \texttt{gene\_col}: Column index (1-based) where gene IDs are located
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item \textbf{gene\_ids}: Numpy array of shape \texttt{(n\_genes)} containing gene ID strings
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Read Gene IDs from TSV File}]
+gene_ids = read_gene_ids_from_tsv_file(filename, n_genes, gene_ids_len, n_header_rows, gene_col)
+\end{lstlisting}
+
+\item \textbf{Read Expression Vectors}
+
+    The function reads gene expression data from multiple tabular files (CSV/TSV format), extracting expression values for specified genes across multiple samples. This function consolidates expression data from multiple files into a single 2D array.
+    Call the \texttt{read\_expression\_vectors} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{file\_list}: List of file paths containing expression data
+        \item \texttt{gene\_ids}: Array of gene IDs to extract expression values for
+        \item \texttt{n\_samples}: Number of samples
+        \item \texttt{n\_header\_rows}: Number of header rows to skip in each file
+        \item \texttt{gene\_col}: Column index (1-based) containing gene identifiers
+        \item \texttt{value\_cols}: List of column indices (1-based) containing expression values
+        \item \textbf{(Optional)} \texttt{delimiter}: Delimiter used in the files (default: tab)
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item \textbf{expression\_vectors}: 2D numpy array of shape \texttt{(n\_samples, n\_genes)} containing expression values as 64-bit floats
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Read Expression Vectors}]
+expression_vectors = read_expression_vectors(file_list, gene_ids, n_samples, n_header_rows, gene_col, value_cols, delimiter='\t')
+\end{lstlisting}
+
+\item \textbf{Read OrthoFinder File}
+
+    The function processes an OrthoFinder output file to map genes to their respective orthologous families. This function establishes the gene-family relationships essential for downstream orthology-based analyses.
+    Call the \texttt{read\_orthofinder\_file} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{filename}: Path to the OrthoFinder TSV file (string or list with single file)
+        \item \texttt{gene\_ids}: Complete list of gene identifiers to map
+        \item \texttt{family\_ids\_len}: Maximum character length for family IDs
+        \item \texttt{n\_families}: Total number of gene families expected
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{family\_ids}: Numpy array of shape \texttt{(n\_families,)} containing family ID strings
+        \item \textbf{gene\_to\_fam}: Numpy array of shape \texttt{(n\_genes,)} containing family indices for each gene (0 = unassigned)
+    \end{itemize}
+
+    \begin{lstlisting}[language=Python, caption={Python Read OrthoFinder File}]
+family_result = read_orthofinder_file(filename, gene_ids, family_ids_len, n_families)
+    \end{lstlisting}
+
+    \textbf{Complete Data Loading Workflow Example:}
+    \begin{lstlisting}[language=Python, caption={Python Complete Data Loading Workflow}]
+# Step 1: Load gene identifiers
+gene_ids = read_gene_ids_from_tsv_file(
+    filename="data/expression_data.tsv",
+    n_genes=50000,
+    gene_ids_len=32,
+    n_header_rows=1,
+    gene_col=1
+)
+
+# Step 2: Load expression data from multiple samples
+samples = ["sample1.tsv", "sample2.tsv", "sample3.tsv", "sample4.tsv"]
+expression_vectors = read_expression_vectors(
+    file_list=samples,
+    gene_ids=gene_ids,
+    n_samples=12, # assuming 3 samples per file
+    n_header_rows=1,
+    gene_col=1,
+    value_cols=[2, 3]
+)
+
+# Step 3: Load orthology information
+orthology_data = read_orthofinder_file(
+    filename="data/Orthogroups.tsv",
+    gene_ids=gene_ids,
+    family_ids_len=32,
+    n_families=15000
+)
+\end{lstlisting}
+
+\item \textbf{Filter Unassigned Genes}
+
+    The function filters out genes that are not assigned to any family (where gene\_to\_fam = 0). This is essential for cleaning data before orthology-based analyses, ensuring only genes with valid family assignments are processed.
+    Call the \texttt{filter\_unassigned\_genes} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{gene\_to\_fam}: Family assignment array where 0 indicates unassigned genes
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{mask}: Boolean array indicating which genes to keep (1 = assigned to family, 0 = unassigned)
+        \item \textbf{n\_genes\_kept}: Number of genes kept after filtering
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Filter Unassigned Genes}]
+filtered_genes = filter_unassigned_genes(gene_to_fam)
+\end{lstlisting}
+
+\item \textbf{Validate Gene to Family Mapping}
+
+    The function validates the gene-to-family mapping array, ensuring all family indices are within valid range and properly assigned. This prevents downstream errors from invalid family indices.
+    Call the \texttt{validate\_gene\_to\_family\_mapping} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index (0 = unassigned)
+        \item \texttt{n\_families}: Total number of families
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate Gene to Family Mapping}]
+validate_gene_to_family_mapping(gene_to_fam, n_families)
+\end{lstlisting}
+
+\item \textbf{Validate Expression Data}
+
+    The function validates expression data, checking for NaN/Inf values and optionally verifying non-negative values. This ensures data quality before computational analyses.
+    Call the \texttt{validate\_expression\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{expression\_vectors}: 2D array of expression data (n_sampels × n_genes)
+        \item \textbf{(Optional)} \texttt{check\_non\_negative}: Whether to check for non-negative values (default: True)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate Expression Data}]
+validate_expression_data(expression_vectors, check_non_negative=True)
+\end{lstlisting}
+
+\item \textbf{Validate Family Centroids}
+
+    The function validates family centroids data, checking for NaN/Inf values and proper data structure. Centroids represent the central tendency of each gene family's expression profile.
+    Call the \texttt{validate\_family\_centroids} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate Family Centroids}]
+validate_family_centroids(family_centroids)
+\end{lstlisting}
+
+\item \textbf{Validate Shift Vectors}
+
+    The function validates shift vectors, ensuring data types are correct and structure matches expected patterns. Shift vectors represent the deviation of each gene from its family centroid.
+    Call the \texttt{validate\_shift\_vectors} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
+        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
+        \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_samples}: Number of samples
+        \item \texttt{n\_families}: Number of families
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate Shift Vectors}]
+validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_genes, n_samples, n_families)
+\end{lstlisting}
+
+\item \textbf{Validate String Array Uniqueness}
+
+    The function validates that all strings in an array are unique, using a hashset internally. Note: This may increase memory usage temporarily for large datasets.
+    Call the \texttt{validate\_string\_array\_uniqueness} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{strings}: Array of strings to validate (typically gene IDs or family IDs)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate String Array Uniqueness}]
+validate_string_array_uniqueness(strings)
+\end{lstlisting}
+
+\item \textbf{Validate Data Structure}
+
+    The function performs comprehensive validation of the overall data structure consistency, confirming sizes and dependencies between different data components as far as possible.
+    Call the \texttt{validate\_data\_structure} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_families}: Number of families
+        \item \texttt{n\_samples}: Number of samples
+        \item \texttt{gene\_ids}: Array of gene IDs
+        \item \texttt{gene\_family\_ids}: Array of family IDs
+        \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
+        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
+        \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate Data Structure}]
+validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+\end{lstlisting}
+
+\item \textbf{Validate All Data}
+
+    The function performs comprehensive validation of all data components in one call. This function executes all individual validations sequentially for complete data quality assurance.
+    Call the \texttt{validate\_all\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_families}: Number of families
+        \item \texttt{n\_samples}: Number of samples
+        \item \texttt{gene\_ids}: Array of gene IDs
+        \item \texttt{gene\_family\_ids}: Array of family IDs
+        \item \texttt{gene\_to\_fam}: Array mapping each gene to a family index
+        \item \texttt{expression\_vectors}: 2D array of expression data (genes × samples)
+        \item \texttt{family\_centroids}: 2D array of family centroids (samples × families)
+        \item \texttt{shift\_vectors}: 2D array of shift vectors (genes × samples)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Validate All Data}]
+validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+\end{lstlisting}
+
+\textbf{Data Filtering and Validation Workflow Example:}
+\begin{lstlisting}[language=Python, caption={Python Data Filtering and Validation Workflow}]
+# After loading data, filter unassigned genes
+filter_result = filter_unassigned_genes(gene_to_fam)
+mask = np.array(filter_result['mask'], dtype=bool)
+n_genes_kept = filter_result['n_genes_kept']
+
+print(f"Filtered from {len(gene_to_fam)} to {n_genes_kept} genes")
+
+# Apply filter to all gene-based arrays
+filtered_gene_ids = gene_ids[mask]
+filtered_expression = expression_vectors[:, mask]
+filtered_gene_to_fam = gene_to_fam[mask]
+
+# Run comprehensive validations
+validate_string_array_uniqueness(filtered_gene_ids)
+validate_string_array_uniqueness(family_ids)
+validate_expression_data(filtered_expression, check_non_negative=True)
+validate_gene_to_family_mapping(filtered_gene_to_fam, n_families)
+
+# For complete analysis with centroids and shift vectors
+validate_data_structure(
+    n_genes_kept, n_families, n_samples, 
+    filtered_gene_ids, family_ids, filtered_gene_to_fam,
+    filtered_expression, family_centroids, shift_vectors
+)
+
+# Or use the comprehensive validation
+validate_all_data(
+    n_genes_kept, n_families, n_samples,
+    filtered_gene_ids, family_ids, filtered_gene_to_fam,
+    filtered_expression, family_centroids, shift_vectors
+)
+
+print("All data validations passed successfully")
+\end{lstlisting}
+
+\item \textbf{Create Zip Archive (Low-Level)}
+
+    The low-level function creates a zip archive from keys and filenames, directly calling the Fortran backend. Use this function for custom data serialization scenarios or when you need fine-grained control over archive creation.
+    Call the \texttt{create\_zip\_archive} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to create
+        \item \texttt{keys}: List of keys for the manifest (identifiers for each file)
+        \item \texttt{filenames}: List of filenames to include in archive
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Create Zip Archive (Low-Level)}]
+create_zip_archive(zip_filename, keys, filenames)
+\end{lstlisting}
+
+\item \textbf{Extract Zip Archive}
+
+    The function extracts a zip archive created by \texttt{create\_zip\_archive} and returns a dictionary mapping data keys to extracted filenames. This is useful for accessing individual files from custom archives.
+    Call the \texttt{extract\_zip\_archive} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Path to the zip file to extract
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Dictionary mapping data keys to extracted temporary filenames
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Extract Zip Archive}]
+extract_zip_archive(zip_filename)
+\end{lstlisting}
+
+\item \textbf{Save TOX Data (High-Level)}
+
+    The high-level function saves TOX data to a zip archive, handling validation, serialization, and archive creation for standard-conform tox gene data. This function automatically manages temporary files and cleanup.
+    Call the \texttt{save\_tox\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to create
+        \item \textbf{(Optional)} \texttt{gene\_ids}: Array of gene IDs
+        \item \textbf{(Optional)} \texttt{expression\_vectors}: 2D array of expression data
+        \item \textbf{(Optional)} \texttt{gene\_to\_fam}: Array mapping genes to families
+        \item \textbf{(Optional)} \texttt{family\_ids}: Array of family IDs
+        \item \textbf{(Optional)} \texttt{family\_centroids}: 2D array of family centroids
+        \item \textbf{(Optional)} \texttt{shift\_vectors}: 2D array of shift vectors
+        \item Corresponding \texttt{*\_name} parameters for temporary filenames (e.g., \texttt{gene\_ids\_name}, \texttt{expression\_vectors\_name}, etc.)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Save TOX Data}]
+save_tox_data(zip_filename, gene_ids=None, expression_vectors=None, gene_to_fam=None, family_ids=None, family_centroids=None, shift_vectors=None, gene_ids_name=None, expression_vectors_name=None, gene_to_fam_name=None, family_ids_name=None, family_centroids_name=None, shift_vectors_name=None)
+\end{lstlisting}
+
+\item \textbf{Read TOX Data}
+
+    The function reads data from a zip archive created by \texttt{save\_tox\_data}, extracting and deserializing the requested data components for standard-conform tox gene data. This function automatically handles file extraction and cleanup.
+    Call the \texttt{read\_tox\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to read
+        \item \textbf{(Optional)} \texttt{load\_gene\_ids}: Whether to load gene IDs (default: False)
+        \item \textbf{(Optional)} \texttt{load\_expression\_vectors}: Whether to load expression vectors (default: False)
+        \item \textbf{(Optional)} \texttt{load\_gene\_to\_fam}: Whether to load gene-to-family mapping (default: False)
+        \item \textbf{(Optional)} \texttt{load\_family\_ids}: Whether to load family IDs (default: False)
+        \item \textbf{(Optional)} \texttt{load\_family\_centroids}: Whether to load family centroids (default: False)
+        \item \textbf{(Optional)} \texttt{load\_shift\_vectors}: Whether to load shift vectors (default: False)
+    \end{itemize}
+
+    \textbf{Return dictionary:}
+    \begin{itemize}
+        \item \textbf{gene\_ids}: Loaded gene IDs array (if requested)
+        \item \textbf{expression\_vectors}: Loaded expression vectors array (if requested)
+        \item \textbf{gene\_to\_fam}: Loaded gene-to-family mapping array (if requested)
+        \item \textbf{family\_ids}: Loaded family IDs array (if requested)
+        \item \textbf{family\_centroids}: Loaded family centroids array (if requested)
+        \item \textbf{shift\_vectors}: Loaded shift vectors array (if requested)
+    \end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Python Read TOX Data}]
+read_tox_data(zip_filename, load_gene_ids=False, load_expression_vectors=False, load_gene_to_fam=False, load_family_ids=False, load_family_centroids=False, load_shift_vectors=False)
+\end{lstlisting}
+
+\textbf{Data Archiving Workflow Examples:}
+\begin{lstlisting}[language=Python, caption={Python Standard TOX Data Archiving}]
+# Save complete TOX dataset
+save_tox_data(
+    zip_filename="complete_tox_dataset.zip",
+    gene_ids=filtered_gene_ids,
+    gene_ids_name="gene_ids.bin",
+    expression_vectors=filtered_expression,
+    expression_vectors_name="expression.bin",
+    gene_to_fam=filtered_gene_to_fam,
+    gene_to_fam_name="gene_to_fam.bin",
+    family_ids=family_ids,
+    family_ids_name="family_ids.bin",
+    family_centroids=family_centroids,
+    family_centroids_name="centroids.bin",
+    shift_vectors=shift_vectors,
+    shift_vectors_name="shift_vectors.bin"
+)
+
+# Save partial dataset
+save_tox_data(
+    zip_filename="basic_data.zip",
+    gene_ids=filtered_gene_ids,
+    gene_ids_name="gene_ids.bin",
+    expression_vectors=filtered_expression,
+    expression_vectors_name="expression.bin"
+)
+
+# Read data back with selective loading
+loaded_data = read_tox_data(
+    zip_filename="complete_tox_dataset.zip",
+    load_gene_ids=True,
+    load_expression_vectors=True,
+    load_gene_to_fam=True
+)
+
+# Access loaded data
+print(f"Loaded {len(loaded_data['gene_ids'])} genes")
+print(f"Expression matrix: {loaded_data['expression_vectors'].shape}")
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Python Custom Archive Creation and Extraction}]
+# Create custom archive with non-standard data
+create_zip_archive(
+    zip_filename="custom_data.zip",
+    keys=["3d_tensor", "metadata", "results"],
+    filenames=["tensor_data.bin", "meta.txt", "analysis_results.bin"]
+)
+
+# Extract and access custom archive
+file_mapping = extract_zip_archive("custom_data.zip")
+print("Files in archive:", file_mapping)
+# Output: {'3d_tensor': 'tensor_data.bin', 'metadata': 'meta.txt', 'results': 'analysis_results.bin'}
+
+# Access specific files
+if 'metadata' in file_mapping:
+    with open(file_mapping['metadata'], 'r') as f:
+        metadata = f.read()
+        print("Metadata:", metadata)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Python Mixed Standard and Custom Data Archiving}]
+# Serialize custom arrays
+tox_serialize_real_nd(custom_array, "custom_data.bin")
+tox_serialize_int_nd(another_array, "another_data.bin")
+
+# Create mixed archive with both standard and custom data
+create_zip_archive(
+    zip_filename="mixed_archive.zip",
+    keys=["standard_expression", "custom_feature", "analysis_results"],
+    filenames=["expression.bin", "custom_data.bin", "another_data.bin"]
+)
+
+# Later, extract and process
+mapping = extract_zip_archive("mixed_archive.zip")
+expression_data = tox_deserialize_real_nd(mapping["standard_expression"])
+custom_features = tox_deserialize_real_nd(mapping["custom_feature"])
+results = tox_deserialize_int_nd(mapping["analysis_results"])
+\end{lstlisting}
+
     \item \textbf{Read CSV to Strings:} Call the \texttt{read\_csv\_as\_strings} function. It takes the file path and returns the header and a 2D NumPy array of strings.
     \item \textbf{Extract Typed Columns:} Pass the string NumPy array to the desired conversion functions, such as \texttt{read\_integer\_columns} or \texttt{read\_real\_columns}, along with a list of 1-based column indices to extract. All returned NumPy arrays are read-only for data safety.
 
