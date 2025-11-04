@@ -10,7 +10,6 @@ image: archlinux:latest
   - R --version
   # install Rcpp, readr
   - Rscript -e 'install.packages("Rcpp", repos="https://cloud.r-project.org")'
-  - Rscript -e 'install.packages("readr", repos="https://cloud.r-project.org")'
   - Rscript -e 'installed.packages()[, c("Package", "Version")]'
 
 .install-python: &install-python
