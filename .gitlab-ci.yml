@@ -59,21 +59,16 @@ before_script:
 run-tests:
   stage: run-tests
   rules:
-    # trigger when pushing to main directly, but only if src/ or test/ changed
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - src/**
-        - test/**
-        - test_runner.sh
-
-    # trigger only when a MR to 'main' is created and src/ or test/ changed
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    # trigger only when a MR or commit to 'main'
+    - if: '$CI_COMMIT_BRANCH == "main" || ($CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
       changes:
         - rcpp/**
         - python/**
         - src/**
         - test/**
         - test_runner.sh
+        - build.sh
+        - build_utils.sh
 
     # prevent running on other branches outside MR context
     - when: never
@@ -89,13 +84,13 @@ run-tests:
         for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
         for i in python/test/*.py; do echo ; echo $i ; python $i ; done
       done
+
 generate-docs:  # generate documentation after tests have passed
   stage: generate-docs
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - src/**
-        - test/**
         - ford.yml
     - when: never
   needs:
