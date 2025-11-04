@@ -1,7 +1,7 @@
 library(Rcpp)
 
 # Get absolute path to build directory containing the compiled Fortran library
-lib_path <- normalizePath("build")
+lib_path <- shQuote(normalizePath("build"))
 
 # Set up compilation flags for linking with Fortran library
 Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
