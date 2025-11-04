@@ -1,7 +1,7 @@
 !> Module for calculating normalized tissue (axis) versatility.
 !| This module implements the angle-based metric for tissue versatility,
 !| quantifying how uniformly a gene is expressed across selected axes (tissues).
-module avmod
+module tox_tissue_versatility
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_errors, only: ERR_EMPTY_INPUT, set_ok, set_err_once
   implicit none
@@ -48,6 +48,19 @@ contains
       call set_err_once(ierr, ERR_EMPTY_INPUT)
       return
     end if
+    
+    ! Handle edge case: when only one axis is selected, tissue versatility is always 0
+    if (n_selected_axes == 1) then
+      out_idx = 0
+      do i_vec = 1, n_vectors
+        if (.not. exp_vecs_selection_index(i_vec)) cycle
+        out_idx = out_idx + 1
+        tissue_versatilities(out_idx) = 0.0_real64
+        tissue_angles_deg(out_idx) = 0.0_real64
+      end do
+      return
+    end if
+    
     norm_diag = sqrt(real(n_selected_axes, real64))
     ! Precompute normalization factor for tissue versatility
     norm_factor = 1.0_real64 - 1.0_real64 / norm_diag
@@ -90,7 +103,7 @@ contains
 
   end subroutine compute_tissue_versatility
 
-end module avmod 
+end module tox_tissue_versatility 
 
 
 !> R wrapper for compute_tissue_versatility.
@@ -98,7 +111,7 @@ end module avmod
 pure subroutine compute_tissue_versatility_r(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, &
                                              n_selected_vectors, axes_selection, n_selected_axes, &
                                              tissue_versatilities, tissue_angles_deg, ierr)
-  use avmod
+  use tox_tissue_versatility
   !| Number of axes (tissues/dimensions)
   integer(int32), intent(in) :: n_axes
   !| Number of expression vectors (genes)
@@ -130,7 +143,7 @@ pure subroutine compute_tissue_versatility_c(n_axes, n_vectors, expression_vecto
                                              n_selected_vectors, axes_selection, n_selected_axes, &
                                              tissue_versatilities, tissue_angles_deg, ierr) bind(C, name="compute_tissue_versatility_c")
   use iso_c_binding, only : c_int, c_double
-  use avmod
+  use tox_tissue_versatility
   !| Number of axes (tissues/dimensions)
   integer(c_int), intent(in), value :: n_axes
   !| Number of expression vectors (genes)
