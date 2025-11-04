@@ -2964,6 +2964,373 @@ restored_2d = tox_deserialize_int_nd("test_int_2d.bin")
 The R pipeline first reads the file into a raw, memory-efficient format (an integer array of ASCII codes) and then performs conversions from that raw format.
 
 \begin{enumerate}
+\item \textbf{Filter Unassigned Genes (R)}
+
+    The function filters out genes that are not assigned to any family (where gene\_to\_fam = 0). This is essential for cleaning data before orthology-based analyses, ensuring only genes with valid family assignments are processed.
+    Call the \texttt{filter\_unassigned\_genes} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{gene\_ids}: Character vector of gene IDs
+        \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples × n\_genes)
+        \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family index (0 = unassigned)
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{gene\_ids}: Filtered character vector of gene IDs
+        \item \textbf{expression\_vectors}: Filtered numeric matrix of expression values
+        \item \textbf{gene\_to\_fam}: Filtered integer vector mapping each gene to its family index
+        \item \textbf{n\_genes\_kept}: Number of genes kept after filtering
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Filter Unassigned Genes}]
+filter_unassigned_genes(gene_ids, expression_vectors, gene_to_fam)
+\end{lstlisting}
+
+\item \textbf{Validate Gene to Family Mapping (R)}
+
+    The function validates the gene-to-family mapping array, ensuring all family indices are within valid range and properly assigned. This prevents downstream errors from invalid family indices.
+    Call the \texttt{validate\_gene\_to\_family\_mapping} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family index (0 = unassigned)
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_families}: Number of gene families
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate Gene to Family Mapping}]
+validate_gene_to_family_mapping(gene_to_fam, n_genes, n_families)
+\end{lstlisting}
+
+\item \textbf{Validate Expression Data (R)}
+
+    The function validates expression data, checking for NaN/Inf values and optionally verifying non-negative values. This ensures data quality before computational analyses.
+    Call the \texttt{validate\_expression\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples × n\_genes)
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_samples}: Number of samples
+        \item \textbf{(Optional)} \texttt{check\_non\_negative}: Logical flag to check for non-negative values (default: TRUE)
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate Expression Data}]
+validate_expression_data(expression_vectors, n_genes, n_samples, check_non_negative = TRUE)
+\end{lstlisting}
+
+\item \textbf{Validate Family Centroids (R)}
+
+    The function validates family centroids data, checking for NaN/Inf values and proper data structure. Centroids represent the central tendency of each gene family's expression profile.
+    Call the \texttt{validate\_family\_centroids} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples × n\_families)
+        \item \texttt{n\_families}: Number of gene families
+        \item \texttt{n\_samples}: Number of samples
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate Family Centroids}]
+validate_family_centroids(family_centroids, n_families, n_samples)
+\end{lstlisting}
+
+\item \textbf{Validate Shift Vectors (R)}
+
+    The function validates shift vectors, ensuring data types are correct and structure matches expected patterns. Shift vectors represent the deviation of each gene from its family centroid.
+    Call the \texttt{validate\_shift\_vectors} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{shift\_vectors}: Numeric matrix of shift vectors (2*n\_samples × n\_genes)
+        \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples × n\_genes)
+        \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples × n\_families)
+        \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family index
+        \item \texttt{n\_samples}: Number of samples
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate Shift Vectors}]
+validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples)
+\end{lstlisting}
+
+\item \textbf{Validate String Array Uniqueness (R)}
+
+    The function validates that all strings in an array are unique, using a hashset internally. Note: This may increase memory usage temporarily for large datasets.
+    Call the \texttt{validate\_string\_array\_uniqueness} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{string\_arr}: Character vector of gene IDs
+        \item \texttt{n\_strings}: Number of genes
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate String Array Uniqueness}]
+validate_string_array_uniqueness(string_arr, n_strings)
+\end{lstlisting}
+
+\item \textbf{Validate All Data (R)}
+
+    The function performs comprehensive validation of all data components in one call. This function executes all individual validations sequentially for complete data quality assurance.
+    Call the \texttt{validate\_all\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{n\_genes}: Number of genes
+        \item \texttt{n\_families}: Number of gene families
+        \item \texttt{n\_samples}: Number of samples
+        \item \texttt{gene\_ids}: Character vector of gene IDs
+        \item \texttt{gene\_family\_ids}: Character vector of gene family IDs
+        \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family index (0 = unassigned)
+        \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples × n\_genes)
+        \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples × n\_families)
+        \item \texttt{shift\_vectors}: Numeric matrix of shift vectors (2*n\_samples × n\_genes)
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Validate All Data}]
+validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+\end{lstlisting}
+
+\textbf{R Data Filtering and Validation Workflow Example:}
+\begin{lstlisting}[language=R, caption={R Data Filtering and Validation Workflow}]
+# After loading data, filter unassigned genes
+filter_result <- filter_unassigned_genes(gene_ids, expression_vectors, gene_to_fam)
+gene_ids <- filter_result$gene_ids
+expression_vectors <- filter_result$expression_vectors
+gene_to_fam <- filter_result$gene_to_fam
+n_genes_kept <- filter_result$n_genes_kept
+
+cat("Filtered from", length(gene_to_fam), "to", n_genes_kept, "genes\n")
+
+# Run comprehensive validations
+validate_string_array_uniqueness(gene_ids, n_genes_kept)
+validate_string_array_uniqueness(family_ids, n_families)
+validate_expression_data(expression_vectors, n_genes_kept, n_samples, check_non_negative = TRUE)
+validate_gene_to_family_mapping(gene_to_fam, n_genes_kept, n_families)
+
+# For complete analysis with centroids and shift vectors
+validate_all_data(
+    n_genes_kept, n_families, n_samples, 
+    gene_ids, family_ids, gene_to_fam,
+    expression_vectors, family_centroids, shift_vectors
+)
+
+cat("All data validations passed successfully\n")
+\end{lstlisting}
+
+\item \textbf{Create Zip Archive (Low-Level) (R)}
+
+    The low-level function creates a zip archive from keys and filenames, directly calling the Fortran backend. Use this function for custom data serialization scenarios or when you need fine-grained control over archive creation.
+    Call the \texttt{create\_zip\_archive} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to create
+        \item \texttt{keys}: Vector of keys for the manifest (identifiers for each file)
+        \item \texttt{filenames}: Vector of filenames to include in archive
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Create Zip Archive (Low-Level)}]
+create_zip_archive(zip_filename, keys, filenames)
+\end{lstlisting}
+
+\item \textbf{Extract Zip Archive (R)}
+
+    The function extracts a zip archive created by \texttt{create\_zip\_archive} and returns a list mapping data keys to extracted filenames. This is useful for accessing individual files from custom archives.
+    Call the \texttt{extract\_zip\_archive} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Path to the zip file to extract
+    \end{itemize}
+
+    \textbf{Returns:}
+    \begin{itemize}
+        \item List mapping data keys to extracted temporary filenames
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Extract Zip Archive}]
+extract_zip_archive(zip_filename)
+\end{lstlisting}
+
+\item \textbf{Save TOX Data (High-Level) (R)}
+
+    The high-level function saves TOX data to a zip archive, handling validation, serialization, and archive creation for standard-conform tox gene data. This function automatically manages temporary files and cleanup.
+    Call the \texttt{save\_tox\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to create
+        \item \textbf{(Optional)} \texttt{gene\_ids}: Character vector of gene IDs
+        \item \textbf{(Optional)} \texttt{gene\_ids\_name}: Filename for gene IDs in the archive
+        \item \textbf{(Optional)} \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples × n\_genes)
+        \item \textbf{(Optional)} \texttt{expression\_vectors\_name}: Filename for expression vectors in the archive
+        \item \textbf{(Optional)} \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family index (0 = unassigned)
+        \item \textbf{(Optional)} \texttt{gene\_to\_fam\_name}: Filename for gene to family mapping in the archive
+        \item \textbf{(Optional)} \texttt{family\_ids}: Character vector of family IDs
+        \item \textbf{(Optional)} \texttt{family\_ids\_name}: Filename for family IDs in the archive
+        \item \textbf{(Optional)} \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples × n\_families)
+        \item \textbf{(Optional)} \texttt{family\_centroids\_name}: Filename for family centroids in the archive
+        \item \textbf{(Optional)} \texttt{shift\_vectors}: Numeric matrix of shift vectors (2*n\_samples × n\_genes)
+        \item \textbf{(Optional)} \texttt{shift\_vectors\_name}: Filename for shift vectors in the archive
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Save TOX Data}]
+save_tox_data(zip_filename,
+              gene_ids = NULL, gene_ids_name = NULL,
+              expression_vectors = NULL, expression_vectors_name = NULL,
+              gene_to_fam = NULL, gene_to_fam_name = NULL,
+              family_ids = NULL, family_ids_name = NULL,
+              family_centroids = NULL, family_centroids_name = NULL,
+              shift_vectors = NULL, shift_vectors_name = NULL)
+\end{lstlisting}
+
+\item \textbf{Read TOX Data (R)}
+
+    The function reads data from a zip archive created by \texttt{save\_tox\_data}, extracting and deserializing the requested data components for standard-conform tox gene data. This function automatically handles file extraction and cleanup.
+    Call the \texttt{read\_tox\_data} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{zip\_filename}: Name of the zip file to read from
+        \item \textbf{(Optional)} \texttt{gene\_ids}: If not NULL, will attempt to read gene IDs from archive
+        \item \textbf{(Optional)} \texttt{expression\_vectors}: If not NULL, will attempt to read expression vectors from archive
+        \item \textbf{(Optional)} \texttt{gene\_to\_fam}: If not NULL, will attempt to read gene to family mapping from archive
+        \item \textbf{(Optional)} \texttt{family\_ids}: If not NULL, will attempt to read family IDs from archive
+        \item \textbf{(Optional)} \texttt{family\_centroids}: If not NULL, will attempt to read family centroids from archive
+        \item \textbf{(Optional)} \texttt{shift\_vectors}: If not NULL, will attempt to read shift vectors from archive
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{gene\_ids}: Loaded gene IDs vector (if requested)
+        \item \textbf{expression\_vectors}: Loaded expression vectors matrix (if requested)
+        \item \textbf{gene\_to\_fam}: Loaded gene-to-family mapping vector (if requested)
+        \item \textbf{family\_ids}: Loaded family IDs vector (if requested)
+        \item \textbf{family\_centroids}: Loaded family centroids matrix (if requested)
+        \item \textbf{shift\_vectors}: Loaded shift vectors matrix (if requested)
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Read TOX Data}]
+read_tox_data(zip_filename,
+              gene_ids = NULL,
+              expression_vectors = NULL,
+              gene_to_fam = NULL,
+              family_ids = NULL,
+              family_centroids = NULL,
+              shift_vectors = NULL)
+\end{lstlisting}
+
+\textbf{R Data Archiving Workflow Examples:}
+\begin{lstlisting}[language=R, caption={R Standard TOX Data Archiving}]
+# Save complete TOX dataset
+save_tox_data(
+    zip_filename = "complete_tox_dataset.zip",
+    gene_ids = gene_ids,
+    gene_ids_name = "gene_ids.bin",
+    expression_vectors = expression_vectors,
+    expression_vectors_name = "expression.bin",
+    gene_to_fam = gene_to_fam,
+    gene_to_fam_name = "gene_to_fam.bin",
+    family_ids = family_ids,
+    family_ids_name = "family_ids.bin",
+    family_centroids = family_centroids,
+    family_centroids_name = "centroids.bin",
+    shift_vectors = shift_vectors,
+    shift_vectors_name = "shift_vectors.bin"
+)
+
+# Save partial dataset
+save_tox_data(
+    zip_filename = "basic_data.zip",
+    gene_ids = gene_ids,
+    gene_ids_name = "gene_ids.bin",
+    expression_vectors = expression_vectors,
+    expression_vectors_name = "expression.bin"
+)
+
+# Read data back with selective loading
+loaded_data <- read_tox_data(
+    zip_filename = "complete_tox_dataset.zip",
+    gene_ids = TRUE,
+    expression_vectors = TRUE,
+    gene_to_fam = TRUE
+)
+
+# Access loaded data
+cat("Loaded", length(loaded_data$gene_ids), "genes\n")
+cat("Expression matrix:", dim(loaded_data$expression_vectors), "\n")
+\end{lstlisting}
+
+\begin{lstlisting}[language=R, caption={R Custom Archive Creation and Extraction}]
+# Create custom archive with non-standard data
+create_zip_archive(
+    zip_filename = "custom_data.zip",
+    keys = c("3d_tensor", "metadata", "results"),
+    filenames = c("tensor_data.bin", "meta.txt", "analysis_results.bin")
+)
+
+# Extract and access custom archive
+file_mapping <- extract_zip_archive("custom_data.zip")
+cat("Files in archive:\n")
+print(file_mapping)
+# Output: $3d_tensor = "tensor_data.bin", $metadata = "meta.txt", $results = "analysis_results.bin"
+
+# Access specific files
+if (!is.null(file_mapping[["metadata"]])) {
+    meta_content <- readLines(file_mapping[["metadata"]])
+    cat("Metadata:", meta_content, "\n")
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=R, caption={R Mixed Standard and Custom Data Archiving}]
+# Serialize custom arrays
+tox_serialize_real_array(custom_array, "custom_data.bin")
+tox_serialize_int_array(another_array, "another_data.bin")
+
+# Create mixed archive with both standard and custom data
+create_zip_archive(
+    zip_filename = "mixed_archive.zip",
+    keys = c("standard_expression", "custom_feature", "analysis_results"),
+    filenames = c("expression.bin", "custom_data.bin", "another_data.bin")
+)
+
+# Later, extract and process
+mapping <- extract_zip_archive("mixed_archive.zip")
+expression_data <- tox_deserialize_real_array(mapping[["standard_expression"]])
+custom_features <- tox_deserialize_real_array(mapping[["custom_feature"]])
+results <- tox_deserialize_int_array(mapping[["analysis_results"]])
+\end{lstlisting}
+
+\begin{lstlisting}[language=R, caption={R Cross-Platform Archive Compatibility}]
+# Test reading archives created by other platforms
+tryCatch({
+    # Read Python-created archive
+    python_data <- read_tox_data(
+        zip_filename = "test_archive_1_py.zip",
+        gene_ids = TRUE,
+        expression_vectors = TRUE
+    )
+    cat("Successfully read from Python archive\n")
+    
+    # Read Fortran-created archive  
+    fortran_data <- read_tox_data(
+        zip_filename = "test_archive_1_f.zip",
+        gene_ids = TRUE,
+        expression_vectors = TRUE
+    )
+    cat("Successfully read from Fortran archive\n")
+}, error = function(e) {
+    cat("Cross-platform test skipped:", e$message, "\n")
+})
+
+# Verify data integrity across platforms
+if (exists("python_data") && exists("fortran_data")) {
+    genes_match <- all(python_data$gene_ids == fortran_data$gene_ids)
+    expr_match <- all.equal(python_data$expression_vectors, fortran_data$expression_vectors)
+    cat("Python and Fortran archives consistent - Genes:", genes_match, "Expression:", isTRUE(expr_match), "\n")
+}
+\end{lstlisting}
+
+\textbf{Important Notes for R Archive Functions:}
+\begin{itemize}
+    \item All archive functions automatically handle temporary file cleanup
+    \item The \texttt{save\_tox\_data} function validates data dimensions before serialization
+    \item Both \texttt{save\_tox\_data} and \texttt{read\_tox\_data} use the standard TOX data keys: "gene\_ids", "expression", "gene\_to\_family", "family\_ids", "family\_centroids", "shift\_vectors"
+    \item Archives created with R functions are compatible with Python and Fortran implementations
+    \item Error codes are automatically checked and converted to informative error messages
+\end{itemize}
+
     \item \textbf{Read CSV to Raw ASCII:} Call \texttt{tox.read\_csv\_raw}. This function reads the file and returns a list containing the data as a 3D integer array of ASCII codes. This intermediate format is efficient for passing between functions.
     \item \textbf{Extract Typed Columns:} Pass the raw data array (\texttt{\$data}) from the previous step to conversion functions like \texttt{tox.read\_integer\_columns} to get typed matrices.
     \item \textbf{(Optional) Convert to Strings:} For inspection, you can convert the raw ASCII data to a human-readable character matrix using \texttt{tox.convert\_ascii\_to\_strings}.
