@@ -2964,6 +2964,115 @@ restored_2d = tox_deserialize_int_nd("test_int_2d.bin")
 The R pipeline first reads the file into a raw, memory-efficient format (an integer array of ASCII codes) and then performs conversions from that raw format.
 
 \begin{enumerate}
+
+\item \textbf{Read Gene IDs from TSV File (R)}
+
+    The function reads gene identifiers from a tab-separated value (TSV) file, extracting specific gene IDs from a designated column while skipping header rows. This function is typically used as the first step in processing gene expression data to obtain the complete list of gene identifiers.
+    Call the \texttt{read\_gene\_ids\_from\_tsv\_file} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{filename}: Character string of the filename
+        \item \texttt{ngenes}: Number of gene IDs to read
+        \item \texttt{gene\_len}: Maximum length of each gene ID
+        \item \textbf{(Optional)} \texttt{n\_header\_rows}: Number of header rows to skip
+        \item \textbf{(Optional)} \texttt{gene\_col}: Column index (1-based) of gene IDs in the file
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{gene\_ids}: Character vector of gene IDs read from the file
+        \item \textbf{ierr}: Integer error code (0 if successful)
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Read Gene IDs from TSV File}]
+read_gene_ids_from_tsv_file(filename, ngenes, gene_len, n_header_rows = 1, gene_col = 1)
+\end{lstlisting}
+
+\item \textbf{Read Expression Vectors (R)}
+
+    The function reads gene expression data from multiple tabular files (CSV/TSV format), extracting expression values for specified genes across multiple samples. This function consolidates expression data from multiple files into a single matrix.
+    Call the \texttt{read\_expression\_vectors} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{file\_list}: Character vector of filenames
+        \item \texttt{gene\_ids}: Character vector of gene IDs to match
+        \item \texttt{n\_header\_rows}: Number of header rows to skip in each file
+        \item \texttt{gene\_col}: Column index (1-based) of gene IDs in each file
+        \item \texttt{value\_cols}: Vector of column indices (1-based) of expression values in each file
+        \item \texttt{n\_samples}: Total number of samples (rows) to read across all files
+        \item \textbf{(Optional)} \texttt{delimiter}: Delimiter used in the files (default: tab)
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{expression\_vectors}: Numeric matrix of dimensions (n\_samples × n\_genes)
+        \item \textbf{ierr}: Integer error code (0 if successful)
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Read Expression Vectors}]
+read_expression_vectors(file_list, gene_ids, n_header_rows, gene_col, value_cols, n_samples, delimiter = "\t")
+\end{lstlisting}
+
+\item \textbf{Read OrthoFinder File (R)}
+
+    The function processes an OrthoFinder output file to map genes to their respective orthologous families. This function establishes the gene-family relationships essential for downstream orthology-based analyses.
+    Call the \texttt{read\_orthofinder\_file} function with the following arguments:
+
+    \begin{itemize}
+        \item \texttt{filename}: Character string of the filename
+        \item \texttt{gene\_ids}: Character vector of gene IDs to match
+        \item \texttt{n\_families}: Number of unique gene families expected
+        \item \texttt{family\_len}: Maximum length of each family ID
+    \end{itemize}
+
+    \textbf{Return list:}
+    \begin{itemize}
+        \item \textbf{family\_ids}: Character vector of family IDs read from the file
+        \item \textbf{gene\_to\_fam}: Integer vector mapping each gene to its family index (0 = unassigned)
+        \item \textbf{ierr}: Integer error code (0 if successful)
+    \end{itemize}
+
+    \textbf{Note:} If genes are not found in the gene IDs list a message will be printed but NO error code is thrown.
+
+\begin{lstlisting}[language=R, caption={R Read OrthoFinder File}]
+read_orthofinder_file(filename, gene_ids, n_families, family_len)
+\end{lstlisting}
+
+\textbf{Complete R Data Loading Workflow Example:}
+\begin{lstlisting}[language=R, caption={R Complete Data Loading Workflow}]
+# Step 1: Load gene identifiers
+gene_result <- read_gene_ids_from_tsv_file(
+    filename = "data/expression_data.tsv",
+    ngenes = 50000,
+    gene_len = 32,
+    n_header_rows = 1,
+    gene_col = 1
+)
+gene_ids <- gene_result$gene_ids
+
+# Step 2: Load expression data from multiple samples
+samples <- c("sample1.tsv", "sample2.tsv", "sample3.tsv", "sample4.tsv")
+expression_result <- read_expression_vectors(
+    file_list = samples,
+    gene_ids = gene_ids,
+    n_header_rows = 1,
+    gene_col = 1,
+    value_cols = 2,
+    n_samples = 4
+)
+expression_vectors <- expression_result$expression_vectors
+
+# Step 3: Load orthology information
+family_result <- read_orthofinder_file(
+    filename = "data/Orthogroups.tsv",
+    gene_ids = gene_ids,
+    n_families = 15000,
+    family_len = 32
+)
+family_ids <- family_result$family_ids
+gene_to_fam <- family_result$gene_to_fam
+\end{lstlisting}
+
 \item \textbf{Filter Unassigned Genes (R)}
 
     The function filters out genes that are not assigned to any family (where gene\_to\_fam = 0). This is essential for cleaning data before orthology-based analyses, ensuring only genes with valid family assignments are processed.
@@ -3093,8 +3202,6 @@ gene_ids <- filter_result$gene_ids
 expression_vectors <- filter_result$expression_vectors
 gene_to_fam <- filter_result$gene_to_fam
 n_genes_kept <- filter_result$n_genes_kept
-
-cat("Filtered from", length(gene_to_fam), "to", n_genes_kept, "genes\n")
 
 # Run comprehensive validations
 validate_string_array_uniqueness(gene_ids, n_genes_kept)
@@ -3246,31 +3353,21 @@ loaded_data <- read_tox_data(
     expression_vectors = TRUE,
     gene_to_fam = TRUE
 )
-
-# Access loaded data
-cat("Loaded", length(loaded_data$gene_ids), "genes\n")
-cat("Expression matrix:", dim(loaded_data$expression_vectors), "\n")
 \end{lstlisting}
 
 \begin{lstlisting}[language=R, caption={R Custom Archive Creation and Extraction}]
 # Create custom archive with non-standard data
 create_zip_archive(
     zip_filename = "custom_data.zip",
-    keys = c("3d_tensor", "metadata", "results"),
-    filenames = c("tensor_data.bin", "meta.txt", "analysis_results.bin")
+    keys = c("3d_tensor", "results"),
+    filenames = c("tensor_data.bin", "analysis_results.bin")
 )
 
 # Extract and access custom archive
 file_mapping <- extract_zip_archive("custom_data.zip")
 cat("Files in archive:\n")
 print(file_mapping)
-# Output: $3d_tensor = "tensor_data.bin", $metadata = "meta.txt", $results = "analysis_results.bin"
-
-# Access specific files
-if (!is.null(file_mapping[["metadata"]])) {
-    meta_content <- readLines(file_mapping[["metadata"]])
-    cat("Metadata:", meta_content, "\n")
-}
+# Output: $3d_tensor = "tensor_data.bin", $results = "analysis_results.bin"
 \end{lstlisting}
 
 \begin{lstlisting}[language=R, caption={R Mixed Standard and Custom Data Archiving}]
@@ -3290,36 +3387,6 @@ mapping <- extract_zip_archive("mixed_archive.zip")
 expression_data <- tox_deserialize_real_array(mapping[["standard_expression"]])
 custom_features <- tox_deserialize_real_array(mapping[["custom_feature"]])
 results <- tox_deserialize_int_array(mapping[["analysis_results"]])
-\end{lstlisting}
-
-\begin{lstlisting}[language=R, caption={R Cross-Platform Archive Compatibility}]
-# Test reading archives created by other platforms
-tryCatch({
-    # Read Python-created archive
-    python_data <- read_tox_data(
-        zip_filename = "test_archive_1_py.zip",
-        gene_ids = TRUE,
-        expression_vectors = TRUE
-    )
-    cat("Successfully read from Python archive\n")
-    
-    # Read Fortran-created archive  
-    fortran_data <- read_tox_data(
-        zip_filename = "test_archive_1_f.zip",
-        gene_ids = TRUE,
-        expression_vectors = TRUE
-    )
-    cat("Successfully read from Fortran archive\n")
-}, error = function(e) {
-    cat("Cross-platform test skipped:", e$message, "\n")
-})
-
-# Verify data integrity across platforms
-if (exists("python_data") && exists("fortran_data")) {
-    genes_match <- all(python_data$gene_ids == fortran_data$gene_ids)
-    expr_match <- all.equal(python_data$expression_vectors, fortran_data$expression_vectors)
-    cat("Python and Fortran archives consistent - Genes:", genes_match, "Expression:", isTRUE(expr_match), "\n")
-}
 \end{lstlisting}
 
 \textbf{Important Notes for R Archive Functions:}
@@ -3941,15 +4008,6 @@ tox_serialize_char_array(arr3, fn("char1d.bin"))
 restored <- tox_deserialize_char_array(fn("char1d.bin"))
 \end{lstlisting}
 
-\subsubsection*{Performance Characteristics}
-
-\begin{itemize}
-    \item Efficient memory mapping between R arrays and Fortran memory structures
-    \item Minimal data copying between R and Fortran layers
-    \item Optimized binary format for large scientific datasets
-    \item Support for arrays exceeding available memory through file-based storage
-\end{itemize}
-
 \item \textbf{Compatibility Notes}
 
 \begin{itemize}
@@ -3961,4 +4019,344 @@ restored <- tox_deserialize_char_array(fn("char1d.bin"))
 \end{enumerate}
 \end{enumerate}
 
+\subsection{Fortran utilities}
+\begin{enumerate}
+    \item \textbf{Hashing}
+    
+    The TensorOmics package provides high-performance hashing utilities using the XXH3 algorithm for both hash maps and hash sets. These utilities are implemented in Fortran with separate chaining collision resolution and automatic resizing.
+    
+    \begin{enumerate}
+        \item \textbf{Hashmap}
+        
+        The hashmap implementation provides key-value storage with string keys and integer values, using the XXH3 hashing algorithm for optimal performance.
+        
+        \begin{itemize}
+            \item \textbf{Type Definition:}
+            \begin{lstlisting}[language=Fortran]
+type(hashmap_type) :: map
+            \end{lstlisting}
+            
+            \item \textbf{Create Hashmap:}
+            Initialize a new hashmap with optional initial size. The Hashmap size will be set to the next greater power of two.
+            \begin{lstlisting}[language=Fortran]
+call hashmap_create(map, initial_size)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{map}: Hashmap object to create
+                \item \textbf{(Optional)} \texttt{initial\_size}: Initial size of the hashmap
+            \end{itemize}
+            
+            \item \textbf{Insert Key-Value Pair:}
+            Insert or update a key-value pair in the hashmap.
+            \begin{lstlisting}[language=Fortran]
+call hashmap_put(map, key, value)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{map}: Hashmap to insert into
+                \item \texttt{key}: String key to store
+                \item \texttt{value}: Integer value to store
+            \end{itemize}
+            
+            \item \textbf{Lookup Key:}
+            Retrieve the value associated with a key.
+            \begin{lstlisting}[language=Fortran]
+value = hashmap_get(map, key)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{map}: Hashmap to search
+                \item \texttt{key}: String key to look for
+                \item \textbf{Returns:} Integer value, or -1 if key not found
+            \end{itemize}
+            
+            \item \textbf{Destroy Hashmap:}
+            Clean up and deallocate the hashmap. It is important to always call this function when the hashmap is no longer in use to avoid memory leaks.
+            \begin{lstlisting}[language=Fortran]
+call hashmap_destroy(map)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{map}: Hashmap to destroy
+            \end{itemize}
+        \end{itemize}
+        
+        \textbf{Hashmap Usage Example:}
+        \begin{lstlisting}[language=Fortran]
+use xxh3_hashmap_module
+
+type(hashmap_type) :: gene_map
+integer :: gene_index
+
+! Create hashmap for gene IDs
+call hashmap_create(gene_map, initial_size=1000)
+
+! Store gene indices
+call hashmap_put(gene_map, "Gene_001", 1)
+call hashmap_put(gene_map, "Gene_002", 2)
+call hashmap_put(gene_map, "Gene_003", 3)
+
+! Lookup gene index
+gene_index = hashmap_get(gene_map, "Gene_002")
+! gene_index = 2
+
+! Clean up
+call hashmap_destroy(gene_map)
+        \end{lstlisting}
+
+        \item \textbf{Hashset}
+        
+        The hashset implementation provides unique string storage with fast membership testing, using the same XXH3 hashing algorithm as the hashmap.
+        
+        \begin{itemize}
+            \item \textbf{Type Definition:}
+            \begin{lstlisting}[language=Fortran]
+type(hashset_type) :: set
+            \end{lstlisting}
+            
+            \item \textbf{Create Hashset:}
+            Initialize a new hashset with optional initial size. The hashset size will be increased to the next greatest power of two.
+            \begin{lstlisting}[language=Fortran]
+call hashset_create(set, initial_size)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{set}: Hashset object to create
+                \item \textbf{(Optional)} \texttt{initial\_size}: Initial size of the hashset
+            \end{itemize}
+            
+            \item \textbf{Insert Key:}
+            Insert a unique key into the hashset.
+            \begin{lstlisting}[language=Fortran]
+call hashset_put(set, key, ierr)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{set}: Hashset to insert into
+                \item \texttt{key}: String key to store
+                \item \texttt{ierr}: Error code (0 if successful, error if duplicate)
+            \end{itemize}
+            
+            \item \textbf{Check Membership:}
+            Test if a key exists in the hashset.
+            \begin{lstlisting}[language=Fortran]
+exists = is_in_hashset(set, key)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{set}: Hashset to search
+                \item \texttt{key}: String key to check
+                \item \textbf{Returns:} Logical indicating membership
+            \end{itemize}
+            
+            \item \textbf{Destroy Hashset:}
+            Clean up and deallocate the hashset. It is important that this function is always called when the hashset is no longer in use to avoid memory leaks.
+            \begin{lstlisting}[language=Fortran]
+call hashset_destroy(set)
+            \end{lstlisting}
+            \begin{itemize}
+                \item \texttt{set}: Hashset to destroy
+            \end{itemize}
+        \end{itemize}
+        
+        \textbf{Hashset Usage Example:}
+        \begin{lstlisting}[language=Fortran]
+use xxh3_hashmap_module
+
+type(hashset_type) :: unique_genes
+integer :: ierr
+logical :: exists
+
+! Create hashset for unique gene validation
+call hashset_create(unique_genes, initial_size=5000)
+
+! Add genes to set
+call hashset_put(unique_genes, "Gene_001", ierr)
+call hashset_put(unique_genes, "Gene_002", ierr)
+call hashset_put(unique_genes, "Gene_003", ierr)
+
+! Check for duplicates (will return error)
+call hashset_put(unique_genes, "Gene_001", ierr)
+! ierr != 0 indicates duplicate key
+
+! Test membership
+exists = is_in_hashset(unique_genes, "Gene_002")
+! exists = .true.
+
+! Clean up
+call hashset_destroy(unique_genes)
+        \end{lstlisting}
+    \end{enumerate}
+    
+    \textbf{Technical Features:}
+    \begin{itemize}
+        \item Uses XXH3 non-cryptographic hash algorithm for optimal performance
+        \item Automatic resizing when load factor exceeds 0.75
+        \item Separate chaining collision resolution
+        \item Table sizes are powers of two for efficient modulo operations
+        \item Keys are automatically trimmed and normalized
+        \item Memory efficient with proper cleanup procedures
+        \item Thread-safe for read operations (concurrent writes not supported)
+    \end{itemize}
+    
+    \textbf{Performance Characteristics:}
+    \begin{itemize}
+        \item Average case O(1) for insertions and lookups
+        \item Memory usage proportional to number of elements + overhead
+        \item Resizing operations are O(n) but amortized over many insertions
+    \end{itemize}
+
+    \item \textbf{Sorting Algorithms}
+
+The TensorOmics package provides high-performance quicksort implementations for various data types using iterative algorithms with manual stack management. These sorting routines operate indirectly through permutation vectors to preserve the original data order.
+
+\begin{enumerate}
+    \item \textbf{Generic Sorting Interface}
+    
+    A unified interface for sorting different data types through the \texttt{sort\_array} generic procedure.
+    
+    \begin{itemize}
+        \item \textbf{Generic Procedure:}
+        \begin{lstlisting}[language=Fortran]
+call sort_array(array, perm, stack_left, stack_right)
+        \end{lstlisting}
+        \begin{itemize}
+            \item \texttt{array}: Input array to sort (real, integer, or character)
+            \item \texttt{perm}: Permutation vector that will be reordered
+            \item \texttt{stack\_left}: Work array for left indices (size = array size)
+            \item \texttt{stack\_right}: Work array for right indices (size = array size)
+        \end{itemize}
+        
+        \textbf{Supported Types:}
+        \begin{lstlisting}[language=Fortran]
+! Real arrays
+real(real64) :: data_real(:)
+! Integer arrays  
+integer(int32) :: data_int(:)
+! Character arrays
+character(len=*) :: data_char(:)
+        \end{lstlisting}
+    \end{itemize}
+
+    \item \textbf{Type-Specific Sorting Procedures}
+    
+    Direct access to type-specific sorting routines for explicit control.
+    
+    \begin{itemize}
+        \item \textbf{Sort Real Arrays:}
+        \begin{lstlisting}[language=Fortran]
+call sort_real(array, perm, stack_left, stack_right)
+        \end{lstlisting}
+        \begin{itemize}
+            \item \texttt{array}: Real(real64) input array to sort
+            \item \texttt{perm}: Permutation vector that will be sorted
+            \item \texttt{stack\_left}: Manual stack of left indices
+            \item \texttt{stack\_right}: Manual stack of right indices
+        \end{itemize}
+        
+        \item \textbf{Sort Integer Arrays:}
+        \begin{lstlisting}[language=Fortran]
+call sort_integer(array, perm, stack_left, stack_right)
+        \end{lstlisting}
+        \begin{itemize}
+            \item \texttt{array}: Integer(int32) input array to sort
+            \item \texttt{perm}: Permutation vector that will be sorted
+            \item \texttt{stack\_left}: Manual stack of left indices
+            \item \texttt{stack\_right}: Manual stack of right indices
+        \end{itemize}
+        
+        \item \textbf{Sort Character Arrays:}
+        \begin{lstlisting}[language=Fortran]
+call sort_character(array, perm, stack_left, stack_right)
+        \end{lstlisting}
+        \begin{itemize}
+            \item \texttt{array}: Character input array to sort (lexicographic order)
+            \item \texttt{perm}: Permutation vector that will be sorted
+            \item \texttt{stack\_left}: Manual stack of left indices
+            \item \texttt{stack\_right}: Manual stack of right indices
+        \end{itemize}
+    \end{itemize}
+
+    \textbf{Sorting Usage Example:}
+    \begin{lstlisting}[language=Fortran]
+use f42_utils
+use iso_fortran_env, only: real64, int32
+
+real(real64) :: expression_data(1000)
+integer(int32) :: perm(1000), stack_left(1000), stack_right(1000)
+integer :: i
+
+! Initialize permutation
+do i = 1, 1000
+    perm(i) = i
+end do
+
+! Sort expression data indirectly
+call sort_real(expression_data, perm, stack_left, stack_right)
+
+! Access sorted data through permutation
+! expression_data(perm(1)) is the smallest value
+! expression_data(perm(1000)) is the largest value
+    \end{lstlisting}
+
+    \item \textbf{Technical Implementation Details}
+    
+    \begin{itemize}
+        \item \textbf{Algorithm:} Iterative quicksort with manual stack management
+        \item \textbf{Sorting Method:} Indirect sorting via permutation vectors
+        \item \textbf{Pivot Selection:} Median-of-three (center element)
+        \item \textbf{Memory:} Requires two work arrays of same size as input
+        \item \textbf{Performance:} Average case O(n log n), worst case O(n²)
+        \item \textbf{Stability:} Not stable (order of equal elements not preserved)
+    \end{itemize}
+    
+    \item \textbf{Work Array Requirements}
+    
+    For sorting an array of size \texttt{n}, you must provide:
+    \begin{itemize}
+        \item \texttt{perm(n)}: Permutation vector (initialize with 1, 2, ..., n)
+        \item \texttt{stack\_left(n)}: Work array for stack operations
+        \item \texttt{stack\_right(n)}: Work array for stack operations
+    \end{itemize}
+    
+    \textbf{Initialization Pattern:}
+    \begin{lstlisting}[language=Fortran]
+do i = 1, n
+    perm(i) = i          ! Identity permutation
+end do
+    \end{lstlisting}
+
+    \item \textbf{Advanced Usage: Direct Algorithm Access}
+    
+    For maximum performance in tight loops, you can call the internal quicksort procedures directly:
+    
+    \begin{lstlisting}[language=Fortran]
+! Internal quicksort for real arrays
+call quicksort_real(array, perm, n, stack_left, stack_right)
+
+! Internal quicksort for integer arrays  
+call quicksort_int(array, perm, n, stack_left, stack_right)
+
+! Internal quicksort for character arrays
+call quicksort_char(array, perm, n, stack_left, stack_right)
+    \end{lstlisting}
+    
+    \begin{itemize}
+        \item These procedures require explicit array size parameter \texttt{n}
+        \item Work arrays must be properly initialized
+        \item Provides slightly better performance by skipping interface overhead
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Performance Considerations:}
+\begin{itemize}
+    \item Manual stack management avoids recursion limits for large arrays
+    \item Indirect sorting preserves original data and allows multiple sort orders
+    \item Character sorting uses Fortran's intrinsic lexicographic comparison
+    \item Memory usage is $4n$ for all data including input, work array, and both stacks.
+    \item In case of memory considerations, heapsort might be used.
+\end{itemize}
+
+\textbf{Error Handling:}
+\begin{itemize}
+    \item All sorting procedures are \texttt{pure} (no side effects)
+    \item No explicit error codes - assumes valid input dimensions
+    \item User must ensure work arrays are properly sized
+    \item Invalid permutations may result in incorrect sorting
+\end{itemize}
+\end{enumerate}
 \end{document}
