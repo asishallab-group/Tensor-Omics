@@ -267,12 +267,19 @@ This section details the practical pipeline for using the TOX library to read an
 }
 
 \subsection{Fortran Pipeline}
-
+\subsubsection{Overview}
 \begin{enumerate}
-\item \textbf{Data Reading and Processing} \\
-All arrays read have dependencies to each other. The gene ids array stores the ids, column number seven of the expression vectors belongs to entry number seven
+	\item Data dependencies and relationships
+	All arrays read have dependencies to each other. The gene ids array stores the ids, column number seven of the expression vectors belongs to entry number seven
 in the gene ids. Entry number nine in the gene to family mapping array, belongs to entry nine in the gene ids. These dependencies must be given at any time, therefore, only
 the provided functions shall be used to modify arrays in any form. For error code details please check \hyperref[sec:error-handling]{error handling section}.
+	\item Error handling reference (placeholder for now)
+	\item General usage principle (Placeholder for now)
+\end{enumerate}
+
+\subsubsection{Data Management}
+\begin{enumerate}
+\item \textbf{Data Reading and Processing} \\
 \begin{enumerate}
     \item Reading Data
     \begin{itemize}
@@ -380,7 +387,7 @@ call read_expression_vectors(files, gene_ids, expr_data, 1, 1, samples, 1, ierr)
 call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam, ierr)
     \end{lstlisting}
 \end{itemize}
-
+\end{enumerate}
 
 \item \textbf{Data Filtering and Validation}
 \begin{itemize}
@@ -666,7 +673,147 @@ call get_family_for_gene_index(gene_idx, gene_to_fam, fam_idx, ierr)
 call get_family_centroid(fam_idx, centroids, centroid, ierr)
 \end{lstlisting}
 \end{itemize}
+\end{enumerate}
 
+\subsubsection{Data Persistence}
+\begin{enumerate}
+\item \textbf{Array Serialization and Deserialization Module}
+
+The array serialization and deserialization module provides comprehensive routines for efficiently storing and retrieving multi-dimensional arrays of various data types.
+
+\begin{enumerate}
+
+\item \textbf{General Architecture}
+
+The module supports five data types (integer, real, character, logical and complex) across dimensions 1 through 5. All routines follow a consistent naming convention and parameter structure for ease of use.
+
+\item \textbf{Supported Functions}
+
+\begin{itemize}
+    \item \texttt{serialize\_int\_Nd(arr, filename, ierr)} - Serialize N-dimensional integer arrays.
+    \item \texttt{deserialize\_int\_Nd(arr, filename, ierr)} - Deserialize N-dimensional integer arrays.
+    \item \texttt{serialize\_real\_Nd(arr, filename, ierr)} - Serialize N-dimensional real arrays.
+    \item \texttt{deserialize\_real\_Nd(arr, filename, ierr)} - Deserialize N-dimensional real arrays.
+    \item \texttt{serialize\_char\_Nd(arr, filename, ierr)} - Serialize N-dimensional character arrays.
+    \item \texttt{deserialize\_char\_Nd(arr, filename, ierr)} - Deserialize N-dimensional character arrays.
+    \item \texttt{serialize\_logical\_Nd(arr, filename, ierr)} - Serialize N-dimensional logical arrays.
+    \item \texttt{deserialize\_logical\_Nd(arr, filename, ierr)} - Deserialize N-dimensional logical arrays.
+    \item \texttt{serialize\_complex\_Nd(arr, filename, ierr)} - Serialize N-dimensional complex arrays.
+    \item \texttt{deserialize\_complex\_Nd(arr, filename, ierr)} - Deserialize N-dimensional complex arrays.
+    \item \texttt{get\_array\_metadata(filename, dims, max\_dims, ndims, ierr, [clen])} - Retrieve array metadata from files
+\end{itemize}
+
+Where N represents the array dimension (1-5).
+
+\item \textbf{Detailed Parameter Specifications}
+
+\textbf{Serialization Functions Parameters:}
+\begin{itemize}
+    \item \texttt{arr} (input): The array to be serialized. \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt(logical) or \texttt{complex} \\
+          \textbf{Dimensions:} 1D to 5D \\
+          \textbf{Intent:} \texttt{in} \\
+          \textbf{Note:} \textit{clen} has to be the size of the arrays elements
+    
+    \item \texttt{filename} (input): The name of the binary file to create. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+\end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Example usage of a serialize function}]
+call serialize_int_2d(array, "test_file.bin", ierr)
+\end{lstlisting}
+
+\item \textbf{Metadata Retrieval Function Parameters:}
+\begin{itemize}
+    \item \texttt{filename} (input): The name of the binary file to read metadata from. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{dims} (output): Array containing the dimensions of the stored array. \\
+          \textbf{Type:} \texttt{integer(int32), dimension(max\_dims)} \\
+          \textbf{Intent:} \texttt{out}
+          \textbf{Note:} Must be preallocated, recommended with size 5
+    
+    \item \texttt{max\_dims} (input): Size of the dims array (typically 5 for maximum supported dimensions). \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ndims} (output): Number of dimensions actually used by the array. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+    
+    \item \texttt{clen} (output, optional): For character arrays, the length of character elements. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Note:} This parameter is only used and required for character arrays
+\end{itemize}
+\begin{lstlisting}[language=fortran, caption={Usage of metadata retrieval}]
+call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
+\end{lstlisting}
+
+\textbf{Deserialization Functions Parameters:}
+\begin{itemize}
+    \item \texttt{arr} (output): The array to be populated with deserialized data. \\
+          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt{logical}, or \texttt{complex} \\
+          \textbf{Dimensions:} 1D to 5D \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
+    
+    \item \texttt{filename} (input): The name of the binary file to read. \\
+          \textbf{Type:} \texttt{character(len=*)} \\
+          \textbf{Intent:} \texttt{in}
+    
+    \item \texttt{ierr} (output): Error code indicating operation status. \\
+          \textbf{Type:} \texttt{integer(int32)} \\
+          \textbf{Intent:} \texttt{out} \\
+          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
+\end{itemize}
+\begin{lstlisting}[language=fortran, caption={Example usage of a deserialize function}]
+call deserialize_int_2d(array, "test_file.bin", ierr)
+\end{lstlisting}
+\begin{lstlisting}[language=fortran, caption={Full example}]
+integer(int32), allocatable :: kallisto_expression(:,:), kallisto_expression_2(:,:)
+integer(int32) :: dims(5)
+integer(int32) :: ndims, ierr, max_dims
+character(len=64) :: fname
+
+!Assume array is filled with data
+
+call serialize_real_2d(kallisto_expression, "kallisto_data_v1.bin", ierr)
+if(.not. is_ok(ierr)) error stop ierr
+
+!Reading the data again
+call get_array_metadata("kallisto_data_v1.bin", dims, max_dims, ndims, ierr)
+if(.not. is_ok(ierr)) error stop ierr
+allocate(kallisto_expression_2(dims(1), dims(2)))
+
+call deserialize_real_2d(kallisto_expression_2, "kallisto_data_v1.bin", ierr)
+if(.not. is_ok(ierr)) error stop ierr
+\end{lstlisting}
+
+	\item \textbf{Error Handling}
+
+All functions return an error code through the \texttt{ierr} parameter. The error handling utility \hyperref[sec:error-handling]{tox errors} provides functions to check and interpret these codes.
+
+	\item \textbf{Implementation Notes}
+
+	\begin{itemize}
+    	\item All routines are implemented in standard Fortran for interoperability
+    		\item The module uses allocatable arrays for flexible memory management
+    		\item File operations use Fortran's native unformatted I/O for efficiency
+    		\item Error handling is consistent across all functions for predictable behavior
+	\end{itemize}
+\end{enumerate}	
 \item \textbf{Standard Archive Operations}
 \begin{itemize}
 \item \textbf{Save Tox Data Archive}
@@ -1229,12 +1376,15 @@ call delete_file('temp_expr.bin', ierr)
     \item Suitable for datasets with millions of genes and thousands of samples
 \end{itemize}
 \end{itemize}
-\end{enumerate}
+
+\item \textbf{Csv reader}
 
 In a pure Fortran application, the user follows a two-step process to construct the Data Table.
+\begin{itemize}
+
     \item \textbf{Read CSV to Strings:} First, call the \texttt{read\_csv\_to\_strings} subroutine. This reads the entire CSV file into a 2D allocatable array of characters, which serves as the in-memory source for all subsequent operations.
     \item \textbf{Extract Typed Columns:} Next, call the specific \texttt{read\_*\_columns} subroutines (e.g., \texttt{read\_integer\_columns}, \texttt{read\_real\_columns}) to parse columns from the string array into new, strongly-typed 2D arrays.
-
+\end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Fortran Data Loading Workflow}]
 PROGRAM tox_fortran_example
     USE csv_file_reader_module, ONLY: read_csv_to_strings
@@ -1268,9 +1418,10 @@ PROGRAM tox_fortran_example
 END PROGRAM tox_fortran_example
 
 \end{lstlisting}
+\end{enumerate}
 
-    \item \textbf{TODO Functions relating section 1.2 }
-
+\subsubsection{Data Processing}
+\begin{enumerate}
     \item \textbf{Normalization of Expression Values}
 
     The subroutine runs a complete normalization pipeline on gene expression data. It first applies standard deviation normalization, then quantile normalization, 
@@ -1427,6 +1578,9 @@ call log2_transformation(n_genes, n_tissues, input_matrix, output_matrix, ierr)
 call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
 \end{lstlisting}    
 
+\subsubsection{Family-Based Analysis}
+\begin{enumerate}
+
     \item \textbf{Calculation of family Centroids}
 
     The subroutine computes the centroid (mean expression vector) for each gene family in a gene expression dataset. It iterates over all families, selects the relevant genes for each family and calculates the mean vector for each family. There are two possible modes to use. To use all genes for calculation, select \texttt{all} mode. If you want to specify relevant genes for calculation, select \texttt{orthologs} mode. It is important that you provide a logical \texttt{ortholog\_set} array when using \texttt{orthologs} mode. Call the \texttt{group\_centroid} subroutine with the following arguments:
@@ -1453,8 +1607,11 @@ call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o
 call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, selected_indices, ierr, ortholog_set)
 \end{lstlisting}
 
-\begin{enumerate}
-    \item \textbf{Calculate Mean Vector}
+\item \textbf{Calculate shift vectors}
+
+Placeholder for now
+
+\item \textbf{Calculate Mean Vector}
     
     Alternatively you can calculate a single mean vector for a given set of vectors by calling the \texttt{mean\_vector} subroutine directly with the following arguments: 
 
@@ -1475,9 +1632,6 @@ call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_famil
 \begin{lstlisting}[language=Fortran, caption={Mean Vector Calculation}]
 call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr)
 \end{lstlisting}
-\end{enumerate}
-
-    
     \item \textbf{Calculate Distance to Centroid}
      
     For each gene in the expression vector matrix, the subroutine computes the Euclidean distance to its corresponding family centroid and returns a distances array containing the distance value for each expression vector to its family centroid.
@@ -1692,7 +1846,329 @@ call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percenti
 \begin{lstlisting}[language=Fortran, caption={Tissue Versatility Calculation}]
 call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
 \end{lstlisting}
+\end{enumerate}
+\end{enumerate}
 
+\subsubsection{Relative Axis Plane Projection}
+Placeholder
+
+\subsubsection{Contribution Analysis}
+\begin{enumerate}
+\item \textbf{Fortran Core Contribution Analysis Functions}
+
+The Fortran module provides core routines for trajectory contribution analysis using cosine similarity and spike detection.
+
+\begin{enumerate}
+    \item \textbf{Trajectory Contribution Calculation}
+
+    Calculates integrated trajectory contribution using cosine similarity between factor and dependent vectors.
+    
+    \textbf{Mathematical Formula:}
+    \[ \text{contribution} = \frac{\text{factor} \cdot \text{dependent}}{\|\text{factor}\| \cdot \|\text{dependent}\|} \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{factor real(real64)}: Vector of independent variable [n\_timepoints]
+        \item \texttt{dependent real(real64)}: Vector of dependent variable [n\_timepoints]
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{contribution real(real64)}: Output contribution value
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Trajectory Contribution Calculation}]
+call trajectory_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
+\end{lstlisting}
+
+    \item \textbf{Spike Contribution Calculation}
+
+    Calculates timepoint-wise spike contributions using cosine similarity for each individual timepoint.
+    
+    \textbf{Mathematical Formula:}
+    \[ \text{contribution}(i) = \frac{\text{factor}(i) \cdot \text{dependent}(i)}{\|\text{factor}\| \cdot \|\text{dependent}\|} \quad \text{for } 1 \le i \le n\_timepoints \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{factor real(real64)}: Vector of independent variable [n\_timepoints]
+        \item \texttt{dependent real(real64)}: Vector of dependent variable [n\_timepoints]
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{contribution real(real64)}: Output spike contributions [n\_timepoints]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Spike Contribution Calculation}]
+call spike_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
+\end{lstlisting}
+
+    \item \textbf{Calculate Contributions (Expert Version)}
+
+    Calculates both spike and integrated contributions for a specific factor with pre-allocated work arrays.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors in trajectories
+        \item \texttt{n\_samples integer(int32)}: Number of samples in trajectories
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints in trajectories
+        \item \texttt{trajectories real(real64)}: 3D trajectories array [n\_factors, n\_samples, n\_timepoints]
+        \item \texttt{i\_factor integer(int32)}: Factor index to calculate contributions for
+        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples]
+        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples]
+        \item \texttt{temp\_factor\_vector real(real64)}: Work array [n\_timepoints]
+        \item \texttt{temp\_dependent\_vector real(real64)}: Work array [n\_timepoints]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Expert Contributions Calculation}]
+call calc_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+                       i_factor, dependent_idx, mode, spike_contribs, &
+                       integrated_contribs, temp_factor_vector, &
+                       temp_dependent_vector, ierr)
+\end{lstlisting}
+
+    \item \textbf{Calculate Contributions (Allocation Version)}
+
+    Calculates both spike and integrated contributions with internal memory allocation.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors in trajectories
+        \item \texttt{n\_samples integer(int32)}: Number of samples in trajectories
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints in trajectories
+        \item \texttt{trajectories real(real64)}: 3D trajectories array [n\_factors, n\_samples, n\_timepoints]
+        \item \texttt{i\_factor integer(int32)}: Factor index to calculate contributions for
+        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples]
+        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Allocation-Based Contributions Calculation}]
+call calc_contributions_alloc(trajectories, n_factors, n_samples, n_timepoints, &
+                             i_factor, dependent_idx, mode, spike_contribs, &
+                             integrated_contribs, ierr)
+\end{lstlisting}
+
+    \item \textbf{Vector Accessor Routines}
+
+    Extract specific slices from the 3D trajectories array.
+    
+    \textbf{Arguments for Sample Extraction:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors
+        \item \texttt{n\_samples integer(int32)}: Number of samples
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{trajectories real(real64)}: 3D trajectories array
+        \item \texttt{i\_factor integer(int32)}: Factor index
+        \item \texttt{i\_timepoint integer(int32)}: Timepoint index
+        \item \texttt{result\_vector real(real64)}: Output vector [n\_samples]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Extract Samples Vector}]
+call get_vec_across_samples(trajectories, n_factors, n_samples, n_timepoints, &
+                           i_factor, i_timepoint, result_vector, ierr)
+\end{lstlisting}
+
+    \textbf{Arguments for Timepoint Extraction:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors
+        \item \texttt{n\_samples integer(int32)}: Number of samples
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{trajectories real(real64)}: 3D trajectories array
+        \item \texttt{i\_factor integer(int32)}: Factor index
+        \item \texttt{i\_sample integer(int32)}: Sample index
+        \item \texttt{result\_vector real(real64)}: Output vector [n\_timepoints]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Extract Timepoints Vector}]
+call get_vec_across_timepoints(trajectories, n_factors, n_samples, n_timepoints, &
+                              i_factor, i_sample, result_vector, ierr)
+\end{lstlisting}
+
+    \item \textbf{Outlier detection}
+    
+    The outlier detection workflow consists of two main pathways: integrated (trajectory-level) analysis and spike (timepoint-level) analysis. You can perform outlier detection by calling the following subroutines in sequence:
+
+    \begin{enumerate}
+        \item \textbf{Calculate Integrated Threshold}
+
+        The subroutine calculates an empirical threshold for integrated (trajectory-level) contributions using pre-computed permutations. This determines which samples are significant overall across all genes.
+        Call the \texttt{calc\_integrated\_threshold} subroutine with the following arguments:
+
+        \textbf{Input arguments:}
+        \begin{itemize}
+            \item \texttt{n\_samples integer(int32)}: Number of samples
+            \item \texttt{contributions real(real64)}: 1D array of integrated contributions (size: \texttt{n\_samples})
+            \item \texttt{percentile\_val real(real64)}: Percentile value for threshold (0.0--100.0)
+            \item \texttt{permutation integer(int32)}: Pre-computed permutation indices for sorted contributions (size: \texttt{n\_samples})
+        \end{itemize}
+        \textbf{Output arguments:}
+        \begin{itemize}
+            \item \texttt{threshold real(real64)}: Scalar threshold value
+            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
+        \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Integrated Threshold Calculation}]
+call calc_integrated_threshold(contributions, n_samples, percentile_val, &
+                                threshold, permutation, ierr)
+    \end{lstlisting}
+
+        \item \textbf{Detect Integrated Outliers}
+
+        The subroutine identifies outlier samples where the integrated contribution exceeds the empirical threshold. Used to find trajectories with significant overall explanatory contributions.
+        Call the \texttt{detect\_outliers\_integrated} subroutine with the following arguments:
+
+        \textbf{Input arguments:}
+        \begin{itemize}
+            \item \texttt{n\_samples integer(int32)}: Number of samples
+            \item \texttt{contributions real(real64)}: Array of integrated contributions (size: \texttt{n\_samples})
+            \item \texttt{threshold real(real64)}: Scalar threshold value for outlier detection
+        \end{itemize}
+        \textbf{Output arguments:}
+        \begin{itemize}
+            \item \texttt{outlier\_mask logical}: 1D logical array indicating outliers (size: \texttt{n\_samples})
+            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
+        \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Integrated Outlier Detection}]
+call detect_outliers_integrated(contributions, n_samples, threshold, &
+                                outlier_mask, ierr)
+    \end{lstlisting}
+
+        \item \textbf{Calculate Spike Thresholds}
+
+        The subroutine calculates empirical thresholds for spike contributions using pre-sorted permutations. Computes percentile-based thresholds for each timepoint in spike contribution data.
+        Call the \texttt{calc\_spike\_thresholds} subroutine with the following arguments:
+
+        \textbf{Input arguments:}
+        \begin{itemize}
+            \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+            \item \texttt{n\_samples integer(int32)}: Number of samples
+            \item \texttt{spike\_contribs real(real64)}: 2D array of spike contributions (size: \texttt{n\_timepoints} × \texttt{n\_samples})
+            \item \texttt{percentile\_val real(real64)}: Percentile value for threshold (0.0--100.0)
+            \item \texttt{permutation integer(int32)}: Pre-computed permutation indices (size: \texttt{n\_samples} × \texttt{n\_timepoints})
+        \end{itemize}
+        \textbf{Output arguments:}
+        \begin{itemize}
+            \item \texttt{thresholds real(real64)}: 1D array of thresholds for each timepoint (size: \texttt{n\_timepoints})
+            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
+        \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Spike Thresholds Calculation}]
+call calc_spike_thresholds(spike_contribs, n_timepoints, n_samples, &
+                            percentile_val, thresholds, permutation, ierr)
+    \end{lstlisting}
+
+        \item \textbf{Detect Spike Outliers}
+
+        The subroutine identifies outliers in spike contribution data by comparing against timepoint-specific thresholds. Performs element-wise comparison across all timepoints and samples.
+        Call the \texttt{detect\_outliers\_spike} subroutine with the following arguments:
+
+        \textbf{Input arguments:}
+        \begin{itemize}
+            \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+            \item \texttt{n\_samples integer(int32)}: Number of samples
+            \item \texttt{spike\_contribs real(real64)}: 2D array of spike contributions (size: \texttt{n\_timepoints} × \texttt{n\_samples})
+            \item \texttt{thresholds real(real64)}: Array of thresholds for each timepoint (size: \texttt{n\_timepoints})
+        \end{itemize}
+        \textbf{Output arguments:}
+        \begin{itemize}
+            \item \texttt{outlier\_mask logical}: 2D logical array indicating outliers (size: \texttt{n\_timepoints} × \texttt{n\_samples})
+            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
+        \end{itemize}
+    \begin{lstlisting}[language=Fortran, caption={Spike Outlier Detection}]
+call detect_outliers_spike(spike_contribs, n_timepoints, n_samples, &
+                            thresholds, outlier_mask, ierr)
+    \end{lstlisting}
+
+    \end{enumerate}
+
+    \textbf{For convenience, allocation-friendly versions are also available:}
+    \begin{itemize}
+        \item \texttt{calc\_integrated\_threshold\_alloc}: Handles internal allocation and sorting
+        \item \texttt{calc\_spike\_thresholds\_alloc}: Handles internal allocation and sorting
+    \end{itemize}
+
+
+
+    \item \textbf{Process Trajectories with Per-Timepoint Percentiles}
+
+    Complete pipeline processing with timepoint-specific spike thresholds.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors
+        \item \texttt{n\_samples integer(int32)}: Number of samples
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{factor\_mask\_count integer(int32)}: Number of true values in factor mask
+        \item \texttt{trajectories real(real64)}: 3D trajectories array
+        \item \texttt{factor\_mask logical}: Mask for included factors [n\_factors]
+        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{percentile real(real64)}: Percentile value (0.0--100.0)
+        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples, factor\_mask\_count]
+        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples, factor\_mask\_count]
+        \item \texttt{thresholds\_integrated\_contrib real(real64)}: Integrated thresholds [factor\_mask\_count]
+        \item \texttt{thresholds\_spike\_contrib real(real64)}: Spike thresholds [n\_timepoints, factor\_mask\_count]
+        \item \texttt{outliers\_integrated\_contrib logical}: Integrated outliers [n\_samples, factor\_mask\_count]
+        \item \texttt{outliers\_spike\_contrib logical}: Spike outliers [n\_timepoints, n\_samples, factor\_mask\_count]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Per-Timepoint Thresholds}]
+call process_trajectories_alloc(trajectories, n_factors, n_samples, n_timepoints, &
+                              factor_mask, factor_mask_count, dependent_idx, mode, &
+                              percentile, integrated_contribs, spike_contribs, &
+                              thresholds_integrated_contrib, outliers_integrated_contrib, &
+                              thresholds_spike_contrib, outliers_spike_contrib, ierr)
+\end{lstlisting}
+
+    \item \textbf{Process Trajectories with Global Percentile}
+
+    Complete pipeline processing with global spike thresholds (flattened approach).
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{n\_factors integer(int32)}: Number of factors
+        \item \texttt{n\_samples integer(int32)}: Number of samples
+        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
+        \item \texttt{factor\_mask\_count integer(int32)}: Number of true values in factor mask
+        \item \texttt{trajectories real(real64)}: 3D trajectories array
+        \item \texttt{factor\_mask logical}: Mask for included factors [n\_factors]
+        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
+        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
+        \item \texttt{percentile real(real64)}: Percentile value (0.0--100.0)
+        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples, factor\_mask\_count]
+        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples, factor\_mask\_count]
+        \item \texttt{thresholds\_integrated\_contrib real(real64)}: Integrated thresholds [factor\_mask\_count]
+        \item \texttt{thresholds\_spike\_contrib real(real64)}: Spike thresholds [factor\_mask\_count] (1D)
+        \item \texttt{outliers\_integrated\_contrib logical}: Integrated outliers [n\_samples, factor\_mask\_count]
+        \item \texttt{outliers\_spike\_contrib logical}: Spike outliers [n\_timepoints, n\_samples, factor\_mask\_count]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Global Threshold}]
+call process_trajectories_flat_alloc(trajectories, n_factors, n_samples, n_timepoints, &
+                                   factor_mask, factor_mask_count, dependent_idx, mode, &
+                                   percentile, integrated_contribs, spike_contribs, &
+                                   thresholds_integrated_contrib, outliers_integrated_contrib, &
+                                   thresholds_spike_contrib, outliers_spike_contrib, ierr)
+\end{lstlisting}
+
+\end{enumerate}
+
+\textbf{Processing Modes:}
+\begin{itemize}
+    \item \texttt{MODE\_NORMAL = 1}: Returns cosine similarity for normal vectors
+    \item \texttt{MODE\_RAP = 2}: Returns arccos of cosine similarity for RAP projected vectors
+\end{itemize}
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{Pure Subroutines}: Most routines are pure with no side effects
+    \item \textbf{Robust Error Handling}: Comprehensive error checking and validation
+    \item \textbf{Memory Efficient}: Expert versions allow pre-allocated work arrays
+    \item \textbf{Mathematically Sound}: Uses cosine similarity with proper normalization
+    \item \textbf{Flexible Processing}: Supports both per-timepoint and global thresholding
+\end{itemize}
+\end{enumerate}
+
+\subsubsection{Fortran Utils}
+\begin{enumerate}
 \item \textbf{Binary Search Trees for 1D Range Queries}
 
 Binary Search Trees provide efficient indexing and range query capabilities for one-dimensional data using flat array implementations for optimal memory performance.
@@ -1836,453 +2312,6 @@ call build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, di
 call get_kd_point(points, kd_indices, position, point_values, ierr)
 \end{lstlisting}
 \end{enumerate}
-
-\item \textbf{Array Serialization and Deserialization Module}
-
-The array serialization and deserialization module provides comprehensive routines for efficiently storing and retrieving multi-dimensional arrays of various data types.
-
-\begin{enumerate}
-
-\item \textbf{General Architecture}
-
-The module supports five data types (integer, real, character, logical and complex) across dimensions 1 through 5. All routines follow a consistent naming convention and parameter structure for ease of use.
-
-\item \textbf{Supported Functions}
-
-\begin{itemize}
-    \item \texttt{serialize\_int\_Nd(arr, filename, ierr)} - Serialize N-dimensional integer arrays.
-    \item \texttt{deserialize\_int\_Nd(arr, filename, ierr)} - Deserialize N-dimensional integer arrays.
-    \item \texttt{serialize\_real\_Nd(arr, filename, ierr)} - Serialize N-dimensional real arrays.
-    \item \texttt{deserialize\_real\_Nd(arr, filename, ierr)} - Deserialize N-dimensional real arrays.
-    \item \texttt{serialize\_char\_Nd(arr, filename, ierr)} - Serialize N-dimensional character arrays.
-    \item \texttt{deserialize\_char\_Nd(arr, filename, ierr)} - Deserialize N-dimensional character arrays.
-    \item \texttt{serialize\_logical\_Nd(arr, filename, ierr)} - Serialize N-dimensional logical arrays.
-    \item \texttt{deserialize\_logical\_Nd(arr, filename, ierr)} - Deserialize N-dimensional logical arrays.
-    \item \texttt{serialize\_complex\_Nd(arr, filename, ierr)} - Serialize N-dimensional complex arrays.
-    \item \texttt{deserialize\_complex\_Nd(arr, filename, ierr)} - Deserialize N-dimensional complex arrays.
-    \item \texttt{get\_array\_metadata(filename, dims, max\_dims, ndims, ierr, [clen])} - Retrieve array metadata from files
-\end{itemize}
-
-Where N represents the array dimension (1-5).
-
-\item \textbf{Detailed Parameter Specifications}
-
-\textbf{Serialization Functions Parameters:}
-\begin{itemize}
-    \item \texttt{arr} (input): The array to be serialized. \\
-          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt(logical) or \texttt{complex} \\
-          \textbf{Dimensions:} 1D to 5D \\
-          \textbf{Intent:} \texttt{in} \\
-          \textbf{Note:} \textit{clen} has to be the size of the arrays elements
-    
-    \item \texttt{filename} (input): The name of the binary file to create. \\
-          \textbf{Type:} \texttt{character(len=*)} \\
-          \textbf{Intent:} \texttt{in}
-    
-    \item \texttt{ierr} (output): Error code indicating operation status. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
-\end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Example usage of a serialize function}]
-call serialize_int_2d(array, "test_file.bin", ierr)
-\end{lstlisting}
-
-\item \textbf{Metadata Retrieval Function Parameters:}
-\begin{itemize}
-    \item \texttt{filename} (input): The name of the binary file to read metadata from. \\
-          \textbf{Type:} \texttt{character(len=*)} \\
-          \textbf{Intent:} \texttt{in}
-    
-    \item \texttt{dims} (output): Array containing the dimensions of the stored array. \\
-          \textbf{Type:} \texttt{integer(int32), dimension(max\_dims)} \\
-          \textbf{Intent:} \texttt{out}
-          \textbf{Note:} Must be preallocated, recommended with size 5
-    
-    \item \texttt{max\_dims} (input): Size of the dims array (typically 5 for maximum supported dimensions). \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{in}
-    
-    \item \texttt{ndims} (output): Number of dimensions actually used by the array. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out}
-    
-    \item \texttt{ierr} (output): Error code indicating operation status. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
-    
-    \item \texttt{clen} (output, optional): For character arrays, the length of character elements. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Note:} This parameter is only used and required for character arrays
-\end{itemize}
-\begin{lstlisting}[language=fortran, caption={Usage of metadata retrieval}]
-call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
-\end{lstlisting}
-
-\textbf{Deserialization Functions Parameters:}
-\begin{itemize}
-    \item \texttt{arr} (output): The array to be populated with deserialized data. \\
-          \textbf{Type:} Allocatable array of type \texttt{integer(int32)}, \texttt{real(real64)}, \texttt{character(len=clen)}, \texttt{logical}, or \texttt{complex} \\
-          \textbf{Dimensions:} 1D to 5D \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Note:} The array must be allocated with correct dimensions and correct element length before calling deserialization routines
-    
-    \item \texttt{filename} (input): The name of the binary file to read. \\
-          \textbf{Type:} \texttt{character(len=*)} \\
-          \textbf{Intent:} \texttt{in}
-    
-    \item \texttt{ierr} (output): Error code indicating operation status. \\
-          \textbf{Type:} \texttt{integer(int32)} \\
-          \textbf{Intent:} \texttt{out} \\
-          \textbf{Values:} 0 indicates success, non-zero values indicate specific error conditions
-\end{itemize}
-\begin{lstlisting}[language=fortran, caption={Example usage of a deserialize function}]
-call deserialize_int_2d(array, "test_file.bin", ierr)
-\end{lstlisting}
-\begin{lstlisting}[language=fortran, caption={Full example}]
-integer(int32), allocatable :: kallisto_expression(:,:), kallisto_expression_2(:,:)
-integer(int32) :: dims(5)
-integer(int32) :: ndims, ierr, max_dims
-character(len=64) :: fname
-
-!Assume array is filled with data
-
-call serialize_real_2d(kallisto_expression, "kallisto_data_v1.bin", ierr)
-if(.not. is_ok(ierr)) error stop ierr
-
-!Reading the data again
-call get_array_metadata("kallisto_data_v1.bin", dims, max_dims, ndims, ierr)
-if(.not. is_ok(ierr)) error stop ierr
-allocate(kallisto_expression_2(dims(1), dims(2)))
-
-call deserialize_real_2d(kallisto_expression_2, "kallisto_data_v1.bin", ierr)
-if(.not. is_ok(ierr)) error stop ierr
-\end{lstlisting}
-
-	\item \textbf{Error Handling}
-
-All functions return an error code through the \texttt{ierr} parameter. The error handling utility \hyperref[sec:error-handling]{tox errors} provides functions to check and interpret these codes.
-\end{enumerate}
-	\item \textbf{Implementation Notes}
-
-	\begin{itemize}
-    	\item All routines are implemented in standard Fortran for interoperability
-    		\item The module uses allocatable arrays for flexible memory management
-    		\item File operations use Fortran's native unformatted I/O for efficiency
-    		\item Error handling is consistent across all functions for predictable behavior
-	\end{itemize}
-
-    \item \textbf{Outlier detection}
-    
-    The outlier detection workflow consists of two main pathways: integrated (trajectory-level) analysis and spike (timepoint-level) analysis. You can perform outlier detection by calling the following subroutines in sequence:
-
-    \begin{enumerate}
-        \item \textbf{Calculate Integrated Threshold}
-
-        The subroutine calculates an empirical threshold for integrated (trajectory-level) contributions using pre-computed permutations. This determines which samples are significant overall across all genes.
-        Call the \texttt{calc\_integrated\_threshold} subroutine with the following arguments:
-
-        \textbf{Input arguments:}
-        \begin{itemize}
-            \item \texttt{n\_samples integer(int32)}: Number of samples
-            \item \texttt{contributions real(real64)}: 1D array of integrated contributions (size: \texttt{n\_samples})
-            \item \texttt{percentile\_val real(real64)}: Percentile value for threshold (0.0--100.0)
-            \item \texttt{permutation integer(int32)}: Pre-computed permutation indices for sorted contributions (size: \texttt{n\_samples})
-        \end{itemize}
-        \textbf{Output arguments:}
-        \begin{itemize}
-            \item \texttt{threshold real(real64)}: Scalar threshold value
-            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
-        \end{itemize}
-    \begin{lstlisting}[language=Fortran, caption={Integrated Threshold Calculation}]
-call calc_integrated_threshold(contributions, n_samples, percentile_val, &
-                                threshold, permutation, ierr)
-    \end{lstlisting}
-
-        \item \textbf{Detect Integrated Outliers}
-
-        The subroutine identifies outlier samples where the integrated contribution exceeds the empirical threshold. Used to find trajectories with significant overall explanatory contributions.
-        Call the \texttt{detect\_outliers\_integrated} subroutine with the following arguments:
-
-        \textbf{Input arguments:}
-        \begin{itemize}
-            \item \texttt{n\_samples integer(int32)}: Number of samples
-            \item \texttt{contributions real(real64)}: Array of integrated contributions (size: \texttt{n\_samples})
-            \item \texttt{threshold real(real64)}: Scalar threshold value for outlier detection
-        \end{itemize}
-        \textbf{Output arguments:}
-        \begin{itemize}
-            \item \texttt{outlier\_mask logical}: 1D logical array indicating outliers (size: \texttt{n\_samples})
-            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
-        \end{itemize}
-    \begin{lstlisting}[language=Fortran, caption={Integrated Outlier Detection}]
-call detect_outliers_integrated(contributions, n_samples, threshold, &
-                                outlier_mask, ierr)
-    \end{lstlisting}
-
-        \item \textbf{Calculate Spike Thresholds}
-
-        The subroutine calculates empirical thresholds for spike contributions using pre-sorted permutations. Computes percentile-based thresholds for each timepoint in spike contribution data.
-        Call the \texttt{calc\_spike\_thresholds} subroutine with the following arguments:
-
-        \textbf{Input arguments:}
-        \begin{itemize}
-            \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-            \item \texttt{n\_samples integer(int32)}: Number of samples
-            \item \texttt{spike\_contribs real(real64)}: 2D array of spike contributions (size: \texttt{n\_timepoints} × \texttt{n\_samples})
-            \item \texttt{percentile\_val real(real64)}: Percentile value for threshold (0.0--100.0)
-            \item \texttt{permutation integer(int32)}: Pre-computed permutation indices (size: \texttt{n\_samples} × \texttt{n\_timepoints})
-        \end{itemize}
-        \textbf{Output arguments:}
-        \begin{itemize}
-            \item \texttt{thresholds real(real64)}: 1D array of thresholds for each timepoint (size: \texttt{n\_timepoints})
-            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
-        \end{itemize}
-    \begin{lstlisting}[language=Fortran, caption={Spike Thresholds Calculation}]
-call calc_spike_thresholds(spike_contribs, n_timepoints, n_samples, &
-                            percentile_val, thresholds, permutation, ierr)
-    \end{lstlisting}
-
-        \item \textbf{Detect Spike Outliers}
-
-        The subroutine identifies outliers in spike contribution data by comparing against timepoint-specific thresholds. Performs element-wise comparison across all timepoints and samples.
-        Call the \texttt{detect\_outliers\_spike} subroutine with the following arguments:
-
-        \textbf{Input arguments:}
-        \begin{itemize}
-            \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-            \item \texttt{n\_samples integer(int32)}: Number of samples
-            \item \texttt{spike\_contribs real(real64)}: 2D array of spike contributions (size: \texttt{n\_timepoints} × \texttt{n\_samples})
-            \item \texttt{thresholds real(real64)}: Array of thresholds for each timepoint (size: \texttt{n\_timepoints})
-        \end{itemize}
-        \textbf{Output arguments:}
-        \begin{itemize}
-            \item \texttt{outlier\_mask logical}: 2D logical array indicating outliers (size: \texttt{n\_timepoints} × \texttt{n\_samples})
-            \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
-        \end{itemize}
-    \begin{lstlisting}[language=Fortran, caption={Spike Outlier Detection}]
-call detect_outliers_spike(spike_contribs, n_timepoints, n_samples, &
-                            thresholds, outlier_mask, ierr)
-    \end{lstlisting}
-
-    \end{enumerate}
-
-    \textbf{For convenience, allocation-friendly versions are also available:}
-    \begin{itemize}
-        \item \texttt{calc\_integrated\_threshold\_alloc}: Handles internal allocation and sorting
-        \item \texttt{calc\_spike\_thresholds\_alloc}: Handles internal allocation and sorting
-    \end{itemize}
-
-\item \textbf{Fortran Core Contribution Analysis Functions}
-
-The Fortran module provides core routines for trajectory contribution analysis using cosine similarity and spike detection.
-
-\begin{enumerate}
-    \item \textbf{Trajectory Contribution Calculation}
-
-    Calculates integrated trajectory contribution using cosine similarity between factor and dependent vectors.
-    
-    \textbf{Mathematical Formula:}
-    \[ \text{contribution} = \frac{\text{factor} \cdot \text{dependent}}{\|\text{factor}\| \cdot \|\text{dependent}\|} \]
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{factor real(real64)}: Vector of independent variable [n\_timepoints]
-        \item \texttt{dependent real(real64)}: Vector of dependent variable [n\_timepoints]
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{contribution real(real64)}: Output contribution value
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Trajectory Contribution Calculation}]
-call trajectory_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
-\end{lstlisting}
-
-    \item \textbf{Spike Contribution Calculation}
-
-    Calculates timepoint-wise spike contributions using cosine similarity for each individual timepoint.
-    
-    \textbf{Mathematical Formula:}
-    \[ \text{contribution}(i) = \frac{\text{factor}(i) \cdot \text{dependent}(i)}{\|\text{factor}\| \cdot \|\text{dependent}\|} \quad \text{for } 1 \le i \le n\_timepoints \]
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{factor real(real64)}: Vector of independent variable [n\_timepoints]
-        \item \texttt{dependent real(real64)}: Vector of dependent variable [n\_timepoints]
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{contribution real(real64)}: Output spike contributions [n\_timepoints]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Spike Contribution Calculation}]
-call spike_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
-\end{lstlisting}
-
-    \item \textbf{Calculate Contributions (Expert Version)}
-
-    Calculates both spike and integrated contributions for a specific factor with pre-allocated work arrays.
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors in trajectories
-        \item \texttt{n\_samples integer(int32)}: Number of samples in trajectories
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints in trajectories
-        \item \texttt{trajectories real(real64)}: 3D trajectories array [n\_factors, n\_samples, n\_timepoints]
-        \item \texttt{i\_factor integer(int32)}: Factor index to calculate contributions for
-        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples]
-        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples]
-        \item \texttt{temp\_factor\_vector real(real64)}: Work array [n\_timepoints]
-        \item \texttt{temp\_dependent\_vector real(real64)}: Work array [n\_timepoints]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Expert Contributions Calculation}]
-call calc_contributions(trajectories, n_factors, n_samples, n_timepoints, &
-                       i_factor, dependent_idx, mode, spike_contribs, &
-                       integrated_contribs, temp_factor_vector, &
-                       temp_dependent_vector, ierr)
-\end{lstlisting}
-
-    \item \textbf{Calculate Contributions (Allocation Version)}
-
-    Calculates both spike and integrated contributions with internal memory allocation.
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors in trajectories
-        \item \texttt{n\_samples integer(int32)}: Number of samples in trajectories
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints in trajectories
-        \item \texttt{trajectories real(real64)}: 3D trajectories array [n\_factors, n\_samples, n\_timepoints]
-        \item \texttt{i\_factor integer(int32)}: Factor index to calculate contributions for
-        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples]
-        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Allocation-Based Contributions Calculation}]
-call calc_contributions_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                             i_factor, dependent_idx, mode, spike_contribs, &
-                             integrated_contribs, ierr)
-\end{lstlisting}
-
-    \item \textbf{Vector Accessor Routines}
-
-    Extract specific slices from the 3D trajectories array.
-    
-    \textbf{Arguments for Sample Extraction:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors
-        \item \texttt{n\_samples integer(int32)}: Number of samples
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{trajectories real(real64)}: 3D trajectories array
-        \item \texttt{i\_factor integer(int32)}: Factor index
-        \item \texttt{i\_timepoint integer(int32)}: Timepoint index
-        \item \texttt{result\_vector real(real64)}: Output vector [n\_samples]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Extract Samples Vector}]
-call get_vec_across_samples(trajectories, n_factors, n_samples, n_timepoints, &
-                           i_factor, i_timepoint, result_vector, ierr)
-\end{lstlisting}
-
-    \textbf{Arguments for Timepoint Extraction:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors
-        \item \texttt{n\_samples integer(int32)}: Number of samples
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{trajectories real(real64)}: 3D trajectories array
-        \item \texttt{i\_factor integer(int32)}: Factor index
-        \item \texttt{i\_sample integer(int32)}: Sample index
-        \item \texttt{result\_vector real(real64)}: Output vector [n\_timepoints]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Extract Timepoints Vector}]
-call get_vec_across_timepoints(trajectories, n_factors, n_samples, n_timepoints, &
-                              i_factor, i_sample, result_vector, ierr)
-\end{lstlisting}
-
-    \item \textbf{Process Trajectories with Per-Timepoint Percentiles}
-
-    Complete pipeline processing with timepoint-specific spike thresholds.
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors
-        \item \texttt{n\_samples integer(int32)}: Number of samples
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{factor\_mask\_count integer(int32)}: Number of true values in factor mask
-        \item \texttt{trajectories real(real64)}: 3D trajectories array
-        \item \texttt{factor\_mask logical}: Mask for included factors [n\_factors]
-        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{percentile real(real64)}: Percentile value (0.0--100.0)
-        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples, factor\_mask\_count]
-        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples, factor\_mask\_count]
-        \item \texttt{thresholds\_integrated\_contrib real(real64)}: Integrated thresholds [factor\_mask\_count]
-        \item \texttt{thresholds\_spike\_contrib real(real64)}: Spike thresholds [n\_timepoints, factor\_mask\_count]
-        \item \texttt{outliers\_integrated\_contrib logical}: Integrated outliers [n\_samples, factor\_mask\_count]
-        \item \texttt{outliers\_spike\_contrib logical}: Spike outliers [n\_timepoints, n\_samples, factor\_mask\_count]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Per-Timepoint Thresholds}]
-call process_trajectories_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                              factor_mask, factor_mask_count, dependent_idx, mode, &
-                              percentile, integrated_contribs, spike_contribs, &
-                              thresholds_integrated_contrib, outliers_integrated_contrib, &
-                              thresholds_spike_contrib, outliers_spike_contrib, ierr)
-\end{lstlisting}
-
-    \item \textbf{Process Trajectories with Global Percentile}
-
-    Complete pipeline processing with global spike thresholds (flattened approach).
-    
-    \textbf{Arguments:}
-    \begin{itemize}
-        \item \texttt{n\_factors integer(int32)}: Number of factors
-        \item \texttt{n\_samples integer(int32)}: Number of samples
-        \item \texttt{n\_timepoints integer(int32)}: Number of timepoints
-        \item \texttt{factor\_mask\_count integer(int32)}: Number of true values in factor mask
-        \item \texttt{trajectories real(real64)}: 3D trajectories array
-        \item \texttt{factor\_mask logical}: Mask for included factors [n\_factors]
-        \item \texttt{dependent\_idx integer(int32)}: Dependent variable index
-        \item \texttt{mode integer(int32)}: Processing mode (1 = Normal, 2 = RAP)
-        \item \texttt{percentile real(real64)}: Percentile value (0.0--100.0)
-        \item \texttt{integrated\_contribs real(real64)}: Output integrated contributions [n\_samples, factor\_mask\_count]
-        \item \texttt{spike\_contribs real(real64)}: Output spike contributions [n\_timepoints, n\_samples, factor\_mask\_count]
-        \item \texttt{thresholds\_integrated\_contrib real(real64)}: Integrated thresholds [factor\_mask\_count]
-        \item \texttt{thresholds\_spike\_contrib real(real64)}: Spike thresholds [factor\_mask\_count] (1D)
-        \item \texttt{outliers\_integrated\_contrib logical}: Integrated outliers [n\_samples, factor\_mask\_count]
-        \item \texttt{outliers\_spike\_contrib logical}: Spike outliers [n\_timepoints, n\_samples, factor\_mask\_count]
-        \item \texttt{ierr integer(int32)}: Error code
-    \end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Global Threshold}]
-call process_trajectories_flat_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                                   factor_mask, factor_mask_count, dependent_idx, mode, &
-                                   percentile, integrated_contribs, spike_contribs, &
-                                   thresholds_integrated_contrib, outliers_integrated_contrib, &
-                                   thresholds_spike_contrib, outliers_spike_contrib, ierr)
-\end{lstlisting}
-
-\end{enumerate}
-
-\textbf{Processing Modes:}
-\begin{itemize}
-    \item \texttt{MODE\_NORMAL = 1}: Returns cosine similarity for normal vectors
-    \item \texttt{MODE\_RAP = 2}: Returns arccos of cosine similarity for RAP projected vectors
-\end{itemize}
-
-\textbf{Key Features:}
-\begin{itemize}
-    \item \textbf{Pure Subroutines}: Most routines are pure with no side effects
-    \item \textbf{Robust Error Handling}: Comprehensive error checking and validation
-    \item \textbf{Memory Efficient}: Expert versions allow pre-allocated work arrays
-    \item \textbf{Mathematically Sound}: Uses cosine similarity with proper normalization
-    \item \textbf{Flexible Processing}: Supports both per-timepoint and global thresholding
-\end{itemize}
 \end{enumerate}
 
 \subsection{Python Pipeline}
