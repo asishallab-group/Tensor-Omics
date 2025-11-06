@@ -116,16 +116,26 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
 // ===================================================================
 
 // [[Rcpp::export]]
-NumericMatrix normalize_by_std_dev_rcpp(NumericMatrix input) {
+List normalize_by_std_dev_rcpp(NumericMatrix input) {
     int n_genes = input.nrow();
     int n_tissues = input.ncol();
+
     NumericMatrix output(n_genes, n_tissues);
     int ierr = 0;
 
-    normalize_by_std_dev_c(&n_genes, &n_tissues, input.begin(), output.begin(), &ierr);
-    if (ierr != 0) stop("normalize_by_std_dev_c returned error code " + std::to_string(ierr));
-    return output;
+    // Call Fortran routine
+    normalize_by_std_dev_c(n_genes, n_tissues,
+                           input.begin(),
+                           output.begin(),
+                           &ierr);
+
+    // Just return output + error code (no stop(), no validation)
+    return List::create(
+        Named("output") = output,
+        Named("ierr") = ierr
+    );
 }
+
 
 // [[Rcpp::export]]
 List quantile_normalization_rcpp(NumericMatrix input, int max_stack) {
@@ -139,20 +149,24 @@ List quantile_normalization_rcpp(NumericMatrix input, int max_stack) {
     IntegerVector stack_right(max_stack);
     int ierr = 0;
 
-    quantile_normalization_c(&n_genes, &n_tissues, input.begin(), output.begin(),
+    quantile_normalization_c(n_genes, n_tissues, input.begin(), output.begin(),
                              temp_col.begin(), rank_means.begin(), perm.begin(),
-                             stack_left.begin(), stack_right.begin(), &max_stack, &ierr);
-    if (ierr != 0) stop("quantile_normalization_c returned error code " + std::to_string(ierr));
+                             stack_left.begin(), stack_right.begin(), max_stack, &ierr);
 
     return List::create(
         Named("output") = output,
         Named("rank_means") = rank_means,
-        Named("perm") = perm
+        Named("perm") = perm,
+        Named("ierr") = ierr
     );
 }
 
 // [[Rcpp::export]]
-List tox_normalize_data_rcpp(NumericMatrix input, IntegerVector group_s, IntegerVector group_c, int max_stack) {
+List tox_normalize_data_rcpp(NumericMatrix input,
+                             IntegerVector group_s,
+                             IntegerVector group_c,
+                             int max_stack) {
+
     int n_genes = input.nrow();
     int n_tissues = input.ncol();
     int n_grps = group_s.size();
@@ -161,69 +175,109 @@ List tox_normalize_data_rcpp(NumericMatrix input, IntegerVector group_s, Integer
     NumericMatrix buf_quant(n_genes, n_tissues);
     NumericMatrix buf_avg(n_genes, n_grps);
     NumericMatrix buf_log(n_genes, n_grps);
+
     NumericVector temp_col(n_genes);
     NumericVector rank_means(n_genes);
     IntegerVector perm(n_genes);
     IntegerVector stack_left(max_stack);
     IntegerVector stack_right(max_stack);
+
     int ierr = 0;
 
-     /* Call the Fortran normalization pipeline (named in Fortran as
-         normalization_pipeline_c). Older code expected normalize_tox_data_c;
-         use the existing exported symbol normalization_pipeline_c. */
-     normalization_pipeline_c(&n_genes, &n_tissues, input.begin(),
-                                     buf_stddev.begin(), buf_quant.begin(),
-                                     buf_avg.begin(), buf_log.begin(),
-                                     temp_col.begin(), rank_means.begin(), perm.begin(),
-                                     stack_left.begin(), stack_right.begin(), &max_stack,
-                                     group_s.begin(), group_c.begin(), &n_grps, &ierr);
-
-     if (ierr != 0) stop("normalization_pipeline_c returned error code " + std::to_string(ierr));
+    normalization_pipeline_c(
+        n_genes,
+        n_tissues,
+        input.begin(),
+        buf_stddev.begin(),
+        buf_quant.begin(),
+        buf_avg.begin(),
+        buf_log.begin(),
+        temp_col.begin(),
+        rank_means.begin(),
+        perm.begin(),
+        stack_left.begin(),
+        stack_right.begin(),
+        max_stack,
+        group_s.begin(),
+        group_c.begin(),
+        n_grps,
+        &ierr
+    );
 
     return List::create(
         Named("buf_stddev") = buf_stddev,
         Named("buf_quant") = buf_quant,
         Named("buf_avg") = buf_avg,
-        Named("buf_log") = buf_log,
+        Named("buf_log")  = buf_log,
         Named("rank_means") = rank_means,
         Named("perm") = perm,
         Named("ierr") = ierr
     );
 }
 
+
 // [[Rcpp::export]]
-NumericMatrix log2_transformation_rcpp(NumericMatrix input) {
+List log2_transformation_rcpp(NumericMatrix input) {
     int n_genes = input.nrow();
     int n_tissues = input.ncol();
     NumericMatrix output(n_genes, n_tissues);
     int ierr = 0;
 
-    log2_transformation_c(&n_genes, &n_tissues, input.begin(), output.begin(), &ierr);
-    if (ierr != 0) stop("log2_transformation_c returned error code " + std::to_string(ierr));
-    return output;
+    
+    return List::create(
+        Named("output") = output,
+        Named("ierr") = ierr
+    );
 }
 
 // [[Rcpp::export]]
-NumericMatrix calc_tiss_avg_rcpp(NumericMatrix input, IntegerVector group_s, IntegerVector group_c) {
+List calc_tiss_avg_rcpp(NumericMatrix input, IntegerVector group_s, IntegerVector group_c) {
     int n_gene = input.nrow();
     int n_grps = group_s.size();
     NumericMatrix output(n_gene, n_grps);
     int ierr = 0;
 
-    calc_tiss_avg_c(&n_gene, &n_grps, group_s.begin(), group_c.begin(), input.begin(), output.begin(), &ierr);
-    if (ierr != 0) stop("calc_tiss_avg_c returned error code " + std::to_string(ierr));
-    return output;
+    calc_tiss_avg_c(
+        n_gene,
+        n_grps,
+        group_s.begin(),
+        group_c.begin(),
+        input.begin(),
+        output.begin(),
+        &ierr
+    );
+
+    return List::create(
+        Named("output") = output,
+        Named("ierr") = ierr
+    );
 }
 
 // [[Rcpp::export]]
-NumericMatrix calc_fchange_rcpp(NumericMatrix input, IntegerVector control_cols, IntegerVector cond_cols) {
+List calc_fchange_rcpp(NumericMatrix input,
+                       IntegerVector control_cols,
+                       IntegerVector cond_cols) {
+
     int n_genes = input.nrow();
-    int n_cols = input.ncol();
+    int n_cols  = input.ncol();
     int n_pairs = control_cols.size();
+
     NumericMatrix output(n_genes, n_pairs);
     int ierr = 0;
 
-    calc_fchange_c(&n_genes, &n_cols, &n_pairs, control_cols.begin(), cond_cols.begin(), input.begin(), output.begin(), &ierr);
-    if (ierr != 0) stop("calc_fchange_c returned error code " + std::to_string(ierr));
-    return output;
+    calc_fchange_c(
+        n_genes,
+        n_cols,
+        n_pairs,
+        control_cols.begin(),
+        cond_cols.begin(),
+        input.begin(),
+        output.begin(),
+        &ierr
+    );
+
+    return List::create(
+        Named("output") = output,
+        Named("ierr") = ierr
+    );
 }
