@@ -1,17 +1,55 @@
 library(Rcpp)
 
-# Get absolute path to build directory containing the compiled Fortran library
-lib_path <- shQuote(normalizePath("build"))
+# Resolve script directory so paths work regardless of working directory
+get_script_dir <- function() {
+  cmd <- commandArgs(trailingOnly = FALSE)
+  f <- grep("^--file=", cmd, value = TRUE)
+  if (length(f)) return(dirname(normalizePath(sub("^--file=", "", f[1]))))
+  of <- tryCatch(sys.frames()[[1]]$ofile, error = function(e) NULL)
+  if (!is.null(of)) return(dirname(normalizePath(of)))
+  # fallback to cwd
+  return(getwd())
+}
+script_dir <- get_script_dir()
 
-# Set up compilation flags for linking with Fortran library
-Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
+# Get absolute path to build directory if it exists
+build_dir <- file.path(script_dir, "build")
+if (!file.exists(build_dir)) build_dir <- file.path(dirname(script_dir), "build")
+if (file.exists(build_dir)) {
+  lib_path <- normalizePath(build_dir)
+  Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
+} else {
+  warning("build/ directory not found; skipping PKG_LIBS setting. If Fortran-linked routines fail, ensure build/ contains the lib.")
+}
 
 # Compile and load all TensorOmics Rcpp wrapper functions (includes error_handling.cpp)
-sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+# Try to source the cpp file relative to script_dir or the project rcpp/ folder
+cpp_candidates <- c(
+  file.path(script_dir, "tensoromics_functions.cpp"),
+  file.path(script_dir, "rcpp", "tensoromics_functions.cpp"),
+  file.path(dirname(script_dir), "rcpp", "tensoromics_functions.cpp")
+)
+cpp_path <- NULL
+for (p in cpp_candidates) if (file.exists(p)) { cpp_path <- p; break }
+if (is.null(cpp_path)) stop("Could not find tensoromics_functions.cpp in expected locations. Tried:\n  ", paste(cpp_candidates, collapse = "\n  "))
+sourceCpp(cpp_path, env = .GlobalEnv)
 
-cat("✓ TensorOmics Rcpp functions loaded successfully\n")
+cat("✓ TensorOmics Rcpp functions loaded (sourceCpp ok)\n")
 
-source("r/error_handling.R")
+# Try to source error_handling.R from common locations
+eh_candidates <- c(
+  file.path(script_dir, "..", "r", "error_handling.R"),
+  file.path(script_dir, "..", "rcpp", "error_handling.R"),
+  file.path(script_dir, "error_handling.R"),
+  file.path(script_dir, "r", "error_handling.R")
+)
+eh_found <- NULL
+for (p in eh_candidates) if (file.exists(p)) { eh_found <- p; break }
+if (!is.null(eh_found)) {
+  source(eh_found)
+} else {
+  warning("error_handling.R not found; check error-handling helpers if you encounter failures.")
+}
 
 
 # ===================================================================
@@ -172,44 +210,118 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 # ===================================================================
 
 tox_normalize_by_std_dev <- function(input) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
+  if (!is.matrix(input)) 
+    stop("Input must be a matrix")
+
   result <- normalize_by_std_dev_rcpp(input)
-  return(result)
+
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  return(result$output)
 }
+
 
 tox_quantile_normalization <- function(input, max_stack = 10000) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
-  if (!is.numeric(max_stack)) stop("max_stack must be numeric")
+
+  # Validate input type
+  if (!is.matrix(input)) 
+    stop("Input must be a matrix")
+  if (!is.numeric(max_stack)) 
+    stop("max_stack must be numeric")
+
+  # Call the Rcpp wrapper (Fortran runs underneath)
   result <- quantile_normalization_rcpp(input, as.integer(max_stack))
-  if (!is.null(result$ierr) && result$ierr != 0) check_err_code(result$ierr)
-  return(result)
+
+  # Handle errors using the centralized error handling system
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  # Return only the normalized matrix (not the full result list)
+  return(result$output)
 }
 
+
 tox_normalize_data <- function(input, group_s, group_c, max_stack = 10000) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
+
+  # Validate input type
+  if (!is.matrix(input))
+    stop("Input must be a matrix")
+
+  # Ensure grouping vectors are integer
   if (!is.integer(group_s)) group_s <- as.integer(group_s)
   if (!is.integer(group_c)) group_c <- as.integer(group_c)
+
+  # Call the Rcpp wrapper
   result <- tox_normalize_data_rcpp(input, group_s, group_c, as.integer(max_stack))
-  if (result$ierr != 0) check_err_code(result$ierr)
-  return(result)
+
+  # Handle Fortran error codes
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  # Return only processed buffers (not the error code)
+  return(list(
+    buf_stddev = result$buf_stddev,
+    buf_quant  = result$buf_quant,
+    buf_avg    = result$buf_avg,
+    buf_log    = result$buf_log
+  ))
 }
 
 tox_log2_transformation <- function(input) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
+
+  # Validate input
+  if (!is.matrix(input))
+    stop("Input must be a matrix")
+
+  # Call the Rcpp wrapper
   result <- log2_transformation_rcpp(input)
-  return(result)
+
+  # Check error code
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  # Return transformed output
+  return(result$output)
 }
 
+
 tox_calc_tiss_avg <- function(input, group_s, group_c) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
+
+  # Validate input
+  if (!is.matrix(input))
+    stop("Input must be a matrix")
+
+  # Call Rcpp wrapper
   result <- calc_tiss_avg_rcpp(input, as.integer(group_s), as.integer(group_c))
-  return(result)
+
+  # Handle Fortran errors
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  return(result$output)
 }
 
 tox_calc_fchange <- function(input, control_cols, cond_cols) {
-  if (!is.matrix(input)) stop("Input must be a matrix")
+
+  # Validate input
+  if (!is.matrix(input))
+    stop("Input must be a matrix")
+
+  # Call Rcpp wrapper
   result <- calc_fchange_rcpp(input, as.integer(control_cols), as.integer(cond_cols))
-  return(result)
+
+  # Check for errors
+  if (!is.null(result$ierr) && result$ierr != 0) {
+    check_err_code(result$ierr)
+  }
+
+  return(result$output)
 }
 
 cat("✓ Added normalization functions successfully\n")
