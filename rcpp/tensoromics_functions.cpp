@@ -22,37 +22,30 @@ extern "C" {
                                       double* tissue_versatilities, 
                                       double* tissue_angles_deg,
                                       int* ierr);
-     void normalize_by_std_dev_c(int *n_genes, int *n_tissues,
+     void normalize_by_std_dev_c(int n_genes, int n_tissues,
                                 double *input_matrix, double *output_matrix, int *ierr);
 
-    void quantile_normalization_c(int *n_genes, int *n_tissues,
+    void quantile_normalization_c(int n_genes, int n_tissues,
                                   double *input_matrix, double *output_matrix,
-                                      double *temp_col, double *rank_means,
+                                double *temp_col, double *rank_means,
                                   int *perm, int *stack_left, int *stack_right,
-                                  int *max_stack, int *ierr);
+                                  int max_stack, int *ierr);
 
-    void normalization_pipeline_c(int *n_genes, int *n_tissues,
+    void normalization_pipeline_c(int n_genes, int n_tissues,
                                   double *input_matrix, double *buf_stddev, double *buf_quant,
                                   double *buf_avg, double *buf_log, double *temp_col,
                                   double *rank_means, int *perm, int *stack_left,
-                                  int *stack_right, int *max_stack,
-                                  int *group_s, int *group_c, int *n_grps, int *ierr);
+                                  int *stack_right, int max_stack,
+                                  int *group_s, int *group_c, int n_grps, int *ierr);
 
-    void normalize_tox_data_c(int *n_genes, int *n_tissues,
-                              double *input_matrix, double *buf_stddev, double *buf_quant,
-                              double *buf_avg, double *buf_log, double *temp_col,
-                              double *rank_means, int *perm, int *stack_left,
-                              int *stack_right, int *max_stack,
-                              int *group_s, int *group_c, int *n_grps, int *ierr);
-
-    void log2_transformation_c(int *n_genes, int *n_tissues,
+    void log2_transformation_c(int n_genes, int n_tissues,
                                double *input_matrix, double *output_matrix, int *ierr);
 
-    void calc_tiss_avg_c(int *n_genes, int *n_grps,
+    void calc_tiss_avg_c(int n_genes, int n_grps,
                          int *group_s, int *group_c,
                          double *input_matrix, double *output_matrix, int *ierr);
 
-    void calc_fchange_c(int *n_genes, int *n_cols, int *n_pairs,
+    void calc_fchange_c(int n_genes, int n_cols, int n_pairs,
                         int *control_cols, int *cond_cols,
                         double *input_matrix, double *output_matrix, int *ierr);
 }
