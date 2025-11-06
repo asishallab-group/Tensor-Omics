@@ -12,6 +12,10 @@
 \usepackage{amssymb}
 \usepackage{longtable}
 \usepackage{array}
+\usepackage{enumitem}
+
+\setlist[itemize]{leftmargin=1.3em, noitemsep, topsep=0pt}
+\setlist[enumerate]{leftmargin=1.3em, noitemsep, topsep=0pt}
 
 \geometry{margin=1in}
 
@@ -1376,50 +1380,7 @@ call delete_file('temp_expr.bin', ierr)
     \item Suitable for datasets with millions of genes and thousands of samples
 \end{itemize}
 \end{itemize}
-
-\item \textbf{Csv reader}
-
-In a pure Fortran application, the user follows a two-step process to construct the Data Table.
-\begin{itemize}
-
-    \item \textbf{Read CSV to Strings:} First, call the \texttt{read\_csv\_to\_strings} subroutine. This reads the entire CSV file into a 2D allocatable array of characters, which serves as the in-memory source for all subsequent operations.
-    \item \textbf{Extract Typed Columns:} Next, call the specific \texttt{read\_*\_columns} subroutines (e.g., \texttt{read\_integer\_columns}, \texttt{read\_real\_columns}) to parse columns from the string array into new, strongly-typed 2D arrays.
-\end{itemize}
-\begin{lstlisting}[language=Fortran, caption={Fortran Data Loading Workflow}]
-PROGRAM tox_fortran_example
-    USE csv_file_reader_module, ONLY: read_csv_to_strings
-    USE csv_read_int_module, ONLY: read_integer_columns
-    USE csv_read_real_module, ONLY: read_real_columns
-    USE csv_parser_module, ONLY: MAX_FIELD_LEN
-    IMPLICIT NONE
-
-    CHARACTER(LEN=MAX_FIELD_LEN), ALLOCATABLE :: data_str(:,:), header_str(:)
-    INTEGER, ALLOCATABLE :: data_int(:,:)
-    REAL(8), ALLOCATABLE :: data_real(:,:)
-    INTEGER :: status
-    
-    CHARACTER(LEN=*), PARAMETER :: FILENAME = 'my_data.csv'
-    
-    ! 1. Read entire CSV into a 2D string array
-    CALL read_csv_to_strings(FILENAME, .TRUE., ',', header_str, data_str, status)
-    IF (status /= 0) STOP 'Error reading CSV'
-
-    ! 2. Extract specific columns into typed arrays
-    !    Let's say column 1 is Integer IDs, column 3 is Real scores
-    CALL read_integer_columns(data_str, [1], data_int, status)
-    IF (status /= 0) STOP 'Error reading integer columns'
-    
-    CALL read_real_columns(data_str, [3], data_real, status)
-    IF (status /= 0) STOP 'Error reading real columns'
-    
-    ! The typed arrays data_int and data_real are now ready for analysis.
-    PRINT *, 'Successfully processed data.'
-
-END PROGRAM tox_fortran_example
-
-\end{lstlisting}
 \end{enumerate}
-
 \subsubsection{Data Processing}
 \begin{enumerate}
     \item \textbf{Normalization of Expression Values}
@@ -1919,10 +1880,10 @@ call spike_contribution(factor, dependent, n_timepoints, mode, contribution, ier
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Expert Contributions Calculation}]
-call calc_contributions(trajectories, n_factors, n_samples, n_timepoints, &
-                       i_factor, dependent_idx, mode, spike_contribs, &
-                       integrated_contribs, temp_factor_vector, &
-                       temp_dependent_vector, ierr)
+call calc_contributions(trajectories, n_factors, n_samples, & 
+                n_timepoints, i_factor, dependent_idx, mode, &
+                spike_contribs, integrated_contribs, &
+                temp_factor_vector, temp_dependent_vector, ierr)
 \end{lstlisting}
 
     \item \textbf{Calculate Contributions (Allocation Version)}
@@ -1943,9 +1904,9 @@ call calc_contributions(trajectories, n_factors, n_samples, n_timepoints, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Allocation-Based Contributions Calculation}]
-call calc_contributions_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                             i_factor, dependent_idx, mode, spike_contribs, &
-                             integrated_contribs, ierr)
+call calc_contributions_alloc(trajectories, n_factors, n_samples, &
+                    n_timepoints, i_factor, dependent_idx, mode, &
+                    spike_contribs, integrated_contribs, ierr)
 \end{lstlisting}
 
     \item \textbf{Vector Accessor Routines}
@@ -1964,8 +1925,9 @@ call calc_contributions_alloc(trajectories, n_factors, n_samples, n_timepoints, 
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Extract Samples Vector}]
-call get_vec_across_samples(trajectories, n_factors, n_samples, n_timepoints, &
-                           i_factor, i_timepoint, result_vector, ierr)
+call get_vec_across_samples(trajectories, n_factors, n_samples, &
+                        n_timepoints, i_factor, i_timepoint, &
+                        result_vector, ierr)
 \end{lstlisting}
 
     \textbf{Arguments for Timepoint Extraction:}
@@ -1980,8 +1942,9 @@ call get_vec_across_samples(trajectories, n_factors, n_samples, n_timepoints, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Extract Timepoints Vector}]
-call get_vec_across_timepoints(trajectories, n_factors, n_samples, n_timepoints, &
-                              i_factor, i_sample, result_vector, ierr)
+call get_vec_across_timepoints(trajectories, n_factors, n_samples, &
+                            n_timepoints, i_factor, i_sample, &
+                            result_vector, ierr)
 \end{lstlisting}
 
     \item \textbf{Outlier detection}
@@ -2007,8 +1970,9 @@ call get_vec_across_timepoints(trajectories, n_factors, n_samples, n_timepoints,
             \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
         \end{itemize}
     \begin{lstlisting}[language=Fortran, caption={Integrated Threshold Calculation}]
-call calc_integrated_threshold(contributions, n_samples, percentile_val, &
-                                threshold, permutation, ierr)
+call calc_integrated_threshold(contributions, n_samples, &
+                            percentile_val, threshold, &
+                            permutation, ierr)
     \end{lstlisting}
 
         \item \textbf{Detect Integrated Outliers}
@@ -2028,8 +1992,8 @@ call calc_integrated_threshold(contributions, n_samples, percentile_val, &
             \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
         \end{itemize}
     \begin{lstlisting}[language=Fortran, caption={Integrated Outlier Detection}]
-call detect_outliers_integrated(contributions, n_samples, threshold, &
-                                outlier_mask, ierr)
+call detect_outliers_integrated(contributions, n_samples,&
+                                threshold, outlier_mask, ierr)
     \end{lstlisting}
 
         \item \textbf{Calculate Spike Thresholds}
@@ -2051,8 +2015,9 @@ call detect_outliers_integrated(contributions, n_samples, threshold, &
             \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
         \end{itemize}
     \begin{lstlisting}[language=Fortran, caption={Spike Thresholds Calculation}]
-call calc_spike_thresholds(spike_contribs, n_timepoints, n_samples, &
-                            percentile_val, thresholds, permutation, ierr)
+call calc_spike_thresholds(spike_contribs, n_timepoints, 
+                        n_samples, percentile_val, thresholds, & 
+                        permutation, ierr)
     \end{lstlisting}
 
         \item \textbf{Detect Spike Outliers}
@@ -2073,8 +2038,8 @@ call calc_spike_thresholds(spike_contribs, n_timepoints, n_samples, &
             \item \texttt{ierr integer(int32)}: Error code (for error details please check \hyperref[sec:error-handling]{error handling section})
         \end{itemize}
     \begin{lstlisting}[language=Fortran, caption={Spike Outlier Detection}]
-call detect_outliers_spike(spike_contribs, n_timepoints, n_samples, &
-                            thresholds, outlier_mask, ierr)
+call detect_outliers_spike(spike_contribs, n_timepoints, &
+                        n_samples, thresholds, outlier_mask, ierr)
     \end{lstlisting}
 
     \end{enumerate}
@@ -2111,11 +2076,14 @@ call detect_outliers_spike(spike_contribs, n_timepoints, n_samples, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Per-Timepoint Thresholds}]
-call process_trajectories_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                              factor_mask, factor_mask_count, dependent_idx, mode, &
-                              percentile, integrated_contribs, spike_contribs, &
-                              thresholds_integrated_contrib, outliers_integrated_contrib, &
-                              thresholds_spike_contrib, outliers_spike_contrib, ierr)
+call process_trajectories_alloc(trajectories, n_factors, n_samples, &
+                    n_timepoints, factor_mask, factor_mask_count, & 
+                    dependent_idx, mode, percentile, &
+                    integrated_contribs,spike_contribs, &
+                    thresholds_integrated_contrib, &
+                    outliers_integrated_contrib, &
+                    thresholds_spike_contrib, &
+                    outliers_spike_contrib, ierr)
 \end{lstlisting}
 
     \item \textbf{Process Trajectories with Global Percentile}
@@ -2142,11 +2110,14 @@ call process_trajectories_alloc(trajectories, n_factors, n_samples, n_timepoints
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Complete Pipeline with Global Threshold}]
-call process_trajectories_flat_alloc(trajectories, n_factors, n_samples, n_timepoints, &
-                                   factor_mask, factor_mask_count, dependent_idx, mode, &
-                                   percentile, integrated_contribs, spike_contribs, &
-                                   thresholds_integrated_contrib, outliers_integrated_contrib, &
-                                   thresholds_spike_contrib, outliers_spike_contrib, ierr)
+call process_trajectories_flat_alloc(trajectories, n_factors, & 
+                    n_samples, n_timepoints, factor_mask, &
+                    factor_mask_count, dependent_idx, mode, &
+                    percentile, integrated_contribs, &
+                    spike_contribs, thresholds_integrated_contrib, &
+                    outliers_integrated_contrib, &
+                    thresholds_spike_contrib, &
+                    outliers_spike_contrib, ierr)
 \end{lstlisting}
 
 \end{enumerate}
@@ -2232,8 +2203,9 @@ sorted_value = get_sorted_value(values, sorted_indices, position, ierr)
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran]
-call bst_range_query(values, sorted_indices, num_values, lower_bound, upper_bound, &
-                   output_indices, num_matches, ierr)
+call bst_range_query(values, sorted_indices, num_values, &
+                    lower_bound, upper_bound, output_indices, &
+                    num_matches, ierr)
 \end{lstlisting}
 \end{enumerate}
 
@@ -2267,8 +2239,10 @@ k-d trees provide efficient space partitioning for multi-dimensional data with s
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran]
-call build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_order, &
-                  workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
+call build_kd_index(points, num_dimensions, num_points, kd_indices, &
+                    dimension_order, workspace, value_buffer, &
+                    permutation, left_stack, right_stack, &
+                    recursion_stack, ierr)
 \end{lstlisting}
 
     \item \textbf{Build Spherical k-d Tree}
@@ -2289,8 +2263,10 @@ call build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_or
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran]
-call build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, dimension_order, &
-                      workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
+call build_spherical_kd(vectors, num_dimensions, num_vectors, &
+                        sphere_indices, dimension_order, workspace, &
+                        value_buffer, permutation, left_stack, & 
+                        right_stack, recursion_stack, ierr)
 \end{lstlisting}
 
     \item \textbf{Get Point from k-d Index}
