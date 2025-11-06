@@ -1,7 +1,7 @@
 !> Unit test suite for tissue versatility routines.
 module mod_test_tissue_versatility
   use asserts
-  use avmod
+  use tox_tissue_versatility
   use tox_errors, only: ERR_OK, ERR_EMPTY_INPUT
   use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
