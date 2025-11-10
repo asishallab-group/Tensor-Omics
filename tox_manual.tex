@@ -54,22 +54,6 @@ evolutionary relationships between genes. The pipeline integrates tools for data
 the current implementation details and provides the mathematical formulation of the algorithms used in the
 prototype.
 
-\subsection{The TOX Data Table}
-\label{sec:data_table_theory}
-
-The foundational data structure in Tensor Omics is the \textbf{Data Table}. Unlike a simple spreadsheet, a Data Table is a conceptual grouping of multiple, type-specific 2D arrays that represent datasets read from a source like a CSV file. Because Fortran is a strongly-typed language, data of different types (e.g., integers, reals, characters) cannot be stored in a single matrix. The TOX library solves this by parsing the source data into a collection of distinct, column-major arrays that share the same number of rows.
-
-The process begins by reading the entire CSV file into a single, general-purpose 2D array of strings. This string array acts as an in-memory staging area. From this staging array, users can then extract specific columns into strongly-typed arrays, creating the components of the Data Table:
-\begin{itemize}
-    \item \texttt{integer\_data(:,:)}: An array for integer columns (e.g., gene IDs).
-    \item \texttt{real\_data(:,:)}: An array for real-valued columns (e.g., expression levels, scores).
-    \item \texttt{logical\_data(:,:)}: An array for boolean columns (e.g., status flags).
-    \item \texttt{character\_data(:,:)}: An array for string columns (e.g., gene names).
-    \item \texttt{complex\_data(:,:)}: An array for complex number columns.
-\end{itemize}
-All downstream analyses in TOX operate on these strongly-typed arrays.
-
-
 \subsection{From Raw Data to Expression Vectors}
 
 The starting point for all downstream analyses is a table of gene-wise expression measurements across a set of biological samples, such as tissues, developmental stages, or experimental conditions. These measurements may originate from transcriptomic, proteomic, or metabolomic experiments, typically normalized to account for sequencing depth and technical variation.
@@ -2715,47 +2699,6 @@ custom_features = tox_deserialize_real_nd(mapping["custom_feature"])
 results = tox_deserialize_int_nd(mapping["analysis_results"])
 \end{lstlisting}
 
-    \item \textbf{Read CSV to Strings:} Call the \texttt{read\_csv\_as\_strings} function. It takes the file path and returns the header and a 2D NumPy array of strings.
-    \item \textbf{Extract Typed Columns:} Pass the string NumPy array to the desired conversion functions, such as \texttt{read\_integer\_columns} or \texttt{read\_real\_columns}, along with a list of 1-based column indices to extract. All returned NumPy arrays are read-only for data safety.
-
-\begin{lstlisting}[language=Python, caption={Python Data Loading Workflow}]
-import numpy as np
-from tensoromics_functions import (
-    read_csv_as_strings,
-    read_integer_columns,
-    read_real_columns
-)
-
-# Define the path to the data file
-filename = 'my_data.csv'
-
-try:
-    # 1. Read the entire CSV into a NumPy array of strings
-    header, data_str = read_csv_as_strings(filename)
-    
-    print("CSV data read successfully as strings:")
-    print(data_str)
-    
-    # 2. Extract specific columns into new, typed NumPy arrays
-    #    Column 1: Integer IDs
-    #    Column 3: Real scores
-    
-    integer_data = read_integer_columns(data_str, columns=[1])
-    real_data = read_real_columns(data_str, columns=[3])
-    
-    print("\nInteger data (column 1):")
-    print(integer_data)
-    
-    print("\nReal data (column 3):")
-    print(real_data)
-    
-    # The typed arrays are now ready for analysis (e.g., with SciPy, pandas)
-
-except (FileNotFoundError, ValueError) as e:
-    print(f"An error occurred: {e}")
-
-\end{lstlisting}
-
 \item \textbf{TODO Functions relating section 1.2}
 
     \item \textbf{Normalization of Expression Values}
@@ -4164,39 +4107,6 @@ results <- tox_deserialize_int_array(mapping[["analysis_results"]])
     \item Archives created with R functions are compatible with Python and Fortran implementations
     \item Error codes are automatically checked and converted to informative error messages
 \end{itemize}
-
-    \item \textbf{Read CSV to Raw ASCII:} Call \texttt{tox.read\_csv\_raw}. This function reads the file and returns a list containing the data as a 3D integer array of ASCII codes. This intermediate format is efficient for passing between functions.
-    \item \textbf{Extract Typed Columns:} Pass the raw data array (\texttt{\$data}) from the previous step to conversion functions like \texttt{tox.read\_integer\_columns} to get typed matrices.
-    \item \textbf{(Optional) Convert to Strings:} For inspection, you can convert the raw ASCII data to a human-readable character matrix using \texttt{tox.convert\_ascii\_to\_strings}.
-
-\begin{lstlisting}[language=R, caption={R Data Loading Workflow}]
-# Load the TOX API functions
-source("R/tensoromics_functions.R")
-
-filename <- "my_data.csv"
-
-# 1. Read the CSV file into a raw ASCII integer array format
-raw_data_list <- tox.read_csv_raw(filename)
-
-# For user inspection, convert the raw data to a character matrix
-string_matrix <- tox.convert_ascii_to_strings(raw_data_list$data)
-cat("Data as character matrix:\n")
-print(string_matrix)
-
-# 2. Use the raw_data_list$data to extract typed columns
-#    Column 1: Integer IDs
-#    Column 3: Real scores
-integer_matrix <- tox.read_integer_columns(raw_data_list$data, columns = 1)
-real_matrix <- tox.read_real_columns(raw_data_list$data, columns = 3)
-
-cat("\nExtracted integer data (column 1):\n")
-print(integer_matrix)
-
-cat("\nExtracted real data (column 3):\n")
-print(real_matrix)
-
-\end{lstlisting}
-
 
 \item \textbf{TODO Functions relating section 1.2}
 
