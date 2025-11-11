@@ -323,6 +323,6 @@ tox_calc_fchange <- function(input, control_cols, cond_cols) {
 
   return(result$output)
 }
-#####
+
 cat("✓ Added normalization functions successfully\n")
 
