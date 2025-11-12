@@ -1980,9 +1980,36 @@ call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o
 call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, selected_indices, ierr, ortholog_set)
 	      	      \end{lstlisting}
 	      	      
-	      	\item \textbf{Calculate shift vectors}
-	      	      
-	      	      Placeholder for now
+	      	\item \textbf{Compute Shift Vector Field}
+
+            Computes shift vectors by subtracting corresponding family centroids from gene expression vectors. The output stores both centroids and shift vectors in a single matrix.
+            
+            \textbf{Mathematical Operation:}
+            \[ \text{shift\_vectors}(d+i, j) = \text{expression\_vectors}(i, j) - \text{family\_centroids}(i, \text{gene\_to\_centroid}(j)) \]
+            \[ \text{shift\_vectors}(1:d, j) = \text{family\_centroids}(:, \text{gene\_to\_centroid}(j)) \]
+            
+            \textbf{Arguments:}
+            \begin{itemize}
+                \item \texttt{d integer(int32)}: Expression vector dimension
+                \item \texttt{n\_genes integer(int32)}: Total number of genes
+                \item \texttt{n\_families integer(int32)}: Total number of families
+                \item \texttt{expression\_vectors real(real64)}: Gene expression matrix [d × n\_genes]
+                \item \texttt{family\_centroids real(real64)}: Family centroid matrix [d × n\_families]
+                \item \texttt{gene\_to\_centroid integer(int32)}: Mapping from genes to family centroids [n\_genes]
+                \item \texttt{shift\_vectors real(real64)}: Output matrix [2*d × n\_genes] storing centroids (rows 1-d) and shift vectors (rows d+1-2d)
+                \item \texttt{ierr integer(int32)}: Error code
+            \end{itemize}
+            \begin{lstlisting}[language=Fortran, caption={Shift Vector Field Computation}]
+call compute_shift_vector_field(d, n_genes, n_families, expression_vectors, &
+                family_centroids, gene_to_centroid, shift_vectors, ierr)
+            \end{lstlisting}
+
+
+            \textbf{Output Structure:}
+            \begin{itemize}
+                \item \texttt{shift\_vectors(1:d, :)}: Contains the family centroids for each gene
+                \item \texttt{shift\_vectors(d+1:2*d, :)}: Contains the shift vectors (expression vector - family centroid)
+            \end{itemize}
 	      	      
 	      	\item \textbf{Calculate Mean Vector}
 	      	      
@@ -4418,6 +4445,26 @@ tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ortholo
 tox_mean_vector(expression_vectors, gene_indices)
 	      	      \end{lstlisting}
 	      \end{enumerate}
+    \item \textbf{Compute Shift Vector Field}
+
+    Calculates the shift vector field for each gene expression vector based on its family centroid. The shift vector represents the difference between the gene expression vector and its corresponding family centroid, starting at the expression vector and pointing to its family centroid.
+    
+    \textbf{Mathematical Definition:}
+    \[ \text{shift\_vector} = \text{expression\_vector} - \text{family\_centroid} \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{expression\_vectors}: 2D numpy array of shape \texttt{(n\_axes, n\_vectors)} where each column is a gene expression vector
+        \item \texttt{family\_centroids}: 2D numpy array of shape \texttt{(n\_axes, n\_families)} where each column is a family centroid vector
+        \item \texttt{gene\_to\_centroid}: 1D numpy array of length \texttt{n\_vectors} containing 1-based family indices mapping each gene to its centroid
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item \texttt{shift\_vectors}: 2D numpy array of shape \texttt{(2*n\_axes, n\_vectors)} containing centroids (rows 0:n\_axes-1) and shift vectors (rows n\_axes:2*n\_axes-1) (read-only)
+    \end{itemize}
+    \begin{lstlisting}[language=Python, caption={Python Shift Vector Field Computation}]
+shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    \end{lstlisting}
 	      
 	\item \textbf{Calculate Distance to Centroid}
 	      
@@ -6416,6 +6463,27 @@ tox_mean_vector(expression_vectors, gene_indices)
 	      	      \end{lstlisting}
 	      \end{enumerate}
 	      
+    \item \textbf{Compute Shift Vector Field}
+
+    Calculates the shift vector field for each gene expression vector based on its family centroid. The shift vector represents the difference between the gene expression vector and its corresponding family centroid.
+    
+    \textbf{Mathematical Definition:}
+    \[ \text{shift\_vector} = \text{expression\_vector} - \text{family\_centroid} \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{expression\_vectors}: Matrix of size \texttt{(n\_axes\_genes × n\_vectors)} where each column is a gene expression vector
+        \item \texttt{family\_centroids}: Matrix of size \texttt{(n\_axes\_centroids × n\_families)} where each column is a family centroid vector
+        \item \texttt{gene\_to\_centroid}: Integer vector of length \texttt{n\_vectors} containing 1-based family indices mapping each gene to its centroid
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item \texttt{shift\_vectors}: Matrix of size \texttt{(2*n\_axes\_genes × n\_vectors)} containing centroids (rows 1:n\_axes\_genes) and shift vectors (rows (n\_axes\_genes+1):(2*n\_axes\_genes))
+    \end{itemize}
+    \begin{lstlisting}[language=R, caption={R Shift Vector Field Computation}]
+shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    \end{lstlisting}          
+    
 	\item \textbf{Calculate Distance to Centroid}
 	      
 	      For each gene in the gene expression matrix, the function computes the
