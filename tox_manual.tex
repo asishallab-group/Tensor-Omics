@@ -1956,10 +1956,10 @@ call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o
 	      	      	      
 	      	      	\item \texttt{n\_families integer(int32)}: Total number of gene families
 	      	      	      
-	      	      	\item \texttt{mode character(len=*)}: Calculation mode ("all" or "orthologs")
+	      	      	\item \texttt{mode integer(int32)}: Calculation mode ("GROUP\_ALL" or "GROUP\_ORTHOLOGS") where "GROUP\_ALL" = 1 and "GROUP\_ORTHOLOGS" = 0 are parameters
 	      	      	      
 	      	      	\item (Optional) \texttt{ortholog\_set logical}: Logical array indicating
-	      	      	      if a gene is part of the calculation subset (only used in \texttt{orthologs}
+	      	      	      if a gene is part of the calculation subset (only used in \texttt{GROUP\_ORTHOLOGS}
 	      	      	      mode)
 	      	      \end{itemize}
 	      	      
