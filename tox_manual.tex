@@ -374,10 +374,13 @@ columns to their proper data types.
 	      	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Read Gene IDs from TSV File}]
-character(len=256) :: gene_ids(n_genes)  ! Pre-allocate with expected size
+character(len=256) :: gene_ids(n_genes)  
+! Pre-allocate with expected size
+
 integer(int32) :: ierr
 
-call read_gene_ids_from_tsv_file('expression_data.tsv', gene_ids, 1, 1, ierr)
+call read_gene_ids_from_tsv_file('expression_data.tsv', &
+                             gene_ids, 1, 1, ierr)
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	\item \textbf{Read Expression Vectors}
@@ -426,10 +429,12 @@ call read_gene_ids_from_tsv_file('expression_data.tsv', gene_ids, 1, 1, ierr)
 real(real64) :: expr_data(n_samples, n_genes)
 
 ! Read TSV file with tab delimiter (default)
-call read_expression_vectors(files, gene_ids, expr_data, 1, 1, value_cols, 1, ierr)
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                            value_cols, 1, ierr)
 
 ! Read CSV file with comma delimiter
-call read_expression_vectors(files, gene_ids, expr_data, 1, 1, value_cols, 1, ierr, ',')
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                            value_cols, 1, ierr, ',')
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	\item \textbf{Read OrthoFinder Family Mapping}
@@ -459,11 +464,16 @@ call read_expression_vectors(files, gene_ids, expr_data, 1, 1, value_cols, 1, ie
 	      	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Read OrthoFinder Family Mapping}]
-character(len=256) :: family_ids(n_families)  ! Pre-allocate with expected family count
-integer(int32) :: gene_to_fam(n_genes)     ! Pre-allocate with gene count
+character(len=256) :: family_ids(n_families)  
+! Pre-allocate with expected family count
+
+integer(int32) :: gene_to_fam(n_genes)     
+! Pre-allocate with gene count
+
 integer(int32) :: ierr
 
-call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam, ierr)
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, &
+                            family_ids, gene_to_fam, ierr)
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	      \textbf{Important Implementation Details:}
@@ -486,15 +496,18 @@ call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam,
 ! 1. Pre-allocate arrays
 
 ! 2. Read gene IDs from expression file
-call read_gene_ids_from_tsv_file('expression.tsv', gene_ids, 1, 1, ierr)
+call read_gene_ids_from_tsv_file('expression.tsv', gene_ids, &
+                                    1, 1, ierr)
 
 ! 3. Read expression data (columns 2-68 contain sample data)
 character(len=256) :: files(1) = ['expression.tsv']
 
-call read_expression_vectors(files, gene_ids, expr_data, 1, 1, samples, 1, ierr)
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                             samples, 1, ierr)
 
 ! 4. Read family mapping from OrthoFinder
-call read_orthofinder_file('Orthogroups.tsv', gene_ids, family_ids, gene_to_fam, ierr)
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, & 
+                            family_ids, gene_to_fam, ierr)
 	      	      	      \end{lstlisting}
 	      	      \end{itemize}
 	      \end{enumerate}
@@ -601,9 +614,10 @@ call apply_unassigned_mask(gene_ids, expr_data, gene_to_fam, &
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Validate Data Structure}]
-call validate_data_structure(n_genes, n_families, n_samples, gene_ids, &
-                           family_ids, gene_to_fam, expr_data, &
-                           centroids, shift_vectors, ierr)
+call validate_data_structure(n_genes, n_families, n_samples, &
+                            gene_ids, family_ids, gene_to_fam, &
+                            expr_data, centroids, shift_vectors, &
+                            ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Validate Expression Data}
@@ -961,22 +975,26 @@ call get_array_metadata(filename, dims, max_dims, ndims, ierr, clen)
 call deserialize_int_2d(array, "test_file.bin", ierr)
 	      	      \end{lstlisting}
 	      	      \begin{lstlisting}[language=fortran, caption={Full example}]
-integer(int32), allocatable :: kallisto_expression(:,:), kallisto_expression_2(:,:)
+integer(int32), allocatable :: kallisto_expression(:,:) 
+integer(int32), allocatable :: kallisto_expression_2(:,:)
 integer(int32) :: dims(5)
 integer(int32) :: ndims, ierr, max_dims
 character(len=64) :: fname
 
 !Assume array is filled with data
 
-call serialize_real_2d(kallisto_expression, "kallisto_data_v1.bin", ierr)
+call serialize_real_2d(kallisto_expression, &
+                        "kallisto_data_v1.bin", ierr)
 if(.not. is_ok(ierr)) error stop ierr
 
 !Reading the data again
-call get_array_metadata("kallisto_data_v1.bin", dims, max_dims, ndims, ierr)
+call get_array_metadata("kallisto_data_v1.bin", dims, max_dims, &
+                        ndims, ierr)
 if(.not. is_ok(ierr)) error stop ierr
 allocate(kallisto_expression_2(dims(1), dims(2)))
 
-call deserialize_real_2d(kallisto_expression_2, "kallisto_data_v1.bin", ierr)
+call deserialize_real_2d(kallisto_expression_2, &
+                        "kallisto_data_v1.bin", ierr)
 if(.not. is_ok(ierr)) error stop ierr
 	      	      \end{lstlisting}
 	      	      
@@ -1055,24 +1073,34 @@ integer(int32) :: ierr
 
 ! Save all available data arrays
 call save_tox_data("complete_data.zip", ierr, &
-                  gene_ids=gene_ids, gene_ids_file="genes.bin", &
-                  expression=expr_data, expression_file="expression.bin", &
-                  gene_to_family=gene_to_fam, gene_to_family_file="mapping.bin", &
-                  family_ids=family_ids, family_ids_file="families.bin", &
-                  family_centroids=centroids, family_centroids_file="centroids.bin", &
-                  shift_vectors=shift_vecs, shift_vectors_file="shifts.bin")
+                  gene_ids=gene_ids, &
+                  gene_ids_file="genes.bin", &
+                  expression=expr_data, &
+                  expression_file="expression.bin", &
+                  gene_to_family=gene_to_fam, &
+                  gene_to_family_file="mapping.bin", &
+                  family_ids=family_ids, &
+                  family_ids_file="families.bin", &
+                  family_centroids=centroids, &
+                  family_centroids_file="centroids.bin", &
+                  shift_vectors=shift_vecs, &
+                  shift_vectors_file="shifts.bin")
 	      	      \end{lstlisting}
 	      	      
 	      	      \begin{lstlisting}[language=Fortran, caption={Save Partial Data Archive}]
 ! Save only gene IDs and expression data
 call save_tox_data("expression_only.zip", ierr, &
-                  gene_ids=gene_ids, gene_ids_file="genes.bin", &
-                  expression=expr_data, expression_file="expression.bin")
+                  gene_ids=gene_ids, &
+                  gene_ids_file="genes.bin", &
+                  expression=expr_data, &
+                  expression_file="expression.bin")
 
 ! Save only family-related data
 call save_tox_data("families_only.zip", ierr, &
-                  family_ids=family_ids, family_ids_file="families.bin", &
-                  family_centroids=centroids, family_centroids_file="centroids.bin")
+                  family_ids=family_ids, &
+                  family_ids_file="families.bin", &
+                  family_centroids=centroids, &
+                  family_centroids_file="centroids.bin")
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read Tox Data Archive}
@@ -1154,13 +1182,16 @@ call read_tox_data("expression_only.zip", ierr, &
 	      	      \end{lstlisting}
 	      	      
 	      	      \begin{lstlisting}[language=Fortran, caption={Read with Filename Retrieval}]
-character(len=:), allocatable :: actual_gene_file, actual_expr_file
+character(len=:), allocatable :: actual_gene_file 
+character(len=:), allocatable :: actual_expr_file
 integer(int32) :: ierr
 
 ! Get both data and internal filenames
 call read_tox_data("complete_data.zip", ierr, &
-                  gene_ids=loaded_gene_ids, gene_ids_file=actual_gene_file, &
-                  expression=loaded_expr, expression_file=actual_expr_file)
+                  gene_ids=loaded_gene_ids, &
+                  gene_ids_file=actual_gene_file, &
+                  expression=loaded_expr, &
+                  expression_file=actual_expr_file)
 	      	      \end{lstlisting}
 	      \end{itemize}
 	      
@@ -1183,8 +1214,10 @@ call read_tox_data("complete_data.zip", ierr, &
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Create Custom Archive}]
-character(len=32) :: keys(3) = ['test_data_1', 'test_data_2', 'test_data_3']
-character(len=256) :: files(3) = ['test_data_1.bin', 'test_2.bin', 'test_3.bin']
+character(len=32) :: keys(3) = ['test_data_1', 'test_data_2', &
+                                'test_data_3']
+character(len=256) :: files(3) = ['test_data_1.bin', 'test_2.bin', &
+                                    'test_3.bin']
 integer(int32) :: ierr
 
 call create_zip_archive("custom_data.zip", keys, files, ierr)
@@ -1214,7 +1247,8 @@ call create_zip_archive("custom_data.zip", keys, files, ierr)
 character(len=:), allocatable :: archive_keys(:), archive_files(:)
 integer(int32) :: ierr
 
-call extract_zip_archive("custom_data.zip", archive_keys, archive_files, ierr)
+call extract_zip_archive("custom_data.zip", archive_keys, &
+                            archive_files, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Complete Archive Workflow:} 
@@ -1231,18 +1265,21 @@ family_centroids=centroids, family_centroids_file="centroids.bin")
 character(len=:), allocatable :: loaded_genes(:)
 real(real64), allocatable :: loaded_expr(:,:), loaded_centroids(:,:)
 call read_tox_data("analysis_results.zip", ierr, &
-gene_ids=loaded_genes, &
-expression=loaded_expr, &
-family_centroids=loaded_centroids)
+                    gene_ids=loaded_genes, &
+                    expression=loaded_expr, &
+                    family_centroids=loaded_centroids)
 
 ! 3. Create custom archive with additional results
 character(len=32) :: custom_keys(2) = ['data_1', 'data_2']
-character(len=256) :: custom_files(2) = ['data_1_v2.bin', 'data_2_v1.bin']
-call create_zip_archive("full_analysis.zip", custom_keys, custom_files, ierr)
+character(len=256) :: custom_files(2) = ['data_1_v2.bin', &
+                                        'data_2_v1.bin']
+call create_zip_archive("full_analysis.zip", custom_keys, &
+                        custom_files, ierr)
 
 ! 4. Extract and verify custom archive
 character(len=:), allocatable :: extracted_keys(:), extracted_files(:)
-call extract_zip_archive("full_analysis.zip", extracted_keys, extracted_files, ierr)
+call extract_zip_archive("full_analysis.zip", extracted_keys, &
+                        extracted_files, ierr)
 	      	\end{lstlisting}
 	      	
 	      	\textbf{Key Features of Archive Operations:}
@@ -1323,7 +1360,8 @@ character(len=:), allocatable :: loaded_gene_ids(:)
 integer(int32) :: ierr
 
 call load_gene_ids(loaded_gene_ids, 'gene_ids.bin', ierr)
-! loaded_gene_ids automatically allocated with correct size and character length
+! loaded_gene_ids automatically allocated with correct size 
+! and character length
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Save Expression Vectors}
@@ -1576,7 +1614,9 @@ call load_shift_vectors(loaded_shifts, 'shift_vectors.bin', ierr)
 integer(int32) :: dims(5), ndims, char_len, ierr
 
 ! Get metadata for gene IDs file
-call get_array_metadata('gene_ids.bin', dims, 5, ndims, ierr, char_len)
+call get_array_metadata('gene_ids.bin', dims, 5, ndims, &
+                        ierr, char_len)
+
 if (is_ok(ierr)) then
     print *, "Dimensions:", dims(1:ndims)
     print *, "Character length:", char_len
@@ -1604,9 +1644,6 @@ call save_shift_vectors(shift_vecs, 'shifts.bin', ierr)
 ! 2. Check file metadata before loading
 integer(int32) :: dims(5), ndims, char_len
 call get_array_metadata('expression.bin', dims, 5, ndims, ierr)
-if (is_ok(ierr) .and. ndims == 2) then
-    print *, "Will load expression data:", dims(1), "samples x", dims(2), "genes"
-end if
 
 ! 3. Load arrays (automatic allocation)
 character(len=:), allocatable :: loaded_genes(:)
@@ -1622,11 +1659,6 @@ call load_gene_to_family(loaded_mapping, 'mapping.bin', ierr)
 call load_family_ids(loaded_families, 'families.bin', ierr)
 call load_family_centroids(loaded_centroids, 'centroids.bin', ierr)
 call load_shift_vectors(loaded_shifts, 'shifts.bin', ierr)
-
-! 4. Verify loaded data
-print *, "Loaded", size(loaded_genes), "genes"
-print *, "Loaded expression data:", size(loaded_expr, 1), "x", size(loaded_expr, 2)
-print *, "Loaded", size(loaded_families), "families"
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Manual Archive Creation with Individual Arrays:}
@@ -1704,7 +1736,7 @@ call delete_file('temp_expr.bin', ierr)
 	      	\item \texttt{max\_stack integer(int32)}: Stack size for quicksort
 	      	      
 	      	\item \texttt{group\_s integer(int32)}: Start column index for each replicate
-	      	      group (\texttt{n\_grps)}
+	      	      group (\texttt{n\_grps})
 	      	      
 	      	\item \texttt{group\_c integer(int32)}: Number of columns per replicate group
 	      	      (\texttt{n\_grps})
@@ -1742,7 +1774,11 @@ call delete_file('temp_expr.bin', ierr)
 	      \end{itemize}
 	      
 	      \begin{lstlisting}[language=Fortran, caption={Normalization Pipeline}]
-call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+call normalization_pipeline(n_genes, n_tissues, input_matrix, &
+                            buf_stddev, buf_quant, buf_avg, buf_log, &
+                            temp_col, rank_means, perm, stack_left, &
+                            stack_right, max_stack, group_s, &
+                            group_c, n_grps, ierr)
 	      \end{lstlisting}
 	      
 	      \textbf{Alternatively you can calculate each step of the normalization
@@ -1853,7 +1889,8 @@ call quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, tem
 	      	      	      )
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Tissue Averages Calculation}]
-call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, &
+                    output_matrix, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Log2 Transformation}
@@ -1882,7 +1919,8 @@ call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix
 	      	      	      )
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Log2 Transformation}]
-call log2_transformation(n_genes, n_tissues, input_matrix, output_matrix, ierr)
+call log2_transformation(n_genes, n_tissues, input_matrix, &
+                        output_matrix, ierr)
 	      	      \end{lstlisting}
 	      \end{enumerate}
 	      
@@ -1924,7 +1962,8 @@ call log2_transformation(n_genes, n_tissues, input_matrix, output_matrix, ierr)
 	      \end{itemize}
 	      
 	      \begin{lstlisting}[language=Fortran, caption={Fold Change Calculation}]
-call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, &
+                    i_matrix, o_matrix, ierr)
 	      \end{lstlisting}
 	      
 	      \subsubsection{Family-Based Analysis}
@@ -1977,7 +2016,9 @@ call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Fortran, caption={Calculation of Family Centroids}]
-call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, selected_indices, ierr, ortholog_set)
+call group_centroid(expression_vectors, n_axes, n_genes, &
+                    gene_to_family, n_families, centroid_matrix, &
+                    mode, selected_indices, ierr, ortholog_set)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Compute Shift Vector Field}
@@ -2000,8 +2041,9 @@ call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_famil
                 \item \texttt{ierr integer(int32)}: Error code
             \end{itemize}
             \begin{lstlisting}[language=Fortran, caption={Shift Vector Field Computation}]
-call compute_shift_vector_field(d, n_genes, n_families, expression_vectors, &
-                family_centroids, gene_to_centroid, shift_vectors, ierr)
+call compute_shift_vector_field(d, n_genes, n_families, &
+                            expression_vectors, family_centroids, &
+                            gene_to_centroid, shift_vectors, ierr)
             \end{lstlisting}
 
 
@@ -2044,7 +2086,8 @@ call compute_shift_vector_field(d, n_genes, n_families, expression_vectors, &
 	      	      	      )
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Mean Vector Calculation}]
-call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr)
+call mean_vector(expression_vectors, n_axes, n_genes, gene_indices,&
+                 n_selected_genes, centroid, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Calculate Distance to Centroid}
@@ -2078,7 +2121,8 @@ call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_g
 	      	      	      with length of \texttt{n\_genes}
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Distance to Centroid Calculation}]
-call distance_to_centroid(n_genes, n_families, genes, centroids, gene_to_fam, distances, d)
+call distance_to_centroid(n_genes, n_families, genes, centroids, &
+                            gene_to_fam, distances, d)
 	      	      \end{lstlisting}
 	      	      
 	      	      \begin{enumerate}
@@ -2168,7 +2212,10 @@ call euclidean_distance(vec1, vec2, d, result)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Fortran, caption={Gene Outlier Calculation}]
-call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)
+call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
+                    work_array, perm, stack_left, stack_right, &
+                    is_outlier, loess_x, loess_y, loess_n, ierr, &
+                    percentile)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Alternatively you can calculate each step of \texttt{detect\_outliers}
@@ -2224,7 +2271,10 @@ call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, pe
 	      	      	      	      \hyperref[sec:error-handling]{error handling section} )
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Compute Family Scaling}]
-call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
+call compute_family_scaling(n_genes, n_families, distances, &
+                        gene_to_fam, dscale, loess_x, loess_y, &
+                        indices_used, perm_tmp, stack_left_tmp, &
+                        stack_right_tmp, family_distances, ierr)
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	\item \textbf{Compute Family Scaling Helper}
@@ -2268,7 +2318,9 @@ call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale,
 	      	      	      	      \hyperref[sec:error-handling]{error handling section} )
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Compute Family Scaling}]
-call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, ierr)
+call compute_family_scaling_alloc(n_genes, n_families, distances, &
+                                gene_to_fam, dscale, loess_x, &
+                                loess_y, indices_used, ierr)
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	\item \textbf{Compute Relative Distance Index (RDI)}
@@ -2313,7 +2365,8 @@ call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, d
 	      	      	      	      with length of \texttt{n\_genes}
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Compute Relative Distance Index (RDI)}]
-call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
+call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, &
+                sorted_rdi, perm, stack_left, stack_right)
 	      	      	      \end{lstlisting}
 	      	      	      
 	      	      	\item \textbf{Identify Outliers}
@@ -2347,7 +2400,8 @@ call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm,
 	      	      	      	      detection
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Identify Outliers}]
-call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
+call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, &
+                        threshold, percentile)
 	      	      	      \end{lstlisting}
 	      	      \end{enumerate}
 	      	      
@@ -2400,7 +2454,11 @@ call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percenti
 	      	      	      )
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Tissue Versatility Calculation}]
-call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
+call compute_tissue_versatility(n_axes, n_vectors, &
+        expression_vectors, exp_vecs_selection_index, &
+        n_selected_vectors, axes_selection, &
+        n_selected_axes, tissue_versatilities, &
+        tissue_angles_deg, ierr)
 	      	      \end{lstlisting}
 	      \end{enumerate}
 \end{enumerate}
@@ -2426,8 +2484,9 @@ The Fortran module provides comprehensive routines for RAP (Relative Axes Projec
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Vector RAP Projection}]
-call omics_vector_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, &
-                                n_selected_vecs, axes_selection_mask, n_selected_axes, &
+call omics_vector_RAP_projection(vecs, n_axes, n_vecs, &
+                                vecs_selection_mask, n_selected_vecs, &
+                                axes_selection_mask, n_selected_axes, &
                                 projections, ierr)
 \end{lstlisting}
 
@@ -2448,9 +2507,10 @@ call omics_vector_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Vector Field RAP Projection}]
-call omics_field_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, &
-                               n_selected_vecs, axes_selection_mask, n_selected_axes, &
-                               projections, ierr)
+call omics_field_RAP_projection(vecs, n_axes, n_vecs, &
+                                vecs_selection_mask, &
+                                n_selected_vecs, axes_selection_mask, &
+                                n_selected_axes, projections, ierr)
 \end{lstlisting}
 
     \item \textbf{Project Selected Vectors onto RAP}
@@ -2467,7 +2527,8 @@ call omics_field_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, &
         \item \texttt{n\_selected\_vecs integer(int32)}: Number of selected vectors
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Core RAP Projection}]
-call project_selected_vecs_onto_rap(selected_vecs, n_selected_axes, n_selected_vecs)
+call project_selected_vecs_onto_rap(selected_vecs, n_selected_axes, &
+                                    n_selected_vecs)
 \end{lstlisting}
 
     \item \textbf{Clock Hand Angle Between Vectors}
@@ -2505,9 +2566,11 @@ call clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Batch Angle Calculation}]
-call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, &
-                                        vecs_selection_mask, n_selected_vecs, &
-                                        selected_axes_for_signed, signed_angles, ierr)
+call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, &
+                                        n_vecs, vecs_selection_mask, &
+                                        n_selected_vecs, &
+                                        selected_axes_for_signed, &
+                                        signed_angles, ierr)
 \end{lstlisting}
 
     \item \textbf{Compute Relative Axis Contributions}
@@ -2522,7 +2585,8 @@ call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, &
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Axis Contribution Analysis}]
-call compute_relative_axis_contributions(vec, n_axes, contributions, ierr)
+call compute_relative_axis_contributions(vec, n_axes, &
+                                        contributions, ierr)
 \end{lstlisting}
 
     \item \textbf{Relative Axes Changes from Shift Vector}
@@ -2537,7 +2601,8 @@ call compute_relative_axis_contributions(vec, n_axes, contributions, ierr)
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Shift Vector Axis Contributions}]
-call relative_axes_changes_from_shift_vector(vec, n_axes, contributions, ierr)
+call relative_axes_changes_from_shift_vector(vec, n_axes, &
+                                            contributions, ierr)
 \end{lstlisting}
 
     \item \textbf{Relative Axes Expression from Expression Vector}
@@ -2552,7 +2617,8 @@ call relative_axes_changes_from_shift_vector(vec, n_axes, contributions, ierr)
         \item \texttt{ierr integer(int32)}: Error code
     \end{itemize}
 \begin{lstlisting}[language=Fortran, caption={Expression Vector Axis Contributions}]
-call relative_axes_expression_from_expression_vector(vec, n_axes, contributions, ierr)
+call relative_axes_expression_from_expression_vector(vec, n_axes, &
+                                                contributions, ierr)
 \end{lstlisting}
 
 \end{enumerate}
@@ -2602,7 +2668,8 @@ call relative_axes_expression_from_expression_vector(vec, n_axes, contributions,
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Trajectory Contribution Calculation}]
-call trajectory_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
+call trajectory_contribution(factor, dependent, n_timepoints, mode, &
+                            contribution, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Spike Contribution Calculation}
@@ -2633,7 +2700,8 @@ call trajectory_contribution(factor, dependent, n_timepoints, mode, contribution
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran, caption={Spike Contribution Calculation}]
-call spike_contribution(factor, dependent, n_timepoints, mode, contribution, ierr)
+call spike_contribution(factor, dependent, n_timepoints, mode, &
+                        contribution, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Calculate Contributions (Expert Version)}
@@ -2877,7 +2945,7 @@ call detect_outliers_integrated(contributions, n_samples,&
 	      	      	      	      \hyperref[sec:error-handling]{error handling section})
 	      	      	      \end{itemize}
 	      	      	      \begin{lstlisting}[language=Fortran, caption={Spike Thresholds Calculation}]
-call calc_spike_thresholds(spike_contribs, n_timepoints, 
+call calc_spike_thresholds(spike_contribs, n_timepoints, &
                         n_samples, percentile_val, thresholds, & 
                         permutation, ierr)
 	      	      	      \end{lstlisting}
@@ -3097,7 +3165,8 @@ call process_trajectories_flat_alloc(trajectories, n_factors, &
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran]
-call build_bst_index(values, num_values, sorted_indices, left_stack, right_stack, ierr)
+call build_bst_index(values, num_values, sorted_indices, left_stack, &
+                        right_stack, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Get Sorted Value}
@@ -3120,7 +3189,8 @@ call build_bst_index(values, num_values, sorted_indices, left_stack, right_stack
 	      	      	\item \texttt{ierr integer(int32)}: Error code
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Fortran]
-sorted_value = get_sorted_value(values, sorted_indices, position, ierr)
+sorted_value = get_sorted_value(values, sorted_indices, &
+                                position, ierr)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{BST Range Query}
@@ -3275,8 +3345,7 @@ call get_kd_point(points, kd_indices, position, point_values, ierr)
 type(hashmap_type) :: map
 	      	      	      \end{lstlisting}
 	      	      	      
-	      	      	\item \textbf{Create Hashmap:} Initialize a new hashmap with
-	      	      	      optional initial size. The Hashmap size will be set to the next greater
+	      	      	\item \textbf{Create Hashmap:} Initialize a new hashmap with optional initial size. The Hashmap size will be set to the next greater
 	      	      	      power of two.
 	      	      	      \begin{lstlisting}[language=Fortran]
 call hashmap_create(map, initial_size)
@@ -3288,9 +3357,9 @@ call hashmap_create(map, initial_size)
 	      	      	      	      of the hashmap
 	      	      	      \end{itemize}
 	      	      	      
-	      	      	\item \textbf{Insert Key-Value Pair:} Insert or update a key-value
-	      	      	      pair in the hashmap. \begin{lstlisting}[language=Fortran]
-	      	      	      call hashmap_put(map, key, value)
+	      	      	\item \textbf{Insert Key-Value Pair:} Insert or update a key-value pair in the hashmap. 
+                          \begin{lstlisting}[language=Fortran]
+call hashmap_put(map, key, value)
 	      	      	\end{lstlisting}
 	      	      	\begin{itemize}
 	      	      		\item \texttt{map}: Hashmap to insert into
@@ -3701,7 +3770,8 @@ module. The functions provide a high-level interface that mirrors the Fortran pi
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Read Gene IDs from TSV File}]
-gene_ids = read_gene_ids_from_tsv_file(filename, n_genes, gene_ids_len, n_header_rows, gene_col)
+gene_ids = read_gene_ids_from_tsv_file(filename, n_genes,
+                            gene_ids_len, n_header_rows, gene_col)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read Expression Vectors}
@@ -3739,7 +3809,9 @@ gene_ids = read_gene_ids_from_tsv_file(filename, n_genes, gene_ids_len, n_header
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Read Expression Vectors}]
-expression_vectors = read_expression_vectors(file_list, gene_ids, n_samples, n_header_rows, gene_col, value_cols, delimiter='\t')
+expression_vectors = read_expression_vectors(file_list, gene_ids, 
+                                n_samples, n_header_rows, gene_col, 
+                                value_cols, delimiter='\t')
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read OrthoFinder File}
@@ -3771,7 +3843,8 @@ expression_vectors = read_expression_vectors(file_list, gene_ids, n_samples, n_h
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Read OrthoFinder File}]
-family_result = read_orthofinder_file(filename, gene_ids, family_ids_len, n_families)
+family_result = read_orthofinder_file(filename, gene_ids, 
+                                family_ids_len, n_families)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Complete Data Loading Workflow Example:} \begin{lstlisting}[language=Python, caption={Python Complete Data Loading Workflow}]
@@ -3912,7 +3985,9 @@ validate_family_centroids(family_centroids)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Validate Shift Vectors}]
-validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_genes, n_samples, n_families)
+validate_shift_vectors(shift_vectors, expression_vectors, 
+                    family_centroids, gene_to_fam, n_genes, 
+                    n_samples, n_families)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Validate String Array Uniqueness}
@@ -3962,7 +4037,9 @@ validate_string_array_uniqueness(strings)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Validate Data Structure}]
-validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+validate_data_structure(n_genes, n_families, n_samples, gene_ids, 
+                gene_family_ids, gene_to_fam, expression_vectors, 
+                family_centroids, shift_vectors)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Validate All Data}
@@ -3996,7 +4073,9 @@ validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_id
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Validate All Data}]
-validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+validate_all_data(n_genes, n_families, n_samples, gene_ids, 
+                    gene_family_ids, gene_to_fam, expression_vectors, 
+                    family_centroids, shift_vectors)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Data Filtering and Validation Workflow Example:} 
@@ -4257,7 +4336,12 @@ extract_zip_archive(zip_filename)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Save TOX Data}]
-save_tox_data(zip_filename, gene_ids=None, expression_vectors=None, gene_to_fam=None, family_ids=None, family_centroids=None, shift_vectors=None, gene_ids_name=None, expression_vectors_name=None, gene_to_fam_name=None, family_ids_name=None, family_centroids_name=None, shift_vectors_name=None)
+save_tox_data(zip_filename, gene_ids=None, expression_vectors=None, 
+        gene_to_fam=None, family_ids=None, family_centroids=None, 
+        shift_vectors=None, gene_ids_name=None, 
+        expression_vectors_name=None, gene_to_fam_name=None, 
+        family_ids_name=None, family_centroids_name=None, 
+        shift_vectors_name=None)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read TOX Data}
@@ -4310,7 +4394,9 @@ save_tox_data(zip_filename, gene_ids=None, expression_vectors=None, gene_to_fam=
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=Python, caption={Python Read TOX Data}]
-read_tox_data(zip_filename, load_gene_ids=False, load_expression_vectors=False, load_gene_to_fam=False, load_family_ids=False, load_family_centroids=False, load_shift_vectors=False)
+read_tox_data(zip_filename, load_gene_ids=False, load_expression_vectors=False, 
+            load_gene_to_fam=False, load_family_ids=False, 
+            load_family_centroids=False, load_shift_vectors=False)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{Data Archiving Workflow Examples:}
@@ -4372,14 +4458,20 @@ tox_serialize_int_nd(another_array, "another_data.bin")
 # Create mixed archive with both standard and custom data
 create_zip_archive(
     zip_filename="mixed_archive.zip",
-    keys=["standard_expression", "custom_feature", "analysis_results"],
-    filenames=["expression.bin", "custom_data.bin", "another_data.bin"]
+    keys=["standard_expression", "custom_feature", 
+            "analysis_results"],
+    filenames=["expression.bin", "custom_data.bin", 
+            "another_data.bin"]
 )
 
 # Later, extract and process
 mapping = extract_zip_archive("mixed_archive.zip")
-expression_data = tox_deserialize_real_nd(mapping["standard_expression"])
-custom_features = tox_deserialize_real_nd(mapping["custom_feature"])
+expression_data = tox_deserialize_real_nd(
+    mapping["standard_expression"])
+
+custom_features = tox_deserialize_real_nd(
+    mapping["custom_feature"])
+
 results = tox_deserialize_int_nd(mapping["analysis_results"])
 	      	      \end{lstlisting}
 	      \end{itemize}
@@ -4485,7 +4577,8 @@ tox_quantile_normalization(input_matrix)
 	      	      	      columns
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Python, caption={Python Tissue Averages Calculation}]
-tox_calculate_tissue_averages(input_matrix, group_starts, group_counts)
+tox_calculate_tissue_averages(input_matrix, group_starts, 
+                            group_counts)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Log2 Transformation}
@@ -4577,7 +4670,8 @@ tox_calculate_fold_changes(input_matrix, control_cols, condition_cols)
 	      \end{itemize}
 	      
 	      \begin{lstlisting}[language=Python, caption={Python Calculation of Family Centroids}]
-tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ortholog_set)
+tox_group_centroid(expression_vectors, gene_to_family, n_families, 
+                    mode, ortholog_set)
 	      \end{lstlisting}
 	      
 	      \begin{enumerate}
@@ -4622,7 +4716,8 @@ tox_mean_vector(expression_vectors, gene_indices)
         \item \texttt{shift\_vectors}: 2D numpy array of shape \texttt{(2*n\_axes, n\_vectors)} containing centroids (rows 0:n\_axes-1) and shift vectors (rows n\_axes:2*n\_axes-1) (read-only)
     \end{itemize}
     \begin{lstlisting}[language=Python, caption={Python Shift Vector Field Computation}]
-shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+shift_vectors = tox_compute_shift_vector_field(expression_vectors, 
+                                family_centroids, gene_to_centroid)
     \end{lstlisting}
 	      
 	\item \textbf{Calculate Distance to Centroid}
@@ -4793,7 +4888,8 @@ tox_compute_family_scaling(distances, gene_to_fam)
 	      	      	\item \textbf{family\_distances}: Work array for sorting
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=Python, caption={Python Compute Family Scaling (Expert Version)}]
-tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
+tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, 
+                stack_left_tmp, stack_right_tmp, family_distances)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Compute Relative Distance Index (RDI)}
@@ -4879,7 +4975,8 @@ tox_identify_outliers(rdi, threshold=None, percentile=95.0)
 	      \end{itemize}
 	      
 	      \begin{lstlisting}[language=Python, caption={Python Tissue Versatility Calculation}]
-tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection)
+tox_calculate_tissue_versatility(expression_vectors, vector_selection, 
+                                axis_selection)
 	      \end{lstlisting}
 \end{enumerate}
 
@@ -4903,7 +5000,8 @@ The Python interface provides comprehensive wrappers for RAP (Relative Axes Proj
         \item \texttt{projections}: 2D numpy array of projected vectors [n\_selected\_axes × n\_selected\_vecs] (read-only)
     \end{itemize}
 \begin{lstlisting}[language=Python, caption={Vector RAP Projection}]
-projections = tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+projections = tox_vector_RAP_projection(vecs, vecs_selection_mask, 
+                                        axes_selection_mask)
 \end{lstlisting}
 
     \item \textbf{Field RAP Projection}
@@ -4921,7 +5019,8 @@ projections = tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selectio
         \item \texttt{projections}: 2D numpy array of projected vectors [n\_selected\_axes × n\_selected\_vecs] (read-only)
     \end{itemize}
 \begin{lstlisting}[language=Python, caption={Vector Field RAP Projection}]
-projections = tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+projections = tox_field_RAP_projection(vecs, vecs_selection_mask, 
+                                        axes_selection_mask)
 \end{lstlisting}
 
     \item \textbf{Clock Hand Angle Between Vectors}
@@ -4939,7 +5038,8 @@ projections = tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection
         \item \texttt{signed\_angle}: Signed angle between vectors in radians [$-\pi$, $\pi$] (read-only float)
     \end{itemize}
 \begin{lstlisting}[language=Python, caption={Signed Angle Between Vectors}]
-angle = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed)
+angle = tox_clock_hand_angle_between_vectors(v1, v2, 
+                                    selected_axes_for_signed)
 \end{lstlisting}
 
     \item \textbf{Clock Hand Angles for Shift Vectors}
@@ -4958,7 +5058,8 @@ angle = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed)
         \item \texttt{signed\_angles}: 1D numpy array of signed angles in radians [$-\pi$, $\pi$] (read-only)
     \end{itemize}
 \begin{lstlisting}[language=Python, caption={Batch Angle Calculation for Vector Pairs}]
-angles = tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mask, selected_axes_for_signed)
+angles = tox_clock_hand_angles_for_shift_vectors(origins, targets, 
+                                vecs_selection_mask, selected_axes_for_signed)
 \end{lstlisting}
 
     \item \textbf{Relative Axis Contributions from Shift Vector}
@@ -4990,7 +5091,8 @@ contributions = relative_axes_changes_from_shift_vector(shift_vector)
         \item \texttt{contrib}: 1D numpy array of relative axis contributions (sums to 1, read-only)
     \end{itemize}
 \begin{lstlisting}[language=Python, caption={Expression Vector Axis Contributions}]
-contributions = relative_axes_expression_from_expression_vector(expression_vector)
+contributions = relative_axes_expression_from_expression_vector(
+    expression_vector)
 \end{lstlisting}
 
 \end{enumerate}
@@ -5033,7 +5135,12 @@ angle = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
 
 # Batch angle calculation
 vecs_mask = np.array([True, True, False, True, False, True, True, False])
-angles = tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_mask, selected_axes)
+angles = tox_clock_hand_angles_for_shift_vectors(
+    origins, 
+    targets, 
+    vecs_mask, 
+    selected_axes
+)
 
 # Axis contribution analysis
 shift_vector = v2 - v1
@@ -5124,7 +5231,8 @@ spike_contributions = tox_spike_contribution(factor, dependent, mode)
 	      	      \end{itemize}
 	      \end{itemize}
 	      \begin{lstlisting}[language=Python, caption={Contributions Calculation with Internal Allocation}]
-result = tox_calc_contributions(trajectories, i_factor, dependent_idx, mode)
+result = tox_calc_contributions(trajectories, i_factor, 
+                                dependent_idx, mode)
 
 # Access results
 spike_contribs = result['spikes']        # [n_timepoints, n_samples]
@@ -5213,13 +5321,15 @@ factor_vec = np.random.rand(n_timepoints)
 dependent_vec = np.random.rand(n_timepoints)
 
 # Compute trajectory contribution
-traj_contrib = tox_trajectory_contribution(factor_vec, dependent_vec, mode=1)
+traj_contrib = tox_trajectory_contribution(factor_vec, dependent_vec, 
+    mode=1)
 
 # Compute spike contributions  
 spike_contribs = tox_spike_contribution(factor_vec, dependent_vec, mode=1)
 
 # Full trajectory analysis
-result = tox_calc_contributions(trajectories, i_factor=0, dependent_idx=1, mode=1)
+result = tox_calc_contributions(trajectories, i_factor=0, 
+    dependent_idx=1, mode=1)
 spikes = result['spikes']        # [50, 100]
 trajectory = result['trajectory'] # [100]
 
@@ -5468,12 +5578,23 @@ results = tox_process_trajectories(
 )
 
 # Access results
-integrated_contribs = results['integrated_contribs']        # [n_samples, n_processed]
-spike_contribs = results['spike_contribs']                  # [n_timepoints, n_samples, n_processed]
-thresholds_integrated = results['thresholds_integrated']    # [n_processed]
-thresholds_spike = results['thresholds_spike']              # [n_timepoints, n_processed]
-outliers_integrated = results['outliers_integrated']        # [n_samples, n_processed] (bool)
-outliers_spike = results['outliers_spike']                  # [n_timepoints, n_samples, n_processed] (bool)
+integrated_contribs = results['integrated_contribs']        
+# [n_samples, n_processed]
+
+spike_contribs = results['spike_contribs']                  
+# [n_timepoints, n_samples, n_processed]
+
+thresholds_integrated = results['thresholds_integrated']    
+# [n_processed]
+
+thresholds_spike = results['thresholds_spike']              
+# [n_timepoints, n_processed]
+
+outliers_integrated = results['outliers_integrated']        
+# [n_samples, n_processed] (bool)
+
+outliers_spike = results['outliers_spike']                  
+# [n_timepoints, n_samples, n_processed] (bool)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Process Trajectories with Global Percentile}
@@ -5527,12 +5648,23 @@ results = tox_process_trajectories_flat(
 )
 
 # Access results - note thresholds_spike is 1D in flat version
-integrated_contribs = results['integrated_contribs']        # [n_samples, n_processed]
-spike_contribs = results['spike_contribs']                  # [n_timepoints, n_samples, n_processed]
-thresholds_integrated = results['thresholds_integrated']    # [n_processed]
-thresholds_spike = results['thresholds_spike']              # [n_processed] (1D)
-outliers_integrated = results['outliers_integrated']        # [n_samples, n_processed] (bool)
-outliers_spike = results['outliers_spike']                  # [n_timepoints, n_samples, n_processed] (bool)
+integrated_contribs = results['integrated_contribs']        
+# [n_samples, n_processed]
+
+spike_contribs = results['spike_contribs']                  
+# [n_timepoints, n_samples, n_processed]
+
+thresholds_integrated = results['thresholds_integrated']    
+# [n_processed]
+
+thresholds_spike = results['thresholds_spike']              
+# [n_processed] (1D)
+
+outliers_integrated = results['outliers_integrated']        
+# [n_samples, n_processed] (bool)
+
+outliers_spike = results['outliers_spike']                  
+# [n_timepoints, n_samples, n_processed] (bool)
 	      	      \end{lstlisting}
 	      \end{enumerate}
 	      
@@ -5564,25 +5696,27 @@ outliers_spike = results['outliers_spike']                  # [n_timepoints, n_s
 	      	      are validated
 	      \end{itemize}
 	      
-	      \textbf{Usage Example:} \begin{lstlisting}[language=Python, caption={Typical Pipeline Usage}]
-	      import numpy as np
-	      
-	      # Example data: 10 factors, 100 samples, 50 timepoints
-	      trajectories = np.random.rand(10, 100, 50).astype(np.float64)
-	      factor_mask = np.array([True, True, False, True, True, False, True, True, True, False])
-	      dependent_idx = 5  # 1-based index
-	      mode = 1  # Normal mode
-	      percentile = 95.0
-	      
-	      # Process with per-timepoint thresholds
-	      results = tox_process_trajectories(
-	      trajectories, factor_mask, dependent_idx, mode, percentile
-	      )
-	      
-	      # Process with global threshold  
-	      results_flat = tox_process_trajectories_flat(
-	      trajectories, factor_mask, dependent_idx, mode, percentile
-	      )
+	      \textbf{Usage Example:} 
+          \begin{lstlisting}[language=Python, caption={Typical Pipeline Usage}]
+import numpy as np
+
+# Example data: 10 factors, 100 samples, 50 timepoints
+trajectories = np.random.rand(10, 100, 50).astype(np.float64)
+factor_mask = np.array([True, True, False, True, True, False, 
+    True, True, True, False])
+dependent_idx = 5  # 1-based index
+mode = 1  # Normal mode
+percentile = 95.0
+
+# Process with per-timepoint thresholds
+results = tox_process_trajectories(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
+
+# Process with global threshold  
+results_flat = tox_process_trajectories_flat(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
 	\end{lstlisting}
 	
 	\item \textbf{Python Core Contribution Analysis Functions}
@@ -5619,9 +5753,14 @@ outliers_spike = results['outliers_spike']                  # [n_timepoints, n_s
 result = compute_edf(values)
 
 # Access results
-unique_vals = result['unique_values']  # Sorted unique values
-cdf_vals = result['cdf_values']        # Cumulative distribution values  
-n_unique = result['n_unique']          # Number of unique values
+unique_vals = result['unique_values']  
+# Sorted unique values
+
+cdf_vals = result['cdf_values']        
+# Cumulative distribution values  
+
+n_unique = result['n_unique']          
+# Number of unique values
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Empirical Distribution Function (Expert Version)}
@@ -5802,7 +5941,8 @@ Placeholder
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Read Gene IDs from TSV File}]
-read_gene_ids_from_tsv_file(filename, ngenes, gene_len, n_header_rows = 1, gene_col = 1)
+read_gene_ids_from_tsv_file(filename, ngenes, gene_len, 
+    n_header_rows = 1, gene_col = 1)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read Expression Vectors (R)}
@@ -5841,7 +5981,8 @@ read_gene_ids_from_tsv_file(filename, ngenes, gene_len, n_header_rows = 1, gene_
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Read Expression Vectors}]
-read_expression_vectors(file_list, gene_ids, n_header_rows, gene_col, value_cols, n_samples, delimiter = "\t")
+read_expression_vectors(file_list, gene_ids, n_header_rows, gene_col, 
+    value_cols, n_samples, delimiter = "\t")
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Read OrthoFinder File (R)}
@@ -5892,7 +6033,9 @@ gene_result <- read_gene_ids_from_tsv_file(
 gene_ids <- gene_result$gene_ids
 
 # Step 2: Load expression data from multiple samples
-samples <- c("sample1.tsv", "sample2.tsv", "sample3.tsv", "sample4.tsv")
+samples <- c("sample1.tsv", "sample2.tsv", 
+    "sample3.tsv", "sample4.tsv")
+
 expression_result <- read_expression_vectors(
     file_list = samples,
     gene_ids = gene_ids,
@@ -5990,7 +6133,8 @@ validate_gene_to_family_mapping(gene_to_fam, n_genes, n_families)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Validate Expression Data}]
-validate_expression_data(expression_vectors, n_genes, n_samples, check_non_negative = TRUE)
+validate_expression_data(expression_vectors, n_genes, n_samples, 
+    check_non_negative = TRUE)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Validate Family Centroids (R)}
@@ -6037,7 +6181,8 @@ validate_family_centroids(family_centroids, n_families, n_samples)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Validate Shift Vectors}]
-validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples)
+validate_shift_vectors(shift_vectors, expression_vectors, 
+    family_centroids, gene_to_fam, n_samples)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Validate String Array Uniqueness (R)}
@@ -6089,13 +6234,17 @@ validate_string_array_uniqueness(string_arr, n_strings)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Validate All Data}]
-validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+validate_all_data(n_genes, n_families, n_samples, gene_ids, 
+    gene_family_ids, gene_to_fam, expression_vectors, 
+    family_centroids, shift_vectors)
 	      	      \end{lstlisting}
 	      	      
 	      	      \textbf{R Data Filtering and Validation Workflow Example:} 
 	      	      \begin{lstlisting}[language=R, caption={R Data Filtering and Validation Workflow}]
 # After loading data, filter unassigned genes
-filter_result <- filter_unassigned_genes(gene_ids, expression_vectors, gene_to_fam)
+filter_result <- filter_unassigned_genes(gene_ids, expression_vectors, 
+    gene_to_fam)
+
 gene_ids <- filter_result$gene_ids
 expression_vectors <- filter_result$expression_vectors
 gene_to_fam <- filter_result$gene_to_fam
@@ -6104,7 +6253,9 @@ n_genes_kept <- filter_result$n_genes_kept
 # Run comprehensive validations
 validate_string_array_uniqueness(gene_ids, n_genes_kept)
 validate_string_array_uniqueness(family_ids, n_families)
-validate_expression_data(expression_vectors, n_genes_kept, n_samples, check_non_negative = TRUE)
+validate_expression_data(expression_vectors, n_genes_kept, 
+    n_samples, check_non_negative = TRUE)
+
 validate_gene_to_family_mapping(gene_to_fam, n_genes_kept, n_families)
 
 # For complete analysis with centroids and shift vectors
@@ -6113,8 +6264,6 @@ validate_all_data(
 	gene_ids, family_ids, gene_to_fam,
 	expression_vectors, family_centroids, shift_vectors
 )
-
-cat("All data validations passed successfully\n")
 	      	\end{lstlisting}
 	      \end{itemize}
 \end{enumerate}
@@ -6473,15 +6622,20 @@ tox_serialize_int_array(another_array, "another_data.bin")
 # Create mixed archive with both standard and custom data
 create_zip_archive(
     zip_filename = "mixed_archive.zip",
-    keys = c("standard_expression", "custom_feature", "analysis_results"),
-    filenames = c("expression.bin", "custom_data.bin", "another_data.bin")
+    keys = c("standard_expression", "custom_feature", 
+        "analysis_results"),
+    filenames = c("expression.bin", "custom_data.bin", 
+        "another_data.bin")
 )
 
 # Later, extract and process
 mapping <- extract_zip_archive("mixed_archive.zip")
-expression_data <- tox_deserialize_real_array(mapping[["standard_expression"]])
-custom_features <- tox_deserialize_real_array(mapping[["custom_feature"]])
-results <- tox_deserialize_int_array(mapping[["analysis_results"]])
+expression_data <- tox_deserialize_real_array(
+    mapping[["standard_expression"]])
+custom_features <- tox_deserialize_real_array(
+    mapping[["custom_feature"]])
+results <- tox_deserialize_int_array(
+    mapping[["analysis_results"]])
 \end{lstlisting}
 
 \textbf{Important Notes for R Archive Functions:}
@@ -6685,7 +6839,8 @@ tox_diagnose_data_quality(input_matrix, show_details)
 	      	      \end{itemize}
 	      	      
 	      	      \begin{lstlisting}[language=R, caption={R Clean Data for Normalization}]
-tox_clean_data_for_normalization(df_matrix, remove_all_zero_genes, na_strategy, min_expression_threshold, convert_small_to_zero)
+tox_clean_data_for_normalization(df_matrix, remove_all_zero_genes, 
+    na_strategy, min_expression_threshold, convert_small_to_zero)
 	      	      \end{lstlisting}
 	      \end{enumerate}
 	      
@@ -6754,7 +6909,8 @@ tox_calculate_fc_by_patterns(df, control_pattern, condition_patterns)
 	      \end{itemize}
 	      
 	      \begin{lstlisting}[language=R, caption={R Calculation of Family Centroids}]
-tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ortholog_set)
+tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, 
+    ortholog_set)
 	      \end{lstlisting}
 	      
 	      \begin{enumerate}
@@ -6800,7 +6956,8 @@ tox_mean_vector(expression_vectors, gene_indices)
         \item \texttt{shift\_vectors}: Matrix of size \texttt{(2*n\_axes\_genes × n\_vectors)} containing centroids (rows 1:n\_axes\_genes) and shift vectors (rows (n\_axes\_genes+1):(2*n\_axes\_genes))
     \end{itemize}
     \begin{lstlisting}[language=R, caption={R Shift Vector Field Computation}]
-shift_vectors <- tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+shift_vectors <- tox_compute_shift_vector_field(expression_vectors, 
+    family_centroids, gene_to_centroid)
     \end{lstlisting}          
     
 	\item \textbf{Calculate Distance to Centroid}
@@ -6981,7 +7138,8 @@ tox_compute_family_scaling(distances, gene_to_fam, n_families)
 	      	      	\item \textbf{family\_distances}: Work vector for sorting
 	      	      \end{itemize}
 	      	      \begin{lstlisting}[language=R, caption={R Compute Family Scaling (Expert Version)}]
-tox_compute_family_scaling_expert(distances, gene_to_fam, n_families, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
+tox_compute_family_scaling_expert(distances, gene_to_fam, n_families, 
+    perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
 	      	      \end{lstlisting}
 	      	      
 	      	\item \textbf{Compute Relative Distance Index (RDI)}
@@ -7098,7 +7256,8 @@ The R interface provides user-friendly wrappers for RAP (Relative Axes Projectio
         \item Signed angle between vectors in radians [$-\pi$, $\pi$] (numeric)
     \end{itemize}
 \begin{lstlisting}[language=R, caption={Signed Angle Between Vectors}]
-angle <- tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed = c(1, 2, 3))
+angle <- tox_clock_hand_angle_between_vectors(v1, v2, 
+    selected_axes_for_signed = c(1, 2, 3))
 \end{lstlisting}
 
     \item \textbf{Clock Hand Angles for Shift Vectors}
@@ -7117,9 +7276,10 @@ angle <- tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed =
         \item Vector of signed angles in radians [$-\pi$, $\pi$] (numeric vector)
     \end{itemize}
 \begin{lstlisting}[language=R, caption={Batch Angle Calculation for Vector Pairs}]
-angles <- tox_clock_hand_angles_for_shift_vectors(origins, targets, 
-                                                 vecs_selection_mask = NULL,
-                                                 selected_axes_for_signed = c(1, 2, 3))
+angles <- tox_clock_hand_angles_for_shift_vectors(
+    origins, targets, 
+    vecs_selection_mask = NULL,
+    selected_axes_for_signed = c(1, 2, 3))
 \end{lstlisting}
 
     \item \textbf{Relative Axis Contributions from Shift Vector}
@@ -7151,7 +7311,9 @@ contributions <- relative_axes_changes_from_shift_vector(shift_vector)
         \item Numeric vector of relative axis contributions (sums to 1)
     \end{itemize}
 \begin{lstlisting}[language=R, caption={Expression Vector Axis Contributions}]
-contributions <- relative_axes_expression_from_expression_vector(expression_vector)
+contributions <- relative_axes_expression_from_expression_vector(
+    expression_vector
+)
 \end{lstlisting}
 
     \item \textbf{Omics Vector RAP Projection}
@@ -7187,7 +7349,8 @@ projections <- omics_vector_RAP_projection(vecs, vecs_selection_mask, axes_selec
         \item Matrix of projected vectors (n\_selected\_axes × n\_selected\_vecs)
     \end{itemize}
 \begin{lstlisting}[language=R, caption={Vector Field RAP Projection}]
-projections <- omics_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+projections <- omics_field_RAP_projection(vecs, vecs_selection_mask, 
+    axes_selection_mask)
 \end{lstlisting}
 
 \end{enumerate}
