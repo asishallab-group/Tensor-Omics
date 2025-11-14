@@ -1,3 +1,9 @@
 name = "tensor-omics"
 version = "0.1.0"
 license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "shared"
