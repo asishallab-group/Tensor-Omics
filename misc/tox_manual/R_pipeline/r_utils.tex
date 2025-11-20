@@ -1,0 +1,129 @@
+\subsubsection{R Utils}
+\begin{enumerate}
+    \item \textbf{R BST Interface}
+          
+          \begin{enumerate}
+            \item \textbf{Build BST Index}
+                  
+                  R interface for building BST index. Uses R's native 1-based indexing.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{x numeric}: Vector of real values
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{integer}: Permutation indices (1-based R indices)
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+ix <- build_bst_index(x)
+                  \end{lstlisting}
+                  
+            \item \textbf{BST Range Query}
+                  
+                  Performs range queries on BST index. Returns a list with components.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{x numeric}: Original values vector
+                          
+                    \item \texttt{ix integer}: BST index vector from build\_bst\_index (1-based)
+                          
+                    \item \texttt{lo numeric}: Lower bound of range (inclusive)
+                          
+                    \item \texttt{hi numeric}: Upper bound of range (inclusive)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{list}: Contains indices and count components
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+result <- bst_range_query(x, ix, lo, hi)
+indices <- result$indices  # 1-based indices
+count <- result$count
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Sorted Value}
+                  
+                  Retrieves value from sorted position using R 1-based indexing.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{x numeric}: Original values vector
+                          
+                    \item \texttt{ix integer}: BST index vector (1-based)
+                          
+                    \item \texttt{position integer}: Position in sorted order (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{numeric}: Value at specified position
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+value <- get_sorted_value(x, ix, position)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+    \item \textbf{R k-d Tree Interface}
+          
+          \begin{enumerate}
+            \item \textbf{Build k-d Tree Index}
+                  
+                  R interface for k-d tree construction. Input matrix dimensions are
+                  rows=dimensions, columns=points.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{X matrix}: Matrix of points (nrow = dimensions, ncol =
+                          n\_points)
+                          
+                    \item \texttt{dim\_order integer}: Dimension ordering (1-based, optional)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{integer}: Permutation indices (1-based R indices)
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+kd_ix <- build_kd_index(X, dim_order)
+                  \end{lstlisting}
+                  
+            \item \textbf{Build Spherical k-d Tree}
+                  
+                  R interface for spherical k-d tree construction with separate implementation.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{V matrix}: Matrix of vectors (nrow = dimensions, ncol =
+                          n\_vectors)
+                          
+                    \item \texttt{dim\_order integer}: Dimension ordering (1-based, optional)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{integer}: Permutation indices (1-based R indices)
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+sphere_ix <- build_spherical_kd(V, dim_order)
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Point from k-d Index}
+                  
+                  Retrieves point from k-d tree using R matrix indexing.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{X matrix}: Original points matrix
+                          
+                    \item \texttt{kd\_ix integer}: k-d tree index vector (1-based)
+                          
+                    \item \texttt{position integer}: Position in k-d tree order (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{numeric}: Point values as vector
+                  \end{itemize}
+                  \begin{lstlisting}[language=R]
+point <- get_kd_point(X, kd_ix, position)
+                  \end{lstlisting}
+          \end{enumerate}
+\end{enumerate}

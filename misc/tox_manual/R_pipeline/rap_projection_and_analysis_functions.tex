@@ -1,0 +1,136 @@
+\subsubsection{R RAP Projection and Analysis Functions}
+
+The R interface provides user-friendly wrappers for RAP (Relative Axes Projection) analysis, including vector projection, angle calculation, and axis contribution analysis.
+
+\textbf{R Implementation Features:}
+\begin{itemize}
+    \item \textbf{Automatic Dimension Handling}: Automatically infers dimensions from input data
+    \item \textbf{Flexible Mask Input}: Accepts both logical and integer masks for vector/axis selection
+    \item \textbf{Smart Defaults}: Provides sensible defaults for optional parameters
+    \item \textbf{Comprehensive Validation}: Validates input dimensions, types, and consistency
+    \item \textbf{Error Conversion}: Converts Fortran error codes to informative R errors
+\end{itemize}
+
+\textbf{Validation Checks:}
+\begin{itemize}
+    \item Input vectors must be numeric and have same dimensions
+    \item Matrices must have consistent dimensions between origins and targets
+    \item Selection masks must have appropriate lengths
+    \item For dimensions $>$ 3, selected axes must be valid and unique
+    \item All input validation occurs in R before Fortran calls
+\end{itemize}
+
+\begin{enumerate}
+    \item \textbf{Clock Hand Angle Between Vectors}
+
+    Calculates the signed rotation angle between two RAP-projected and normalized vectors. Automatically handles 2D, 3D, and higher-dimensional cases.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{v1}: First normalized vector in RAP space (numeric vector)
+        \item \texttt{v2}: Second normalized vector in RAP space (numeric vector)
+        \item \texttt{selected\_axes\_for\_signed}: Indices of 3 axes for directionality calculation (default: \texttt{c(1, 2, 3)}, ignored if dimension $\leq$ 3)
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Signed angle between vectors in radians [$-\pi$, $\pi$] (numeric)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Signed Angle Between Vectors}]
+angle <- tox_clock_hand_angle_between_vectors(v1, v2, 
+    selected_axes_for_signed = c(1, 2, 3))
+\end{lstlisting}
+
+    \item \textbf{Clock Hand Angles for Shift Vectors}
+
+    Computes signed rotation angles between corresponding pairs of RAP-projected and normalized vectors (e.g., expression centroids and paralogs).
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{origins}: Matrix of origin vectors (n\_dims × n\_vecs) - e.g., centroids
+        \item \texttt{targets}: Matrix of target vectors (n\_dims × n\_vecs) - e.g., paralogs
+        \item \texttt{vecs\_selection\_mask}: Logical vector indicating which vector pairs to compute (default: all TRUE)
+        \item \texttt{selected\_axes\_for\_signed}: Indices of 3 axes for directionality calculation (default: \texttt{c(1, 2, 3)})
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Vector of signed angles in radians [$-\pi$, $\pi$] (numeric vector)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Batch Angle Calculation for Vector Pairs}]
+angles <- tox_clock_hand_angles_for_shift_vectors(
+    origins, targets, 
+    vecs_selection_mask = NULL,
+    selected_axes_for_signed = c(1, 2, 3))
+\end{lstlisting}
+
+    \item \textbf{Relative Axis Contributions from Shift Vector}
+
+    Computes fractional contribution of each axis to a RAP-projected and normalized shift vector. Values range [0,1] and sum to 1.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vec}: RAP-projected and normalized shift vector (numeric vector)
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numeric vector of relative axis contributions (sums to 1)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Shift Vector Axis Contributions}]
+contributions <- relative_axes_changes_from_shift_vector(shift_vector)
+\end{lstlisting}
+
+    \item \textbf{Relative Axis Contributions from Expression Vector}
+
+    Computes fractional contribution of each axis to a RAP-projected and normalized expression vector. Values range [0,1] and sum to 1.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vec}: RAP-projected and normalized expression vector (numeric vector)
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Numeric vector of relative axis contributions (sums to 1)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Expression Vector Axis Contributions}]
+contributions <- relative_axes_expression_from_expression_vector(
+    expression_vector
+)
+\end{lstlisting}
+
+    \item \textbf{Omics Vector RAP Projection}
+
+    Projects selected expression vectors onto the RAP constructed from a selected set of axes.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vecs}: Matrix with expression vectors (n\_axes × n\_vecs)
+        \item \texttt{vecs\_selection\_mask}: Logical or integer mask for vectors to project
+        \item \texttt{axes\_selection\_mask}: Logical or integer mask for axes to include in RAP
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Matrix of projected vectors (n\_selected\_axes × n\_selected\_vecs)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Vector RAP Projection}]
+projections <- omics_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+\end{lstlisting}
+
+    \item \textbf{Omics Field RAP Projection}
+
+    Projects selected vector fields (e.g., shift vectors) onto the RAP constructed from a selected set of axes. Automatically computes shift vectors as differences between origins and targets.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vecs}: Matrix with vector fields (2*n\_axes × n\_vecs) - first n\_axes rows: origins, last n\_axes rows: targets
+        \item \texttt{vecs\_selection\_mask}: Logical or integer mask for vectors to project
+        \item \texttt{axes\_selection\_mask}: Logical or integer mask for axes to include in RAP
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item Matrix of projected vectors (n\_selected\_axes × n\_selected\_vecs)
+    \end{itemize}
+\begin{lstlisting}[language=R, caption={Vector Field RAP Projection}]
+projections <- omics_field_RAP_projection(vecs, vecs_selection_mask, 
+    axes_selection_mask)
+\end{lstlisting}
+
+\end{enumerate}

@@ -1,0 +1,361 @@
+\subsubsection{Data Management}
+\begin{enumerate}
+    \item \textbf{Data Reading and processing}
+          
+          \begin{itemize}
+            \item \textbf{Read Gene IDs from TSV File (R)}
+                  
+                  The function reads gene identifiers from a tab-separated value (TSV) file,
+                  extracting specific gene IDs from a designated column while skipping
+                  header rows. This function is typically used as the first step in processing
+                  gene expression data to obtain the complete list of gene identifiers. Call
+                  the \texttt{read\_gene\_ids\_from\_tsv\_file} function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{filename}: Character string of the filename
+                          
+                    \item \texttt{ngenes}: Number of gene IDs to read
+                          
+                    \item \texttt{gene\_len}: Maximum length of each gene ID
+                          
+                    \item \textbf{(Optional)} \texttt{n\_header\_rows}: Number of header
+                          rows to skip
+                          
+                    \item \textbf{(Optional)} \texttt{gene\_col}: Column index (1-based) of
+                          gene IDs in the file
+                  \end{itemize}
+                  
+                  \textbf{Return list:}
+                  \begin{itemize}
+                    \item \textbf{gene\_ids}: Character vector of gene IDs read from the file
+                          
+                    \item \textbf{ierr}: Integer error code (0 if successful)
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Read Gene IDs from TSV File}]
+read_gene_ids_from_tsv_file(filename, ngenes, gene_len, 
+    n_header_rows = 1, gene_col = 1)
+                  \end{lstlisting}
+                  
+            \item \textbf{Read Expression Vectors (R)}
+                  
+                  The function reads gene expression data from multiple tabular files (CSV/TSV
+                  format), extracting expression values for specified genes across multiple
+                  samples. This function consolidates expression data from multiple files into
+                  a single matrix. Call the \texttt{read\_expression\_vectors} function with
+                  the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{file\_list}: Character vector of filenames
+                          
+                    \item \texttt{gene\_ids}: Character vector of gene IDs to match
+                          
+                    \item \texttt{n\_header\_rows}: Number of header rows to skip in each file
+                          
+                    \item \texttt{gene\_col}: Column index (1-based) of gene IDs in each file
+                          
+                    \item \texttt{value\_cols}: Vector of column indices (1-based) of expression
+                          values in each file
+                          
+                    \item \texttt{n\_samples}: Total number of samples (rows) to read across
+                          all files
+                          
+                    \item \textbf{(Optional)} \texttt{delimiter}: Delimiter used in the
+                          files (default: tab)
+                  \end{itemize}
+                  
+                  \textbf{Return list:}
+                  \begin{itemize}
+                    \item \textbf{expression\_vectors}: Numeric matrix of dimensions (n\_samples
+                          × n\_genes)
+                          
+                    \item \textbf{ierr}: Integer error code (0 if successful)
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Read Expression Vectors}]
+read_expression_vectors(file_list, gene_ids, n_header_rows, gene_col, 
+    value_cols, n_samples, delimiter = "\t")
+                  \end{lstlisting}
+                  
+            \item \textbf{Read OrthoFinder File (R)}
+                  
+                  The function processes an OrthoFinder output file to map genes to their respective
+                  orthologous families. This function establishes the gene-family
+                  relationships essential for downstream orthology-based analyses. Call the \texttt{read\_orthofinder\_file}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{filename}: Character string of the filename
+                          
+                    \item \texttt{gene\_ids}: Character vector of gene IDs to match
+                          
+                    \item \texttt{n\_families}: Number of unique gene families expected
+                          
+                    \item \texttt{family\_len}: Maximum length of each family ID
+                  \end{itemize}
+                  
+                  \textbf{Return list:}
+                  \begin{itemize}
+                    \item \textbf{family\_ids}: Character vector of family IDs read from the
+                          file
+                          
+                    \item \textbf{gene\_to\_fam}: Integer vector mapping each gene to its family
+                          index (0 = unassigned)
+                          
+                    \item \textbf{ierr}: Integer error code (0 if successful)
+                  \end{itemize}
+                  
+                  \textbf{Note:} If genes are not found in the gene IDs list a message will
+                  be printed but NO error code is thrown.
+                  
+                  \begin{lstlisting}[language=R, caption={R Read OrthoFinder File}]
+read_orthofinder_file(filename, gene_ids, n_families, family_len)
+                  \end{lstlisting}
+                  
+                  \textbf{Complete R Data Loading Workflow Example:}
+                  \begin{lstlisting}[language=R, caption={R Complete Data Loading Workflow}]
+# Step 1: Load gene identifiers
+gene_result <- read_gene_ids_from_tsv_file(
+    filename = "data/expression_data.tsv",
+    ngenes = 50000,
+    gene_len = 32,
+    n_header_rows = 1,
+    gene_col = 1
+)
+gene_ids <- gene_result$gene_ids
+
+# Step 2: Load expression data from multiple samples
+samples <- c("sample1.tsv", "sample2.tsv", 
+    "sample3.tsv", "sample4.tsv")
+
+expression_result <- read_expression_vectors(
+    file_list = samples,
+    gene_ids = gene_ids,
+    n_header_rows = 1,
+    gene_col = 1,
+    value_cols = 2,
+    n_samples = 4
+)
+expression_vectors <- expression_result$expression_vectors
+
+# Step 3: Load orthology information
+family_result <- read_orthofinder_file(
+    filename = "data/Orthogroups.tsv",
+    gene_ids = gene_ids,
+    n_families = 15000,
+    family_len = 32
+)
+family_ids <- family_result$family_ids
+gene_to_fam <- family_result$gene_to_fam
+                  \end{lstlisting}
+          \end{itemize}
+    \item \textbf{Data Filtering and Validation}
+          \begin{itemize}
+            \item \textbf{Filter Unassigned Genes (R)}
+                  
+                  The function filters out genes that are not assigned to any family (where
+                  gene\_to\_fam = 0). This is essential for cleaning data before orthology-based
+                  analyses, ensuring only genes with valid family assignments are processed.
+                  Call the \texttt{filter\_unassigned\_genes} function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{gene\_ids}: Character vector of gene IDs
+                          
+                    \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples
+                          × n\_genes)
+                          
+                    \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family
+                          index (0 = unassigned)
+                  \end{itemize}
+                  
+                  \textbf{Return list:}
+                  \begin{itemize}
+                    \item \textbf{gene\_ids}: Filtered character vector of gene IDs
+                          
+                    \item \textbf{expression\_vectors}: Filtered numeric matrix of expression
+                          values
+                          
+                    \item \textbf{gene\_to\_fam}: Filtered integer vector mapping each gene to
+                          its family index
+                          
+                    \item \textbf{n\_genes\_kept}: Number of genes kept after filtering
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Filter Unassigned Genes}]
+filter_unassigned_genes(gene_ids, expression_vectors, gene_to_fam)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Gene to Family Mapping (R)}
+                  
+                  The function validates the gene-to-family mapping array, ensuring all
+                  family indices are within valid range and properly assigned. This prevents
+                  downstream errors from invalid family indices. Call the \texttt{validate\_gene\_to\_family\_mapping}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family
+                          index (0 = unassigned)
+                          
+                    \item \texttt{n\_genes}: Number of genes
+                          
+                    \item \texttt{n\_families}: Number of gene families
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate Gene to Family Mapping}]
+validate_gene_to_family_mapping(gene_to_fam, n_genes, n_families)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Expression Data (R)}
+                  
+                  The function validates expression data, checking for NaN/Inf values and
+                  optionally verifying non-negative values. This ensures data quality before
+                  computational analyses. Call the \texttt{validate\_expression\_data} function
+                  with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples
+                          × n\_genes)
+                          
+                    \item \texttt{n\_genes}: Number of genes
+                          
+                    \item \texttt{n\_samples}: Number of samples
+                          
+                    \item \textbf{(Optional)} \texttt{check\_non\_negative}: Logical flag to
+                          check for non-negative values (default: TRUE)
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate Expression Data}]
+validate_expression_data(expression_vectors, n_genes, n_samples, 
+    check_non_negative = TRUE)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Family Centroids (R)}
+                  
+                  The function validates family centroids data, checking for NaN/Inf values
+                  and proper data structure. Centroids represent the central tendency of each
+                  gene family's expression profile. Call the \texttt{validate\_family\_centroids}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples
+                          × n\_families)
+                          
+                    \item \texttt{n\_families}: Number of gene families
+                          
+                    \item \texttt{n\_samples}: Number of samples
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate Family Centroids}]
+validate_family_centroids(family_centroids, n_families, n_samples)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Shift Vectors (R)}
+                  
+                  The function validates shift vectors, ensuring data types are correct and
+                  structure matches expected patterns. Shift vectors represent the deviation
+                  of each gene from its family centroid. Call the \texttt{validate\_shift\_vectors}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{shift\_vectors}: Numeric matrix of shift vectors (2*n\_samples
+                          × n\_genes)
+                          
+                    \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples
+                          × n\_genes)
+                          
+                    \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples
+                          × n\_families)
+                          
+                    \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family
+                          index
+                          
+                    \item \texttt{n\_samples}: Number of samples
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate Shift Vectors}]
+validate_shift_vectors(shift_vectors, expression_vectors, 
+    family_centroids, gene_to_fam, n_samples)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate String Array Uniqueness (R)}
+                  
+                  The function validates that all strings in an array are unique, using a
+                  hashset internally. Note: This may increase memory usage temporarily for
+                  large datasets. Call the \texttt{validate\_string\_array\_uniqueness}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{string\_arr}: Character vector of gene IDs
+                          
+                    \item \texttt{n\_strings}: Number of genes
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate String Array Uniqueness}]
+validate_string_array_uniqueness(string_arr, n_strings)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate All Data (R)}
+                  
+                  The function performs comprehensive validation of all data components in one
+                  call. This function executes all individual validations sequentially for
+                  complete data quality assurance. Call the \texttt{validate\_all\_data}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{n\_genes}: Number of genes
+                          
+                    \item \texttt{n\_families}: Number of gene families
+                          
+                    \item \texttt{n\_samples}: Number of samples
+                          
+                    \item \texttt{gene\_ids}: Character vector of gene IDs
+                          
+                    \item \texttt{gene\_family\_ids}: Character vector of gene family IDs
+                          
+                    \item \texttt{gene\_to\_fam}: Integer vector mapping each gene to its family
+                          index (0 = unassigned)
+                          
+                    \item \texttt{expression\_vectors}: Numeric matrix of expression values (n\_samples
+                          × n\_genes)
+                          
+                    \item \texttt{family\_centroids}: Numeric matrix of family centroids (n\_samples
+                          × n\_families)
+                          
+                    \item \texttt{shift\_vectors}: Numeric matrix of shift vectors (2*n\_samples
+                          × n\_genes)
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=R, caption={R Validate All Data}]
+validate_all_data(n_genes, n_families, n_samples, gene_ids, 
+    gene_family_ids, gene_to_fam, expression_vectors, 
+    family_centroids, shift_vectors)
+                  \end{lstlisting}
+                  
+                  \textbf{R Data Filtering and Validation Workflow Example:} 
+                  \begin{lstlisting}[language=R, caption={R Data Filtering and Validation Workflow}]
+# After loading data, filter unassigned genes
+filter_result <- filter_unassigned_genes(gene_ids, expression_vectors, 
+    gene_to_fam)
+
+gene_ids <- filter_result$gene_ids
+expression_vectors <- filter_result$expression_vectors
+gene_to_fam <- filter_result$gene_to_fam
+n_genes_kept <- filter_result$n_genes_kept
+
+# Run comprehensive validations
+validate_string_array_uniqueness(gene_ids, n_genes_kept)
+validate_string_array_uniqueness(family_ids, n_families)
+validate_expression_data(expression_vectors, n_genes_kept, 
+    n_samples, check_non_negative = TRUE)
+
+validate_gene_to_family_mapping(gene_to_fam, n_genes_kept, n_families)
+
+# For complete analysis with centroids and shift vectors
+validate_all_data(
+    n_genes_kept, n_families, n_samples, 
+    gene_ids, family_ids, gene_to_fam,
+    expression_vectors, family_centroids, shift_vectors
+)
+            \end{lstlisting}
+          \end{itemize}
+\end{enumerate}

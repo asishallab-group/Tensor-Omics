@@ -1,0 +1,167 @@
+\subsubsection{RAP Projection and Analysis Functions}
+The Fortran module provides comprehensive routines for RAP (Relative Axes Projection) analysis, including vector projection, angle calculation, and axis contribution analysis.
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{RAP Projection}: Removes diagonal component to focus on relative differences
+    \item \textbf{Signed Angles}: Calculates both magnitude and directionality of angular separation
+    \item \textbf{Dimensional Flexibility}: Handles 2D, 3D, and higher-dimensional cases
+    \item \textbf{Axis Contribution Analysis}: Quantifies relative importance of each axis
+\end{itemize}
+
+\begin{enumerate}
+    \item \textbf{Omics Vector RAP Projection}
+
+    Projects selected expression vectors onto the RAP constructed from a selected set of axes. This performs both vector selection and RAP projection in a single operation.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vecs real(real64)}: Matrix with expression vectors [n\_axes × n\_vecs]
+        \item \texttt{n\_axes integer(int32)}: Number of axes
+        \item \texttt{n\_vecs integer(int32)}: Number of vectors per axis
+        \item \texttt{vecs\_selection\_mask logical}: Mask for vectors where projection is computed [n\_vecs]
+        \item \texttt{n\_selected\_vecs integer(int32)}: Count of selected vectors
+        \item \texttt{axes\_selection\_mask logical}: Mask for axes included in RAP [n\_axes]
+        \item \texttt{n\_selected\_axes integer(int32)}: Count of selected axes
+        \item \texttt{projections real(real64)}: Output projected vectors [n\_selected\_axes × n\_selected\_vecs]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Vector RAP Projection}]
+call omics_vector_RAP_projection(vecs, n_axes, n_vecs, &
+                                vecs_selection_mask, n_selected_vecs, &
+                                axes_selection_mask, n_selected_axes, &
+                                projections, ierr)
+\end{lstlisting}
+
+    \item \textbf{Omics Field RAP Projection}
+
+    Projects selected vector fields (e.g., shift vectors) onto the RAP constructed from a selected set of axes. Computes shift vectors as differences between origins and targets before projection.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vecs real(real64)}: Matrix with vector fields [2*n\_axes × n\_vecs] (first n\_axes rows: origins, last n\_axes rows: targets)
+        \item \texttt{n\_axes integer(int32)}: Number of axes
+        \item \texttt{n\_vecs integer(int32)}: Number of vectors per axis
+        \item \texttt{vecs\_selection\_mask logical}: Mask for vectors where projection is computed [n\_vecs]
+        \item \texttt{n\_selected\_vecs integer(int32)}: Count of selected vectors
+        \item \texttt{axes\_selection\_mask logical}: Mask for axes included in RAP [n\_axes]
+        \item \texttt{n\_selected\_axes integer(int32)}: Count of selected axes
+        \item \texttt{projections real(real64)}: Output projected vectors [n\_selected\_axes × n\_selected\_vecs]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Vector Field RAP Projection}]
+call omics_field_RAP_projection(vecs, n_axes, n_vecs, &
+                                vecs_selection_mask, &
+                                n_selected_vecs, axes_selection_mask, &
+                                n_selected_axes, projections, ierr)
+\end{lstlisting}
+
+    \item \textbf{Project Selected Vectors onto RAP}
+
+    Core RAP projection routine that subtracts the diagonal component from selected vectors.
+    
+    \textbf{Mathematical Operation:}
+    \[ \text{projection} = \text{vector} - \frac{\sum_{i=1}^{n}\text{vector}_i}{n} \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{selected\_vecs real(real64)}: Matrix with vectors for selected axes [n\_selected\_axes × n\_selected\_vecs] (input/output)
+        \item \texttt{n\_selected\_axes integer(int32)}: Number of selected axes
+        \item \texttt{n\_selected\_vecs integer(int32)}: Number of selected vectors
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Core RAP Projection}]
+call project_selected_vecs_onto_rap(selected_vecs, n_selected_axes, &
+                                    n_selected_vecs)
+\end{lstlisting}
+
+    \item \textbf{Clock Hand Angle Between Vectors}
+
+    Computes the signed rotation angle between two RAP-projected and normalized vectors. Handles 2D, 3D, and higher-dimensional cases with automatic directionality calculation.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{v1 real(real64)}: First normalized vector in RAP space [n\_dims]
+        \item \texttt{v2 real(real64)}: Second normalized vector in RAP space [n\_dims]
+        \item \texttt{n\_dims integer(int32)}: Dimension of both vectors
+        \item \texttt{signed\_angle real(real64)}: Signed angle between vectors in radians [$-\pi$,$\pi$]
+        \item \texttt{selected\_axes\_for\_signed integer(int32)}: Indices of 3 axes for directionality calculation [3] (ignored if n\_dims $\leq$ 3)
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Signed Angle Calculation}]
+call clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, &
+                                     selected_axes_for_signed, ierr)
+\end{lstlisting}
+
+    \item \textbf{Clock Hand Angles for Shift Vectors}
+
+    Computes signed rotation angles between corresponding pairs of RAP-projected and normalized vectors (e.g., expression centroids and paralogs).
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{origins real(real64)}: First set of RAP-projected vectors (e.g., centroids) [n\_dims × n\_vecs]
+        \item \texttt{targets real(real64)}: Second set of RAP-projected vectors (e.g., paralogs) [n\_dims × n\_vecs]
+        \item \texttt{n\_dims integer(int32)}: Dimension of each vector in RAP space
+        \item \texttt{n\_vecs integer(int32)}: Number of vector pairs
+        \item \texttt{vecs\_selection\_mask logical}: Mask for vector pairs where angle should be computed [n\_vecs]
+        \item \texttt{n\_selected\_vecs integer(int32)}: Count of selected vector pairs
+        \item \texttt{selected\_axes\_for\_signed integer(int32)}: Indices of 3 axes for directionality [3]
+        \item \texttt{signed\_angles real(real64)}: Output signed angles in radians [$-\pi$,$\pi$] [n\_selected\_vecs]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Batch Angle Calculation}]
+call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, &
+                                        n_vecs, vecs_selection_mask, &
+                                        n_selected_vecs, &
+                                        selected_axes_for_signed, &
+                                        signed_angles, ierr)
+\end{lstlisting}
+
+    \item \textbf{Compute Relative Axis Contributions}
+
+    Computes fractional contribution of each axis to a RAP-projected and normalized vector. Values range [0,1] and sum to 1.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vec real(real64)}: RAP-projected and normalized vector [n\_axes]
+        \item \texttt{n\_axes integer(int32)}: Number of axes
+        \item \texttt{contributions real(real64)}: Fractional contribution of each axis [n\_axes]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Axis Contribution Analysis}]
+call compute_relative_axis_contributions(vec, n_axes, &
+                                        contributions, ierr)
+\end{lstlisting}
+
+    \item \textbf{Relative Axes Changes from Shift Vector}
+
+    Wrapper for computing axis contributions from shift vectors.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vec real(real64)}: RAP-projected and normalized shift vector [n\_axes]
+        \item \texttt{n\_axes integer(int32)}: Number of axes
+        \item \texttt{contributions real(real64)}: Fractional contribution of each axis [n\_axes]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Shift Vector Axis Contributions}]
+call relative_axes_changes_from_shift_vector(vec, n_axes, &
+                                            contributions, ierr)
+\end{lstlisting}
+
+    \item \textbf{Relative Axes Expression from Expression Vector}
+
+    Wrapper for computing axis contributions from expression vectors.
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{vec real(real64)}: RAP-projected and normalized expression vector [n\_axes]
+        \item \texttt{n\_axes integer(int32)}: Number of axes
+        \item \texttt{contributions real(real64)}: Fractional contribution of each axis [n\_axes]
+        \item \texttt{ierr integer(int32)}: Error code
+    \end{itemize}
+\begin{lstlisting}[language=Fortran, caption={Expression Vector Axis Contributions}]
+call relative_axes_expression_from_expression_vector(vec, n_axes, &
+                                                contributions, ierr)
+\end{lstlisting}
+
+\end{enumerate}

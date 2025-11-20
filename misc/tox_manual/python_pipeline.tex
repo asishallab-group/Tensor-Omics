@@ -1,0 +1,16 @@
+\renewcommand{\sectionspath}[1]{tox_manual/python_pipeline/#1}
+
+\lstset{ language=Python, basicstyle=\ttfamily\small, keywordstyle=\color{blue}, commentstyle=\color{green!40!black}, stringstyle=\color{purple}, showstringspaces=false, breaklines=true, frame=single, rulecolor=\color{black!30}, backgroundcolor=\color{black!5} }
+
+\subsection{Python Pipeline}
+\subsubsection{Overview}
+The Python workflow is exposed through the \texttt{tensoromics\_functions.py}
+module. The functions provide a high-level interface that mirrors the Fortran pipeline.
+
+\input{\sectionspath{data_management}}
+\input{\sectionspath{data_persistence}}
+\input{\sectionspath{data_processing}}
+\input{\sectionspath{family_based_analysis}}
+\input{\sectionspath{rap_projection_and_analysis_functions}}
+\input{\sectionspath{trajectory_contribution_analysis}}
+\input{\sectionspath{python_utils}}

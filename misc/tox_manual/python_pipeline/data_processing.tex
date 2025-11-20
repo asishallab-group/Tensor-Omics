@@ -1,0 +1,157 @@
+\subsubsection{Data Processing}
+\begin{enumerate}
+    \item \textbf{Normalization of Expression Values}
+          
+          The function runs a complete normalization pipeline on gene expression data.
+          It first applies standard deviation normalization, then quantile normalization,
+          followed by replicate averaging, and finally a log2 transformation. The
+          result is returned in an array, which contains the fully normalized expression
+          values. Call the \texttt{tox\_normalization\_pipeline} function with the following
+          arguments:
+          
+          \begin{itemize}
+            \item \texttt{input\_matrix}: Numeric expression vector matrix with size
+                  \texttt{genes $\times$ tissues}
+                  
+            \item \texttt{group\_starts}: Integer array, start column index for each
+                  replicate group (1-based)
+                  
+            \item \texttt{group\_counts}: Integer array, number of columns per
+                  replicate group
+          \end{itemize}
+          
+          \textbf{Return:}
+          \begin{itemize}
+            \item Numpy array with log2(x+1) normalized expression with size (genes $\times$
+                  groups)
+          \end{itemize}
+          
+          \begin{lstlisting}[language=Fortran, caption={Python Normalization Pipeline}]
+tox_normalization_pipeline(input_matrix, group_starts, group_counts)
+          \end{lstlisting}
+          
+          \textbf{Alternatively you can calculate each step of the normalization
+          pipeline manually by calling the following functions in sequence:}
+          \begin{enumerate}
+            \item \textbf{Normalize by Standard Deviation}
+                  
+                  The function normalizes each gene's expression vector using \texttt{sqrt(mean(x\textasciicircum
+                    2))} across tissues (not classical standard deviation). Call the \texttt{tox\_normalize\_by\_std\_dev}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{input\_matrix}: A numeric matrix with genes as rows and
+                          tissues as columns
+                  \end{itemize}
+                  
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Numpy array: Contains a normalized matrix with same dimensions
+                          as input
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Standard Deviation Normalization}]
+tox_normalize_by_std_dev(input_matrix)
+                  \end{lstlisting}
+                  
+            \item \textbf{Quantile Normalization}
+                  
+                  The function performs quantile normalization of a gene expression matrix
+                  (F42-compliant) and computes average expression per rank across tissues.
+                  Call the \texttt{tox\_quantile\_normalization} function with the following
+                  arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{input\_matrix}: A numeric matrix with genes as rows and
+                          tissues as columns
+                  \end{itemize}
+                  
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Numpy array: Quantile-normalized matrix with same dimensions
+                          as input
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Quantile Normalization}]
+tox_quantile_normalization(input_matrix)
+                  \end{lstlisting}
+                  
+            \item \textbf{Calculate Tissue Averages}
+                  
+                  The function calculates tissue averages by averaging replicates within
+                  each group. For each group of tissue replicates, it computes the average
+                  expression per gene. The input matrix is column-major, flattened as a 1D
+                  array. Call the \texttt{tox\_calculate\_tissue\_averages} function with
+                  the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{input\_matrix}: A numeric matrix with genes as rows and
+                          tissue replicates as columns
+                          
+                    \item \texttt{group\_starts}: Array of starting column indices for each
+                          group (1-based for Fortran)
+                          
+                    \item \texttt{group\_counts}: Array of counts for each group
+                  \end{itemize}
+                  
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Numpy array: Matrix with genes as rows and averaged tissues as
+                          columns
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Tissue Averages Calculation}]
+tox_calculate_tissue_averages(input_matrix, group_starts, 
+                            group_counts)
+                  \end{lstlisting}
+                  
+            \item \textbf{Log2 Transformation}
+                  
+                  The function applies \texttt{log2(x + 1)} transformation to each
+                  element of the input matrix. This is computed via \texttt{log(x + 1) /
+                    log(2)} for compatibility with WebAssembly (WASM). Call the \texttt{tox\_log2\_transformation}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{input\_matrix}: A numeric matrix with genes as rows and
+                          tissues as columns
+                  \end{itemize}
+                  
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Numpy array: Log2-transformed matrix with same dimensions as
+                          input
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Log2 Transformation}]
+tox_log2_transformation(input_matrix)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+    \item \textbf{Calculate Fold Change}
+          
+          If fold change calculation is needed, this function can be used after
+          normalization. The function calculates \texttt{log2} fold changes between
+          condition and control columns. For each control-condition pair, this
+          function computes the \texttt{log2} fold change by subtracting the expression
+          value in the control column from the corresponding value in the condition column,
+          for all genes. Call the \texttt{tox\_calculate\_fold\_changes} function
+          with the following arguments:
+          
+          \begin{itemize}
+            \item \texttt{input\_matrix}: A numeric matrix with genes as rows and tissues/conditions
+                  as columns
+                  
+            \item \texttt{control\_cols}: Array of control column indices (1-based
+                  for Fortran)
+                  
+            \item \texttt{condition\_cols}: Array of condition column indices (1-based
+                  for Fortran)
+          \end{itemize}
+          
+          \textbf{Returns:}
+          \begin{itemize}
+            \item Numpy array: Matrix with genes as rows and fold change values as
+                  columns
+          \end{itemize}
+          
+          \begin{lstlisting}[language=Python, caption={Python Fold Change Calculation}]
+tox_calculate_fold_changes(input_matrix, control_cols, condition_cols)
+          \end{lstlisting}
+\end{enumerate}

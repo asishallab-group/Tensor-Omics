@@ -1,0 +1,344 @@
+\subsubsection{Family-Based Analysis}
+\begin{enumerate}
+    \item \textbf{Calculation of family Centroids}
+          
+          The function computes the centroid (mean expression vector) for each gene family
+          in a gene expression dataset. It iterates over all families, selects the relevant
+          genes for each family and calculates the mean vector for each family.
+          There are two possible modes to use. To use all genes for calculation,
+          select \texttt{all} mode. If you want to specify relevant genes for
+          calculation, select \texttt{orthologs} mode. It is important that you provide
+          a logical \texttt{ortholog\_set} array when using \texttt{orthologs} mode.
+          Call the \texttt{tox\_group\_centroid} function with the following arguments:
+          
+          \begin{itemize}
+            \item \texttt{expression\_vectors}: Expression vector matrix with size \texttt{n\_axes
+                  $\times$ n\_genes}
+            
+            \item \texttt{gene\_to\_family}: Gene-to-family mapping array with the length
+                  of \texttt{n\_genes} (1-based indexing)
+                  
+            \item \texttt{n\_families}: Total number of gene families
+                  
+            \item \texttt{mode}: Calculation mode ("all" or "orthologs")
+                  
+            \item (Optional) \texttt{ortholog\_set}: Logical array indicating if a gene
+                  is part of the calculation subset (only used in \texttt{orthologs} mode)
+          \end{itemize}
+          
+          \textbf{Return:}
+          \begin{itemize}
+            \item \texttt{centroids\_out}: Matrix of calculated family centroid vectors
+                  with size \texttt{n\_axes $\times$ n\_families} (read-only)
+          \end{itemize}
+          
+          \begin{lstlisting}[language=Python, caption={Python Calculation of Family Centroids}]
+tox_group_centroid(expression_vectors, gene_to_family, n_families, 
+                    mode, ortholog_set)
+          \end{lstlisting}
+          
+          \begin{enumerate}
+            \item \textbf{Calculate Mean Vector}
+                  
+                  Alternatively you can calculate a single mean vector for a given set of
+                  vectors by calling the \texttt{mean\_vector} function directly with
+                  the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{expression\_vectors real(real64)}: Expression vector matrix
+                          with size \texttt{n\_axes $\times$ n\_genes}
+                          
+                    \item \texttt{gene\_indices integer(int32)}: An array containing the
+                          column indices of the selected genes in \texttt{expression\_vectors}
+                  \end{itemize}
+                  
+                  \textbf{Return:}
+                  \begin{itemize}
+                    \item \texttt{centroid:} Calculated mean vector (centroid) with
+                          length of \texttt{n\_axes} (read-only)
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Mean Vector Calculation}]
+tox_mean_vector(expression_vectors, gene_indices)
+                  \end{lstlisting}
+          \end{enumerate}
+    \item \textbf{Compute Shift Vector Field}
+
+    Calculates the shift vector field for each gene expression vector based on its family centroid. The shift vector represents the difference between the gene expression vector and its corresponding family centroid, starting at the expression vector and pointing to its family centroid.
+    
+    \textbf{Mathematical Definition:}
+    \[ \text{shift\_vector} = \text{expression\_vector} - \text{family\_centroid} \]
+    
+    \textbf{Arguments:}
+    \begin{itemize}
+        \item \texttt{expression\_vectors}: 2D numpy array of shape \texttt{(n\_axes, n\_vectors)} where each column is a gene expression vector
+        \item \texttt{family\_centroids}: 2D numpy array of shape \texttt{(n\_axes, n\_families)} where each column is a family centroid vector
+        \item \texttt{gene\_to\_centroid}: 1D numpy array of length \texttt{n\_vectors} containing 1-based family indices mapping each gene to its centroid
+    \end{itemize}
+    \textbf{Returns:}
+    \begin{itemize}
+        \item \texttt{shift\_vectors}: 2D numpy array of shape \texttt{(2*n\_axes, n\_vectors)} containing centroids (rows 0:n\_axes-1) and shift vectors (rows n\_axes:2*n\_axes-1) (read-only)
+    \end{itemize}
+    \begin{lstlisting}[language=Python, caption={Python Shift Vector Field Computation}]
+shift_vectors = tox_compute_shift_vector_field(expression_vectors, 
+                                family_centroids, gene_to_centroid)
+    \end{lstlisting}
+          
+    \item \textbf{Calculate Distance to Centroid}
+          
+          For each gene in the gene expression matrix, the function computes the
+          Euclidean distance to its corresponding family centroid and returns a read-only
+          distances array containing the distance value for each expression vector
+          to its family centroid. Call the \texttt{tox\_distance\_to\_centroid}
+          function with the following arguments:
+          
+          \begin{itemize}
+            \item \texttt{genes}: Gene expression matrix array with size of (\texttt{n\_genes
+                  $\times$ d})
+            
+            \item \texttt{centroids}: Family centroid matrix array with size of (\texttt{n\_families
+                  $\times$ d})
+            
+            \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the length
+                  of \texttt{n\_genes} (0 = no family, \textgreater 0 = family index)
+                  
+            \item \texttt{d}: Gene expression matrix dimension as number
+          \end{itemize}
+          \begin{lstlisting}[language=Python, caption={Python Distance to Centroid Calculation}]
+tox_distance_to_centroid(genes, centroids, gene_to_fam, d)
+          \end{lstlisting}
+          
+          \begin{enumerate}
+            \item \textbf{Calculate Euclidean Distance}
+                  
+                  Alternatively you can calculate a single Euclidean distance between two
+                  vectors manually by calling \texttt{tox\_euclidean\_distance} function
+                  with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{vec1:} First vector as array
+                          
+                    \item \texttt{vec2:} Second vector as array
+                  \end{itemize}
+                  
+                  \textbf{Both vectors must have same length!}
+                  
+                  \begin{lstlisting}[language=Python, caption={Python Euclidean distance calculation}]
+tox_euclidean_distance(vec1, vec2)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+    \item \textbf{Detect Gene Outliers}
+          
+          The function first computes family scaling, then calculates relative
+          distance indices (RDI) and identifies outliers based on the specified
+          percentile threshold. It returns a read-only dictionary containing the outlier
+          boolean values and intermediate results. Call the \texttt{tox\_detect\_outliers}
+          function with the following arguments:
+          
+          \begin{itemize}
+            \item \texttt{distances}: Array of distances for each gene to its centroid
+                  
+            \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same
+                  length as the distances array (0 = no family, \textgreater 0 = family index)
+                  
+            \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold
+                  value for outlier detection (default is 95)
+          \end{itemize}
+          
+          \textbf{Return dictionary:}
+          \begin{itemize}
+            \item \textbf{outliers}: Boolean array indicating whether each gene in an
+                  outlier
+                  
+            \item \textbf{loess\_x}: Array of x coordinates used as reference points
+                  for LOESS smoothing (median distance)
+                  
+            \item \textbf{loess\_y}: Array of y coordinates used as reference points
+                  for LOESS smoothing (standard deviation)
+                  
+            \item \textbf{loess\_n}: Array with numbers of genes in each family used
+                  to compute the corresponding median and standard deviation
+          \end{itemize}
+          
+          \begin{lstlisting}[language=Python, caption={Python Gene Outlier Calculation}]
+tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+          \end{lstlisting}
+          
+          \textbf{Alternatively you can calculate each step of \texttt{tox\_detect\_outliers}
+          manually with the following functions:}
+          \begin{enumerate}
+            \item \textbf{Compute Family Scaling}
+                  
+                  The function calculates a scaling factor for each gene family by computing
+                  the median and standard deviation of gene-to-centroid distances within
+                  each family, then applies LOESS smoothing to these values. Call the \texttt{tox\_compute\_family\_scaling}
+                  function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{distances}: Array of distances for each gene to its centroid
+                          
+                    \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same
+                          length as the distances array (0 = no family, \textgreater 0 = family
+                          index)
+                  \end{itemize}
+                  
+                  \textbf{Return dictionary:}
+                  \begin{itemize}
+                    \item \textbf{dscale}: Array of scaling factors per family
+                          
+                    \item \textbf{loess\_x}: Array of x coordinates used as reference points
+                          for LOESS smoothing (median distance)
+                          
+                    \item \textbf{loess\_y}: Array of y coordinates used as reference points
+                          for LOESS smoothing (standard deviation)
+                          
+                    \item \textbf{indices\_used}: Array of indices of families that have
+                          been included in the calculation
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=Python, caption={Python Compute Family Scaling}]
+tox_compute_family_scaling(distances, gene_to_fam)
+                  \end{lstlisting}
+                  
+            \item \textbf{Compute Family Scaling (Expert Version)}
+                  
+                  This function is the expert version of \texttt{tox\_detect\_outliers}
+                  and requires pre-allocated work arrays for maximum performance and
+                  control. It can be used when you need fine-grained control over memory
+                  allocation or you are calling this function many times in a tight loop.
+                  Call the \texttt{tox\_compute\_family\_scaling\_expert} function with the
+                  following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{distances}: Array of distances for each gene to its centroid
+                          
+                    \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same
+                          length as the distances array (0 = no family, \textgreater 0 = family
+                          index)
+                          
+                    \item \texttt{perm\_tmp}: Permutation array for sorting with the same
+                          length as the distances array
+                          
+                    \item \texttt{stack\_left\_tmp}: Stack array for sorting with the same
+                          length as the distances array
+                          
+                    \item \texttt{stack\_right\_tmp}: Stack array for sorting with the same
+                          length as the distances array
+                          
+                    \item \texttt{family\_distances}: Work array for sorting with the same
+                          length as the distances array
+                  \end{itemize}
+                  
+                  \textbf{Return dictionary:}
+                  \begin{itemize}
+                    \item \textbf{dscale}: Array of scaling factors per family
+                          
+                    \item \textbf{loess\_x}: Array of x coordinates used as reference points
+                          for LOESS smoothing (median distance)
+                          
+                    \item \textbf{loess\_y}: Array of y coordinates used as reference points
+                          for LOESS smoothing (standard deviation)
+                          
+                    \item \textbf{indices\_used}: Array of indices of families that have
+                          been included in the calculation
+                          
+                    \item \textbf{perm\_tmp}: Permutation array for sorting
+                          
+                    \item \textbf{stack\_left\_tmp}: Stack array for sorting
+                          
+                    \item \textbf{stack\_right\_tmp}: Stack array for sorting
+                          
+                    \item \textbf{family\_distances}: Work array for sorting
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Compute Family Scaling (Expert Version)}]
+tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, 
+                stack_left_tmp, stack_right_tmp, family_distances)
+                  \end{lstlisting}
+                  
+            \item \textbf{Compute Relative Distance Index (RDI)}
+                  
+                  The function calculates the Relative Distance Index (RDI) for each gene
+                  by dividing its Euclidean distance to the family centroid by the scaling
+                  factor of its family. The function returns a numpy array with RDI
+                  values for each gene. Call the \texttt{tox\_compute\_rdi} function
+                  with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{distances}: Array of distances for each gene to its centroid
+                          
+                    \item \texttt{gene\_to\_fam}: Gene-to-family mapping array with the same
+                          length as the distances array (0 = no family, \textgreater 0 = family
+                          index)
+                          
+                    \item \textbf{dscale}: Array of scaling factors per family
+                  \end{itemize}
+                  
+                  \begin{lstlisting}[language=Python, caption={Python Compute Relative Distance Index (RDI)}]
+tox_compute_rdi(distances, gene_to_fam, dscale)
+                  \end{lstlisting}
+                  
+            \item \textbf{Identify Outliers}
+                  
+                  The function identifies outliers based on the top percentile of RDI values.
+                  Call the \texttt{tox\_identify\_outliers} function with the following arguments:
+                  
+                  \begin{itemize}
+                    \item \texttt{rdi}: Array of RDI values for each gene
+                          
+                    \item \textbf{(Optional)} \texttt{threshold}: Fixed RDI threshold
+                          number (if None, percentile value is used)
+                          
+                    \item \textbf{(Optional)} \texttt{percentile}: Percentile threshold
+                          number for outlier detection (default is 95)
+                  \end{itemize}
+                  
+                  \textbf{Return dictionary:}
+                  \begin{itemize}
+                    \item \texttt{outliers}: Boolean array indicating whether each gene is
+                          an outlier
+                          
+                    \item \texttt{threshold}: Actual threshold value used for outlier detection
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Python Identify Outliers}]
+tox_identify_outliers(rdi, threshold=None, percentile=95.0)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+    \item \textbf{Compute Normalized Tissue Versatility:}
+          
+          The function calculates a normalized tissue versatility score for selected
+          gene expression vectors. It is based on the angle between each gene
+          expression vector and the space diagonal. Versatility is normalized to [0,
+          1], where 0 means uniform expression 1 means expression in only one axis.
+          Call the \texttt{tox\_compute\_tissue\_versatility} function with the following
+          parameters:
+          
+          \begin{itemize}
+            \item \texttt{expression\_vectors}: Expression vector matrix array with size
+                  \texttt{n\_axes $\times$ n\_vectors}
+                  
+            \item \texttt{vector\_selection}: Logical array with length of \texttt{n\_vectors}
+                  to specify which vectors should be included in the calculation
+                  
+            \item \texttt{axes\_selection}: Logical array with length of \texttt{n\_axes}
+                  to specify which axes should be included in the calculation
+          \end{itemize}
+          
+          \textbf{Return dictionary:}
+          \begin{itemize}
+            \item \texttt{tissue\_versatilities}: Array containing the calculated tissue
+                  versatilities for selected vectors
+                  
+            \item \texttt{tissue\_angles\_deg}: Array containing the calculated angles
+                  in degrees for selected vectors
+                  
+            \item \texttt{n\_selected\_vectors}: Number of vectors processed
+                  
+            \item \texttt{n\_selected\_axes}: Number of axes used in calculation
+          \end{itemize}
+          
+          \begin{lstlisting}[language=Python, caption={Python Tissue Versatility Calculation}]
+tox_calculate_tissue_versatility(expression_vectors, vector_selection, 
+                                axis_selection)
+          \end{lstlisting}
+\end{enumerate}

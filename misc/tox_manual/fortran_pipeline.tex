@@ -1,0 +1,27 @@
+\renewcommand{\sectionspath}[1]{tox_manual/fortran_pipeline/#1}
+
+\lstset{ language=Fortran, basicstyle=\ttfamily\small, keywordstyle=\color{blue}, commentstyle=\color{green!40!black}, stringstyle=\color{purple}, showstringspaces=false, breaklines=true, frame=single, rulecolor=\color{black!30}, backgroundcolor=\color{black!5} }
+
+\subsection{Fortran Pipeline}
+\subsubsection{Overview}
+\begin{enumerate}
+    \item Data dependencies and relationships All arrays read have dependencies to
+          each other. The gene ids array stores the ids, column number seven of the expression
+          vectors belongs to entry number seven in the gene ids. Entry number nine
+          in the gene to family mapping array, belongs to entry nine in the gene ids.
+          These dependencies must be given at any time, therefore, only the provided
+          functions shall be used to modify arrays in any form. For error code details
+          please check \hyperref[sec:error-handling]{error handling section}.
+          
+    \item Error handling reference (placeholder for now)
+          
+    \item General usage principle (Placeholder for now)
+\end{enumerate}
+
+\input{\sectionspath{data_management}}
+\input{\sectionspath{data_persistence}}
+\input{\sectionspath{data_processing}}
+\input{\sectionspath{family_based_analysis}}
+\input{\sectionspath{rap_projection_and_analysis_functions}}
+\input{\sectionspath{trajectory_contribution_analysis}}
+\input{\sectionspath{fortran_utils}}
