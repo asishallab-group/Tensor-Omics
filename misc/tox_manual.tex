@@ -5,7 +5,6 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{setspace}
-\usepackage{hyperref}
 \usepackage{listings}
 \usepackage{amsmath}
 \usepackage{booktabs}
@@ -13,6 +12,14 @@
 \usepackage{longtable}
 \usepackage{array}
 \usepackage{enumitem}
+\usepackage{float}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
 
 \setlist[itemize]{leftmargin=1.3em, noitemsep, topsep=0pt}
 \setlist[enumerate]{leftmargin=1.3em, noitemsep, topsep=0pt}
@@ -36,9 +43,22 @@
 \vspace{2cm}
 
 \noindent
-\textbf{\large Vivian Bass$^{1}$, Anna Beketova$^{1}$, Luka Faensen$^{1}$,
-	Asis Hallab$^{1}$, Aaron Schröder$^{1}$, Franz-Eric Sill$^{1}$}\\[0.2cm]
-{\small $^{1}$University of Applied Sciences Bingen, Germany }
+\textbf{\large
+Aaron Schröder,
+Alexander Schwarzpaul,
+Anna Beketova,
+Asis Hallab,
+Franz-Eric Sill,
+Jitu Daba,
+Jonathan Kurz,
+Laszlo Lang,
+Luka Faensen,
+Mohamed Akdi,
+Stephanie Ped,
+Vivian Bass Vega
+}\\[0.2cm]
+
+{\small University of Applied Sciences Bingen, Germany }
 
 \vspace{2cm}
 
@@ -50,211 +70,57 @@
 \tableofcontents
 \newpage
 % ===========================
-\section{Tensor Omics Method and Theory}
+\section{Tensor Omics Methods and Theory}
 
-The Tensor Omics (TOX) tool implements a streamlined pipeline for analyzing
-gene expression data and evolutionary relationships between genes. The pipeline
-integrates tools for data normalization, and geometric analysis of gene
-expression vectors. This document outlines the current implementation details and
-provides the mathematical formulation of the algorithms used in the prototype.
+The Tensor Omics (TOX) tool implements Geometric Learning in a semantic vector space. We represent the data in its natural space, where each measurement is its own axis. We use model-free and minimum-parameter geometric methods to describe the data, find meaningful patterns, identify significant contributions of factors to dependent variables, analyse trajectories, and learn fields of vectors with intrinsic similarity. 
 
-\subsection{From Raw Data to Expression Vectors}
-
-The starting point for all downstream analyses is a table of gene-wise
-expression measurements across a set of biological samples, such as tissues,
-developmental stages, or experimental conditions. These measurements may
-originate from transcriptomic, proteomic, or metabolomic experiments, typically
-normalized to account for sequencing depth and technical variation.
+We rely exclusively on pure linear algebra to characterize these structures, using distances, angles, projections, and linear mapping.
 
 \vspace{0.5cm}
-\noindent
-\textbf{What is Gene Expression Data?} For each gene, a real-valued quantity is
-recorded that reflects its biological activity in a given sample. In the case
-of transcriptomics, this is often the abundance of messenger RNA (mRNA) molecules
-transcribed from that gene, estimated via sequencing and mapped back to the
-gene's known sequence. The result is a non-negative real number proportional to
-the gene's transcriptional activity in that sample. After normalization and
-transformation, these values can be treated as coordinates in a real vector space.
-
-Thus, each gene is represented as a vector $\vec{v}\in \mathbb{R}^{n}$, where $n$
-is the number of biological samples (e.g., tissues or time points), and each
-component $v_{i} \geq 0$ corresponds to the expression level in sample $i$. These
-vectors encode the distribution of gene activity across conditions and form the
-geometric basis for all downstream analyses.
+Tensor Omics differs from conventional geometric learning tensor decomposition in that it operates in empirically defined semantic vector spaces rather than abstract latent dimensions --- a demonstration (See Figure~\ref{fig:figure1}):
 
 \vspace{0.5cm}
-\noindent
-\textbf{Note on Stress Responses.} In certain studies, a subset of the samples
-may correspond to stress conditions. Here, “stress” refers to any external or internal
-perturbation—such as mechanical damage, heat shock, pathogen infection, or
-nutrient deprivation—that triggers measurable changes in gene expression. These
-are often analyzed relative to baseline conditions using log fold-change transformations,
-such that the resulting vectors reflect differential expression patterns, including
-up- and downregulation across dimensions.
-
-\subsection{Normalization of Expression Values}
-Raw gene expression data is normalized in the following steps:
-\begin{enumerate}
-	\item Division by gene-wise standard deviation for scale normalization.
-	      
-	\item Quantile normalization across samples to reduce global expression biases.
-	      
-	\item Log-transformation: $x \mapsto \log(1 + x)$ to stabilize variance and
-	      suppress outliers.
-	      
-	\item For stress response studies, log fold-changes are computed:
-	      \[
-	      	\Delta_{\text{stress}}= \log(1 + x_{\text{stress}}) - \log(1 + x_{\text{control}}
-	      	) \text{}
-	      \]
-	      
-	      \noindent
-	      This effectively makes each stress related axis show the fold change in
-	      gene expression under stress, e.g. ``drought in root divided by control
-	      root''.
-\end{enumerate}
-
-\subsection{Calculation of family Centroids}
-\label{sec:family_centroids}
-
-To summarize the expression profile of each family, Tensor Omics computes a
-centroid vector for every group. The centroid represents the average expression
-pattern of all genes assigned to the family across all conditions or tissues.
-
-\vspace{0.2cm}
-\noindent
-There are two modes for selecting the set of genes to include in the centroid:
-\begin{itemize}
-	\item \textbf{Full mode:} All genes assigned to the family are used to
-	      compute the centroid (mean vector).
-	      
-	\item \textbf{Orthologs-only mode:} Only genes explicitly marked as
-	      orthologs are included in the centroid calculation. This mode is useful for
-	      focusing on conserved gene relationships across species.
-\end{itemize}
-
-\subsection{Euclidean Distance Between Expression Vectors}
-\label{sec:euclidean_distance}
-
-The Euclidean distance is used throughout Tensor Omics to quantify the
-geometric difference between two gene expression vectors, or between a gene and
-its family centroid. Given two vectors
-$\vec{v}_{1}, \vec{v}_{2} \in \mathbb{R}^{n}$, the Euclidean distance is defined
-as:
-\[
-	d(\vec{v}_{1}, \vec{v}_{2}) = \sqrt{\sum_{i=1}^{n} (v_{1,i}- v_{2,i})^{2}}
-\]
-This metric measures the straight-line distance between two points in $n$-dimensional
-space. In the context of gene expression, it reflects the overall magnitude of
-difference in expression profiles across all samples or conditions.
-
-\noindent
-For example, the distance between a paralog's expression vector and the centroid
-of its gene family is used to detect outlier genes and to quantify the degree of
-divergence.
-
-\subsection{Outlier Detection Based on Family-Scaled Distances}
-\label{sec:outlier_detection_algorithm}
-
-To robustly identify genes with divergent expression profiles within their
-families, Tensor Omics implements an outlier detection procedure based on family-scaled
-Euclidean distances. The process consists of the following steps:
-
-\begin{enumerate}
-	\item \textbf{Compute Euclidean Distances:} For each gene, calculate the Euclidean
-	      distance $d_{i}$ between its expression vector and the centroid of its assigned
-	      family (see Section~\ref{sec:euclidean_distance}).
-	      
-	\item \textbf{Estimate Family-Specific Scaling Factors:} For each family $f$,
-	      we compute a family-specific scaling factor. This can be the maximum
-	      distance between any ortholog and the ortholog centroid. For families lacking
-	      sufficient orthologs, a LOESS smoothing strategy is used to estimate an
-	      appropriate scaling factor based on the family's median intra-member
-	      distance.
-	      
-	\item \textbf{Relative Distance Index (RDI):} For each gene $i$ in family
-	      $f$, compute the Relative Distance Index (RDI):
-	      \[
-	      	\mathrm{RDI}_{i} = \frac{d_{i}}{d_{scale}}\text{}
-	      \]
-	      This normalizes the gene's distance by the expected intra-family
-	      variability, making the metric comparable across families of different sizes
-	      and variances.
-	      
-	\item \textbf{Outlier Detection:} Genes are flagged as outliers if their RDI
-	      exceeds a chosen percentile threshold (typically the 95th percentile) of
-	      the empirical RDI distribution. That is, gene $i$ is an outlier if
-	      $\mathrm{RDI}_{i} \geq T$, where $T$ is the threshold value corresponding to
-	      the desired percentile.
-\end{enumerate}
-
-\noindent
-This approach ensures that outlier detection is adaptive to the structure and variability
-of each gene family, and is robust to differences in family size and
-dispersion. The LOESS-based scaling is particularly important for families with
-few members.
-
-\subsection{Tissue Versatility and Specificity}
-\label{sec:tissue_versatility}
-
-\textbf{Tissue Versatility} quantifies how uniformly a gene is expressed across
-all tissues (or, more generally, axes of the expression space). It is defined
-as the cosine of the angle between a gene's expression vector $\vec{v}$ and
-the space diagonal $\vec{d}= (1, 1, \dots, 1)$. The smaller this angle (the
-larger the cosine), the greater the tissue (axis) versatility of the gene's
-expression.
+(A) Medical omics vectors in semantic space. Each gene, protein or clinical patient measure is placed as a point in multi-dimensional space, with axes representing gene expression in a tissue or clinical patient measures. Arrows denote shift vectors from gene family centroids and enable the explainable detection of changes in gene expression from healthy control. Grid points support interpolation and smoothing. Patient time trajectories are shown in the lower left (healthy controls in green, mean control trajectory in fat light green, and a cancer trajectory in orange). The disease specific signals can directly be obtained by geometric trajectory comparison (violet time resolved shift arrows $\vec{s}_{t_i}$). Significant signals are detected empirically as outliers in the upper 5\%-ile.
 
 \vspace{0.5cm}
-\noindent
-\textbf{Interpretation:}
-\begin{itemize}
-	\item A lower angle (cosine closer to 1) means the gene is more evenly expressed
-	      across all tissues (high versatility).
-	      
-	\item A larger angle (cosine closer to 0) means the gene is active in only a
-	      few tissues (high specificity).
-\end{itemize}
+(B) Angle to the space diagonal as a measure of omics specificity: low angles indicate e.g. broad tissue expression, high angles signal strong tissue preference.
 
-\noindent
-\textbf{Dimensionality Dependence}
+\vspace{0.5cm}
+(C) Clock hand angle in the Relative Axes Plane (RAP), capturing changes in tissue preference with robust correction for the overall expression magnitude.
 
-\vspace{0.1cm}
-\noindent
-The maximum possible angle to the diagonal depends on the number of tissues
-$n$. The cosine of this angle is minimal when a gene is expressed in only one tissue:
-\[
-	\cos(\varphi_{\text{max\_angle}}) = \frac{1}{\sqrt{n}}
-\]
+\vspace{0.5cm}
+(D) Causal and explainable omics learning by selecting factors showing geometric similarities in predictive properties. Tensor Omics supports three independent strategies: radial subset growing until only background signal remains (orange), metadata-based selection (e.g. inflammatory response, green), and directional filtering by alignment with a user-defined direction of interest (DOI, e.g. median survival time after treatment or distance of patient trajectory to the healthy control, blue). Methods can be combined to define coherent subfields for geometric analysis.
 
-\noindent
-\textbf{Normalized Tissue Versatility}
+\vspace{0.5cm}
+(E) Explainable analysis of patient time trajectories (as shown in A). Changes in tissue preference (angles $\phi$) relative to the anchor axis (AA). Inset plots show the distance to the healthy control trajectory (top) and the angle between consecutive shift vectors (bottom).
 
-\vspace{0.1cm}
-\noindent
-To make versatility comparable across datasets with different numbers of tissues,
-we define a normalized version that scales values into the interval $[0, 1]$:
-\[
-	\text{Tissue Versatility}= \frac{\cos(\varphi) - \frac{1}{\sqrt{n}}}{1 -
-		\frac{1}{\sqrt{n}}}
-\]
-This maps the cosine values into the interval $[0, 1]$:
-\begin{itemize}
-	\item $1$: perfectly uniform expression (maximum versatility)
-	      
-	\item $0$: expression in only one tissue (minimum versatility)
-\end{itemize}
+\vspace{0.5cm}
+(F) Learned subfield (see D) characterization by emulating the aggregated effect of vectors on a virtual particle. Measures include signal strength (Frobenius norm $||M||_F$), disease subtyping as directional spread (rank), potential disease specific biomarkers as principal flow direction (first eigenvector of covariance matrix C), and disease specific changes in omics factors as rotation axis and magnitude (from the antisymmetric component ($0.5 \times (C - C^T)$).
 
-\noindent
-\textbf{Tissue Specificity}
+\vspace{0.5cm}
+(G) Gradient-following kernel traversal to elucidate disease trajectory analysis in early, mid, and late stages: subfield (see D) structure is decomposed via Singular-Value-Decomposition (SVD) into dominant axes (E1, E2 top left) which are smoothed into a single semantic axis (pink line), along which kernel profiles (pink bell top right) reveal flow, rotation, spread, and signal strength (as in F; lower left). Embedding of subfields for machine learning (lower right): The semantic axis is used to orient the subfield with the major flow of the vectors ($\oplus$) and split into five-percentile windows pushed along the semantic axis (dotted lines). Each section is represented by an aggregated vector of field strength (norm), directional spread (rank), principal direction (eigenvector), and rotational moment.
 
-\vspace{0.1cm}
-\noindent
-Tissue specificity is defined as the complement of normalized tissue versatility:
-\[
-	\text{Tissue Specificity}= 1 - \text{Tissue Versatility}
-\]
-Values close to 1 indicate high tissue-specificity; values close to 0 indicate
-broad, uniform expression.
+\vspace{0.5cm}
+(H) The semantic axis (see G) is used to push a higher dimensional object through a lower dimensional space for visualization in the ``Data-Vis'' interactive graphical user interface (Tensor Omics package). This enables direct visualization of higher dimensions and can be used to show for example the developmental hourglass.
+
+\vspace{0.5cm}
+Panels A–H together illustrate how Tensor Omics unifies geometric learning, empirical explainability, and visualization within a single analytical framework.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/tox_methods_1a.png}
+    \label{fig:figure1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/tox_methods_1b.png}
+    \caption{Overview of the Tensor Omics}
+\end{figure}
+
+\vspace{0.5cm}
+See more details in the \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads}{Tensor Omics Methods file}.
 
 \section{Error Handling}
 \label{sec:error-handling}
