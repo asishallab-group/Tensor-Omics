@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="description" content="">
+      <meta name="description" content="Documentation for TensorOmics">
     <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
@@ -61,6 +61,9 @@
                 <li class="nav-item">
                   <a class="nav-link" href="../lists/procedures.html">Procedures</a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
+                </li>
             </ul>
               <div class="d-flex align-items-end flex-grow-1">
                 <form action="../search.html" role="search" class="ms-auto">
@@ -85,19 +88,19 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 7.9% of total for procedures.">12 statements</a>
+                 title=" 0.2% of total for procedures.">15 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization_wrappers.F90"> Source File</a>
+              <a href="../src/tox_normalization.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_wrappers.f90.html'>tox_normalization_wrappers.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
             <li class="breadcrumb-item active" aria-current="page">quantile_normalization_r</li>
           </ol>
         </nav>
@@ -145,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack)  
+    <h2> subroutine quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -161,6 +164,8 @@
     </div>
 
 
+    <p>R/Fortran wrapper for quantile normalization.
+Provides an interface for R (.Fortran) and Fortran code to call the quantile normalization routine.</p>
 
 
     <h3>Arguments</h3>
@@ -176,8 +181,8 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~3"></span>
-              integer,
+              <span class="anchor" id="variable-n_genes~57"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -186,13 +191,13 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~3"></span>
-              integer,
+              <span class="anchor" id="variable-n_tissues~7"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -201,12 +206,12 @@
             <td>::</td>
             <td><strong>n_tissues</strong></td>
             <td>
-                
+                <p>Number of tissues (columns)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~3"></span>
+              <span class="anchor" id="variable-input_matrix~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -216,12 +221,12 @@
             <td>::</td>
             <td><strong>input_matrix</strong>(n_genes,n_tissues)</td>
             <td>
-                
+                <p>Input matrix (n_genes x n_tissues)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~3"></span>
+              <span class="anchor" id="variable-output_matrix~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -231,88 +236,88 @@
             <td>::</td>
             <td><strong>output_matrix</strong>(n_genes,n_tissues)</td>
             <td>
-                
+                <p>Output normalized matrix (same shape as input)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_col"></span>
+              <span class="anchor" id="variable-temp_col~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>temp_col</strong>(n_genes)</td>
             <td>
-                
+                <p>Temporary vector for column sorting (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rank_means"></span>
+              <span class="anchor" id="variable-rank_means~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>rank_means</strong>(n_genes)</td>
             <td>
-                
+                <p>Preallocated vector to store rank means (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~10"></span>
-              integer,
+              <span class="anchor" id="variable-perm~28"></span>
+              integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>perm</strong>(n_genes)</td>
             <td>
-                
+                <p>Permutation vector (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~10"></span>
-              integer,
+              <span class="anchor" id="variable-stack_left~18"></span>
+              integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>stack_left</strong>(max_stack)</td>
             <td>
-                
+                <p>Manual quicksort stack (size max_stack)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~10"></span>
-              integer,
+              <span class="anchor" id="variable-stack_right~18"></span>
+              integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>stack_right</strong>(max_stack)</td>
             <td>
-                
+                <p>Manual quicksort stack (size max_stack)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_stack"></span>
-              integer,
+              <span class="anchor" id="variable-max_stack~3"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -321,7 +326,22 @@
             <td>::</td>
             <td><strong>max_stack</strong></td>
             <td>
-                
+                <p>Stack size for sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~238"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -358,7 +378,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
-            </p>
+ on "2025-11-23 17:36 +0000"             </p>
           </div>
         </div>
         <br>

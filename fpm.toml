@@ -8,3 +8,5 @@ library = true
 [library]
 type = "shared" 
 
+[build]
+link = ["xxhash", "zip"]

@@ -1,9 +1,9 @@
-!> @brief General assertion utilities for Fortran unit testing.
-!! @details
+!> General assertion utilities for Fortran unit testing.
 !! Provides a set of reusable assertion subroutines for verifying
 !! expected behavior in tests of any kind (numeric, string, array, etc).
 module asserts
-  use, intrinsic :: iso_fortran_env, only: error_unit, real64
+  use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
   implicit none
   private
   public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int
@@ -11,10 +11,47 @@ module asserts
   public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
   public :: assert_in_range_real, assert_contains_int, assert_sorted_int
   public :: assert_sorted_real, assert_same_shape, assert_string_equal
-  public :: assert_string_contains, assert_allclose_array_real
+  public :: assert_string_contains, assert_allclose_array_real, assert_equal_array_char
   public :: assert_sum_equal, assert_unique_int, assert_permutation
+  public :: assert_equal_complex, assert_not_equal_complex, assert_equal_array_complex
 
 contains
+
+  !> Assert that two complex numbers are equal within a tolerance.
+  subroutine assert_equal_complex(a, b, tol, msg)
+    complex(real64), intent(in) :: a, b
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (abs(a - b) > tol) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), &
+           " (got ", a, ", expected ", b, ", tol=", tol, ")"
+      stop 1
+    end if
+  end subroutine
+
+  !> Assert that two complex numbers are not equal within a tolerance.
+  subroutine assert_not_equal_complex(a, b, tol, msg)
+    complex(real64), intent(in) :: a, b
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (abs(a - b) <= tol) then
+      write(error_unit,*) "ASSERTION FAILED (should not be equal): ", trim(msg)
+      stop 1
+    end if
+  end subroutine
+
+  !> Assert that two complex arrays are equal within a tolerance.
+  subroutine assert_equal_array_complex(a, b, n, tol, msg)
+    complex(real64), intent(in) :: a(n), b(n)
+    integer, intent(in) :: n
+    real(real64), intent(in) :: tol
+    character(*), intent(in) :: msg
+    if (any(abs(a - b) > tol)) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), &
+           " (complex arrays differ, tol=", tol, ")"
+      stop 1
+    end if
+  end subroutine
 
   !> Assert that a logical condition is true.
   subroutine assert_true(cond, msg)
@@ -97,14 +134,27 @@ contains
     end if
   end subroutine
 
+  !> Asserts that two character arrays are equal
+  subroutine assert_equal_array_char(a, b, clen, n, msg)
+    integer(int32), INTENT(IN) :: clen
+    character(len=clen), intent(in) :: a(n), b(n)
+    character(*), intent(in) :: msg
+    integer, intent(in) :: n
+    if (any(a /= b)) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), " (character arrays differ)"
+      stop 1
+    end if
+  end subroutine
+
   !> Assert that a real array contains no NaN values.
   subroutine assert_no_nan_real(a, n, msg)
     real(real64), intent(in) :: a(n)
     integer, intent(in) :: n
     character(*), intent(in) :: msg
     integer :: i
+    
     do i = 1, n
-      if (a(i) /= a(i)) then
+      if (ieee_is_nan(a(i))) then
         write(error_unit,*) "ASSERTION FAILED: NaN detected - ", trim(msg)
         stop 1
       end if

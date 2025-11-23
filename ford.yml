@@ -1,4 +1,7 @@
 project: TensorOmics
 output_dir: doc
-docmark: "!"
 author: TensorOmics Developers
+print_creation_date: true
+creation_date: "%Y-%m-%d %H:%M %z"
+
+# Note: Using default source discovery and rendering settings for FORD.

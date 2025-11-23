@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="description" content="">
+      <meta name="description" content="Documentation for TensorOmics">
     <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
@@ -61,6 +61,9 @@
                 <li class="nav-item">
                   <a class="nav-link" href="../lists/procedures.html">Procedures</a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
+                </li>
             </ul>
               <div class="d-flex align-items-end flex-grow-1">
                 <form action="../search.html" role="search" class="ms-auto">
@@ -85,19 +88,19 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 7.3% of total for procedures.">11 statements</a>
+                 title=" 0.1% of total for procedures.">10 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization_wrappers.F90"> Source File</a>
+              <a href="../src/tox_normalization.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_wrappers.f90.html'>tox_normalization_wrappers.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
             <li class="breadcrumb-item active" aria-current="page">normalize_by_std_dev_c</li>
           </ol>
         </nav>
@@ -145,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix) bind(C, name="normalize_by_std_dev_c")  
+    <h2> subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="normalize_by_std_dev_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -153,8 +156,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
               </ul>
             </li>
         </ul>
@@ -162,7 +165,8 @@
     </div>
 
 
-    <p>C/Python interface (bind(C)), expects flat arrays.</p>
+    <p>C/Python wrapper for normalization by standard deviation.
+Provides a C/Python-compatible interface to the normalization routine.</p>
 
 
     <h3>Arguments</h3>
@@ -178,7 +182,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~2"></span>
+              <span class="anchor" id="variable-n_genes~56"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -188,12 +192,12 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
+              <span class="anchor" id="variable-n_tissues~6"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -203,12 +207,12 @@
             <td>::</td>
             <td><strong>n_tissues</strong></td>
             <td>
-                
+                <p>Number of tissues (columns)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~2"></span>
+              <span class="anchor" id="variable-input_matrix~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -216,14 +220,14 @@
               target
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(*)</td>
+            <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                
+                <p>Input matrix (flattened, n_genes * n_tissues)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~2"></span>
+              <span class="anchor" id="variable-output_matrix~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -231,9 +235,24 @@
               target
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(*)</td>
+            <td><strong>output_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                
+                <p>Output normalized matrix (flattened, same shape as input)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~237"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -270,7 +289,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
-            </p>
+ on "2025-11-23 17:36 +0000"             </p>
           </div>
         </div>
         <br>

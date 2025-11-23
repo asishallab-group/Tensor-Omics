@@ -5,39 +5,51 @@ TEST_DIR="test"
 BUILD_DIR="build"
 EXECUTABLE="$BUILD_DIR/run_tests"
 
-# Detect alignment - FIX: Initialize with default value
-ALIGN=32
-if lscpu | grep -q amx; then
-  ALIGN=128
-elif lscpu | grep -q avx512; then
-  ALIGN=64
-elif lscpu | grep -q avx2; then
-  ALIGN=32
-elif lscpu | grep -q sse2; then
-  ALIGN=16
-fi
+source build_utils.sh
+
+COMPILER=$(get_compiler)
+FLAGS=$(get_flags)
+ALIGN=$(get_alignment)
+MODULE_FLAG=$(get_module_flag $BUILD_DIR)
+
+handle_args "$@"
 
 echo "Detected alignment: $ALIGN"
 
-# Detect compiler and flags
-if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  MODULE_FLAG="-module $BUILD_DIR"
-  COMPILER="ifx"
-else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize -fassociative-math -fPIC"
-  MODULE_FLAG="-J$BUILD_DIR"
-  COMPILER="gfortran"
+if [[ -z "$NO_BUILD" ]]; then
+  bash <<'EOF'
+  function get_directives() {
+    echo "-D'OPEN_PAREN=(' -D'CLOSE_PAREN=)' -D'$1(KIND)=KIND(KIND)' -D'$2(KIND)=$1 OPEN_PAREN KIND CLOSE_PAREN' -D'$3(KIND)=$1 OPEN_PAREN 2 CLOSE_PAREN'"
+  }
+
+  failed=0
+  directives=()
+  directives+=("-DTEST_KIND_MISMATCH_C_INT $(get_directives integer int32 c_int) -D'c_int64_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN' -D'c_size_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN'")
+  directives+=("-DTEST_KIND_MISMATCH_C_DOUBLE $(get_directives real real64 c_double)")
+  directives+=("-DTEST_KIND_MISMATCH_C_DOUBLE_COMPLEX $(get_directives complex real64 c_double_complex)")
+  for d in "${directives[@]}"; do
+    test_directive=${d%% *}
+    test_directive=${test_directive#-DTEST_KIND_MISMATCH_}
+    echo -en "Testing safeguard for mismatch for $test_directive: "
+    if [[ $(bash build.sh "$@" "${directives}" 1>kinds.out 2>/dev/null; grep "Divi.*zero" kinds.out) ]]; then
+      echo "success"
+    else
+      echo "failure"
+      cat kinds.out
+      failed=1
+    fi
+  done
+  rm kinds.out
+  exit $failed
+EOF
+  check_exit_code "Kind Mismatch Test failed"
+
+  echo "Compiling src/"
+  bash build.sh "$@"
+  check_exit_code "Build failed"
 fi
 
 echo "Using compiler: $COMPILER"
-
-MAX_PERF_FLAG=""
-for arg in "$@"; do
-  if [[ "$arg" == "--max-performance" ]]; then
-    MAX_PERF_FLAG="-DMAX_PERFORMANCE"
-  fi
-done
 
 mkdir -p $BUILD_DIR
 
@@ -47,40 +59,18 @@ if [ -e "$EXECUTABLE" ]; then
   rm -rf "$EXECUTABLE"
 fi
 
-echo "Compiling source modules..."
-# First compile src/ modules to generate .mod files
-$COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
-  -I$BUILD_DIR -I$SOURCE_DIR \
-  -c $SOURCE_DIR/*.F90
-
-compilation_result=$?
-echo "Source compilation exit code: $compilation_result"
-
-if [ $compilation_result -ne 0 ]; then
-  echo "Source compilation failed."
-  echo "Generated files before exit:"
-  ls -la *.o *.mod 2>/dev/null || echo "No .o or .mod files found"
-  exit 1
-fi
-
-# Move object files to build/
-mv *.o $BUILD_DIR/ 2>/dev/null || true
-mv *.mod $BUILD_DIR/ 2>/dev/null || true
-
-
 echo "Compiling test modules..."
 # Then compile test/ modules using .mod files from build/
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
-  -I$BUILD_DIR -I$SOURCE_DIR -I$TEST_DIR \
-  -c $TEST_DIR/*.f90
-
-compilation_result=$?
-echo "Test compilation exit code: $compilation_result"
-
+  -I$BUILD_DIR \
+  -c $TEST_DIR/*.[fF]90
 
 # Move object files to build/
 mv *.o $BUILD_DIR/ 2>/dev/null || true
 mv *.mod $BUILD_DIR/ 2>/dev/null || true
+
+check_build "*.o" "*.mod"
+check_exit_code "Module compilation failed"
 
 
 echo "Linking executable..."
@@ -88,9 +78,25 @@ echo "Linking executable..."
 $COMPILER $FLAGS -I$BUILD_DIR \
   $BUILD_DIR/*.o -o $EXECUTABLE
 
-linking_result=$?
-echo "Linking exit code: $linking_result"
+check_exit_code "Executable compilation failed"
+
+rm -f test_*.bin
+rm -f test_*.zip
+rm -f manifest.txt
 
 echo "Running tests..."
 # Run the executable
-$EXECUTABLE "$@"
+$EXECUTABLE $ARGS
+
+check_exit_code "Tests failed"
+
+if [[ -z "$KEEP_BIN" && -z "$KEEP_FILES" ]]; then
+  rm -f test_*.bin
+fi
+if [[ -z "$KEEP_ZIP" && -z "$KEEP_FILES" ]]; then
+  rm -f test_*.zip
+fi
+if [[ -z "$KEEP_TXT" && -z "$KEEP_FILES" ]]; then
+  rm -f test_*.txt
+  rm -f manifest.txt
+fi

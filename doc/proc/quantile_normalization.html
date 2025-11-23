@@ -6,11 +6,11 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="description" content="">
-    <meta name="author" content="Vivian Bass" >
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
-    <title>quantile_normalization &ndash; TOX_Normalization</title>
+    <title>quantile_normalization &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -44,7 +44,7 @@
     <div class="container-fluid mb-sm-4 mb-xl-2">
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container">
-          <a class="navbar-brand" href="../index.html">TOX_Normalization </a>
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
           <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
                   aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
                   <span class="navbar-toggler-icon">
@@ -62,7 +62,7 @@
                   <a class="nav-link" href="../lists/procedures.html">Procedures</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../program/test_normalization.html">Program</a>
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
                 </li>
             </ul>
               <div class="d-flex align-items-end flex-grow-1">
@@ -88,19 +88,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title="36.8% of total for procedures.">43 statements</a>
+                 title=" 0.5% of total for procedures.">45 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization.f90"> Source File</a>
+              <a href="../src/tox_normalization.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
             <li class="breadcrumb-item active" aria-current="page">quantile_normalization</li>
           </ol>
         </nav>
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack)  
+    <h2>public pure subroutine quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,7 +157,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_sorting.html'>tox_sorting</a></li>
+                  <li class="list-inline-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
               </ul>
             </li>
         </ul>
@@ -166,16 +167,6 @@
 
     <p>Quantile normalization of a gene expression matrix (F42-compliant).
 Computes average expression per rank across tissues.</p>
-<p>@param n_genes       Number of genes (rows) <br>
-@param n_tissues     Number of tissues (columns)<br>
-@param input_matrix  Flattened input matrix (column-major)<br>
-@param output_matrix Flattened normalized output matrix<br>
-@param temp_col      Temporary vector for column sorting (size n_genes)<br>
-@param rank_means    Preallocated vector to store rank means (size n_genes)<br>
-@param perm          Permutation vector (size n_genes)<br>
-@param stack_left    Manual quicksort stack (≥ log2(n_genes) + 10)<br>
-@param stack_right   Manual quicksort stack (same size as stack_left)<br>
-@param max_stack     Stack size passed from R<br></p>
 
 
     <h3>Arguments</h3>
@@ -191,8 +182,8 @@ Computes average expression per rank across tissues.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~3"></span>
-              integer,
+              <span class="anchor" id="variable-n_genes~52"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -201,13 +192,13 @@ Computes average expression per rank across tissues.</p>
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-n_tissues~3"></span>
-              integer,
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -216,13 +207,13 @@ Computes average expression per rank across tissues.</p>
             <td>::</td>
             <td><strong>n_tissues</strong></td>
             <td>
-                
+                <p>Number of tissues (columns)</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-input_matrix~3"></span>
-              real(kind=8),
+              real(kind=real64),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -231,13 +222,13 @@ Computes average expression per rank across tissues.</p>
             <td>::</td>
             <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                
+                <p>Flattened input matrix (column-major)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~3"></span>
-              real(kind=8),
+              <span class="anchor" id="variable-output_matrix~2"></span>
+              real(kind=real64),
             </td>
 <td>intent(out)</td>
               <td></td>            <td>
@@ -246,88 +237,88 @@ Computes average expression per rank across tissues.</p>
             <td>::</td>
             <td><strong>output_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                
+                <p>Output normalized matrix (same shape as input)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_col"></span>
-              real(kind=8),
+              <span class="anchor" id="variable-temp_col~2"></span>
+              real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>temp_col</strong>(n_genes)</td>
             <td>
-                
+                <p>Temporary vector for column sorting (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rank_means"></span>
-              real(kind=8),
+              <span class="anchor" id="variable-rank_means~2"></span>
+              real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>rank_means</strong>(n_genes)</td>
             <td>
-                
+                <p>Preallocated vector to store rank means (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm"></span>
-              integer,
+              <span class="anchor" id="variable-perm~27"></span>
+              integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>perm</strong>(n_genes)</td>
             <td>
-                
+                <p>Permutation vector (size n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left"></span>
-              integer,
+              <span class="anchor" id="variable-stack_left~17"></span>
+              integer(kind=int32),
             </td>
-<td></td>
+<td>intent(out)</td>
               <td></td>            <td>
-              dimension(max_stack)
+              
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong></td>
+            <td><strong>stack_left</strong>(max_stack)</td>
             <td>
-                
+                <p>Manual quicksort stack (≥ log2(n_genes) + 10)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right"></span>
-              integer,
+              <span class="anchor" id="variable-stack_right~17"></span>
+              integer(kind=int32),
             </td>
-<td></td>
+<td>intent(out)</td>
               <td></td>            <td>
-              dimension(max_stack)
+              
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong></td>
+            <td><strong>stack_right</strong>(max_stack)</td>
             <td>
-                
+                <p>Manual quicksort stack (same size as stack_left)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_stack"></span>
-              integer,
+              <span class="anchor" id="variable-max_stack~2"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
@@ -336,7 +327,22 @@ Computes average expression per rank across tissues.</p>
             <td>::</td>
             <td><strong>max_stack</strong></td>
             <td>
-                
+                <p>Stack size passed from R</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~232"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -365,15 +371,15 @@ Computes average expression per rank across tissues.</p>
         <div class="row justify-content-between">
           <div class="col">
             <p>
-              TOX_Normalization
- was developed by Vivian Bass<br>              &copy; 2025 
+              TensorOmics
+ was developed by TensorOmics Developers<br>              &copy; 2025 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
-            </p>
+ on "2025-11-23 17:36 +0000"             </p>
           </div>
         </div>
         <br>

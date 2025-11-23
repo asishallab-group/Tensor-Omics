@@ -1,3 +1,0 @@
-#ifndef DEFAULT_ALIGNMENT
-#define DEFAULT_ALIGNMENT 32
-#endif

@@ -6,11 +6,11 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="description" content="">
-    <meta name="author" content="Vivian Bass" >
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
-    <title>All Procedures &ndash; TOX_Normalization
+    <title>All Procedures &ndash; TensorOmics
 </title>
 
     <!-- Bootstrap -->
@@ -45,7 +45,7 @@
     <div class="container-fluid mb-sm-4 mb-xl-2">
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container">
-          <a class="navbar-brand" href="../index.html">TOX_Normalization </a>
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
           <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
                   aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
                   <span class="navbar-toggler-icon">
@@ -63,7 +63,7 @@
                   <a class="nav-link" href="../lists/procedures.html">Procedures</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="../program/test_normalization.html">Program</a>
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
                 </li>
             </ul>
               <div class="d-flex align-items-end flex-grow-1">
@@ -84,8 +84,169 @@
 			 <thead><tr><th>Procedure</th><th>Location</th><th>Procedure Type</th><th>Description</th></tr></thead>
 			 <tbody>
 			   <tr>
+                 <td><a href='../proc/add_data_to_zip.html'>add_data_to_zip</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/apply_unassigned_mask.html'>apply_unassigned_mask</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Applies a precomputed mask to filter out unassigned genes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/ascii_to_string.html'>ascii_to_string</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>subroutine to convert an ASCII array to a string</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query.html'>bst_range_query</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform a 1D range query over the sorted index.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query_c.html'>bst_range_query_C</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper using C for getting range query usable by python</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bst_range_query_r.html'>bst_range_query_r</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for getting range query usable by R</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index.html'>build_bst_index</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build the BST index by sorting indices using values in x.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index_c.html'>build_bst_index_C</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper using C for building BST index usable by python</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_bst_index_r.html'>build_bst_index_r</a></td>
+                 <td><a href='../sourcefile/binary_search_tree.f90.html'>binary_search_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for building BST index usable by R</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index.html'>build_kd_index</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build a k-d tree index using a stack-based, non-recursive approach.
+Initialize kd_indices to 1:num_points (original indices)
+Choose split dimension by cycling through dimension_order
+Find median index
+Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
+Push right and left intervals onto stack</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_c.html'>build_kd_index_C</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface for building KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_r.html'>build_kd_index_r</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for building KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_spherical_kd.html'>build_spherical_kd</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build spherical k-d tree index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_spherical_kd_r.html'>build_spherical_kd_r</a></td>
+                 <td><a href='../sourcefile/k_d_tree.f90.html'>k_d_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for building spherical KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_char_1d_as_string.html'>c_char_1d_as_string</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 1D c_char array to string</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_char_2d_as_string.html'>c_char_2d_as_string</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 2D c_char array to 1D string array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_char_as_char.html'>c_char_as_char</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_char value to fortran character, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_int64_as_c_size.html'>c_int64_as_c_size</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts c_int64_t to c_size_t, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_int64_as_int32.html'>c_int64_as_int32</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts c_int64_t to int32, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_int_as_logical.html'>c_int_as_logical</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a c_int value to logical, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_size_as_c_int64.html'>c_size_as_c_int64</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts c_size_t to c_int64_t, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/c_size_as_int32.html'>c_size_as_int32</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts c_size_t to int32, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_contributions.html'>calc_contributions</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates both spike and integrated contributions for a given factor against a dependent variable</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_contributions_alloc.html'>calc_contributions_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates both spike and integrated contributions for a given factor against a dependent variable</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_contributions_c.html'>calc_contributions_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates both spike and integrated contributions for a given factor against a dependent variable</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_contributions_expert_c.html'>calc_contributions_expert_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates both spike and integrated contributions for a given factor against a dependent variable</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/calc_fchange.html'>calc_fchange</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Calculate <code>log2 fold changes</code> between condition and control columns.
 For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
@@ -93,44 +254,1947 @@ by subtracting the expression value in the control column from the corresponding
 value in the condition column, for all genes.</p><a href="../proc/calc_fchange.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/calc_fchange_c.html'>calc_fchange_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for fold change calculation.
+Provides a C/Python-compatible interface to the fold change calculation routine.
+Suitable for use with ctypes. Computes log2 fold changes between condition and control columns for all genes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_fchange_r.html'>calc_fchange_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for fold change calculation.
+Provides an interface for R (.Fortran) and Fortran code to call the fold change calculation routine.
+Computes log2 fold changes between condition and control columns for all genes. Arguments match R's .Fortran calling convention.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_integrated_threshold.html'>calc_integrated_threshold</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate empirical threshold for integrated (trajectory-level) contributions</p><a href="../proc/calc_integrated_threshold.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_integrated_threshold_alloc.html'>calc_integrated_threshold_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate empirical threshold for integrated contributions (with internal allocation and sorting)</p><a href="../proc/calc_integrated_threshold_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_integrated_threshold_c.html'>calc_integrated_threshold_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for calc_integrated_threshold_alloc (with internal allocations)
+Input: contributions(n_samples) - one integrated contribution per sample</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_integrated_threshold_expert_c.html'>calc_integrated_threshold_expert_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for calc_integrated_threshold (with pre-computed permutation)
+Input: contributions(n_samples) - one integrated contribution per sample</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_percentile.html'>calc_percentile</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate the percentile of an array given a sorted permutation.
+Uses linear interpolation between adjacent values.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_percentile_alloc.html'>calc_percentile_alloc</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate the percentile of an array, allocating necessary arrays when no sorting permutation is given</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_spike_thresholds.html'>calc_spike_thresholds</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate empirical thresholds for spike contributions (using pre-sorted permutations)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_spike_thresholds_alloc.html'>calc_spike_thresholds_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate empirical thresholds for spike contributions (with internal allocations and sorting)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_spike_thresholds_c.html'>calc_spike_thresholds_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for calc_spike_thresholds_alloc (with internal allocations)
+Data layout: spike_contribs(n_samples, n_genes) - rows=samples, columns=genes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_spike_thresholds_expert_c.html'>calc_spike_thresholds_expert_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for calc_spike_thresholds (with pre-computed 2D permutations)</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/calc_tiss_avg.html'>calc_tiss_avg</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Calculate tissue averages by averaging replicates within each group.
 For each group of tissue replicates, this subroutine computes the average
-expression per gene. The input matrix is column-major, flattened as a 1D array.</p><a href="../proc/calc_tiss_avg.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+expression per gene. The input matrix is column-major, flattened as a 1D array.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg_c.html'>calc_tiss_avg_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for tissue average calculation.
+Provides a C/Python-compatible interface to the tissue average calculation routine.
+Suitable for use with ctypes. Computes average expression per gene for each group of tissue replicates.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg_r.html'>calc_tiss_avg_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for tissue average calculation.
+Provides an interface for R (.Fortran) and Fortran code to call the tissue average calculation routine.
+Computes average expression per gene for each group of tissue replicates. Arguments match R's .Fortran calling convention.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/char_as_c_char.html'>char_as_c_char</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a character value to c_char, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_for_nan_inf.html'>check_for_nan_inf</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Check if an array of type real contains NaN or Inf values</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_io_stat.html'>check_io_stat</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_okay_dims.html'>check_okay_dims</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>check if array dimensions match the expected dimensions</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_okay_ioerror.html'>check_okay_ioerror</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Check I/O error and set ierr accordingly</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_okay_ndims.html'>check_okay_ndims</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors.html'>clock_hand_angle_between_vectors</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+Calculates the signed rotation angle between two normalized vectors in RAP space.
+For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors_c.html'>clock_hand_angle_between_vectors_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors_r.html'>clock_hand_angle_between_vectors_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute signed rotation angles between RAP-projected and normalized vector pairs.
+Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
+This measures both magnitude and directionality of angular separation in RAP space.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors_c.html'>clock_hand_angles_for_shift_vectors_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors_r.html'>clock_hand_angles_for_shift_vectors_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Performs k-means clustering on factor trajectories, so factor evolution over time</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_edf.html'>compute_edf</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
+Returns the sorted unique values and their cumulative frequencies in [0,1].
+Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
+The number of unique values can be determined by finding the last non-zero cdf_value.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_edf_alloc.html'>compute_edf_alloc</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper routine that sorts and calls compute_edf.
+Allocates workspace internally and performs sorting before computing EDF.
+Use this for convenience; use compute_edf directly for custom sorting.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_edf_c.html'>compute_edf_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.
+The Fortran routine will operate directly on the memory provided by the caller.
+C wrapper for compute_edf.
+Allocates workspace internally and exposes a simple interface with C types.
+The number of unique values is returned via n_unique output parameter.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_edf_expert_c.html'>compute_edf_expert_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Expert C wrapper for compute_edf.
+Direct interface to compute_edf for users who have already sorted their data
+or have a custom permutation vector. This skips the internal sorting step
+for better performance when the caller has full control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling.html'>compute_family_scaling</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute family scaling factors (dscale) to normalize distances.
+Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_alloc.html'>compute_family_scaling_alloc</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper routine that allocates internal arrays and calls compute_family_scaling.
+This makes usage easier since users don't need to care about internal array requirements.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_c.html'>compute_family_scaling_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_family_scaling (main version with automatic allocation).
+Calls compute_family_scaling_alloc with C-compatible types for external interface.
+This is the recommended version for most users as it handles memory allocation automatically.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_expert_c.html'>compute_family_scaling_expert_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+Calls compute_family_scaling with C-compatible types for external interface.
+This version requires pre-allocated work arrays for maximum performance and control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_expert_r.html'>compute_family_scaling_expert_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+Calls compute_family_scaling with standard Fortran types for R interface.
+This version requires pre-allocated work arrays for maximum performance and control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_family_scaling_r.html'>compute_family_scaling_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_family_scaling (main version with automatic allocation).
+Calls compute_family_scaling_alloc with standard Fortran types for R interface.
+This is the recommended version for most users as it handles memory allocation automatically.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi.html'>compute_rdi</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the hybrid RDI for each gene.
+RDI = Euclidean distance / family scaling factor</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi_c.html'>compute_rdi_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_rdi.
+Calls compute_rdi with C-compatible types for external interface.
+Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_rdi_r.html'>compute_rdi_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_rdi.
+Calls compute_rdi with standard Fortran types for R interface.
+Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_relative_axis_contributions.html'>compute_relative_axis_contributions</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a></td>
+                 <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the shift vector field for all genes.
+Computes the shift vectors by substracting the corresponding family centroid from the expression vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field_c.html'>compute_shift_vector_field_c</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors.f90.html'>tox_shift_vectors.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for <code>compute_shift_vector_field</code>.
+Exposes <code>compute_shift_vector_field</code> to C via iso_c_binding types with explicit dimensions.
+When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field_r.html'>compute_shift_vector_field_r</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors.f90.html'>tox_shift_vectors.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for <code>compute_shift_vector_field</code>
+Calls <code>compute_shift_vector_field</code> with standard Fortran types for R interface.
+When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs..</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility.html'>compute_tissue_versatility</a></td>
+                 <td><a href='../module/tox_tissue_versatility.html'>tox_tissue_versatility</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Computes normalized tissue versatility for selected expression vectors.
+The metric is based on the angle between each gene expression vector and the space diagonal.
+Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility_c.html'>compute_tissue_versatility_c</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_tissue_versatility.
+Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility_r.html'>compute_tissue_versatility_r</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for compute_tissue_versatility.
+Calls compute_tissue_versatility with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/create_zip_archive.html'>create_zip_archive</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Creates a zip archive with generic file lists</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/create_zip_archive_generic_c.html'>create_zip_archive_generic_c</a></td>
+                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for generic archive creation with arrays of keys and filenames</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/create_zip_archive_generic_r.html'>create_zip_archive_generic_R</a></td>
+                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R-callable generic archive creation with arrays of keys and filenames</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/cross_product_orientation_sign.html'>cross_product_orientation_sign</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Function</td>
+                 <td><p>Compute orientation sign from cross product of two vectors, using selected axes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/delete_file.html'>delete_file</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Delete a file from the disk</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_1d.html'>deserialize_char_1d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 1D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_2d.html'>deserialize_char_2d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_3d.html'>deserialize_char_3d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_4d.html'>deserialize_char_4d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_5d.html'>deserialize_char_5d</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D character array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat.html'>deserialize_char_flat</a></td>
+                 <td><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to deserialize a flat character array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat_c.html'>deserialize_char_flat_C</a></td>
+                 <td><a href='../sourcefile/deserialize_char.f90.html'>deserialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize a flat character array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_char_flat_r.html'>deserialize_char_flat_r</a></td>
+                 <td><a href='../sourcefile/deserialize_char.f90.html'>deserialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to deserialize a flat character array from a file and return it as an ASCII array callable by R</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_1d.html'>deserialize_int_1d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Deserialize a flat integer array from a file
+Directly deserialize a 1D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_2d.html'>deserialize_int_2d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_3d.html'>deserialize_int_3d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_4d.html'>deserialize_int_4d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_5d.html'>deserialize_int_5d</a></td>
+                 <td><a href='../module/int_deserialize_mod.html'>int_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_c.html'>deserialize_int_C</a></td>
+                 <td><a href='../sourcefile/deserialize_int.f90.html'>deserialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize an integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_int_r.html'>deserialize_int_r</a></td>
+                 <td><a href='../sourcefile/deserialize_int.f90.html'>deserialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface for deserializing an integer array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_1d.html'>deserialize_real_1d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 1D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_2d.html'>deserialize_real_2d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 2D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_3d.html'>deserialize_real_3d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 3D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_4d.html'>deserialize_real_4d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 4D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_5d.html'>deserialize_real_5d</a></td>
+                 <td><a href='../module/real_deserialize_mod.html'>real_deserialize_mod</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Directly deserialize a 5D real array from a file (array already allocated)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_c.html'>deserialize_real_C</a></td>
+                 <td><a href='../sourcefile/deserialize_real.f90.html'>deserialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to deserialize a real array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/deserialize_real_flat_r.html'>deserialize_real_flat_r</a></td>
+                 <td><a href='../sourcefile/deserialize_real.f90.html'>deserialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R binding for the subroutine to deserialize a flat real array from a file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers.html'>detect_outliers</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Main routine to detect outliers using RDI and LOESS-based scaling.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_c.html'>detect_outliers_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for detect_outliers.
+Calls detect_outliers with C-compatible types for external interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_integrated.html'>detect_outliers_integrated</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Detect outliers in integrated (trajectory-level) contributions</p><a href="../proc/detect_outliers_integrated.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_integrated_expert_c.html'>detect_outliers_integrated_expert_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for detect_outliers_integrated
+Identifies outlier samples based on integrated contributions</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_r.html'>detect_outliers_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for detect_outliers.
+Calls detect_outliers with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_spike.html'>detect_outliers_spike</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis_outlier_detection.html'>tox_trajectory_contribution_analysis_outlier_detection</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Detect outliers in spike contributions</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/detect_outliers_spike_expert_c.html'>detect_outliers_spike_expert_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_outlier_detection.f90.html'>tox_trajectory_contribution_analysis_outlier_detection.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for detect_outliers_spike</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid.html'>distance_to_centroid</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute distance from each gene to its corresponding family centroid.
+For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid_c.html'>distance_to_centroid_c</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for distance_to_centroid.
+Exposes distance_to_centroid to C via iso_c_binding types.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/distance_to_centroid_r.html'>distance_to_centroid_r</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for distance_to_centroid.
+Calls distance_to_centroid with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance.html'>euclidean_distance</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute the Euclidean distance between two vectors.
+Calculates the L2 norm: result = sqrt(sum((vec1_i - vec2_i)^2))</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance_c.html'>euclidean_distance_c</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for euclidean_distance.
+Exposes euclidean_distance to C via iso_c_binding types.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/euclidean_distance_r.html'>euclidean_distance_r</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for euclidean_distance.
+Calls euclidean_distance with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/extract_and_parse_manifest.html'>extract_and_parse_manifest</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Extract and parse the manifest file for generic key-value pairs.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/extract_file_from_zip.html'>extract_file_from_zip</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/extract_zip_archive.html'>extract_zip_archive</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Extract a zip archive and return all key-value pairs from manifest</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/extract_zip_archive_generic_c.html'>extract_zip_archive_generic_c</a></td>
+                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for extract_zip_archive - can be called directly from Python via ctypes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/extract_zip_archive_generic_r.html'>extract_zip_archive_generic_R</a></td>
+                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper to extract all files from a zip archive</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/filter_unassigned_genes_c.html'>filter_unassigned_genes_C</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for filtering unassigned genes</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/free.html'>free</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata.html'>get_array_metadata</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Get the metadata of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata_c.html'>get_array_metadata_C</a></td>
+                 <td><a href='../sourcefile/array_utils.f90.html'>array_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to get the dimensions of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_array_metadata_r.html'>get_array_metadata_r</a></td>
+                 <td><a href='../sourcefile/array_utils.f90.html'>array_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Subroutine to get the dimensions of an array file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_cluster_data_linkage_helper.html'>get_cluster_data_linkage_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper for linkage clustering to get the size/weight and label of a cluster
+by using the self-distance as indicator in which iteration the cluster was merged</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_expression_vector.html'>get_expression_vector</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>get expression vector for a specific gene id</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_family_centroid.html'>get_family_centroid</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>get family centroid for a specific family index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_family_for_gene_index.html'>get_family_for_gene_index</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>returns family index for gene index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_family_index.html'>get_family_index</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Function</td>
+                 <td><p>Helper function to find family index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_gene_index.html'>get_gene_index</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Function</td>
+                 <td><p>Helper function to find gene index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_kd_point.html'>get_kd_point</a></td>
+                 <td><a href='../module/kd_tree.html'>kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Get point from KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_min_distance_indices_helper.html'>get_min_distance_indices_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper routine to find the indices of the minimum value a distance matrix.</p><a href="../proc/get_min_distance_indices_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_shift_components.html'>get_shift_components</a></td>
+                 <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>returns the centroid and the shift of a gene</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_sorted_value.html'>get_sorted_value</a></td>
+                 <td><a href='../module/binary_search_tree.html'>binary_search_tree</a></td>
+                 <td>Function</td>
+                 <td><p>Get the value at the sorted position.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_unassigned_mask.html'>get_unassigned_mask</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper to create a mask of genes that are unassigned</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_vec_across_samples.html'>get_vec_across_samples</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Accessor routine to extract sample data for a specific factor and timepoint</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_vec_across_timepoints.html'>get_vec_across_timepoints</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Accessor routine to extract timepoint data for a specific factor and sample</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_zip_entry_name.html'>get_zip_entry_name</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper function to get the name of a ZIP entry</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/group_centroid.html'>group_centroid</a></td>
+                 <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Iterates over families, filters gene indices, and computes centroids.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/group_centroid_c.html'>group_centroid_c</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.f90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface wrapper for group_centroid.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/group_centroid_r.html'>group_centroid_r</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.f90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface wrapper for group_centroid.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashmap_create.html'>hashmap_create</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Create the hashmap</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashmap_destroy.html'>hashmap_destroy</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Destroy the hashmap</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashmap_get.html'>hashmap_get</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Function</td>
+                 <td><p>Lookup a key</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashmap_put.html'>hashmap_put</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Insert a key-value pair</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashset_create.html'>hashset_create</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Create the hashmap</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashset_destroy.html'>hashset_destroy</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Destroy the set</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/hashset_put.html'>hashset_put</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Insert a key-value pair</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapsort_character.html'>heapsort_character</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal heapsort implementation for character arrays.
+Lexicographic heapsort using string comparison, indirect via <code>perm</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapsort_integer.html'>heapsort_integer</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal heapsort implementation for integer arrays.
+Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <code>heapsort_real</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapsort_real.html'>heapsort_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sorts indirectly using the permutation vector <code>perm</code>. Uses <code>heapify_real</code> to maintain heap property.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers.html'>identify_outliers</a></td>
+                 <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Identify gene outliers based on the top percentile of RDI values.
+Expects sorted_rdi to be filtered (no negative values) and sorted in ascending order before calling.
+If sorted_rdi contains negatives or is not sorted, results may be invalid.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers_c.html'>identify_outliers_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for identify_outliers.
+Calls identify_outliers with C-compatible types for external interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/identify_outliers_r.html'>identify_outliers_r</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for identify_outliers.
+Calls identify_outliers with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/int32_as_c_int64.html'>int32_as_c_int64</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts int32 to c_int64_t, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/int32_as_c_size.html'>int32_as_c_size</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts int32 to c_size_t, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_close.html'>is_close</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_err.html'>is_err</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>check if the error code indicates error</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_in_hashset.html'>is_in_hashset</a></td>
+                 <td><a href='../module/xxh3_hashmap_module.html'>xxh3_hashmap_module</a></td>
+                 <td>Function</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/is_ok.html'>is_ok</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>check if the error code indicates success</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/k_means_assign_cluster_helper.html'>k_means_assign_cluster_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper routine to assign a cluster's label to a point in k-means</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/k_means_clustering.html'>k_means_clustering</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>k-means clustering algorithm:</p><a href="../proc/k_means_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/k_means_clustering_c.html'>k_means_clustering_c</a></td>
+                 <td><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>k-means clustering algorithm:</p><a href="../proc/k_means_clustering_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/k_means_recompute_cluster_centroids_helper.html'>k_means_recompute_cluster_centroids_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper to recompute the centroids in k-means by taking the mean of assigned points</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/linkage_clustering.html'>linkage_clustering</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform linkage clustering on a distance matrix.</p><a href="../proc/linkage_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/linkage_clustering_c.html'>linkage_clustering_c</a></td>
+                 <td><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-compatible wrapper for linkage_clustering</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_expression_vectors.html'>load_expression_vectors</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_family_centroids.html'>load_family_centroids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_family_ids.html'>load_family_ids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_char_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_gene_ids.html'>load_gene_ids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_char_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_gene_to_family.html'>load_gene_to_family</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_int_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/load_shift_vectors.html'>load_shift_vectors</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d.html'>loess_smooth_2d</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Performs LOESS smoothing on a set of data points.
+Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
+The user must pre-filter data and provide only valid indices in indices_used.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d_c.html'>loess_smooth_2d_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for loess_smooth_2d.
+Direct wrapper - user must pre-filter indices in C before calling.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_smooth_2d_r.html'>loess_smooth_2d_r</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R wrapper for loess_smooth_2d.
+Direct wrapper - user must pre-filter indices in R before calling.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/log2_transformation.html'>log2_transformation</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
 This subroutine performs element-wise <code>log2(x + 1)</code> transformation on a
 matrix flattened in column-major order. The <code>log2</code> is computed via:
 <code>log(x + 1) / log(2)</code>, which is numerically equivalent and avoids the
-non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p><a href="../proc/log2_transformation.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation_c.html'>log2_transformation_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for log2 transformation.
+Provides a C/Python-compatible interface to the log2 transformation routine.
+Expects flat arrays, matching C calling conventions. Suitable for use with ctypes.
+Applies log2(x+1) to each element of the input matrix.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation_r.html'>log2_transformation_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for log2 transformation.
+Provides an interface for R (.Fortran) and Fortran code to call the log2 transformation routine.
+Applies log2(x+1) to each element of the input matrix. Arguments match R's .Fortran calling convention and expect flat arrays.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/logical_as_c_int.html'>logical_as_c_int</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a logical value to c_int, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/malloc.html'>malloc</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/mean_vector.html'>mean_vector</a></td>
+                 <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Computes the element-wise mean for a given set of vectors.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/mean_vector_c.html'>mean_vector_c</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.f90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface wrapper for mean_vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/mean_vector_r.html'>mean_vector_r</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.f90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R interface wrapper for mean_vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/merge_distances_ward_linkage_helper.html'>merge_distances_ward_linkage_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper for ward algorithm for updating the distance matrix on merge of two clusters</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/merge_distances_xpgma_linkage_helper.html'>merge_distances_xPGMA_linkage_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper for *PGMA algorithms for updating the distance matrix on merge of two clusters</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/next_power_of_two.html'>next_power_of_two</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>Find the next power of two greater than or equal to n</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalization_pipeline.html'>normalization_pipeline</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Complete normalization pipeline for gene expression data.
+Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
+Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalization_pipeline_c.html'>normalization_pipeline_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for normalization pipeline.
+Provides a C/Python-compatible interface to the normalization pipeline routine.
+Suitable for use with ctypes. Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
+Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalization_pipeline_r.html'>normalization_pipeline_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for normalization pipeline.
+Provides an interface for R (.Fortran) and Fortran code to call the normalization pipeline routine.
+Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
+Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_by_std_dev.html'>normalize_by_std_dev</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
-across tissues (not classical standard deviation).</p><a href="../proc/normalize_by_std_dev.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+across tissues (not classical standard deviation).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev_c.html'>normalize_by_std_dev_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for normalization by standard deviation.
+Provides a C/Python-compatible interface to the normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev_r.html'>normalize_by_std_dev_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for normalization by standard deviation.
+Provides an interface for R (.Fortran) and Fortran code to call the normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection.html'>omics_field_RAP_projection</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection_c.html'>omics_field_RAP_projection_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection_r.html'>omics_field_RAP_projection_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection.html'>omics_vector_RAP_projection</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection_c.html'>omics_vector_RAP_projection_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection_r.html'>omics_vector_RAP_projection_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/post_merge_distances_helper.html'>post_merge_distances_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper for doing last updates after merge: disable merged cluster, update self-distance to current iteration</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/process_trajectories_alloc.html'>process_trajectories_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Process trajectories with one percentile per timepoint for spike contributions.
+This subroutine uses multiple allocations. If you want to avoid this, you need to do the full pipeline manually step-by-step.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/process_trajectories_c.html'>process_trajectories_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for process_trajectories_alloc</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/process_trajectories_flat_alloc.html'>process_trajectories_flat_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Process trajectories with global percentile for spike contributions (flattened)
+This subroutine uses multiple allocations. If you want to avoid this, you need to do the full pipeline manually step-by-step.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/process_trajectories_flat_c.html'>process_trajectories_flat_C</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for process_trajectories_flat_alloc</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/project_selected_vecs_onto_rap.html'>project_selected_vecs_onto_rap</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Projects selected vectors onto its RAP</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/quantile_normalization.html'>quantile_normalization</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.f90</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Quantile normalization of a gene expression matrix (F42-compliant).
-Computes average expression per rank across tissues.</p><a href="../proc/quantile_normalization.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+Computes average expression per rank across tissues.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization_c.html'>quantile_normalization_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C/Python wrapper for quantile normalization.
+Provides a C/Python-compatible interface to the quantile normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization_r.html'>quantile_normalization_r</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R/Fortran wrapper for quantile normalization.
+Provides an interface for R (.Fortran) and Fortran code to call the quantile normalization routine.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_char.html'>quicksort_char</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for character arrays.
+Lexicographic quicksort using string comparison, indirect via <code>perm</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_int.html'>quicksort_int</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for integer arrays.
+Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <code>quicksort_real</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quicksort_real.html'>quicksort_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Internal quicksort implementation for real arrays.
+Sorts indirectly using the permutation vector <code>perm</code>. Manual stack replaces recursion.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_expression_vectors_tsv.html'>read_expression_vectors_tsv</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Read expression vectors from csv/tsv files</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_expression_vectors_tsv_c.html'>read_expression_vectors_tsv_C</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for reading expression vectors from files</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_expression_vectors_tsv_r.html'>read_expression_vectors_tsv_R</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R binding to read expression vectors from files.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_file_header.html'>read_file_header</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Opens unit and reads file header with all metadata from given file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_gene_ids_from_tsv_file.html'>read_gene_ids_from_tsv_file</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Only read the gene ids from a tsv file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_gene_ids_from_tsv_file_c.html'>read_gene_ids_from_tsv_file_C</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for reading gene IDs from a gene expression tsv file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_gene_ids_from_tsv_file_r.html'>read_gene_ids_from_tsv_file_R</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R binding to read gene IDs from a file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_manifest_generic.html'>read_manifest_generic</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Read manifest file and return key-value pairs</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_orthofinder_file.html'>read_orthofinder_file</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Read a family file (Orthofinder)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_orthofinder_file_c.html'>read_orthofinder_file_C</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for reading family file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_orthofinder_file_r.html'>read_orthofinder_file_R</a></td>
+                 <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to read a family file</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/read_tox_data.html'>read_tox_data</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Read standard tox from a zip archive</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/real_greater.html'>real_greater</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>NaN-aware greater-than comparison for real(real64).
+NaN is treated as greater than any finite number.
+Two NaNs are treated as equal.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/real_less.html'>real_less</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>NaN-aware less-than comparison for real(real64).
+Finite values are always considered smaller than NaN.
+Two NaNs are treated as equal (neither less nor greater).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/recover_distance_matrix_helper.html'>recover_distance_matrix_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper to recover a distance matrix from its top triangle.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector.html'>relative_axes_changes_from_shift_vector</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector_c.html'>relative_axes_changes_from_shift_vector_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_changes_from_shift_vector_r.html'>relative_axes_changes_from_shift_vector_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector.html'>relative_axes_expression_from_expression_vector</a></td>
+                 <td><a href='../module/relative_axis_plane_tools.html'>relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+Wrapper for single RAP-projected expression vectors</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector_c.html'>relative_axes_expression_from_expression_vector_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/relative_axes_expression_from_expression_vector_r.html'>relative_axes_expression_from_expression_vector_r</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_expression_vectors.html'>save_expression_vectors</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_family_centroids.html'>save_family_centroids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_family_ids.html'>save_family_ids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_char_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_gene_ids.html'>save_gene_ids</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_char_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_gene_to_family.html'>save_gene_to_family</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_int_1D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_shift_vectors.html'>save_shift_vectors</a></td>
+                 <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper for serialize_real_2D function</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/save_tox_data.html'>save_tox_data</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Save standard tox data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_1d.html'>serialize_char_1d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_2d.html'>serialize_char_2d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_3d.html'>serialize_char_3d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_4d.html'>serialize_char_4d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_5d.html'>serialize_char_5d</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D character array to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_flat_c.html'>serialize_char_flat_C</a></td>
+                 <td><a href='../sourcefile/serialize_char.f90.html'>serialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to serialize a flat character array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_flat_r.html'>serialize_char_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_char.f90.html'>serialize_char.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>serializes a flat character array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_char_nd.html'>serialize_char_nd</a></td>
+                 <td><a href='../module/serialize_char.html'>serialize_char</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a character array of arbitrary dimensions to a binary file.
+The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_1d.html'>serialize_int_1d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_2d.html'>serialize_int_2d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_3d.html'>serialize_int_3d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_4d.html'>serialize_int_4d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_5d.html'>serialize_int_5d</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D integer(int32) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_flat_r.html'>serialize_int_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_int.f90.html'>serialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
+R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_nd.html'>serialize_int_nd</a></td>
+                 <td><a href='../module/serialize_int.html'>serialize_int</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_int_nd_c.html'>serialize_int_nd_C</a></td>
+                 <td><a href='../sourcefile/serialize_int.f90.html'>serialize_int.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding for the subroutine to serialize a flat integer array to a binary file.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_1d.html'>serialize_real_1d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 1D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_2d.html'>serialize_real_2d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 2D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_3d.html'>serialize_real_3d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 3D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_4d.html'>serialize_real_4d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 4D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_5d.html'>serialize_real_5d</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a 5D real(real64) array to a binary file.
+The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_flat_r.html'>serialize_real_flat_r</a></td>
+                 <td><a href='../sourcefile/serialize_real.f90.html'>serialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
+R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_nd.html'>serialize_real_nd</a></td>
+                 <td><a href='../module/serialize_real.html'>serialize_real</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Writes serialized real array from R to file with metdata.</p><a href="../proc/serialize_real_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/serialize_real_nd_c.html'>serialize_real_nd_C</a></td>
+                 <td><a href='../sourcefile/serialize_real.f90.html'>serialize_real.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_err.html'>set_err</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code to specific code</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_err_once.html'>set_err_once</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code only if it is currently OK, use to prevent overwriting first error</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/set_ok.html'>set_ok</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>set the error code to OK, use at beginning of procedures</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/sort_array.html'>sort_array</a></td>
-                 <td><a href='../module/tox_sorting.html'>tox_sorting</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Interface</td>
-                 <td><p>Generic interface to sort real, integer, or character arrays.
- Calls one of the module procedures <code>sort_real</code>, <code>sort_integer</code>, or <code>sort_character</code>
-depending on the input array type. Sorting is done indirectly through a permutation vector.</p></td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/sort_array_heapsort.html'>sort_array_heapsort</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_character.html'>sort_character</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a character array indirectly using quicksort.
+Uses lexicographic ordering and permutation vector sorting.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_character_heapsort.html'>sort_character_heapsort</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a character array indirectly using heapsort.
+Uses lexicographic ordering and permutation vector sorting.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_integer.html'>sort_integer</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort an integer array indirectly using quicksort.
+Similar to <code>sort_real</code>, but for integer input.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_integer_heapsort.html'>sort_integer_heapsort</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort an integer array indirectly using heapsort.
+Similar to <code>sort_real_heapsort</code>, but for integer input.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_real.html'>sort_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a real array indirectly using quicksort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/sort_real_heapsort.html'>sort_real_heapsort</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a real array indirectly using heapsort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/spike_contribution.html'>spike_contribution</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates spike contributions using cosine similarity for specific indices
+<script type="math/tex; mode=display"> contributions(i) =
+        \frac{factor(i) \cdot dependent(i)}
+             {\left \Vert factor \right \Vert \cdot \left \Vert dependent \right \Vert}
+        \; | \; 1 \le i \le n\_timepoints </script>
+There are two modes:</p><a href="../proc/spike_contribution.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/spike_contribution_c.html'>spike_contribution_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates spike contributions using cosine similarity for specific indices
+<script type="math/tex; mode=display"> contributions(i) =
+        \frac{factor(i) \cdot dependent(i)}
+             {\left \Vert factor \right \Vert \cdot \left \Vert dependent \right \Vert}
+        \; | \; 1 \le i \le n\_timepoints </script>
+There are two modes:</p><a href="../proc/spike_contribution_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/split_string.html'>split_string</a></td>
+                 <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Helper subroutine to split strings</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a string to 1D c_char array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/string_as_c_char_2d.html'>string_as_c_char_2d</a></td>
+                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Converts a 1D string array to 2D c_char array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/string_to_ascii_arr.html'>string_to_ascii_arr</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>converts a string array to an ascii array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/swap_int.html'>swap_int</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Swap two integer values in-place.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/trajectory_contribution.html'>trajectory_contribution</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates trajectory contribution using cosine similarity
+<script type="math/tex; mode=display"> contribution = \frac{factor \cdot dependent}{\left \Vert factor \right \Vert \cdot \left \Vert dependent \right \Vert} </script>
+There are two modes:</p><a href="../proc/trajectory_contribution.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/trajectory_contribution_c.html'>trajectory_contribution_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_all_data.html'>validate_all_data</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Comprehensive validation routine, combining all checks</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_all_data_c.html'>validate_all_data_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C Binding to validate all data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_all_data_r.html'>validate_all_data_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate all data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_all_in_range_int.html'>validate_all_in_range_int</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates min&lt;=e&lt;=max for all elements e of an array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_all_in_range_real.html'>validate_all_in_range_real</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates min&lt;=e&lt;=max AND e/=NaN for all elements e of an array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_data_structure.html'>validate_data_structure</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate full data structure</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_data_structure_c.html'>validate_data_structure_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C Binding to validate data structure</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_data_structure_r.html'>validate_data_structure_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate data structure</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_dimension_size.html'>validate_dimension_size</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_distance_matrix.html'>validate_distance_matrix</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Strictly validates a distance matrix of euclidean distances.
+This means that distance X-&gt;X is exactly zero (no tolerance)
+and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_empty_strings.html'>validate_empty_strings</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate that strings in an array are not empty</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_expression_data.html'>validate_expression_data</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate expresssion data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_expression_data_c.html'>validate_expression_data_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C Binding to validate expression data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_expression_data_r.html'>validate_expression_data_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate expression data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_family_centroids.html'>validate_family_centroids</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate the family centroids</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_family_centroids_c.html'>validate_family_centroids_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding to validate family centroids</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_family_centroids_r.html'>validate_family_centroids_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate family centroids</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_gene_to_family_mapping.html'>validate_gene_to_family_mapping</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate gene to family mapping</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_gene_to_family_mapping_c.html'>validate_gene_to_family_mapping_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C binding to validate gene to family mapping</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_gene_to_family_mapping_r.html'>validate_gene_to_family_mapping_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R binding for gene to family mapping validating</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_in_range_int.html'>validate_in_range_int</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates min&lt;=e&lt;=max for all elements e of an array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_in_range_real.html'>validate_in_range_real</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates min&lt;=e&lt;=max AND e/=NaN for all elements e of an array</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_shift_vectors.html'>validate_shift_vectors</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates shift vectors</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_shift_vectors_c.html'>validate_shift_vectors_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C Binding to validate shift vectors</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_shift_vectors_r.html'>validate_shift_vectors_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate shift vectors</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_string_array_uniqueness.html'>validate_string_array_uniqueness</a></td>
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validate that no string appears more than once</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_string_array_uniqueness_c.html'>validate_string_array_uniqueness_C</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C Binding to validate string array uniqueness</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/validate_string_array_uniqueness_r.html'>validate_string_array_uniqueness_R</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>R Binding to validate string array uniqueness</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/which.html'>which</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Finds the indices of the true values in a logical mask.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/which_c.html'>which_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for which.
+Converts integer mask to logical and calls which.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/write_file_header.html'>write_file_header</a></td>
+                 <td><a href='../module/array_utils.html'>array_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Opens unit and writes fileheader with all metadata to the given filename</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/write_manifest.html'>write_manifest</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Write manifest from given key-value pairs</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_close.html'>zip_close</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_fclose.html'>zip_fclose</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_file_add.html'>zip_file_add</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_fopen.html'>zip_fopen</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_fread.html'>zip_fread</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_get_name.html'>zip_get_name</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_get_num_entries.html'>zip_get_num_entries</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_open.html'>zip_open</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_set_file_compression.html'>zip_set_file_compression</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_source_buffer.html'>zip_source_buffer</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/zip_source_free.html'>zip_source_free</a></td>
+                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td>Interface</td>
+                 <td></td>
                </tr>
 			 </tbody></table>
              
@@ -143,15 +2207,15 @@ depending on the input array type. Sorting is done indirectly through a permutat
         <div class="row justify-content-between">
           <div class="col">
             <p>
-              TOX_Normalization
- was developed by Vivian Bass<br>              &copy; 2025 
+              TensorOmics
+ was developed by TensorOmics Developers<br>              &copy; 2025 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
-            </p>
+ on "2025-11-23 17:36 +0000"             </p>
           </div>
         </div>
         <br>

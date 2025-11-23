@@ -1,9 +1,9 @@
 ! filepath: test/mod_test_euclidean_distance.f90
-!> @brief Unit test suite for euclidean distance routines.
+!> Unit test suite for euclidean distance routines.
 module mod_test_euclidean_distance
   use asserts
   use tox_euclidean_distance
-  use, intrinsic :: iso_fortran_env, only: real64
+  use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
   public
 
@@ -21,7 +21,7 @@ module mod_test_euclidean_distance
 
 contains
 
-  !> @brief Get array of all available tests.
+  !> Get array of all available tests.
   function get_all_tests() result(all_tests)
     type(test_case) :: all_tests(17)
     
@@ -44,10 +44,10 @@ contains
     all_tests(17) = test_case("test_column_major_optimization", test_column_major_optimization)
   end function get_all_tests
 
-  !> @brief Run all euclidean distance tests.
+  !> Run all euclidean distance tests.
   subroutine run_all_tests_euclidean_distance()
     type(test_case) :: all_tests(17)
-    integer :: i
+    integer(int32) :: i
     
     all_tests = get_all_tests()
     
@@ -58,11 +58,11 @@ contains
     print *, "All euclidean distance tests passed successfully."
   end subroutine run_all_tests_euclidean_distance
 
-  !> @brief Run specific euclidean distance tests by name.
+  !> Run specific euclidean distance tests by name.
   subroutine run_named_tests_euclidean_distance(test_names)
     character(len=*), intent(in) :: test_names(:)
     type(test_case) :: all_tests(17)
-    integer :: i, j
+    integer(int32) :: i, j
     logical :: found
     
     all_tests = get_all_tests()
@@ -83,7 +83,7 @@ contains
     end do
   end subroutine run_named_tests_euclidean_distance
 
-  !> @brief Test euclidean distance with standard 3D vectors.
+  !> Test euclidean distance with standard 3D vectors.
   subroutine test_euclidean_distance_3d()
     real(real64) :: vec1(3), vec2(3), result, expected
     
@@ -95,7 +95,7 @@ contains
     call assert_equal_real(result, expected, 1e-12_real64, "Standard 3D vectors")
   end subroutine test_euclidean_distance_3d
 
-  !> @brief Test euclidean distance from 2D vector to origin.
+  !> Test euclidean distance from 2D vector to origin.
   subroutine test_euclidean_distance_2d_origin()
     real(real64) :: vec1(2), vec2(2), result, expected
     
@@ -107,7 +107,7 @@ contains
     call assert_equal_real(result, expected, 1e-12_real64, "2D vector to origin")
   end subroutine test_euclidean_distance_2d_origin
 
-  !> @brief Test euclidean distance with 1D vectors.
+  !> Test euclidean distance with 1D vectors.
   subroutine test_euclidean_distance_1d()
     real(real64) :: vec1(1), vec2(1), result, expected
     
@@ -119,7 +119,7 @@ contains
     call assert_equal_real(result, expected, 1e-12_real64, "1D vectors")
   end subroutine test_euclidean_distance_1d
 
-  !> @brief Test euclidean distance with identical vectors.
+  !> Test euclidean distance with identical vectors.
   subroutine test_euclidean_distance_identical()
     real(real64) :: vec1(3), vec2(3), result, expected
     
@@ -131,10 +131,10 @@ contains
     call assert_equal_real(result, expected, 1e-15_real64, "Identical vectors")
   end subroutine test_euclidean_distance_identical
 
-  !> @brief Test euclidean distance with high-dimensional vectors.
+  !> Test euclidean distance with high-dimensional vectors.
   subroutine test_euclidean_distance_high_dim()
     real(real64) :: vec1(10), vec2(10), result, expected
-    integer :: i
+    integer(int32) :: i
     
     ! Create test vectors with unit shift
     do i = 1, 10
@@ -147,7 +147,7 @@ contains
     call assert_equal_real(result, expected, 1e-12_real64, "10D unit-shift vectors")
   end subroutine test_euclidean_distance_high_dim
 
-  !> @brief Test euclidean distance with zero vectors.
+  !> Test euclidean distance with zero vectors.
   subroutine test_euclidean_distance_zero_vectors()
     real(real64) :: vec1(3), vec2(3), result, expected
     
@@ -159,7 +159,7 @@ contains
     call assert_equal_real(result, expected, 1e-15_real64, "Zero vectors")
   end subroutine test_euclidean_distance_zero_vectors
 
-  !> @brief Test euclidean distance with very small numbers.
+  !> Test euclidean distance with very small numbers.
   subroutine test_euclidean_distance_small_numbers()
     real(real64) :: vec1(2), vec2(2), result, expected
     
@@ -171,7 +171,7 @@ contains
     call assert_equal_real(result, expected, 1e-27_real64, "Very small numbers")
   end subroutine test_euclidean_distance_small_numbers
 
-  !> @brief Test euclidean distance with very large numbers.
+  !> Test euclidean distance with very large numbers.
   subroutine test_euclidean_distance_large_numbers()
     real(real64) :: vec1(2), vec2(2), result, expected
     
@@ -183,7 +183,7 @@ contains
     call assert_equal_real(result, expected, 1e3_real64, "Very large numbers")
   end subroutine test_euclidean_distance_large_numbers
 
-  !> @brief Test euclidean distance with mixed positive/negative values.
+  !> Test euclidean distance with mixed positive/negative values.
   subroutine test_euclidean_distance_mixed_signs()
     real(real64) :: vec1(2), vec2(2), result, expected
     
@@ -195,11 +195,11 @@ contains
     call assert_equal_real(result, expected, 1e-12_real64, "Mixed positive/negative")
   end subroutine test_euclidean_distance_mixed_signs
 
-  !> @brief Test basic distance_to_centroid functionality.
+  !> Test basic distance_to_centroid functionality.
   subroutine test_distance_to_centroid_basic()
-    integer, parameter :: n_genes = 4, n_families = 2, d = 3
+    integer(int32), parameter :: n_genes = 4, n_families = 2, d = 3
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
     real(real64) :: expected_distances(n_genes)
     
@@ -233,11 +233,11 @@ contains
     call assert_equal_real(distances(4), expected_distances(4), 1e-12_real64, "Gene 4 distance")
   end subroutine test_distance_to_centroid_basic
 
-  !> @brief Test distance_to_centroid with single gene/family.
+  !> Test distance_to_centroid with single gene/family.
   subroutine test_distance_to_centroid_single()
-    integer, parameter :: n_genes = 1, n_families = 1, d = 2
+    integer(int32), parameter :: n_genes = 1, n_families = 1, d = 2
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
     
     genes(:, 1) = [1.0_real64, 2.0_real64]
@@ -250,13 +250,13 @@ contains
     call assert_equal_real(distances(1), 0.0_real64, 1e-15_real64, "Single gene/family")
   end subroutine test_distance_to_centroid_single
 
-  !> @brief Test distance_to_centroid with high-dimensional case.
+  !> Test distance_to_centroid with high-dimensional case.
   subroutine test_distance_to_centroid_high_dim()
-    integer, parameter :: n_genes = 3, n_families = 1, d = 100
+    integer(int32), parameter :: n_genes = 3, n_families = 1, d = 100
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
-    integer :: i
+    integer(int32) :: i
     
     ! Initialize data
     do i = 1, d
@@ -276,11 +276,11 @@ contains
     call assert_equal_real(distances(3), sqrt(real(d, real64)), 1e-10_real64, "High-dim gene 3")
   end subroutine test_distance_to_centroid_high_dim
 
-  !> @brief Test distance_to_centroid with invalid family indices.
+  !> Test distance_to_centroid with invalid family indices.
   subroutine test_distance_to_centroid_invalid_families()
-    integer, parameter :: n_genes = 3, n_families = 2, d = 2
+    integer(int32), parameter :: n_genes = 3, n_families = 2, d = 2
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
     
     genes(:, 1) = [1.0_real64, 2.0_real64]
@@ -304,7 +304,7 @@ contains
     call assert_equal_real(distances(3), -1.0_real64, 0.0_real64, "Invalid family index (0)")
   end subroutine test_distance_to_centroid_invalid_families
 
-  !> @brief Test numerical precision near machine epsilon.
+  !> Test numerical precision near machine epsilon.
   subroutine test_numerical_precision_epsilon()
     real(real64), parameter :: eps = epsilon(1.0_real64)
     real(real64) :: vec1(2), vec2(2), result
@@ -316,7 +316,7 @@ contains
     call assert_equal_real(result, sqrt(2.0_real64) * eps, eps * 10, "Machine epsilon precision")
   end subroutine test_numerical_precision_epsilon
 
-  !> @brief Test numerical precision with very close vectors.
+  !> Test numerical precision with very close vectors.
   subroutine test_numerical_precision_close()
     real(real64) :: vec1(3), vec2(3), result
     
@@ -327,13 +327,13 @@ contains
     call assert_equal_real(result, sqrt(3.0_real64) * 1e-15_real64, 1e-14_real64, "High precision vectors")
   end subroutine test_numerical_precision_close
 
-  !> @brief Test performance with large-scale data.
+  !> Test performance with large-scale data.
   subroutine test_performance_large_scale()
-    integer, parameter :: n_genes = 1000, n_families = 10, d = 50
+    integer(int32), parameter :: n_genes = 1000, n_families = 10, d = 50
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
-    integer :: i, j
+    integer(int32) :: i, j
     
     ! Initialize test data
     do i = 1, n_genes
@@ -356,13 +356,13 @@ contains
     call assert_true(any(distances > 0.0_real64), "Performance test: distances computed")
   end subroutine test_performance_large_scale
 
-  !> @brief Test column-major memory optimization.
+  !> Test column-major memory optimization.
   subroutine test_column_major_optimization()
-    integer, parameter :: n_genes = 3, n_families = 2, d = 4
+    integer(int32), parameter :: n_genes = 3, n_families = 2, d = 4
     real(real64) :: genes(d, n_genes), centroids(d, n_families)
-    integer :: gene_to_fam(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
     real(real64) :: distances(n_genes)
-    integer :: i
+    integer(int32) :: i
     
     ! Fill with known pattern to verify column-major access
     do i = 1, n_genes
