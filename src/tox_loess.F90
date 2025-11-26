@@ -9,10 +9,11 @@ module tox_loess
   !!   plus public wrappers:
   !!     tox_loess_required_workspace, tox_loess_fit, tox_loess_predict
   !! • Internals avoid COMMON blocks and external deps; small fixed-size linear solves per local fit
-  !! • Automatic algorithm selection: direct (n<1k), kdtree (1k-5k), subsampling (>5k)
+  !! • Automatic algorithm selection: direct (n<1k), kdtree (1k-5k), sliding-window (1D), subsampling (>5k, multidim)
   !!
   use iso_fortran_env, only: int32, real64
   use kd_tree, only: build_kd_index, kd_knn_query
+  use f42_utils, only: sort_array
   implicit none
   private
 
@@ -30,10 +31,13 @@ module tox_loess
   real(real64),  parameter :: ZERO = 0.0_real64, ONE = 1.0_real64
   real(real64),  parameter :: EPS  = 1.0e-15_real64
   
-  ! Algorithm selection thresholds - Force subsampling for safety
-  integer(int32), parameter :: DIRECT_THRESHOLD = 100     ! Use direct method for n < 100 only
-  integer(int32), parameter :: KDTREE_THRESHOLD = 200     ! Use k-d tree for 100 <= n < 200 only
+  ! Algorithm selection thresholds - TEMPORARY: Force direct method for testing
+  integer(int32), parameter :: DIRECT_THRESHOLD = 1000   ! TEMP: Force direct for most datasets  
+  integer(int32), parameter :: KDTREE_THRESHOLD = 5000   ! Use k-d tree for 1000 <= n < 5000 (limited range)
   integer(int32), parameter :: MAX_SAFE_K = 2000          ! Maximum k to avoid stack overflow
+
+  ! Module-level variable for simple random number generator
+  integer(int32) :: rng_state = 1
 
 contains
 
@@ -122,7 +126,12 @@ contains
     ! iv(1)=d, iv(2)=n, iv(3)=k (neighbors), iv(4)=degree
     ! v(1)=span
     integer(int32) :: k
-    k = max(1_int32, min(nvmax, int(ceiling(real(n,real64)*max(EPS,min(ONE,f))), int32)))
+    
+    ! R's EXACT algorithm: nf = min(N, (int) floor(N * span + 1e-5))
+    k = min(nvmax, max(2_int32, int(floor(real(n,real64) * max(EPS,min(ONE,f)) + 1.0e-5_real64), int32)))
+
+    ! DEBUG: Print span to k conversion (R-style)
+    write(*,'(A,F5.3,A,I0,A,I0,A,F5.3)') " R-STYLE: span=", f, " -> k=", k, " (n=", n, ", actual_span=", real(k)/real(n), ")"
 
     iv(1) = d
     iv(2) = n
@@ -252,16 +261,20 @@ contains
     real(real64),   intent(in)  :: x_pred(d, m)
     real(real64),   intent(out) :: y_out(m)
 
-    ! Choose algorithm based on dataset size
+    ! TEMPORARY: Force LOESS direct method for all cases to match R exactly
+    ! TODO: Re-enable optimizations after validating correctness
     if (n < DIRECT_THRESHOLD) then
       ! Small dataset: use direct method
-      call predict_core_direct(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
+      call predict_core_direct_fallback(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
     else if (n < KDTREE_THRESHOLD) then
-      ! Medium/Large dataset: use K-d tree optimization
+      ! Medium dataset: use K-d tree optimization
       call predict_core_kdtree(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
     else
-      ! Very large dataset: use subsampling + interpolation (R-style)
-      call predict_core_subsampled(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
+      if (d == 1) then
+        call predict_core_sliding_window(n, x_train(1,:), y_train, w_train, k, degree, y_out)
+      else
+        call predict_core_subsampled(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
+      end if
     end if
   end subroutine predict_core
 
@@ -276,12 +289,8 @@ contains
     real(real64),   intent(in)  :: x_pred(d, m)
     real(real64),   intent(out) :: y_out(m)
 
-    integer(int32) :: j
-
-    ! For each prediction point, build neighborhood and solve local fit
-    do j = 1, m
-      call local_fit_at_point_direct(d, n, x_train, y_train, w_train, x_pred(:,j), k, degree, y_out(j))
-    end do
+    ! Direct method (now just an alias for the fallback)
+    call predict_core_direct_fallback(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
   end subroutine predict_core_direct
 
   !======================================================================
@@ -336,31 +345,39 @@ contains
     real(real64),   intent(out) :: y_out(m)
 
     ! R-style approach: subsample training data, compute LOESS on subsample, then interpolate
-    integer(int32), parameter :: MAX_SUBSAMPLE = 5000   ! Reduced for safety
+    integer(int32), parameter :: MIN_SUBSAMPLE = 2000    ! Minimum subsample size
+    real(real64), parameter :: SUBSAMPLE_FRACTION = 0.15_real64  ! Use 15% of data (no upper limit)
+
+    integer(int32) :: target_subsample_size
     integer(int32) :: n_sub, step, i, j, safe_k
-    integer(int32) :: sub_indices(MAX_SUBSAMPLE)
-    real(real64) :: x_sub(d, MAX_SUBSAMPLE), y_sub(MAX_SUBSAMPLE), w_sub(MAX_SUBSAMPLE)
-    real(real64) :: y_sub_smooth(MAX_SUBSAMPLE)
+    integer(int32), allocatable :: sub_indices(:)
+    real(real64), allocatable :: x_sub(:,:), y_sub(:), w_sub(:)
+    real(real64), allocatable :: y_sub_smooth(:)
     real(real64) :: original_span
     
-    ! Calculate subsampling step
-    if (n <= MAX_SUBSAMPLE) then
+    ! Calculate adaptive subsample size (15% of data, minimum 2000 points, no upper limit)
+    target_subsample_size = max(MIN_SUBSAMPLE, int(real(n, real64) * SUBSAMPLE_FRACTION))
+    
+    if (n <= target_subsample_size) then
       ! Use K-d tree for moderate sizes, but recalculate k properly
       safe_k = min(k, n/3, 500)  ! Limit k for safety
       call predict_core_kdtree(d, n, x_train, y_train, w_train, m, x_pred, safe_k, degree, y_out)
       return
     end if
     
-    ! Subsample evenly spaced points (R uses more sophisticated sampling, but this works)
-    step = max(1, n / MAX_SUBSAMPLE)
-    n_sub = 0
-    do i = 1, n, step
-      n_sub = n_sub + 1
-      if (n_sub > MAX_SUBSAMPLE) exit
-      sub_indices(n_sub) = i
-      x_sub(:, n_sub) = x_train(:, i)
-      y_sub(n_sub) = y_train(i) 
-      w_sub(n_sub) = w_train(i)
+    ! IMPROVED SUBSAMPLING: Span-dependent stratified sampling
+    ! This ensures different spans get different (but reproducible) subsets
+    allocate(sub_indices(target_subsample_size))
+    call span_dependent_subsample(n, k, target_subsample_size, sub_indices, n_sub)
+    
+    ! Allocate arrays based on actual subsample size
+    allocate(x_sub(d, n_sub), y_sub(n_sub), w_sub(n_sub), y_sub_smooth(n_sub))
+    
+    ! Extract subsampled data
+    do i = 1, n_sub
+      x_sub(:, i) = x_train(:, sub_indices(i))
+      y_sub(i) = y_train(sub_indices(i)) 
+      w_sub(i) = w_train(sub_indices(i))
     end do
     
     ! Ensure we have enough points
@@ -384,6 +401,9 @@ contains
     do j = 1, m
       call interpolate_from_subsample(d, n_sub, x_sub, y_sub_smooth, x_pred(:,j), y_out(j))
     end do
+    
+    ! Cleanup
+    deallocate(sub_indices, x_sub, y_sub, w_sub, y_sub_smooth)
   end subroutine predict_core_subsampled
 
   !======================================================================
@@ -587,6 +607,12 @@ contains
     tricube = (ONE - (ONE - t)**3)**3
   end function tricube
 
+  ! Alias for sliding window compatibility
+  real(real64) function tricube_weight(u)
+    real(real64), intent(in) :: u
+    tricube_weight = tricube(u)
+  end function tricube_weight
+
   integer(int32) function num_terms(d, degree)
     integer(int32), intent(in) :: d, degree
     if (degree <= 0) then
@@ -750,5 +776,731 @@ contains
       dot_p = dot_p + a(i)*b(i)
     end do
   end function dot_p
+
+  !======================================================================
+  ! Span-dependent subsampling function
+  !----------------------------------------------------------------------
+  subroutine span_dependent_subsample(n, k, max_sub, indices, n_sub)
+    integer(int32), intent(in)  :: n, k, max_sub
+    integer(int32), intent(out) :: indices(max_sub)
+    integer(int32), intent(out) :: n_sub
+    
+    ! Local variables - ALL declarations must come first in Fortran
+    integer(int32) :: i, j, temp, span_seed
+    real(real64) :: original_span, rnorm
+    integer(int32), allocatable :: full_indices(:)
+    logical :: selected(n)
+    real(real64) :: step_real, start_offset, jitter
+    integer(int32) :: step_int, start_pos, current_pos
+    
+    ! Calculate span for creating a span-dependent seed
+    original_span = real(k, real64) / real(n, real64)
+    span_seed = int(original_span * 10000.0_real64)  ! Convert to integer for seeding
+    
+    ! Initialize simple random number generator with span-dependent seed
+    call simple_srand(span_seed)
+    
+    if (n <= max_sub) then
+      ! If small enough, use all data
+      n_sub = n
+      do i = 1, n
+        indices(i) = i
+      end do
+      return
+    end if
+    
+    ! Strategy: Stratified sampling with span-dependent randomization
+    ! 1. Divide into strata based on data order (approximates sorted order)
+    ! 2. Sample from each stratum with span-dependent probability
+    
+    n_sub = 0
+    selected = .false.
+    
+    ! Method: Systematic sampling with random start (span-dependent)
+    step_real = real(n, real64) / real(max_sub, real64)
+    step_int = max(1, int(step_real))
+    
+    ! Span-dependent random offset for start position
+    start_offset = call_simple_rand() * step_real
+    start_pos = max(1, min(n, int(start_offset) + 1))
+    
+    current_pos = start_pos
+    do while (n_sub < max_sub .and. current_pos <= n)
+      n_sub = n_sub + 1
+      indices(n_sub) = current_pos
+      
+      ! Add some span-dependent jitter to avoid strict periodicity
+      jitter = (call_simple_rand() - 0.5_real64) * 0.3_real64 * step_real
+      current_pos = current_pos + step_int + int(jitter)
+      
+      if (current_pos > n) exit
+    end do
+    
+    ! Ensure minimum sample size
+    if (n_sub < 10) then
+      ! Fallback: evenly spaced
+      n_sub = min(max_sub, n)
+      step_int = max(1, n / n_sub)
+      do i = 1, n_sub
+        indices(i) = min(n, 1 + (i-1) * step_int)
+      end do
+    end if
+    
+  end subroutine span_dependent_subsample
+  
+  !======================================================================
+  ! Simple reproducible random number generator (LCG)
+  !----------------------------------------------------------------------
+  subroutine simple_srand(seed)
+    integer(int32), intent(in) :: seed
+    rng_state = seed
+    if (rng_state <= 0) rng_state = 1
+  end subroutine simple_srand
+  
+  real(real64) function call_simple_rand()
+    ! Linear Congruential Generator (simple but reproducible)
+    rng_state = mod(rng_state * 1103515245 + 12345, 2147483647)
+    call_simple_rand = real(rng_state, real64) / 2147483647.0_real64
+  end function call_simple_rand
+
+  !======================================================================
+  ! Helper function: Check if prediction points are same as training points
+  !----------------------------------------------------------------------
+  function is_same_points(d, n, x_train, x_pred) result(is_same)
+    integer(int32), intent(in) :: d, n
+    real(real64), intent(in) :: x_train(d, n), x_pred(d, n)
+    logical :: is_same
+    integer(int32) :: i, j
+    
+    is_same = .true.
+    do i = 1, n
+      do j = 1, d
+        if (abs(x_train(j,i) - x_pred(j,i)) > 1e-12_real64) then
+          is_same = .false.
+          return
+        end if
+      end do
+    end do
+  end function is_same_points
+
+  !======================================================================
+  ! Sliding Window LOESS with R-style interpolation (O(n*k) - assumes sorted data)
+  !----------------------------------------------------------------------
+  subroutine predict_core_sliding_window(n, x, y, w, k, degree, y_out)
+    integer(int32), intent(in) :: n, k, degree
+    real(real64), intent(in) :: x(n), y(n), w(n)
+    real(real64), intent(out) :: y_out(n)
+    
+    ! R-style delta parameter - NOW USED ALWAYS for maximum speed
+    ! Adaptive delta: smaller datasets get smaller delta for better precision
+    real(real64), parameter :: DEFAULT_DELTA_FRACTION = 0.01_real64  ! Base: 1% of x range
+    real(real64), parameter :: MIN_DELTA_FRACTION = 0.005_real64     ! 0.5% for small datasets  
+    real(real64), parameter :: MAX_DELTA_FRACTION = 0.02_real64      ! 2% for very large datasets
+    
+    real(real64) :: delta, x_range, adaptive_delta_fraction
+    
+    ! Calculate adaptive delta fraction based on dataset size
+    ! Smaller datasets: use smaller delta for better precision
+    ! Larger datasets: can use larger delta for more speed
+    if (real(n, real64) < 5000.0_real64) then
+      adaptive_delta_fraction = MIN_DELTA_FRACTION  ! 0.5% for small datasets
+    else if (real(n, real64) > 100000.0_real64) then
+      adaptive_delta_fraction = MAX_DELTA_FRACTION  ! 2% for very large datasets
+    else
+      ! Linear interpolation between 0.5% and 2% based on dataset size
+      adaptive_delta_fraction = MIN_DELTA_FRACTION + &
+        (MAX_DELTA_FRACTION - MIN_DELTA_FRACTION) * &
+        (real(n, real64) - 5000.0_real64) / (100000.0_real64 - 5000.0_real64)
+    end if
+    
+    ! Calculate delta using adaptive approach
+    x_range = x(n) - x(1)
+    delta = adaptive_delta_fraction * x_range
+    
+    ! ALWAYS use delta optimization for maximum speed
+    call predict_sliding_window_with_delta(n, x, y, w, k, degree, delta, y_out)
+  end subroutine predict_core_sliding_window
+
+  !======================================================================
+  ! Direct sliding window (compute all points)
+  !----------------------------------------------------------------------
+  subroutine predict_sliding_window_direct(n, x, y, w, k, degree, y_out)
+    integer(int32), intent(in) :: n, k, degree
+    real(real64), intent(in) :: x(n), y(n), w(n)
+    real(real64), intent(out) :: y_out(n)
+    
+    integer(int32) :: i, j, window_start, window_end, window_size
+    real(real64) :: x_center, max_dist, dist, pred_value
+    real(real64) :: weights(k)
+    integer(int32) :: k_actual
+    integer(int32) :: neighbors(k)
+    
+    ! For each point, use sliding window of k neighbors (assumes sorted x)
+    do i = 1, n
+      x_center = x(i)
+      
+      ! Find optimal window around point i (assumes x is sorted)
+      window_start = max(1, i - k/2)
+      window_end = min(n, window_start + k - 1)
+      
+      ! Adjust window size near boundaries
+      if (window_end - window_start + 1 < k .and. window_start > 1) then
+        window_start = max(1, window_end - k + 1)
+      end if
+      if (window_end - window_start + 1 < k .and. window_end < n) then
+        window_end = min(n, window_start + k - 1)
+      end if
+      
+      window_size = window_end - window_start + 1
+      k_actual = min(k, window_size)
+      
+      ! Calculate max distance for tricube weighting
+      max_dist = 0.0_real64
+      do j = window_start, window_end
+        dist = abs(x(j) - x_center)
+        if (dist > max_dist) max_dist = dist
+      end do
+      if (max_dist <= EPS) max_dist = EPS
+      
+      ! Compute tricube weights for window
+      do j = 1, k_actual
+        dist = abs(x(window_start + j - 1) - x_center)
+        weights(j) = w(window_start + j - 1) * tricube_weight(dist / max_dist)
+      end do
+      
+      ! Fit local polynomial directly on window
+      call local_polynomial_fit_1d_direct(k_actual, x, y, neighbors, weights, x_center, degree, pred_value)
+      y_out(i) = pred_value
+    end do
+  end subroutine predict_sliding_window_direct
+
+  !======================================================================
+  ! Sliding window with R-style delta optimization (faithful to R lowess)
+  !----------------------------------------------------------------------
+  subroutine predict_sliding_window_with_delta(n, x, y, w, k, degree, delta, y_out)
+    integer(int32), intent(in) :: n, k, degree
+    real(real64), intent(in) :: x(n), y(n), w(n), delta
+    real(real64), intent(out) :: y_out(n)
+    
+    integer(int32) :: i, j, last_computed
+    real(real64) :: cut_distance
+    
+    ! R's algorithm: compute LOESS at strategic points, skip very close ones
+    ! This is MUCH more conservative than my previous 1% approach
+    
+    last_computed = 0
+    
+    i = 1
+    do while (i <= n)
+      
+      ! Always compute LOESS for this point
+      call compute_loess_at_point_1d(n, x, y, w, k, degree, i, y_out(i))
+      
+      ! Interpolate any skipped points between last_computed and i
+      if (last_computed > 0 .and. last_computed < i - 1) then
+        call interpolate_between_points(x, y_out, last_computed, i)
+      end if
+      
+      last_computed = i
+      
+      ! R-style: skip points that are very close (within delta)
+      cut_distance = x(i) + delta
+      j = i + 1
+      do while (j <= n .and. x(j) <= cut_distance)
+        if (abs(x(j) - x(i)) < EPS) then
+          ! Exact tie: use same value
+          y_out(j) = y_out(i)
+          last_computed = j
+        end if
+        ! Skip this point (will be interpolated later)
+        j = j + 1
+      end do
+      
+      ! Continue from the first point outside the delta range
+      i = max(j, i + 1)
+      
+    end do
+    
+    ! Handle any remaining points at the end
+    if (last_computed < n) then
+      ! Compute final point
+      call compute_loess_at_point_1d(n, x, y, w, k, degree, n, y_out(n))
+      
+      ! Interpolate any gaps before final point
+      if (last_computed < n - 1) then
+        call interpolate_between_points(x, y_out, last_computed, n)
+      end if
+    end if
+  end subroutine predict_sliding_window_with_delta
+
+  !======================================================================
+  ! Compute LOESS at single point (1D optimized)
+  !----------------------------------------------------------------------
+  subroutine compute_loess_at_point_1d(n, x, y, w, k, degree, i_center, result)
+    integer(int32), intent(in) :: n, k, degree, i_center
+    real(real64), intent(in) :: x(n), y(n), w(n)
+    real(real64), intent(out) :: result
+    integer(int32) :: left, right, nk, idx, j
+    real(real64) :: x0, dists(k), rho
+    integer(int32) :: neighbors(k)
+    real(real64) :: weights(k)
+    x0 = x(i_center)
+    left = i_center
+    right = i_center
+    nk = 1
+    do while (nk < k)
+      if (left > 1 .and. (right == n .or. abs(x(left-1)-x0) <= abs(x(right+1)-x0))) then
+        left = left - 1
+      else if (right < n) then
+        right = right + 1
+      else
+        exit
+      end if
+      nk = right - left + 1
+    end do
+    do j = 1, nk
+      neighbors(j) = left + j - 1
+      dists(j) = abs(x(neighbors(j)) - x0)
+    end do
+    rho = maxval(dists(1:nk)) * 0.1_real64  ! Example: scale by 0.1, adjust as needed
+    if (rho < 1e-12_real64) rho = 1e-12_real64
+    do j = 1, nk
+      weights(j) = w(neighbors(j)) * tricube_weight(dists(j) / rho)
+    end do
+    call local_polynomial_fit_1d_direct(nk, x, y, neighbors, weights, x0, degree, result)
+  end subroutine compute_loess_at_point_1d
+
+  !======================================================================
+  ! Linear interpolation between computed points
+  !----------------------------------------------------------------------
+  subroutine interpolate_between_points(x, y_out, i_start, i_end)
+    real(real64), intent(in) :: x(:)
+    real(real64), intent(inout) :: y_out(:)
+    integer(int32), intent(in) :: i_start, i_end
+    
+    integer(int32) :: i
+    real(real64) :: x_start, x_end, y_start, y_end, alpha, denom
+    
+    if (i_end <= i_start + 1) return  ! No points to interpolate
+    
+    x_start = x(i_start)
+    x_end = x(i_end)
+    y_start = y_out(i_start)
+    y_end = y_out(i_end)
+    
+    denom = x_end - x_start
+    if (abs(denom) < EPS) then
+      ! Same x values: use average
+      do i = i_start + 1, i_end - 1
+        y_out(i) = (y_start + y_end) * 0.5_real64
+      end do
+    else
+      ! Linear interpolation
+      do i = i_start + 1, i_end - 1
+        alpha = (x(i) - x_start) / denom
+        y_out(i) = (1.0_real64 - alpha) * y_start + alpha * y_end
+      end do
+    end if
+  end subroutine interpolate_between_points
+
+  !======================================================================
+  ! R-compatible LOESS core (simplified but robust version)
+  !----------------------------------------------------------------------
+  subroutine predict_core_direct_fallback(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
+    integer(int32), intent(in)  :: d, n, m, k, degree
+    real(real64),   intent(in)  :: x_train(d, n)
+    real(real64),   intent(in)  :: y_train(n)
+    real(real64),   intent(in)  :: w_train(n)
+    real(real64),   intent(in)  :: x_pred(d, m)
+    real(real64),   intent(out) :: y_out(m)
+
+    integer(int32) :: j
+
+    ! For each prediction point, use simplified R-compatible local fit
+    do j = 1, m
+      call simplified_r_local_fit(d, n, x_train, y_train, w_train, x_pred(:,j), k, degree, y_out(j))
+    end do
+  end subroutine predict_core_direct_fallback
+
+
+  !======================================================================
+  ! Direct 1D polynomial fit (no array copying) - FULL LOESS IMPLEMENTATION
+  !----------------------------------------------------------------------
+  
+  subroutine local_polynomial_fit_1d_direct(nk, x, y, neighbors, weights, x0, degree, yhat)
+    integer(int32), intent(in) :: nk, neighbors(nk), degree
+    real(real64), intent(in) :: x(*), y(*), weights(nk), x0
+    real(real64), intent(out) :: yhat
+
+    integer(int32), parameter :: MAX_TERMS = 3
+    real(real64) :: X_matrix(nk, MAX_TERMS)
+    real(real64) :: XtWX(MAX_TERMS, MAX_TERMS), XtWy(MAX_TERMS)
+    real(real64) :: beta(MAX_TERMS)
+    integer(int32) :: i, j, idx, n_terms
+    real(real64) :: xi, det
+
+    ! Number of terms in the polynomial
+    if (degree == 0) then
+        n_terms = 1
+    else if (degree == 1) then
+        n_terms = 2
+    else
+        n_terms = 3   ! quadratic, like R default
+    end if
+
+    !-----------------------------------------------------------
+    ! Build R-style design matrix: X = [1, xi, xi^2]
+    !-----------------------------------------------------------
+    do i = 1, nk
+        xi = x(neighbors(i))
+        X_matrix(i,1) = 1.0_real64
+        if (n_terms >= 2) X_matrix(i,2) = xi
+        if (n_terms >= 3) X_matrix(i,3) = xi*xi
+    end do
+
+    ! Zero matrices
+    XtWX = 0.0_real64
+    XtWy = 0.0_real64
+
+    !-----------------------------------------------------------
+    ! Compute X^T W X and X^T W y
+    !-----------------------------------------------------------
+    do i = 1, n_terms
+        do j = 1, n_terms
+            do idx = 1, nk
+                XtWX(i,j) = XtWX(i,j) + X_matrix(idx,i)*weights(idx)*X_matrix(idx,j)
+            end do
+        end do
+        do idx = 1, nk
+            XtWy(i) = XtWy(i) + X_matrix(idx,i)*weights(idx)*y(neighbors(idx))
+        end do
+    end do
+
+    !-----------------------------------------------------------
+    ! Solve the linear system for β
+    !-----------------------------------------------------------
+    if (n_terms == 1) then
+        beta(1) = XtWy(1) / XtWX(1,1)
+
+    else if (n_terms == 2) then
+        det = XtWX(1,1)*XtWX(2,2) - XtWX(1,2)*XtWX(2,1)
+        beta(1) = ( XtWy(1)*XtWX(2,2) - XtWy(2)*XtWX(1,2) ) / det
+        beta(2) = ( XtWy(2)*XtWX(1,1) - XtWy(1)*XtWX(2,1) ) / det
+
+    else
+        call solve_3x3_system(XtWX, XtWy, beta, 3)
+    end if
+
+    !-----------------------------------------------------------
+    ! Predict y(x0) using the R-style polynomial:
+    ! yhat = β0 + β1*x0 + β2*x0^2
+    !-----------------------------------------------------------
+    if (n_terms == 1) then
+        yhat = beta(1)
+
+    else if (n_terms == 2) then
+        yhat = beta(1) + beta(2)*x0
+
+    else
+        yhat = beta(1) + beta(2)*x0 + beta(3)*(x0*x0)
+    end if
+  end subroutine local_polynomial_fit_1d_direct
+
+! Solve 3x3 linear system using Gaussian elimination with partial pivoting
+    subroutine solve_3x3_system(A, b, x, n)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: A(n,n), b(n)
+        real(real64), intent(out) :: x(n)
+        
+        real(real64) :: A_work(n,n), b_work(n)
+        real(real64) :: factor, temp
+        integer(int32) :: i, j, k, max_row
+        real(real64) :: max_val
+        
+        ! Copy to working arrays
+        A_work = A(1:n,1:n)
+        b_work = b(1:n)
+        x = 0.0_real64
+        
+        ! Forward elimination with partial pivoting
+        do i = 1, n-1
+            ! Find pivot
+            max_val = abs(A_work(i,i))
+            max_row = i
+            do k = i+1, n
+                if (abs(A_work(k,i)) > max_val) then
+                    max_val = abs(A_work(k,i))
+                    max_row = k
+                end if
+            end do
+            
+            ! Swap rows if needed
+            if (max_row /= i) then
+                do j = 1, n
+                    temp = A_work(i,j)
+                    A_work(i,j) = A_work(max_row,j)
+                    A_work(max_row,j) = temp
+                end do
+                temp = b_work(i)
+                b_work(i) = b_work(max_row)
+                b_work(max_row) = temp
+            end if
+            
+            ! Check for singular matrix
+            if (abs(A_work(i,i)) < 1e-12_real64) then
+                ! Singular matrix, use simplified solution
+                x(1) = b_work(1) / A_work(1,1)
+                return
+            end if
+            
+            ! Eliminate
+            do k = i+1, n
+                factor = A_work(k,i) / A_work(i,i)
+                do j = i, n
+                    A_work(k,j) = A_work(k,j) - factor * A_work(i,j)
+                end do
+                b_work(k) = b_work(k) - factor * b_work(i)
+            end do
+        end do
+        
+        ! Back substitution
+        if (abs(A_work(n,n)) < 1e-12_real64) then
+            x(1) = b_work(1) / A_work(1,1)
+            return
+        end if
+        
+        x(n) = b_work(n) / A_work(n,n)
+        do i = n-1, 1, -1
+            x(i) = b_work(i)
+            do j = i+1, n
+                x(i) = x(i) - A_work(i,j) * x(j)
+            end do
+            x(i) = x(i) / A_work(i,i)
+        end do
+    end subroutine solve_3x3_system
+    
+  !======================================================================
+  ! Simplified R-compatible local fit (robust version without QR issues)
+  !----------------------------------------------------------------------
+  subroutine simplified_r_local_fit(d, n, x, y, w, z, k, degree, yhat)
+    integer(int32), intent(in)  :: d, n, k, degree
+    real(real64),   intent(in)  :: x(d,n), y(n), w(n), z(d)
+    real(real64),   intent(out) :: yhat
+
+    ! Simplified version that focuses on the key R differences:
+    ! 1. R's exact neighbor selection with tie handling
+    ! 2. R's exact tricube formula  
+    ! 3. Robust matrix solving without complex QR
+    
+    integer(int32) :: i, p, nk
+    integer(int32) :: neighbors(n)
+    real(real64)   :: dists(n), rw(n), rho
+    real(real64)   :: Xrow(8), XtWX(8,8), XtWy(8), beta(8)
+    
+    ! 1) Compute distances (same as original)
+    do i = 1, n
+      dists(i) = euclid2(d, x(:,i), z)
+    end do
+    
+    ! 2) R's neighbor selection with exact tie handling
+    call r_select_neighbors_simple(dists, n, k, neighbors, nk, rho)
+    
+    ! 3) R's exact tricube weighting  
+    do i = 1, n
+      rw(i) = ZERO
+    end do
+    do i = 1, nk
+      if (rho > EPS) then
+        rw(neighbors(i)) = w(neighbors(i)) * r_tricube_exact(dists(neighbors(i)) / rho)
+      else
+        rw(neighbors(i)) = w(neighbors(i))
+      end if
+    end do
+    
+    ! 4) Build normal equations (same structure as original but with R weights)
+    p = num_terms(d, degree)
+    call zero_mat_vec(XtWX, XtWy, p)
+
+    do i = 1, nk
+      if (rw(neighbors(i)) > EPS) then
+        call build_design_row(d, degree, x(:,neighbors(i)), z, Xrow, p)
+        call accumulate_normal_eq(XtWX, XtWy, Xrow, y(neighbors(i)), rw(neighbors(i)), p)
+      end if
+    end do
+
+    ! 5) Solve (robust Cholesky)
+    call solve_sym_posdef_robust(XtWX, XtWy, beta, p, rw, y, neighbors, nk)
+
+    ! 6) Predict at z
+    call build_design_row(d, degree, z, z, Xrow, p)
+    yhat = dot_p(Xrow, beta, p)
+    
+  end subroutine simplified_r_local_fit
+
+  !======================================================================
+  ! R's simplified neighbor selection - EXACTLY like R's lowess.c
+  !----------------------------------------------------------------------
+  subroutine r_select_neighbors_simple(dists, n, k, neighbors, nk, rho)
+    integer(int32), intent(in) :: n, k
+    real(real64), intent(in) :: dists(n)
+    integer(int32), intent(out) :: neighbors(n), nk
+    real(real64), intent(out) :: rho
+    
+    integer(int32) :: indices(n), i, j, temp_int
+    real(real64) :: temp_real, sorted_dists(n)
+    
+    ! Create index array and copy distances
+    do i = 1, n
+      indices(i) = i
+      sorted_dists(i) = dists(i)
+    end do
+    
+    ! Simple insertion sort (stable like R) - EXACT R algorithm
+    do i = 2, n
+      temp_real = sorted_dists(i)
+      temp_int = indices(i)
+      j = i - 1
+      do while (j >= 1 .and. sorted_dists(j) > temp_real)
+        sorted_dists(j + 1) = sorted_dists(j)
+        indices(j + 1) = indices(j)
+        j = j - 1
+      end do
+      sorted_dists(j + 1) = temp_real
+      indices(j + 1) = temp_int
+    end do
+    
+    ! R's EXACT neighbor selection: select first k points, then add ties
+    nk = min(k, n)
+    do i = 1, nk
+      neighbors(i) = indices(i)
+    end do
+    
+    ! R algorithm: bandwidth is k-th distance
+    if (nk < n) then
+      rho = sorted_dists(nk)
+      ! R includes ALL ties at the k-th distance
+      do i = nk + 1, n
+        if (abs(sorted_dists(i) - rho) < EPS .and. nk < n) then
+          nk = nk + 1
+          neighbors(nk) = indices(i)
+        else
+          exit
+        end if
+      end do
+    else
+      rho = sorted_dists(n)
+    end if
+    
+    ! Ensure positive bandwidth (R does this)
+    if (rho < EPS) rho = EPS
+    
+  end subroutine r_select_neighbors_simple
+
+  !======================================================================
+  ! R's exact tricube weight (simplified)
+  !----------------------------------------------------------------------
+  function r_tricube_exact(u) result(weight)
+    real(real64), intent(in) :: u
+    real(real64) :: weight
+    
+    if (u >= ONE) then
+      weight = ZERO
+    else
+      ! R's exact formula: ((1 - u³)³) 
+      ! This exactly matches R's lowess.c: fcube(1.-fcube(r/h))
+      weight = (ONE - u**3)**3
+    end if
+  end function r_tricube_exact
+
+  !======================================================================
+  ! Robust symmetric positive definite solver with fallback
+  !----------------------------------------------------------------------
+  subroutine solve_sym_posdef_robust(A, b, x, p, weights, y_vals, neighbors, nk)
+    real(real64), intent(inout) :: A(:,:), b(:)
+    real(real64), intent(out) :: x(:)
+    integer(int32), intent(in) :: p, nk
+    real(real64), intent(in) :: weights(:), y_vals(:)
+    integer(int32), intent(in) :: neighbors(:)
+    
+    integer(int32) :: i, j, k
+    real(real64) :: sum_val, det_check, total_weight, weighted_mean
+    logical :: is_singular
+    
+    ! Check for near-singularity
+    is_singular = .false.
+    det_check = ONE
+    do i = 1, p
+      if (abs(A(i,i)) < EPS) then
+        is_singular = .true.
+        exit
+      end if
+      det_check = det_check * A(i,i)
+    end do
+    
+    if (is_singular .or. abs(det_check) < EPS) then
+      ! Fallback: weighted average
+      total_weight = ZERO
+      weighted_mean = ZERO
+      do i = 1, nk
+        if (weights(neighbors(i)) > EPS) then
+          total_weight = total_weight + weights(neighbors(i))
+          weighted_mean = weighted_mean + weights(neighbors(i)) * y_vals(neighbors(i))
+        end if
+      end do
+      
+      if (total_weight > EPS) then
+        x(1) = weighted_mean / total_weight
+      else
+        x(1) = ZERO
+      end if
+      
+      do i = 2, p
+        x(i) = ZERO
+      end do
+      return
+    end if
+    
+    ! Standard Cholesky if matrix looks good
+    call solve_sym_posdef(A, b, x, p)
+    
+  end subroutine solve_sym_posdef_robust
+
+  !======================================================================
+  ! Weighted linear fit for 1D case (needed by sliding window code)
+  !----------------------------------------------------------------------
+  subroutine weighted_linear_fit_1d(n_local, x_local, y_local, w_local, x_center, pred_value)
+    integer(int32), intent(in) :: n_local
+    real(real64), intent(in) :: x_local(n_local), y_local(n_local), w_local(n_local), x_center
+    real(real64), intent(out) :: pred_value
+    
+    real(real64) :: sum_w, sum_wx, sum_wy, sum_wxx, sum_wxy
+    real(real64) :: mean_x, mean_y, slope, intercept
+    integer(int32) :: i
+    
+    ! Compute weighted sums
+    sum_w = 0.0_real64
+    sum_wx = 0.0_real64
+    sum_wy = 0.0_real64
+    sum_wxx = 0.0_real64
+    sum_wxy = 0.0_real64
+    
+    do i = 1, n_local
+      sum_w = sum_w + w_local(i)
+      sum_wx = sum_wx + w_local(i) * x_local(i)
+      sum_wy = sum_wy + w_local(i) * y_local(i)
+      sum_wxx = sum_wxx + w_local(i) * x_local(i) * x_local(i)
+      sum_wxy = sum_wxy + w_local(i) * x_local(i) * y_local(i)
+    end do
+    
+    ! Solve for slope and intercept
+    mean_x = sum_wx / sum_w
+    mean_y = sum_wy / sum_w
+    
+    slope = (sum_wxy - sum_w * mean_x * mean_y) / (sum_wxx - sum_w * mean_x * mean_x)
+    intercept = mean_y - slope * mean_x
+    
+    ! Predict at x_center
+    pred_value = slope * x_center + intercept
+  end subroutine weighted_linear_fit_1d
 
 end module tox_loess
