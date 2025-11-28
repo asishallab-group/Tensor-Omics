@@ -20,6 +20,8 @@ program benchmark_knn_smoothing
     real(real64), allocatable :: gene_means(:), gene_stds(:)
     real(real64), allocatable :: temp_gene_values(:)
     real(real64), allocatable :: y_smoothed_knn(:,:)
+    real(real64), allocatable :: y_smoothed_penalty(:,:)
+
 
     ! KNN workspace arrays (max k)
     integer(int32), allocatable :: kd_indices(:), dimension_order(:)
@@ -114,6 +116,8 @@ program benchmark_knn_smoothing
     allocate(left_stack(n_genes))
     allocate(right_stack(n_genes))
     dimension_order(1) = 1
+    allocate(y_smoothed_penalty(N_K, n_genes))
+
 
     write(*,*) "Computing mean and standard deviation for each gene..."
     do i = 1, n_genes
@@ -146,6 +150,8 @@ program benchmark_knn_smoothing
                                              workspace_int, value_buffer, permutation, &
                                              left_stack, right_stack, ierr)
         call system_clock(clk_end)
+        call smooth_1d_diff_penalty(n_genes, y_smoothed_knn(k_idx,:), 5.0_real64, y_smoothed_penalty(k_idx,:))
+
         elapsed_sec = real(clk_end - clk_start, real64) / real(clk_rate, real64)
         if (ierr /= 0) then
             write(*,*) "ERROR in KNN smoothing for k=", k_val, ", ierr =", ierr
@@ -155,13 +161,16 @@ program benchmark_knn_smoothing
         ! Output results for this k
         write(*,*) "  Writing results to knn_smoothing_results_k"//trim(adjustl(itoa(k_val)))//".tsv ..."
         open(newunit=file_unit, file='knn_smoothing_results_k'//trim(adjustl(itoa(k_val)))//'.tsv', status='replace', action='write')
-        write(file_unit, '(A)') 'GeneID' // char(9) // 'Mean' // char(9) // 'OriginalStd' // char(9) // 'SmoothedStd_KNN_k'
+        write(file_unit, '(A)') 'GeneID' // char(9) // 'Mean' // char(9) // 'OriginalStd' // char(9) // 'SmoothedStd_KNN_k' // char(9) // 'SmoothedStd_KNN_Penalized'
+
         do i = 1, n_genes
-            write(file_unit, '(A,A,F12.6,A,F12.6,A,F12.6)') &
+            write(file_unit, '(A,A,F12.6,A,F12.6,A,F12.6,A,F12.6)') &
                 trim(gene_ids(i)), char(9), &
                 gene_means(i), char(9), &
                 gene_stds(i), char(9), &
-                y_smoothed_knn(k_idx,i)
+                y_smoothed_knn(k_idx,i), char(9), &
+                y_smoothed_penalty(k_idx,i)
+
         end do
         close(file_unit)
     end do
