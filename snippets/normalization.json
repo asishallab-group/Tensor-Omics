@@ -1,0 +1,61 @@
+{
+  "C call to normalization_pipeline": {
+    "prefix": "tox:setup_py_normalization_pipeline_c",
+    "body": [
+      "    lib.normalization_pipeline_c.argtypes = [",
+      "        ctypes.c_int,  # n_genes",
+      "        ctypes.c_int,  # n_tissues",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # input_matrix",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # buf_stddev",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # buf_quant",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # buf_avg",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # buf_log",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # temp_col",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"), # rank_means",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),   # perm",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),   # stack_left",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),   # stack_right",
+      "        ctypes.c_int,  # max_stack",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),   # group_s",
+      "        np.ctypeslib.ndpointer(dtype=np.int32, flags=\"C_CONTIGUOUS\"),   # group_c",
+      "        ctypes.c_int,    # n_grps",
+      "        ctypes.POINTER(ctypes.c_int)  # ierr",
+      "    ]",
+      "    lib.normalization_pipeline_c.restype = None",
+      "    lib.normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ctypes.byref(ierr))"
+    ],
+    "description": "Setup normalization_pipeline_c function binding for Python/ctypes"
+  },
+  "R call to normalization_pipeline": {
+    "prefix": "tox:R_normalization_pipeline",
+    "body": [
+      "result <- .Fortran(\"normalization_pipeline_r\",",
+      "                  n_genes = as.integer(${1:n_genes}),",
+      "                  n_tissues = as.integer(${2:n_tissues}),",
+      "                  input_matrix = as.double(${3:input_matrix}),",
+      "                  buf_stddev = as.double(numeric(${1:n_genes} * ${2:n_tissues})),",
+      "                  buf_quant = as.double(numeric(${1:n_genes} * ${2:n_tissues})),",
+      "                  buf_avg = as.double(numeric(${1:n_genes} * ${4:n_grps})),",
+      "                  buf_log = as.double(numeric(${1:n_genes} * ${4:n_grps})),",
+      "                  temp_col = as.double(numeric(${1:n_genes})),",
+      "                  rank_means = as.double(numeric(${1:n_genes})),",
+      "                  perm = as.integer(numeric(${1:n_genes})),",
+      "                  stack_left = as.integer(numeric(${5:max_stack})),",
+      "                  stack_right = as.integer(numeric(${5:max_stack})),",
+      "                  max_stack = as.integer(${5:max_stack}),",
+      "                  group_s = as.integer(${6:group_s}),",
+      "                  group_c = as.integer(${7:group_c}),",
+      "                  n_grps = as.integer(${4:n_grps}),",
+      "                  ierr = as.integer(0))"
+    ],
+    "description": "Call normalization_pipeline_r Fortran function from R"
+  },
+  "Call to normalization_pipeline": {
+    "prefix": "tox:normalization_pipeline",
+    "body": [
+      "! Run the full normalization pipeline for gene expression data",
+      "call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)"
+    ],
+    "description": "Invoke normalization pipeline from Fortran"
+  }
+}
