@@ -1,17 +1,13 @@
 module tox_json
     use, intrinsic :: iso_fortran_env, only: int32
 
-    type :: json_value
-        class(*), pointer :: value => null()
-    end type json_value
-
     type :: json_array
         class(*), dimension(:), pointer :: array => null()
     end type json_array
 
     type :: json_object
         character(len=:), dimension(:), pointer :: keys => null()
-        type(json_value), dimension(:), pointer :: values => null()
+        class(*), dimension(:), pointer :: values => null()
     end type json_object
 contains
 
@@ -35,25 +31,7 @@ contains
         end select
     end subroutine serialize_scalar
 
-    subroutine serialize_json_value(val, unit)
-        class(json_value), intent(in) :: val
-        integer(int32), intent(in) :: unit
-
-        if (associated(val%value)) then
-            select type(attr => val%value)
-                type is (json_array)
-                    call serialize_json_array(attr, unit)
-                type is (json_object)
-                    call serialize_json_object(attr, unit)
-                class default
-                    call serialize_scalar(attr, unit)
-            end select
-        else
-            write (unit, "('null')", advance="no")
-        end if
-    end subroutine serialize_json_value
-
-    subroutine serialize_json_array(json_arr, unit)
+    recursive subroutine serialize_json_array(json_arr, unit)
         type(json_array), intent(in) :: json_arr
         integer(int32), intent(in) :: unit
 
@@ -65,14 +43,7 @@ contains
                 n_elements = size(json_arr%array, dim=1, kind=int32)
                 write (unit, "('[')", advance="no")
                 do i_element = 1, n_elements
-                    select type(element => json_arr%array(i_element))
-                        type is (json_value)
-                            call serialize_json_value(element, unit)
-                        type is (json_array)
-                            call serialize_json_array(element, unit)
-                        class default
-                            call serialize_scalar(element, unit)
-                    end select
+                    call serialize_element(json_arr%array(i_element), unit)
                     if (i_element < n_elements) write (unit, "(',')")
                 end do
                 write (unit, "(']')", advance="no")
@@ -82,16 +53,30 @@ contains
         end if
     end subroutine serialize_json_array
 
-    subroutine serialize_key_value_pair(key, value, unit)
+    recursive subroutine serialize_element(element, unit)
+        class(*), intent(in) :: element
+        integer(int32), intent(in) :: unit
+
+        select type(element)
+            type is (json_array)
+                call serialize_json_array(element, unit)
+            type is (json_object)
+                call serialize_json_object(element, unit)
+            class default
+                call serialize_scalar(element, unit)
+        end select
+    end subroutine serialize_element
+
+    recursive subroutine serialize_key_value_pair(key, value, unit)
         character(len=*), intent(in) :: key
-        type(json_value), intent(in) :: value
+        class(*), intent(in) :: value
         integer(int32), intent(in) :: unit
 
         write (unit, "('""', A, '"":')", advance="no") trim(key)
-        call serialize_json_value(value, unit)
+        call serialize_element(value, unit)
     end subroutine serialize_key_value_pair
 
-    subroutine serialize_json_object(json_obj, unit)
+    recursive subroutine serialize_json_object(json_obj, unit)
         type(json_object), intent(in) :: json_obj
         integer(int32), intent(in) :: unit
 
