@@ -157,35 +157,3 @@ contains
         call serialize_array(json_arr, unit, depth)
     end subroutine serialize_json_array
 end module f42_json
-
-! Test idea:
-!   - an array of all possible types
-!   - for simplicity the array type is a self reference and tests recursion simultaneously
-!   - also, the self-containing array is reused as values of the object, and the object is also included in the array
-! 
-! type(json_value), dimension(6), target :: elements
-! type(json_array) :: array
-! type(json_object) :: object
-! character(len=7), dimension(6) :: keys
-! keys(1) = "integer"
-! elements(1)%value => -1_int32
-! keys(2) = "real"
-! elements(2)%value => 1.0_real64
-! keys(3) = "logical"
-! elements(3)%value => .true.
-! keys(4) = "complex"
-! elements(4)%value => cmplx(1.0_real64, -1.0_real64)
-! keys(5) = "array"
-! elements(5)%value => array
-! array%array => elements
-! keys(6) = "object"
-! elements(6)%value => object
-! object%keys => keys
-! object%values => elements
-! 
-! ! Output for serializing `array` should be something like: [-1, 1.0, true, "(1.0, -1.0)", [...], {"integer": -1, ...}]
-! ! Output for serializing `object` should be something like: {"integer": -1, "real": 1.0, "logical": true, "complex": "(1.0, -1.0)", "array": [...], "object": {"integer": -1, ...}}
-
-! Test object first, then array. Just validate a fragment of the output
-!   - for object: until complex value in array
-!   - for array: until complex value

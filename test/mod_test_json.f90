@@ -40,7 +40,7 @@ contains
         type(json_array), target :: array
         type(json_object), target :: object
         character(len=7), dimension(6), target :: keys
-        integer(int32) :: unit, ierr
+        integer(int32) :: unit, ierr, i_element
         integer(int32), target:: test_integer
         real(real64), target:: test_real
         complex(real64), target:: test_complex
@@ -118,6 +118,60 @@ contains
         call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 3 NaN/Inf fragments differ")
         deallocate(expected_fragment, actual_fragment)
         close(unit)
+
+        ! Case 4: Different lengths of json object's key-value arrays
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
+
+        object%keys(1:4) => keys
+        call serialize_json_object(object, unit)
+
+        allocate(character(len=72) :: expected_fragment, actual_fragment)
+        expected_fragment = '{"integer":-2147483647,"real":null,"logical":true,"complex":[null,null]}'
+        rewind(unit)
+        read (unit, "(A)") actual_fragment
+        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 4 json object mismatching key-value lengths fragments differ")
+        deallocate(expected_fragment, actual_fragment)
+        close(unit)
+
+        ! Case 5: unassigned array values
+        do i_element = 1, 4
+            nullify(elements(i_element)%value)
+        end do
+        nullify(object%keys)
+        nullify(elements(5)%value)
+
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
+
+        call serialize_json_array(array, unit)
+
+        allocate(character(len=29) :: expected_fragment, actual_fragment)
+        expected_fragment = '[null,null,null,null,null,{}]'
+        rewind(unit)
+        read (unit, "(A)") actual_fragment
+        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 5 (unassigned array values) fragments differ")
+        deallocate(expected_fragment, actual_fragment)
+        close(unit)
+
+        ! Case 6: unassigned object values
+        elements(5)%value => array
+        object%keys => keys
+        nullify(array%array)
+        nullify(elements(6)%value)
+
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
+
+        call serialize_json_object(object, unit)
+
+        allocate(character(len=83) :: expected_fragment, actual_fragment)
+        expected_fragment = '{"integer":null,"real":null,"logical":null,"complex":null,"array":[],"object":null}'
+        rewind(unit)
+        read (unit, "(A)") actual_fragment
+        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 6 (unassigned object values) fragments differ")
+        deallocate(expected_fragment, actual_fragment)
+        close(unit, status="delete")
     end subroutine test_serialization
 
     !> Run all f42_json tests.
