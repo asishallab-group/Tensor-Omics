@@ -20,6 +20,7 @@ program main
   use mod_test_gene_centroids
   use mod_test_tox_conversions
   use mod_test_arrays
+  use mod_test_knn_smoothing
 
 
   implicit none
@@ -101,7 +102,8 @@ contains
     call add_suite("arrays", run_all_tests_array, run_named_tests_array)
     call add_suite("gene_centroids", run_all_tests_gene_centroids, run_named_tests_gene_centroids)
     call add_suite("tox_conversions", run_all_tests_tox_conversions, run_named_tests_tox_conversions)
-    
+    call add_suite("knn_smoothing", run_all_tests_knn_smoothing, run_named_tests_knn_smoothing)
+
   end subroutine initialize_suites
   
 

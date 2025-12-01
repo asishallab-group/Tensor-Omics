@@ -4,7 +4,7 @@ module kd_tree
     use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH, ERR_SIZE_MISMATCH, set_ok, set_err_once, is_ok, validate_dimension_size
     implicit none
     private
-    public :: build_kd_index, build_spherical_kd, get_kd_point
+    public :: build_kd_index, build_spherical_kd, get_kd_point, kd_knn_query
 
 contains
 
@@ -250,6 +250,230 @@ contains
         
         point_values = points(:, kd_indices(position))
     end subroutine get_kd_point
+
+    !> Efficient k-NN query on pre-built k-d tree
+    !! Finds the k nearest neighbors to a query point using the k-d tree index
+    !! Uses the same range-based traversal as build_kd_index for correctness
+    !! No internal allocations - all workspace provided by caller
+    pure subroutine kd_knn_query(points, kd_indices, num_dimensions, num_points, dimension_order, &
+                                query_point, k_neighbors, neighbors, distances, workspace, ierr)
+        integer(int32), intent(in) :: num_dimensions      !! Number of dimensions
+        integer(int32), intent(in) :: num_points          !! Number of points in dataset
+        integer(int32), intent(in) :: k_neighbors         !! Number of neighbors to find
+        real(real64), intent(in) :: points(num_dimensions, num_points)    !! Original points dataset
+        integer(int32), intent(in) :: kd_indices(num_points)              !! Pre-built k-d tree indices
+        integer(int32), intent(in) :: dimension_order(num_dimensions)     !! Dimension order from tree build
+        real(real64), intent(in) :: query_point(num_dimensions)           !! Query point coordinates
+        integer(int32), intent(out) :: neighbors(k_neighbors)             !! Output: indices of k nearest neighbors
+        real(real64), intent(out) :: distances(k_neighbors)               !! Output: distances to k nearest neighbors
+        real(real64), intent(inout) :: workspace(num_dimensions)          !! Workspace for distance calculations
+        integer(int32), intent(out) :: ierr                               !! Error code
+
+        ! Internal variables - no allocations
+        integer(int32) :: current_best_count
+        integer(int32) :: point_idx, current_dim, i, j
+        integer(int32) :: left_idx, right_idx, mid_idx, current_depth
+        real(real64) :: current_dist, max_dist_in_heap, axis_dist
+        real(real64) :: diff_val
+        logical :: should_explore_left, should_explore_right
+        
+        ! Stack for tree traversal using the SAME structure as build_kd_index
+        integer(int32) :: stack_pos
+        integer(int32) :: range_stack(3, num_points)  ! Same as recursion_stack: [left_idx, right_idx, depth]
+        
+        call set_ok(ierr)
+        
+        ! Input validation
+        if (k_neighbors < 1 .or. k_neighbors > num_points) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            return
+        end if
+        
+        if (num_dimensions < 1 .or. num_points < 1) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            return
+        end if
+
+        ! Initialize neighbor list as empty
+        current_best_count = 0
+        max_dist_in_heap = huge(1.0_real64)
+        
+        ! Initialize traversal stack with the SAME starting condition as build_kd_index
+        stack_pos = 1
+        range_stack(1, 1) = 1                ! left_idx = 1
+        range_stack(2, 1) = num_points       ! right_idx = num_points 
+        range_stack(3, 1) = 0                ! depth = 0
+
+        ! Iterative tree traversal using the SAME range logic as build_kd_index
+        do while (stack_pos > 0)
+            ! Pop from stack
+            left_idx = range_stack(1, stack_pos)
+            right_idx = range_stack(2, stack_pos)
+            current_depth = range_stack(3, stack_pos)
+            stack_pos = stack_pos - 1
+
+            ! Skip empty ranges (same condition as build_kd_index)
+            if (right_idx <= left_idx) cycle
+
+            ! Choose split dimension exactly as build_kd_index does
+            current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)
+
+            ! Find median index exactly as build_kd_index does
+            mid_idx = left_idx + (right_idx - left_idx) / 2
+            
+            ! The median point is at kd_indices(mid_idx)
+            point_idx = kd_indices(mid_idx)
+            
+            ! Calculate squared distance to current point
+            current_dist = 0.0_real64
+            do i = 1, num_dimensions
+                diff_val = query_point(i) - points(i, point_idx)
+                current_dist = current_dist + diff_val * diff_val
+            end do
+            
+            ! Update k-NN list if this point is closer
+            if (current_best_count < k_neighbors) then
+                ! Still have room in the list - simple insertion
+                current_best_count = current_best_count + 1
+                neighbors(current_best_count) = point_idx
+                distances(current_best_count) = current_dist
+                
+                ! Maintain max-heap property by bubbling up if needed
+                call max_heapify_up(distances, neighbors, current_best_count)
+                max_dist_in_heap = distances(1)  ! Root of max-heap is always the maximum
+                
+            else if (current_dist < max_dist_in_heap) then
+                ! Replace the root (maximum element) with new closer neighbor
+                ! This is O(log k) operation instead of O(k) linear search
+                neighbors(1) = point_idx
+                distances(1) = current_dist
+                
+                ! Restore max-heap property by bubbling down from root
+                call max_heapify_down(distances, neighbors, k_neighbors)
+                max_dist_in_heap = distances(1)  ! New root after heapify
+            end if
+            
+            ! Decide which child subtrees to explore based on splitting plane
+            axis_dist = query_point(current_dim) - points(current_dim, point_idx)
+            
+            should_explore_left = .true.
+            should_explore_right = .true.
+            
+            ! Pruning: don't explore subtrees that can't contain closer points
+            if (current_best_count >= k_neighbors) then
+                if (axis_dist > 0.0_real64 .and. axis_dist * axis_dist >= max_dist_in_heap) then
+                    should_explore_left = .false.  ! Query point is far to the right
+                end if
+                if (axis_dist < 0.0_real64 .and. axis_dist * axis_dist >= max_dist_in_heap) then
+                    should_explore_right = .false.  ! Query point is far to the left
+                end if
+            end if
+            
+            ! Add child ranges to stack using EXACTLY the same logic as build_kd_index
+            ! Push right subtree first for depth-first traversal
+            if (should_explore_right .and. mid_idx < right_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = mid_idx + 1      ! left_idx of right subtree
+                range_stack(2, stack_pos) = right_idx        ! right_idx of right subtree
+                range_stack(3, stack_pos) = current_depth + 1 ! depth + 1
+            end if
+            
+            ! Push left subtree
+            if (should_explore_left .and. left_idx < mid_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = left_idx         ! left_idx of left subtree  
+                range_stack(2, stack_pos) = mid_idx - 1      ! right_idx of left subtree
+                range_stack(3, stack_pos) = current_depth + 1 ! depth + 1
+            end if
+        end do
+        
+        ! Convert squared distances to actual distances
+        do i = 1, min(current_best_count, k_neighbors)
+            distances(i) = sqrt(distances(i))
+        end do
+        
+        ! Fill remaining slots if we found fewer than k neighbors
+        do i = current_best_count + 1, k_neighbors
+            neighbors(i) = 0  ! Invalid index indicates no neighbor found
+            distances(i) = huge(1.0_real64)
+        end do
+        
+    end subroutine kd_knn_query
+
+    !> Maintain max-heap property by bubbling element up from given position
+    !! Used when inserting new elements into the heap
+    pure subroutine max_heapify_up(distances, neighbors, pos)
+        real(real64), intent(inout) :: distances(:)     !! Distance array (heap)
+        integer(int32), intent(inout) :: neighbors(:)   !! Neighbor indices (heap)
+        integer(int32), intent(in) :: pos               !! Position to bubble up from
+        
+        integer(int32) :: parent_pos, current_pos
+        real(real64) :: temp_dist
+        integer(int32) :: temp_neighbor
+        
+        current_pos = pos
+        
+        ! Bubble up while current element is larger than its parent
+        do while (current_pos > 1)
+            parent_pos = current_pos / 2
+            
+            ! If heap property is satisfied, stop
+            if (distances(current_pos) <= distances(parent_pos)) exit
+            
+            ! Swap current with parent
+            temp_dist = distances(current_pos)
+            temp_neighbor = neighbors(current_pos)
+            distances(current_pos) = distances(parent_pos)
+            neighbors(current_pos) = neighbors(parent_pos)
+            distances(parent_pos) = temp_dist
+            neighbors(parent_pos) = temp_neighbor
+            
+            current_pos = parent_pos
+        end do
+    end subroutine max_heapify_up
+
+    !> Maintain max-heap property by bubbling element down from root
+    !! Used when replacing the maximum element (root) of the heap
+    pure subroutine max_heapify_down(distances, neighbors, heap_size)
+        real(real64), intent(inout) :: distances(:)     !! Distance array (heap)
+        integer(int32), intent(inout) :: neighbors(:)   !! Neighbor indices (heap)
+        integer(int32), intent(in) :: heap_size         !! Size of the heap
+        
+        integer(int32) :: current_pos, left_child, right_child, largest_pos
+        real(real64) :: temp_dist
+        integer(int32) :: temp_neighbor
+        
+        current_pos = 1  ! Start from root
+        
+        ! Bubble down while heap property is violated
+        do
+            left_child = 2 * current_pos
+            right_child = 2 * current_pos + 1
+            largest_pos = current_pos
+            
+            ! Find the position with largest distance among current, left child, right child
+            if (left_child <= heap_size .and. distances(left_child) > distances(largest_pos)) then
+                largest_pos = left_child
+            end if
+            
+            if (right_child <= heap_size .and. distances(right_child) > distances(largest_pos)) then
+                largest_pos = right_child
+            end if
+            
+            ! If heap property is satisfied, stop
+            if (largest_pos == current_pos) exit
+            
+            ! Swap current with the largest child
+            temp_dist = distances(current_pos)
+            temp_neighbor = neighbors(current_pos)
+            distances(current_pos) = distances(largest_pos)
+            neighbors(current_pos) = neighbors(largest_pos)
+            distances(largest_pos) = temp_dist
+            neighbors(largest_pos) = temp_neighbor
+            
+            current_pos = largest_pos
+        end do
+    end subroutine max_heapify_down
 
 end module kd_tree
 
