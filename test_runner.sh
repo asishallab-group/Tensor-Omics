@@ -64,6 +64,7 @@ echo "Compiling test modules..."
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
   -I$BUILD_DIR \
   -c $TEST_DIR/*.[fF]90
+check_exit_code "Test compilation failed"
 
 # Move object files to build/
 mv *.o $BUILD_DIR/ 2>/dev/null || true
@@ -80,9 +81,10 @@ $COMPILER $FLAGS -I$BUILD_DIR \
 
 check_exit_code "Executable compilation failed"
 
-rm -f test_*.bin
-rm -f test_*.zip
 rm -f manifest.txt
+rm -f test_*.zip
+rm -f test_*.bin
+rm -f test_*.txt
 
 echo "Running tests..."
 # Run the executable
@@ -90,13 +92,12 @@ $EXECUTABLE $ARGS
 
 check_exit_code "Tests failed"
 
-if [[ -z "$KEEP_BIN" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.bin
-fi
-if [[ -z "$KEEP_ZIP" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.zip
-fi
-if [[ -z "$KEEP_TXT" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.txt
-  rm -f manifest.txt
+if [[ -z "$KEEP_FILES" ]]; then
+  for file in test_*.zip test_*.bin test_*.txt manifest.txt; do
+    extension="${file##*.}"
+    keep_var="KEEP_${extension^^}"
+    if [[ -z "${!keep_var-}" ]]; then
+        rm -f "$file"
+    fi
+  done
 fi

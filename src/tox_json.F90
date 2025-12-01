@@ -1,7 +1,12 @@
 module tox_json
-    use, intrinsic :: iso_fortran_env, only: int32
+    use safeguard
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
 
     private
+
+    public :: json_array, json_object, json_value
+    public :: serialize_json_array, serialize_json_object
 
     type :: json_value
         class(*), pointer :: value => null()
@@ -17,26 +22,39 @@ module tox_json
     end type json_object
 
     integer(int32) :: MAX_RECURSION_DEPTH = 20
-
-    public :: json_array, json_object, json_value
-    public :: serialize_json_array, serialize_json_object
 contains
+
+    subroutine serialize_real(real_num, unit)
+        real(real64), intent(in) :: real_num
+        integer(int32), intent(in) :: unit
+
+        if (ieee_is_nan(real_num) .or. .not. ieee_is_finite(real_num)) then
+            write (unit, "('null')", advance="no")
+        else
+            write (unit, "(ES24.16E3)", advance="no") real_num
+        end if
+    end subroutine serialize_real
 
     subroutine serialize_scalar(scalar, unit)
         class(*), intent(in) :: scalar
         integer(int32), intent(in) :: unit
 
         select type(scalar)
-            type is (integer)
+            type is (integer(int32))
                 write (unit, "(G0)", advance="no") scalar
-            type is (real)
-                write (unit, "(G0)", advance="no") scalar
+            type is (real(real64))
+                call serialize_real(scalar, unit)
             type is (logical)
                 write (unit, "(A)", advance="no") trim(merge("true ", "false", scalar))
             type is (character(*))
                 write (unit, "('""', A, '""')", advance="no") trim(scalar)
-            type is (complex)
-                write (unit, "('[',G0,',',G0,']')", advance="no") scalar
+            type is (complex(real64))
+                ! Serialize as array [r, i]
+                write (unit, "('[')", advance="no")
+                call serialize_real(real(scalar), unit)
+                write (unit, "(',')", advance="no")
+                call serialize_real(aimag(scalar), unit)
+                write (unit, "(']')", advance="no")
             class default
                 write (unit, "('null')", advance="no")
         end select
@@ -47,25 +65,19 @@ contains
         integer(int32), intent(in) :: unit
         integer(int32), intent(inout) :: depth
 
-        depth = depth + 1
-        if (depth < MAX_RECURSION_DEPTH) then
-            write (unit, "('[')", advance="no")
-            if (associated(json_arr%array)) then
-                block
-                    integer(int32) :: n_elements, i_element
+        write (unit, "('[')", advance="no")
+        if (associated(json_arr%array)) then
+            block
+                integer(int32) :: n_elements, i_element
 
-                    n_elements = size(json_arr%array, dim=1, kind=int32)
-                    do i_element = 1, n_elements
-                        call serialize_json_value(json_arr%array(i_element), unit, depth)
-                        if (i_element < n_elements) write (unit, "(',')")
-                    end do
-                end block
-            end if
-            write (unit, "(']')", advance="no")
-        else
-            write (unit, "('null')", advance="no")
+                n_elements = size(json_arr%array, dim=1, kind=int32)
+                do i_element = 1, n_elements
+                    call serialize_json_value(json_arr%array(i_element), unit, depth)
+                    if (i_element < n_elements) write (unit, "(',')", advance="no")
+                end do
+            end block
         end if
-        depth = depth - 1
+        write (unit, "(']')", advance="no")
     end subroutine serialize_array
 
     recursive subroutine serialize_json_value(element, unit, depth)
@@ -73,22 +85,26 @@ contains
         integer(int32), intent(in) :: unit
         integer(int32), intent(inout) :: depth
 
-        select type(element)
-            type is (json_array)
-                call serialize_array(element, unit, depth)
-            type is (json_object)
-                call serialize_object(element, unit, depth)
-            type is (json_value)
-                depth = depth + 1
-                if (associated(element%value) .and. depth < MAX_RECURSION_DEPTH) then
-                    call serialize_json_value(element%value, unit, depth)
-                else
-                    write (unit, "('null')", advance="no")
-                end if
-                depth = depth - 1
-            class default
-                call serialize_scalar(element, unit)
-        end select
+        if (depth < MAX_RECURSION_DEPTH) then
+            depth = depth + 1
+            select type(element)
+                type is (json_array)
+                    call serialize_array(element, unit, depth)
+                type is (json_object)
+                    call serialize_object(element, unit, depth)
+                type is (json_value)
+                    if (associated(element%value)) then
+                        call serialize_json_value(element%value, unit, depth)
+                    else
+                        write (unit, "('null')", advance="no")
+                    end if
+                class default
+                    call serialize_scalar(element, unit)
+            end select
+            depth = depth - 1
+        else
+            write (unit, "('null')", advance="no")
+        end if
     end subroutine serialize_json_value
 
     recursive subroutine serialize_key_value_pair(key, value, unit, depth)
@@ -106,25 +122,19 @@ contains
         integer(int32), intent(in) :: unit
         integer(int32), intent(inout) :: depth
 
-        depth = depth + 1
-        if (depth < MAX_RECURSION_DEPTH) then
-            write (unit, "('{')", advance="no")
-            if (associated(json_obj%keys) .and. associated(json_obj%values)) then
-                block
-                    integer(int32) :: n_entries, i_entry
+        write (unit, "('{')", advance="no")
+        if (associated(json_obj%keys) .and. associated(json_obj%values)) then
+            block
+                integer(int32) :: n_entries, i_entry
 
-                    n_entries = size(json_obj%keys, dim=1, kind=int32)
-                    do i_entry = 1, n_entries
-                        call serialize_key_value_pair(json_obj%keys(i_entry), json_obj%values(i_entry), unit, depth)
-                        if (i_entry < n_entries) write (unit, "(',')")
-                    end do
-                end block
-            end if
-            write (unit, "('}')", advance="no")
-        else
-            write (unit, "('null')", advance="no")
+                n_entries = min(size(json_obj%keys, dim=1, kind=int32), size(json_obj%values, dim=1, kind=int32))
+                do i_entry = 1, n_entries
+                    call serialize_key_value_pair(json_obj%keys(i_entry), json_obj%values(i_entry), unit, depth)
+                    if (i_entry < n_entries) write (unit, "(',')", advance="no")
+                end do
+            end block
         end if
-        depth = depth - 1
+        write (unit, "('}')", advance="no")
     end subroutine serialize_object
 
     subroutine serialize_json_object(json_obj, unit)
@@ -156,7 +166,7 @@ end module tox_json
 ! type(json_value), dimension(6), target :: elements
 ! type(json_array) :: array
 ! type(json_object) :: object
-! character(len=7), dimension(4) :: keys
+! character(len=7), dimension(6) :: keys
 ! keys(1) = "integer"
 ! elements(1)%value => -1_int32
 ! keys(2) = "real"

@@ -25,6 +25,7 @@ program main
   use mod_test_outlier_detection
   use mod_test_tox_trajectory_contribution_analysis
   use mod_test_tox_clustering
+  use mod_test_json
 
   implicit none
 
@@ -85,7 +86,7 @@ contains
     allocate(available_suites(0))
     
     call add_suite("bst", run_all_tests_bst, run_named_tests_bst)
-  call add_suite("edf", run_all_tests_edf, run_named_tests_edf)
+    call add_suite("edf", run_all_tests_edf, run_named_tests_edf)
     call add_suite("k-d-tree", run_all_tests_kd_tree, run_named_tests_kd_tree)
     call add_suite("sorting", run_all_tests_sorting, run_named_tests_sorting)
     call add_suite("get_outliers",run_all_tests_get_outliers, run_named_tests_get_outliers)
@@ -110,6 +111,7 @@ contains
     call add_suite("outlier_detection", run_all_tests_outlier_detection, run_named_tests_outlier_detection)
     call add_suite("tox_trajectory_contribution_analysis", run_all_tests_tox_trajectory_contribution_analysis, run_named_tests_tox_trajectory_contribution_analysis)
     call add_suite("tox_clustering", run_all_tests_tox_clustering, run_named_tests_tox_clustering)
+    call add_suite("tox_json", run_all_tests_tox_json, run_named_tests_tox_json)
   end subroutine initialize_suites
   
 

@@ -815,7 +815,7 @@ contains
     integer(int32), allocatable :: read_int_2d(:,:)
     real(real64), allocatable :: read_real_1d(:)
     real(real64), allocatable :: read_real_2d(:,:)
-    character(len=20), allocatable :: read_char_1d(:)
+    character(len=:), allocatable :: read_char_1d(:)
     
     call set_ok(ierr)
     
