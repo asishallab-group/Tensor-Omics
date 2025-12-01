@@ -1,4 +1,4 @@
-module tox_json
+module f42_json
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
@@ -156,7 +156,7 @@ contains
         depth = 0_int32
         call serialize_array(json_arr, unit, depth)
     end subroutine serialize_json_array
-end module tox_json
+end module f42_json
 
 ! Test idea:
 !   - an array of all possible types

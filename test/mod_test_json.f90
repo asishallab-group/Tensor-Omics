@@ -1,9 +1,9 @@
-!> Unit test suite for tox_json routine.
+!> Unit test suite for f42_json routine.
 module mod_test_json
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
-    use tox_json
+    use f42_json
     use tox_errors
     implicit none
 
@@ -27,7 +27,7 @@ contains
     function get_all_tests() result(all_tests)
         type(test_case) :: all_tests(1)
 
-        all_tests(1) = test_case("test_tox_json_serialization", test_serialization)
+        all_tests(1) = test_case("test_f42_json_serialization", test_serialization)
     end function get_all_tests
 
     subroutine test_serialization
@@ -120,8 +120,8 @@ contains
         close(unit)
     end subroutine test_serialization
 
-    !> Run all tox_json tests.
-    subroutine run_all_tests_tox_json
+    !> Run all f42_json tests.
+    subroutine run_all_tests_f42_json
         type(test_case), allocatable :: all_tests(:)
         integer(int32) :: i
 
@@ -131,11 +131,11 @@ contains
             call all_tests(i)%test_proc()
             print "(' ',A,' passed.')", trim(all_tests(i)%name)
         end do
-        print *, "All tox_json tests passed successfully."
-    end subroutine run_all_tests_tox_json
+        print *, "All f42_json tests passed successfully."
+    end subroutine run_all_tests_f42_json
 
-    !> Run specific tox_json tests by name.
-    subroutine run_named_tests_tox_json(test_names)
+    !> Run specific f42_json tests by name.
+    subroutine run_named_tests_f42_json(test_names)
         character(len=*), intent(in) :: test_names(:)
         type(test_case), allocatable :: all_tests(:)
         integer(int32) :: i, j
@@ -157,5 +157,5 @@ contains
                 print *, "Unknown test: ", trim(test_names(i))
             end if
         end do
-    end subroutine run_named_tests_tox_json
+    end subroutine run_named_tests_f42_json
 end module mod_test_json

@@ -111,7 +111,7 @@ contains
     call add_suite("outlier_detection", run_all_tests_outlier_detection, run_named_tests_outlier_detection)
     call add_suite("tox_trajectory_contribution_analysis", run_all_tests_tox_trajectory_contribution_analysis, run_named_tests_tox_trajectory_contribution_analysis)
     call add_suite("tox_clustering", run_all_tests_tox_clustering, run_named_tests_tox_clustering)
-    call add_suite("tox_json", run_all_tests_tox_json, run_named_tests_tox_json)
+    call add_suite("f42_json", run_all_tests_f42_json, run_named_tests_f42_json)
   end subroutine initialize_suites
   
 
