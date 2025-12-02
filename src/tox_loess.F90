@@ -470,56 +470,64 @@ contains
   ! Local weighted regression around one point (direct method)
   !----------------------------------------------------------------------
   subroutine local_fit_at_point_direct(d, n, x, y, w, z, k, degree, yhat)
+    use f42_utils, only: quicksort_real
     integer(int32), intent(in)  :: d, n, k, degree
     real(real64),   intent(in)  :: x(d,n), y(n), w(n), z(d)
     real(real64),   intent(out) :: yhat
 
-    ! We find the k nearest neighbors of z in x (Euclidean),
-    ! compute tricube weights (scaled by max distance among the k),
-    ! and fit local polynomial of given degree (0,1,2).
-
-    integer(int32) :: i, t, p, ii
+    integer(int32) :: i, p, ii
     integer(int32) :: nn(k)
-    real(real64)   :: dists(n), dmax, wt(n)
-    real(real64)   :: Xrow(64)   ! supports up to p<=64 terms (safe for d<=4, degree<=2)
-    real(real64)   :: XtWX(64,64), XtWy(64), beta(64)
+    real(real64)   :: dists(n), dmax, wt(n), u
+    real(real64)   :: Xrow(64), XtWX(64,64), XtWy(64), beta(64)
+    ! --- Variables for sorting ---
+    real(real64)   :: k_dists(k)
+    integer(int32) :: perm(k), stack_left(k), stack_right(k)
 
-    ! 1) compute all distances
+    ! 1) Compute all distances
     do i = 1, n
       dists(i) = euclid2(d, x(:,i), z)
     end do
 
-    ! 2) select k nearest indices (partial selection)
+    ! 2) Find k nearest neighbors
     call select_k_smallest(dists, n, k, nn)
 
-    ! 3) bandwidth = max distance among k; avoid zero
-    dmax = ZERO
+    ! 3) Bandwidth = k-th distance (sorted), not maximum distance
+    ! Extract the k neighbor distances
     do i = 1, k
-      if (dists(nn(i)) > dmax) dmax = dists(nn(i))
+      k_dists(i) = dists(nn(i))
+      perm(i) = i  ! Permutation for positions 1..k in k_dists
     end do
+    
+    ! Sort k_dists indirectly via perm
+    call quicksort_real(k_dists, perm, k, stack_left, stack_right)
+    
+    ! k_dists is now sorted, perm(k) points to the largest distance
+    dmax = k_dists(perm(k))
     if (dmax <= EPS) dmax = EPS
 
-    ! 4) set weights (tricube((1 - (d/dmax)^3)^3)) * data weights
+    ! 4) CORRECT: Tricube weights using the FIXED tricube function
     do i = 1, n
       wt(i) = ZERO
     end do
     do i = 1, k
-      wt(nn(i)) = tricube( max(ZERO, ONE - (dists(nn(i))/dmax)) ) * max(EPS, w(nn(i)))
+      u = dists(nn(i)) / dmax
+      ! NOW CORRECT: tricube returns (1 - u³)³ for u<1, 0 otherwise
+      wt(nn(i)) = tricube(u) * max(EPS, w(nn(i)))
     end do
 
-    ! 5) build and solve normal equations for local poly at z
+    ! 5) Build normal equations
     p = num_terms(d, degree)
     call zero_mat_vec(XtWX, XtWy, p)
-
     do i = 1, k
       ii = nn(i)
-      call build_design_row(d, degree, x(:,ii), z, Xrow, p)
-      call accumulate_normal_eq(XtWX, XtWy, Xrow, y(ii), wt(ii), p)
+      if (wt(ii) > ZERO) then
+        call build_design_row(d, degree, x(:,ii), z, Xrow, p)
+        call accumulate_normal_eq(XtWX, XtWy, Xrow, y(ii), wt(ii), p)
+      end if
     end do
 
+    ! 6) Solve and predict
     call solve_sym_posdef(XtWX, XtWy, beta, p)
-
-    ! prediction at z uses design vector at z (centered: x-z gives zeros for linear terms)
     call build_design_row(d, degree, z, z, Xrow, p)
     yhat = dot_p(Xrow, beta, p)
   end subroutine local_fit_at_point_direct
@@ -528,59 +536,67 @@ contains
   ! Local weighted regression around one point (K-d tree optimized)
   !----------------------------------------------------------------------
   subroutine local_fit_at_point_kdtree(d, n, x, y, w, z, k, degree, kd_indices, dimension_order, yhat)
+    use f42_utils, only: quicksort_real
     integer(int32), intent(in)  :: d, n, k, degree
     real(real64),   intent(in)  :: x(d,n), y(n), w(n), z(d)
     integer(int32), intent(in)  :: kd_indices(n), dimension_order(d)
     real(real64),   intent(out) :: yhat
 
-    ! We use K-d tree to find the k nearest neighbors of z in x,
-    ! compute tricube weights, and fit local polynomial.
-    ! For safety, limit k to avoid stack overflow.
-
     integer(int32) :: i, p, ii, ierr, k_safe
-    integer(int32) :: nn(MAX_SAFE_K)  ! Use safe maximum
-    real(real64)   :: dists(MAX_SAFE_K), dmax, wt(n)
-    real(real64)   :: Xrow(64)   ! supports up to p<=64 terms (safe for d<=4, degree<=2)
-    real(real64)   :: XtWX(64,64), XtWy(64), beta(64)
+    integer(int32) :: nn(MAX_SAFE_K)
+    real(real64)   :: dists(MAX_SAFE_K), dmax, wt(n), u
+    real(real64)   :: Xrow(64), XtWX(64,64), XtWy(64), beta(64)
     real(real64)   :: kd_workspace(d)
+    ! --- Variables for sorting ---
+    integer(int32) :: perm(MAX_SAFE_K), stack_left(MAX_SAFE_K), stack_right(MAX_SAFE_K)
 
     ! Limit k to safe value to avoid stack overflow
     k_safe = min(k, MAX_SAFE_K)
 
-    ! 1) Use K-d tree to find k_safe nearest neighbors
+    ! 1) K-d tree query for k_safe nearest neighbors
     call kd_knn_query(x, kd_indices, d, n, dimension_order, z, k_safe, nn, dists, kd_workspace, ierr)
-
     if (ierr /= 0) then
       ! Fallback to direct method if K-d query fails
       call local_fit_at_point_direct(d, n, x, y, w, z, k, degree, yhat)
       return
     end if
 
-    ! 2) bandwidth = max distance among k_safe; avoid zero
-    dmax = maxval(dists(1:k_safe))
+    ! 2) CORRECT: Bandwidth = k_safe-th distance (sorted)
+    ! dists already contains the k_safe distances
+    do i = 1, k_safe
+      perm(i) = i  ! Permutation for positions 1..k_safe in dists
+    end do
+    
+    ! Sort dists(1:k_safe) indirectly via perm
+    call quicksort_real(dists, perm, k_safe, stack_left, stack_right)
+    
+    ! dists(perm(k_safe)) is the k_safe-th (largest) distance
+    dmax = dists(perm(k_safe))
     if (dmax <= EPS) dmax = EPS
 
-    ! 3) set weights (tricube((1 - (d/dmax)^3)^3)) * data weights
+    ! 3) CORRECT: Tricube weights using the FIXED tricube function
     do i = 1, n
       wt(i) = ZERO
     end do
     do i = 1, k_safe
-      wt(nn(i)) = tricube( max(ZERO, ONE - (dists(i)/dmax)) ) * max(EPS, w(nn(i)))
+      u = dists(i) / dmax
+      ! NOW CORRECT: tricube returns (1 - u³)³ for u<1, 0 otherwise
+      wt(nn(i)) = tricube(u) * max(EPS, w(nn(i)))
     end do
 
-    ! 4) build and solve normal equations for local poly at z
+    ! 4) Build normal equations
     p = num_terms(d, degree)
     call zero_mat_vec(XtWX, XtWy, p)
-
     do i = 1, k_safe
       ii = nn(i)
-      call build_design_row(d, degree, x(:,ii), z, Xrow, p)
-      call accumulate_normal_eq(XtWX, XtWy, Xrow, y(ii), wt(ii), p)
+      if (wt(ii) > ZERO) then
+        call build_design_row(d, degree, x(:,ii), z, Xrow, p)
+        call accumulate_normal_eq(XtWX, XtWy, Xrow, y(ii), wt(ii), p)
+      end if
     end do
 
+    ! 5) Solve and predict
     call solve_sym_posdef(XtWX, XtWy, beta, p)
-
-    ! prediction at z uses design vector at z (centered: x-z gives zeros for linear terms)
     call build_design_row(d, degree, z, z, Xrow, p)
     yhat = dot_p(Xrow, beta, p)
   end subroutine local_fit_at_point_kdtree
@@ -603,8 +619,15 @@ contains
   real(real64) function tricube(u)
     real(real64), intent(in) :: u
     real(real64) :: t
-    t = max(ZERO, min(ONE, u))
-    tricube = (ONE - (ONE - t)**3)**3
+
+    t = min(ONE, max(ZERO, u))
+    
+    ! Standard-Tricube-Kernel: (1 - t³)³
+    if (t >= ONE) then
+      tricube = ZERO
+    else
+      tricube = (ONE - t**3)**3
+    end if
   end function tricube
 
   ! Alias for sliding window compatibility
@@ -1360,7 +1383,8 @@ contains
       temp_real = sorted_dists(i)
       temp_int = indices(i)
       j = i - 1
-      do while (j >= 1 .and. sorted_dists(j) > temp_real)
+      do while (j >= 1)
+        if (sorted_dists(j) <= temp_real) exit
         sorted_dists(j + 1) = sorted_dists(j)
         indices(j + 1) = indices(j)
         j = j - 1
@@ -1401,14 +1425,15 @@ contains
   !----------------------------------------------------------------------
   function r_tricube_exact(u) result(weight)
     real(real64), intent(in) :: u
-    real(real64) :: weight
+    real(real64) :: weight, u_adj
     
-    if (u >= ONE) then
+    ! Add tiny epsilon to avoid u exactly equal to 1
+    u_adj = min(ONE - 1.0e-15_real64, u)
+    
+    if (u_adj >= ONE) then
       weight = ZERO
     else
-      ! R's exact formula: ((1 - u³)³) 
-      ! This exactly matches R's lowess.c: fcube(1.-fcube(r/h))
-      weight = (ONE - u**3)**3
+      weight = (ONE - u_adj**3)**3
     end if
   end function r_tricube_exact
 
