@@ -277,6 +277,166 @@ Importantly, smoothed vectors are not used to further smooth neighboring grid po
 
 \textbf{Interpretation:} Interpolation constructs a continuous field over grid coordinates. Smoothing reinforces continuity and prepares the field for robust downstream operations such as flow estimation, rotation analysis, or module surface detection.
 
+\section{ANWIL: Adaptive Nadaraya--Watson smoothIng paralleLized}
+\label{anwil}
+
+ANWIL is the default local smoother used throughout Tensor~Omics.
+It implements a vector-valued, adaptive Nadaraya--Watson estimator using
+Gaussian kernels and adaptive neighbourhood selection via \(k\)-nearest
+neighbour (kNN) search.  
+All smoothing operations in Tensor~Omics are performed pointwise and in
+parallel in the ambient space \(\mathbb{R}^d\), preserving the semantic
+meaning of the axes and avoiding any distortion of the data.
+
+\subsection{Definition}
+
+Let \(\vec{v} \in \mathbb{R}^d\) be a point to be smoothed, and let
+\(\{\vec{v}_j\}_{j=1}^n\) denote the ambient module vectors from which 
+local structure is estimated.  
+ANWIL proceeds in three conceptual steps:
+
+\paragraph{(1) Adaptive Neighbourhood Selection.}
+For the query point \(\vec{v}\), ANWIL identifies its 
+\(k_{\mathrm{nn}}\) nearest neighbours in the ambient space,
+\[
+  \mathcal{N}(\vec{v}) 
+  = \mathrm{kNN}\!\bigl(\vec{v}, \{\vec{v}_j\}_{j=1}^n, k_{\mathrm{nn}}\bigr).
+\]
+The value of \(k_{\mathrm{nn}}\) may be fixed or selected adaptively (e.g.\
+via an elbow criterion or a local RMSE score).
+
+\paragraph{(2) Local Bandwidth Estimation.}
+The kernel bandwidth \(\sigma(\vec{v})\) is determined from the distances 
+to the selected neighbours.  
+A typical choice is a multiple of the median neighbour distance,
+\[
+  \sigma(\vec{v}) 
+    = c \cdot \mathrm{median}\!\left\{ 
+          \bigl\|\vec{v} - \vec{v}_j\bigr\|_2 
+          : j \in \mathcal{N}(\vec{v})
+        \right\},
+\]
+with a user-defined constant \(c > 0\).
+
+\paragraph{(3) Adaptive Gaussian Smoothing.}
+ANWIL computes a weighted average of the ambient vectors in the local 
+neighbourhood using a Gaussian kernel with the adaptive bandwidth
+\(\sigma(\vec{v})\):
+\[
+  \mathrm{ANWIL}(\vec{v}) 
+    = \frac{
+        \displaystyle
+        \sum_{j \in \mathcal{N}(\vec{v})}
+          \exp\!\left(
+            -\frac{
+                \|\vec{v} - \vec{v}_j\|_2^2
+              }{
+                2\,\sigma(\vec{v})^2
+              }
+          \right) \vec{v}_j
+      }{
+        \displaystyle
+        \sum_{j \in \mathcal{N}(\vec{v})}
+          \exp\!\left(
+            -\frac{
+                \|\vec{v} - \vec{v}_j\|_2^2
+              }{
+                2\,\sigma(\vec{v})^2
+              }
+          \right)
+      }.
+\]
+This yields a smoothed vector
+\[
+  \tilde{\vec{v}} = \mathrm{ANWIL}(\vec{v}) \in \mathbb{R}^d.
+\]
+
+\subsection{Properties and Usage in Tensor~Omics}
+
+ANWIL is embarrassingly parallel:  
+each call to \(\mathrm{ANWIL}(\vec{v})\) depends only on local distances and
+can be executed independently of all others, making it ideal for 
+multi-core, SIMD, or coarray Fortran implementations.
+
+Because ANWIL uses only the original ambient vectors as regression targets,
+it preserves all semantic coordinate meanings and does not introduce 
+external structure or projection artefacts.
+
+By integrating adaptive neighbourhood selection, local bandwidth estimation,
+and parallel Gaussian kernel smoothing, ANWIL provides a robust, 
+context-aware estimator of local structure in high-dimensional semantic 
+vector spaces.
+
+\subsection{Choice of the Kernel Constant \texorpdfstring{$c$}{c}}
+
+In ANWIL the kernel bandwidth is defined as
+\[
+  \sigma(\vec{v}) 
+    = c \cdot 
+      \mathrm{median}\!\left\{
+        \|\vec{v} - \vec{v}_j\|_2 : j \in \mathcal{N}(\vec{v})
+      \right\},
+\]
+so the constant \(c\) determines how rapidly the Gaussian kernel decays around
+each query point.  
+Selecting \(c\) requires accounting for the behaviour of distances in
+high-dimensional ambient spaces.
+
+\paragraph{Distance concentration in high dimensions.}
+If ambient vectors follow a locally Gaussian distribution in 
+\(\mathbb{R}^d\), then the squared radius
+\[
+  R^2 = \|X\|_2^2
+\]
+is \(\chi^2_d\)-distributed.  
+The median radius satisfies
+\[
+  r_{0.5} \approx \sqrt{d\left(1 - \frac{2}{9d}\right)^3}
+  \approx \sqrt{d}
+\quad (d \gg 1).
+\]
+Thus, in high dimensions, \emph{all} neighbour distances cluster tightly
+around the typical radius: the minimum, mean, and median distances differ only
+slightly.  
+Consequently, choosing \(c\) too large produces an overly wide kernel that
+treats nearly all neighbours as equally informative.
+
+\paragraph{Practical guidance.}
+A well-established rule from diffusion maps and kernel density estimation is
+\[
+  \sigma^2 \approx \frac{\mathrm{median}(d_{ij}^2)}{\log n},
+\]
+which corresponds to
+\[
+  c \approx \frac{1}{\sqrt{\log n}},
+\]
+where \(n\) is the local neighbour count.  
+For typical choices \(n \in [30, 80]\), this yields
+\[
+  c \approx 0.3 \text{ to } 0.6.
+\]
+
+\paragraph{Recommended range and default.}
+Across all tested Tensor~Omics applications (gene expression vector spaces,
+semantic socioeconomic vectors, and synthetic manifolds), stable and 
+geometry-preserving smoothing is obtained for
+\[
+  c \in [0.3,\, 0.6].
+\]
+A robust default is
+\[
+  c = 0.5,
+\]
+which reflects the natural local scale implied by high-dimensional distance
+concentration and avoids both oversmoothing (\(c > 1\)) and undersmoothing
+(\(c < 0.3\)).
+
+\paragraph{Optional tuning.}
+If desired, \(c\) can be refined by an elbow search over candidate values, 
+minimising local or global RMSE.  
+In practice, this tuning almost always selects values close to the 
+recommended \(c = 0.5\).
+
 \section{Empirical Distribution Estimation}
 \label{sec:empirical_distribution}
 
@@ -1353,6 +1513,314 @@ These descriptors allow a model-free geometric interpretation of high-dimensiona
 Together, they enable systematic comparison of complex omics or physical fields, 
 revealing patterns of coherence, divergence, and functional rotation 
 in spaces where traditional differential or statistical models fail.
+
+\section{Manifold Learning — ``ManLe''}
+\label{sec:manle}
+
+\subsection{Motivation: Manifolds in Semantic Vector Spaces}
+
+In Tensor~Omics we represent biological or socio\-economic conditions as 
+vectors in a high--dimensional semantic space.  
+Each axis corresponds to a meaningful measurement (e.g.\ tissue, time point, 
+gender equality indicator, mortality rate), and each module is a set of such 
+vectors that share a common biological or conceptual context (e.g.\ a gene 
+family, a group of countries, or a subset of trajectories).
+
+Empirically, many modules do not fill the ambient space uniformly.  
+Instead, their vectors cluster along low--dimensional, smooth structures that 
+can be approximated by \emph{manifolds}: curves or surfaces embedded in the 
+high--dimensional ambient space.  
+A one--dimensional manifold can be visualised as a smooth curve threading 
+through the cloud of module vectors; a two--dimensional manifold as a smooth 
+surface.  
+Learning such a manifold provides a concise, geometry--preserving summary of 
+how a module varies, without destroying the meaning of the original axes.
+
+A simple example of a manifold is Earth's surface which locally appears as a
+two dimensional Euclidean space, but in higher dimensions is curved around a
+sphere, i.e. our planet.
+
+We denote the resulting Manifold Learning method by ManLe (pronounce
+``manly'').  ManLe constructs a low--dimensional principal manifold for each
+module using a combination of singular value decomposition (SVD) and adaptive
+kernel smoothing in the ambient space.
+
+\subsection{Scientific Questions Addressed by ManLe}
+
+\subsubsection{Gene Expression Modules}
+
+In gene expression applications, a module may consist of vectors representing 
+expression patterns of genes across tissues, time points, or conditions.  
+The manifold learned by ManLe allows us, for example, to address the 
+following questions:
+\begin{itemize}
+  \item Does a gene family follow a coherent one--dimensional trajectory 
+        through expression space (e.g.\ along development or stress), or 
+        does it span a higher--dimensional sheet?
+  \item How curved is this trajectory, and at which regions does it bend, 
+        slow down, or change direction?
+  \item How do manifolds of different modules compare, e.g.\ tandem 
+        duplicates versus non--duplicates, or different functional classes?
+\end{itemize}
+In later sections, these manifolds form the basis for trajectory analyses, 
+including velocity, acceleration, and field descriptors such as flow and 
+rotation.
+
+\subsubsection{World Bank Socio\-economic Trajectories}
+
+In the World Bank example, each vector encodes a country's state in a given 
+year, with axes such as female and male illiteracy, income, mortality, 
+unemployment rates, and gender equality indicators.  
+Modules can represent groups of countries (e.g.\ high--income, 
+low--income, developing), or subsets of indicators.
+
+ManLe can then address questions such as:
+\begin{itemize}
+  \item Do different country groups follow distinct low--dimensional 
+        development curves in this space?
+  \item Are there characteristic bends or plateaus along these curves, 
+        indicating phases of rapid improvement or stagnation in gender 
+        equality or human development?
+  \item How similar or dissimilar are the manifolds of different country 
+        groups when compared as geometric objects?
+\end{itemize}
+
+\subsection{ManLe as a Smoother}
+
+Besides serving as a geometric summary, the ManLe manifold can also be used 
+as a smoother.  
+If we interpret the observed module vectors as noisy samples around an 
+underlying low--dimensional trajectory or surface, the manifold learned by 
+ManLe provides a denoised representation.  
+This smoothed manifold is then used to derive more stable estimates of 
+trajectory quantities such as velocity, acceleration, and local curvature, 
+both for gene expression and socio\-economic data.
+
+\subsection{Notation and Singular Values}
+
+Let a module be represented by vectors
+\[
+  \vec{v}_1, \dots, \vec{v}_n \in \mathbb{R}^d,
+\]
+and collect them as columns of a matrix
+\[
+  M = \bigl[\vec{v}_1 \;\; \dots \;\; \vec{v}_n\bigr] \in \mathbb{R}^{d \times n}.
+\]
+We denote shift vectors between points by \(\vec{s}\) (e.g.\ 
+\(\vec{s} = \vec{v}_j - \vec{v}_i\)).  
+To avoid overloading this letter or the representation of standard deviation
+($\sigma$), we denote singular values of \(M\) by \(\zeta_i\).
+The singular value decomposition of \(M\) is written as
+\[
+  M = U \Sigma V^{\mathsf{T}},
+\]
+where 
+\(U \in \mathbb{R}^{d \times d}\) and \(V \in \mathbb{R}^{n \times n}\) 
+are orthogonal, and 
+\(\Sigma \in \mathbb{R}^{d \times n}\) is diagonal in the upper \(d \times d\) block,
+\[
+  \Sigma = \mathrm{diag}(\zeta_1, \dots, \zeta_d).
+\]
+The columns \(\vec{u}_1, \dots, \vec{u}_d\) of \(U\) are the left singular 
+vectors (principal directions) of the module.
+
+\subsection{ManLe Algorithm}
+
+ManLe learns a \(k\)--dimensional manifold for a module by combining the global
+linear structure of the Singular Value Decomposition (SVD) with local adaptive
+kernel smoothing in the ambient space.  
+The procedure is defined as follows.
+
+\subsubsection{Input and Preprocessing}
+
+Let
+\begin{itemize}
+  \item \(M \in \mathbb{R}^{d \times n}\) be the module matrix,
+  \item \(k \in \{1, \dots, d\}\) be the desired manifold dimension,
+  \item \(k_{\text{nn}}\) be the number of nearest neighbours used for 
+        smoothing,
+  \item \(\sigma\) denote the standard deviation (bandwidth) of the Gaussian 
+        kernel.
+\end{itemize}
+
+Optionally, we centre the module by subtracting the mean vector
+\[
+  \bar{\vec{v}} = \frac{1}{n} \sum_{i=1}^n \vec{v}_i,
+  \qquad
+  \vec{v}_i^{\text{c}} = \vec{v}_i - \bar{\vec{v}},
+\]
+and construct \(M\) from the centred vectors \(\vec{v}_i^{\text{c}}\).  
+This does not change the manifold's shape, only its location.
+
+\subsubsection{Step 1: Principal Subspace Extraction}
+
+Compute the singular value decomposition
+\[
+  M = U \Sigma V^{\mathsf{T}},
+\]
+and retain the first \(k\) left singular vectors
+\[
+  \vec{u}_1, \dots, \vec{u}_k.
+\]
+These span the \emph{tangent subspace}
+\[
+  T_k = \mathrm{span}\{\vec{u}_1, \dots, \vec{u}_k\} \subset \mathbb{R}^d,
+\]
+which provides a linear approximation of the module's dominant variability.
+
+\subsubsection{Step 2: Projection onto the Initial Manifold Subspace}
+
+For each data vector \(\vec{v}_i\), project onto \(T_k\):
+\[
+  \vec{v}_i^{m} 
+    = P_{T_k}(\vec{v}_i) 
+    = \sum_{r=1}^k (\vec{v}_i \cdot \vec{u}_r)\,\vec{u}_r.
+\]
+The set \(\{\vec{v}_i^{m}\}_{i=1}^n\) forms an initial linear manifold 
+approximation (a line for \(k=1\), a plane for \(k=2\), and so on).
+
+\subsubsection{Step 3: Ambient-Space Smoothing of Manifold Points}
+
+ManLe refines the initial linear manifold approximation by iteratively
+updating each manifold point 
+\(\vec{v}_i^{m}\) through our established 
+adaptive \(k\)-nearest neighbour Gaussian kernel smoother, described in
+detail in Section \ref{anwil}.
+This smoother is implemented as a parallelized vector-valued 
+Nadaraya--Watson estimator (ANWIL: Adaptive Nadaraya--Watson smoothIng 
+paralleLized).  
+
+In each iteration, the smoother takes as input the current manifold point
+\(\vec{v}_i^{m,(t)}\) and the full set of original ambient module vectors
+\(\{\vec{v}_j\}_{j=1}^n\).
+Since the regression targets of ANWIL are the *ambient* vectors
+\(\vec{v}_j \in \mathbb{R}^d\), 
+the update step displaces the manifold point directly within the full
+ambient space.
+
+Formally, the update is
+\[
+  \tilde{\vec{v}}_i^{m,(t+1)} 
+    = \mathrm{ANWIL}\!\left(
+        \vec{v}_i^{m,(t)}, 
+        \{\vec{v}_j\}_{j=1}^n
+      \right),
+\]
+where \(\mathrm{ANWIL}(\cdot)\) denotes the adaptive Gaussian kernel
+smoother applied pointwise and in parallel.  
+The explicit kernel construction, bandwidth selection, and neighbour search
+are defined in Section~X.X; ManLe uses this existing smoother without
+modification.
+
+We emphasise that the smoothing operation acts as a displacement in the
+ambient vector space:
+\[
+  \vec{v}_i^{m,(t+1)} = \tilde{\vec{v}}_i^{m,(t+1)} \in \mathbb{R}^d,
+\]
+with no projection or constraint applied to force the updated point back
+into the initial principal subspace \(T_k\).  
+This ensures that the manifold evolves within the true geometry of the
+semantic space, faithfully reflecting the empirical structure encoded in
+the module vectors.
+
+\subsection{AManLe: Anisotropic Manifold Learning}
+
+AManLe extends ManLe by incorporating anisotropic smoothing that respects
+the geometric structure revealed by the singular value decomposition of the
+module matrix \(M\).  
+Instead of treating all neighbour displacements equally, AManLe distinguishes
+between \emph{tangent} directions (the first \(k\) singular vectors) and
+\emph{normal} or off-manifold directions (the remaining \(d-k\) singular
+vectors), and assigns different weights to these components during smoothing.
+
+\paragraph{Rationale.}
+Neighbour displacements along directions of high variance are typically
+informative and expected (e.g.\ true biological variation, meaningful
+progression in socioeconomic trajectories).  
+In contrast, displacements along directions of very low variance often reflect
+noise, measurement instability, or local curvature that should not dominate
+the manifold update.  
+Thus, AManLe
+\begin{itemize}
+  \item penalises deviations along low-variance axes using the inverse
+        singular values,
+  \item separates tangent and normal components of each neighbour displacement,
+  \item applies Gaussian smoothing in tangent space and a sharper penalty in 
+        normal space.
+\end{itemize}
+This yields a manifold learner that is more robust to noise, preserves
+true curvature, and avoids collapsing or folding the manifold along unstable
+directions.
+
+\subsubsection{Algorithm}
+
+Let \(M = U \Sigma V^{\mathsf{T}}\) be the SVD of the module matrix, with singular
+values \(\zeta_1 \ge \dots \ge \zeta_d\) and left singular vectors
+\(\vec{u}_1,\dots,\vec{u}_d\).  
+The tangent subspace is
+\[
+  T_k = \mathrm{span}\{\vec{u}_1,\dots,\vec{u}_k\},
+\qquad
+  N_k = \mathrm{span}\{\vec{u}_{k+1},\dots,\vec{u}_d\}
+\]
+is its orthogonal complement.  
+Given a manifold point \(\vec{v}_i^{m,(t)}\) and a neighbour \(\vec{v}_j\), the
+displacement
+\[
+  \vec{s}_{ij} = \vec{v}_j - \vec{v}_i^{m,(t)}
+\]
+is decomposed into tangent and normal components:
+\[
+  \vec{s}_{ij}^{\,T} 
+    = \sum_{r=1}^{k} (\vec{s}_{ij}\cdot \vec{u}_r)\,\vec{u}_r,
+\qquad
+  \vec{s}_{ij}^{\,N} 
+    = \sum_{r=k+1}^{d} (\vec{s}_{ij}\cdot \vec{u}_r)\,\vec{u}_r.
+\]
+
+AManLe assigns an anisotropic distance to each neighbour by combining
+tangent and normal contributions:
+\[
+  D_{ij}^2 =
+    \frac{\|\vec{s}_{ij}^{\,T}\|_2^2}{2\sigma_T^2}
+    \;+\;
+    \sum_{r=k+1}^{d}
+      \frac{(\vec{s}_{ij}\cdot \vec{u}_r)^2}{2\,\sigma_N^2\,\zeta_r}.
+\]
+The first term applies standard Gaussian smoothing in the tangent space with
+bandwidth \(\sigma_T\), while the second term penalises deviations along
+normal directions using inverse singular values \(1/\zeta_r\).  
+Large \(\zeta_r\) (high variance) produces a weak penalty; small
+\(\zeta_r\) (low variance) yields a strong penalty, suppressing suspicious
+off-manifold movement.
+
+The anisotropic kernel weight is then
+\[
+  w_{ij}
+    = \exp\!\left( - D_{ij}^2 \right).
+\]
+The manifold point update uses the same vector-valued ANWIL estimator as in
+ManLe, but with the anisotropic weights above:
+\[
+  \vec{v}_i^{m,(t+1)}
+    =
+    \frac{
+      \displaystyle
+      \sum_{j \in \mathcal{N}_i^{(t)}} w_{ij}\,\vec{v}_j
+    }{
+      \displaystyle
+      \sum_{j \in \mathcal{N}_i^{(t)}} w_{ij}
+    }.
+\]
+As in ManLe, updated points remain in the ambient space \(\mathbb{R}^d\),
+preserving the semantic interpretation of all axes.
+
+\paragraph{Summary.}
+AManLe augments ManLe with a principled geometric anisotropy: it smooths
+along directions of genuine module variability while suppressing 
+off-manifold deviations along low-variance axes.  
+This yields manifolds that follow the intrinsic structure of the data more
+faithfully, especially in high-dimensional semantic vector spaces.
 
 \section{Field Surface and Volume Inference (FiSure, ``Eitri'')}
 
