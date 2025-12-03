@@ -94,8 +94,8 @@ contains
     real(real64),   intent(in)    :: span
     integer(int32), intent(in)    :: degree
     integer(int32), intent(in)    :: liv, lv
-    integer(int32), intent(inout) :: iv(liv)
-    real(real64),   intent(inout) :: v(lv)
+    integer(int32), intent(inout) :: iv(:)
+    real(real64),   intent(inout) :: v(:)
     real(real64),   intent(in)    :: x_pred(d, n_pred)
     real(real64),   intent(out)   :: y_pred(n_pred)
     integer(int32), intent(out)   :: ierr
@@ -125,13 +125,30 @@ contains
     ! Store config in the ivy/v pools (simple header)
     ! iv(1)=d, iv(2)=n, iv(3)=k (neighbors), iv(4)=degree
     ! v(1)=span
-    integer(int32) :: k
+    integer(int32) :: k, min_k
     
     ! R's EXACT algorithm: nf = min(N, (int) floor(N * span + 1e-5))
     k = min(nvmax, max(2_int32, int(floor(real(n,real64) * max(EPS,min(ONE,f)) + 1.0e-5_real64), int32)))
 
     ! DEBUG: Print span to k conversion (R-style)
     write(*,'(A,F5.3,A,I0,A,I0,A,F5.3)') " R-STYLE: span=", f, " -> k=", k, " (n=", n, ", actual_span=", real(k)/real(n), ")"
+
+    ! IMPORTANT FIX: Ensure enough neighbors for the polynomial degree
+    ! Need at least (degree + 2) points for stable local polynomial fit
+    ! This matches R's behavior - R warns when span is too small
+    min_k = tdeg + 2
+    if (k < min_k) then
+      k = min(min_k, n)
+      write(*,'(A,I0,A,I0,A,I0)') " WARNING: span too small for degree=", tdeg, &
+                                ", increasing k from ", k - (min_k - (tdeg + 2)), " to ", k
+    end if
+    
+    ! Additional safety: for very small k, ensure we have enough points
+    ! even after weighting (some points might get zero weight at bandwidth boundary)
+    if (k < 5 .and. tdeg == 2) then
+      k = min(5, n)
+      write(*,'(A,I0,A)') " NOTE: Small k adjusted to ", k, " for quadratic fit stability"
+    end if
 
     iv(1) = d
     iv(2) = n
@@ -1425,15 +1442,18 @@ contains
   !----------------------------------------------------------------------
   function r_tricube_exact(u) result(weight)
     real(real64), intent(in) :: u
-    real(real64) :: weight, u_adj
+    real(real64) :: weight
     
-    ! Add tiny epsilon to avoid u exactly equal to 1
-    u_adj = min(ONE - 1.0e-15_real64, u)
+    ! R's exact formula but with tolerance for numerical stability
+    ! In R's lowess.c: if(r <= h) w = (1. - fcube(r/h));
+    ! So when r == h (u == 1), weight = 0
     
-    if (u_adj >= ONE) then
+    if (u >= ONE) then
       weight = ZERO
     else
-      weight = (ONE - u_adj**3)**3
+      ! Add small epsilon to avoid exact u=1 issues
+      ! This helps when a point is exactly at the bandwidth boundary
+      weight = (ONE - min(ONE - 1.0e-12_real64, u)**3)**3
     end if
   end function r_tricube_exact
 

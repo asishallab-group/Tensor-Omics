@@ -452,12 +452,16 @@ contains
             largest_pos = current_pos
             
             ! Find the position with largest distance among current, left child, right child
-            if (left_child <= heap_size .and. distances(left_child) > distances(largest_pos)) then
-                largest_pos = left_child
+            if (left_child <= heap_size) then
+                if(distances(left_child) > distances(largest_pos)) then
+                    largest_pos = left_child
+                end if
             end if
             
-            if (right_child <= heap_size .and. distances(right_child) > distances(largest_pos)) then
-                largest_pos = right_child
+            if (right_child <= heap_size) then
+                if(distances(right_child) > distances(largest_pos)) then
+                    largest_pos = right_child
+                end if
             end if
             
             ! If heap property is satisfied, stop
