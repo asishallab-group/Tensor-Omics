@@ -40,13 +40,11 @@ contains
         type(json_array), target :: array
         type(json_object), target :: object
         character(len=7), dimension(6), target :: keys
-        integer(int32) :: unit, ierr, i_element
+        integer(int32) :: i_element
         integer(int32), target:: test_integer
         real(real64), target:: test_real
         complex(real64), target:: test_complex
         logical, target:: test_logical
-        character(len=:), allocatable :: expected_fragment
-        character(len=:), allocatable :: actual_fragment
 
         keys(1) = "integer"
         test_integer = -huge(1_int32)
@@ -65,7 +63,7 @@ contains
         elements(4)%value => test_complex
 
         keys(5) = "array"
-        array%array => elements
+        array%elements => elements
         elements(5)%value => array
 
         keys(6) = "object"
@@ -74,105 +72,99 @@ contains
         elements(6)%value => object
 
         ! Case 1: basic object serialization test with recursion
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
-
-
-        call serialize_json_object(object, unit)
-
-        allocate(character(len=248) :: expected_fragment, actual_fragment)
-        expected_fragment = '{"integer":-2147483647,"real": 1.7976931348623157E+308,"logical":true,"complex":[ 1.0000000000000000E+000,-1.0000000000000000E+000],"array":[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 1 Object fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit)
+        call helper_test_serialization(&
+            object,&
+            '{"integer":-2147483647,"real": 1.7976931348623157E+308,"logical":true,"complex":[ 1.0000000000000000E+000,-1.0000000000000000E+000],"array":[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
+            "test_serialization: case 1 Object"&
+        )
 
         ! Case 2: basic array serialization test with recursion
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
+        call helper_test_serialization(&
+            array,&
+            '[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
+            "test_serialization: case 2 Array"&
+        )
 
-        call serialize_json_array(array, unit)
+        ! Case 3: basic array serialization test with custom recursion limit
+        call helper_test_serialization(&
+            array,&
+            '[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[null,null,null,null,null,null],{"integer":null,"real":null,"logical":null,"complex":null,"array":null,"object":null}]',&
+            "test_serialization: case 3 custom recursion limit",&
+            2_int32&
+        )
 
-        allocate(character(len=108) :: expected_fragment, actual_fragment)
-        expected_fragment = '[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 2 Array fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit)
-
-        ! Case 3: NaN/Inf handling
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
-
+        ! Case 4: NaN/Inf handling
         test_complex = cmplx(ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf))
         test_real = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call serialize_json_array(array, unit)
+        call helper_test_serialization(&
+            array,&
+            '[-2147483647,null,true,[null,null],[-2147483647,',&
+            "test_serialization: case 4 NaN/Inf handling"&
+        )
 
-        allocate(character(len=48) :: expected_fragment, actual_fragment)
-        expected_fragment = '[-2147483647,null,true,[null,null],[-2147483647,'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 3 NaN/Inf fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit)
-
-        ! Case 4: Different lengths of json object's key-value arrays
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
-
+        ! Case 5: Different lengths of json object's key-value arrays
         object%keys(1:4) => keys
-        call serialize_json_object(object, unit)
+        call helper_test_serialization(&
+            object,&
+            '{"integer":-2147483647,"real":null,"logical":true,"complex":[null,null]}',&
+            "test_serialization: case 5 different size key-value arrays"&
+        )
 
-        allocate(character(len=72) :: expected_fragment, actual_fragment)
-        expected_fragment = '{"integer":-2147483647,"real":null,"logical":true,"complex":[null,null]}'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 4 json object mismatching key-value lengths fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit)
-
-        ! Case 5: unassigned array values
+        ! Case 6: unassigned array values
         do i_element = 1, 4
             nullify(elements(i_element)%value)
         end do
         nullify(object%keys)
         nullify(elements(5)%value)
 
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
+        call helper_test_serialization(&
+            array,&
+            '[null,null,null,null,null,{}]',&
+            "test_serialization: case 6 unassigned array values"&
+        )
 
-        call serialize_json_array(array, unit)
-
-        allocate(character(len=29) :: expected_fragment, actual_fragment)
-        expected_fragment = '[null,null,null,null,null,{}]'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 5 (unassigned array values) fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit)
-
-        ! Case 6: unassigned object values
+        ! Case 7: unassigned object values
         elements(5)%value => array
         object%keys => keys
-        nullify(array%array)
+        nullify(array%elements)
         nullify(elements(6)%value)
 
-        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_serialization: could not open file")
-
-        call serialize_json_object(object, unit)
-
-        allocate(character(len=83) :: expected_fragment, actual_fragment)
-        expected_fragment = '{"integer":null,"real":null,"logical":null,"complex":null,"array":[],"object":null}'
-        rewind(unit)
-        read (unit, "(A)") actual_fragment
-        call assert_string_equal(actual_fragment, expected_fragment, "test_serialization: case 6 (unassigned object values) fragments differ")
-        deallocate(expected_fragment, actual_fragment)
-        close(unit, status="delete")
+        call helper_test_serialization(&
+            object,&
+            '{"integer":null,"real":null,"logical":null,"complex":null,"array":[],"object":null}',&
+            "test_serialization: case 7 unassigned object values"&
+        )
     end subroutine test_serialization
+
+    subroutine helper_test_serialization(json_var, expected_fragment, test_case, max_depth)
+        class(*), intent(in) :: json_var
+        character(len=*), intent(in) :: expected_fragment
+        character(len=*), intent(in) :: test_case
+        integer(int32), intent(in), optional :: max_depth
+
+        character(len=:), allocatable :: actual_fragment
+        integer(int32) :: ierr, unit
+
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, trim(test_case) // ": could not open file")
+
+        select type (json_var)
+            type is (json_array)
+                call serialize_json_array(json_var, unit, max_depth)
+            type is (json_object)
+                call serialize_json_object(json_var, unit, max_depth)
+            class default
+                error stop trim(test_case) // ": helper_test_serialization: Unsupported type"
+        end select
+
+        rewind(unit)
+
+        allocate(actual_fragment, mold=expected_fragment)
+        read (unit, "(A)") actual_fragment
+        call assert_string_equal(actual_fragment, expected_fragment, trim(test_case) // ": fragments differ")
+        close(unit, status="delete")
+    end subroutine helper_test_serialization
 
     !> Run all f42_json tests.
     subroutine run_all_tests_f42_json
