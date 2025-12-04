@@ -1,9 +1,33 @@
 
+
+
 # Tensor Omics
 
-Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise.
+## Table of Contents
+- [Introduction](#introduction)
+- [Key Features](#key-features)
+- [Project Structure](#project-structure)
+- [Compilation](#compilation)
+  - [Compiler Requirements](#compiler-requirements)
+  - [Local Compilation (No Docker)](#local-compilation-no-docker)
+  - [Compilation Using Docker](#compilation-using-docker)
+- [Installation](#installation)
+  - [Linux](#linux)
+  - [Windows-11](#windows-11)
+  - [macOS](#macos)
+- [Installation for R and Python](#installation-for-r-and-python)
+  - [R Integration](#r-integration)
+  - [Python Integration](#python-integration)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Configuration](#configuration)
+- [License](#license)
 
-Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
+---
+
+# Introduction
+
+Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise. Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
 
 
 ## Key Features
@@ -20,7 +44,7 @@ Designed for distributed high-performance computing, Tensor Omics is implemented
 
 ---
 
-# TOX Project Structure
+# Project Structure
 
 This repository contains the source code, methods, snippets and tests for the **Tensor Omics (TOX)** project.
 
@@ -43,7 +67,7 @@ This repository contains the source code, methods, snippets and tests for the **
   └── ...       # R scripts that execute pipeline logic and invoke subroutines
 
 /snippets
-└── ...         #Code templates or reusable short logic blocks 
+└── ...         # Code templates or reusable short logic blocks 
 
 /src
   └── ...       # Fortran backend
@@ -128,8 +152,53 @@ See `snippets/readme.md` for details.
 
 ---
 
+# Compilation
 
-### Compilation
+> **Note:** If you're using prebuilt binaries from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases), you can skip compilation and proceed directly to [Installation](#installation) → [Installation for R and Python](#installation-for-r-and-python) → [Usage](#usage).
+>
+> **If compiling from source:** Follow this workflow: Compilation → Installation → Installation for R and Python → Usage
+
+Tensor Omics can be compiled using a **local toolchain** or via the reproducible **Docker environment**.
+
+## Compiler Requirements
+
+Tensor Omics requires **gfortran ≥ 15** for improved performance and modern Fortran support.
+
+### Install Latest gfortran on Ubuntu/Debian
+
+To ensure optimal performance and compatibility, we recommend adding a PPA (Personal Package Archive) to your system to easily install the latest version.
+
+If you are using Ubuntu, you can do this by running:
+
+```bash
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get install gfortran-15
+```
+
+Verify the installation:
+```bash
+gfortran-15 --version
+```
+
+### Alternative: Use Docker for Latest gfortran
+
+If gfortran-15 is not available in your system repositories, you can also get the latest version with Docker:
+
+- **Install and setup Docker** as explained for your operating system in the [Docker documentation](https://docs.docker.com/get-docker/).
+- **Use our Dockerfile** `gfortran.docker` located in the `misc` directory:
+
+```bash
+cd misc
+docker build -t arch-gfortran -f gfortran.docker .
+cd ..
+```
+
+This creates a Docker image with the latest gfortran pre-installed. You can then use it for compilation (see [Compilation Using Docker](#compilation-using-docker) section for detailed instructions).
+
+
+
+## Local Compilation (No Docker)
 
 The `build.sh` script will compile all the files located in the `src/` directory.
 
@@ -139,75 +208,322 @@ This `.so` file is the one that must be loaded from R or Python.
 
 Every time the code is compiled, a new `/build/<compiler>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
 
-Usage:
-
-→ Uses the `gfortran` compiler without performance optimizations.
+**Default compilation** (uses `gfortran` without performance optimizations):
 
 ```bash
 ./build.sh
 ```
 
-→ Uses the `gfortran` compiler with maximum performance flags.
+**Maximum performance compilation** (uses `gfortran` with optimization flags):
 
 ```bash
 ./build.sh --max-performance
 ```
 
-→ Uses the `ifx` compiler with maximum performance flags.
+**Intel Fortran Compiler** (with maximum performance flags):
 
 ```bash
 ./build.sh --max-performance FC=ifx
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+> **Note:** Files are compiled in alphabetical order; please name your files accordingly.
+
+## Compilation Using Docker
+
+Install and setup Docker as explained for your operating system in the [Docker documentation](https://docs.docker.com/get-docker/).
+
+### Step 1: Build the Docker Image
+
+Navigate to the `misc` directory and build the Docker image:
+
+```bash
+cd misc
+docker build -t arch-gfortran -f gfortran.docker .
+```
+### Step 2: Enter the Docker Container
+
+Go back to the repository root and start an interactive Docker session:
+
+```bash
+cd ..
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran /bin/bash
+```
+
+### Step 3: Compile the Project
+
+Inside the container, run:
+
+```bash
+./build.sh
+```
+
+### Step 4: Run Tests (Optional)
+
+Inside the container, run:
+
+```bash
+./test_runner.sh
+```
+
+Or run tests for a specific module:
+
+```bash
+./test_runner.sh get_outliers
+```
+
+
+# Installation
+
+Tensor Omics can be installed from prebuilt binaries or compiled from source.
+
+## Prebuilt Binaries
+
+Prebuilt binaries for Linux, Windows-11, and macOS are automatically generated by GitLab CI/CD pipelines and available in the [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases) section of this repository.
+
+### Linux
+
+1. Download the latest `.so` file from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases)
+2. Place it in a directory where R and Python can find it (e.g., `/usr/local/lib/` or your project directory)
+3. Export the library path:
+   ```bash
+   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+   ```
+
+### Windows-11
+
+1. Download the latest `.dll` file from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases)
+2. Place it in your system PATH or project directory
+3. Ensure MSVC or GFortran runtime is installed:
+   ```bash
+   choco install mingw  # or vcredist for MSVC
+   ```
+4. Set the library path environment variable:
+   ```cmd
+   set PATH=C:\path\to\build;%PATH%
+   ```
+   Or for permanent setup, add to Windows Environment Variables.
+
+### macOS
+
+1. Download the latest `.dylib` file from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases)
+2. Place it in `/usr/local/lib/` or your project directory
+3. Update the dynamic library search path:
+   ```bash
+   export DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH
+   ```
 
 ---
 
+> **Note:** `/path/to/build` or `C:\path\to\build` must point to the directory containing:
+> - `libtensor-omics.so` (Linux)
+> - `tensoromics.dll` (Windows)
+> - `libtensor-omics.dylib` (macOS)
 
-### Testing
+# Installation for R and Python
 
-The test suite framework provides a robust and scalable system for organizing and executing unit tests in Fortran. It allows running individual tests, complete test suites, or all project tests with simple and clear syntax.
+Once the Tensor Omics shared library is available (either from prebuilt binaries or after compilation), follow these steps to use it from R and Python.
 
-#### Architecture
+## R Integration
 
-1. **`run_tests.f90`** - Main program that handles command line arguments
+### Requirements
+
+- **R ≥ 3.6**
+
+### Installation Steps
+
+1. **Load the library and source the wrapper functions**:
+   ```r
+   dyn.load("build/libtensor-omics.so")
+   source("r/tensoromics_functions.R")
+   source("r/error_handling.R")
+   ```
+
+2. **Verify installation**:
+   ```r
+   # Test a simple function
+   result <- tox_euclidean_distance(c(1, 2, 3), c(4, 5, 6))
+   print(result)  # Should output: 5.196152
+   ```
+
+### Example Usage
+
+```r
+# Load the library and wrapper functions
+dyn.load("build/libtensor-omics.so")
+source("r/tensoromics_functions.R")
+source("r/error_handling.R")
+
+# Use Tensor Omics functions
+distance <- tox_euclidean_distance(c(0, 0), c(3, 4))
+print(paste("Distance:", distance))
+```
+
+## Python Integration
+
+### Requirements
+
+- **Python ≥ 3.7**
+- **numpy** (for array operations)
+
+### Installation Steps
+
+1. **Install required Python packages**:
+   ```bash
+   pip install numpy
+   ```
+
+2. **Load the library and import Tensor Omics functions**:
+   ```python
+   import numpy as np
+   import ctypes
+   import os
+   from tensoromics_functions import euclidean_distance
+   
+   # Load library
+   dll_path = os.path.abspath("build/libtensor-omics.so")
+   ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
+   lib = ctypes.CDLL(dll_path)
+   
+   # Use a function
+   result = euclidean_distance([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
+   print(f"Distance: {result}")  # Should output: 5.196152
+   ```
+
+3. **Verify installation**:
+### Example Usage
+
+```python
+import numpy as np
+import ctypes
+import os
+from tensoromics_functions import (
+    normalize_by_std_dev,
+    quantile_normalization,
+    euclidean_distance
+)
+
+# Load library
+dll_path = os.path.abspath("build/libtensor-omics.so")
+ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
+lib = ctypes.CDLL(dll_path)
+
+# Load gene expression data
+expression_matrix = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+
+# Apply normalization pipeline
+normalized = normalize_by_std_dev(expression_matrix)
+normalized = quantile_normalization(normalized)
+
+# Calculate distances
+distance = euclidean_distance(
+    expression_matrix[:, 0],
+    expression_matrix[:, 1]
+)
+print(f"Distance: {distance}")
+```
+
+---
+
+# Usage
+
+
+
+# Testing
+
+The test suite framework provides a robust and scalable system for organizing and executing unit tests in Fortran.
+
+## Test Architecture
+
+1. **`run_tests.f90`** - Main program that handles command line arguments and runs all tests
 2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`asserts.f90`** - Assertion function library for validating results
+3. **`asserts.f90`** - Assertion function library for validating test results
 
-#### System Usage
+## Running Tests Locally
 
 ```bash
 # Run all tests from all suites
 ./test_runner.sh
 
 # Run all tests from a specific suite
-./test_runner.sh <suite_name>
+./test_runner.sh get_outliers
 
 # Run specific tests from a suite
-./test_runner.sh <suite_name> <test1,test2,test3>
+./test_runner.sh get_outliers test_compute_rdi_normal,test_compute_rdi_zero_scaling
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+## Running Tests in Docker
 
-See `test/readme.md` for details.
+```bash
+# Build and run all tests
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./test_runner.sh
+
+# Run tests for a specific module
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./test_runner.sh get_outliers
+```
+
+## R and Python Integration Tests
+
+After installation, verify R and Python integration:
+
+### R Tests
+
+```bash
+# Run R-level tests
+Rscript rcpp/test/euclidean_distance.R
+Rscript rcpp/test/normalization.R
+```
+
+### Python Tests
+
+```bash
+# Run Python-level tests (if available)
+python python/test/test_euclidean_distance.py
+```
+
+> For detailed test documentation, see `test/readme.md`
 
 ---
 
-## Get latest gfortran with Docker
+# Configuration
 
-Install and setup Docker as explained for your operating system in the Docker
-documentation.
+## Environment Variables
 
-Use our Dockerfile `gfortran.docker` in `misc` directory:
+Set these variables to customize Tensor Omics behavior:
+
 ```bash
-docker build -t arch-gfortran -f gfortran.docker .
+# Specify the number of OpenMP threads
+export OMP_NUM_THREADS=8
+
+# Set the library search path (Linux)
+export LD_LIBRARY_PATH=/path/to/build:$LD_LIBRARY_PATH
+
+# Set the library search path (macOS)
+export DYLD_LIBRARY_PATH=/path/to/build:$DYLD_LIBRARY_PATH
 ```
 
-Then build the project with:
+## Build Options
+
+Customize compilation via environment variables in `build.sh`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `FC` | `gfortran` | Fortran compiler |
+| `FFLAGS` | `-O3 -march=native` | Fortran compiler flags |
+
+
+## Documentation Generation
+
+Generate FORD documentation:
+
 ```bash
-docker run -it -v `pwd`:/opt arch-gfortran ./build.sh
+ford ford.yml
+open doc/index.html
 ```
 
-Use `./test_runner.sh` if you want to run the unit tests for the modules. In case you want to test only one module, use `./test_runner.sh <test suite name>`, e.g. `./test_runner.sh get_outliers`
+For details on documentation, see the [FORD documentation](https://github.com/Fortran-FOSS-Programmers/ford).
 
-Feel free to extend this README with additional information.
+---
+
+# License
+
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
