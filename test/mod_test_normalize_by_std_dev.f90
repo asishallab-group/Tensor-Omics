@@ -3,6 +3,7 @@
 module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use tox_normalization
   implicit none
   public
 
@@ -85,7 +86,7 @@ contains
     integer(int32) :: i, j, ierr
 
     mat = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [2,2])
-    call normalize_by_std_dev_r(2, 2, mat, result, ierr)
+    call normalize_by_std_dev(2, 2, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
 
     do i = 1, 2
@@ -101,10 +102,10 @@ contains
   !> Test that normalize_by_std_dev handles constant rows (should normalize to 1).
   subroutine test_normalize_by_std_dev_constant_rows()
     real(real64), dimension(2,2) :: mat, result, expected
-    integer(int32) :: i, j, ierr
+    integer(int32) :: ierr
 
     mat = reshape([5.0d0, 5.0d0, 5.0d0, 5.0d0], [2,2])
-    call normalize_by_std_dev_r(2, 2, mat, result, ierr)
+    call normalize_by_std_dev(2, 2, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
 
     expected = 1.0d0
@@ -120,7 +121,7 @@ contains
     integer(int32) :: i, j, ierr
 
     mat = reshape([1e6, 2e6, 1e6, 2e6], [2,2])
-    call normalize_by_std_dev_r(2, 2, mat, result, ierr)
+    call normalize_by_std_dev(2, 2, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
 
     do i = 1, 2
@@ -143,7 +144,7 @@ contains
     do i = 1, 3
       mat(i,i) = 1.0d0
     end do
-    call normalize_by_std_dev_r(3, 3, mat, result, ierr)
+    call normalize_by_std_dev(3, 3, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do i = 1, 3
       call assert_in_range_real(sum(result(i,:)**2)/3.0d0, 1d0-1d-12, 1d0+1d-12, "identity: RMS not 1")
@@ -158,7 +159,7 @@ contains
     real(real64), dimension(2,3) :: mat, result
     integer(int32) :: ierr
     mat = 0.0d0
-    call normalize_by_std_dev_r(2, 3, mat, result, ierr)
+    call normalize_by_std_dev(2, 3, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     call assert_true(all(result == 0.0d0), "zero rows: not all zeros")
     call assert_no_nan_real(result, 6, "zero rows: NaN in result")
@@ -170,7 +171,7 @@ contains
     real(real64), dimension(2) :: std_dev
     integer(int32) :: i, j, ierr
     mat = reshape([-2.0d0, -4.0d0, -6.0d0, -8.0d0, -10.0d0, -12.0d0], [2,3])
-    call normalize_by_std_dev_r(2, 3, mat, result, ierr)
+    call normalize_by_std_dev(2, 3, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do i = 1, 2
       std_dev(i) = sqrt(sum(mat(i,:)**2)/3.0d0)
@@ -194,7 +195,7 @@ contains
     call random_seed(put=seed_array)
     deallocate(seed_array)
     call random_number(mat)
-    call normalize_by_std_dev_r(nrow, ncol, mat, result, ierr)
+    call normalize_by_std_dev(nrow, ncol, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do i = 1, nrow
       call assert_in_range_real(sqrt(sum(result(i,:)**2)/ncol), 1d0-1d-10, 1d0+1d-10, "large random: RMS not 1")
@@ -209,7 +210,7 @@ contains
     mat = 0.0d0
     mat(1,3) = 5.0d0
     mat(2,2) = -7.0d0
-    call normalize_by_std_dev_r(2, 4, mat, result, ierr)
+    call normalize_by_std_dev(2, 4, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do i = 1, 2
       expected(i,:) = mat(i,:) / sqrt(sum(mat(i,:)**2)/4.0d0)
@@ -223,7 +224,7 @@ contains
     real(real64), dimension(2) :: std_dev
     integer(int32) :: i, j, ierr
     mat = reshape([1e-10, 1e10, 1e-10, 1e10], [2,2])
-    call normalize_by_std_dev_r(2, 2, mat, result, ierr)
+    call normalize_by_std_dev(2, 2, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do i = 1, 2
       std_dev(i) = sqrt(sum(mat(i,:)**2)/2.0d0)
@@ -240,7 +241,7 @@ contains
     real(real64), dimension(2,2) :: mat, result
     integer(int32) :: ierr
     mat = reshape([1.0d0, 2.0d0, huge(1.0d0), 4.0d0], [2,2])
-    call normalize_by_std_dev_r(2, 2, mat, result, ierr)
+    call normalize_by_std_dev(2, 2, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     call assert_true(all(isfinite_mat(result)), "normalize_by_std_dev: output contains NaN/Inf unexpectedly")
   end subroutine test_nan_inf_input
@@ -252,7 +253,7 @@ contains
     real(real64) :: std_dev
     integer(int32) :: j, ierr
     mat1 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [1,4])
-    call normalize_by_std_dev_r(1, 4, mat1, result1, ierr)
+    call normalize_by_std_dev(1, 4, mat1, result1, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     std_dev = sqrt(sum(mat1(1,:)**2)/4.0d0)
     do j = 1, 4
@@ -260,7 +261,7 @@ contains
     end do
     call assert_equal_array_real(result1, expected1, 4, 1d-12, "single row: normalization failed")
     mat2 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [4,1])
-    call normalize_by_std_dev_r(4, 1, mat2, result2, ierr)
+    call normalize_by_std_dev(4, 1, mat2, result2, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     call assert_true(all(abs(result2) == 1.0d0), "single col: normalization failed")
   end subroutine test_single_row_col
@@ -270,7 +271,7 @@ contains
     real(real64), allocatable :: mat(:,:), result(:,:)
     integer(int32) :: ierr
     allocate(mat(0,0), result(0,0))
-    call normalize_by_std_dev_r(0, 0, mat, result, ierr)
+    call normalize_by_std_dev(0, 0, mat, result, ierr)
     call assert_equal_int(ierr, 202, "normalize_by_std_dev_r returned error")
     ! No assertion needed: just check no crash
   end subroutine test_empty_matrix
@@ -281,7 +282,7 @@ contains
     integer(int32) :: j, ierr
     mat(1,:) = [1.0d0, 2.0d0, 3.0d0]
     mat(2,:) = [2.0d0, 4.0d0, 6.0d0]
-    call normalize_by_std_dev_r(2, 3, mat, result, ierr)
+    call normalize_by_std_dev(2, 3, mat, result, ierr)
     call assert_equal_int(ierr, 0, "normalize_by_std_dev_r returned error")
     do j = 1, 3
       call assert_equal_real(result(2,j), result(1,j), 1d-12, "symmetric rows: not equal after normalization")

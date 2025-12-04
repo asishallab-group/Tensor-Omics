@@ -17,7 +17,7 @@ handle_args "$@"
 echo "Detected alignment: $ALIGN"
 
 if [[ -z "$NO_BUILD" ]]; then
-  bash <<'EOF'
+  bash -s -- "$@" <<'EOF'
   function get_directives() {
     echo "-D'OPEN_PAREN=(' -D'CLOSE_PAREN=)' -D'$1(KIND)=KIND(KIND)' -D'$2(KIND)=$1 OPEN_PAREN KIND CLOSE_PAREN' -D'$3(KIND)=$1 OPEN_PAREN 2 CLOSE_PAREN'"
   }

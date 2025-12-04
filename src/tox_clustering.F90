@@ -108,7 +108,7 @@ contains
             end do
 
             ! if the assignments did not change, the clustering is done
-            if (is_err(ierr) .or. .not. labels_changed) exit
+            if (.not. labels_changed) exit
 
             call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
         end do

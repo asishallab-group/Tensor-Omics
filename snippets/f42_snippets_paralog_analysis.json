@@ -1,0 +1,41 @@
+{
+    "Call to angle_between": {
+        "prefix": "f42:angle_between",
+        "body": [
+            "call angle_between(v1, v2, n_dims, angle)"
+        ],
+        "description": "Calculates the angle between two vectors in radians"
+    },
+    
+    "Call to radians": {
+        "prefix": "f42:radians",
+        "body": [
+            "radians(degrees)"
+        ],
+        "description": "Returns the degrees as radians, always positive"
+    },
+    
+    "Call to norm": {
+        "prefix": "f42:norm",
+        "body": [
+            "norm(vector)"
+        ],
+        "description": "Calculates the euclidean norm of a vector"
+    },
+    
+    "Call to add_vector": {
+        "prefix": "f42:add_vector",
+        "body": [
+            "call add_vector(vector, to_be_added)"
+        ],
+        "description": "Adds a vector in place"
+    },
+    
+    "Call to subtract_vector": {
+        "prefix": "f42:subtract_vector",
+        "body": [
+            "call subtract_vector(vector, to_be_subtracted)"
+        ],
+        "description": "Subtracts a vector in place"
+    }
+}

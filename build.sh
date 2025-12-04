@@ -11,7 +11,7 @@ ALIGN=$(get_alignment)
 handle_args "$@"
 
 # Clean build directory if it exists
-if [ -d "build" ]; then
+if [[ -d "build" && -z "$KEEP_OLD_BUILD_DIR" ]]; then
   rm -rf build
 fi
 

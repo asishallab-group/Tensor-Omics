@@ -125,7 +125,6 @@ contains
     real(real64) :: rdi(n_genes), sorted_rdi(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
-    integer(int32) :: i
     rdi = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     ! rdi = [0.1, 0.2, 0.3, 0.4] is already sorted and there are no negatives
     sorted_rdi = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
@@ -164,7 +163,7 @@ contains
     real(real64) :: dscale(n_families)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families), loess_n(n_families)
+    integer(int32) :: indices_used(n_families)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
     call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -237,11 +236,9 @@ contains
     integer(int32), parameter :: n_genes=3, n_families=1
     real(real64) :: distances(n_genes) = [0.0_real64, 0.0_real64, 0.0_real64]
     integer(int32) :: gene_to_fam(n_genes) = [1,1,1]
-    logical :: is_ortholog(n_genes) = [.true., .true., .true.]
     real(real64) :: dscale(1), rdi(n_genes), sorted_rdi(n_genes)
     integer(int32) :: ierr
-    real(real64) :: max_distance_bw_orths(1) = [0.0_real64]
-    real(real64) :: loess_x(1), loess_y(1), loess_n(1)
+    real(real64) :: loess_x(1), loess_y(1)
     integer(int32) :: indices_used(1)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
@@ -265,7 +262,7 @@ contains
     integer(int32) :: gene_to_fam(n_genes) = [1,1,1,1]
     real(real64) :: dscale(1)
     integer(int32) :: ierr
-    real(real64) :: loess_x(1), loess_y(1), loess_n(1)
+    real(real64) :: loess_x(1), loess_y(1)
     integer(int32) :: indices_used(1)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
@@ -299,7 +296,7 @@ contains
     real(real64) :: dscale(1), rdi(n_genes), sorted_rdi(n_genes)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families), loess_n(n_families)
+    integer(int32) :: indices_used(n_families)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
     integer(int32) :: i
@@ -323,7 +320,6 @@ contains
     real(real64) :: sorted_rdi(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
-    integer(int32) :: i
     ! rdi = [1, 2, 2, 3] already sorted and no negatives
     sorted_rdi = [1.0_real64, 2.0_real64, 2.0_real64, 3.0_real64]
     call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, 50.0_real64)
@@ -340,7 +336,7 @@ contains
     real(real64) :: dscale(n_families)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families), loess_n(n_families)
+    integer(int32) :: indices_used(n_families)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
     call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -358,7 +354,7 @@ contains
     real(real64) :: dscale(n_families)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families), loess_n(n_families)
+    integer(int32) :: indices_used(n_families)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
     call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -376,7 +372,7 @@ contains
     integer(int32) :: gene_to_fam(n_genes) = [1,1,1]
     real(real64) :: dscale(1)
     integer(int32) :: ierr
-    real(real64) :: loess_x(1), loess_y(1), loess_n(1)
+    real(real64) :: loess_x(1), loess_y(1)
     integer(int32) :: indices_used(1)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
@@ -396,9 +392,8 @@ contains
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     logical :: is_outlier(n_genes)
     integer(int32) :: ierr
-    logical :: is_ortholog(n_genes) = [.false., .false., .false.]
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families), loess_n(n_families)
+    integer(int32) :: loess_n(n_families)
     call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, &
       is_outlier, loess_x, loess_y, loess_n, ierr)
     call assert_equal_int(ierr, 201, 'detect_outliers propagates error_code 201 for invalid indices')
@@ -412,7 +407,7 @@ contains
     real(real64) :: dscale(n_families)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: indices_used(n_families),loess_n(n_families)
+    integer(int32) :: indices_used(n_families)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     real(real64) :: family_distances(n_genes)
     call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -463,7 +458,6 @@ contains
     real(real64) :: sorted_rdi(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
-    integer(int32) :: i
     ! rdi = [-0.1, -0.2, -0.3, -0.4, -0.5] -> sorted_rdi = [0,0,0,0,0] (all negatives)
     sorted_rdi = [0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
     call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, 80.0_real64)

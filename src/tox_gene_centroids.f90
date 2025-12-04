@@ -264,7 +264,7 @@ pure subroutine group_centroid_r(expression_vectors, n_axes, n_genes, gene_to_fa
                                  centroid_matrix, mode_raw, ortholog_set, &
                                  selected_indices, selected_indices_len, ierr)
   use, intrinsic :: iso_fortran_env, only: int32, real64
-  use iso_c_binding, only: c_char
+  use, intrinsic :: iso_c_binding, only: c_char
   use tox_gene_centroids, only: group_centroid, GROUP_ORTHOLOGS, GROUP_ALL
   use tox_conversions, only: c_char_1d_as_string
   use tox_errors, only: is_ok, set_err, ERR_INVALID_INPUT

@@ -30,10 +30,10 @@ source("rcpp/error_handling.R")
 #' 
 tox_euclidean_distance <- function(vec1, vec2) {
   # Input validation
-  validate_numeric_vector(vec1, "vec1")
-  validate_numeric_vector(vec2, "vec2")
-  validate_same_length(vec1, vec2, "vec1", "vec2")
-  validate_nonempty(vec1, "vec1")
+  validate_numeric_vector(vec1)
+  validate_numeric_vector(vec2)
+  validate_same_length(vec1, vec2)
+  validate_nonempty(vec1)
 
   # Call Rcpp wrapper 
   return(tox_euclidean_distance_rcpp(as.numeric(vec1), as.numeric(vec2)))
@@ -53,23 +53,20 @@ tox_euclidean_distance <- function(vec1, vec2) {
 #' @return Numeric vector of distances from each gene to its family centroid
 #' 
 tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
-  #Convert to appropriate types
-  genes <- as.numeric(genes)
-  centroids <- as.numeric(centroids)
-  gene_to_fam <- as.integer(gene_to_fam)
-  d <- as.integer(d)
+  # R-layer validation in rcpp/ (kept here because r/ must not be changed)
+  validate_numeric_vector(genes)
+  validate_numeric_vector(centroids)
+  validate_positive_integer_scalar(d)
 
-  # Input validation
-  validate_positive_integer_scalar(d, "d")
-  validate_divisible_length(genes, d, "genes")
-  validate_divisible_length(centroids, d, "centroids")
-
+#  # Validate flattened lengths are compatible with d
+  validate_divisible_length(genes, d)
+  validate_divisible_length(centroids, d)
+  # Calculate dimensions
   n_genes <- as.integer(length(genes) / d)
   n_families <- as.integer(length(centroids) / d)
+  validate_gene_to_family(gene_to_fam, n_genes, n_families)
+  validate_length_equals_n(gene_to_fam, n_genes)
 
-  validate_gene_to_family(gene_to_fam, n_genes, n_families, "gene_to_fam")
-
-  # Call Rcpp wrapper
   return(tox_distance_to_centroid_rcpp(genes, centroids, gene_to_fam, d))
 }
 
@@ -92,12 +89,18 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 #'   \item{n_selected_axes}{Number of axes used in calculation}
 #' 
 tox_calculate_tissue_versatility <- function(expression_vectors, vector_selection, axis_selection) {
+  # R-layer validation (kept in rcpp/ to avoid touching r/)
+  validate_numeric_matrix(expression_vectors)
+  n_axes <- nrow(as.matrix(expression_vectors))
+  n_vectors <- ncol(as.matrix(expression_vectors))
+
+  # Ensure selection vectors have correct lengths and types
   #Input validation
-  validate_numeric_matrix(expression_vectors, "expression_vectors")
+  validate_numeric_matrix(expression_vectors)
 
   # Ensure selectors have expected lengths
-  validate_logical_or_index_vector(vector_selection, expected_length = ncol(expression_vectors), name = "vector_selection")
-  validate_logical_or_index_vector(axis_selection, expected_length = nrow(expression_vectors), name = "axis_selection")
+  validate_logical_or_index_vector(vector_selection)
+  validate_logical_or_index_vector(axis_selection)
 
   #Convert to appropriate types for Rcpp
   if (is.numeric(vector_selection)) {
@@ -105,7 +108,6 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   } else {
     vector_selection <- as.integer(vector_selection)
   }
-  
   if (is.numeric(axis_selection)) {
     axis_selection <- as.integer(as.logical(axis_selection))
   } else {
@@ -116,9 +118,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   result <- tox_calculate_tissue_versatility_rcpp(expression_vectors, vector_selection, axis_selection)
   
   # Check for errors
-  if (result$ierr != 0) {
-    check_err_code(result$ierr)
-  }
+  check_err_code(result$ierr)
   
   # Return structured result 
   return(list(
@@ -150,7 +150,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 #'   - loess_n: Number of genes used per family
 tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
   # Input validation
-  validate_numeric_vector(distances, "distances")
+  validate_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
 
   # Call Rcpp wrapper
@@ -185,10 +185,10 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
 #'   - indices_used: Number of genes used per family
 tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
   # Input validation
-  validate_numeric_vector(distances, "distances")
+  validate_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes, "gene_to_fam")
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families, name = "gene_to_fam")
+  validate_length_equals_n(gene_to_fam, n_genes)
+  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
 
   # Call the Rcpp forwarder.
   result <- tox_compute_family_scaling_rcpp(distances, gene_to_fam, n_families)
@@ -232,14 +232,14 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
                                               perm_tmp, stack_left_tmp, stack_right_tmp,
                                               family_distances) {
 # Input validation
-  validate_numeric_vector(distances, "distances")
+  validate_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes, "gene_to_fam")
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families, name = "gene_to_fam")
-  validate_length_equals_n(perm_tmp, n_genes, "perm_tmp")
-  validate_length_equals_n(stack_left_tmp, n_genes, "stack_left_tmp")
-  validate_length_equals_n(stack_right_tmp, n_genes, "stack_right_tmp")
-  validate_length_equals_n(family_distances, n_genes, "family_distances")
+  validate_length_equals_n(gene_to_fam, n_genes)
+  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
+  validate_length_equals_n(perm_tmp, n_genes)
+  validate_length_equals_n(stack_left_tmp, n_genes)
+  validate_length_equals_n(stack_right_tmp, n_genes)
+  validate_length_equals_n(family_distances, n_genes)
 
   # Call the Rcpp forwarder.
   result <- tox_compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, perm_tmp, stack_left_tmp, stack_right_tmp,
@@ -276,12 +276,11 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
 #'   - sorted_rdi: RDI values sorted in ascending order
 tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
 # Input validation
-  validate_numeric_vector(distances, "distances")
+  validate_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes, "gene_to_fam")
+  validate_length_equals_n(gene_to_fam, n_genes)
   n_families <- as.integer(length(dscale))
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families, name = "gene_to_fam")
-
+  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
   # Call Rcpp forwarder
   result <- tox_compute_rdi_rcpp(distances, gene_to_fam, dscale)
 
@@ -332,8 +331,8 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
 #' @examples
 #' normalized_matrix <- tox_normalize_by_std_dev(input_matrix)
 tox_normalize_by_std_dev <- function(input_matrix) {
-  # Validate input matrix values (NA / Inf / NaN)
-  validate_numeric_matrix_values(input_matrix, "input_matrix")
+
+  
   result <- tox_normalize_by_std_dev_rcpp(input_matrix)  
   return(matrix(result$output_vector, nrow = nrow(input_matrix), ncol = ncol(input_matrix), dimnames = dimnames(input_matrix)))
 }
@@ -353,7 +352,7 @@ tox_normalize_by_std_dev <- function(input_matrix) {
 #' @examples
 #' normalized_matrix <- tox_quantile_normalization(input_matrix)
 tox_quantile_normalization <- function(input_matrix) {
-  validate_matrix(input_matrix, "input_matrix")
+  validate_matrix(input_matrix)
   n_genes <- nrow(input_matrix)
   n_tissues <- ncol(input_matrix)
   result <- tox_quantile_normalization_rcpp(input_matrix)
@@ -379,7 +378,7 @@ tox_quantile_normalization <- function(input_matrix) {
 #' @examples
 #' log_matrix <- tox_log2_transformation(input_matrix)
 tox_log2_transformation <- function(input_matrix) {
-  validate_matrix(input_matrix, "input_matrix")
+  validate_matrix(input_matrix)
   n_genes <- nrow(input_matrix)
   n_tissues <- ncol(input_matrix)
   result <- tox_log2_transformation_rcpp(input_matrix)
@@ -405,7 +404,7 @@ tox_log2_transformation <- function(input_matrix) {
 #' @examples
 #' averaged_df <- tox_calculate_tissue_averages(df)
 tox_calculate_tissue_averages <- function(df) {
-  validate_matrix(as.matrix(df), "df")
+  validate_matrix(df)
 
   tissue_groups <- as.character(sapply(colnames(df), tox_parse_tissue_group))
   unique_groups <- unique(tissue_groups)
@@ -429,7 +428,7 @@ tox_calculate_tissue_averages <- function(df) {
     }
   }
 
-  result <- tox_calc_tiss_avg_rcpp(as.matrix(df), group_starts, group_counts)
+  result <- tox_calc_tiss_avg_rcpp(df, group_starts, group_counts)
   
   check_err_code(result$ierr)
 
@@ -448,9 +447,9 @@ tox_calculate_tissue_averages <- function(df) {
 #' @param control_pattern A string pattern to detect control columns.
 #' @param condition_patterns A character vector with patterns to detect condition columns.
 tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns) {
-  validate_matrix(as.matrix(df), "df")
-  validate_string_scalar(control_pattern, "control_pattern")
-  validate_character_vector(condition_patterns, "condition_patterns")
+  validate_matrix(df)
+  validate_string_scalar(control_pattern)
+  validate_character_vector(condition_patterns)
 
   # --- Identify control and condition columns ---
   indices_info <- tox_prepare_indices_by_patterns(df, control_pattern, condition_patterns)
@@ -460,7 +459,7 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
 
   n_pairs <- length(control_cols)
 
-  result <- tox_calc_fchange_rcpp(as.matrix(df), control_cols, condition_cols)
+  result <- tox_calc_fchange_rcpp(df, control_cols, condition_cols)
 
   check_err_code(result$ierr)
   
@@ -479,7 +478,7 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
 #' @param group_s Integer vector: start column index for each replicate group (1-based)
 #' @param group_c Integer vector: number of columns per replicate group
 tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
-  validate_matrix(input_matrix, "input_matrix")
+  validate_matrix(input_matrix)
   group_s <- as.integer(group_s)
   group_c <- as.integer(group_c)
   validate_group_vectors(group_s, group_c, ncol(input_matrix))
@@ -837,4 +836,88 @@ tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patte
   }
 
   return(list(control_cols = control_cols, condition_cols = condition_cols, condition_labels = condition_labels))
+}
+# ===================================================================
+# SHIFT VECTOR FIELD FUNCTIONS
+# ===================================================================
+#' Calculate Shift Vector Field 
+#' Computes the shift vector field for each gene expression vector based on its family centroid.
+#' The shift vector is defined as the difference between the gene expression vector and its corresponding family centroid,
+#' starting at the expression vector and pointing to its family centroid.
+#' This function automatically checks for errors and throws informative exceptions.
+#'
+#' @param expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
+#' @param family_centroids: Matrix where each column is a family centroid vector (n_axes x n_families)
+#' @param gene_to_centroid: Array mapping each gene to its corresponding family centroid ID in family_centroids (length n_vectors)
+#' 
+#' @return List containing:
+#'   \item{shift_vectors}{The computed shift vectors for each gene expression vector}
+#'
+
+tox_compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_centroid) {
+  # R-layer validation (kept in rcpp/)
+  validate_numeric_matrix(expression_vectors)
+  validate_numeric_matrix(family_centroids)
+  # Ensure matching axes (rows)
+  validate_matching_rows(expression_vectors, family_centroids)
+
+  # gene_to_centroid should be integer vector with length equal to number of vectors
+  gene_to_centroid <- as.integer(gene_to_centroid)
+  n_vectors <- ncol(as.matrix(expression_vectors))
+  validate_length_equals_n(gene_to_centroid, n_vectors)
+
+
+
+
+  result <- tox_compute_shift_vector_field_rcpp(expression_vectors, family_centroids, gene_to_centroid)
+  check_err_code(result$ierr)
+  return(list(shift_vectors = result$shift_vectors))
+}
+
+# ===================================================================
+# GENE CENTROIDS FUNCTIONS
+# ===================================================================
+#' Calculate Gene Centroids
+
+#' Computes the centroids for each gene family based on the expression vectors of its member genes.
+#' This function automatically checks for errors and throws informative exceptions.
+#'
+#' @param expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
+#' @param gene_to_family: Array mapping each gene to its corresponding family ID (length n_vectors)
+#' @param n_families: Total number of gene families
+#' @param ortholog_set: Logical array indicating if a gene is part of a specific subset (e.g., orthologs)
+#' @param mode: Character string indicating the mode of operation ('all' or 'ortho')
+#'
+#' @return List containing:
+#'   \item{centroid_matrix}{The computed centroids for each gene family}
+#'
+
+ 
+tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, ortholog_set, mode = 'all') {
+  # R-layer validation (kept in rcpp/)
+  validate_group_centroid_inputs(expression_vectors, gene_to_family, n_families, ortholog_set, mode)
+
+  result <- tox_group_centroid_rcpp(expression_vectors, gene_to_family, n_families, ortholog_set, mode)
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#' Compute the element-wise mean for a given set of gene expression vectors
+#'
+#' This function wraps the Fortran subroutine `mean_vector_r`
+#' to compute the centroid (mean vector) for a selected set of genes.
+#'
+#' @param expression_vectors Numeric matrix (n_axes x n_genes) of gene expression vectors
+#' @param gene_indices Integer vector of column indices of selected genes (1-based)
+#'
+#' @return Numeric vector of length n_axes representing the computed centroid
+#'
+
+tox_mean_vector <- function(expression_vectors, gene_indices) {
+  # R-layer validation (kept in rcpp/)
+  validate_mean_vector_inputs(expression_vectors, gene_indices)
+
+  result <- tox_mean_vector_rcpp(expression_vectors, gene_indices)
+  check_err_code(result$ierr)
+  return(result)
 }

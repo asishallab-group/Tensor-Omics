@@ -1,5 +1,5 @@
 !> Unit test suite for tox_trajectory_contribution_analysis routine.
-module mod_test_tox_trajectory_contribution_analysis
+module mod_test_tox_traj_contrib_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
@@ -428,4 +428,4 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_trajectory_contribution_analysis
-end module mod_test_tox_trajectory_contribution_analysis
+end module mod_test_tox_traj_contrib_analysis

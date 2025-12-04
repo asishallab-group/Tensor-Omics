@@ -4,6 +4,7 @@ module mod_test_quantile_normalization
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+  use tox_normalization
   implicit none
   public
 
@@ -89,7 +90,7 @@ contains
     mat(:,1) = [0.1d0, 0.2d0]
     mat(:,2) = [0.3d0, 0.4d0]
     mat(:,3) = [0.5d0, 0.6d0]
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_int(size(result,1), nrow, "qn_preserves_dimensions: row count not preserved")
     call assert_equal_int(size(result,2), ncol, "qn_preserves_dimensions: col count not preserved")
@@ -105,7 +106,7 @@ contains
     mat(1,:) = [5.0d0, 5.0d0, 5.0d0]
     mat(2,:) = [5.0d0, 5.0d0, 5.0d0]
     expected = mat
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 6, 1d-12, "qn_identical_rows: identical rows not preserved")
     call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_identical_rows: result has non-finite values")
@@ -122,7 +123,7 @@ contains
     mat(:,1) = [2.0d0, 0.0d0]
     mat(:,2) = [5.0d0, 3.0d0]
     mat(:,3) = [7.0d0, 1.0d0]
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_true(.not. any(reshape(isnan_mat(result), [size(result)])), "qn_no_nans_and_standardizes: result has NaN")
     call assert_true(all(reshape(isfinite_mat(result), [size(result)])), &
@@ -151,7 +152,7 @@ contains
     mat(1,:) = [1.0d0, 2.0d0, 3.0d0, 4.0d0]
     row_mean = sum(mat(1,:)) / ncol
     expected(1,:) = row_mean
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 4, 1d-12, "qn_single_row: values should all equal row mean")
     call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_single_row: result has non-finite values")
@@ -166,7 +167,7 @@ contains
     nrow = 3; ncol = 1; max_stack = 10
     mat(:,1) = [7.0d0, 2.0d0, 5.0d0]
     expected = mat
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 3, 1d-12, "qn_single_column: single column should remain unchanged")
   end subroutine test_qn_single_column
@@ -180,7 +181,7 @@ contains
     nrow = 4; ncol = 4; max_stack = 10
     mat = 3.14d0
     expected = mat
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 16, 1d-12, "qn_all_equal: all equal values not preserved")
   end subroutine test_qn_all_equal
@@ -202,7 +203,7 @@ contains
     call random_seed(put=seed_array)
     deallocate(seed_array)
     call random_number(mat)
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     allocate(sorted_cols(nrow, ncol))
     do i = 1, ncol
@@ -226,7 +227,7 @@ contains
     mat(:,1) = [-1.0d0, -2.0d0]
     mat(:,2) = [-3.0d0, -4.0d0]
     mat(:,3) = [-5.0d0, -6.0d0]
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_no_nan_real(result, 6, "qn_negative_values: NaN in result")
     call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_negative_values: non-finite values in result")
@@ -241,7 +242,7 @@ contains
     nrow = 3; ncol = 3; max_stack = 10
     mat = 0.0d0
     expected = 0.0d0
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 9, 1d-12, "qn_zero_matrix: zero matrix not preserved")
   end subroutine test_qn_zero_matrix
@@ -256,7 +257,7 @@ contains
     mat(:,1) = [1.0d0, 2.0d0, 3.0d0]
     mat(:,2) = [1.0d0, 2.0d0, 3.0d0]
     mat(:,3) = [1.0d0, 2.0d0, 3.0d0]
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, mat, 9, 1d-12, "qn_sorted_input: sorted input not preserved")
   end subroutine test_qn_sorted_input
@@ -272,7 +273,7 @@ contains
     mat(:,2) = [2.0d0, 2.0d0, 2.0d0]
     mat(:,3) = [1.0d0, 1.0d0, 1.0d0]
     expected = 2.0d0
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_equal_array_real(result, expected, 9, 1d-12, "qn_reverse_sorted: reverse sorted input not normalized to mean")
   end subroutine test_qn_reverse_sorted
@@ -285,7 +286,7 @@ contains
     integer(int32) :: perm(2), stack_left(10), stack_right(10)
     nrow = 2; ncol = 2; max_stack = 10
     mat = reshape([1e-10, 1e10, 1e-5, 1e5], [2,2])
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
     call assert_no_nan_real(result, 4, "qn_edge_cases: NaN in result")
     call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_edge_cases: non-finite values in result")
@@ -298,7 +299,7 @@ contains
     real(real64), dimension(0) :: temp_col, rank_means
     integer(int32), dimension(0) :: perm, stack_left, stack_right
     nrow = 0; ncol = 0; max_stack = 0
-    call quantile_normalization_r(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 202, "quantile_normalization_r should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_qn_empty_matrix

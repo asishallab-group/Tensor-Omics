@@ -5,7 +5,7 @@ module tox_trajectory_contribution_analysis
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_utils, only: is_close
-    use tox_errors, only: set_ok, set_err, is_err, ERR_IDX_OUT_OF_BOUNDS, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, validate_dimension_size
+    use tox_errors, only: set_ok, set_err, is_err, ERR_IDX_OUT_OF_BOUNDS, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, validate_dimension_size
     implicit none
 
     integer(int32), parameter :: MODE_NORMAL = 1
@@ -672,10 +672,9 @@ subroutine process_trajectories_C(trajectories, n_factors, n_samples, n_timepoin
                                       thresholds_spike_contrib, outliers_spike_contrib_int, ierr) &
                                       bind(C, name="process_trajectories_C")
     use tox_conversions, only: logical_as_c_int, c_int_as_logical
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, is_err, ERR_EMPTY_INPUT, ERR_ALLOC_FAIL, validate_dimension_size
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
+    use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size
     use tox_trajectory_contribution_analysis, only: process_trajectories_alloc
-    use iso_fortran_env, only: int32
     M_USE_NULL_VALIDATION
     implicit none
 
@@ -792,10 +791,9 @@ subroutine process_trajectories_flat_C(trajectories, n_factors, n_samples, n_tim
                                            thresholds_spike_contrib, outliers_spike_contrib_int, ierr) &
                                            bind(C, name="process_trajectories_flat_C")
     use tox_conversions, only: logical_as_c_int, c_int_as_logical
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, is_err, ERR_EMPTY_INPUT, ERR_ALLOC_FAIL, validate_dimension_size
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
+    use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size
     use tox_trajectory_contribution_analysis, only: process_trajectories_flat_alloc
-    use iso_fortran_env, only: int32
     M_USE_NULL_VALIDATION
     implicit none
 

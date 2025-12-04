@@ -3,6 +3,7 @@
 module mod_test_calc_tiss_avg
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use tox_normalization
   implicit none
   public
 
@@ -94,7 +95,7 @@ contains
     ! Group counts: each tissue has 2 replicates
     group_c = [2, 2, 2]
 
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     ! Expected results (column-major):
@@ -123,7 +124,7 @@ contains
     group_s = [1, 3, 5]
     group_c = [2, 2, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     ! Same expected results as previous test
@@ -145,7 +146,7 @@ contains
     group_s = [1]
     group_c = [2]  ! 2 replicates for single tissue
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     ! Expected: average of samples 1 and 2 (columns 1 and 2)
@@ -168,7 +169,7 @@ contains
     group_s = [1, 3]
     group_c = [2, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     ! Output should have n_gene * n_grps elements
@@ -193,7 +194,7 @@ contains
     group_s = [1, 3, 6]
     group_c = [2, 3, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     call assert_no_nan_real(output_matrix, 6, "test_calc_tiss_avg_unequal_replicates: NaN in result")
@@ -217,7 +218,7 @@ contains
     group_s = [1, 2, 3]
     group_c = [1, 1, 1]  ! Single replicate per tissue
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     ! With single replicates, output should equal input
@@ -239,7 +240,7 @@ contains
     group_s = [1, 3]
     group_c = [2, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     call assert_no_nan_real(output_matrix, 4, "test_calc_tiss_avg_large_values: NaN in result")
@@ -263,7 +264,7 @@ contains
     group_s = [1, 3]
     group_c = [2, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     call assert_no_nan_real(output_matrix, 4, "test_calc_tiss_avg_negative_values: NaN in result")
     
@@ -286,7 +287,7 @@ contains
     group_c = [2, 2]
     expected_matrix = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     
     call assert_equal_array_real(output_matrix, expected_matrix, 4, 1d-12, &
@@ -306,7 +307,7 @@ contains
     group_s = [1, 3, 5]
     group_c = [2, 2, 2]
     
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_tiss_avg_r returned error")
     call assert_no_nan_real(output_matrix, 6, "test_calc_tiss_avg_mixed_values: NaN in result")
     
@@ -326,7 +327,7 @@ contains
     integer(int32), dimension(0) :: group_s, group_c
     real(real64), dimension(0) :: input_matrix, output_matrix
     n_gene = 0; n_grps = 0
-    call calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(ierr, 202, "calc_tiss_avg_r should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_calc_tiss_avg_empty_matrix

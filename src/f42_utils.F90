@@ -3,8 +3,8 @@
 module f42_utils
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, set_ok, set_err_once
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err
+  use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
   implicit none
 
   public :: sort_real, sort_integer, sort_character
@@ -19,9 +19,31 @@ module f42_utils
     module procedure sort_real_heapsort, sort_integer_heapsort, sort_character_heapsort
   end interface sort_array_heapsort
 
+  real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
   real(real64), parameter :: EPS = epsilon(1.0_real64)
-
 contains
+
+  !> Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.
+  pure real(real64) function below(val)
+      real(real64), intent(in) :: val
+  
+      if (val == 0.0_real64) then
+          below = -tiny(1.0_real64)
+      else
+          below = ieee_next_after(val, ieee_value(1.0_real64, ieee_negative_inf))
+      end if
+  end function below
+
+  !> Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges.
+  pure real(real64) function above(val)
+      real(real64), intent(in) :: val
+  
+      if (val == 0.0_real64) then
+          above = tiny(1.0_real64)
+      else
+          above = ieee_next_after(val, ieee_value(1.0_real64, ieee_positive_inf))
+      end if
+  end function above
 
   pure logical function is_close(a, b)
     real(real64), intent(in) :: a
@@ -29,7 +51,11 @@ contains
     real(real64), intent(in) :: b
       !! Second variable of comparison a==b
 
-    is_close = abs(a - b) <= EPS * max(abs(a), abs(b))
+    if (ieee_is_finite(a) .and. ieee_is_finite(b)) then
+      is_close = abs(a - b) <= EPS * max(abs(a), abs(b))
+    else
+      is_close = a == b
+    end if
   end function is_close
 
   !> Find the next power of two greater than or equal to n
@@ -42,6 +68,93 @@ contains
       power = 2 ** (bit_size(n) - leadz(n - 1))
   end function next_power_of_two
 
+  !> Computes the radian angle between two vectors
+  pure subroutine angle_between(v1, v2, n_dims, angle, ierr)
+    integer(int32), intent(in) :: n_dims
+      !! number of elements in `v1` and `v2`
+    real(real64), dimension(n_dims), intent(in) :: v1
+      !! first vector for angle calculation
+    real(real64), dimension(n_dims), intent(in) :: v2
+      !! second vector for angle calculation
+    real(real64), intent(out) :: angle
+      !! will hold calculated angle
+    integer(int32), intent(out) :: ierr
+      !! Error code
+
+    integer(int32) :: i
+    real(real64) :: theta, dot_product, norm1, norm2, norm_product
+
+    call set_ok(ierr)
+
+    dot_product = 0
+    norm1 = 0
+    norm2 = 0
+    do i = 1, size(v1)
+      dot_product = dot_product + v1(i) * v2(i)
+      norm1 = norm1 + v1(i) ** 2
+      norm2 = norm2 + v2(i) ** 2
+    end do
+    norm_product = sqrt(norm1) * sqrt(norm2)
+    if (is_close(norm_product, 0.0_real64)) then
+        call set_err(ierr, ERR_DIVISION_BY_ZERO)
+        return
+    end if
+
+    theta = dot_product / norm_product
+    theta = max(-1.0_real64, min(1.0_real64, theta))
+    angle = acos(theta)
+  end subroutine angle_between
+
+  !> Returns the given degrees in positive radian value (-90deg -> 3*PI/2, not -PI/2)
+  pure real(real64) function radians(degrees)
+    real(real64), intent(in) :: degrees
+        !! degrees to be converted
+
+    radians = modulo(degrees, 360.0_real64) * PI / 180 
+  end function radians
+
+  !> Calculates the euclidean norm of a vector
+  pure real(real64) function norm(vector)
+    real(real64), dimension(:), intent(in) :: vector
+        !! Input vector the norm will be calcuated for
+
+    integer(int32) :: i_dim
+
+    norm = 0
+    do i_dim = 1, size(vector)
+      norm = norm + vector(i_dim) ** 2
+    end do
+    norm = sqrt(norm)
+  end function norm
+
+  !> Adds two vectors in-place
+  pure subroutine add_vector(vector, to_be_added)
+    real(real64), dimension(:), intent(inout) :: vector
+        !! First vector, it will be modified in-place
+    real(real64), dimension(:), intent(in) :: to_be_added
+        !! Vector that should be added to `vector`
+
+    integer(int32) :: i_dim
+
+    do i_dim = 1, size(vector)
+      vector(i_dim) = vector(i_dim) + to_be_added(i_dim)
+    end do
+  end subroutine add_vector
+
+  !> Subtracts two vectors in-place
+  pure subroutine subtract_vector(vector, to_be_subtracted)
+    real(real64), dimension(:), intent(inout) :: vector
+        !! First vector, it will be modified in-place
+    real(real64), dimension(:), intent(in) :: to_be_subtracted
+        !! Vector that should be subtracted from `vector`
+
+    integer(int32) :: i_dim
+
+    do i_dim = 1, size(vector)
+      vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
+    end do
+  end subroutine subtract_vector
+  
   !> Sort a real array indirectly using quicksort.
   !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
   pure subroutine sort_real(array, perm, stack_left, stack_right)
@@ -948,8 +1061,6 @@ contains
 
 end module f42_utils
 
-
-
 ! === R WRAPPERS ===
 
 !> R wrapper for loess_smooth_2d.
@@ -991,7 +1102,7 @@ end subroutine loess_smooth_2d_r
 !> C wrapper for which.
 !| Converts integer mask to logical and calls which.
 subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
-  use iso_c_binding
+  use, intrinsic :: iso_c_binding, only: c_int
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: which
   implicit none
@@ -1020,7 +1131,7 @@ end subroutine which_c
 !| Direct wrapper - user must pre-filter indices in C before calling.
 subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")
-  use iso_c_binding, only : c_int, c_double
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: loess_smooth_2d
   implicit none
@@ -1062,7 +1173,7 @@ end subroutine loess_smooth_2d_c
 !| The number of unique values is returned via n_unique output parameter.
 subroutine compute_edf_c(values, n_values, unique_values, cdf_values, n_unique, ierr) &
   bind(C, name="compute_edf_c")
-  use iso_c_binding, only: c_int, c_double
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf_alloc
   implicit none
@@ -1088,7 +1199,7 @@ end subroutine compute_edf_c
 !| for better performance when the caller has full control.
 subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_values, n_unique, ierr) &
     bind(C, name="compute_edf_expert_c")
-  use iso_c_binding, only: c_int, c_double
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf
   implicit none

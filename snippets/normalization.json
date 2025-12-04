@@ -1,4 +1,46 @@
 {
+  "Call to normalize_unit_length": {
+    "prefix": "tox:normalize_unit_length",
+    "body": [
+      "call normalize_unit_length(${1:vector}, ${2:size(vector, kind=int32)}, ${3:ierr})"
+    ],
+    "description": "Normalize a vector to unit length in Fortran"
+  },
+  "Python setup for normalize_unit_length": {
+    "prefix": "tox:setup_py_tox_normalize_unit_length_c",
+    "body": [
+      "def tox_normalize_unit_length(vector):",
+      "    \"\"\"",
+      "    Normalize a vector to unit length in-place.",
+      "",
+      "    Args:",
+      "        vector (np.ndarray): 1D array of shape (n_dims,) to be normalized.",
+      "",
+      "    Returns:",
+      "        np.ndarray: The same array, normalized in-place.",
+      "    \"\"\"",
+      "",
+      "    vector = np.ascontiguousarray(vector, dtype=np.float64)",
+      "    n_dims = ctypes.c_int(vector.size)",
+      "    ierr = ctypes.c_int(0)",
+      "",
+      "    normalize_unit_length_c = lib.normalize_unit_length_c",
+      "    normalize_unit_length_c.argtypes = [",
+      "        np.ctypeslib.ndpointer(dtype=np.float64, flags=\"C_CONTIGUOUS\"),",
+      "        ctypes.POINTER(ctypes.c_int),",
+      "        ctypes.POINTER(ctypes.c_int)",
+      "    ]",
+      "    normalize_unit_length_c.restype = None",
+      "",
+      "    normalize_unit_length_c(vector, ctypes.byref(n_dims), ctypes.byref(ierr))",
+      "    check_err_code(ierr.value)",
+      "",
+      "    _readonly(vector)",
+      "    return vector",
+      ""
+    ],
+    "description": "Setup normalize_unit_length_c function binding for Python/ctypes"
+  },
   "C call to normalization_pipeline": {
     "prefix": "tox:setup_py_normalization_pipeline_c",
     "body": [

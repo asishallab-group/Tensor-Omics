@@ -385,8 +385,7 @@ contains
 
   !> Test computation of shift vectors
   subroutine test_compute_shift_vectors()
-    integer(int32) :: ierr, i, j
-    real(real64), allocatable :: test_shift_vectors(:,:)
+    integer(int32) :: i
     
     call assert_true(allocated(shift_vectors), "Shift vectors should be allocated")
     call assert_equal_int(size(shift_vectors, 1), 2*total_samples, "Shift vectors should have 2*d rows")
@@ -444,7 +443,7 @@ contains
   end subroutine test_write_read_shift_vectors
 
   subroutine test_read_write_gene_ids()
-    integer(int32) :: ierr, n_loaded_genes, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     character(len=256), allocatable :: loaded_gene_ids(:)
     call save_gene_ids(gene_ids, 'test_gene_ids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving gene IDs should succeed")
@@ -462,7 +461,7 @@ contains
   end subroutine test_read_write_gene_ids
 
   subroutine test_read_write_gene_to_fam()
-    integer(int32) :: ierr, n_loaded_genes, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     integer(int32), allocatable :: loaded_gene_to_fam(:)
     call save_gene_to_family(gene_to_fam, 'test_gene_to_fam.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving gene to family mapping should succeed")
@@ -477,7 +476,7 @@ contains
   end subroutine test_read_write_gene_to_fam
 
   subroutine test_read_write_family_ids()
-    integer(int32) :: ierr, n_loaded_families, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     character(len=256), allocatable :: loaded_family_ids(:)
     call save_family_ids(gene_family_ids, 'test_family_ids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving family IDs should succeed")
@@ -492,7 +491,7 @@ contains
   end subroutine test_read_write_family_ids
 
   subroutine test_read_write_centroids()
-    integer(int32) :: ierr, n_loaded_families, ndims, dims(2)
+    integer(int32) :: ierr, ndims, dims(2)
     real(real64), allocatable :: loaded_centroids(:,:)
     call save_family_centroids(family_centroids, 'test_family_centroids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving family centroids should succeed")

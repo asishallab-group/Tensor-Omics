@@ -25,9 +25,13 @@ normalized_matrix_qtl <- tox_quantile_normalization(normalized_matrix_std)
 normalized_matrix_log <- tox_log2_transformation(normalized_matrix_qtl)
 averaged_df <- tox_calculate_tissue_averages(normalized_matrix_log)
 
+# `tox_calculate_tissue_averages` returns a data.frame; downstream
+# functions expect a numeric matrix. Convert here to avoid validation errors.
+averaged_mat <- as.matrix(averaged_df)
+
 # --- Calculate fold changes for multiple diets ---
 fc_df <- tox_calculate_fc_by_patterns(
-  df = averaged_df,
+  df = averaged_mat,
   control_pattern = "dietM",
   condition_patterns = c("dietP", "dietQ")
 )

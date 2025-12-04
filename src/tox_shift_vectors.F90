@@ -64,7 +64,8 @@ end module
 !| When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs..
 pure subroutine compute_shift_vector_field_r(d, n_genes, n_families, expression_vectors, family_centroids, &
                                              gene_to_centroid, shift_vectors, ierr)
-  use tox_shift_vectors
+  use tox_shift_vectors, only: compute_shift_vector_field
+  use, intrinsic :: iso_fortran_env, only: real64, int32
 
   !| Expression vector dimension
   integer(int32), intent(in) :: d
@@ -91,8 +92,8 @@ end subroutine compute_shift_vector_field_r
 !| When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.
 pure subroutine compute_shift_vector_field_c(d, n_genes, n_families, expression_vectors, family_centroids, gene_to_centroid, &
                                              shift_vectors, ierr) bind(C, name="compute_shift_vector_field_c")
-  use iso_c_binding
-  use tox_shift_vectors
+  use, intrinsic :: iso_c_binding, only: c_double, c_int
+  use tox_shift_vectors, only: compute_shift_vector_field
   !| Expression vector dimension
   integer(c_int), intent(in), value :: d
   !| Total number of genes

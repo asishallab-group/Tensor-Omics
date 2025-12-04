@@ -3,8 +3,7 @@
 module tox_trajectory_contribution_analysis_outlier_detection
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, &
-                         ERR_ALLOC_FAIL, set_ok, set_err, is_err, validate_dimension_size
+    use tox_errors, only: ERR_ALLOC_FAIL, set_ok, set_err, is_err, validate_dimension_size
     use f42_utils, only: calc_percentile, calc_percentile_alloc, sort_real
     
     implicit none
@@ -234,8 +233,7 @@ end module tox_trajectory_contribution_analysis_outlier_detection
 subroutine calc_spike_thresholds_expert_C(spike_contribs, n_timepoints, n_samples, &
                                     percentile_val, thresholds, permutation, ierr) &
                                     bind(C, name="calc_spike_thresholds_expert_C")
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_contribution_analysis_outlier_detection, only: calc_spike_thresholds
     
     integer(c_int), intent(in), value :: n_samples
@@ -253,10 +251,6 @@ subroutine calc_spike_thresholds_expert_C(spike_contribs, n_timepoints, n_sample
     integer(c_int), intent(out) :: ierr
     !! Error code
 
-    
-    ! Initialize error
-    call set_ok(ierr)
-    
     call calc_spike_thresholds(spike_contribs, n_timepoints, n_samples, percentile_val, &
                                 thresholds, permutation, ierr)
     
@@ -267,8 +261,7 @@ end subroutine calc_spike_thresholds_expert_C
 subroutine calc_spike_thresholds_C(spike_contribs, n_timepoints, n_samples, &
                                         percentile_val, thresholds, ierr) &
                                         bind(C, name="calc_spike_thresholds_C")
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_contribution_analysis_outlier_detection, only: calc_spike_thresholds_alloc
     integer(c_int), intent(in), value :: n_timepoints
     !! number of timepoints
@@ -282,10 +275,7 @@ subroutine calc_spike_thresholds_C(spike_contribs, n_timepoints, n_samples, &
     !! 1D array of thresholds
     integer(c_int), intent(out) :: ierr
     !! Error code
-    
-    ! Initialize error
-    call set_ok(ierr)
-    
+
     ! Call Fortran subroutine
     call calc_spike_thresholds_alloc(spike_contribs, n_timepoints, n_samples, percentile_val, &
                                     thresholds, ierr)
@@ -297,8 +287,7 @@ end subroutine calc_spike_thresholds_C
 subroutine calc_integrated_threshold_expert_C(contributions, n_samples, percentile_val, &
                                         threshold, permutation, ierr) &
                                         bind(C, name="calc_integrated_threshold_expert_C")
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_contribution_analysis_outlier_detection, only: calc_integrated_threshold
     integer(c_int), intent(in), value :: n_samples
     !! Number of samples
@@ -313,9 +302,6 @@ subroutine calc_integrated_threshold_expert_C(contributions, n_samples, percenti
     integer(c_int), intent(out) :: ierr
     !! Error code
     
-    ! Initialize error
-    call set_ok(ierr)
-    
     ! Call Fortran subroutine
     call calc_integrated_threshold(contributions, n_samples, percentile_val, &
                                 threshold, permutation, ierr)
@@ -327,8 +313,7 @@ end subroutine calc_integrated_threshold_expert_C
 subroutine calc_integrated_threshold_C(contributions, n_samples, percentile_val, &
                                             threshold, ierr) &
                                             bind(C, name="calc_integrated_threshold_C")
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_contribution_analysis_outlier_detection, only: calc_integrated_threshold_alloc
     real(c_double), intent(in) :: contributions(n_samples)
     !! 1D array of integrated contributions
@@ -340,9 +325,6 @@ subroutine calc_integrated_threshold_C(contributions, n_samples, percentile_val,
     !! Scalar threshold value
     integer(c_int), intent(out) :: ierr
     !! Error code
-    
-    ! Initialize error
-    call set_ok(ierr)
     
     ! Call Fortran subroutine
     call calc_integrated_threshold_alloc(contributions, n_samples, percentile_val, &
@@ -356,8 +338,8 @@ subroutine detect_outliers_integrated_expert_C(contributions, n_samples, thresho
                                         outlier_mask, ierr) &
                                         bind(C, name="detect_outliers_integrated_expert_C")
     use tox_conversions, only: logical_as_c_int
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_ALLOC_FAIL, is_ok, is_err
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
+    use tox_errors, only: set_ok, set_err, ERR_ALLOC_FAIL, is_ok, is_err, ERR_EMPTY_INPUT
     use tox_trajectory_contribution_analysis_outlier_detection, only: detect_outliers_integrated
     real(c_double), intent(in) :: contributions(n_samples)
     !! Array of integrated contributions
@@ -405,8 +387,8 @@ subroutine detect_outliers_spike_expert_C(spike_contribs, n_timepoints, n_sample
                                     outlier_mask, ierr) &
                                     bind(C, name="detect_outliers_spike_expert_C")
     use tox_conversions, only: logical_as_c_int
-    use iso_c_binding, only: c_double, c_int
-    use tox_errors, only: set_ok, set_err, is_ok, is_err, ERR_EMPTY_INPUT, ERR_ALLOC_FAIL
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
+    use tox_errors, only: set_ok, set_err, is_ok, is_err, ERR_ALLOC_FAIL
     use tox_trajectory_contribution_analysis_outlier_detection, only: detect_outliers_spike
     integer(c_int), intent(in), value :: n_samples
     !! Number of samples

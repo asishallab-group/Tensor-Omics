@@ -5,8 +5,8 @@
 module binary_search_tree
   use safeguard
   use f42_utils, only: sort_array
-  use iso_fortran_env, only: int32, real64
-  use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH, ERR_SIZE_MISMATCH, is_ok, set_err_once, set_ok, validate_dimension_size
+  use, intrinsic :: iso_fortran_env, only: int32, real64
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_DIM_MISMATCH, is_ok, set_err_once, set_ok, validate_dimension_size
   implicit none
   public :: build_bst_index, get_sorted_value, bst_range_query
 contains
@@ -117,8 +117,7 @@ subroutine bst_range_query_r(values, sorted_indices, num_values, lower_bound, up
                             output_indices, num_matches, ierr)
 
   use binary_search_tree, only: bst_range_query
-  use iso_fortran_env, only: int32, real64
-  use tox_errors, only: ERR_OK
+  use, intrinsic :: iso_fortran_env, only: int32, real64
 
   implicit none
   integer(int32), intent(in) :: num_values           
@@ -145,8 +144,7 @@ end subroutine bst_range_query_r
 !> Wrapper for building BST index usable by R
 subroutine build_bst_index_r(values, num_values, sorted_indices, left_stack, right_stack, ierr)
   use binary_search_tree, only: build_bst_index
-  use iso_fortran_env, only: int32, real64
-  use tox_errors, only: ERR_OK
+  use, intrinsic :: iso_fortran_env, only: int32, real64
   implicit none
   integer(int32), intent(in) :: num_values           
   !! Number of elements
@@ -167,9 +165,8 @@ end subroutine build_bst_index_r
 !> Wrapper using C for getting range query usable by python
 subroutine bst_range_query_C(values, sorted_indices, num_values, lower_bound, upper_bound, &
                             output_indices, num_matches, ierr) bind(C, name='bst_range_query_C')
-  use iso_c_binding, only: c_int, c_double, c_f_pointer, c_loc
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use binary_search_tree, only: bst_range_query
-  use tox_errors, only: ERR_OK
   implicit none
   real(c_double), intent(in) :: values(num_values)    
   !! Input real array (C-style)
@@ -195,9 +192,8 @@ end subroutine bst_range_query_C
 !> Wrapper using C for building BST index usable by python
 subroutine build_bst_index_C(values, num_values, sorted_indices, left_stack, right_stack, ierr) &
                             bind(C, name='build_bst_index_C')
-  use iso_c_binding, only: c_int, c_double, c_f_pointer, c_loc
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use binary_search_tree
-  use tox_errors, only: ERR_OK
   implicit none
   integer(c_int), value :: num_values               
   !! Number of elements
