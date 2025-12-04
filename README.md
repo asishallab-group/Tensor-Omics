@@ -3,25 +3,25 @@
 
 # Tensor Omics
 
-## Table of Contents
-- [Introduction](#introduction)
-- [Key Features](#key-features)
-- [Project Structure](#project-structure)
-- [Compilation](#compilation)
+## **Table of Contents**
+- **[Introduction](#introduction)**
+- **[Key Features](#key-features)**
+- **[Project Structure](#project-structure)**
+- **[Compilation](#compilation)**
   - [Compiler Requirements](#compiler-requirements)
   - [Local Compilation (No Docker)](#local-compilation-no-docker)
   - [Compilation Using Docker](#compilation-using-docker)
-- [Installation](#installation)
+- **[Installation](#installation)**
   - [Linux](#linux)
   - [Windows-11](#windows-11)
   - [macOS](#macos)
-- [Installation for R and Python](#installation-for-r-and-python)
+- **[Installation for R and Python](#installation-for-r-and-python)**
   - [R Integration](#r-integration)
   - [Python Integration](#python-integration)
-- [Usage](#usage)
-- [Testing](#testing)
-- [Configuration](#configuration)
-- [License](#license)
+- **[Usage](#usage)**
+- **[Testing](#testing)**
+- **[Configuration](#configuration)**
+- **[License](#license)**
 
 ---
 
@@ -314,11 +314,6 @@ Prebuilt binaries for Linux, Windows-11, and macOS are automatically generated b
 
 ---
 
-> **Note:** `/path/to/build` or `C:\path\to\build` must point to the directory containing:
-> - `libtensor-omics.so` (Linux)
-> - `tensoromics.dll` (Windows)
-> - `libtensor-omics.dylib` (macOS)
-
 # Installation for R and Python
 
 Once the Tensor Omics shared library is available (either from prebuilt binaries or after compilation), follow these steps to use it from R and Python.
@@ -383,13 +378,13 @@ print(paste("Distance:", distance))
    dll_path = os.path.abspath("build/libtensor-omics.so")
    ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
    lib = ctypes.CDLL(dll_path)
-   
-   # Use a function
-   result = euclidean_distance([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
-   print(f"Distance: {result}")  # Should output: 5.196152
-   ```
+    ```
 
 3. **Verify installation**:
+    ```python
+    distance = euclidean_distance([0.0, 0.0], [3.0, 4.0])
+    print(f"Distance: {distance}")  # Should output: 5.0
+    ```
 ### Example Usage
 
 ```python
@@ -480,7 +475,6 @@ Rscript rcpp/test/normalization.R
 python python/test/test_euclidean_distance.py
 ```
 
-> For detailed test documentation, see `test/readme.md`
 
 ---
 
@@ -501,6 +495,19 @@ export LD_LIBRARY_PATH=/path/to/build:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=/path/to/build:$DYLD_LIBRARY_PATH
 ```
 
+**Windows:**
+```cmd
+# Add Tensor Omics shared library to PATH (temporary - current session only)
+set PATH=C:\path\to\build;%PATH%
+
+# Or for permanent setup, use setx (requires reopening terminal)
+setx PATH "C:\path\to\build;%PATH%"
+```
+
+> **Note:** `/path/to/build` or `C:\path\to\build` must point to the directory containing:
+> - `libtensor-omics.so` (Linux)
+> - `tensoromics.dll` (Windows)
+> - `libtensor-omics.dylib` (macOS)
 ## Build Options
 
 Customize compilation via environment variables in `build.sh`:
