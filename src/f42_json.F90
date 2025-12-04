@@ -16,9 +16,9 @@ module f42_json
     !! If `value` is unassigned or of unsupported type, the result will be `null`
     type, public :: json_value
         class(*), pointer :: value => null()
-            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, `json_array`, `json_object`, `json_value`
+            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, [[json_array(type)]], [[json_object(type)]], [[json_value(type)]]
             !!
-            !! The support for `json_value` is just for simplicity but not recommended for use, as it increases recursion depth unnecessarily.
+            !! The support for [[json_value(type)]] is just for simplicity but not recommended for use, as it increases recursion depth unnecessarily.
     end type json_value
 
     !> Wrapper type for JSON Arrays
@@ -26,7 +26,7 @@ module f42_json
     !| If `elements` is unassigned, the result will be an empty array `[]`.
     type, public :: json_array
         class(*), dimension(:), pointer :: elements => null()
-            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, `json_array`, `json_object`, `json_value`
+            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, [[json_array(type)]], [[json_object(type)]], [[json_value(type)]]
     end type json_array
 
     !> Wrapper type for JSON objects.
@@ -40,7 +40,7 @@ module f42_json
         class(*), dimension(:), pointer :: values => null()
             !! Array of the values of the key-value pairs.
             !!
-            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, `json_array`, `json_object`, `json_value`
+            !! Supported types: `integer(int32)`, `real(real64)`, `logical`, `complex(real64)`, [[json_array(type)]], [[json_object(type)]], [[json_value(type)]]
     end type json_object
 contains
 
@@ -89,7 +89,7 @@ contains
         end select
     end subroutine serialize_scalar
 
-    !> Serializes a `json_array` and writes it to the passed unit
+    !> Serializes a [[json_array(type)]] and writes it to the passed unit
     recursive subroutine serialize_array(json_arr, unit, depth, max_depth)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize
@@ -118,7 +118,7 @@ contains
     !> Serializes any supported type, else `null`
     recursive subroutine serialize_json_value(element, unit, depth, max_depth)
         class(*), intent(in) :: element
-            !! JSON value to serialize, can be either `json_value` or any type supported by `json_value`
+            !! JSON value to serialize, can be either [[json_value(type)]] or any type supported by [[json_value(type)]]
         integer(int32), intent(in) :: unit
             !! unit of the file to write to
         integer(int32), intent(inout) :: depth
@@ -165,7 +165,7 @@ contains
         call serialize_json_value(value, unit, depth, max_depth)
     end subroutine serialize_key_value_pair
 
-    !> Serializes a `json_object` and writes it to the passed unit
+    !> Serializes a [[json_object(type)]] and writes it to the passed unit
     recursive subroutine serialize_object(json_obj, unit, depth, max_depth)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
@@ -191,7 +191,7 @@ contains
         write (unit, "('}')", advance="no")
     end subroutine serialize_object
 
-    !> Serializes a `json_object` and writes it to the passed unit
+    !> Serializes a [[json_object(type)]] and writes it to the passed unit
     subroutine serialize_json_object(json_obj, unit, max_depth)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
@@ -208,7 +208,7 @@ contains
         call serialize_object(json_obj, unit, depth, actual_max_depth)
     end subroutine serialize_json_object
 
-    !> Serializes a `json_array` and writes it to the passed unit
+    !> Serializes a [[json_array(type)]] and writes it to the passed unit
     subroutine serialize_json_array(json_arr, unit, max_depth)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize

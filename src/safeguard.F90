@@ -1,3 +1,4 @@
+!> This module is a safeguard to trigger a compilation error if `c_int/=int32` or `c_double/=real64` or `c_double_complex/=real64` to guarantee reproducibility across platforms.
 module safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
 
@@ -32,6 +33,7 @@ module safeguard
 #endif
 #endif
 
+    private
 
     ! type guards to guarantee kind identity between fortran and c for correct interop in the c wrapper routines
     logical, parameter :: THIS_FAILS_IF_C_INT_DOES_NOT_MATCH_INT32 = 1 == 1 / merge(1, 0, c_int == int32)

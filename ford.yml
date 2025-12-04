@@ -4,4 +4,4 @@ author: TensorOmics Developers
 print_creation_date: true
 creation_date: "%Y-%m-%d %H:%M %z"
 
-# Note: Using default source discovery and rendering settings for FORD.
+# A high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets.
