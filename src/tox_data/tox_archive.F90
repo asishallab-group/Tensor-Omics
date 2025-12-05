@@ -173,8 +173,6 @@ contains
         ! Open ZIP archive
         zip_handle = zip_open(trim(zip_filename)//c_null_char, ZIP_CREATE, error)
         errptr = zip_strerror(zip_handle)
-        print *, "libzip error:", trim(c_to_fortran_string(errptr))
-        print *, "Zip filename: >", trim(zip_filename), "<"
 
         if (.not. c_associated(zip_handle)) then
             print *, "zip_handle is NULL immediately after zip_open!"
@@ -194,7 +192,6 @@ contains
                 call add_data_to_zip(zip_handle, filenames(i), filenames(i), DATA_TYPE_FILE, ierr)
                 if (is_err(ierr)) then
                     print *, "Error adding file to ZIP: ", trim(filenames(i))
-                    print *, "Error code: ", ierr
                     error = zip_close(zip_handle)
                     return
                 end if
@@ -225,7 +222,6 @@ contains
             return
         end if
         
-        print *, "zip_close failed: ", trim(c_to_fortran_string(zip_strerror(zip_handle)))
         if (is_err(error)) then
             call set_err_once(ierr, error)
             if(DEBUG) print *, "Error closing ZIP file: ", error
