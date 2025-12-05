@@ -15,20 +15,28 @@ ALIGN=16
 fi
 # Detect compiler and choose appropriate profile:
 if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+  FLAGS="-qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   COMPILER="ifx"
 else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC -fcheck=all"
+  FLAGS="-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC -fcheck=all"
   COMPILER="gfortran"
 fi
 
 # Detect --max-performance flag
+DEBUG="FALSE"
 MAX_PERF_FLAG=""
 for arg in "$@"; do
   if [[ "$arg" == "--max-performance" ]]; then
     MAX_PERF_FLAG="-DMAX_PERFORMANCE"
+  elif [[ "$arg" == "--debug" ]]; then
+    DEBUG="TRUE"
+    FLAGS="-O0 -g -fbacktrace $FLAGS"
   fi
 done
+
+if [[ "$DEBUG" == "FALSE" ]]; then
+  FLAGS="-O2 $FLAGS"
+fi
 
 # Clean build directory if it exists
 if [ -d "build" ]; then

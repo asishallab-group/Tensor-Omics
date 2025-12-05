@@ -14,6 +14,7 @@ module tox_loess
   use iso_fortran_env, only: int32, real64
   use kd_tree, only: build_kd_index, kd_knn_query
   use f42_utils, only: sort_array
+  use tox_errors, only: set_err, is_ok, ERR_INVALID_INPUT
   implicit none
   private
 
@@ -105,6 +106,12 @@ contains
     ierr  = 0
     setLf = .true.
 
+    if (n_train < degree + 1) then
+      call set_err(ierr, ERR_INVALID_INPUT)
+      print *, "tox_loess_predict: Not enough training points for the requested degree."
+      return
+    end if
+
     call lowesd(d, iv, liv, lv, v, d, n_train, span, degree, n_train, setLf)
     call lowesb(x_train, y_train, w_train, iv, liv, lv, v)
     call lowese(iv, liv, lv, v, n_pred, x_pred, y_pred)
@@ -130,24 +137,14 @@ contains
     ! R's EXACT algorithm: nf = min(N, (int) floor(N * span + 1e-5))
     k = min(nvmax, max(2_int32, int(floor(real(n,real64) * max(EPS,min(ONE,f)) + 1.0e-5_real64), int32)))
 
-    ! DEBUG: Print span to k conversion (R-style)
-    write(*,'(A,F5.3,A,I0,A,I0,A,F5.3)') " R-STYLE: span=", f, " -> k=", k, " (n=", n, ", actual_span=", real(k)/real(n), ")"
-
     ! IMPORTANT FIX: Ensure enough neighbors for the polynomial degree
     ! Need at least (degree + 2) points for stable local polynomial fit
     ! This matches R's behavior - R warns when span is too small
     min_k = tdeg + 2
     if (k < min_k) then
-      k = min(min_k, n)
       write(*,'(A,I0,A,I0,A,I0)') " WARNING: span too small for degree=", tdeg, &
-                                ", increasing k from ", k - (min_k - (tdeg + 2)), " to ", k
-    end if
-    
-    ! Additional safety: for very small k, ensure we have enough points
-    ! even after weighting (some points might get zero weight at bandwidth boundary)
-    if (k < 5 .and. tdeg == 2) then
-      k = min(5, n)
-      write(*,'(A,I0,A)') " NOTE: Small k adjusted to ", k, " for quadratic fit stability"
+                                ", increasing k from ", k ," to ", min(min_k, n)
+      k = min(min_k, n)
     end if
 
     iv(1) = d
@@ -1334,7 +1331,7 @@ contains
     
     integer(int32) :: i, p, nk
     integer(int32) :: neighbors(n)
-    real(real64)   :: dists(n), rw(n), rho
+    real(real64)   :: dists(n), rw(n), rho, u
     real(real64)   :: Xrow(8), XtWX(8,8), XtWy(8), beta(8)
     
     ! 1) Compute distances (same as original)
@@ -1351,7 +1348,14 @@ contains
     end do
     do i = 1, nk
       if (rho > EPS) then
-        rw(neighbors(i)) = w(neighbors(i)) * r_tricube_exact(dists(neighbors(i)) / rho)
+        u = dists(neighbors(i)) / rho
+        if(abs(u - ONE) < EPS) then
+          ! Exact tie at bandwidth boundary, adjust slightly as in R to avoid zero weight
+          rho = rho * 1.005_real64
+          print *, "Warning: Adjusted bandwidth rho to: ", rho
+          u = dists(neighbors(i)) / rho
+        end if
+        rw(neighbors(i)) = w(neighbors(i)) * r_tricube_exact(u)
       else
         rw(neighbors(i)) = w(neighbors(i))
       end if

@@ -21,26 +21,35 @@ echo "Detected alignment: $ALIGN"
 
 # Detect compiler and flags
 if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+  FLAGS="-qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   MODULE_FLAG="-module $BUILD_DIR"
   COMPILER="ifx"
 else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
+  FLAGS="-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   MODULE_FLAG="-J$BUILD_DIR"
   COMPILER="gfortran"
 fi
 
 MAX_PERF_FLAG=""
+DEBUG="FALSE"
 TEST_ARGS=()
 BUILD_ARGS=()
 for arg in "$@"; do
   if [[ "$arg" == "--max-performance" ]]; then
     MAX_PERF_FLAG="-DMAX_PERFORMANCE"
     BUILD_ARGS+=("$arg")
+  elif [[ "$arg" == "--debug" ]]; then
+    DEBUG="TRUE"
+    BUILD_ARGS+=("$arg")
+    FLAGS="-O0 -g -fbacktrace -fcheck=all $FLAGS"
   else
     TEST_ARGS+=("$arg")
   fi
 done
+
+if [ "$DEBUG" == "FALSE" ]; then
+  FLAGS="-O2 $FLAGS"
+fi
 
 echo "Compiling src/"
 bash build.sh "${BUILD_ARGS[@]}"
@@ -80,7 +89,11 @@ echo "Linking exit code: $linking_result"
 
 echo "Running tests..."
 # Run the executable with filtered arguments (excluding --max-performance)
-$EXECUTABLE "${TEST_ARGS[@]}"
+if [ "$DEBUG" == "TRUE" ]; then
+  gdb --args $EXECUTABLE "${TEST_ARGS[@]}"
+else
+  $EXECUTABLE "${TEST_ARGS[@]}"
+fi
 
 # Clean up test files if they exist
 rm -f test_*arr*.bin
