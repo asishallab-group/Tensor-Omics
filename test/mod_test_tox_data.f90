@@ -544,6 +544,8 @@ contains
     real(real64), allocatable :: shift_vectors_verify(:,:)
     
     integer(int32) :: ierr
+
+    call set_ok(ierr)
     
     ! Test 1: Save and read all data
     ! print *, "Test 1: Saving and reading all data"

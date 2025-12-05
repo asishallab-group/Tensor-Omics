@@ -116,12 +116,29 @@ module tox_archive
             use iso_c_binding, only: c_ptr
             type(c_ptr), value :: source
         end subroutine zip_source_free
+
+        function zip_source_file(archive, fname, start, length) bind(C, name="zip_source_file")
+            use iso_c_binding
+            type(c_ptr) :: zip_source_file
+            type(c_ptr), value :: archive
+            character(kind=c_char), dimension(*) :: fname
+            integer(c_long_long), value :: start
+            integer(c_long_long), value :: length
+        end function zip_source_file
+
+        function zip_strerror(archive) bind(C, name="zip_strerror")
+            use iso_c_binding
+            type(c_ptr) :: zip_strerror
+            type(c_ptr), value :: archive
+        end function zip_strerror
+
     end interface
 
 contains
 
     !> Creates a zip archive with generic file lists
     subroutine create_zip_archive(zip_filename, keys, filenames, ierr)
+        use tox_conversions, only: c_char_1d_as_string
         character(len=*), intent(in) :: zip_filename
             !! Name of the zip file to create
         character(len=*), intent(in) :: keys(:)
@@ -135,6 +152,7 @@ contains
         integer(c_int) :: error
         character(len=:), allocatable :: manifest_filename
         integer(int32) :: i
+        type(c_ptr) :: errptr, errmsg_ptr
 
         call set_ok(ierr)
         call set_ok(error)
@@ -153,7 +171,16 @@ contains
         end if
         
         ! Open ZIP archive
-        zip_handle = zip_open(trim(zip_filename)//c_null_char, ZIP_EXCLUSIVE, error)
+        zip_handle = zip_open(trim(zip_filename)//c_null_char, ZIP_CREATE, error)
+        errptr = zip_strerror(zip_handle)
+        print *, "libzip error:", trim(c_to_fortran_string(errptr))
+        print *, "Zip filename: >", trim(zip_filename), "<"
+
+        if (.not. c_associated(zip_handle)) then
+            print *, "zip_handle is NULL immediately after zip_open!"
+            return
+        end if
+
         if (is_err(error)) then
             call set_err_once(ierr, ERR_FILE_OPEN)
             if (error == 10) print *, "Error opening ZIP file for writing: File already exists"
@@ -163,8 +190,11 @@ contains
         ! Add all data files
         do i = 1, size(filenames)
             if (len_trim(filenames(i)) > 0) then
+                print *, "ADDING FILE: >", trim(filenames(i)), "<"
                 call add_data_to_zip(zip_handle, filenames(i), filenames(i), DATA_TYPE_FILE, ierr)
                 if (is_err(ierr)) then
+                    print *, "Error adding file to ZIP: ", trim(filenames(i))
+                    print *, "Error code: ", ierr
                     error = zip_close(zip_handle)
                     return
                 end if
@@ -175,24 +205,27 @@ contains
         manifest_filename = "manifest.txt"
         call write_manifest(keys, filenames, manifest_filename, ierr)
         if (is_err(ierr)) then
+            print *, "Error writing manifest file"
             error = zip_close(zip_handle)
             return
         end if
         
         call add_data_to_zip(zip_handle, manifest_filename, manifest_filename, DATA_TYPE_FILE, ierr)
         if (is_err(ierr)) then
+            print *, "Error adding manifest to ZIP"
             error = zip_close(zip_handle)
             return
         end if
+
+        error = zip_close(zip_handle)
         
         call delete_file(manifest_filename, ierr)
         if(is_err(ierr)) then
-            error = zip_close(zip_handle)
+            print *, "Warning: could not delete temporary manifest file"
             return
         end if
         
-        ! Close ZIP archive
-        error = zip_close(zip_handle)
+        print *, "zip_close failed: ", trim(c_to_fortran_string(zip_strerror(zip_handle)))
         if (is_err(error)) then
             call set_err_once(ierr, error)
             if(DEBUG) print *, "Error closing ZIP file: ", error
@@ -200,6 +233,24 @@ contains
             if(DEBUG) print *, "ZIP archive created successfully: ", trim(zip_filename)
         end if
     end subroutine create_zip_archive
+
+    function c_to_fortran_string(cstr) result(fstr)
+        use iso_c_binding
+        type(c_ptr), intent(in) :: cstr
+        character(len=:), allocatable :: fstr
+        integer :: i
+        character(kind=c_char), pointer :: p(:)
+
+        call c_f_pointer(cstr, p, [10000])  ! max 10k chars buffer
+        i = 1
+        do while (p(i) /= c_null_char .and. i < size(p))
+            i = i + 1
+        end do
+
+        allocate(character(len=i-1) :: fstr)
+        fstr = transfer(p(1:i-1), fstr)
+    end function
+
 
     !> Extract a zip archive and return all key-value pairs from manifest
     subroutine extract_zip_archive(zip_filename, keys, filenames, ierr)
@@ -393,121 +444,141 @@ contains
         end if
     end subroutine extract_file_from_zip
 
-    ! Unified subroutine to add data to ZIP (handles both files and strings)
     subroutine add_data_to_zip(zip_handle, filename, data_source, data_type, ierr)
-        use tox_conversions, only: int32_as_c_size
+        use iso_c_binding, only: c_ptr, c_char, c_null_char, c_null_ptr, c_size_t, c_int, c_long_long
         implicit none
 
         ! Arguments
-        type(c_ptr), intent(in)    :: zip_handle       
-            !! Zip connection
-        character(len=*), intent(in) :: filename       
-            !! Filename to add
-        character(len=*), intent(in) :: data_source    
-            !! File path or string content
-        integer(int32), intent(in) :: data_type        
-            !! Type of input
-        integer(int32), intent(out) :: ierr            
-            !! Error code
+        type(c_ptr), intent(in)    :: zip_handle
+        character(len=*), intent(in) :: filename
+        character(len=*), intent(in) :: data_source
+        integer(c_int), intent(in) :: data_type
+        integer(c_int), intent(out) :: ierr
 
-        ! Locals
-        integer(c_int) :: error
-        integer(c_int64_t) :: index
+        ! Local
         type(c_ptr) :: source, c_data
-        integer(c_signed_char), pointer :: file_data(:)
-        character(kind=c_char), pointer :: string_data(:)
-        integer(int32) :: unit, iostat, file_size, i
+        integer(c_int) :: iostat
+        integer(c_long_long) :: index
         integer(c_size_t) :: data_len
+        integer :: i, nname, nds
+        character(kind=c_char), allocatable :: c_name(:)
+        character(kind=c_char), allocatable :: c_path(:)
+        character(kind=c_char), pointer :: string_data(:)
+        integer :: file_unit
+        integer(c_int) :: errtmp
 
+        ! initialize
         call set_ok(ierr)
+        source = c_null_ptr
+        c_data = c_null_ptr
 
         if (len_trim(data_source) == 0) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
             return
         end if
 
+        ! convert filename -> C string (null-terminated)
+        nname = len_trim(filename)
+        allocate(character(kind=c_char) :: c_name(nname+1))
+        do i = 1, nname
+            c_name(i) = filename(i:i)
+        end do
+        c_name(nname+1) = c_null_char
+
         select case (data_type)
 
         case (DATA_TYPE_FILE)
-            ! Open file
-            open(newunit=unit, file=data_source, access='stream', form='unformatted', &
-                iostat=iostat, status='old')
-            if (is_err(iostat)) then
-                call set_err_once(ierr, ERR_FILE_OPEN)
-                if (DEBUG) print *, "Error opening file: ", trim(data_source)
+            ! streaming: use zip_source_file to avoid malloc
+            nds = len_trim(data_source)
+            allocate(character(kind=c_char) :: c_path(nds+1))
+            do i = 1, nds
+                c_path(i) = data_source(i:i)
+            end do
+            c_path(nds+1) = c_null_char
+
+            print *, "Creating zip source from file: ", trim(data_source)
+            print *, "C path: ", c_path
+            print *, "C name: ", c_name
+
+            source = zip_source_file(zip_handle, c_path, 0_c_long_long, -1_c_long_long)
+            if (.not. c_associated(source)) then
+                call set_err(ierr, ERR_FILE_OPEN)
+                print *, "Error creating zip source from file: ", trim(data_source)
+                deallocate(c_path)
+                deallocate(c_name)
                 return
             end if
 
-            inquire(unit, size=file_size)
-            call int32_as_c_size(file_size, data_len)
-
-            if (file_size == 0) then
-                close(unit)
-                source = zip_source_buffer(zip_handle, c_null_ptr, 0_c_size_t, 0)
-            else
-                c_data = malloc(data_len)
-                if (.not. c_associated(c_data)) then
-                    call set_err_once(ierr, ERR_POINTER_NULL)
-                    close(unit)
-                    return
-                end if
-
-                call c_f_pointer(c_data, file_data, [file_size])
-                read(unit, iostat=iostat) file_data
-                close(unit)
-
-                if (is_err(iostat)) then
-                    call set_err_once(ierr, ERR_READ_DATA)
-                    call free(c_data)
-                    return
-                end if
-
-                source = zip_source_buffer(zip_handle, c_data, data_len, 1)
-            end if
+            deallocate(c_path)
 
         case (DATA_TYPE_STRING)
-            data_len = len(data_source)
-            c_data = malloc(data_len)
-            if (.not. c_associated(c_data)) then
-                call set_err_once(ierr, ERR_POINTER_NULL)
-                return
+            ! Use zip_source_buffer: allocate buffer, copy string bytes, and pass ownership to libzip (freep=1)
+            data_len = len_trim(data_source)
+            if (data_len == 0) then
+                ! empty file / empty entry
+                source = zip_source_buffer(zip_handle, c_null_ptr, 0_c_size_t, 0_c_int)
+                if (.not. c_associated(source)) then
+                    ierr = ERR_POINTER_NULL
+                    deallocate(c_name)
+                    return
+                end if
+            else
+                ! allocate with malloc (so libzip can free with free if we pass freep=1)
+                c_data = malloc(data_len)
+                if (.not. c_associated(c_data)) then
+                    ierr = ERR_POINTER_NULL
+                    deallocate(c_name)
+                    return
+                end if
+
+                ! map to Fortran pointer and copy
+                call c_f_pointer(c_data, string_data, [data_len])
+                do i = 1, data_len
+                    string_data(i) = data_source(i:i)
+                end do
+
+                ! pass buffer to libzip; freep=1 -> libzip will call free() on the buffer on success
+                source = zip_source_buffer(zip_handle, c_data, data_len, 1_c_int)
+                if (.not. c_associated(source)) then
+                    ! libzip rejected it — we must free buffer ourselves
+                    call free(c_data)
+                    call set_err_once(ierr, ERR_FILE_ADD)
+                    deallocate(c_name)
+                    return
+                end if
+                ! note: DO NOT free c_data here if source is valid — libzip owns it now
+                c_data = c_null_ptr
             end if
 
-            call c_f_pointer(c_data, string_data, [data_len])
-            do i = 1, data_len
-                string_data(i) = data_source(i:i)
-            end do
-
-            source = zip_source_buffer(zip_handle, c_data, data_len, 1)
-
         case default
-            call set_err_once(ierr, ERR_INVALID_INPUT)
+            ierr = ERR_INVALID_INPUT
+            deallocate(c_name)
             return
         end select
 
-        if (.not. c_associated(source)) then
-            call set_err_once(ierr, ERR_POINTER_NULL)
-            if (data_type == DATA_TYPE_FILE .or. data_type == DATA_TYPE_STRING) call free(c_data)
-            return
-        end if
-
-        ! Add file to ZIP
-        index = zip_file_add(zip_handle, trim(filename)//c_null_char, source, ZIP_FILE_OVERWRITE)
+        ! add file into zip (name must be C-string)
+        index = zip_file_add(zip_handle, c_name, source, ZIP_FILE_OVERWRITE)
         if (index < 0) then
-            call set_err_once(ierr, ERR_FILE_ADD)
+            ierr = ERR_FILE_ADD
             call zip_source_free(source)
+            deallocate(c_name)
             return
         end if
 
-        ! Set compression to "store" (no compression)
-        error = zip_set_file_compression(zip_handle, index, ZIP_COMPRESSION_STORE, 0)
-        if (is_err(error)) then
-            if (DEBUG) print *, "Warning: Error setting compression for: ", trim(filename)
+        ! set compression 
+        errtmp = zip_set_file_compression(zip_handle, index, ZIP_COMPRESSION_STORE, 0_c_int)
+        if (is_err(errtmp)) then
+            ! warning only
+            if (DEBUG) print *, "Warning: setting compression failed for ", trim(filename)
         end if
 
         if (DEBUG) print *, "Added to ZIP: ", trim(filename)
 
+        deallocate(c_name)
+        print *, "Ierr: ", ierr
+        print *, "Error: ", errtmp
     end subroutine add_data_to_zip
+
 
     !> Write manifest from given key-value pairs
     subroutine write_manifest(keys, filenames, manifest_filename, ierr)
