@@ -21,6 +21,12 @@ module mod_test_json
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
 
+    character(len=119), parameter :: TEST_STRING = 'we test "quoting", /slashing and \backslashing, 	tabbing, ' //&
+                                                    achar(8) //  'backspacing, ' //&
+                                                    achar(10) // 'new-lining, ' //&
+                                                    achar(13) // 'carriage-returning, ' //&
+                                                    achar(12) // 'form-feeding'
+
 contains
 
     !> Get array of all available tests.
@@ -140,16 +146,11 @@ contains
 
         ! Case 8: strings
         deallocate(keys)
-        allocate(character(len=119) :: keys(1))
-        keys(1) = 'we test "quoting", /slashing and \backslashing, 	tabbing, ' //&
-                  achar(8) //  'backspacing, ' //&
-                  achar(10) // 'new-lining, ' //&
-                  achar(13) // 'carriage-returning, ' //&
-                  achar(12) // 'form-feeding'
+        allocate(character(len=len_trim(TEST_STRING)) :: keys(1))
+        keys(1) = TEST_STRING
         elements(1)%value => keys(1)
         object%keys => keys(1:1)
         object%values => keys(1:1)
-
 
         call helper_test_serialization(&
             object,&
@@ -158,6 +159,9 @@ contains
             "test_serialization: case 8 strings"&
         )
     end subroutine test_serialization
+
+    subroutine test_flyer_serialization
+    end subroutine test_flyer_serialization
 
     subroutine helper_test_serialization(json_var, expected_fragment, test_case, max_depth)
         class(*), intent(in) :: json_var
