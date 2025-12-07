@@ -39,12 +39,14 @@ contains
         type(json_value), dimension(6), target :: elements
         type(json_array), target :: array
         type(json_object), target :: object
-        character(len=7), dimension(6), target :: keys
+        character(len=:), dimension(:), allocatable, target :: keys
         integer(int32) :: i_element
         integer(int32), target:: test_integer
         real(real64), target:: test_real
         complex(real64), target:: test_complex
         logical, target:: test_logical
+
+        allocate(character(len=7) :: keys(6))
 
         keys(1) = "integer"
         test_integer = -huge(1_int32)
@@ -104,7 +106,7 @@ contains
         )
 
         ! Case 5: Different lengths of json object's key-value arrays
-        object%keys(1:4) => keys
+        object%keys => keys(1:4)
         call helper_test_serialization(&
             object,&
             '{"integer":-2147483647,"real":null,"logical":true,"complex":[null,null]}',&
@@ -134,6 +136,26 @@ contains
             object,&
             '{"integer":null,"real":null,"logical":null,"complex":null,"array":[],"object":null}',&
             "test_serialization: case 7 unassigned object values"&
+        )
+
+        ! Case 8: strings
+        deallocate(keys)
+        allocate(character(len=119) :: keys(1))
+        keys(1) = 'we test "quoting", /slashing and \backslashing, 	tabbing, ' //&
+                  achar(8) //  'backspacing, ' //&
+                  achar(10) // 'new-lining, ' //&
+                  achar(13) // 'carriage-returning, ' //&
+                  achar(12) // 'form-feeding'
+        elements(1)%value => keys(1)
+        object%keys => keys(1:1)
+        object%values => keys(1:1)
+
+
+        call helper_test_serialization(&
+            object,&
+            '{"we test \"quoting\", \/slashing and \\backslashing, \ttabbing, \bbackspacing, \nnew-lining, \rcarriage-returning, \fform-feeding"' //&
+            ':"we test \"quoting\", \/slashing and \\backslashing, \ttabbing, \bbackspacing, \nnew-lining, \rcarriage-returning, \fform-feeding"}',&
+            "test_serialization: case 8 strings"&
         )
     end subroutine test_serialization
 

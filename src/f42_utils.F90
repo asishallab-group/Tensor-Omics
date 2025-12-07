@@ -3,7 +3,7 @@
 module f42_utils
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err
+  use tox_errors, only: ERR_FILE_OPEN, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err, is_err
   use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
   implicit none
 
@@ -22,6 +22,24 @@ module f42_utils
   real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
   real(real64), parameter :: EPS = epsilon(1.0_real64)
 contains
+
+  subroutine open_file(filename, unit, formatted, ierr)
+      character(len=*), intent(in) :: filename
+      integer(int32), intent(out) :: unit
+      logical, intent(in) :: formatted
+      integer(int32), intent(out) :: ierr
+
+      call set_ok(ierr)
+
+      if (formatted) then
+          open(newunit=unit, file=filename, form='formatted', access='stream', status='replace', iostat=ierr)
+      else
+          open(newunit=unit, file=filename, form='unformatted', access='stream', status='replace', iostat=ierr)
+      end if
+      if (is_err(ierr)) then
+          call set_err(ierr, ERR_FILE_OPEN)
+      end if
+  end subroutine open_file
 
   !> Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.
   pure real(real64) function below(val)

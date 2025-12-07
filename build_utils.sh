@@ -32,7 +32,8 @@ function get_flags() {
   if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
     echo "-O2 -fopenmp-target-do-concurrent -warn all -diag-enable=all -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   elif [[ "$FC" == "nvfortran" ]]; then
-    echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
+    echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore -Mbackslash"
+    # -Mbackslash makes backslashes treatened as raw characters instead of escapes 
   else
     echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   fi
