@@ -90,6 +90,9 @@ echo "Linking exit code: $linking_result"
 echo "Running tests..."
 # Run the executable with filtered arguments (excluding --max-performance)
 if [ "$DEBUG" == "TRUE" ]; then
+  echo "Starting gdb for debugging..."
+  echo "Set breakpoints as needed, then use 'run' to start the program."
+  echo "To set a breakpoint, use: break <function_name> or break <file_name>:<line_number>"
   gdb --args $EXECUTABLE "${TEST_ARGS[@]}"
 else
   $EXECUTABLE "${TEST_ARGS[@]}"

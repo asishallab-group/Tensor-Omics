@@ -3,7 +3,7 @@ FROM archlinux:latest
 # Always update keyring first to avoid verification failures
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
-    pacman -S --noconfirm gcc-fortran && \
+    pacman -S --noconfirm gcc-fortran gdb && \
     pacman -Scc --noconfirm
 
 # Install fpm binary
