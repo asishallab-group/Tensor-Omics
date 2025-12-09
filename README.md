@@ -1,9 +1,10 @@
 
 
+<h1 align="center">
+    <strong>Tensor Omics</strong>
+</h1>
 
-# Tensor Omics
-
-## **Table of Contents**
+## Table of Contents
 - **[Introduction](#introduction)**
 - **[Key Features](#key-features)**
 - **[Project Structure](#project-structure)**
@@ -25,7 +26,7 @@
 
 ---
 
-# Introduction
+## Introduction
 
 Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise. Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
 
@@ -44,7 +45,7 @@ Tensor Omics is a high-performance framework for explainable, geometry-based ana
 
 ---
 
-# Project Structure
+## Project Structure
 
 This repository contains the source code, methods, snippets and tests for the **Tensor Omics (TOX)** project.
 
@@ -152,11 +153,11 @@ See `snippets/readme.md` for details.
 
 ---
 
-# Compilation
+## Compilation
 
 > **Note:** If you're using prebuilt binaries from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases), you can skip compilation and proceed directly to [Installation](#installation) → [Installation for R and Python](#installation-for-r-and-python) → [Usage](#usage).
 >
-> **If compiling from source:** Follow this workflow: Compilation → Installation → Installation for R and Python → Usage
+> **If compiling from source:** Follow this workflow: [Compilation](#compilation) → [Installation](#installation) → [Installation for R and Python](#installation-for-r-and-python) → [Usage](#usage)
 
 Tensor Omics can be compiled using a **local toolchain** or via the reproducible **Docker environment**.
 
@@ -232,7 +233,7 @@ Every time the code is compiled, a new `/build/<compiler>/` directory is created
 
 Install and setup Docker as explained for your operating system in the [Docker documentation](https://docs.docker.com/get-docker/).
 
-### Step 1: Build the Docker Image
+#### Step 1: Build the Docker Image
 
 Navigate to the `misc` directory and build the Docker image:
 
@@ -240,7 +241,7 @@ Navigate to the `misc` directory and build the Docker image:
 cd misc
 docker build -t arch-gfortran -f gfortran.docker .
 ```
-### Step 2: Enter the Docker Container
+#### Step 2: Enter the Docker Container
 
 Go back to the repository root and start an interactive Docker session:
 
@@ -249,7 +250,7 @@ cd ..
 docker run -it -v $(pwd):/opt -w /opt arch-gfortran /bin/bash
 ```
 
-### Step 3: Compile the Project
+#### Step 3: Compile the Project
 
 Inside the container, run:
 
@@ -257,24 +258,23 @@ Inside the container, run:
 ./build.sh
 ```
 
-### Step 4: Run Tests (Optional)
-
-Inside the container, run:
-
-```bash
-./test_runner.sh
-```
-
-Or run tests for a specific module:
-
-```bash
-./test_runner.sh get_outliers
-```
 
 
-# Installation
+## Installation
 
 Tensor Omics can be installed from prebuilt binaries or compiled from source.
+
+**Using Prebuilt Binaries**
+
+[Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases) 
+
+
+**Compile from Source**
+
+[Compilation](#compilation)
+
+
+---
 
 ## Prebuilt Binaries
 
@@ -314,116 +314,145 @@ Prebuilt binaries for Linux, Windows-11, and macOS are automatically generated b
 
 ---
 
-# Installation for R and Python
+## Installation for R and Python
 
 Once the Tensor Omics shared library is available (either from prebuilt binaries or after compilation), follow these steps to use it from R and Python.
+
+---
 
 ## R Integration
 
 ### Requirements
 
-- **R ≥ 3.6**
-
+-  **R ≥ 3.6**
+  
 ### Installation Steps
 
-1. **Load the library and source the wrapper functions**:
-   ```r
-   dyn.load("build/libtensor-omics.so")
-   source("r/tensoromics_functions.R")
-   source("r/error_handling.R")
-   ```
+#### Step 1: Load the Library and Wrapper Functions
 
-2. **Verify installation**:
-   ```r
-   # Test a simple function
-   result <- tox_euclidean_distance(c(1, 2, 3), c(4, 5, 6))
-   print(result)  # Should output: 5.196152
-   ```
-
-### Example Usage
+In your R session or script:
 
 ```r
-# Load the library and wrapper functions
-dyn.load("build/libtensor-omics.so")
+dyn.load("build/libtensor-omics.so")  # On Linux
+# dyn.load("build/libtensor-omics.dylib")  # On macOS
+# dyn.load("build/libtensor-omics.dll")  # On Windows
+
 source("r/tensoromics_functions.R")
 source("r/error_handling.R")
+````
+#### Step 2: Verify Installation
 
-# Use Tensor Omics functions
-distance <- tox_euclidean_distance(c(0, 0), c(3, 4))
-print(paste("Distance:", distance))
-```
+Test a simple function to confirm everything is working:
+
+```r
+# Test a simple function
+result <- tox_euclidean_distance(c(1, 2, 3), c(4, 5, 6))
+print(result)  # Should output: 5.196152
+````
+
+---
 
 ## Python Integration
 
 ### Requirements
 
 - **Python ≥ 3.7**
-- **numpy** (for array operations)
+- **NumPy** (for array operations)
+
 
 ### Installation Steps
 
-1. **Install required Python packages**:
-   ```bash
-   pip install numpy
-   ```
+#### Step 1: Install Required Python Packages
 
-2. **Load the library and import Tensor Omics functions**:
-   ```python
-   import numpy as np
-   import ctypes
-   import os
-   from tensoromics_functions import euclidean_distance
-   
-   # Load library
-   dll_path = os.path.abspath("build/libtensor-omics.so")
-   ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-   lib = ctypes.CDLL(dll_path)
-    ```
+```bash
+pip install numpy
+```
 
-3. **Verify installation**:
-    ```python
-    distance = euclidean_distance([0.0, 0.0], [3.0, 4.0])
-    print(f"Distance: {distance}")  # Should output: 5.0
-    ```
-### Example Usage
+#### Step 2: Load the Library and Import Tensor Omics Functions
+
+In your Python script or interactive session:
 
 ```python
 import numpy as np
 import ctypes
 import os
+import sys
+
+# Determine the correct library extension based on the platform
+platform = sys.platform
+
+if platform.startswith("linux"):
+    lib_path = os.path.abspath("build/libtensor-omics.so")
+    ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)  # OpenMP library
+elif platform == "darwin":
+    lib_path = os.path.abspath("build/libtensor-omics.dylib")
+    ctypes.CDLL("libgomp.dylib", mode=ctypes.RTLD_GLOBAL)  # macOS OpenMP
+elif platform == "win32":
+    lib_path = os.path.abspath("build/libtensor-omics.dll")
+    # Windows: OpenMP is usually bundled with MSVC
+
+# Load the Tensor Omics library
+lib = ctypes.CDLL(lib_path)
+
+# Import Tensor Omics functions
 from tensoromics_functions import (
-    normalize_by_std_dev,
-    quantile_normalization,
-    euclidean_distance
+    tox_euclidean_distance,
+    tox_normalize_by_std_dev,
+    tox_quantile_normalization
 )
+```
 
-# Load library
-dll_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-lib = ctypes.CDLL(dll_path)
+#### Step 3: Verify Installation
 
-# Load gene expression data
-expression_matrix = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+Test the installation with a simple function:
 
-# Apply normalization pipeline
-normalized = normalize_by_std_dev(expression_matrix)
-normalized = quantile_normalization(normalized)
-
-# Calculate distances
-distance = euclidean_distance(
-    expression_matrix[:, 0],
-    expression_matrix[:, 1]
+```python
+# Test a simple function
+distance = tox_euclidean_distance(
+    np.array([0.0, 0.0], dtype=np.float64),
+    np.array([3.0, 4.0], dtype=np.float64)
 )
-print(f"Distance: {distance}")
+print(f"Distance: {distance}")  # Should output: 5.0
+```
+
+
+---
+
+## Usage
+
+Tensor Omics provides a comprehensive set of functions for analyzing high-dimensional data through geometric primitives (distances, angles, projections, trajectories).
+
+### Quick Start Examples
+
+#### Euclidean Distance Calculation
+
+**R Example:**
+```r
+# Load library and functions
+dyn.load("build/libtensor-omics.so")
+source("r/tensoromics_functions.R")
+
+# Calculate distance between two points
+vec1 <- c(0, 0)
+vec2 <- c(3, 4)
+distance <- tox_euclidean_distance(vec1, vec2)
+print(paste("Distance:", distance))  # Output: 5.0
+```
+
+**Python Example:**
+```python
+import numpy as np
+from tensoromics_functions import tox_euclidean_distance
+
+vec1 = np.array([0.0, 0.0], dtype=np.float64)
+vec2 = np.array([3.0, 4.0], dtype=np.float64)
+distance = tox_euclidean_distance(vec1, vec2)
+print(f"Distance: {distance}")  # Output: 5.0
 ```
 
 ---
 
-# Usage
-
-
-
-# Testing
+## Testing
 
 The test suite framework provides a robust and scalable system for organizing and executing unit tests in Fortran.
 
@@ -433,54 +462,46 @@ The test suite framework provides a robust and scalable system for organizing an
 2. **Test Modules** - Each module (suite) contains tests for a specific functionality
 3. **`asserts.f90`** - Assertion function library for validating test results
 
-## Running Tests Locally
+## System Usage
 
 ```bash
 # Run all tests from all suites
 ./test_runner.sh
 
 # Run all tests from a specific suite
-./test_runner.sh get_outliers
+./test_runner.sh <suite_name>
 
 # Run specific tests from a suite
-./test_runner.sh get_outliers test_compute_rdi_normal,test_compute_rdi_zero_scaling
+./test_runner.sh <suite_name> <test1,test2,test3>
 ```
 
-## Running Tests in Docker
-
-```bash
-# Build and run all tests
-docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./test_runner.sh
-
-# Run tests for a specific module
-docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./test_runner.sh get_outliers
-```
+Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+See `test/readme.md` for details
 
 ## R and Python Integration Tests
 
 After installation, verify R and Python integration:
 
-### R Tests
+**R Tests**
 
 ```bash
 # Run R-level tests
-Rscript rcpp/test/euclidean_distance.R
-Rscript rcpp/test/normalization.R
+Rscript test/euclidean_distance.R
 ```
 
-### Python Tests
+**Python Tests**
 
 ```bash
-# Run Python-level tests (if available)
-python python/test/test_euclidean_distance.py
+# Run Python-level tests 
+pytest test/euclidean_distance.py
 ```
 
 
 ---
 
-# Configuration
+## Configuration
 
-## Environment Variables
+### Environment Variables
 
 Set these variables to customize Tensor Omics behavior:
 
@@ -531,6 +552,6 @@ For details on documentation, see the [FORD documentation](https://github.com/Fo
 
 ---
 
-# License
+## License
 
 This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
