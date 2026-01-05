@@ -288,7 +288,6 @@ contains
             call set_err_once(ierr, ERR_INVALID_INPUT)
             return
         end if
-
         if (num_dimensions < 1 .or. num_points < 1) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
             return

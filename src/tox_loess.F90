@@ -1086,8 +1086,10 @@ contains
     right = i_center
     nk = 1
     do while (nk < k)
-      if (left > 1 .and. (right == n .or. abs(x(left-1)-x0) <= abs(x(right+1)-x0))) then
-        left = left - 1
+      if (left > 1 )then
+        if (right == n .or. abs(x(left-1)-x0) <= abs(x(right+1)-x0)) then
+            left = left - 1
+        end if
       else if (right < n) then
         right = right + 1
       else
@@ -1334,7 +1336,7 @@ contains
     real(real64)   :: dists(n), rw(n), rho, u
     real(real64)   :: Xrow(8), XtWX(8,8), XtWy(8), beta(8)
     
-    ! 1) Compute distances (same as original)
+    ! 1) Compute distances
     do i = 1, n
       dists(i) = euclid2(d, x(:,i), z)
     end do
@@ -1352,7 +1354,7 @@ contains
         if(abs(u - ONE) < EPS) then
           ! Exact tie at bandwidth boundary, adjust slightly as in R to avoid zero weight
           rho = rho * 1.005_real64
-          ! print *, "Warning: Adjusted bandwidth rho to: ", rho
+          print *, "Warning: Adjusted bandwidth rho to: ", rho
           u = dists(neighbors(i)) / rho
         end if
         rw(neighbors(i)) = w(neighbors(i)) * r_tricube_exact(u)
