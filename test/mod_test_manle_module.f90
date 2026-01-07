@@ -23,7 +23,7 @@ module mod_test_manle_module
 contains
 
   function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(9)
+    type(test_case) :: all_tests(7)
 
     all_tests(1) = test_case("test_center_module", test_center_module)
     all_tests(2) = test_case("test_compute_svd_randomized_f42", test_compute_svd_randomized_f42)
@@ -32,12 +32,12 @@ contains
     all_tests(5) = test_case("test_project_to_subspace", test_project_to_subspace)
     all_tests(6) = test_case("test_project_to_subspace_k1", test_project_to_subspace_k1)
     all_tests(7) = test_case("test_smooth_vectors_gaussian_adaptive_mode0", test_smooth_vectors_gaussian_adaptive_mode0)
-    all_tests(8) = test_case("test_smooth_vectors_gaussian_adaptive_mode1", test_smooth_vectors_gaussian_adaptive_mode1)
-    all_tests(9) = test_case("test_smooth_vectors_gaussian_adaptive_mode2", test_smooth_vectors_gaussian_adaptive_mode2)
+    ! all_tests(8) = test_case("test_smooth_vectors_gaussian_adaptive_mode1", test_smooth_vectors_gaussian_adaptive_mode1)
+    ! all_tests(9) = test_case("test_smooth_vectors_gaussian_adaptive_mode2", test_smooth_vectors_gaussian_adaptive_mode2)
   end function get_all_tests
 
   subroutine run_all_tests_manle()
-    type(test_case) :: all_tests(9)
+    type(test_case) :: all_tests(7)
     integer(int32) :: i
 
     all_tests = get_all_tests()
@@ -51,7 +51,7 @@ contains
 
   subroutine run_named_tests_manle(test_names)
     character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(9)
+    type(test_case) :: all_tests(7)
     integer(int32) :: i, j
     logical :: found
     

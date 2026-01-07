@@ -120,7 +120,7 @@ contains
   ! ---------------------------------------------------------
   ! ADAPTIVE GAUSSIAN NADARAYA–WATSON SMOOTHING
   ! ---------------------------------------------------------
-  subroutine smooth_vectors_gaussian_adaptive(coords, vectors, smoothed, &
+  subroutine smooth_vectors_gaussian_adaptive_nw(coords, vectors, smoothed, &
        n_coord_dims, n_vector_dims, n_points, k_neighbors, &
        kd_indices, dimension_order, neighbors, distances, &
        workspace, value_buffer, permutation, left_stack, right_stack, sigma_factor, ierr)
@@ -240,6 +240,7 @@ contains
         wsum    = 0.0_real64
 
         do j = 1, n_points
+          if (j == i) cycle
           neighbor_valid = .true.
           is_zero        = .true.
 
@@ -281,99 +282,7 @@ contains
       return
     end if  ! fin caso 1D
 
-    ! ======================================================
-    ! CASO N-D: usar k-d tree + mismo kernel Gaussiano,
-    !           pero limitado a K vecinos (como antes)
-    ! ======================================================
-    dimension_order = [(i, i = 1, n_coord_dims)]
 
-    kd_start_time = get_time()
-    call build_kd_index(coords, n_coord_dims, n_points, kd_indices, dimension_order, &
-                        workspace, value_buffer, permutation, left_stack, right_stack, &
-                        recursion_stack, ierr)
-    kd_end_time = get_time()
-    timing_kd_build = timing_kd_build + (kd_end_time - kd_start_time)
-    if (.not. is_ok(ierr)) return
-
-    queries_start_time = get_time()
-    timing_query_count = n_points
-
-    do i = 1, n_points
-      call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
-                        coords(:, i), k_neighbors, local_neighbors, local_distances, &
-                        kd_workspace, query_ierr)
-
-      ! Sigma local = 3 * std(dist(2..k)) (Asis requirement)
-      if (k_neighbors > 1) then
-        local_mean_dist = sum(local_distances(2:k_neighbors)) / real(k_neighbors-1, real64)
-        local_variance  = sum((local_distances(2:k_neighbors) - local_mean_dist)**2) / &
-                          real(k_neighbors-1, real64)
-        if (local_variance < 0.0_real64) local_variance = 0.0_real64
-        local_std_dev   = sqrt(local_variance)
-      else
-        local_std_dev   = 0.0_real64
-      end if
-
-      local_sigma = 3.0_real64 * local_std_dev
-
-      if (local_sigma <= 0.0_real64) then
-        min_pos = huge(1.0_real64)
-        do j = 2, k_neighbors
-          if (local_distances(j) > 0.0_real64 .and. local_distances(j) < min_pos) then
-            min_pos = local_distances(j)
-          end if
-        end do
-        if (min_pos < huge(1.0_real64)) then
-          local_sigma = 3.0_real64 * min_pos
-        else
-          local_sigma = 1.0e-12_real64
-        end if
-      end if
-
-      inv_two_sigma2 = 0.5_real64 / (local_sigma * local_sigma)
-
-      work(:) = 0.0_real64
-      wsum    = 0.0_real64
-
-      do j = 1, k_neighbors
-        neighbor_valid = .true.
-        is_zero        = .true.
-
-        do d = 1, n_vector_dims
-          if (ieee_is_nan(vectors(d, local_neighbors(j)))) then
-            neighbor_valid = .false.
-            exit
-          end if
-          if (abs(vectors(d, local_neighbors(j))) > 1.0e-15_real64) is_zero = .false.
-        end do
-        if (.not. neighbor_valid) cycle
-        if (is_zero) cycle
-
-        w    = exp( - (local_distances(j)**2) * inv_two_sigma2 )
-        wsum = wsum + w
-        do d = 1, n_vector_dims
-          work(d) = work(d) + w * vectors(d, local_neighbors(j))
-        end do
-      end do
-
-      if (wsum > 0.0_real64) then
-        smoothed(:, i) = work(:) / wsum
-      else
-        do d = 1, n_vector_dims
-          if (.not. ieee_is_nan(vectors(d, i))) then
-            smoothed(d, i) = vectors(d, i)
-          else
-            smoothed(d, i) = 0.0_real64
-          end if
-        end do
-      end if
-    end do
-
-    queries_end_time    = get_time()
-    timing_knn_queries  = timing_knn_queries + (queries_end_time - queries_start_time)
-    timing_gaussian_calc= 0.0_real64
-
-  end subroutine smooth_vectors_gaussian_adaptive
+  end subroutine smooth_vectors_gaussian_adaptive_nw
 
 end module knn_smoothing_nadaraya_watson
-

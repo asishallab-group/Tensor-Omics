@@ -10,8 +10,6 @@ program smooth_all_methods_functional
     ! ============================
     ! GLOBAL PARAMETERS
     ! ============================
-    integer(int32), parameter :: k_neighbors = 30
-    integer(int32), parameter :: n_iters_max = 30
     real(real64),  parameter :: tol_manle    = 1.0e-6_real64
 
     ! LOESS
@@ -26,7 +24,7 @@ program smooth_all_methods_functional
     ! ============================
     character(len=512) :: infile, outfile, line
     integer :: ios, arg_len, i
-    integer(int32) :: n_points
+    integer(int32) :: n_points, k_neighbors, n_iters_max
 
     real(real64), allocatable :: x(:), y_orig(:)
     real(real64), allocatable :: y_loess(:), y_anwil(:), y_nw(:),y_anwil_iterative(:),x_anwil_iterative(:)
@@ -63,16 +61,37 @@ program smooth_all_methods_functional
     call get_command_argument(1, infile, length=arg_len)
     if (arg_len == 0) then
         print *, "Usage:"
-        print *, "  ./smooth_all_methods_functional  results/data/input.csv"
+        print *, "  ./smooth_all_methods_functional  results/data/input.csv k_neighbors n_iters_max"
         stop 1
     end if
 
+    ! Read mandatory arguments for k_neighbors and n_iters_max
+    call get_command_argument(2, line, length=arg_len)
+    if (arg_len == 0) then
+        print *, "Error: k_neighbors is a mandatory argument."
+        print *, "Usage:"
+        print *, "  ./smooth_all_methods_functional  results/data/input.csv k_neighbors n_iters_max"
+        stop 1
+    end if
+    read(line, *) k_neighbors
+
+    call get_command_argument(3, line, length=arg_len)
+    if (arg_len == 0) then
+        print *, "Error: n_iters_max is a mandatory argument."
+        print *, "Usage:"
+        print *, "  ./smooth_all_methods_functional  results/data/input.csv k_neighbors n_iters_max"
+        stop 1
+    end if
+    read(line, *) n_iters_max
+
     infile = trim(infile)
     outfile = trim(infile)
-    call make_output_name(outfile)
+    call make_output_name(outfile, k_neighbors, n_iters_max)
 
     print *, "Reading:  ", trim(infile)
     print *, "Writing:", trim(outfile)
+    print *, "k_neighbors:", k_neighbors
+    print *, "n_iters_max:", n_iters_max
 
     ! ============================
     ! COUNT POINTS
@@ -105,9 +124,9 @@ program smooth_all_methods_functional
     allocate(smoothed_anwil_mode1(2, n_points))
     allocate(smoothed_anwil_mode2(2, n_points))
 
-    allocate(coords_nw(2, n_points))
-    allocate(vecs_nw(2, n_points))
-    allocate(smoothed_nw(2, n_points))
+    allocate(coords_nw(1, n_points))
+    allocate(vecs_nw(1, n_points))
+    allocate(smoothed_nw(1, n_points))
 
     allocate(kd_indices(n_points), dimension_order(2))
     allocate(neighbors(k_neighbors), workspace(n_points), permutation(n_points))
@@ -217,13 +236,11 @@ program smooth_all_methods_functional
     ! Nadaraya–Watson (x,y) → curva 2D completa
     ! ============================
     coords_nw(1,:) = x
-    coords_nw(2,:) = y_orig
-    vecs_nw(1,:)   = x
-    vecs_nw(2,:)   = y_orig
+    vecs_nw(1,:)   = y_orig
 
     call smooth_vectors_gaussian_adaptive_nw( &
         coords_nw, vecs_nw, smoothed_nw, &
-        2, 2, n_points, k_neighbors, &
+        1, 1, n_points, k_neighbors, &
         kd_indices, dimension_order, neighbors, distances, &
         workspace, value_buffer, permutation, left_stack, right_stack, &
         0.5_real64, ierr )
@@ -310,7 +327,7 @@ program smooth_all_methods_functional
 
     do i = 1, n_points
         write(12,'(F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6,",",F12.6)') &
-            x(i), y_orig(i), x_loess(1,i), y_loess(i), smoothed_anwil(1,i), smoothed_anwil(2,i), smoothed_anwil_mode1(1,i), smoothed_anwil_mode1(2,i), smoothed_anwil_mode2(1,i), smoothed_anwil_mode2(2,i), x_anwil_iterative(i), y_anwil_iterative(i), smoothed_nw(1,i), smoothed_nw(2,i), x_manle_center(i), y_manle_center(i), svd_line(1,i), svd_line(2,i), x_amanle_center(i), y_amanle_center(i)
+            x(i), y_orig(i), x_loess(1,i), y_loess(i), smoothed_anwil(1,i), smoothed_anwil(2,i), smoothed_anwil_mode1(1,i), smoothed_anwil_mode1(2,i), smoothed_anwil_mode2(1,i), smoothed_anwil_mode2(2,i), x_anwil_iterative(i), y_anwil_iterative(i), coords_nw(1,i), smoothed_nw(1,i), x_manle_center(i), y_manle_center(i), svd_line(1,i), svd_line(2,i), x_amanle_center(i), y_amanle_center(i)
     end do
     close(12)
 
@@ -318,9 +335,11 @@ program smooth_all_methods_functional
 
 contains
 
-    subroutine make_output_name(name)
+    subroutine make_output_name(name, k_neighbors, n_iters_max)
         character(len=*), intent(inout) :: name
+        integer(int32), intent(in) :: k_neighbors, n_iters_max
         integer :: dotpos, i
+        character(len=32) :: k_str, iter_str
 
         dotpos = 0
         do i = len_trim(name), 1, -1
@@ -330,10 +349,14 @@ contains
             end if
         end do
 
+        ! Convert k_neighbors and n_iters_max to chars
+        write(k_str, '(I0)') k_neighbors
+        write(iter_str, '(I0)') n_iters_max
+
         if (dotpos > 0) then
-            name = trim(name(1:dotpos-1)) // '_smoothed.csv'
+            name = trim(name(1:dotpos-1)) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
         else
-            name = trim(name) // '_smoothed.csv'
+            name = trim(name) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
         end if
     end subroutine make_output_name
 

@@ -25,7 +25,7 @@ contains
 
   !> Get array of all available tests.
   function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     
     all_tests(1) = test_case("test_kd_2d_cartesian", test_kd_2d_cartesian)
     all_tests(2) = test_case("test_kd_3d_spherical", test_kd_3d_spherical)
@@ -39,11 +39,13 @@ contains
     all_tests(10) = test_case("test_kd_1d_minimal", test_kd_1d_minimal)
     all_tests(11) = test_case("test_kd_3d_large", test_kd_3d_large)
     all_tests(12) = test_case("test_kd_5d_medium", test_kd_5d_medium)
+    all_tests(13) = test_case("test_kd_knn_query_20_points", test_kd_knn_query_20_points)
+    all_tests(14) = test_case("test_kd_knn_query_500_points", test_kd_knn_query_500_points)
   end function get_all_tests
 
   !> Run all KD-Tree tests.
   subroutine run_all_tests_kd_tree()
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     integer(int32) :: i
     
     all_tests = get_all_tests()
@@ -58,7 +60,7 @@ contains
   !> Run specific KD-Tree tests by name.
   subroutine run_named_tests_kd_tree(test_names)
     character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(12)
+    type(test_case) :: all_tests(14)
     integer(int32) :: i, j
     logical :: found
     
@@ -338,6 +340,166 @@ contains
     end if
     call assert_permutation(kd_ix, n, "5D medium KD-Tree")
   end subroutine test_kd_5d_medium
+
+  !> Test KD-Tree KNN query with 20 points.
+  subroutine test_kd_knn_query_20_points()
+    integer(int32), parameter :: d = 2, n = 20
+    real(real64) :: X(d,n)
+    integer(int32) :: kd_ix(n), dim_order(d) = [1, 2]
+    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    real(real64) :: subarray(n)
+    integer(int32) :: recursion_stack(3, n)
+    integer(int32) :: neighbors(20)
+    real(real64) :: distances(20)
+    real(real64) :: all_distances(n)
+    integer :: k, i, j, l
+
+    ! X always goes from 1 to 20
+    X(1,:) = [(real(mod(i, 20) + 1, real64), i = 1, n)]
+
+    ! Test with random Y values
+    call set_ok(ierr)
+    call random_number(X(2,:))
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    if (.not. is_ok(ierr)) then
+      write(*,*) 'Build KD index failed for 20 points (random Y): ', ierr
+      error stop
+    end if
+
+    do k = 5, 20, 5
+      write(*,*) 'Testing with k = ', k
+      do i = 1, n
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        if (.not. is_ok(ierr)) then
+          write(*,*) 'KNN query failed for 20 points (random Y): ', ierr
+          error stop
+        end if
+        ! write(*,*) 'Original point (random Y, ', i, '): ', X(:,i)
+        ! write(*,*) 'Neighbors: ', neighbors(1:k)
+        ! write(*,*) 'Distances: ', distances(1:k)
+        call assert_true(all(neighbors(1:k) >= 1 .and. neighbors(1:k) <= n), 'Neighbors indices out of bounds (random Y)')
+        call assert_true(all(distances(1:k) >= 0.0_real64), 'Distances are non-negative (random Y)')
+        do j = 1, k
+          do l = j+1, k
+            call assert_true(neighbors(j) /= neighbors(l), 'Duplicate neighbor returned')
+          end do
+        end do
+        ! Print all distances to other points
+        do l = 1, n
+          all_distances(l) = sqrt(sum((X(:,i) - X(:,l))**2))
+        end do
+        write(*,*) 'All distances from point ', i, ': ', all_distances
+      end do
+    end do
+
+    ! Test with Y as a consequence of X
+    X(2,:) = X(1,:) * 0.5
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    if (.not. is_ok(ierr)) then
+      write(*,*) 'Build KD index failed for 20 points (consequential Y): ', ierr
+      error stop
+    end if
+
+    do k = 5, 20, 5
+      write(*,*) 'Testing with k = ', k
+      do i = 1, n
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        if (.not. is_ok(ierr)) then
+          write(*,*) 'KNN query failed for 20 points (consequential Y): ', ierr
+          error stop
+        end if
+        write(*,*) 'Original point (consequential Y, ', i, '): ', X(:,i)
+        write(*,*) 'Neighbors: ', neighbors(1:k)
+        write(*,*) 'Distances: ', distances(1:k)
+        call assert_true(all(neighbors(1:k) >= 1 .and. neighbors(1:k) <= n), 'Neighbors indices out of bounds (consequential Y)')
+        call assert_true(all(distances(1:k) >= 0.0_real64), 'Distances are non-negative (consequential Y)')
+        do j = 1, k
+          do l = j+1, k
+            call assert_true(neighbors(j) /= neighbors(l), 'Duplicate neighbor returned')
+          end do
+        end do
+        ! Print all distances to other points
+        do l = 1, n
+          all_distances(l) = sqrt(sum((X(:,i) - X(:,l))**2))
+        end do
+        write(*,*) 'All distances from point ', i, ': ', all_distances
+      end do
+    end do
+  end subroutine test_kd_knn_query_20_points
+
+  !> Test KD-Tree KNN query with 500 points.
+  subroutine test_kd_knn_query_500_points()
+    integer(int32), parameter :: d = 3, n = 500
+    real(real64) :: X(d,n)
+    integer(int32) :: kd_ix(n), dim_order(d) = [1, 2, 3]
+    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    real(real64) :: subarray(n)
+    integer(int32) :: recursion_stack(3, n)
+    integer(int32) :: neighbors(500)
+    real(real64) :: distances(500)
+    integer :: k, i, j, t, l 
+    integer, parameter :: ks(6) = [10, 30, 50, 100, 250, 500]
+
+
+    ! Test with random values for X
+    call set_ok(ierr)
+    call random_matrix(X, d, n)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    if (.not. is_ok(ierr)) then
+      write(*,*) 'Build KD index failed for 500 points (random values): ', ierr
+      error stop
+    end if
+
+    do t = 1, size(ks)
+      k = ks(t)
+      write(*,*) 'Testing 500 points with k = ', k
+      do i = 1, n
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        if (.not. is_ok(ierr)) then
+          write(*,*) 'KNN query failed for 500 points (random values): ', ierr
+          error stop
+        end if
+        
+        ! Apply assertions for all points
+        call assert_true(all(neighbors(1:k) >= 1 .and. neighbors(1:k) <= n), 'Neighbors indices out of bounds')
+        call assert_true(all(distances(1:k) >= 0.0_real64), 'Distances are non-negative')
+        
+        do j = 1, k
+          do l = j+1, k
+            call assert_true(neighbors(j) /= neighbors(l), 'Duplicate neighbor returned')
+          end do
+        end do
+
+        ! Print the central point for each k
+        ! if (i == n / 2) then
+        !  write(*,*) 'Central point for k = ', k, ': ', X(:,i)
+        !  write(*,*) 'Neighbors: ', neighbors(1:k)
+        ! end if
+      end do
+    end do
+
+    ! Test with increasing values for X
+    X(1,:) = [(real(i, real64), i = 1, n)]
+    X(2,:) = [(real(i, real64) * 0.5, i = 1, n)]
+    X(3,:) = [(real(i, real64) * 0.25, i = 1, n)]
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    if (.not. is_ok(ierr)) then
+      write(*,*) 'Build KD index failed for 500 points (increasing values): ', ierr
+      error stop
+    end if
+
+    do t = 1, size(ks)
+      k = ks(t)
+      write(*,*) 'Testing 500 points with k = ', k
+      do i = 1, n
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        if (.not. is_ok(ierr)) then
+          write(*,*) 'KNN query failed for 500 points (increasing values): ', ierr
+          error stop
+        end if
+      end do
+    end do
+  end subroutine test_kd_knn_query_500_points
 
   !> Helper: Generate random unit vectors.
   subroutine random_unit_vectors(V, d, n)

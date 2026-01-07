@@ -8,11 +8,27 @@ library(tools)
 
 
 input_dir   <- "results/data"
-pdf_panels  <- "results/data/all_smoothed_subplots.pdf"
+
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) < 2) {
+  stop("Usage: Rscript plot_smooth_all.r <k_neighbors> <n_iters_max>")
+}
+
+k_neighbors <- as.integer(args[1])
+n_iters_max <- as.integer(args[2])
+
+cat("k_neighbors:", k_neighbors, "\n")
+cat("n_iters_max:", n_iters_max, "\n")
+
+pdf_panels <- paste0("results/plots/smoothed_k", k_neighbors, "_iter", n_iters_max, ".pdf")
+
+# Construir el patrón dinámico basado en k_neighbors y n_iters_max
+pattern <- paste0("smoothed_k", k_neighbors, "_iter", n_iters_max, "\\.csv$")
 
 files <- list.files(
   path = input_dir,
-  pattern = "smoothed\\.csv$",
+  pattern = pattern,
   full.names = TRUE
 )
 

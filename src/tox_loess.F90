@@ -33,7 +33,7 @@ module tox_loess
   real(real64),  parameter :: EPS  = 1.0e-15_real64
   
   ! Algorithm selection thresholds - TEMPORARY: Force direct method for testing
-  integer(int32), parameter :: DIRECT_THRESHOLD = 1000   ! TEMP: Force direct for most datasets  
+  integer(int32), parameter :: DIRECT_THRESHOLD = 2000   ! TEMP: Force direct for most datasets  
   integer(int32), parameter :: KDTREE_THRESHOLD = 5000   ! Use k-d tree for 1000 <= n < 5000 (limited range)
   integer(int32), parameter :: MAX_SAFE_K = 2000          ! Maximum k to avoid stack overflow
 
@@ -280,9 +280,9 @@ contains
     if (n < DIRECT_THRESHOLD) then
       ! Small dataset: use direct method
       call predict_core_direct_fallback(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
-    else if (n < KDTREE_THRESHOLD) then
+    !else if (n < KDTREE_THRESHOLD) then
       ! Medium dataset: use K-d tree optimization
-      call predict_core_kdtree(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
+    !  call predict_core_kdtree(d, n, x_train, y_train, w_train, m, x_pred, k, degree, y_out)
     else
       if (d == 1) then
         call predict_core_sliding_window(n, x_train(1,:), y_train, w_train, k, degree, y_out)
@@ -1354,7 +1354,7 @@ contains
         if(abs(u - ONE) < EPS) then
           ! Exact tie at bandwidth boundary, adjust slightly as in R to avoid zero weight
           rho = rho * 1.005_real64
-          print *, "Warning: Adjusted bandwidth rho to: ", rho
+          !print *, "Warning: Adjusted bandwidth rho to: ", rho
           u = dists(neighbors(i)) / rho
         end if
         rw(neighbors(i)) = w(neighbors(i)) * r_tricube_exact(u)

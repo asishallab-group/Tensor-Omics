@@ -28,4 +28,4 @@ for file in csv_files:
 
     print(f"Plot saved: {output_path}")
 
-print("\n✅ Todos los plots fueron generados.")
+print("\nAll plots were generated.")
