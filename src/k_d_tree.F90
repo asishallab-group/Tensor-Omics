@@ -313,7 +313,7 @@ contains
             stack_pos = stack_pos - 1
 
             ! Skip empty ranges (same condition as build_kd_index)
-            if (right_idx <= left_idx) cycle
+            if (right_idx < left_idx) cycle
 
             ! Choose split dimension exactly as build_kd_index does
             current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)

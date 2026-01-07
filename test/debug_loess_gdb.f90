@@ -22,7 +22,7 @@ program test_loess_gene_expression
   real(real64) :: sum_val, sum_sq, mean_val, std_val
     ! List of TSV files to read
   integer, parameter :: n_files = 1
-  character(len=256) :: input_files(n_files) = ['material/kallisto_sex_data_no_na.tsv']
+  character(len=256) :: input_files(n_files) = ['material/kallisto_test.tsv']
   real(real64) :: min_mean, max_mean
   ! File format parameters
   integer, parameter :: n_header_rows = 1      ! Number of header rows to skip
@@ -50,7 +50,7 @@ program test_loess_gene_expression
   
   ! Total samples = n_files * n_value_cols_per_file
   n_samples = 67
-  n_genes = 88327
+  n_genes = 2000
   
   allocate(gene_ids(n_genes))
   allocate(expression_vectors(n_samples, n_genes))
@@ -67,11 +67,6 @@ program test_loess_gene_expression
   allocate(value_cols(67))
   do i = 1, 67
     value_cols(i) = value_start_col + i - 1
-  end do
-  
-  ! Generate dummy gene IDs (replace with actual gene IDs from your files)
-  do i = 1, n_genes
-    write(gene_ids(i), '(A,I6.6)') 'GENE_', i
   end do
 
   call read_gene_ids_from_tsv_file(input_files(1), gene_ids, n_header_rows, gene_col, ierr)
@@ -207,7 +202,7 @@ program test_loess_gene_expression
   write(10, '(A)') 'mean	std	gene_id'
   do i = 1, n_genes
     if (gene_stds(i) > 0.0_real64 .and. gene_means(i) /= 0.0_real64) then
-      write(10, '(F15.10, A, F15.10, A, A)') &
+      write(10, '(F15.5, A, F20.5, A, A)') &
         gene_means(i), char(9), gene_stds(i), char(9), trim(gene_ids(i))
     end if
   end do
@@ -218,7 +213,7 @@ program test_loess_gene_expression
   open(unit=11, file='gene_mean_std_loess.tsv', status='replace')
   write(11, '(A)') 'x_query	y_span_0.2	y_span_0.4	y_span_0.6	y_span_0.8'
   do i = 1, nq
-    write(11, '(F15.10, 4(A, F15.10))') &
+    write(11, '(F20.5, 4(A, F20.5))') &
       xq(1, i), &
       (char(9), loess_results(i, j), j = 1, n_spans)
   end do
@@ -228,96 +223,6 @@ program test_loess_gene_expression
   ! ======================================================================
   ! 8. CREATE R VISUALIZATION SCRIPT
   ! ======================================================================
-  
-  print *, ""
-  print *, "=== Creating R visualization script ==="
-  
-  open(unit=20, file='plot_gene_mean_std.R', status='replace')
-  write(20, '(A)') '# R script to visualize gene expression mean-std relationship'
-  write(20, '(A)') '# with LOESS smoothing'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Load libraries'
-  write(20, '(A)') 'library(ggplot2)'
-  write(20, '(A)') 'library(dplyr)'
-  write(20, '(A)') 'library(tidyr)'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Read data'
-  write(20, '(A)') 'raw_data <- read.table("gene_mean_std_raw.tsv", header=TRUE, sep="\t")'
-  write(20, '(A)') 'loess_data <- read.table("gene_mean_std_loess.tsv", header=TRUE, sep="\t")'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Basic statistics'
-  write(20, '(A)') 'cat("Summary of gene expression means:\n")'
-  write(20, '(A)') 'print(summary(raw_data$mean))'
-  write(20, '(A)') 'cat("\nSummary of gene expression standard deviations:\n")'
-  write(20, '(A)') 'print(summary(raw_data$std))'
-  write(20, '(A)') 'cat("\nNumber of genes analyzed:", nrow(raw_data), "\n")'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Plot 1: Mean vs STD with LOESS smoothing'
-  write(20, '(A)') 'p1 <- ggplot(raw_data, aes(x = mean, y = std)) +'
-  write(20, '(A)') '  geom_point(alpha = 0.3, size = 0.8, color = "gray50") +'
-  write(20, '(A)') '  geom_line(data = loess_data, aes(x = x_query, y = y_span_0.4),'
-  write(20, '(A)') '            color = "#E41A1C", linewidth = 1.2, linetype = "solid") +'
-  write(20, '(A)') '  geom_line(data = loess_data, aes(x = x_query, y = y_span_0.6),'
-  write(20, '(A)') '            color = "#377EB8", linewidth = 1.2, linetype = "dashed") +'
-  write(20, '(A)') '  labs(title = "Gene Expression: Mean vs Standard Deviation",'
-  write(20, '(A)') '       subtitle = "LOESS smoothing reveals heteroscedasticity pattern",'
-  write(20, '(A)') '       x = "Mean Expression Level",'
-  write(20, '(A)') '       y = "Standard Deviation",'
-  write(20, '(A)') '       caption = paste("n =", nrow(raw_data), "genes")) +'
-  write(20, '(A)') '  theme_minimal() +'
-  write(20, '(A)') '  theme(legend.position = "none")'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Plot 2: All LOESS spans comparison'
-  write(20, '(A)') 'loess_long <- loess_data %>%'
-  write(20, '(A)') '  pivot_longer(cols = -x_query, names_to = "span", values_to = "std_pred")'
-  write(20, '(A)') ''
-  write(20, '(A)') 'p2 <- ggplot() +'
-  write(20, '(A)') '  geom_point(data = raw_data, aes(x = mean, y = std),'
-  write(20, '(A)') '             alpha = 0.2, size = 0.5, color = "gray70") +'
-  write(20, '(A)') '  geom_line(data = loess_long, aes(x = x_query, y = std_pred, color = span),'
-  write(20, '(A)') '            linewidth = 1.2) +'
-  write(20, '(A)') '  scale_color_manual('
-  write(20, '(A)') '    name = "LOESS span",'
-  write(20, '(A)') '    values = c("y_span_0.2" = "#4DAF4A",'
-  write(20, '(A)') '               "y_span_0.4" = "#E41A1C",'
-  write(20, '(A)') '               "y_span_0.6" = "#377EB8",'
-  write(20, '(A)') '               "y_span_0.8" = "#984EA3"),'
-  write(20, '(A)') '    labels = c("0.2 (local)", "0.4", "0.6", "0.8 (global)")) +'
-  write(20, '(A)') '  labs(title = "LOESS Smoothing with Different Spans",'
-  write(20, '(A)') '       subtitle = "Gene expression mean-std relationship",'
-  write(20, '(A)') '       x = "Mean Expression Level", y = "Standard Deviation") +'
-  write(20, '(A)') '  theme_minimal() +'
-  write(20, '(A)') '  theme(legend.position = "bottom")'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Save plots'
-  write(20, '(A)') 'pdf("gene_mean_std_analysis.pdf", width = 10, height = 8)'
-  write(20, '(A)') 'print(p1)'
-  write(20, '(A)') 'print(p2)'
-  write(20, '(A)') 'dev.off()'
-  write(20, '(A)') ''
-  write(20, '(A)') 'ggsave("gene_mean_std_main.png", p1, width = 8, height = 6, dpi = 300)'
-  write(20, '(A)') 'ggsave("gene_mean_std_spans.png", p2, width = 8, height = 6, dpi = 300)'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Calculate correlation'
-  write(20, '(A)') 'correlation <- cor(raw_data$mean, raw_data$std, use = "complete.obs")'
-  write(20, '(A)') 'cat("\nCorrelation between mean and std:", round(correlation, 3), "\n")'
-  write(20, '(A)') ''
-  write(20, '(A)') '# Fit linear model for comparison'
-  write(20, '(A)') 'lm_fit <- lm(std ~ mean, data = raw_data)'
-  write(20, '(A)') 'cat("\nLinear model summary:\n")'
-  write(20, '(A)') 'print(summary(lm_fit))'
-  write(20, '(A)') ''
-  write(20, '(A)') 'cat("\n=== Analysis Complete ===\n")'
-  write(20, '(A)') 'cat("Files generated:\n")'
-  write(20, '(A)') 'cat("• gene_mean_std_raw.tsv - Raw mean/std values\n")'
-  write(20, '(A)') 'cat("• gene_mean_std_loess.tsv - LOESS smoothed curves\n")'
-  write(20, '(A)') 'cat("• gene_mean_std_analysis.pdf - PDF with all plots\n")'
-  write(20, '(A)') 'cat("• gene_mean_std_main.png - Main plot (PNG)\n")'
-  write(20, '(A)') 'cat("• gene_mean_std_spans.png - Span comparison (PNG)\n")'
-  
-  close(20)
-  
-  print *, "Created R script: plot_gene_mean_std.R"
   print *, ""
   print *, "To analyze results:"
   print *, "1. Run this Fortran program with your TSV files"

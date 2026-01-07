@@ -557,15 +557,15 @@ contains
     real(real64),   intent(out) :: yhat
 
     integer(int32) :: i, p, ii, ierr, k_safe
-    integer(int32) :: nn(MAX_SAFE_K)
-    real(real64)   :: dists(MAX_SAFE_K), dmax, wt(n), u
+    integer(int32) :: nn(k)
+    real(real64)   :: dists(k), dmax, wt(n), u
     real(real64)   :: Xrow(64), XtWX(64,64), XtWy(64), beta(64)
     real(real64)   :: kd_workspace(d)
     ! --- Variables for sorting ---
-    integer(int32) :: perm(MAX_SAFE_K), stack_left(MAX_SAFE_K), stack_right(MAX_SAFE_K)
+    integer(int32) :: perm(k), stack_left(k), stack_right(k)
 
     ! Limit k to safe value to avoid stack overflow
-    k_safe = min(k, MAX_SAFE_K)
+    k_safe = k
 
     ! 1) K-d tree query for k_safe nearest neighbors
     call kd_knn_query(x, kd_indices, d, n, dimension_order, z, k_safe, nn, dists, kd_workspace, ierr)

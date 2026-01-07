@@ -1,11 +1,11 @@
 #!/bin/bash
 
-gfortran -g -O2 -fcheck=all -fbacktrace -lxxhash \
+gfortran -g -O0 -fcheck=all -fbacktrace -lxxhash \
+    src/tox_errors.F90 \
     src/config.F90 \
     src/tox_conversions.F90 \
     src/tox_array_read_write/array_utils.F90 \
     src/safeguard.F90 \
-    src/tox_errors.F90 \
     src/f42_utils.F90 \
     src/k_d_tree.F90 \
     src/tox_data/xxh3_hashmap_module.F90 \
