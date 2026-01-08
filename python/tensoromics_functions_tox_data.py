@@ -148,7 +148,16 @@ lib.validate_all_data_C.restype = None
 
 # converts a given string to a c_char array of given length
 def string_to_c_char_array(s, length):
-    """Convert string to c_char array with null termination"""
+    """
+    Convert a Python string to a ctypes c_char array of a given length, with null termination.
+
+    Args:
+        s (str): Input string.
+        length (int): Length of the output c_char array.
+
+    Returns:
+        ctypes.Array: c_char array of specified length, null-terminated if space allows.
+    """
     if s is None:
         s = ""
     # Create array of c_char with specified length
@@ -164,7 +173,15 @@ def string_to_c_char_array(s, length):
 
 # converts a c_char array back to a string
 def c_char_array_to_string(c_array):
-    """Convert c_char array back to string"""
+    """
+    Convert a ctypes c_char array back to a Python string, stopping at the first null byte.
+
+    Args:
+        c_array (ctypes.Array): Input c_char array.
+
+    Returns:
+        str: Decoded string up to the first null byte.
+    """
     # Find null terminator or use full length
     bytes_list = []
     for i in range(len(c_array)):
@@ -175,7 +192,16 @@ def c_char_array_to_string(c_array):
     return b''.join(bytes_list).decode('ascii').strip()
 
 def strings_to_c_char_matrix(strings, max_length):
-    """Convert list of strings to flat c_char array (Fortran-compatible, NumPy-wrapped)"""
+    """
+    Convert a list of strings to a flat c_char array (Fortran-compatible, NumPy-wrapped).
+
+    Args:
+        strings (list of str): List of strings to convert.
+        max_length (int): Maximum length for each string (padded or truncated).
+
+    Returns:
+        np.ndarray: 2D NumPy array of shape (n_strings, max_length) in Fortran order.
+    """
     import numpy as np
     n_strings = len(strings)
     total_size = n_strings * max_length
@@ -202,7 +228,17 @@ def strings_to_c_char_matrix(strings, max_length):
     return arr
 
 def c_char_matrix_to_strings(matrix, max_length, n_strings):
-    """Convert 2D c_char matrix or NumPy array back to list of strings (Fortran order)"""
+    """
+    Convert a 2D c_char matrix or NumPy array back to a list of strings (Fortran order).
+
+    Args:
+        matrix (np.ndarray or ctypes.Array): 2D c_char matrix or flat array.
+        max_length (int): Maximum length of each string.
+        n_strings (int): Number of strings.
+
+    Returns:
+        list of str: Decoded strings from the matrix.
+    """
     import numpy as np
 
     if isinstance(matrix, np.ndarray):
@@ -244,19 +280,43 @@ def c_char_matrix_to_strings(matrix, max_length, n_strings):
 
 
 def _ensure_string_array(arr):
-    """Ensure input is a numpy array of strings"""
+    """
+    Ensure the input is a NumPy array of strings.
+
+    Args:
+        arr: Input array-like object.
+
+    Returns:
+        np.ndarray: Array of strings.
+    """
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr, dtype=object)
     return arr
 
 def _ensure_float_array(arr):
-    """Ensure input is a numpy array of floats"""
+    """
+    Ensure the input is a NumPy array of floats (np.float64).
+
+    Args:
+        arr: Input array-like object.
+
+    Returns:
+        np.ndarray: Array of floats.
+    """
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr, dtype=np.float64)
     return arr
 
 def _ensure_int_array(arr):
-    """Ensure input is a numpy array of ints"""
+    """
+    Ensure the input is a NumPy array of ints (np.int32).
+
+    Args:
+        arr: Input array-like object.
+
+    Returns:
+        np.ndarray: Array of ints.
+    """
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr, dtype=np.int32)
     return arr
@@ -264,14 +324,17 @@ def _ensure_int_array(arr):
 #' Function for read_gene_ids_from_tsv_file_C
 def read_gene_ids_from_tsv_file(filename, n_genes, gene_ids_len, n_header_rows, gene_col):
     """
-    Read gene ids from a tsv file
+    Read gene IDs from a TSV file using the C interface.
 
     Args:
-        filename: Name of the TSV file
-        n_genes: Number of genes to read
-        gene_ids_len: Maximum length of each gene ID
-        n_header_rows: Number of header rows to skip
-        gene_col: Column index (1-based) for gene IDs
+        filename (str): Name of the TSV file.
+        n_genes (int): Number of genes to read.
+        gene_ids_len (int): Maximum length of each gene ID.
+        n_header_rows (int): Number of header rows to skip.
+        gene_col (int): Column index (1-based) for gene IDs.
+
+    Returns:
+        np.ndarray: Array of gene IDs as strings.
     """
     # Ensure filename is a string (single file)
     if isinstance(filename, list):
@@ -314,15 +377,19 @@ def read_gene_ids_from_tsv_file(filename, n_genes, gene_ids_len, n_header_rows, 
 def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows, 
                            gene_col, value_cols, delimiter='\t'):
     """
-    Read expression vectors from given tabular (csv/tsv) files
+    Read expression vectors from given tabular (CSV/TSV) files using the C interface.
+
     Args:
-        file_list: List of filenames to read
-        gene_ids: List of gene IDs to extract
-        n_samples: Number of samples (files)
-        n_header_rows: Number of header rows to skip in each file
-        gene_col: Column index (1-based) for gene IDs
-        value_cols: List of column indices (1-based) for expression values
-        delimiter: Delimiter used in the files (default: tab)
+        file_list (list of str): List of filenames to read.
+        gene_ids (list of str): List of gene IDs to extract.
+        n_samples (int): Number of samples (files).
+        n_header_rows (int): Number of header rows to skip in each file.
+        gene_col (int): Column index (1-based) for gene IDs.
+        value_cols (list of int): List of column indices (1-based) for expression values.
+        delimiter (str): Delimiter used in the files (default: tab).
+
+    Returns:
+        np.ndarray: 2D array of expression vectors (samples x genes).
     """
     # Ensure file_list is a list (multiple files)
     if not isinstance(file_list, list):
@@ -371,12 +438,16 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
 # Function for read_orthofinder_file_C
 def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
     """
-    Read an orthofinder family file and map genes to families
+    Read an OrthoFinder family file and map genes to families using the C interface.
+
     Args:
-        filename: Name of the orthofinder TSV file
-        gene_ids: List of gene IDs to map
-        family_ids_len: Maximum length of each family ID
-        n_families: Number of families to read
+        filename (str): Name of the OrthoFinder TSV file.
+        gene_ids (list of str): List of gene IDs to map.
+        family_ids_len (int): Maximum length of each family ID.
+        n_families (int): Number of families to read.
+
+    Returns:
+        dict: {'family_ids': np.ndarray, 'gene_to_fam': np.ndarray}
     """
     # Ensure filename is a string (single file)
     if isinstance(filename, list):
@@ -432,10 +503,7 @@ def filter_unassigned_genes(gene_to_fam):
         gene_to_fam (list[int] or np.ndarray): Family assignment for each gene (0 means unassigned).
 
     Returns:
-        dict: {
-            'mask': list[int] of 1s (kept) and 0s (removed),
-            'n_genes_kept': int, number of genes kept
-        }
+        dict: {'mask': list[int] of 1s (kept) and 0s (removed), 'n_genes_kept': int}
     """
     # Convert to numpy arrays for convenience
     gene_to_fam = np.array(gene_to_fam, dtype=int)
@@ -452,10 +520,11 @@ def filter_unassigned_genes(gene_to_fam):
 
 def validate_gene_to_family_mapping(gene_to_fam, n_families):
     """
-    Validate gene to family mapping
+    Validate gene to family mapping using the C interface.
+
     Args:
-        gene_to_fam: Array mapping each gene to a family index (0 if unassigned)
-        n_families: Total number of families
+        gene_to_fam (array-like): Array mapping each gene to a family index (0 if unassigned).
+        n_families (int): Total number of families.
     """
     gene_to_fam = _ensure_int_array(gene_to_fam)
     n_genes = gene_to_fam.size
@@ -470,10 +539,11 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
 
 def validate_expression_data(expression_vectors, check_non_negative=True):
     """
-    Validate expression data
+    Validate expression data using the C interface.
+
     Args:
-        expression_vectors: 2D array of expression data (samples x genes)
-        check_non_negative: Whether to check for non-negative values
+        expression_vectors (np.ndarray): 2D array of expression data (samples x genes).
+        check_non_negative (bool): Whether to check for non-negative values.
     """
     arr = _ensure_float_array(expression_vectors)
     arr = np.asfortranarray(arr, dtype=np.float64)
@@ -490,9 +560,10 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
 
 def validate_family_centroids(family_centroids):
     """
-    Validate family centroids, checks for NaN/Inf
+    Validate family centroids for NaN/Inf using the C interface.
+
     Args:
-        family_centroids: 2D array of family centroids (samples x families)
+        family_centroids (np.ndarray): 2D array of family centroids (samples x families).
     """
     arr = _ensure_float_array(family_centroids)
     arr = np.asfortranarray(arr, dtype=np.float64)
@@ -508,15 +579,16 @@ def validate_family_centroids(family_centroids):
 
 def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_genes, n_samples, n_families):
     """
-    Validate shift vectors, checks if datatypes are correct and if the general structure matches (first d rows = centroids, d+1 to 2d rows = shift)
+    Validate shift vectors, checking datatypes and structure using the C interface.
+
     Args:
-        shift_vectors: 2D array of shift vectors (2*samples x genes)
-        expression_vectors: 2D array of expression data (samples x genes)
-        family_centroids: 2D array of family centroids (samples x families)
-        gene_to_fam: Array mapping each gene to a family index (0 if unassigned)
-        n_genes: Number of genes
-        n_samples: Number of samples
-        n_families: Number of families
+        shift_vectors (np.ndarray): 2D array of shift vectors (2*samples x genes).
+        expression_vectors (np.ndarray): 2D array of expression data (samples x genes).
+        family_centroids (np.ndarray): 2D array of family centroids (samples x families).
+        gene_to_fam (np.ndarray): Array mapping each gene to a family index (0 if unassigned).
+        n_genes (int): Number of genes.
+        n_samples (int): Number of samples.
+        n_families (int): Number of families.
     """
     shift_vectors = _ensure_float_array(shift_vectors)
     expression_vectors = _ensure_float_array(expression_vectors)
@@ -542,9 +614,12 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
 
 def validate_string_array_uniqueness(strings):
     """
-    Validate uniqueness of strings - Note: Uses hashset internally which may increase memory usage temporarily for large datasets
+    Validate uniqueness of strings using the C interface.
+
+    Note: Uses a hashset internally, which may increase memory usage for large datasets.
+
     Args:
-        strings: List of strings
+        strings (list of str): List of strings.
     """
     strings = _ensure_string_array(strings)
     string_len = max(len(g) for g in strings)
@@ -561,17 +636,18 @@ def validate_string_array_uniqueness(strings):
 
 def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
     """
-    Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
+    Validate overall data structure consistency using the C interface.
+
     Args:
-        n_genes: Number of genes
-        n_families: Number of families
-        n_samples: Number of samples
-        gene_ids: List of gene IDs
-        gene_family_ids: List of family IDs
-        gene_to_fam: Array mapping each gene to a family index (0 if unassigned)
-        expression_vectors: 2D array of expression data (samples x genes)
-        family_centroids: 2D array of family centroids (samples x families)
-        shift_vectors: 2D array of shift vectors (2*samples x genes)
+        n_genes (int): Number of genes.
+        n_families (int): Number of families.
+        n_samples (int): Number of samples.
+        gene_ids (list of str): List of gene IDs.
+        gene_family_ids (list of str): List of family IDs.
+        gene_to_fam (np.ndarray): Array mapping each gene to a family index (0 if unassigned).
+        expression_vectors (np.ndarray): 2D array of expression data (samples x genes).
+        family_centroids (np.ndarray): 2D array of family centroids (samples x families).
+        shift_vectors (np.ndarray): 2D array of shift vectors (2*samples x genes).
     """
     gene_ids = _ensure_string_array(gene_ids)
     gene_family_ids = _ensure_string_array(gene_family_ids)
@@ -609,17 +685,19 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
 
 def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
     """
-    Comprehensive validation of all data components. This function performs all individual validations in one go.
+    Comprehensive validation of all data components using the C interface.
+    This function performs all individual validations in one go.
+
     Args:
-        n_genes: Number of genes
-        n_families: Number of families
-        n_samples: Number of samples
-        gene_ids: List of gene IDs
-        gene_family_ids: List of family IDs
-        gene_to_fam: Array mapping each gene to a family index (0 if unassigned)
-        expression_vectors: 2D array of expression data (samples x genes)
-        family_centroids: 2D array of family centroids (samples x families)
-        shift_vectors: 2D array of shift vectors (genes x samples)
+        n_genes (int): Number of genes.
+        n_families (int): Number of families.
+        n_samples (int): Number of samples.
+        gene_ids (list of str): List of gene IDs.
+        gene_family_ids (list of str): List of family IDs.
+        gene_to_fam (np.ndarray): Array mapping each gene to a family index (0 if unassigned).
+        expression_vectors (np.ndarray): 2D array of expression data (samples x genes).
+        family_centroids (np.ndarray): 2D array of family centroids (samples x families).
+        shift_vectors (np.ndarray): 2D array of shift vectors (genes x samples).
     """
     gene_ids = _ensure_string_array(gene_ids)
     gene_family_ids = _ensure_string_array(gene_family_ids)
@@ -656,7 +734,15 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
     check_err_code(ierr.value)
     
 def _prepare_string(s) -> tuple:
-    """Prepare string for C interface (bytes + length)"""
+    """
+    Prepare a string for the C interface (returns bytes and length).
+
+    Args:
+        s (str): Input string.
+
+    Returns:
+        tuple: (bytes, int) for the C interface.
+    """
     if s is None or s == "":
         # Return empty string with null terminator
         return b'\x00', 1

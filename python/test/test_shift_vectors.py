@@ -14,6 +14,9 @@ from tensoromics_functions import tox_compute_shift_vector_field
 
 # 1. Test correct mapping between families and genes
 def test_correct_family_mapping():
+    """
+    Test correct mapping between families and genes for shift vector calculation.
+    """
     expression_vectors = np.array([
         [1.0, 4.0, 7.0],
         [2.0, 5.0, 8.0],
@@ -41,6 +44,9 @@ def test_correct_family_mapping():
 
 # 2. Test for invalid family id mapping raising error
 def test_invalid_family_mapping():
+    """
+    Test error handling for invalid family ID mapping in shift vector calculation.
+    """
     expression_vectors = np.array([
         [1.0, 4.0],
         [2.0, 5.0],
@@ -65,6 +71,9 @@ def test_invalid_family_mapping():
 
 # 3. Test for zero distance between paralog and centroid
 def test_zero_distance():
+    """
+    Test shift vector calculation when gene and centroid are identical (zero distance).
+    """
     expression_vectors = np.array([
         [1.0, 4.0],
         [2.0, 5.0],
@@ -90,6 +99,9 @@ def test_zero_distance():
 
 # 4. Test for multiple genes per family centroid
 def test_multiple_genes_per_family():
+    """
+    Test shift vector calculation for multiple genes per family centroid.
+    """
     expression_vectors = np.array([
         [1.0, 3.0, 5.0, 7.0],
         [2.0, 4.0, 6.0, 8.0]
@@ -111,6 +123,9 @@ def test_multiple_genes_per_family():
 
 # 5. Test for single gene per family centroid
 def test_single_gene_per_family():
+    """
+    Test shift vector calculation for single gene per family centroid.
+    """
     expression_vectors = np.array([
         [1.0, 3.0, 5.0, 7.0],
         [2.0, 4.0, 6.0, 8.0]
@@ -132,6 +147,9 @@ def test_single_gene_per_family():
 
 # 6. Test for dimension edge cases (0 genes with dimension 1 and 1 family)
 def test_dimension_edge_cases():
+    """
+    Test error handling for dimension edge cases (empty input arrays).
+    """
     expression_vectors = np.empty((1, 0), dtype=np.float64)
     family_centroids = np.empty((1, 1), dtype=np.float64)
     gene_to_centroid = np.empty((0,), dtype=np.int32)
@@ -145,6 +163,9 @@ def test_dimension_edge_cases():
     print("test_dimension_edge_cases passed")
 
 def main():
+    """
+    Run all shift vector field test cases.
+    """
     print("=================================================")
     print("    SHIFT VECTOR FIELD FULL PYTHON INTERFACE TESTS")
     print("=================================================\n")

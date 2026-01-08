@@ -11,15 +11,30 @@ lib = ctypes.CDLL(dll_path)
 
 # helper to convert a filename to ASCII chars to transfer it as integer to fortran
 def _filename_to_ascii_array(filename):
+    """
+    Convert a filename string to a NumPy array of ASCII integer codes.
+
+    Args:
+        filename (str): Filename to convert.
+
+    Returns:
+        tuple: (np.ndarray of int32, int) ASCII codes and length.
+    """
     ascii_arr = np.array([ord(c) for c in filename], dtype=np.int32)
     return ascii_arr, np.int32(len(ascii_arr))
 
 # Helper function to read dimensions of integer/real array
 def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     """
-    Reads dimensions (and optionally character length) of an array file.
-    with_clen=True -> returns (dims, clen)
-    with_clen=False -> returns dims only
+    Read dimensions (and optionally character length) of an array file.
+
+    Keyword arguments:
+    filename -- file to read metadata from
+    max_dims -- maximum number of dimensions to read (default 5)
+    with_clen -- if True, also return character length
+
+    Returns:
+        tuple or np.ndarray: (dims, clen) if with_clen else dims only
     """
     filename_c = string_to_c_char_array(filename, len(filename) + 1)
     fn_len = len(filename_c)
@@ -63,7 +78,11 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
 # serilization of an n-dimensional integer array
 def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional integer32 array to a binary file
+    Serialize an n-dimensional int32 NumPy array to a binary file.
+
+    Keyword arguments:
+    arr -- n-dimensional NumPy array of int32
+    filename -- output filename
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.int32:
         raise ValueError("arr must be a numpy array of int32")
@@ -108,7 +127,13 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
 # Deserialize an n dimensional integer array
 def tox_deserialize_int_nd(filename):
     """
-    Deserializes an n-dimensional int32-Array.
+    Deserialize an n-dimensional int32 array from a binary file.
+
+    Keyword arguments:
+    filename -- input filename
+
+    Returns:
+        np.ndarray: n-dimensional int32 array
     """
     # read size of the array
     dims = tox_get_array_metadata(filename)
@@ -135,7 +160,11 @@ def tox_deserialize_int_nd(filename):
 
 def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional real64 array to a binary file
+    Serialize an n-dimensional float64 NumPy array to a binary file.
+
+    Keyword arguments:
+    arr -- n-dimensional NumPy array of float64
+    filename -- output filename
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.float64:
         raise ValueError("arr must be a numpy array of float64")
@@ -179,7 +208,13 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
 
 def tox_deserialize_real_nd(filename):
     """
-    Deserializes an n-dimensional array of type real64
+    Deserialize an n-dimensional float64 array from a binary file.
+
+    Keyword arguments:
+    filename -- input filename
+
+    Returns:
+        np.ndarray: n-dimensional float64 array
     """
     #read dimensions
     dims = tox_get_array_metadata(filename)
@@ -206,7 +241,11 @@ def tox_deserialize_real_nd(filename):
 
 def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional character array to a binary file
+    Serialize an n-dimensional character array to a binary file.
+
+    Keyword arguments:
+    arr -- n-dimensional NumPy array of strings (dtype='U')
+    filename -- output filename
     """
     if not isinstance(arr, np.ndarray) or arr.dtype.kind != 'U':
         raise ValueError("arr must be a numpy array of strings (dtype='U')")
@@ -250,7 +289,16 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 def _string_array_to_c_char_matrix(string_array, max_length):
-    """Convert numpy string array to c_char matrix"""
+    """
+    Convert a NumPy string array to a c_char matrix for C/Fortran interoperability.
+
+    Args:
+        string_array (np.ndarray): Array of strings.
+        max_length (int): Maximum string length.
+
+    Returns:
+        np.ndarray: 2D byte array.
+    """
     import numpy as np
     
     # Flatten the array and convert to list of strings
@@ -271,7 +319,16 @@ def _string_array_to_c_char_matrix(string_array, max_length):
     return matrix
 
 def string_to_c_char_array(s, length):
-    """Convert string to c_char array with null termination"""
+    """
+    Convert a string to a c_char array with null termination.
+
+    Args:
+        s (str): Input string.
+        length (int): Length of output array.
+
+    Returns:
+        np.ndarray: Byte array with null termination.
+    """
     if s is None:
         s = ""
     
@@ -291,7 +348,13 @@ def string_to_c_char_array(s, length):
 
 def tox_deserialize_char_nd(filename):
     """
-    Deserializes an n-dimensional character array from a binary file
+    Deserialize an n-dimensional character array from a binary file.
+
+    Keyword arguments:
+    filename -- input filename
+
+    Returns:
+        np.ndarray: n-dimensional array of strings
     """
     # Read dimensions and clen from file metadata
     dims, clen = tox_get_array_metadata(filename, with_clen=True)  # Sie müssen diese Funktion anpassen oder erstellen
@@ -335,7 +398,16 @@ def tox_deserialize_char_nd(filename):
     return np.array(strings, dtype=f'U{clen}').reshape(dims, order='F')
 
 def _c_char_matrix_to_strings(matrix, n_strings):
-    """Faster version using bytes operations"""
+    """
+    Convert a c_char matrix to a list of strings using bytes operations.
+
+    Args:
+        matrix (np.ndarray): 2D byte array.
+        n_strings (int): Number of strings.
+
+    Returns:
+        list of str: Decoded strings.
+    """
     import numpy as np
     
     strings = []
@@ -365,8 +437,12 @@ def _c_char_matrix_to_strings(matrix, n_strings):
 
 def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional logical array to a binary file
-    Converts Python booleans to C integers (1 for True, 0 for False)
+    Serialize an n-dimensional logical (boolean) array to a binary file.
+    Converts Python booleans to C integers (1 for True, 0 for False).
+
+    Keyword arguments:
+    arr -- n-dimensional NumPy array of bool
+    filename -- output filename
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.bool_:
         raise ValueError("arr must be a numpy array of bool")
@@ -411,8 +487,14 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
 
 def tox_deserialize_logical_nd(filename):
     """
-    Deserializes an n-dimensional logical array.
-    Converts C integers (1 for True, 0 for False) back to Python booleans
+    Deserialize an n-dimensional logical array from a binary file.
+    Converts C integers (1 for True, 0 for False) back to Python booleans.
+
+    Keyword arguments:
+    filename -- input filename
+
+    Returns:
+        np.ndarray: n-dimensional boolean array
     """
     # read size of the array
     dims = tox_get_array_metadata(filename)
@@ -442,7 +524,11 @@ def tox_deserialize_logical_nd(filename):
 
 def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional complex128 array to a binary file
+    Serialize an n-dimensional complex128 NumPy array to a binary file.
+
+    Keyword arguments:
+    arr -- n-dimensional NumPy array of complex128
+    filename -- output filename
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.complex128:
         raise ValueError("arr must be a numpy array of complex128")
@@ -486,7 +572,13 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
 
 def tox_deserialize_complex_nd(filename):
     """
-    Deserializes an n-dimensional array of type complex128
+    Deserialize an n-dimensional complex128 array from a binary file.
+
+    Keyword arguments:
+    filename -- input filename
+
+    Returns:
+        np.ndarray: n-dimensional complex128 array
     """
     # read dimensions
     dims = tox_get_array_metadata(filename)
@@ -551,12 +643,12 @@ lib.build_kd_index_C.argtypes = [
 def build_bst_index(values):
     """
     Build a BST index for the given values.
-    
-    Parameters:
-    values (np.array): 1D array of values to index
-    
+
+    Keyword arguments:
+    values -- 1D array of values to index
+
     Returns:
-    np.array: BST indices (1-based)
+        np.ndarray: BST indices (1-based)
     """
     n = len(values)
     indices = np.empty(n, dtype=np.int32)
@@ -573,15 +665,15 @@ def build_bst_index(values):
 def bst_range_query(values, indices, lower_bound, upper_bound):
     """
     Perform a range query on BST-indexed values.
-    
-    Parameters:
-    values (np.array): Original values array
-    indices (np.array): BST indices from build_bst_index
-    lower_bound (float): Lower bound of range (inclusive)
-    upper_bound (float): Upper bound of range (inclusive)
-    
+
+    Keyword arguments:
+    values -- original values array
+    indices -- BST indices from build_bst_index
+    lower_bound -- lower bound of range (inclusive)
+    upper_bound -- upper bound of range (inclusive)
+
     Returns:
-    dictionary: (matching_indices, count) where matching_indices are 1-based Fortran indices
+        dict: {'matching_indices': np.ndarray, 'count': int}
     """
     n = len(values)
     output_indices = np.empty(n, dtype=np.int32)
@@ -606,13 +698,13 @@ def bst_range_query(values, indices, lower_bound, upper_bound):
 def build_kd_index(points, dimension_order=None):
     """
     Build a KD-Tree index for the given points.
-    
-    Parameters:
-    points (np.array): 2D array of points (d x n, Fortran order)
-    dimension_order (np.array): Order of dimensions for splitting (1-based)
-    
+
+    Keyword arguments:
+    points -- 2D array of points (d x n, Fortran order)
+    dimension_order -- order of dimensions for splitting (1-based)
+
     Returns:
-    np.array: KD-Tree indices (1-based Fortran indices)
+        np.ndarray: KD-Tree indices (1-based Fortran indices)
     """
     d, n = points.shape
     
@@ -644,20 +736,25 @@ def build_kd_index(points, dimension_order=None):
 def build_spherical_kd(vectors, dimension_order=None):
     """
     Build a spherical KD-Tree index for the given unit vectors.
-    
-    Parameters:
-    vectors (np.array): 2D array of unit vectors (d x n, Fortran order)
-    dimension_order (np.array): Order of dimensions for splitting (1-based)
-    
+
+    Keyword arguments:
+    vectors -- 2D array of unit vectors (d x n, Fortran order)
+    dimension_order -- order of dimensions for splitting (1-based)
+
     Returns:
-    np.array: Spherical KD-Tree indices (1-based Fortran indices)
+        np.ndarray: Spherical KD-Tree indices (1-based Fortran indices)
     """
     # For spherical KD-Tree, we use the same implementation as regular KD-Tree
     # but with a different name for clarity
     return build_kd_index(vectors, dimension_order)
 
 def _readonly(*arrays: np.ndarray) -> None:
-    """Mark all given NumPy arrays as read-only."""
+    """
+    Mark all given NumPy arrays as read-only.
+
+    Args:
+        *arrays: One or more NumPy arrays.
+    """
     for a in arrays:
         if isinstance(a, np.ndarray):
             a.flags.writeable = False

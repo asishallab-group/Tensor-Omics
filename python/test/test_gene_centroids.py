@@ -13,6 +13,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 from tensoromics_functions import tox_group_centroid
 
 def test_basic_all_mode():
+    """
+    Test centroid calculation in 'all' mode.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -25,6 +28,9 @@ def test_basic_all_mode():
     print("test_basic_all_mode passed")
 
 def test_basic_orthologs_mode():
+    """
+    Test centroid calculation in 'orthologs' mode.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -38,6 +44,9 @@ def test_basic_orthologs_mode():
     print("test_basic_orthologs_mode passed")
 
 def test_empty_family():
+    """
+    Test centroid calculation when some families have no genes assigned.
+    """
     n_axes, n_genes, n_families = 3, 4, 2
     vectors = np.ones((n_axes, n_genes), dtype=np.float64)
     gene_to_family = np.ones(n_genes, dtype=np.int32)
@@ -49,6 +58,9 @@ def test_empty_family():
     print("test_empty_family passed")
 
 def test_no_matching_orthologs():
+    """
+    Test centroid calculation in 'orthologs' mode with no matching orthologs.
+    """
     n_axes, n_genes, n_families = 2, 3, 1
     vectors = np.array([[10, 20, 30],
                         [10, 20, 30]], dtype=np.float64)
@@ -61,6 +73,9 @@ def test_no_matching_orthologs():
     print("test_no_matching_orthologs passed")
 
 def test_single_gene_family():
+    """
+    Test centroid calculation for a single-gene family.
+    """
     n_families = 1
     vectors = np.array([[12.3], [-4.5], [6.7]], dtype=np.float64)
     gene_to_family = np.array([1], dtype=np.int32)
@@ -70,6 +85,9 @@ def test_single_gene_family():
     print("test_single_gene_family passed")
 
 def test_extreme_values():
+    """
+    Test centroid calculation with extreme values in the input vectors.
+    """
     n_axes, n_genes, n_families = 2, 4, 1
     vectors = np.zeros((n_axes, n_genes), dtype=np.float64)
     vectors[:, 0] = [1e12, -1e-12]
@@ -84,6 +102,9 @@ def test_extreme_values():
     print("test_extreme_values passed")
 
 def test_higher_dimensions():
+    """
+    Test centroid calculation in higher dimensions and multiple families.
+    """
     n_axes, n_genes, n_families = 10, 100, 5
     vectors = np.zeros((n_axes, n_genes), dtype=np.float64)
     gene_to_family = np.zeros(n_genes, dtype=np.int32)
@@ -98,6 +119,9 @@ def test_higher_dimensions():
     print("test_higher_dimensions passed")
 
 def test_gene_order_invariance():
+    """
+    Test that centroid calculation is invariant to gene order and mapping.
+    """
     n_families = 2
     vectors1 = np.array([[1, 3, 10, 20, 5],
                          [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -114,6 +138,9 @@ def test_gene_order_invariance():
     print("test_gene_order_invariance passed")
 
 def test_invalid_input_arguments():
+    """
+    Test error handling for invalid input arguments.
+    """
     n_axes, n_genes, n_families = 2, 5, 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -140,6 +167,9 @@ def test_invalid_input_arguments():
     print("test_invalid_input_arguments passed")
 
 def test_invalid_family_mapping():
+    """
+    Test error handling for invalid family mapping.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -153,6 +183,9 @@ def test_invalid_family_mapping():
     print("test_invalid_family_mapping passed")
 
 def test_invalid_mode_string():
+    """
+    Test error handling for invalid mode string.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -173,6 +206,9 @@ def test_invalid_mode_string():
     print("test_invalid_mode_string passed")
 
 def test_missing_ortholog_set():
+    """
+    Test error handling for missing ortholog set in 'orthologs' mode.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -186,6 +222,9 @@ def test_missing_ortholog_set():
     print("test_missing_ortholog_set passed")
 
 def test_present_ortholog_set_in_all_mode():
+    """
+    Test that providing an ortholog set in 'all' mode does not affect results.
+    """
     n_families = 2
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
@@ -199,6 +238,9 @@ def test_present_ortholog_set_in_all_mode():
     print("test_present_ortholog_set_in_all_mode passed")
 
 def main():
+    """
+    Run all gene centroid test cases.
+    """
     print("=================================================")
     print("    GENE CENTROIDS FULL PYTHON INTERFACE TESTS")
     print("=================================================\n")

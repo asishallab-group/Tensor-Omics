@@ -7,6 +7,9 @@ from tensoromics_functions import build_bst_index, build_kd_index, bst_range_que
 
 # --- Test Cases ---
 def test_bst():
+    """
+    Test BST index building and range query.
+    """
     print("=== Testing BST ===")
     x = np.array([3.0, 1.0, 4.0, 2.0], dtype=np.float64)
     
@@ -21,6 +24,9 @@ def test_bst():
     print(f"Range [1.5, 3.5] matches: {res["matching_indices"] - 1} (values: {x[res["matching_indices"] - 1]})")
 
 def test_kdtree():
+    """
+    Test KD-Tree index building.
+    """
     print("\n=== Testing KD-Tree ===")
     X = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float64, order='F')
     
@@ -30,6 +36,9 @@ def test_kdtree():
     print(f"Points in order:\n{X[:, kd_ix]}")
 
 def test_spherical_kdtree():
+    """
+    Test spherical KD-Tree index building with unit vectors.
+    """
     print("\n=== Testing Spherical KD-Tree ===")
     
     # Create some unit vectors on a sphere
@@ -53,6 +62,9 @@ def test_spherical_kdtree():
     assert np.allclose(processed_norms, 1.0), "Vectors should remain unit length"
 
 def test_spherical_kdtree_specific_cases():
+    """
+    Test spherical KD-Tree with specific geometric cases (sphere, hemisphere).
+    """
     print("\n=== Testing Spherical KD-Tree Specific Cases ===")
     
     # Test case 1: Points on a sphere (more realistic spherical data)
@@ -87,6 +99,9 @@ def test_spherical_kdtree_specific_cases():
     print(f"Spherical indices for hemisphere: {hemisphere_ix[:10]}...")
 
 def test_bst_edge_cases():
+    """
+    Test BST edge cases (empty array, single element).
+    """
     print("\n=== BST Edge Cases ===")
     # Empty array
     try:
@@ -105,6 +120,9 @@ def test_bst_edge_cases():
         print(f"Single element test failed: {e}")
 
 def test_kdtree_edge_cases():
+    """
+    Test KD-Tree edge cases (empty matrix, single point).
+    """
     print("\n=== KD-Tree Edge Cases ===")
     # Empty matrix
     try:
@@ -123,6 +141,9 @@ def test_kdtree_edge_cases():
         print(f"Single point test failed: {e}")
 
 def test_spherical_kdtree_edge_cases():
+    """
+    Test spherical KD-Tree edge cases (empty, single vector, 2D circle).
+    """
     print("\n=== Spherical KD-Tree Edge Cases ===")
     
     # Empty spherical data
@@ -152,6 +173,9 @@ def test_spherical_kdtree_edge_cases():
         print(f"2D circle test failed: {e}")
 
 def test_performance():
+    """
+    Test performance of BST and spherical KD-Tree with large datasets.
+    """
     print("\n=== Performance Testing ===")
     
     # Test with larger datasets
@@ -171,7 +195,9 @@ def test_performance():
     print(f"Large spherical KD-Tree built successfully for {large_vectors.shape[1]} vectors")
 
 def run_all_tests():
-    """Run all test functions"""
+    """
+    Run all tree structure test cases and print results.
+    """
     print("Running all tree structure tests...\n")
     
     test_bst()

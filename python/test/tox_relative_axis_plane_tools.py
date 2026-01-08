@@ -8,6 +8,12 @@ from tensoromics_functions import tox_vector_RAP_projection, tox_field_RAP_proje
 
 
 def test_omics_vector_RAP_projection_call():
+    """
+    Test the tox_vector_RAP_projection function for correct projection behavior.
+
+    Generates random vectors and selection masks, computes projections, and asserts that the sum of each projected column is zero.
+    Prints a success message if the test passes.
+    """
     n_axes = 5
     n_selected_axes = 2
     n_vecs = 10
@@ -28,6 +34,12 @@ def test_omics_vector_RAP_projection_call():
 
 
 def test_omics_field_RAP_projection_call():
+    """
+    Test the tox_field_RAP_projection function for correct field projection behavior.
+
+    Generates random field vectors and selection masks, computes projections, and asserts that the sum of each projected column is zero.
+    Prints a success message if the test passes.
+    """
     n_axes = 5
     n_selected_axes = 2
     n_vecs = 10
@@ -48,10 +60,20 @@ def test_omics_field_RAP_projection_call():
 
 
 def main():
+    """
+    Main function to run all RAP projection tests.
+
+    Runs both vector and field RAP projection tests and prints a summary message if all pass.
+    """
     test_omics_vector_RAP_projection_call()
     test_omics_field_RAP_projection_call()
     print("All RAP projection tests PASSED.")
 
 
 if __name__ == '__main__':
+    """
+    Entry point for running the RAP projection test suite.
+
+    Calls the main() function to execute all tests.
+    """
     main()

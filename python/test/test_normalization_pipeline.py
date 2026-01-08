@@ -11,6 +11,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import tox_normalization_pipeline, tox_normalize_by_std_dev, tox_quantile_normalization, tox_calculate_tissue_averages, tox_log2_transformation
 
 def assert_equal(x, y, tol=1e-12, msg=None):
+    """
+    Assert that two arrays are equal within a tolerance.
+
+    Args:
+        x (array-like): First array.
+        y (array-like): Second array.
+        tol (float): Tolerance for comparison.
+        msg (str, optional): Message to print if assertion passes.
+    """
     x = np.asarray(x)
     y = np.asarray(y)
     assert x.shape == y.shape, f"Shape mismatch: {x.shape} vs {y.shape}"
@@ -19,6 +28,9 @@ def assert_equal(x, y, tol=1e-12, msg=None):
         print(msg, "✓")
 
 def basic_test():
+    """
+    Test normalization pipeline with a basic input matrix.
+    """
     n_genes, n_tissues, n_grps = 2, 2, 2
     input_matrix = np.array([[1,3],[2,4]], dtype=np.float64)  # shape (2,2), col-major
     group_s = np.array([1,2], dtype=np.int32)
@@ -34,6 +46,9 @@ def basic_test():
     print("basic_test passed\n")
 
 def edge_case_test():
+    """
+    Test normalization pipeline with a zero input matrix (edge case).
+    """
     n_genes, n_tissues, n_grps = 2, 2, 2
     input_matrix = np.zeros((2,2), dtype=np.float64)
     group_s = np.array([1,2], dtype=np.int32)
@@ -47,6 +62,9 @@ def edge_case_test():
     print("edge_case_test passed\n")
 
 def pipeline_vs_manual():
+    """
+    Test that normalization pipeline matches manual stepwise normalization.
+    """
     n_genes, n_tissues, n_grps = 2, 2, 2
     col_names = ["muscle_dietM_1", "muscle_dietP_1"]
     input_matrix = np.array([[1,3],[2,4]], dtype=np.float64)
@@ -66,6 +84,9 @@ def pipeline_vs_manual():
     print(f"[DEBUG] buf_log=\n{result}")
     assert_equal(result, manual_out, msg="pipeline_vs_manual")
 
+"""
+Run all normalization pipeline test cases.
+"""
 if __name__ == "__main__":
     print("=================================================")
     print("    NORMALIZATION PIPELINE FULL PYTHON TESTS")

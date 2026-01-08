@@ -250,7 +250,12 @@ def test_tox_calc_tiss_avg_example_2():
     print("✓ Test passed!")
 
 def test_tox_calc_fchange_example_1():
-    """Example 1: Simple fold change"""
+    """
+    Test fold change calculation for a simple case with one control and one condition.
+
+    Verifies that the fold change is computed as the difference between condition and control for each gene.
+    Prints manual verification and checks results against expected values.
+    """
     print("="*50)
     print("TOX_FOLD CHANGE EXAMPLE 1: Simple condition vs control")
     print("="*50)
@@ -282,7 +287,12 @@ def test_tox_calc_fchange_example_1():
     print("✓ Test passed!")
 
 def test_tox_calc_fchange_example_2():
-    """Example 2: Multiple conditions vs same control"""
+    """
+    Test fold change calculation for multiple conditions versus the same control.
+
+    Verifies that the function can handle multiple condition columns with a shared control column.
+    Prints manual verification and checks results against expected values.
+    """
     print("="*50)
     print("TOX_FOLD CHANGE EXAMPLE 2: Multiple conditions vs same control")
     print("="*50)
@@ -314,7 +324,12 @@ def test_tox_calc_fchange_example_2():
     print("✓ Test passed!")
 
 def test_error_handling():
-    """Test error handling"""
+    """
+    Test error handling for normalization and tissue average functions.
+
+    Checks that ValueError is raised for NaN, infinite, and mismatched array inputs.
+    Prints confirmation for each error case.
+    """
     print("="*50)
     print("TOX_ERROR HANDLING TESTS")
     print("="*50)
@@ -356,9 +371,13 @@ def test_error_handling():
 
 
 if __name__ == "__main__":
+    """
+    Main block to run all tox_normalization test functions.
+
+    Executes each test and prints a summary of results. Catches and prints exceptions with traceback for debugging.
+    """
     print("TENSOR-OMICS PYTHON TOX_NORMALIZATION FUNCTIONS TEST SUITE")
     print("Testing wrapper functions with tox_ prefix...")
-    
     try:
         test_tox_normalize_example_1()
         test_tox_normalize_example_2()
@@ -371,11 +390,9 @@ if __name__ == "__main__":
         test_tox_calc_fchange_example_2()
         test_error_handling()
         test_normalize_unit_length()
-        
         print("\n" + "="*50)
         print("ALL TOX_NORMALIZATION FUNCTION TESTS COMPLETED SUCCESSFULLY!")
         print("="*50)
-
     except Exception as e:
         print(f"\nERROR: {e}")
         import traceback

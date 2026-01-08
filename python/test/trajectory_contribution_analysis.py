@@ -21,7 +21,11 @@ TOL = 1e-12
 
 
 def test_tox_compute_baselines_factor_dependent():
-    """Test baseline computation wrapper across all supported modes and error cases."""
+    """
+    Test baseline computation wrapper across all supported modes and error cases.
+
+    Verifies correct baseline calculation for 'raw', 'min', and 'mean' modes.
+    """
 
     factor = np.array([1.0, 3.0, 2.0, 4.0], dtype=np.float64)
     dependent = np.array([5.0, 7.0, 6.0, 8.0], dtype=np.float64)
@@ -59,6 +63,11 @@ def test_tox_compute_baselines_factor_dependent():
 
 
 def test_compute_contributions():
+    """
+    Test the tox_compute_contributions function for different baseline modes.
+
+    Runs three cases: 'raw', 'min', and 'mean' baselines.
+    """
     # -------------------------------
     # Case 1: RAW baseline
     # -------------------------------
@@ -99,6 +108,11 @@ def test_compute_contributions():
 
 
 def test_compute_all_contributions():
+    """
+    Test the tox_compute_all_contributions function for different baseline modes.
+
+    Runs two cases: 'mean' and 'min' baselines on sample trajectories.
+    """
     # -------------------------------
     # Case 1: MEAN baseline
     # -------------------------------
@@ -144,6 +158,11 @@ def test_compute_all_contributions():
 
 
 def main():
+    """
+    Main function to run all trajectory contribution analysis tests.
+
+    Prints a header and runs all test functions for baseline, contribution, and all-contribution calculations.
+    """
     print("=================================================")
     print("    TRAJECTORY CONTRIBUTION ANALYSIS PYTHON INTERFACE TESTS")
     print("=================================================")
@@ -154,4 +173,9 @@ def main():
     test_compute_all_contributions()
 
 if __name__ == "__main__":
+    """
+    Entry point for running the trajectory contribution analysis test suite.
+
+    Calls the main() function to execute all tests.
+    """
     main()

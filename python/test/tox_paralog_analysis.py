@@ -19,6 +19,17 @@ from tensoromics_functions import (
 
 
 def test_paralog_functions():
+    """
+    Test paralog analysis functions for correct mask logic, pattern filtering, work array size, and effect detection.
+
+    This function tests:
+    - Mask logic for paralog activation
+    - Pattern filtering for dosage effect and subfunctionalization
+    - Work array size calculation for paralog subsets
+    - Dosage effect and subfunctionalization detection
+    - Edge cases for mask chunk count
+    Asserts correctness of each step and prints a success message if all tests pass.
+    """
     # Testing Mask Logic
 
     n_paralogs = 5
@@ -101,6 +112,14 @@ def test_paralog_functions():
 
 
 def test_detect_neofunctionalization():
+    """
+    Test neofunctionalization detection for paralog analysis.
+
+    Runs two cases:
+    - Case 1: All differences below threshold (expect all zeros)
+    - Case 2: Some differences above threshold (expect some ones)
+    Asserts correctness of output for both cases and prints a success message if all tests pass.
+    """
     # -------------------------------
     # Case 1: Differences below threshold → all false (all zeros)
     # -------------------------------
@@ -149,6 +168,11 @@ def test_detect_neofunctionalization():
 
 
 def main():
+    """
+    Main function to run all TOX paralog analysis Python interface tests.
+
+    Prints a header and runs all test functions for paralog analysis and neofunctionalization.
+    """
     print("=================================================")
     print("    TOX PARALOG ANALYSIS PYTHON INTERFACE TESTS")
     print("=================================================")
@@ -160,4 +184,9 @@ def main():
 
 
 if __name__ == '__main__':
+    """
+    Entry point for running the TOX paralog analysis test suite.
+
+    Calls the main() function to execute all tests.
+    """
     main()

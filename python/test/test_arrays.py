@@ -11,6 +11,10 @@ from tensoromics_functions import (tox_serialize_char_nd, tox_serialize_int_nd, 
 
 # Tests for integer
 def int_test():
+    """
+    Test serialization and deserialization of integer arrays (1D, 2D, 3D).
+    """
+    
     array = np.array([1, 2, 3, 4, 5], dtype=np.int32, order='F')
     filename = "test_int_1d.bin"
     tox_serialize_int_nd(array, filename)
@@ -37,6 +41,10 @@ def int_test():
     
 # Tests for real
 def real_test():
+    """
+    Test serialization and deserialization of real (float64) arrays (1D, 2D, 3D, empty).
+
+    """
     array = np.array([1.5, 2.3, 3.2, 4.0, 5.0], dtype=np.float64, order='F')
     filename = "test_real_1d.bin"
     tox_serialize_real_nd(array, filename)
@@ -70,6 +78,9 @@ def real_test():
 
 # Tests for chars
 def char_test():
+    """
+    Test serialization and deserialization of character arrays (1D, 2D, 3D).
+    """
     array = np.asfortranarray(["hello", "world"], dtype='U5')
     filename = "test_char_1d.bin"
     tox_serialize_char_nd(array, filename)
@@ -97,6 +108,9 @@ def char_test():
 
 # Tests for logical
 def logical_test():
+    """
+    Test serialization and deserialization of logical (boolean) arrays (1D, 2D, 3D, edge cases).
+    """
     # 1D logical array
     array = np.array([True, False, True, False, True], dtype=np.bool_, order='F')
     filename = "test_logical_1d.bin"
@@ -145,6 +159,9 @@ def logical_test():
 
 # Tests for complex
 def complex_test():
+    """
+    Test serialization and deserialization of complex128 arrays (1D, 2D, 3D, edge cases).
+    """
     # 1D complex array
     array = np.array([1+2j, 3+4j, 5+6j, 7+8j], dtype=np.complex128, order='F')
     filename = "test_complex_1d.bin"
