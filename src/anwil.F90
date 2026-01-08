@@ -88,123 +88,6 @@ contains
   end function get_time
 
 
-  subroutine smooth_vectors_gaussian_adaptive_old(coords, vectors, smoothed, &
-                                             n_coord_dims, n_vector_dims, n_points, k_neighbors, &
-                                             kd_indices, dimension_order, neighbors, distances, &
-                                             workspace, value_buffer, permutation, left_stack, right_stack, anisotropy_factor, ierr)
-    ! Smooths vectors using adaptive Gaussian KNN based on coordinate space
-    ! For 1D, uses a sorted array instead of KD-tree; for higher dimensions, uses KD-tree
-    integer(int32), intent(in) :: n_coord_dims   ! number of coordinate dimensions for neighbor search
-    integer(int32), intent(in) :: n_vector_dims  ! number of vector dimensions to smooth
-    integer(int32), intent(in) :: n_points       ! total number of points
-    integer(int32), intent(in) :: k_neighbors    ! number of nearest neighbors to use
-    real(real64), intent(inout) :: coords(n_coord_dims, n_points)    ! coordinates for neighbor search
-    real(real64), intent(inout) :: vectors(n_vector_dims, n_points)  ! vectors to be smoothed
-    real(real64), intent(out) :: smoothed(n_vector_dims, n_points) ! output: smoothed vectors
-    real(real64), intent(in) :: anisotropy_factor ! if == 1, isotropic, if <1, anisotropic
-
-    ! Buffers for k-d tree construction
-    integer(int32), intent(out) :: kd_indices(n_points), dimension_order(n_coord_dims)
-    integer(int32), intent(inout) :: workspace(n_points), permutation(n_points)
-    integer(int32), intent(inout) :: left_stack(n_points), right_stack(n_points)
-    real(real64), intent(inout) :: value_buffer(n_points)
-
-    ! Buffers for smoothing
-    integer(int32), intent(inout) :: neighbors(k_neighbors)
-    real(real64), intent(inout) :: distances(k_neighbors)
-    integer(int32), intent(out) :: ierr
-
-    ! Internal variables
-    integer(int32) :: i, j, local_j
-    real(real64) :: local_sigma, local_wsum, local_w, local_work(n_vector_dims)
-    real(real64) :: local_mean_dist, local_variance, local_std_dev, local_median
-    integer(int32) :: recursion_stack(3, n_points)
-    real(real64) :: c
-    real(real64) :: delta(n_coord_dims)
-    real(real64) :: sigma_parallel, sigma_orth
-    real(real64) :: d2
-
-
-
-    call set_ok(ierr)
-
-    ! Validation
-    if (n_coord_dims < 1 .or. n_vector_dims < 1 .or. n_points < 1 .or. &
-        k_neighbors < 1 .or. k_neighbors > n_points) then
-        call set_err_once(ierr, ERR_INVALID_INPUT)
-        return
-    end if
-
-        ! Higher dimensions: Use KD-tree
-        dimension_order = [(i, i = 1, n_coord_dims)]
-        call build_kd_index(coords, n_coord_dims, n_points, kd_indices, dimension_order, &
-                           workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
-        if (.not. is_ok(ierr)) return
-
-        do i = 1, n_points
-        call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
-                            coords(:, i), k_neighbors, neighbors, distances, value_buffer, ierr)
-
-        ! Calculate the median of distances
-        call sort_real(distances(1:k_neighbors), permutation, left_stack, right_stack)
-        if (mod(k_neighbors, 2) == 0) then
-            local_median = (distances(permutation(k_neighbors / 2)) + distances(permutation(k_neighbors / 2 + 1))) / 2.0_real64
-        else
-            local_median = distances(permutation((k_neighbors + 1) / 2))
-        end if
-
-        ! Use the local maximum distance correctly with the permutation vector
-        ! local_median = distances(permutation(k_neighbors))
-
-        ! Calculate c as 1 / sqrt(log(k_neighbors))
-        c = 1.0_real64 / sqrt(log(real(k_neighbors, real64)))
-        ! c = 3.0_real64
-        ! print *, "Valor de c:", c
-
-        ! Calculate local_sigma as c * median
-        local_sigma = c * local_median
-
-        ! Ensure that local_sigma is not too small
-        if (local_sigma <= 1.0e-12_real64) local_sigma = 1.0e-12_real64
-
-        local_wsum = 0.0_real64
-        local_work(:) = 0.0_real64
-
-        do local_j = 1, k_neighbors
-            if (neighbors(local_j) == i) cycle
-
-            if (anisotropy_factor == 1.0_real64) then
-                ! Isotropic smoothing
-                local_w = exp(-(distances(local_j)**2) / (2.0_real64 * local_sigma**2))
-            else
-                ! Anisotropic smoothing
-                delta(:) = coords(:, neighbors(local_j)) - coords(:, i)
-                sigma_parallel = local_sigma
-                sigma_orth = anisotropy_factor * local_sigma
-
-                d2 = (delta(1)**2) / (2.0_real64 * sigma_parallel**2)
-                if (n_coord_dims > 1) then
-                    d2 = d2 + sum(delta(2:n_coord_dims)**2) / (2.0_real64 * sigma_orth**2)
-                end if
-
-                local_w = exp(-d2)
-            end if
-
-            local_work(:) = local_work(:) + local_w * vectors(:, neighbors(local_j))
-            local_wsum = local_wsum + local_w
-        end do
-
-
-        if (local_wsum > 0.0_real64) then
-            smoothed(:, i) = local_work(:) / local_wsum
-        else
-            smoothed(:, i) = vectors(:, i)
-        end if
-    end do
-
-  end subroutine smooth_vectors_gaussian_adaptive_old 
-
-
 ! Mode 0: Isotropic smoothing (default, simple and efficient)
 ! Mode 1: Diagonal anisotropy (uses anisotropy_factor for scaling)
 ! Mode 2: Full anisotropy (uses local covariance matrix)
@@ -213,8 +96,8 @@ subroutine smooth_vectors_gaussian_adaptive( &
   coords, vectors, smoothed, &
   n_coord_dims, n_vector_dims, n_points, k_neighbors, &
   kd_indices, dimension_order, neighbors, distances, &
-  workspace, value_buffer, permutation, left_stack, right_stack, &
-  anisotropy_mode, anisotropy_factor, ierr )
+  workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
+  anisotropy_mode, anisotropy_factor, sd_arr, ierr )
 
   use iso_fortran_env, only: real64, int32
   use tox_errors, only: set_ok, set_err_once, is_ok, ERR_INVALID_INPUT
@@ -241,6 +124,7 @@ subroutine smooth_vectors_gaussian_adaptive( &
   ! =====================
   real(real64), intent(out) :: smoothed(n_vector_dims, n_points)
   integer(int32), intent(out) :: ierr
+  real(real64), intent(out) :: sd_arr(n_points)
 
   ! =====================
   ! WORK BUFFERS (MUST BE SIZE k_neighbors + 1 FOR KNN)
@@ -255,13 +139,15 @@ subroutine smooth_vectors_gaussian_adaptive( &
   integer(int32), intent(inout) :: workspace(n_points)
   real(real64), intent(inout) :: value_buffer(n_points)
   integer(int32), intent(inout) :: permutation(n_points)
+  integer(int32), intent(inout) :: permutation_distances(k_neighbors)
   integer(int32), intent(inout) :: left_stack(n_points)
   integer(int32), intent(inout) :: right_stack(n_points)
+  
 
   ! =====================
   ! LOCALS
   ! =====================
-  integer(int32) :: i, j, idx, k_eff,k_start,k_real_neighbors
+  integer(int32) :: i, j, idx, k_eff,k_start,k_real_neighbors, i_perm
   integer(int32) :: recursion_stack(3, n_points)
   integer(int32) :: k_search ! k_neighbors
   integer(int32) :: k_eff_neighbors
@@ -323,9 +209,9 @@ subroutine smooth_vectors_gaussian_adaptive( &
   ! =====================
   do i = 1, n_points
     ! Debugging: Processing point
-    ! print *, "Debug: Processing point", i
-    ! print *, "Debug: Coordinates of point:", coords(:,i)
-    ! print *, "Debug: Original vector:", vectors(:,i)
+    !print *, "Debug: Processing point", i
+    !print *, "Debug: Coordinates of point:", coords(:,i)
+    !print *, "Debug: Original vector:", vectors(:,i)
 
     ! 1. Initialize and query K neighbors (including self)
     distances(1:k_neighbors) = huge(1.0_real64)
@@ -334,33 +220,39 @@ subroutine smooth_vectors_gaussian_adaptive( &
       coords(:,i), k_neighbors, neighbors, distances, value_buffer, ierr )
     if (.not. is_ok(ierr)) return
 
-    ! Debugging: After kd_knn_query
-    ! print *, "Debug: kd_knn_query succeeded for point", i
-    ! print *, "Debug: Neighbors indices:", neighbors
-    ! print *, "Debug: Distances:", distances
+    if (i == 250) then 
+      ! Debugging: After kd_knn_query
+      !print *, "Debug: kd_knn_query succeeded for point", i
+      !print *, "Debug: Neighbors indices:", neighbors
+      !print *, "Debug: Distances:", distances
+    end if 
 
-    ! 2. Sort distances and obtain permutation
-    permutation = [(i, i = 1, n_points)]
-    call sort_real(distances(1:k_neighbors), permutation, left_stack, right_stack)
+    ! 2. Sort distances and obtain permutation_distances
+    permutation_distances = [(i_perm, i_perm = 1, k_neighbors)]
+    call sort_real(distances(1:k_neighbors), permutation_distances, left_stack, right_stack)
 
-    ! Debugging: After sorting distances
-    ! print *, "Debug: Distances sorted for point", i, distances(permutation)
-    ! print *, "Debug: Permutation array:", permutation
+    if (i == 250) then
+      ! Debugging: After sorting distances
+      !print *, "Debug: Distances sorted for point", i, distances(permutation_distances)
+      !print *, "Debug: permutation_distances array:", permutation_distances
+    end if
 
-    ! 3. Reorder neighbors using the same permutation
+    ! 3. Reorder neighbors using the same permutation_distances
     value_buffer(1:k_neighbors) = real(neighbors(1:k_neighbors), real64)
     do j = 1, k_neighbors
-        neighbors(j) = int(value_buffer(permutation(j)), int32)
+        neighbors(j) = int(value_buffer(permutation_distances(j)), int32)
     end do
 
-    ! Debugging: After reordering neighbors
-    ! print *, "Debug: Reordered neighbors:", neighbors
+    if (i == 250) then
+      ! Debugging: After reordering neighbors
+      !print *, "Debug: Reordered neighbors:", neighbors
+    end if
 
     ! 4. Calculate the Median (Excluding self and HUGE)
     k_real_neighbors = 0
     k_start = 2
     do j = k_start, k_neighbors
-        if (distances(permutation(j)) < huge(1.0_real64)) then
+        if (distances(permutation_distances(j)) < huge(1.0_real64)) then
             k_real_neighbors = k_real_neighbors + 1
         else
             exit 
@@ -379,21 +271,27 @@ subroutine smooth_vectors_gaussian_adaptive( &
     if (k_real_neighbors > 0) then
         if (mod(k_real_neighbors, 2) == 0) then
             local_median = 0.5_real64 * ( &
-                distances(permutation(real_neighbor_offset + k_real_neighbors / 2)) + &
-                distances(permutation(real_neighbor_offset + k_real_neighbors / 2 + 1)) )
+                distances(permutation_distances(real_neighbor_offset + k_real_neighbors / 2)) + &
+                distances(permutation_distances(real_neighbor_offset + k_real_neighbors / 2 + 1)) )
         else
-            local_median = distances(permutation(real_neighbor_offset + (k_real_neighbors + 1) / 2))
+            local_median = distances(permutation_distances(real_neighbor_offset + (k_real_neighbors + 1) / 2))
         end if
     else
         local_median = 0.0_real64
     end if
 
+    if (i == 250) then
+      !print *, "Debug: real neighbors", k_eff_neighbors
+    end if 
+
     c = 1.0_real64 / sqrt(log(real(k_eff_neighbors, real64)))
     local_sigma = max(c * local_median, 1.0e-12_real64)
+    sd_arr(i) = local_sigma
 
     ! Debugging: Local sigma and median
-    ! print *, "Debug: Local sigma:", local_sigma, "Local median:", local_median
-
+    if (i == 250) then
+      !print *, "Debug: Local sigma:", local_sigma, "Local median:", local_median
+    end if
     if (anisotropy_mode == 2) then
     
       ! Dispersion calculation with respect to the central point (x_i)
@@ -457,11 +355,11 @@ subroutine smooth_vectors_gaussian_adaptive( &
 
     do j = 2, k_neighbors
       idx = neighbors(j)
-      if (distances(permutation(j)) == huge(1.0_real64)) cycle
+      if (distances(permutation_distances(j)) == huge(1.0_real64)) cycle
 
       select case (anisotropy_mode)
       case (0)
-        d2 = distances(permutation(j))**2
+        d2 = distances(permutation_distances(j))**2
         local_w = exp(-d2 / (2.0_real64 * local_sigma**2))
       case (1)
         delta = coords(:,idx) - coords(:,i)
@@ -484,12 +382,16 @@ subroutine smooth_vectors_gaussian_adaptive( &
       local_wsum = local_wsum + local_w
 
       ! Debugging: Neighbor analysis
-      ! print *, "Debug: Point", i, "Neighbor", j
-      ! print *, "Debug: Neighbor index:", idx
-      ! print *, "Debug: Distance squared (d2):", d2
-      ! print *, "Debug: Weight (local_w):", local_w
-      ! print *, "Debug: Accumulated local_work:", local_work
-      ! print *, "Debug: Accumulated local_wsum:", local_wsum
+      if (i == 250) then
+        if (j < 50 .or. j > 450) then 
+          !print *, "Debug: Point", i, "Neighbor", j
+          !print *, "Debug: Neighbor index:", idx
+          !print *, "Debug: Distance squared (d2):", d2
+          !print *, "Debug: Weight (local_w):", local_w
+          !print *, "Debug: Accumulated local_work:", local_work
+          !print *, "Debug: Accumulated local_wsum:", local_wsum
+        end if 
+      end if
     end do
 
     if (local_wsum > 0.0_real64) then

@@ -24,16 +24,16 @@ program smooth_all_methods_functional
     ! ============================
     character(len=512) :: infile, outfile, line
     integer :: ios, arg_len, i
-    integer(int32) :: n_points, k_neighbors, n_iters_max
+    integer(int32) :: n_points, k_neighbors, n_iters_max, method_id
 
     real(real64), allocatable :: x(:), y_orig(:)
     real(real64), allocatable :: y_loess(:), y_anwil(:), y_nw(:),y_anwil_iterative(:),x_anwil_iterative(:)
 
 
     ! -------- ANWIL --------
-    real(real64), allocatable :: coords_anwil(:,:), vecs_anwil(:,:), smoothed_anwil(:,:), smoothed_anwil_mode1(:,:), smoothed_anwil_mode2(:,:), coords_nw(:,:), vecs_nw(:,:), smoothed_nw(:,:)
+    real(real64), allocatable :: coords_anwil(:,:), vecs_anwil(:,:), smoothed_anwil(:,:), smoothed_anwil_mode1(:,:), smoothed_anwil_mode2(:,:), coords_nw(:,:), vecs_nw(:,:), smoothed_nw(:,:), sd_arr(:)
     integer(int32), allocatable :: kd_indices(:), dimension_order(:)
-    integer(int32), allocatable :: neighbors(:), workspace(:), permutation(:)
+    integer(int32), allocatable :: neighbors(:), workspace(:), permutation(:), permutation_distances(:)
     integer(int32), allocatable :: left_stack(:), right_stack(:)
     real(real64),    allocatable :: distances(:), value_buffer(:)
 
@@ -54,6 +54,7 @@ program smooth_all_methods_functional
 
 
     integer(int32) :: ierr
+    character(len=512) :: sd_arr_file
 
     ! ============================
     ! ARGUMENTS
@@ -84,9 +85,25 @@ program smooth_all_methods_functional
     end if
     read(line, *) n_iters_max
 
+    ! Read argument to select method
+    call get_command_argument(4, line, length=arg_len)
+    if (arg_len == 0) then
+        print *, "Error: method_id is mandatory."
+        print *, "Usage:"
+        print *, "  ./smooth_all_methods_functional results/data/input.csv k_neighbors n_iters_max method_id"
+        stop 1
+    end if
+    read(line, *) method_id
+
+    ! Validate method_id
+    if (method_id < 0 .or. method_id > 8) then
+        print *, "Error: method_id should be between 0 and 7."
+        stop 1
+    end if
+
     infile = trim(infile)
     outfile = trim(infile)
-    call make_output_name(outfile, k_neighbors, n_iters_max)
+    call make_output_name(outfile, k_neighbors, n_iters_max, 1)
 
     print *, "Reading:  ", trim(infile)
     print *, "Writing:", trim(outfile)
@@ -119,6 +136,7 @@ program smooth_all_methods_functional
 
     ! ANWIL
     allocate(coords_anwil(2, n_points))
+    allocate(sd_arr(n_points))
     allocate(vecs_anwil(2, n_points))
     allocate(smoothed_anwil(2, n_points))
     allocate(smoothed_anwil_mode1(2, n_points))
@@ -129,7 +147,7 @@ program smooth_all_methods_functional
     allocate(smoothed_nw(1, n_points))
 
     allocate(kd_indices(n_points), dimension_order(2))
-    allocate(neighbors(k_neighbors), workspace(n_points), permutation(n_points))
+    allocate(neighbors(k_neighbors), workspace(n_points), permutation(n_points), permutation_distances(k_neighbors))
     allocate(left_stack(n_points), right_stack(n_points))
     allocate(distances(k_neighbors), value_buffer(n_points))
 
@@ -167,155 +185,157 @@ program smooth_all_methods_functional
     end do
     close(11)
 
-    print *, "Starting LOESS smoothing..."
     print *, "Number of points:", n_points
 
     ! ============================
-    ! LOESS
+    ! Execute methods according to method_id
     ! ============================
-    x_loess(1,:) = x
-    w_loess(:) = 1.0_real64
+    if (method_id == 0 .or. method_id == 1) then
+        print *, "Starting LOESS smoothing..."
+        x_loess(1,:) = x
+        w_loess(:) = 1.0_real64
 
-    call tox_loess_fit( &
-        d_loess, n_points, x_loess, y_orig, w_loess, &
-        span_loess, degree_loess, &
-        iv_loess, liv_loess, v_loess, lv_loess, &
-        y_loess, ierr )
+        call tox_loess_fit( &
+            d_loess, n_points, x_loess, y_orig, w_loess, &
+            span_loess, degree_loess, &
+            iv_loess, liv_loess, v_loess, lv_loess, &
+            y_loess, ierr )
 
-    if (ierr /= 0) then
-        print *, "LOESS smoothing failed, ierr=", ierr
-    else
-        print *, "LOESS smoothing completed successfully."
+        if (ierr /= 0) then
+            print *, "LOESS smoothing failed, ierr=", ierr
+        else
+            print *, "LOESS smoothing completed successfully."
+        end if
     end if
 
-    print *, "Starting ANWIL isotropic smoothing..."
+    if (method_id == 0 .or. method_id == 2) then
+        print *, "Starting ANWIL isotropic smoothing..."
+        coords_anwil(1,:) = x
+        coords_anwil(2,:) = y_orig
+        vecs_anwil(1,:)   = x
+        vecs_anwil(2,:)   = y_orig
 
-    ! ============================
-    ! ANWIL (x,y) → isotropico
-    ! ============================
-    coords_anwil(1,:) = x
-    coords_anwil(2,:) = y_orig
-    vecs_anwil(1,:)   = x
-    vecs_anwil(2,:)   = y_orig
-
-    call smooth_vectors_gaussian_adaptive( &
-        coords_anwil, vecs_anwil, smoothed_anwil, &
-        2, 2, n_points, k_neighbors, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, 0, 1.0_real64, ierr )
-
-    ! ============================
-    ! ANWIL (x,y) → anisotropico modo 1
-    ! ============================
-    coords_anwil(1,:) = x
-    coords_anwil(2,:) = y_orig
-    vecs_anwil(1,:)   = x
-    vecs_anwil(2,:)   = y_orig
-
-    call smooth_vectors_gaussian_adaptive( &
-        coords_anwil, vecs_anwil, smoothed_anwil_mode1, &
-        2, 2, n_points, k_neighbors, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, 1, 10.0_real64, ierr )
-
-    ! ============================
-    ! ANWIL (x,y) → anisotropico modo 2
-    ! ============================
-    coords_anwil(1,:) = x
-    coords_anwil(2,:) = y_orig
-    vecs_anwil(1,:)   = x
-    vecs_anwil(2,:)   = y_orig
-
-    call smooth_vectors_gaussian_adaptive( &
-        coords_anwil, vecs_anwil, smoothed_anwil_mode2, &
-        2, 2, n_points, k_neighbors, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, 2, 0.0_real64, ierr )
-
-    ! ============================
-    ! Nadaraya–Watson (x,y) → curva 2D completa
-    ! ============================
-    coords_nw(1,:) = x
-    vecs_nw(1,:)   = y_orig
-
-    call smooth_vectors_gaussian_adaptive_nw( &
-        coords_nw, vecs_nw, smoothed_nw, &
-        1, 1, n_points, k_neighbors, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, &
-        0.5_real64, ierr )
-
-    ! ============================
-    ! ManLe (x,y) → curva 2D completa
-    ! ============================
-    data2d(1,:) = x
-    data2d(2,:) = y_orig
-
-    call manle_pipeline( &
-        data2d, n_points, 2, &
-        k_neighbors, n_iters_max, tol_manle, &
-        Omega, Y, Q, B, Stmp, Utmp, tau, work_manle, size(work_manle), &
-        manifold2d, svd_line, ierr )
-
-    if (ierr /= 0) then
-        print *, "ANWIL isotropic smoothing failed, ierr=", ierr
-    else
-        print *, "ANWIL isotropic smoothing completed successfully."
+        call smooth_vectors_gaussian_adaptive( &
+            coords_anwil, vecs_anwil, smoothed_anwil, &
+            2, 2, n_points, k_neighbors, &
+            kd_indices, dimension_order, neighbors, distances, &
+            workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 0, 1.0_real64, sd_arr, ierr )
+        ! print *, "sd_arr: ", sd_arr
     end if
 
-    x_manle_center(:) = manifold2d(1,:)
-    y_manle_center(:) = manifold2d(2,:)
+    if (method_id == 0 .or. method_id == 3) then
+        print *, "Starting ANWIL anisotropic smoothing (mode 1)..."
+        coords_anwil(1,:) = x
+        coords_anwil(2,:) = y_orig
+        vecs_anwil(1,:)   = x
+        vecs_anwil(2,:)   = y_orig
 
-    ! ============================
-    ! AManLe (x,y) → curva 2D completa
-    ! ============================
-    data2d(1,:) = x
-    data2d(2,:) = y_orig
-
-    call amanle_pipeline( &
-        data2d, n_points, 2, &
-        1, k_neighbors, n_iters_max, tol_manle, &
-        work_amanle, size(work_amanle), &
-        manifold2d, svd_line_amanle, ierr )
-
-    if (ierr /= 0) then
-        print *, "AManLe smoothing failed, ierr=", ierr
-    else
-        print *, "AManLe smoothing completed successfully."
+        call smooth_vectors_gaussian_adaptive( &
+            coords_anwil, vecs_anwil, smoothed_anwil_mode1, &
+            2, 2, n_points, k_neighbors, &
+            kd_indices, dimension_order, neighbors, distances, &
+            workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 1, 10.0_real64, sd_arr, ierr )
     end if
 
-    x_amanle_center(:) = manifold2d(1,:)
-    y_amanle_center(:) = manifold2d(2,:)
+    if (method_id == 0 .or. method_id == 4) then
+        print *, "Starting ANWIL anisotropic smoothing (mode 2)..."
+        coords_anwil(1,:) = x
+        coords_anwil(2,:) = y_orig
+        vecs_anwil(1,:)   = x
+        vecs_anwil(2,:)   = y_orig
 
-    ! ============================
-    ! Debugging after AManLe smoothing
-    ! ============================
-    print *, "Debugging after AManLe smoothing..."
-    print *, "First 5 points of x_amanle_center:", x_amanle_center(1:min(5, n_points))
-    print *, "First 5 points of y_amanle_center:", y_amanle_center(1:min(5, n_points))
-    print *, "First 5 points of svd_line_amanle (1st dimension):", svd_line_amanle(1, 1:min(5, n_points))
-    print *, "First 5 points of svd_line_amanle (2nd dimension):", svd_line_amanle(2, 1:min(5, n_points))
+        call smooth_vectors_gaussian_adaptive( &
+            coords_anwil, vecs_anwil, smoothed_anwil_mode2, &
+            2, 2, n_points, k_neighbors, &
+            kd_indices, dimension_order, neighbors, distances, &
+            workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 2, 0.0_real64, sd_arr, ierr )
+    end if
 
-    ! ============================
-    ! Debugging: Check buffers and variables before and after amanle_pipeline
-    ! ============================
-    print *, "Debug: Before amanle_pipeline"
-    print *, "First 5 points of data2d (1st dimension):", data2d(1, 1:min(5, n_points))
-    print *, "First 5 points of data2d (2nd dimension):", data2d(2, 1:min(5, n_points))
+    if (method_id == 0 .or. method_id == 5) then
+        print *, "Starting Nadaraya–Watson smoothing..."
+        coords_nw(1,:) = x
+        vecs_nw(1,:)   = y_orig
 
-    ! ============================
-    ! anwil Iterative
-    ! ============================
-    data2d(1,:) = x
-    data2d(2,:) = y_orig
+        call smooth_vectors_gaussian_adaptive_nw( &
+            coords_nw, vecs_nw, smoothed_nw, &
+            1, 1, n_points, k_neighbors, &
+            kd_indices, dimension_order, neighbors, distances, &
+            workspace, value_buffer, permutation, left_stack, right_stack, &
+            0.5_real64, ierr )
+    end if
 
-    call anwil_iterative( &
-        data2d, n_points, 2, &
-        k_neighbors, n_iters_max, tol_manle, &
-        tmp_manle, manifold2d, ierr )
+    if (method_id == 0 .or. method_id == 6) then
+        print *, "Starting ManLe smoothing..."
+        data2d(1,:) = x
+        data2d(2,:) = y_orig
 
-    y_anwil_iterative(:) = manifold2d(2,:)
-    x_anwil_iterative(:) = manifold2d(1,:)
+        call manle_pipeline( &
+            data2d, n_points, 2, &
+            k_neighbors, n_iters_max, tol_manle, &
+            Omega, Y, Q, B, Stmp, Utmp, tau, work_manle, size(work_manle), &
+            manifold2d, svd_line, ierr )
+
+        if (ierr /= 0) then
+            print *, "ManLe smoothing failed, ierr=", ierr
+        else
+            print *, "ManLe smoothing completed successfully."
+        end if
+
+        x_manle_center(:) = manifold2d(1,:)
+        y_manle_center(:) = manifold2d(2,:)
+    end if
+
+    if (method_id == 0 .or. method_id == 7) then
+        print *, "Starting AManLe smoothing..."
+        data2d(1,:) = x
+        data2d(2,:) = y_orig
+
+        call amanle_pipeline( &
+            data2d, n_points, 2, &
+            1, k_neighbors, n_iters_max, tol_manle, &
+            work_amanle, size(work_amanle), &
+            manifold2d, svd_line_amanle, ierr )
+
+        if (ierr /= 0) then
+            print *, "AManLe smoothing failed, ierr=", ierr
+        else
+            print *, "AManLe smoothing completed successfully."
+        end if
+
+        x_amanle_center(:) = manifold2d(1,:)
+        y_amanle_center(:) = manifold2d(2,:)
+
+        ! ============================
+        ! Debugging after AManLe smoothing
+        ! ============================
+        ! print *, "Debugging after AManLe smoothing..."
+        ! print *, "First 5 points of x_amanle_center:", x_amanle_center(1:min(5, n_points))
+        ! print *, "First 5 points of y_amanle_center:", y_amanle_center(1:min(5, n_points))
+        ! print *, "First 5 points of svd_line_amanle (1st dimension):", svd_line_amanle(1, 1:min(5, n_points))
+        ! print *, "First 5 points of svd_line_amanle (2nd dimension):", svd_line_amanle(2, 1:min(5, n_points))
+
+        ! ============================
+        ! Debugging: Check buffers and variables before and after amanle_pipeline
+        ! ============================
+        ! print *, "Debug: Before amanle_pipeline"
+        ! print *, "First 5 points of data2d (1st dimension):", data2d(1, 1:min(5, n_points))
+        ! print *, "First 5 points of data2d (2nd dimension):", data2d(2, 1:min(5, n_points))
+    end if
+
+
+    if (method_id == 0 .or. method_id == 8) then
+        print *, "Starting anwil iterative smoothing..."
+        data2d(1,:) = x
+        data2d(2,:) = y_orig
+
+        call anwil_iterative( &
+            data2d, n_points, 2, &
+            k_neighbors, n_iters_max, tol_manle, &
+            tmp_manle, manifold2d, ierr )
+
+        y_anwil_iterative(:) = manifold2d(2,:)
+        x_anwil_iterative(:) = manifold2d(1,:)
+    end if
 
 
 
@@ -333,12 +353,30 @@ program smooth_all_methods_functional
 
     print *, "Done:", trim(outfile)
 
+    ! ============================
+    ! WRITE sd_arr TO TSV FILE
+    ! ============================
+    
+
+    ! Create the filename based on outfile
+    call make_output_name(outfile,k_neighbors,n_iters_max,2)
+
+    open(20, file=outfile, status="replace", action="write")
+    write(20, '(A)') 'x,local_sigma'
+
+    do i = 1, n_points
+        write(20, '(F12.6,",",F12.6)') x(i), sd_arr(i)
+    end do
+
+    close(20)
+    print *, "sd_arr saved to", trim(outfile)
+
 contains
 
-    subroutine make_output_name(name, k_neighbors, n_iters_max)
+    subroutine make_output_name(name, k_neighbors, n_iters_max, option)
         character(len=*), intent(inout) :: name
         integer(int32), intent(in) :: k_neighbors, n_iters_max
-        integer :: dotpos, i
+        integer :: dotpos, i, option
         character(len=32) :: k_str, iter_str
 
         dotpos = 0
@@ -354,9 +392,20 @@ contains
         write(iter_str, '(I0)') n_iters_max
 
         if (dotpos > 0) then
-            name = trim(name(1:dotpos-1)) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
+            if (option == 1) then 
+                name = trim(name(1:dotpos-1)) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
+            end if
+            if (option == 2) then
+                name = trim(name(1:dotpos-1)) // '_anwil_std.csv'
+            end if 
         else
-            name = trim(name) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
+            if (option == 1) then 
+                name = trim(name) // '_smoothed_k' // trim(k_str) // '_iter' // trim(iter_str) // '.csv'
+            end if 
+            if (option == 2) then
+                name = trim(name) // '_anwil_std.csv'
+            end if 
+
         end if
     end subroutine make_output_name
 

@@ -12,6 +12,8 @@ So far, the following methods have been tested:
 
 At the moment, both ManLe and AManLe are implemented in the same module.
 
+*Important: Since experiments are still ongoing, there may be allocations inside the subroutines. This will be fixed in the future.* 
+
 Please refer to the method details in [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/Smoothing-Algorithm-Descriptions/misc/Tensor_Omics_Methods.pdf?ref_type=heads).
 
 # Project compilation
@@ -64,10 +66,20 @@ Use the script `./run_smoothing_tests.sh` to compile the project, compile the pr
 Usage: 
 
 ```
-./run_smoothing_tests.sh <all|dataset_name> <k_neighbors> <n_iters_max>
+./run_smoothing_tests.sh <all|dataset_name> <k_neighbors> <n_iters_max> <method_id>
 ```
 
 If `all` is used, all datasets are going to generate the smoothed results. You can also only generate the results for one single dataset passing the name of the file.
+
+Where `method_id`:
+- 0 to execute all methods
+- 1 to execute loess
+- 2 to execute isotropic anwil 
+- 3 to execute anwil mode 1
+- 4 to execute anwil mode 2
+- 5 to execute nadaraya watson
+- 6 to execute manle
+- 7 to execute amanle 
 
 The smoothed results are located under `results/data/`.
 
@@ -84,8 +96,19 @@ gfortran -O2 -I build -o build/smooth_all test_aux/smooth_all_methods.f90 build/
 To run it on a dataset, use:
 
 ```bash
-./build/smooth_all results/data/circular_arc_noise_high.csv <k_neighbors> <max_iterations>
+./build/smooth_all results/data/circular_arc_noise_high.csv <k_neighbors> <max_iterations> <method_id>
 ```
+
+Where `method_id`:
+- 0 to execute all methods
+- 1 to execute loess
+- 2 to execute isotropic anwil 
+- 3 to execute anwil mode 1
+- 4 to execute anwil mode 2
+- 5 to execute nadaraya watson
+- 6 to execute manle
+- 7 to execute amanle
+- 8 to execute anwil iterative
 
 This will generate a CSV file called:
 

@@ -254,7 +254,6 @@ contains
     !> Efficient k-NN query on pre-built k-d tree
     !! Finds the k nearest neighbors to a query point using the k-d tree index
     !! Uses the same range-based traversal as build_kd_index for correctness
-    !! No internal allocations - all workspace provided by caller
     pure subroutine kd_knn_query(points, kd_indices, num_dimensions, num_points, dimension_order, &
                         query_point, k_neighbors, neighbors, distances, workspace, ierr)
         ! Input and output arguments 
