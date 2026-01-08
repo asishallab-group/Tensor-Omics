@@ -126,9 +126,13 @@ extern "C" {
                          int* ortholog_set, int* selected_indices, int selected_indices_len, int* ierr);
 }
 
-/**
- * Calculate Euclidean distance between two vectors
- */
+//'
+//' Calculate Euclidean distance between two vectors
+//'
+//' @param vec1 First numeric vector
+//' @param vec2 Second numeric vector
+//' @return Euclidean distance (double)
+//'
 // [[Rcpp::export]]
 double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
     int d = vec1.length();
@@ -138,9 +142,15 @@ double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
     return result;
 }
 
-/**
- * Calculate distances from genes to their family centroids
- */
+//'
+//' Calculate distances from genes to their family centroids
+//'
+//' @param genes Numeric vector of gene expression values
+//' @param centroids Numeric vector of family centroid values
+//' @param gene_to_fam Integer vector mapping each gene to its family
+//' @param d Number of dimensions
+//' @return Numeric vector of distances
+//'
 // [[Rcpp::export]]
 NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector centroids, 
                                        IntegerVector gene_to_fam, int d) {
@@ -156,9 +166,14 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector c
     return distances;
 }
 
-/**
- * Calculate Tissue Versatility
- */
+//'
+//' Calculate Tissue Versatility
+//'
+//' @param expression_vectors Numeric matrix of expression vectors (axes x vectors)
+//' @param vector_selection Integer vector indicating selected vectors
+//' @param axis_selection Integer vector indicating selected axes
+//' @return List with tissue versatilities, angles, and selection counts
+//'
 // [[Rcpp::export]]
 List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors, 
                                       IntegerVector vector_selection, 
@@ -188,9 +203,12 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
     
 }
 
-/**
- * Calculate normalization by standard deviation
- */
+//'
+//' Normalize gene expression values by standard deviation
+//'
+//' @param input Numeric matrix (genes x tissues)
+//' @return List with normalized output matrix and error code
+//'
 // [[Rcpp::export]]
 List tox_normalize_by_std_dev_rcpp(NumericMatrix input) {
     int n_genes = input.nrow();
@@ -206,9 +224,12 @@ List tox_normalize_by_std_dev_rcpp(NumericMatrix input) {
     );
 }
 
-/**
- * Perform quantile normalization
- */
+//'
+//' Perform quantile normalization of gene expression values
+//'
+//' @param input Numeric matrix (genes x tissues)
+//' @return List with quantile-normalized output matrix and error code
+//'
 // [[Rcpp::export]]
 List tox_quantile_normalization_rcpp(NumericMatrix input) {
     int n_genes = input.nrow();
@@ -236,9 +257,12 @@ List tox_quantile_normalization_rcpp(NumericMatrix input) {
     );
 }
 
-/**
- * Perform log2 transformation
- */
+//'
+//' Apply log2(x + 1) transformation to gene expression values
+//'
+//' @param input Numeric matrix (genes x tissues)
+//' @return List with log2-transformed output matrix and error code
+//'
 // [[Rcpp::export]]
 List tox_log2_transformation_rcpp(NumericMatrix input) {
     int n_genes = input.nrow();
@@ -254,6 +278,13 @@ List tox_log2_transformation_rcpp(NumericMatrix input) {
     );
 }
 
+//'
+//' Calculate shift vector field for gene expression vectors
+//'
+//' @param expression_vectors Numeric matrix (axes x genes)
+//' @param family_centroids Numeric matrix (axes x families)
+//' @param gene_to_centroid Integer vector mapping each gene to its centroid
+//' @return List with shift vectors and error code
 // [[Rcpp::export]]
 List tox_compute_shift_vector_field_rcpp(NumericMatrix expression_vectors, NumericMatrix family_centroids, IntegerVector gene_to_centroid) {
     int n_axes_genes = expression_vectors.nrow();
@@ -276,9 +307,14 @@ List tox_compute_shift_vector_field_rcpp(NumericMatrix expression_vectors, Numer
     );
 }
 
-/**
- * Calculate tissue averages
- */
+//'
+//' Calculate average expression across replicates for each tissue group
+//'
+//' @param input Numeric matrix (genes x samples)
+//' @param group_s Integer vector: start column index for each group
+//' @param group_c Integer vector: number of columns per group
+//' @return List with averaged output matrix and error code
+//'
 // [[Rcpp::export]]
 List tox_calc_tiss_avg_rcpp(NumericMatrix input, IntegerVector group_s, IntegerVector group_c) {
     int n_gene = input.nrow();
@@ -293,9 +329,14 @@ List tox_calc_tiss_avg_rcpp(NumericMatrix input, IntegerVector group_s, IntegerV
     );
 }
 
-/**
- * Calculate fold change
- */
+//'
+//' Calculate fold change between control and condition columns
+//'
+//' @param input Numeric matrix (genes x samples)
+//' @param control_cols Integer vector of control column indices
+//' @param cond_cols Integer vector of condition column indices
+//' @return List with fold change output matrix and error code
+//'
 // [[Rcpp::export]]
 List tox_calc_fchange_rcpp(NumericMatrix input, IntegerVector control_cols, IntegerVector cond_cols) {
     int n_genes = input.nrow();
@@ -330,9 +371,14 @@ List tox_mean_vector_rcpp(NumericMatrix expression_vectors, IntegerVector gene_i
     );
 }
 
-/**
- * Perform normalization pipeline
- */
+//'
+//' Complete normalization pipeline for gene expression data
+//'
+//' @param input Numeric matrix (genes x tissues)
+//' @param group_s Integer vector: start column index for each group
+//' @param group_c Integer vector: number of columns per group
+//' @return List with pipeline output matrices and error code
+//'
 // [[Rcpp::export]]
 List tox_normalization_pipeline_rcpp(NumericMatrix input, IntegerVector group_s, IntegerVector group_c) {
     int n_genes = input.nrow();
@@ -378,6 +424,13 @@ List tox_normalization_pipeline_rcpp(NumericMatrix input, IntegerVector group_s,
 // OUTLIER DETECTION WRAPPERS
 // ===================================================================
 
+//'
+//' Compute family scaling factors using LOESS smoothing
+//'
+//' @param distances Numeric vector of gene distances
+//' @param gene_to_fam Integer vector mapping genes to family indices
+//' @param n_families Integer number of families
+//' @return List with scaling factors, loess fit, and error code
 // [[Rcpp::export]]
 List tox_compute_family_scaling_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families) {
   int n_genes = distances.size();
@@ -407,6 +460,17 @@ List tox_compute_family_scaling_rcpp(NumericVector distances, IntegerVector gene
   );
 }
 
+//'
+//' Expert version of compute_family_scaling with user-provided work arrays
+//'
+//' @param n_families Integer number of families
+//' @param distances Numeric vector of gene distances
+//' @param gene_to_fam Integer vector mapping genes to family indices
+//' @param perm_tmp Pre-allocated permutation array
+//' @param stack_left_tmp Pre-allocated stack array (left)
+//' @param stack_right_tmp Pre-allocated stack array (right)
+//' @param family_distances Pre-allocated work array for family distances
+//' @return List with scaling factors, loess fit, work arrays, and error code
 // [[Rcpp::export]]
 List tox_compute_family_scaling_expert_rcpp(int n_families, NumericVector distances, IntegerVector gene_to_fam,
                                             IntegerVector perm_tmp, IntegerVector stack_left_tmp, IntegerVector stack_right_tmp,
@@ -442,6 +506,13 @@ List tox_compute_family_scaling_expert_rcpp(int n_families, NumericVector distan
   );
 }
 
+//'
+//' Compute Relative Distance Index (RDI) for genes
+//'
+//' @param distances Numeric vector of gene distances
+//' @param gene_to_fam Integer vector mapping genes to family indices
+//' @param dscale Numeric vector of scaling factors for each family
+//' @return List with RDI values and sorted RDI
 // [[Rcpp::export]]
 List tox_compute_rdi_rcpp(NumericVector distances, IntegerVector gene_to_fam, NumericVector dscale) {
   int n_genes = distances.size();
@@ -469,6 +540,12 @@ List tox_compute_rdi_rcpp(NumericVector distances, IntegerVector gene_to_fam, Nu
   );
 }
 
+//'
+//' Identify outliers based on RDI percentiles
+//'
+//' @param rdi Numeric vector of RDI values
+//' @param percentile Percentile threshold
+//' @return List with logical outlier vector and threshold value
 // [[Rcpp::export]]
 List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
   int n_genes = rdi.size();
@@ -497,6 +574,14 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
   );
 }
 
+//'
+//' Complete outlier detection workflow
+//'
+//' @param distances Numeric vector of gene distances
+//' @param gene_to_fam Integer vector mapping genes to family indices
+//' @param n_families Integer number of families
+//' @param percentile Percentile threshold for outlier detection
+//' @return List with outlier flags, loess fit, and error code
 // [[Rcpp::export]]
 List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families, double percentile) {
   int n_genes = distances.size();
@@ -536,6 +621,15 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
   );
 }
 
+//'
+//' Calculate gene family centroids
+//'
+//' @param expression_vectors Numeric matrix (axes x genes)
+//' @param gene_to_family Integer vector mapping genes to family IDs
+//' @param n_families Integer number of gene families
+//' @param ortholog_set Integer vector indicating ortholog subset
+//' @param mode Character string for mode ('all' or 'ortho')
+//' @return List with centroid matrix and error code
 // [[Rcpp::export]]
 List tox_group_centroid_rcpp(NumericMatrix expression_vectors, IntegerVector gene_to_family, int n_families, IntegerVector ortholog_set, String mode) {
     int n_axes = expression_vectors.nrow();
