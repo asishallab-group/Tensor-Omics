@@ -125,6 +125,9 @@ extern "C" {
                          double* centroid_matrix, const char* mode,
                          int* ortholog_set, int* selected_indices, int selected_indices_len, int* ierr);
 }
+// ===================================================================
+// EUCLIDEAN DISTANCE  WRAPPERS
+// ===================================================================
 
 //'
 //' Calculate Euclidean distance between two vectors
@@ -142,6 +145,9 @@ double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
     return result;
 }
 
+// ===================================================================
+// Distance to Centroid WRAPPERS
+// ===================================================================
 //'
 //' Calculate distances from genes to their family centroids
 //'
@@ -165,7 +171,9 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector c
     
     return distances;
 }
-
+// ===================================================================
+// TISSUE VERSATILITY WRAPPERS
+// ===================================================================
 //'
 //' Calculate Tissue Versatility
 //'
@@ -202,6 +210,9 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
     );
     
 }
+// ===================================================================
+// NORMALIZATION WRAPPERS
+// ===================================================================
 
 //'
 //' Normalize gene expression values by standard deviation
@@ -256,6 +267,9 @@ List tox_quantile_normalization_rcpp(NumericMatrix input) {
         Named("ierr")       = ierr
     );
 }
+// ===================================================================
+// lOG2 TRANSFORMATION WRAPPERS
+// ===================================================================
 
 //'
 //' Apply log2(x + 1) transformation to gene expression values
@@ -352,6 +366,13 @@ List tox_calc_fchange_rcpp(NumericMatrix input, IntegerVector control_cols, Inte
     );
 }
 
+//'
+//' Compute the element-wise mean for a given set of gene expression vectors
+//'
+//' @param expression_vectors Numeric matrix (axes x genes)
+//' @param gene_indices Integer vector of gene indices to include in the mean
+//' @return List with centroid vector and error code
+//'
 // [[Rcpp::export]]
 List tox_mean_vector_rcpp(NumericMatrix expression_vectors, IntegerVector gene_indices) {
     int n_axes = expression_vectors.nrow();

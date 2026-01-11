@@ -38,7 +38,9 @@ tox_euclidean_distance <- function(vec1, vec2) {
   # Call Rcpp wrapper 
   return(tox_euclidean_distance_rcpp(as.numeric(vec1), as.numeric(vec2)))
 }
-
+# ===================================================================
+# DISTANCE TO CENTROID FUNCTIONS
+# ===================================================================
 
 #' Calculate distances from genes to their family centroids
 #' 
@@ -69,6 +71,9 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 
   return(tox_distance_to_centroid_rcpp(genes, centroids, gene_to_fam, d))
 }
+# ===================================================================
+# TISSUE VERSATILITY FUNCTIONS
+# ===================================================================
 
 
 #' Calculate Tissue Versatility
@@ -169,6 +174,10 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
 
 }
 
+# ===================================================================
+# FAMILY SCALING AND RDI FUNCTIONS
+# ===================================================================
+
 #' Compute family scaling factors using LOESS smoothing
 #'
 #' This function calculates scaling factors for gene families based on distance distributions.
@@ -204,6 +213,10 @@ tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
     indices_used = as.integer(result$indices_used)
   ))
 }
+# ===================================================================
+# EXPERT FAMILY SCALING FUNCTION
+# ===================================================================
+
 
 #' Compute family scaling factors using LOESS smoothing (Expert Version)
 #'
@@ -262,6 +275,10 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
 
   ))
 }
+# ===================================================================
+# RDI FUNCTIONS
+# ===================================================================
+
 
 #' Compute Relative Distance Index (RDI) for genes
 #'
@@ -290,6 +307,10 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
     sorted_rdi = result$sorted_rdi
   ))
 }
+# ===================================================================
+# OUTLIER IDENTIFICATION FUNCTIONS
+# ===================================================================
+
 
 #' Identify outliers based on RDI percentiles
 #'
@@ -313,7 +334,7 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
   ))
 
 }
-
+# ===================================================================
 # NORMALIZATION FUNCTIONS
 # ===================================================================
 #' Normalize gene expression values by standard deviation
@@ -336,6 +357,10 @@ tox_normalize_by_std_dev <- function(input_matrix) {
   result <- tox_normalize_by_std_dev_rcpp(input_matrix)  
   return(matrix(result$output_vector, nrow = nrow(input_matrix), ncol = ncol(input_matrix), dimnames = dimnames(input_matrix)))
 }
+# ===================================================================
+# # NORMALIZATION PIPELINE FUNCTIONS
+# ===================================================================
+
 
 #' Quantile normalization of gene expression values
 #'
@@ -361,6 +386,10 @@ tox_quantile_normalization <- function(input_matrix) {
   
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
+# ===================================================================
+# LOG2 TRANSFORMATION FUNCTIONS
+# ===================================================================
+
 
 #' Apply log2(x + 1) transformation to gene expression values
 #'
@@ -387,6 +416,10 @@ tox_log2_transformation <- function(input_matrix) {
   
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
+# ===================================================================
+# TISSUE AVERAGING FUNCTIONS
+# ===================================================================
+
 
 #' Calculate average expression across replicates for each tissue group
 #'
@@ -440,6 +473,9 @@ tox_calculate_tissue_averages <- function(df) {
   rownames(output_matrix) <- rownames(df)
   return(as.data.frame(output_matrix))
 }
+# ===================================================================
+# LOG2 FOLD CHANGE CALCULATION FUNCTIONS
+# ===================================================================
 
 
 #' Calculate log2 fold changes based on control and condition patterns
@@ -471,6 +507,9 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
 
   return(as.data.frame(output_matrix))
 }
+# ===================================================================
+# COMPLETE NORMALIZATION PIPELINE FUNCTIONS
+# ===================================================================
 
 
 #' Complete normalization pipeline for gene expression data (up to log2(x+1))
@@ -532,6 +571,9 @@ tox_parse_tissue_group <- function(colname) {
   # If no pattern matches, return full name
   return(colname)
 }
+# ===================================================================
+# DATA DIAGNOSTICS FUNCTIONS
+# ===================================================================
 
 
 #' Diagnose data quality issues in gene expression matrix
@@ -635,6 +677,10 @@ tox_diagnose_data_quality <- function(input_matrix, show_details = TRUE) {
   
   return(invisible(diagnostics))
 }
+# ===================================================================
+# DATA CLEANING FUNCTIONS
+# ===================================================================
+
 
 #' Clean data by removing or imputing problematic values
 #'
@@ -782,6 +828,10 @@ tox_clean_data_for_normalization <- function(df_matrix,
   return(df_matrix)
 }
 
+# ===================================================================
+# INDEX PREPARATION FUNCTIONS
+# ===================================================================
+
 
 #' Prepare control and condition column indices based on naming patterns
 #'
@@ -901,6 +951,10 @@ tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, o
   check_err_code(result$ierr)
   return(result)
 }
+
+# ===================================================================
+# MEAN VECTOR FUNCTIONS
+# ===================================================================
 
 #' Compute the element-wise mean for a given set of gene expression vectors
 #'
