@@ -31,9 +31,10 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(1)
+        type(test_case) :: all_tests(2)
 
         all_tests(1) = test_case("test_f42_json_serialization", test_serialization)
+        all_tests(2) = test_case("test_f42_flyer_serialization", test_flyer_serialization)
     end function get_all_tests
 
     subroutine test_serialization
@@ -161,6 +162,66 @@ contains
     end subroutine test_serialization
 
     subroutine test_flyer_serialization
+        integer(int32), parameter :: n_tissues = 2, n_families = 4, n_genes = 5
+        character(len=29) :: filename
+        character(len=7), dimension(n_tissues) :: tissues
+        character(len=9), dimension(n_families) :: family_ids
+        character(len=14), dimension(n_genes) :: gene_ids
+        character(len=8), dimension(n_genes) :: gene_types
+        character(len=21), dimension(n_genes) :: gene_species
+        real(real64), dimension(n_tissues, n_families) :: centroids
+        real(real64), dimension(n_tissues, n_genes) :: genes
+        integer(int32), dimension(n_genes) :: gene_to_fam
+        integer(int32), dimension(n_genes) :: sorted_gene_to_fam_perm
+        logical, dimension(n_genes) :: gene_outliers
+        integer(int32) :: ierr, unit
+        logical :: exists
+
+        filename = "test_flyer_serialization.json"
+        tissues = ["Adipose", "Thyroid"]
+        family_ids = ["EMPTYFAM1", "OG0000000", "OG0000001", "EMPTYFAM2"]
+        gene_ids = ["NP_001243379.1", "UNASSIGNED.1  ", "XP_038381480.1", "NP_001243386.1", "XP_038421312.1"]
+        gene_species = ["Canis_lupus_protein.1", "Whatever_protein     ", "Canis_lupus_protein.2", "Canis_lupus_protein.3", "Canis_lupus_protein.4"]
+        gene_types = ["ortholog", "ortholog", "paralog ", "ortholog", "paralog "]
+        gene_to_fam = [2, 0, 3, 2, 3]
+        sorted_gene_to_fam_perm = [2, 1, 4, 3, 5]
+        gene_outliers = [.true., .false., .false., .false., .true.]
+        genes(:, 1) = [0.0541530138142222_real64, 0.0041979991981664_real64]
+        genes(:, 2) = [3.1415926535897932_real64, 2.7182818284590452_real64]
+        genes(:, 3) = [1.115620102135_real64, 0.308001439923219_real64]
+        genes(:, 4) = [0.0060563875402208_real64, 0.147377684857407_real64]
+        genes(:, 5) = [0.0060563875402208_real64, 0.0041979991981664_real64]
+        centroids(:, 1) = 0.0_real64
+        centroids(:, 2) = [0.03010470067722_real64, 0.07578784202779_real64]
+        centroids(:, 3) = [0.56083824483761_real64, 0.15609971956069_real64]
+        centroids(:, 4) = 0.0_real64
+
+        call serialize_tox_data_as_flyer_json(filename, tissues, n_tissues, family_ids, n_families, centroids, gene_ids, n_genes, genes, gene_to_fam, sorted_gene_to_fam_perm, gene_outliers, gene_species, gene_types, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_flyer_serialization: Unexpected error when serializing")
+        inquire(file=filename, exist=exists)
+        call assert_true(exists, "test_flyer_serialization: '" // filename // "' does not exist")
+
+        open(newunit=unit, file=filename, status="old", action="read")
+        call helper_check_fragment(&
+            unit,&
+            '{' //&
+                '"tissues":["Adipose","Thyroid"],' //&
+                '"families":[' //&
+                    '{"family":"EMPTYFAM1","gene_indices":[],"centroid":[ 0.0000000000000000E+000, 0.0000000000000000E+000]},' //&
+                    '{"family":"OG0000000","gene_indices":[1,4],"centroid":[ 3.0104700677220000E-002, 7.5787842027790001E-002]},' //&
+                    '{"family":"OG0000001","gene_indices":[3,5],"centroid":[ 5.6083824483761002E-001, 1.5609971956068999E-001]},' //&
+                    '{"family":"EMPTYFAM2","gene_indices":[],"centroid":[ 0.0000000000000000E+000, 0.0000000000000000E+000]}' //&
+                '],' //&
+                '"genes":[' //&
+                    '{"coordinates":[ 5.4153013814222203E-002, 4.1979991981664000E-003],"id":"NP_001243379.1","family":"OG0000000","species":"Canis_lupus_protein.1","is_outlier":true,"type":"ortholog"},' //&
+                    '{"coordinates":[ 3.1415926535897931E+000, 2.7182818284590451E+000],"id":"UNASSIGNED.1","family":null,"species":"Whatever_protein","is_outlier":false,"type":"ortholog"},' //&
+                    '{"coordinates":[ 1.1156201021350001E+000, 3.0800143992321899E-001],"id":"XP_038381480.1","family":"OG0000001","species":"Canis_lupus_protein.2","is_outlier":false,"type":"paralog"},' //&
+                    '{"coordinates":[ 6.0563875402208003E-003, 1.4737768485740699E-001],"id":"NP_001243386.1","family":"OG0000000","species":"Canis_lupus_protein.3","is_outlier":false,"type":"ortholog"},' //&
+                    '{"coordinates":[ 6.0563875402208003E-003, 4.1979991981664000E-003],"id":"XP_038421312.1","family":"OG0000001","species":"Canis_lupus_protein.4","is_outlier":true,"type":"paralog"}' //&
+                ']' //&
+            '}',&
+            "test_flyer_serialization"&
+        )
     end subroutine test_flyer_serialization
 
     subroutine helper_test_serialization(json_var, expected_fragment, test_case, max_depth)
@@ -169,7 +230,6 @@ contains
         character(len=*), intent(in) :: test_case
         integer(int32), intent(in), optional :: max_depth
 
-        character(len=:), allocatable :: actual_fragment
         integer(int32) :: ierr, unit
 
         open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
@@ -186,11 +246,21 @@ contains
 
         rewind(unit)
 
+        call helper_check_fragment(unit, expected_fragment, test_case)
+    end subroutine helper_test_serialization
+
+    subroutine helper_check_fragment(unit, expected_fragment, test_case)
+        character(len=*), intent(in) :: expected_fragment
+        integer(int32), intent(in) :: unit
+        character(len=*), intent(in) :: test_case
+
+        character(len=:), allocatable :: actual_fragment
+
         allocate(actual_fragment, mold=expected_fragment)
         read (unit, "(A)") actual_fragment
         call assert_string_equal(actual_fragment, expected_fragment, trim(test_case) // ": fragments differ")
         close(unit, status="delete")
-    end subroutine helper_test_serialization
+    end subroutine helper_check_fragment
 
     !> Run all f42_json tests.
     subroutine run_all_tests_f42_json
