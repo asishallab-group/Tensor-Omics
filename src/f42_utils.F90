@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !> Utility module for data analysis.
 !| This module provides general-purpose utility functions for data analysis, to be used as needed.
 module f42_utils
@@ -40,6 +42,43 @@ contains
           call set_err(ierr, ERR_FILE_OPEN)
       end if
   end subroutine open_file
+
+  !> Initialize Fortran's random number generator
+  subroutine init_random(seed)
+    integer(int32), intent(in), optional :: seed
+      !! optional random seed, default: 42
+      !!
+      !! @note
+      !! This subroutine uses the intrinsic `random_seed` subroutine that expects default kind integer.
+      !! To map `int32` to default kind, it is being clamped by modulo to be in range.
+      !! @endnote
+
+    integer(int32) :: actual_seed
+
+    ! IMPORTANT: these locals need to be default kind integer
+    integer :: seed_default_kind, size, i
+    integer(int32), parameter :: max_default_kind_val = int(huge(1), kind=int32)
+
+    M_DEFAULT_VAL(seed, actual_seed, 42_int32)
+
+    ! clamp to default kind range
+    seed_default_kind = int(mod(actual_seed, max_default_kind_val))
+
+    ! determine needed array size to seed random numbers
+    call random_seed(size=size)
+
+    ! create the seeding array, has negligible size
+    call random_seed(put=[(seed_default_kind,i=1,size)])
+  end subroutine init_random
+
+  !> Returns a random real number `min <= rand_num < max`. If `min > max`, it will be `max <= rand_num < min`. If `min == max`, it will be `min`.
+  real(real64) function rand_range(min, max) result(rand_num)
+    real(real64), intent(in) :: min
+    real(real64), intent(in) :: max
+
+    call random_number(rand_num)
+    rand_num = min + rand_num * (max - min)
+  end function rand_range
 
   !> Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.
   pure real(real64) function below(val)

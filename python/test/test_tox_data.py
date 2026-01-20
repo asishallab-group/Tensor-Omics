@@ -61,6 +61,7 @@ print("gene_ids type:", type(gene_ids))
 
 # Read 6-replicate files
 print("Reading 6-replicate files...")
+
 kallisto_expr = read_expression_vectors_tsv(
     file_list=file,
     gene_ids=gene_ids,  # Now accepts numpy array
@@ -101,7 +102,6 @@ filtered_gene_to_fam = np.array(gene_to_fam)[mask]
 print("filtered_gene_ids sample:", filtered_gene_ids[:5])
 print("filtered_kallisto_expr shape:", filtered_kallisto_expr.shape)
 print("filtered_gene_to_fam sample:", filtered_gene_to_fam[:10])
-
 validate_string_array_uniqueness(gene_ids)
 validate_string_array_uniqueness(family_ids)
 validate_expression_data(kallisto_expr, True)

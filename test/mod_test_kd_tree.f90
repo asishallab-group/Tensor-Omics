@@ -1,7 +1,7 @@
 ! filepath: test/mod_test_kd_tree.f90
 !> Unit test suite for kd_tree module.
 module mod_test_kd_tree
-  use kd_tree
+  use f42_kd_tree
   use f42_utils
   use tox_errors, only: set_ok, is_ok
   use asserts

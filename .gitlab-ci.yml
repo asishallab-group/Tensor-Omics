@@ -1,12 +1,12 @@
 stages:
   - run-tests
-  - generate-docs
+  - generate-snippets-and-docs
   - done
 
 image: archlinux:latest
 
 .install-r: &install-r
-  - pacman -S --noconfirm r make
+  - pacman -S --needed --noconfirm r make gcc
   - pacman -Scc --noconfirm
   - R --version
   # install Rcpp, readr
@@ -14,7 +14,7 @@ image: archlinux:latest
   - Rscript -e 'installed.packages()[, c("Package", "Version")]'
 
 .install-python: &install-python
-  - pacman -S --noconfirm python python-pip
+  - pacman -S --needed --noconfirm python python-pip
   - pacman -Scc --noconfirm
   - python -m venv .venv
   - source .venv/bin/activate
@@ -24,22 +24,31 @@ image: archlinux:latest
   - python --version
   - pip --version
 
-.install-fortran: &install-fortran
-  - pacman -S --noconfirm gcc-fortran libzip xxhash
+.prepare-fortran: &prepare-fortran
+  - pacman -S --needed --noconfirm libzip xxhash
   - pacman -Scc --noconfirm
   # install fpm
   - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
   - chmod a+x /usr/local/bin/fpm
-  - gfortran --version
-
-  # install ifx
-  - curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/724303ca-6927-4327-a560-e0aabb55b010/intel-fortran-compiler-2025.3.1.16_offline.sh -o install_ifx.sh
-  - bash install_ifx.sh -a -s --eula accept
-  - source /opt/intel/oneapi/setvars.sh
-  - ifx --version
+  # set up installation functions
+  - |
+    function install-gfortran() {
+      pacman -S --needed --noconfirm gcc-fortran
+      pacman -Scc --noconfirm
+      gfortran --version
+    }
+  - |
+    function install-ifx() {
+      pacman -S --needed --noconfirm gcc  # ifx needs some libs from gcc
+      pacman -Scc --noconfirm
+      curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/724303ca-6927-4327-a560-e0aabb55b010/intel-fortran-compiler-2025.3.1.16_offline.sh -o install_ifx.sh
+      bash install_ifx.sh -a -s --eula accept
+      source /opt/intel/oneapi/setvars.sh
+      ifx --version
+    }
 
 .install-git: &install-git
-  - pacman -S --noconfirm git
+  - pacman -S --needed --noconfirm git
   - pacman -Scc --noconfirm
   # set up git
   - git config --global user.email "ci-bot@yourdomain.com"
@@ -50,6 +59,24 @@ image: archlinux:latest
       git commit -m "$1 [skip ci]" || echo "No changes to commit"
       git push https://oauth2:${JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_BRANCH
     }
+
+.generate-docs: &generate-docs
+  # install ford
+  - *install-python
+  - pip install ford
+  - ford --version
+
+  # generate docs
+  - ford ford.yml
+  - echo "generated documentation successfully"
+
+.generate-snippets: &generate-snippets
+  # install python
+  - *install-python
+
+  # generate snippets
+  - python helper/generate_snippets.py
+  - echo "generated snippets successfully"
 
 before_script:
   # update system
@@ -72,50 +99,52 @@ run-tests:
 
     # prevent running on other branches outside MR context
     - when: never
+  parallel:
+    matrix:
+      - FC: [gfortran, ifx]
 
   script:
-    - *install-fortran
+    - *prepare-fortran
+    - install-"$FC"
+    - FC="$FC" bash test_runner.sh
+
     - *install-r
+    - for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+
     - *install-python
+    - for i in python/test/*.py; do echo ; echo $i ; python $i ; done
 
-    - |
-      for compiler in ifx gfortran; do
-        FC=$compiler bash test_runner.sh
-        for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
-        for i in python/test/*.py; do echo ; echo $i ; python $i ; done
-      done
+    # test snippet generation
+    - python helper/generate_snippets.py
 
-generate-docs:  # generate documentation after tests have passed
-  stage: generate-docs
+generate-snippets-and-docs:  # generate documentation after tests have passed
+  stage: generate-snippets-and-docs
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
-        - src/**
+        - src/**/*.[fF90]
         - ford.yml
+        - python/*.py
+        - rcpp/*.R
+        - helper/generate_snippets.py
     - when: never
   needs:
     - job: run-tests
       optional: true  # if ford.yml was changed, the test stage does not exist in the pipeline
   script:
-    # install ford
-    - *install-python
-    - pip install ford
-    - ford --version
-
-    # generate docs
-    - ford ford.yml
-    - echo "generated documentation successfully"
+    - *generate-docs
+    - *generate-snippets
 
     # add and commit changes to docs folder
     - *install-git
-    - git-push "Update generated documentation" doc
+    - git-push "Update generated documentation and snippets" doc snippets
 
 done: # Final stage that will always be in a pipeline and succeeds when all other stages pass
   stage: done
   needs:
     - job: run-tests
       optional: true
-    - job: generate-docs
+    - job: generate-snippets-and-docs
       optional: true
   script:
     - echo "All jobs passed"

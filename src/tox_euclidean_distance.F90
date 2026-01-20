@@ -62,6 +62,8 @@ end module tox_euclidean_distance
 subroutine euclidean_distance_r(vec1, vec2, d, result)
   use tox_euclidean_distance, only: euclidean_distance
   use, intrinsic :: iso_fortran_env, only: int32, real64
+  implicit none
+
   !| Dimension of both vectors
   integer(int32), intent(in) :: d
   !| First expression vector
@@ -78,6 +80,8 @@ end subroutine euclidean_distance_r
 subroutine euclidean_distance_c(vec1, vec2, d, result) bind(C, name="euclidean_distance_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_euclidean_distance, only: euclidean_distance
+  implicit none
+
   !| Dimension of both vectors
   integer(c_int), intent(in), value :: d
   !| First expression vector
@@ -95,6 +99,8 @@ subroutine distance_to_centroid_r(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d)
   use tox_euclidean_distance, only: distance_to_centroid
   use, intrinsic :: iso_fortran_env, only: int32, real64
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -119,6 +125,8 @@ subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d) bind(C, name="distance_to_centroid_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_euclidean_distance, only: distance_to_centroid
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes
   !| Total number of gene families

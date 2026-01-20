@@ -1,0 +1,151 @@
+\section{Field Surface and Volume Inference (FiSure, ``Eitri'')}
+
+    \subsection{Motivation and Concept}
+
+        To compare subfields or regions within Tensor Omics space, we often need 
+        to quantify their \textit{geometric extent} --- the shape, surface, and volume 
+        occupied by a field of vectors.  
+        The \textbf{Field Surface and Volume Inference (FiSure)} method provides a 
+        model-free procedure to estimate these quantities directly from the coordinates 
+        and projections of field vectors.  
+
+        Conceptually, FiSure treats a field as a set of vectors 
+        \( \{\vec{x}_i\} \) distributed around a \textit{semantic axis} or 
+        \textit{handle} (e.g. a Mjölnir manifold), and reconstructs the 
+        outer surface that encloses them.  
+        The method is analogous to measuring the radial extent of a 
+        magnetic flux tube or a fluid jet along its main trajectory.
+
+    \subsection{Algorithmic Outline}
+
+        Assume a learned one-dimensional semantic axis 
+        \(\vec{h}(t) \in \mathbb{R}^n\) (the \textbf{handle}) representing 
+        the main trajectory of the field.  
+        For a field consisting of coordinates 
+        \( \{\vec{x}_i\}_{i=1}^{m}\), FiSure proceeds as follows:
+
+        \begin{enumerate}
+            \item \textbf{Projection onto the Handle.}  
+                  Each field point is projected onto the handle by nearest-point projection:
+                  \[
+                      t_i = \arg\min_t \| \vec{x}_i - \vec{h}(t) \|.
+                  \]
+                  This yields the axial coordinate \(t_i\) of each field vector.
+
+            \item \textbf{Handle Segmentation.}  
+                  The handle is divided into \(k\) equal-percentile segments 
+                  \( \{[t_j, t_{j+1}]\} \), such that each segment corresponds to 
+                  an equal fraction of projected vectors.  
+                  Each segment is approximated by a straight line between its 
+                  endpoints \(\vec{h}(t_j)\) and \(\vec{h}(t_{j+1})\).
+
+            \item \textbf{Local Coordinate Frame.}  
+                  For each segment, a local cylindrical coordinate system is constructed:
+                  \[
+                      \text{axis vector: } \vec{a}_j = \frac{\vec{h}(t_{j+1}) - \vec{h}(t_j)}
+                                          {\|\vec{h}(t_{j+1}) - \vec{h}(t_j)\|}.
+                  \]
+                  Orthogonal basis vectors are defined as 
+                  \( \{\vec{u}_j, \vec{v}_j\} \), spanning the plane perpendicular to \(\vec{a}_j\).
+
+            \item \textbf{Angular Sampling.}  
+                  The circular cross-section around the segment is divided into 
+                  \(c\) angular bins:
+                  \[
+                      \theta_k = \frac{2\pi k}{c}, \quad k = 1,\ldots,c.
+                  \]
+                  A fixed global reference axis (e.g. the first axis of Tensor Omics space) 
+                  is used to align the angular bins between segments.
+
+            \item \textbf{Radial Extent and Surface Extraction.}  
+                  For each angular bin, FiSure computes the radial distance of all 
+                  vectors whose projections fall within the segment and angle range:
+                  \[
+                      r_{j,k} = \max_{\vec{x}_i \in \mathcal{S}_{j,k}} 
+                      \| (\vec{x}_i - \vec{h}(t_j)) - 
+                      \langle \vec{x}_i - \vec{h}(t_j), \vec{a}_j \rangle \vec{a}_j \|.
+                  \]
+                  The point attaining this maximum is recorded as the local surface point:
+                  \[
+                      \vec{p}_{j,k} = \vec{h}(t_j) + r_{j,k} \,
+                           (\cos\theta_k \, \vec{u}_j + \sin\theta_k \, \vec{v}_j).
+                  \]
+                  The corresponding outward normal vector is
+                  \[
+                      \vec{n}_{j,k} = 
+                      \frac{\vec{p}_{j,k} - \vec{h}(t_j)}
+                      {\|\vec{p}_{j,k} - \vec{h}(t_j)\|}.
+                  \]
+
+            \item \textbf{Surface and Volume Assembly.}  
+                The set of surface points 
+                \(\mathcal{P} = \{\vec{p}_{j,k}\} \) defines a discrete 
+                surface mesh.  
+                The local volume of the segment between 
+                \(t_j\) and \(t_{j+1}\) can be approximated as a truncated cylinder:
+                \[
+                    V_j \approx 
+                    \frac{\pi \, \Delta s_j}{c}
+                    \sum_{k=1}^{c}
+                    \frac{r_{j,k}^{2} + r_{j+1,k}^{2}}{2},
+                \]
+                where \(\Delta s_j = \|\vec{h}(t_{j+1}) - \vec{h}(t_j)\|\).
+                Summing over all segments yields the total field volume:
+                \[
+                    V_{\text{field}} = \sum_{j=1}^{k-1} V_j.
+                \]
+        \end{enumerate}
+
+    \subsection{Interpretation of FiSure Quantities}
+
+        FiSure yields several interpretable geometric measures:
+
+        \begin{itemize}
+            \item \textbf{Surface Vectors:}  
+                  Each \((\vec{p}_{j,k}, \vec{n}_{j,k})\) pair represents a point on the 
+                  field’s boundary and its outward orientation.  
+                  These can be analyzed as a secondary \textit{surface vector field}, 
+                  quantifying how the field opens, closes, or bends in Tensor space.
+
+            \item \textbf{Local Volume Elements:}  
+                  The segment volumes \(V_j\) allow normalization of other descriptors, 
+                  such as energy or rank, by the spatial size of the field.
+
+            \item \textbf{Field Morphology:}  
+                  Variations in \(r_{j,k}\) and curvature of the handle describe 
+                  anisotropy and torsion of the field.  
+                  A stable \(r_{j,k}\) profile implies a cylindrical, consistent field; 
+                  strong local expansion or contraction indicates field divergence or collapse.
+        \end{itemize}
+
+    \subsection{Applications and Interpretation}
+
+        FiSure provides a direct geometric connection between 
+        field structure and function.  
+        In the context of Tensor Omics, examples include:
+
+        \begin{itemize}
+            \item Measuring the \textbf{semantic volume} occupied by gene families 
+                  associated with aging or stress responses.
+            \item Quantifying whether such semantic volumes 
+                  \textbf{expand, contract, or twist} along a 
+                  developmental or disease axis.
+            \item Identifying rotational or asymmetrical \textbf{surface deformations} 
+                  that indicate functional bifurcation (e.g., 
+                  tissue-specific reprogramming).
+        \end{itemize}
+
+        The same principles apply to physical or environmental fields:
+        for a wind field, FiSure reconstructs the shape of a coherent 
+        airflow tube; for a magnetic field, it delineates regions of 
+        strong magnetic flux concentration.
+
+    \subsection{Summary}
+
+        FiSure extends Tensor Omics by providing a quantitative 
+        method for reconstructing the \textbf{shape} and 
+        \textbf{extent} of a field.  
+        By defining surfaces and volumes empirically from vector distributions, 
+        it bridges local field descriptors (energy, rank, rotation) with 
+        global geometric form, completing the description of 
+        high-dimensional semantic dynamics in Tensor space.

@@ -876,6 +876,7 @@ pure subroutine detect_neofunctionalization_c(ancestors, n_families, genes, n_ax
     use tox_errors, only: set_err, is_err, is_ok, set_ok, ERR_ALLOC_FAIL, validate_dimension_size
     use tox_conversions, only: logical_as_c_int, c_int_as_logical
     M_USE_NULL_VALIDATION
+    implicit none
 
     ! Arguments mapped to C types
     integer(c_int), intent(in), target :: n_axes

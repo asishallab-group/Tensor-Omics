@@ -1,3 +1,4 @@
+#> tox_helper: throw error in error case
 check_err_code <- function(ierr) {
   if (ierr == 0) return(invisible(NULL))
   msg <- switch(as.character(ierr),
@@ -41,6 +42,7 @@ check_err_code <- function(ierr) {
   stop(msg)
 }
 
+#>skip snippets
 
 # -----------------------------
 # Validation helpers for R wrappers

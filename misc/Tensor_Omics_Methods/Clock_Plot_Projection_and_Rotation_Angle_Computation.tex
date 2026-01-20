@@ -1,0 +1,41 @@
+\section{Clock Plot Projection and Rotation Angle Computation}\label{sec:rap}
+    \begin{itemize}
+        \item All shift vectors are projected into the \textbf{Relative Axes Plane (RAP)},
+              orthogonal to the space diagonal and intersecting the origin.
+        \item The following quantities are calculated for each outlier:
+              \begin{itemize}
+                  \item Projected shift vector in RAP.
+                  \item Normalized (unit-length) projection.
+                  \item Clock hand vector from origin to projected point.
+                  \item Rotation angle (standardized as clockwise) between projected centroid and outlier.
+              \end{itemize}
+        \item Results are stored in a structured Fortran matrix \textbf{rap\_store}.
+              \begin{itemize}
+                  \item For each outlier \( i \), store:
+                  \begin{itemize}
+                      \item \texttt{Rows 1 to \( n \)}: \( \vec{s}_i^{\text{RAP}} \)
+                      \item \texttt{Rows \( n+1 \) to \( 2n \)}: \( \vec{s}^{\text{RAP, norm}} \)
+                      \item \texttt{Rows \( 2n+1 \) to \( 3n \)}: \( \vec{s}_i^{\text{clock}} \)
+                      \item \texttt{Row \( 3n+1 \)}: rotation angle in radians
+                  \end{itemize}
+              \end{itemize}
+    \end{itemize}
+
+    \subsection{Efficient Vector Lookup Using K-D Trees}\label{sec:kdtree}
+
+        To enable fast and scalable querying of gene expression vectors, Tensor Omics
+        employs K-D Trees—an efficient data structure for multidimensional
+        nearest-neighbor searches. The trees are constructed at the very end of the
+        pipeline. Four trees in total, two for all expression and shift vectors, where
+        both are contained in \textbf{vec\_store} (see Section~\ref{sec:vecspace}), and two
+        further for the RAP vectors in \textbf{rap\_store} (see Section~\ref{sec:rap}).
+
+        Two distinct trees are constructed:
+
+        \begin{itemize}
+            \item \textbf{cart\_tree:} A K-D Tree built from the raw (unnormalized) expression vectors. It supports neighborhood searches in the original Euclidean space, useful for detecting local density patterns or spatial coherence among genes.
+            
+            \item \textbf{sphere\_tree:} A second K-D Tree constructed from unit-length normalized vectors. This tree enables fast lookup of vectors with similar direction, allowing angular queries based on cosine similarity.
+        \end{itemize}
+
+        These lookup structures are only built during the final preprocessing stage, prior to interactive analysis. This deferred construction minimizes computational overhead during earlier pipeline steps and ensures consistency with the final state of the vector space. Together, the two trees provide complementary geometric access to the expression landscape.

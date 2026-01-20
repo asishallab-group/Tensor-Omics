@@ -66,12 +66,14 @@ module tox_errors
     !! unsupported data type encountered
   integer(int32), parameter :: ERR_SIZE_MISMATCH      = 206
     !! Array size mismatch
-  integer(int32), parameter :: ERR_STRING_TOO_LONG    = 207
+  integer(int32), parameter :: ERR_TYPE_MISMATCH      = 207
+    !! Array type read does not match expected type
+  integer(int32), parameter :: ERR_STRING_TOO_LONG    = 208
     !! String exceeds buffer size 
-  integer(int32), parameter :: ERR_IDX_OUT_OF_BOUNDS  = 208
+  integer(int32), parameter :: ERR_IDX_OUT_OF_BOUNDS  = 209
     !! Array index out of bounds
-  integer(int32), parameter :: ERR_DIVISION_BY_ZERO   = 209
-    !! memory allocation failed
+  integer(int32), parameter :: ERR_DIVISION_BY_ZERO   = 210
+    !! Division by zero encountered
 
   !------------------------------
   ! 3xx: Memory
@@ -144,6 +146,23 @@ contains
     if (present(n)) then
       if(n < 0) call set_err(ierr, ERR_INVALID_INPUT)  
       if(n == 0) call set_err(ierr, ERR_EMPTY_INPUT)
+    end if
+  end subroutine
+
+  !> validate that the actual type code matches the expected type code
+  !! Closes the connected unit in case of an error
+  subroutine validate_type_code(actual, expected, unit, ierr)
+    integer(int32), intent(in) :: actual
+    !! Actual type code read from file
+    integer(int32), intent(in) :: expected
+    !! Expected type code
+    integer(int32), intent(in) :: unit
+    !! Unit connection
+    integer(int32), intent(out) :: ierr
+    !! Error code
+    if(actual /= expected) then
+      close(unit)
+      call set_err(ierr, ERR_TYPE_MISMATCH)
     end if
   end subroutine
 

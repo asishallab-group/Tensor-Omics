@@ -352,6 +352,8 @@ subroutine compute_family_scaling_expert_r(n_genes, n_families, distances, gene_
       loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
   use tox_get_outliers, only: compute_family_scaling
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -389,6 +391,8 @@ subroutine compute_family_scaling_r(n_genes, n_families, distances, gene_to_fam,
       loess_x, loess_y, indices_used, ierr)
   use tox_get_outliers, only: compute_family_scaling_alloc
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -417,6 +421,8 @@ end subroutine compute_family_scaling_r
 subroutine compute_rdi_r(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
   use tox_get_outliers, only: compute_rdi
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of families
@@ -445,6 +451,8 @@ end subroutine compute_rdi_r
 subroutine identify_outliers_r(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
   use tox_get_outliers, only: identify_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Array of RDI values for each gene
@@ -468,6 +476,8 @@ subroutine detect_outliers_r(n_genes, n_families, distances, gene_to_fam, &
                             percentile)
   use tox_get_outliers, only: detect_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -512,6 +522,8 @@ end subroutine detect_outliers_r
     family_distances, ierr) bind(C, name="compute_family_scaling_expert_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: compute_family_scaling
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene
@@ -547,6 +559,7 @@ subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam,
   loess_x, loess_y, indices_used, ierr) bind(C, name="compute_family_scaling_c")
 use, intrinsic :: iso_c_binding, only : c_int, c_double
 use tox_get_outliers, only: compute_family_scaling_alloc
+implicit none
 !| Total number of genes
 integer(c_int), intent(in), value :: n_genes, n_families
 !| Array of Euclidean distances for each gene
@@ -573,6 +586,8 @@ end subroutine compute_family_scaling_c
 subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right) bind(C, name="compute_rdi_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: compute_rdi
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid
@@ -600,6 +615,8 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, thresho
                               bind(C, name="identify_outliers_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: identify_outliers
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes
   !| Array of RDI values for each gene
@@ -640,6 +657,8 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
                           percentile) bind(C, name="detect_outliers_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: detect_outliers
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid

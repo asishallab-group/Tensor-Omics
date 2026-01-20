@@ -66,6 +66,7 @@ pure subroutine compute_shift_vector_field_r(d, n_genes, n_families, expression_
                                              gene_to_centroid, shift_vectors, ierr)
   use tox_shift_vectors, only: compute_shift_vector_field
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
 
   !| Expression vector dimension
   integer(int32), intent(in) :: d
@@ -94,6 +95,8 @@ pure subroutine compute_shift_vector_field_c(d, n_genes, n_families, expression_
                                              shift_vectors, ierr) bind(C, name="compute_shift_vector_field_c")
   use, intrinsic :: iso_c_binding, only: c_double, c_int
   use tox_shift_vectors, only: compute_shift_vector_field
+  implicit none
+
   !| Expression vector dimension
   integer(c_int), intent(in), value :: d
   !| Total number of genes

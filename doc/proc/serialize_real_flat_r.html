@@ -88,19 +88,19 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">23 statements</a>
+                 title=" 0.3% of total for procedures.">25 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/serialize_real.F90"> Source File</a>
+              <a href="../src/f42_serialize_real.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/serialize_real.f90.html'>serialize_real.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_serialize_real.f90.html'>f42_serialize_real.F90</a></li>
             <li class="breadcrumb-item active" aria-current="page">serialize_real_flat_r</li>
           </ol>
         </nav>
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_ascii, fn_len, ierr)  
+    <h2> subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_raw, fn_len, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,10 +156,11 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/serialize_real.html'>serialize_real</a></li>
-                  <li class="list-inline-item"><a href='../module/array_utils.html'>array_utils</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -184,7 +185,7 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~7"></span>
+              <span class="anchor" id="variable-arr~41"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -199,7 +200,7 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-array_size"></span>
+              <span class="anchor" id="variable-array_size~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -214,7 +215,7 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dims~7"></span>
+              <span class="anchor" id="variable-dims~41"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,7 +230,7 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ndim~2"></span>
+              <span class="anchor" id="variable-ndim~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -244,22 +245,22 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename_ascii"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-filename_raw~14"></span>
+              character(kind=c_char, len=1),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>filename_ascii</strong>(fn_len)</td>
+            <td><strong>filename_raw</strong>(fn_len)</td>
             <td>
                 <p>Array of ASCII characters representing the filename</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fn_len"></span>
+              <span class="anchor" id="variable-fn_len~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -274,7 +275,7 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~7"></span>
+              <span class="anchor" id="variable-ierr~212"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -314,14 +315,14 @@ R can not pass a multidimensional array directly, so we use a flat array and dim
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2025 
+ was developed by TensorOmics Developers<br>              &copy; 2026 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-11-23 17:36 +0000"             </p>
+ on "2026-01-20 15:24 +0000"             </p>
           </div>
         </div>
         <br>

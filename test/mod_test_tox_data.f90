@@ -6,17 +6,17 @@ module mod_test_tox_data
   use tox_data_validation
   use tox_data_accessors
   use tox_data_read_write
-  use array_utils, only: get_array_metadata
+  use f42_array_utils, only: get_array_metadata
   use tox_gene_centroids
   use tox_shift_vectors
   use tox_errors
   use tox_archive, only: save_tox_data, read_tox_data, create_zip_archive, extract_zip_archive, delete_file
-  use int_deserialize_mod
-  use real_deserialize_mod
-  use char_deserialize_mod
-  use serialize_char
-  use serialize_int
-  use serialize_real
+  use f42_deserialize_int
+  use f42_deserialize_real
+  use f42_deserialize_char
+  use f42_serialize_char
+  use f42_serialize_int
+  use f42_serialize_real
   implicit none
   public
 
@@ -966,7 +966,7 @@ contains
   end subroutine test_manual_archive
 
   subroutine test_hashing()
-    use xxh3_hashmap_module
+    use f42_xxh3_hashmap
     type(hashmap_type) :: test_hashmap
     type(hashset_type) :: test_hashset
     character(len=6), allocatable :: keys(:)

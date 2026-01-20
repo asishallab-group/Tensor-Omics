@@ -1,9 +1,44 @@
+#include "macros.h"
+
 !> Module with normalization routines for tensor omics.
 module tox_normalization
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_INVALID_INPUT, is_err
+  use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, is_err, validate_dimension_size, validate_in_range_real
+  use f42_utils, only: norm, is_close
 contains
+
+  !> Normalizes an input vector to unit length in-place
+  pure subroutine normalize_unit_length(vector, n_dims, ierr)
+    integer(int32), intent(in) :: n_dims
+      !! number of elements in `vector`
+    real(real64), dimension(n_dims), intent(inout) :: vector
+      !! Vector that will be normalized to unit length
+    integer(int32), intent(out) :: ierr
+      !! Error code
+
+    integer(int32) :: i_dim
+    real(real64) :: vector_norm
+
+    call set_ok(ierr)
+
+    call validate_dimension_size(n_dims, ierr)
+    if(is_err(ierr)) return
+
+    vector_norm = norm(vector)
+    if (is_close(vector_norm, 0.0_real64)) then
+        call set_err(ierr, ERR_DIVISION_BY_ZERO)
+        return
+    end if
+
+    ! check for nan, inf
+    call validate_in_range_real(vector_norm, ierr)
+    if (is_err(ierr)) return
+
+    do i_dim = 1, n_dims
+        vector(i_dim) = vector(i_dim) / vector_norm
+    end do
+  end subroutine normalize_unit_length
 
   !> Complete normalization pipeline for gene expression data.
   !! Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
@@ -343,15 +378,15 @@ contains
       end do
 
   end subroutine calc_fchange
-
-
 end module tox_normalization
-
 
 !> R/Fortran wrapper for normalization by standard deviation.
 !| Provides an interface for R (.Fortran) and Fortran code to call the normalization routine.
 subroutine normalize_by_std_dev_r(n_genes, n_tissues, input_matrix, output_matrix, ierr)
-  use tox_normalization
+  use tox_normalization, only: normalize_by_std_dev
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
   !| Number of tissues (columns)
@@ -370,8 +405,10 @@ end subroutine normalize_by_std_dev_r
 !> C/Python wrapper for normalization by standard deviation.
 !| Provides a C/Python-compatible interface to the normalization routine.
 subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="normalize_by_std_dev_c")
-  use iso_c_binding, only : c_int, c_double, c_f_pointer, c_loc
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double, c_f_pointer, c_loc
+  use tox_normalization, only: normalize_by_std_dev
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), value :: n_genes
   !| Number of tissues (columns)
@@ -392,7 +429,10 @@ end subroutine normalize_by_std_dev_c
 !| Provides an interface for R (.Fortran) and Fortran code to call the quantile normalization routine.
 subroutine quantile_normalization_r(n_genes, n_tissues, input_matrix, output_matrix, &
                                         temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-  use tox_normalization
+  use tox_normalization, only: quantile_normalization
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
   !| Number of tissues (columns)
@@ -425,8 +465,10 @@ end subroutine quantile_normalization_r
 subroutine quantile_normalization_c(n_genes, n_tissues, input_matrix, output_matrix, &
                                     temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr) &
                                     bind(C, name="quantile_normalization_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_normalization, only: quantile_normalization
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_genes
   !| Number of tissues (columns)
@@ -458,7 +500,10 @@ end subroutine quantile_normalization_c
 !| Provides an interface for R (.Fortran) and Fortran code to call the log2 transformation routine.
 !| Applies log2(x+1) to each element of the input matrix. Arguments match R's .Fortran calling convention and expect flat arrays.
 subroutine log2_transformation_r(n_genes, n_tissues, input_matrix, output_matrix, ierr)
-  use tox_normalization
+  use tox_normalization, only: log2_transformation
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
   !| Number of tissues (columns)
@@ -479,8 +524,10 @@ end subroutine log2_transformation_r
 !| Expects flat arrays, matching C calling conventions. Suitable for use with ctypes.
 !| Applies log2(x+1) to each element of the input matrix.
 subroutine log2_transformation_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="log2_transformation_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_normalization, only: log2_transformation
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_genes
   !| Number of tissues (columns)
@@ -499,7 +546,10 @@ end subroutine log2_transformation_c
 !| Provides an interface for R (.Fortran) and Fortran code to call the tissue average calculation routine.
 !| Computes average expression per gene for each group of tissue replicates. Arguments match R's .Fortran calling convention.
 subroutine calc_tiss_avg_r(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
-  use tox_normalization
+  use tox_normalization, only: calc_tiss_avg
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_gene
   !| Number of tissue groups
@@ -523,8 +573,10 @@ end subroutine calc_tiss_avg_r
 !| Provides a C/Python-compatible interface to the tissue average calculation routine.
 !| Suitable for use with ctypes. Computes average expression per gene for each group of tissue replicates.
 subroutine calc_tiss_avg_c(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr) bind(C, name="calc_tiss_avg_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_normalization, only: calc_tiss_avg
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_gene
   !| Number of tissue groups
@@ -547,7 +599,10 @@ end subroutine calc_tiss_avg_c
 !| Provides an interface for R (.Fortran) and Fortran code to call the fold change calculation routine.
 !| Computes log2 fold changes between condition and control columns for all genes. Arguments match R's .Fortran calling convention.
 subroutine calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-  use tox_normalization
+  use tox_normalization, only: calc_fchange
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
   !| Number of columns in the input matrix
@@ -572,8 +627,10 @@ end subroutine calc_fchange_r
 !| Provides a C/Python-compatible interface to the fold change calculation routine.
 !| Suitable for use with ctypes. Computes log2 fold changes between condition and control columns for all genes.
 subroutine calc_fchange_c(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr) bind(C, name="calc_fchange_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_normalization, only: calc_fchange
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_genes
   !| Number of columns in the input matrix
@@ -600,7 +657,10 @@ end subroutine calc_fchange_c
 !| Final result is in buf_log. If fold change is needed, call calc_fchange separately.
 
 subroutine normalization_pipeline_r(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-  use tox_normalization
+  use tox_normalization, only: normalization_pipeline
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Number of genes (rows)
   integer(int32), intent(in) :: n_genes
   !| Number of tissues (columns)
@@ -646,8 +706,10 @@ end subroutine normalization_pipeline_r
 !| Final result is in buf_log. If fold change is needed, call calc_fchange separately.
 
 subroutine normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr) bind(C, name="normalization_pipeline_c")
-  use iso_c_binding, only : c_int, c_double, c_bool
-  use tox_normalization
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_normalization, only: normalization_pipeline
+  implicit none
+
   !| Number of genes (rows)
   integer(c_int), intent(in), value :: n_genes
   !| Number of tissues (columns)
@@ -685,3 +747,25 @@ subroutine normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev
 
   call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
 end subroutine normalization_pipeline_c
+
+!> C-compatible wrapper for normalize_unit_length
+pure subroutine normalize_unit_length_c(vector, n_dims, ierr) bind(C, name="normalize_unit_length_c")
+    use tox_normalization, only: normalize_unit_length
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    M_USE_NULL_VALIDATION
+    implicit none
+  
+
+    integer(c_int), intent(in), target :: n_dims
+        !! number of elements in `vector`
+    real(c_double), dimension(n_dims), intent(inout), target :: vector
+        !! Vector that will be normalized to unit length
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_dims)
+    M_CHECK_NON_NULL(vector)
+
+    call normalize_unit_length(vector, n_dims, ierr)
+end subroutine normalize_unit_length_c

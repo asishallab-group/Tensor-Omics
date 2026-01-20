@@ -1,3 +1,4 @@
+#> f42_helper-import_libs: Import necessary packages
 library(Rcpp)
 
 # Get absolute path to build directory containing the compiled Fortran library
@@ -18,7 +19,7 @@ source("rcpp/error_handling.R")
 # EUCLIDEAN DISTANCE FUNCTIONS
 # ===================================================================
 
-#' Calculate Euclidean distance between two vectors
+#> tox_euclidean_distance:euclidean_distance_c: Calculate Euclidean distance between two vectors
 #' 
 #' Computes the Euclidean distance between two vectors of the same dimension.
 #' This function automatically checks for errors and throws informative exceptions.
@@ -40,6 +41,7 @@ tox_euclidean_distance <- function(vec1, vec2) {
 }
 
 
+#> tox_euclidean_distance:distance_to_centroid_c: Calculate distance from each gene to its family centroid
 #' Calculate distances from genes to their family centroids
 #' 
 #' Computes the Euclidean distance from each gene to its corresponding family centroid.
@@ -71,6 +73,7 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 }
 
 
+#> tox_tissue_versatility:compute_tissue_versatility_c: Computes normalized tissue versatility for selected expression vectors
 #' Calculate Tissue Versatility
 #' 
 #' Computes normalized tissue versatility for selected expression vectors.
@@ -129,9 +132,12 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   ))
 
 }
+
 # ===================================================================
 # OUTLIER DETECTION FUNCTIONS 
 # ===================================================================
+
+#> tox_get_outliers:detect_outliers_c: Complete outlier detection pipeline
 #' Complete outlier detection workflow
 #'
 #' This function performs the complete outlier detection workflow:
@@ -169,6 +175,7 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
 
 }
 
+#> tox_get_outliers:compute_family_scaling_c: Compute family scaling factors for outlier detection
 #' Compute family scaling factors using LOESS smoothing
 #'
 #' This function calculates scaling factors for gene families based on distance distributions.
@@ -205,6 +212,7 @@ tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
   ))
 }
 
+#> tox_get_outliers:compute_family_scaling_expert_c: Compute family scaling factors using LOESS smoothing (Expert Version)
 #' Compute family scaling factors using LOESS smoothing (Expert Version)
 #'
 #' Expert version of compute_family_scaling with user-provided work arrays.
@@ -263,6 +271,7 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
   ))
 }
 
+#> tox_get_outliers:compute_rdi_c: Compute Relative Distance Index (RDI) for outlier detection
 #' Compute Relative Distance Index (RDI) for genes
 #'
 #' This function calculates the Relative Distance Index for each gene,
@@ -291,6 +300,7 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
   ))
 }
 
+#> tox_get_outliers:identify_outliers_c: Identify outliers based on RDI percentile or threshold
 #' Identify outliers based on RDI percentiles
 #'
 #' This function identifies outliers by comparing each gene's RDI value
@@ -314,8 +324,11 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
 
 }
 
+# ===================================================================
 # NORMALIZATION FUNCTIONS
 # ===================================================================
+
+#> tox_normalization:normalize_by_std_dev_c: Normalize gene expression values by standard deviation
 #' Normalize gene expression values by standard deviation
 #'
 #' This function wraps the Fortran subroutine `normalize_by_std_dev`
@@ -337,6 +350,7 @@ tox_normalize_by_std_dev <- function(input_matrix) {
   return(matrix(result$output_vector, nrow = nrow(input_matrix), ncol = ncol(input_matrix), dimnames = dimnames(input_matrix)))
 }
 
+#> tox_normalization:quantile_normalization_c: Quantile normalization of gene expression values
 #' Quantile normalization of gene expression values
 #'
 #' This function wraps the Fortran subroutine `quantile_normalization`
@@ -362,6 +376,7 @@ tox_quantile_normalization <- function(input_matrix) {
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
 
+#> tox_normalization:log2_transformation_c: Apply log2(x + 1) transformation to gene expression values
 #' Apply log2(x + 1) transformation to gene expression values
 #'
 #' This function wraps the Fortran subroutine `log2_transformation`
@@ -388,6 +403,7 @@ tox_log2_transformation <- function(input_matrix) {
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
 
+#> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue group
 #' Calculate average expression across replicates for each tissue group
 #'
 #' This function wraps the Fortran subroutine `calc_tiss_avg`
@@ -442,11 +458,12 @@ tox_calculate_tissue_averages <- function(df) {
 }
 
 
+#> tox_normalization:calc_fchange_c: Calculate log2 fold changes between control and condition columns
 #' Calculate log2 fold changes based on control and condition patterns
 #' @param df A data frame with genes as rows and tissues/conditions as columns.
 #' @param control_pattern A string pattern to detect control columns.
 #' @param condition_patterns A character vector with patterns to detect condition columns.
-tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns) {
+tox_calculate_fold_changes <- function(df, control_pattern, condition_patterns) {
   validate_matrix(df)
   validate_string_scalar(control_pattern)
   validate_character_vector(condition_patterns)
@@ -473,6 +490,7 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
 }
 
 
+#> tox_normalization:normalization_pipeline_c: Complete normalization pipeline for gene expression data (up to log2(x+1))
 #' Complete normalization pipeline for gene expression data (up to log2(x+1))
 #' @param input_matrix Numeric matrix (genes x tissues)
 #' @param group_s Integer vector: start column index for each replicate group (1-based)
@@ -495,7 +513,7 @@ tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
 ## Helper Functions for normalization
 ##################################################
 
-
+#> f42_helper: Parse tissue group name from column name
 #' Parse tissue group name from column name
 #'
 #' Helper function to extract the tissue group from a column name.
@@ -534,6 +552,7 @@ tox_parse_tissue_group <- function(colname) {
 }
 
 
+#> f42_helper: Diagnose data quality issues in gene expression matrix
 #' Diagnose data quality issues in gene expression matrix
 #'
 #' This function examines the input matrix for common data quality issues
@@ -636,6 +655,7 @@ tox_diagnose_data_quality <- function(input_matrix, show_details = TRUE) {
   return(invisible(diagnostics))
 }
 
+#> f42_helper: Clean data by removing or imputing problematic values
 #' Clean data by removing or imputing problematic values
 #'
 #' This function handles NA, NaN, Inf values and genes that are all zeros
@@ -782,7 +802,7 @@ tox_clean_data_for_normalization <- function(df_matrix,
   return(df_matrix)
 }
 
-
+#> f42_helper: Prepare control and condition column indices based on naming patterns
 #' Prepare control and condition column indices based on naming patterns
 #'
 #' This helper function searches for columns in the input dataframe that match
@@ -837,9 +857,12 @@ tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patte
 
   return(list(control_cols = control_cols, condition_cols = condition_cols, condition_labels = condition_labels))
 }
+
 # ===================================================================
 # SHIFT VECTOR FIELD FUNCTIONS
 # ===================================================================
+
+#> tox_shift_vectors:compute_shift_vector_field_c: Computes the shift vector field for each gene expression vector based on its family centroid
 #' Calculate Shift Vector Field 
 #' Computes the shift vector field for each gene expression vector based on its family centroid.
 #' The shift vector is defined as the difference between the gene expression vector and its corresponding family centroid,
@@ -853,7 +876,6 @@ tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patte
 #' @return List containing:
 #'   \item{shift_vectors}{The computed shift vectors for each gene expression vector}
 #'
-
 tox_compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_centroid) {
   # R-layer validation (kept in rcpp/)
   validate_numeric_matrix(expression_vectors)
@@ -877,8 +899,10 @@ tox_compute_shift_vector_field <- function(expression_vectors, family_centroids,
 # ===================================================================
 # GENE CENTROIDS FUNCTIONS
 # ===================================================================
-#' Calculate Gene Centroids
 
+
+#> tox_gene_centroids:group_centroid_c: Computes expression centroids for groups of genes
+#' Calculate Gene Centroids
 #' Computes the centroids for each gene family based on the expression vectors of its member genes.
 #' This function automatically checks for errors and throws informative exceptions.
 #'
@@ -891,8 +915,6 @@ tox_compute_shift_vector_field <- function(expression_vectors, family_centroids,
 #' @return List containing:
 #'   \item{centroid_matrix}{The computed centroids for each gene family}
 #'
-
- 
 tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, ortholog_set, mode = 'all') {
   # R-layer validation (kept in rcpp/)
   validate_group_centroid_inputs(expression_vectors, gene_to_family, n_families, ortholog_set, mode)
@@ -902,6 +924,7 @@ tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, o
   return(result)
 }
 
+#> tox_gene_centroids:mean_vector_c: Compute the element-wise mean for a given set of gene expression vectors
 #' Compute the element-wise mean for a given set of gene expression vectors
 #'
 #' This function wraps the Fortran subroutine `mean_vector_r`
@@ -912,7 +935,6 @@ tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, o
 #'
 #' @return Numeric vector of length n_axes representing the computed centroid
 #'
-
 tox_mean_vector <- function(expression_vectors, gene_indices) {
   # R-layer validation (kept in rcpp/)
   validate_mean_vector_inputs(expression_vectors, gene_indices)

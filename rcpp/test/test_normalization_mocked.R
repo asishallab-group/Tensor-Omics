@@ -30,7 +30,7 @@ averaged_df <- tox_calculate_tissue_averages(normalized_matrix_log)
 averaged_mat <- as.matrix(averaged_df)
 
 # --- Calculate fold changes for multiple diets ---
-fc_df <- tox_calculate_fc_by_patterns(
+fc_df <- tox_calculate_fold_changes(
   df = averaged_mat,
   control_pattern = "dietM",
   condition_patterns = c("dietP", "dietQ")

@@ -88,19 +88,19 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">27 statements</a>
+                 title=" 0.3% of total for procedures.">32 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/deserialize_char.F90"> Source File</a>
+              <a href="../src/f42_deserialize_char.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/deserialize_char.f90.html'>deserialize_char.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_deserialize_char.f90.html'>f42_deserialize_char.F90</a></li>
             <li class="breadcrumb-item active" aria-current="page">deserialize_char_flat_r</li>
           </ol>
         </nav>
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine deserialize_char_flat_r(ascii_arr, arr_size, filename_ascii, fn_len, ierr)  
+    <h2> subroutine deserialize_char_flat_r(raw_arr, arr_size, filename_raw, fn_len, clen_in, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,10 +156,11 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/char_deserialize_mod.html'>char_deserialize_mod</a></li>
-                  <li class="list-inline-item"><a href='../module/array_utils.html'>array_utils</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +168,8 @@
     </div>
 
 
-    <p>Subroutine to deserialize a flat character array from a file and return it as an ASCII array callable by R</p>
+    <p>Subroutine to deserialize a flat character array from a file and return it as a raw array callable by R
+Deserializes the array into a flat buffer.</p>
 
 
     <h3>Arguments</h3>
@@ -183,22 +185,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ascii_arr~2"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-raw_arr~2"></span>
+              character(kind=c_char, len=1),
             </td>
 <td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>ascii_arr</strong>(arr_size)</td>
+            <td><strong>raw_arr</strong>(clen_in,arr_size)</td>
             <td>
                 <p>Output array of ASCII characters, preallocated by R</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr_size~5"></span>
+              <span class="anchor" id="variable-arr_size~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -213,22 +215,22 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename_ascii~11"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-filename_raw~16"></span>
+              character(kind=c_char, len=1),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>filename_ascii</strong>(fn_len)</td>
+            <td><strong>filename_raw</strong>(fn_len)</td>
             <td>
                 <p>Array of ASCII characters representing the filename</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fn_len~11"></span>
+              <span class="anchor" id="variable-fn_len~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -243,7 +245,22 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~134"></span>
+              <span class="anchor" id="variable-clen_in"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>clen_in</strong></td>
+            <td>
+                <p>Maximum length of character string</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~231"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -283,14 +300,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2025 
+ was developed by TensorOmics Developers<br>              &copy; 2026 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-11-23 17:36 +0000"             </p>
+ on "2026-01-20 15:24 +0000"             </p>
           </div>
         </div>
         <br>

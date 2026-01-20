@@ -1,0 +1,220 @@
+\section{Tensor Omics Module Descriptors (TOXMD)}\label{sec:module_descriptors}
+
+    \subsection{Concept of Modules in Semantic Vector Spaces}
+
+        In Tensor Omics, a \textit{module} is defined as a set of vectors
+        \[
+            \mathcal{M} = \{ \vec{v}_1, \vec{v}_2, \ldots, \vec{v}_m \}, \quad
+            \vec{v}_i \in \mathbb{R}^n,
+        \]
+        selected according to biological, semantic, or geometric criteria
+        (e.g.\ shared molecular function, evolutionary relationship, collinearity,
+        local density, or signal strength).
+
+        Modules may originate from vector fields with explicit coordinates
+        (e.g.\ spatial or temporal data), but in the most general Tensor Omics setting
+        they consist solely of vectors embedded in a semantic omics space.
+        Such a module can be represented compactly by the matrix
+        \[
+            M = [\, \vec{v}_1, \vec{v}_2, \ldots, \vec{v}_m \,] \in \mathbb{R}^{n \times m}.
+        \]
+
+        The matrix
+        \[
+            C = M M^{\mathsf{T}}
+        \]
+        captures the cumulative second-order structure of the module and serves as the
+        basis for several global geometric descriptors.
+
+    \subsection{Canonical Descriptors of a Module}\label{ssec:canonical_module_descriptors}
+
+        From the module matrix \(M\), we define the following canonical descriptors.
+
+        \begin{enumerate}
+
+            \item \textbf{Signal Strength (Energy)}  
+                  \[
+                      E = \|M\|_{F}
+                      = \sqrt{\sum_{i=1}^{n}\sum_{j=1}^{m} M_{ij}^{2}}.
+                  \]
+                  The Frobenius norm measures the total magnitude of all vectors in the module.
+                  In gene expression analysis, this reflects cumulative expression divergence or
+                  activity across all genes in the module.
+
+                  To enable comparison across modules of different sizes \(m\), we define the
+                  Relative Frobenius Index
+                  \[
+                      \mathrm{RFI} = \frac{\|M\|_F}{\sqrt{m}},
+                  \]
+                  which measures average vector magnitude independent of module cardinality.
+
+            \item \textbf{Rank (Subspace Dimensionality)}  
+                  \[
+                      R = \mathrm{rank}(M).
+                  \]
+                  The rank quantifies the dimensionality of the subspace spanned by the module.
+                  Low rank indicates near-collinearity (coherent behavior), whereas higher rank
+                  indicates multi-directional or heterogeneous structure.
+
+            \item \textbf{Principal Direction of Spread}  
+                  Let
+                  \[
+                      C = U \Sigma U^{\mathsf{T}}
+                  \]
+                  be the eigendecomposition of \(C\).
+                  The first eigenvector
+                  \[
+                      \vec{f} = U_{\cdot 1}
+                  \]
+                  defines the dominant direction of variance within the module.
+                  In semantic omics spaces, this corresponds to the primary axis of coordinated
+                  expression or functional divergence.
+
+            \item \textbf{Net Vector (Cumulative Direction)}  
+                  \[
+                      \vec{s}_{\mathrm{net}} = \sum_{i=1}^{m} \vec{v}_i.
+                  \]
+                  The net vector summarizes the aggregate directional tendency of the module.
+                  Unlike the principal direction, which reflects variance structure, the net
+                  vector captures directional bias and asymmetry.
+                  Its magnitude vanishes for directionally balanced modules and increases when
+                  vectors align coherently in one direction.
+
+            \item \textbf{Angular Dispersion}  
+                All vectors are first normalized to unit length,
+                \[
+                    \hat{\vec{v}}_i = \frac{\vec{v}_i}{\|\vec{v}_i\|}.
+                \]
+                The spherical mean direction is
+                \[
+                    \vec{\mu} =
+                    \frac{1}{m} \sum_{i=1}^{m} \hat{\vec{v}}_i,
+                    \quad
+                    R_{\mathcal{M}} = \|\vec{\mu}\|.
+                \]
+                The scalar \(R_{\mathcal{M}} \in [0,1]\) measures directional coherence.
+                Values near 1 indicate strong alignment; values near 0 indicate isotropy.
+
+                A proxy for angular dispersion is given by
+                \[
+                    \sigma_{\mathrm{ang}} = \sqrt{-2 \ln(R_{\mathcal{M}})},
+                \]
+                which is monotonic in dispersion and widely used in directional statistics.
+
+            \item \textbf{Axis Footprint (Semantic Support)}  
+                  For each axis \(a \in \{1,\ldots,n\}\), let \(v_{a,i}\) denote the \(a\)-th
+                  coordinate of vector \(\vec{v}_i\).
+                  The footprint of the module along axis \(a\) is defined as
+                  \[
+                      \left[
+                      Q_{\alpha}(v_{a,\cdot}),
+                      \;
+                      Q_{1-\alpha}(v_{a,\cdot})
+                      \right],
+                  \]
+                  where \(Q_p\) denotes the empirical \(p\)-quantile and
+                  \(\alpha \in [0,0.5]\) is a user-defined offset.
+                  Setting \(\alpha = 0\) yields the full min-max range; typical values such as
+                  \(\alpha = 0.05\) provide robust footprints resistant to outliers.
+
+                  This descriptor localizes the module within the semantic axes of the ambient
+                  omics space.
+
+            \item \textbf{Axis Mass (Histogram Representation)}  
+                  For each axis, the distribution of \(v_{a,i}\) is summarized by a histogram with
+                  a user-defined number of bins \(B\) (default \(B=5\)).
+                  Bin boundaries are computed globally from the full ambient space to ensure
+                  comparability across modules.
+
+                  Optionally, histogram counts may be weighted by vector magnitudes
+                  \( \|\vec{v}_i\| \).
+                  Magnitude weighting emphasizes high-expression or high-shift vectors but is
+                  generally discouraged in Tensor Omics, as expression magnitude already defines
+                  module location in semantic space and additional weighting can obscure
+                  directional structure.
+                  Unweighted histograms therefore represent the preferred default.
+
+        \end{enumerate}
+
+    \subsection*{Remarks}
+
+        All descriptors are defined for non-zero vectors.
+        Modules failing basic validity checks (e.g.\ vanishing angular coherence or
+        degenerate dimensionality) should return informative error codes rather than
+        numerical values.
+        Together, these descriptors form a multi-scale geometric and semantic summary of
+        modules in Tensor Omics.
+
+    \subsection{Vector Sets versus Vector Fields}
+
+        A \textit{vector set} (e.g.\ all expression vectors of a gene family) consists 
+        only of vectors and their distribution in space.  
+
+        When vectors additionally carry explicit coordinates---as in shift vectors
+        originating at gene-family centroids---they form a \textit{vector field}.  In
+        such cases, Mod-4-Desc can be applied either to the coordinates or to the
+        vectors themselves, yielding complementary information:
+
+    \begin{itemize}
+        \item \textbf{On the coordinates} $\vec{x}_i$:  
+        the descriptors characterize the geometry and spatial extent of the region 
+        in Tensor Omics space, answering questions like:
+        \begin{itemize}
+            \item Which semantic axes dominate the spatial extent of the field?
+            \item Is the field elongated or isotropic (rank)?
+            \item Does the region itself curve or spiral through Tensor space (rotation)?
+        \end{itemize}
+
+        \item \textbf{On the vectors} $\vec{v}_i$:  
+        the descriptors characterize the dynamics or changes that occur within that region:
+        \begin{itemize}
+            \item Which semantic axes dominate expression changes?
+            \item How strong are those changes (energy)?
+            \item Are changes co-directed or diverse (rank)?
+            \item Do they form coherent rotational flows or transitions (rotation)?
+        \end{itemize}
+
+    \end{itemize}
+
+    \textbf{Examples:}  
+    In transcriptomics, coordinates correspond to gene-family positions in 
+    expression space, while shift vectors represent changes such as stress 
+    responses.  
+    In physics, coordinates represent spatial positions, and vectors represent wind 
+    velocities or magnetic field directions.
+
+
+    \subsection{Tracing a Module along its Semantic Axis}
+
+        Assume a module has an associated \textit{semantic axis}
+        \(\vec{d}_{\text{sem}}\) (see Section~\ref{sec:semantic_axis} for its definition), 
+        obtained for example by the Mjölnir manifold learning method.  
+        We can then analyze how Mod-4-Desc quantities evolve along this axis.
+
+        A Gaussian kernel \(K(\vec{x}; \sigma)\) is moved along \(\vec{d}_{\text{sem}}\).  
+        At each kernel center, the local subset of vectors 
+        \( \{\vec{v}_i\} \) within the kernel’s support is collected into a matrix \(M\), 
+        and the four TOX Field Descriptors are computed locally:
+        \[
+            \{E(\vec{x}), R(\vec{x}), \vec{f}(\vec{x}), \omega(\vec{x})\}.
+        \]
+
+        Plotting these quantities along the semantic axis reveals how 
+        field energy, diversity, and rotational behavior change over semantic space 
+        (e.g., developmental time, aging trajectory, or stress gradient).  
+        This procedure generalizes naturally to 2D semantic surfaces, 
+        where the descriptors can be visualized as tensor fields over the manifold.
+
+    \subsection{Interpretation and Scientific Questions}
+
+        These descriptors allow a model-free geometric interpretation of high-dimensional data:
+        \begin{itemize}
+            \item \textbf{Energy:} How strong are the local signals or shifts?
+            \item \textbf{Rank:} How many independent biological factors are active?
+            \item \textbf{Flow:} In which semantic direction does the process move?
+            \item \textbf{Rotation:} Are changes linear, oscillatory, or cyclic?
+        \end{itemize}
+
+        Together, they enable systematic comparison of complex omics or physical fields, 
+        revealing patterns of coherence, divergence, and functional rotation 
+        in spaces where traditional differential or statistical models fail.

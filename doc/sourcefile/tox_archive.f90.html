@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title="11.3% of total for source files.">898 statements</a>
+                 title=" 9.6% of total for source files.">898 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,8 +151,8 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../proc/create_zip_archive_generic_r.html">create_zip_archive_generic_R</a>
             <a class="list-group-item" href="../proc/extract_zip_archive_generic_r.html">extract_zip_archive_generic_R</a>
-            <a class="list-group-item" href="../proc/create_zip_archive_generic_c.html">create_zip_archive_generic_c</a>
-            <a class="list-group-item" href="../proc/extract_zip_archive_generic_c.html">extract_zip_archive_generic_c</a>
+            <a class="list-group-item" href="../proc/create_zip_archive_c.html">create_zip_archive_c</a>
+            <a class="list-group-item" href="../proc/extract_zip_archive_c.html">extract_zip_archive_c</a>
         </div>
       </div>
     </div>
@@ -1081,7 +1081,7 @@
 <a id="ln-898" name="ln-898" href="#ln-898"></a><span class="w">    </span><span class="k">subroutine </span><span class="n">read_tox_data</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">gene_ids</span><span class="p">,</span><span class="w"> </span><span class="n">gene_ids_file</span><span class="p">,</span><span class="w"> </span><span class="n">expression</span><span class="p">,</span><span class="w"> </span><span class="n">expression_file</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
 <a id="ln-899" name="ln-899" href="#ln-899"></a><span class="w">                        </span><span class="n">gene_to_family</span><span class="p">,</span><span class="w"> </span><span class="n">gene_to_family_file</span><span class="p">,</span><span class="w"> </span><span class="n">family_ids</span><span class="p">,</span><span class="w"> </span><span class="n">family_ids_file</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
 <a id="ln-900" name="ln-900" href="#ln-900"></a><span class="w">                        </span><span class="n">family_centroids</span><span class="p">,</span><span class="w"> </span><span class="n">family_centroids_file</span><span class="p">,</span><span class="w"> </span><span class="n">shift_vectors</span><span class="p">,</span><span class="w"> </span><span class="n">shift_vectors_file</span><span class="p">)</span>
-<a id="ln-901" name="ln-901" href="#ln-901"></a><span class="w">        </span><span class="k">use </span><span class="n">array_utils</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">get_array_metadata</span>
+<a id="ln-901" name="ln-901" href="#ln-901"></a><span class="w">        </span><span class="k">use </span><span class="n">f42_array_utils</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">get_array_metadata</span>
 <a id="ln-902" name="ln-902" href="#ln-902"></a><span class="w">        </span><span class="k">use </span><span class="n">tox_data_read_write</span>
 <a id="ln-903" name="ln-903" href="#ln-903"></a><span class="w">        </span><span class="k">use </span><span class="n">iso_fortran_env</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">real64</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span>
 <a id="ln-904" name="ln-904" href="#ln-904"></a><span class="w">        </span><span class="k">implicit none</span>
@@ -1361,10 +1361,10 @@
 <a id="ln-1178" name="ln-1178" href="#ln-1178"></a><span class="k">end subroutine </span><span class="n">extract_zip_archive_generic_R</span>
 <a id="ln-1179" name="ln-1179" href="#ln-1179"></a>
 <a id="ln-1180" name="ln-1180" href="#ln-1180"></a><span class="c">!&gt; C binding for generic archive creation with arrays of keys and filenames</span>
-<a id="ln-1181" name="ln-1181" href="#ln-1181"></a><span class="k">subroutine </span><span class="n">create_zip_archive_generic_c</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">zip_len</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
+<a id="ln-1181" name="ln-1181" href="#ln-1181"></a><span class="k">subroutine </span><span class="n">create_zip_archive_c</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">zip_len</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
 <a id="ln-1182" name="ln-1182" href="#ln-1182"></a><span class="w">                                             </span><span class="n">keys</span><span class="p">,</span><span class="w"> </span><span class="n">keys_len</span><span class="p">,</span><span class="w"> </span><span class="n">keys_count</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
 <a id="ln-1183" name="ln-1183" href="#ln-1183"></a><span class="w">                                             </span><span class="n">filenames</span><span class="p">,</span><span class="w"> </span><span class="n">filenames_len</span><span class="p">,</span><span class="w"> </span><span class="n">filenames_count</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-1184" name="ln-1184" href="#ln-1184"></a><span class="w">                                             </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;create_zip_archive_generic_c&quot;</span><span class="p">)</span>
+<a id="ln-1184" name="ln-1184" href="#ln-1184"></a><span class="w">                                             </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;create_zip_archive_c&quot;</span><span class="p">)</span>
 <a id="ln-1185" name="ln-1185" href="#ln-1185"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_archive</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">create_zip_archive</span>
 <a id="ln-1186" name="ln-1186" href="#ln-1186"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_conversions</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">c_char_2d_as_string</span><span class="p">,</span><span class="w"> </span><span class="n">c_char_1d_as_string</span>
 <a id="ln-1187" name="ln-1187" href="#ln-1187"></a><span class="w">    </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int</span><span class="p">,</span><span class="w"> </span><span class="kt">c_char</span>
@@ -1415,11 +1415,11 @@
 <a id="ln-1232" name="ln-1232" href="#ln-1232"></a><span class="k">    </span>
 <a id="ln-1233" name="ln-1233" href="#ln-1233"></a><span class="k">    call </span><span class="n">create_zip_archive</span><span class="p">(</span><span class="n">f_zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">f_keys</span><span class="p">,</span><span class="w"> </span><span class="n">f_filenames</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
 <a id="ln-1234" name="ln-1234" href="#ln-1234"></a><span class="w">    </span>
-<a id="ln-1235" name="ln-1235" href="#ln-1235"></a><span class="k">end subroutine </span><span class="n">create_zip_archive_generic_c</span>
+<a id="ln-1235" name="ln-1235" href="#ln-1235"></a><span class="k">end subroutine </span><span class="n">create_zip_archive_c</span>
 <a id="ln-1236" name="ln-1236" href="#ln-1236"></a>
 <a id="ln-1237" name="ln-1237" href="#ln-1237"></a><span class="c">!&gt; C binding for extract_zip_archive - can be called directly from Python via ctypes</span>
-<a id="ln-1238" name="ln-1238" href="#ln-1238"></a><span class="k">subroutine </span><span class="n">extract_zip_archive_generic_c</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">filename_len</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-1239" name="ln-1239" href="#ln-1239"></a><span class="w">                                </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;extract_zip_archive_generic_c&quot;</span><span class="p">)</span>
+<a id="ln-1238" name="ln-1238" href="#ln-1238"></a><span class="k">subroutine </span><span class="n">extract_zip_archive_c</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">filename_len</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="p">&amp;</span>
+<a id="ln-1239" name="ln-1239" href="#ln-1239"></a><span class="w">                                </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;extract_zip_archive_c&quot;</span><span class="p">)</span>
 <a id="ln-1240" name="ln-1240" href="#ln-1240"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_archive</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">extract_zip_archive</span>
 <a id="ln-1241" name="ln-1241" href="#ln-1241"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_conversions</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">c_char_1d_as_string</span>
 <a id="ln-1242" name="ln-1242" href="#ln-1242"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">set_ok</span><span class="p">,</span><span class="w"> </span><span class="n">is_err</span>
@@ -1446,7 +1446,7 @@
 <a id="ln-1263" name="ln-1263" href="#ln-1263"></a><span class="k">    </span>
 <a id="ln-1264" name="ln-1264" href="#ln-1264"></a><span class="k">    call </span><span class="n">extract_zip_archive</span><span class="p">(</span><span class="n">f_zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">keys</span><span class="p">,</span><span class="w"> </span><span class="n">filenames</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
 <a id="ln-1265" name="ln-1265" href="#ln-1265"></a><span class="w">    </span>
-<a id="ln-1266" name="ln-1266" href="#ln-1266"></a><span class="k">end subroutine </span><span class="n">extract_zip_archive_generic_c</span>
+<a id="ln-1266" name="ln-1266" href="#ln-1266"></a><span class="k">end subroutine </span><span class="n">extract_zip_archive_c</span>
 </pre></div>
 
       </section>
@@ -1461,14 +1461,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2025 
+ was developed by TensorOmics Developers<br>              &copy; 2026 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-11-23 17:36 +0000"             </p>
+ on "2026-01-20 15:24 +0000"             </p>
           </div>
         </div>
         <br>

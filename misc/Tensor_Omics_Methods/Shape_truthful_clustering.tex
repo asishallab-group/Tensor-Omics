@@ -1,0 +1,88 @@
+\section{Shape truthful clustering -- TECA Version}%
+    \label{bobito}%
+
+    \subsection{Summary}
+        \begin{itemize}
+            \item Use spherical kernels at each grid point to measure \textbf{vector density} (count of vectors inside radius $r$).
+            \item Label each point with this count.
+            \item Sort descending.
+            \item Start growth from the densest point.
+            \item Iteratively grow the sphere, aggregating nearby high-density spheres until \textbf{running density derivative drops} (signal plateau).
+            \item In shift fields, alternatively use \textbf{cones} to study whether directional flows converge toward dense regions. This addresses directional accumulation and potential biological attractors.
+        \end{itemize}
+
+    \subsection{Interpretation by Vector Type}
+        \paragraph{Expression vector fields (use spheres):}
+        \begin{itemize}
+            \item Best suited for detecting \textbf{isotropic clustering} in high-dimensional semantic expression space.
+            \item Reveals:
+                  \begin{itemize}
+                      \item \textbf{Conserved regulatory hubs}
+                      \item \textbf{Functionally coherent modules}
+                      \item \textbf{Developmental plateaus} or \textbf{tissue convergence attractors}
+                      \item \textbf{Cell-type specific modules} conserved across samples or species
+                  \end{itemize}
+        \end{itemize}
+
+        \paragraph{Shift vector fields (use cones):}
+        \begin{itemize}
+            \item Best suited for tracing \textbf{directional convergence} of functional shifts.
+            \item Reveals:
+                  \begin{itemize}
+                      \item \textbf{Strong directional pull} from paralog groups or neofunctionalizing subsets
+                      \item \textbf{Convergent evolutionary innovations}
+                      \item \textbf{Stable transcriptomic transitions} across conditions or species
+                  \end{itemize}
+            \item Use of cones can identify whether directional flow leads into dense attractor zones.
+        \end{itemize}
+
+    \subsection{Verdict}
+        Highly promising. Integrate as a ``Bobito-density mode'' (working name: \textbf{Kolob}), and pin as a method for \textbf{density-informed seed detection} in both expression and shift fields.
+
+    \subsection{Note}
+        While spheres are the natural geometry for isotropic density detection, cones are preferable in \emph{shift vector fields} where direction matters. Cones reveal whether vector flows converge into dense subregions, offering geometric insight into evolutionary or functional attractor zones.
+
+
+
+\section{Shape truthful clustering -- main Version -- Density-Based Bobito Variant: Spherical and Conical Accretion}
+
+    \subsection{Summary}
+        \begin{itemize}
+            \item Use spherical kernels at each grid point to measure \textbf{vector density} (count of vectors inside radius $r$).
+            \item Label each point with this count.
+            \item Sort descending.
+            \item Start growth from the densest point.
+            \item Iteratively grow the sphere, aggregating nearby high-density spheres until \textbf{running density derivative drops} (signal plateau).
+            \item In shift fields, alternatively use \textbf{cones} to study whether directional flows converge toward dense regions. This addresses directional accumulation and potential biological attractors.
+        \end{itemize}
+
+    \subsection{Interpretation by Vector Type}
+        \paragraph{Expression vector fields (use spheres):}
+        \begin{itemize}
+            \item Best suited for detecting \textbf{isotropic clustering} in high-dimensional semantic expression space.
+            \item Reveals:
+                  \begin{itemize}
+                      \item \textbf{Conserved regulatory hubs}
+                      \item \textbf{Functionally coherent modules}
+                      \item \textbf{Developmental plateaus} or \textbf{tissue convergence attractors}
+                      \item \textbf{Cell-type specific modules} conserved across samples or species
+                  \end{itemize}
+        \end{itemize}
+
+        \paragraph{Shift vector fields (use cones):}
+        \begin{itemize}
+            \item Best suited for tracing \textbf{directional convergence} of functional shifts.
+            \item Reveals:
+                  \begin{itemize}
+                      \item \textbf{Strong directional pull} from paralog groups or neofunctionalizing subsets
+                      \item \textbf{Convergent evolutionary innovations}
+                      \item \textbf{Stable transcriptomic transitions} across conditions or species
+                  \end{itemize}
+            \item Use of cones can identify whether directional flow leads into dense attractor zones.
+        \end{itemize}
+
+    \subsection{Verdict}
+        Highly promising. Integrate as a ``Bobito-density mode'' (working name: \textbf{Kolob}), and pin as a method for \textbf{density-informed seed detection} in both expression and shift fields.
+
+    \subsection{Note}
+        While spheres are the natural geometry for isotropic density detection, cones are preferable in \emph{shift vector fields} where direction matters. Cones reveal whether vector flows converge into dense subregions, offering geometric insight into evolutionary or functional attractor zones.

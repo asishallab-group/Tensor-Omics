@@ -15,7 +15,8 @@ module tox_gene_centroids
 contains
 
   !> Computes the element-wise mean for a given set of vectors.
-  pure subroutine mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr)
+  pure subroutine mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes,&!asd
+    centroid, ierr)
     implicit none
     !| Number of axes (tissues/dimensions).
     integer(int32), intent(in) :: n_axes
