@@ -140,11 +140,21 @@ contains
             block
                 integer(int32) :: n_elements, i_element
 
-                n_elements = size(json_arr%elements, dim=1, kind=int32)
-                do i_element = 1, n_elements
-                    call serialize_json_value(json_arr%elements(i_element), unit, depth, max_depth)
-                    if (i_element < n_elements) write (unit, "(',')", advance="no")
-                end do
+                select type(arr => json_arr%elements)
+                    type is (character(*))
+                        n_elements = size(arr, dim=1, kind=int32)
+                        do i_element = 1, n_elements
+                            call serialize_json_value(arr(i_element), unit, depth, max_depth)
+                            if (i_element < n_elements) write (unit, "(',')", advance="no")
+                        end do
+                    class default
+                        n_elements = size(arr, dim=1, kind=int32)
+                        do i_element = 1, n_elements
+                            call serialize_json_value(arr(i_element), unit, depth, max_depth)
+                            if (i_element < n_elements) write (unit, "(',')", advance="no")
+                        end do
+                end select
+
             end block
         end if
         write (unit, "(']')", advance="no")
@@ -525,7 +535,6 @@ subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, t
 
     M_ALLOCATE(f_gene_outliers(n_genes))
     call c_int_as_logical(gene_outliers, f_gene_outliers)
-
 
     call serialize_tox_data_as_flyer_json( &
         f_filename, &
