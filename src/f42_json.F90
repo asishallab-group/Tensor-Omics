@@ -426,3 +426,94 @@ contains
     end subroutine serialize_tox_data_as_flyer_json
 
 end module f42_json
+
+
+subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, tissue_len, n_tissues, family_ids, family_id_len, n_families, centroids, gene_ids, gene_id_len, n_genes, genes, gene_to_fam, sorted_gene_to_fam_perm, gene_outliers, gene_species, gene_species_len, gene_types, gene_type_len, ierr) bind(C, name="serialize_tox_data_as_flyer_json_c")
+
+    use f42_json, only: serialize_tox_data_as_flyer_json
+    use, intrinsic :: iso_c_binding, only: c_char, c_int, c_double
+    use tox_conversions, only: c_char_2d_as_string, c_char_1d_as_string, c_int_as_logical
+    use tox_errors, only: set_ok, validate_dimension_size, is_err
+    implicit none
+
+    integer(c_int), intent(in) :: n_tissues
+        !! Number of tissues
+    integer(c_int), intent(in) :: n_families
+        !! Number of families
+    integer(c_int), intent(in) :: n_genes
+        !! Number of genes
+    integer(c_int), intent(in) :: filename_len
+        !! String Length of `filename`
+    integer(c_int), intent(in) :: tissue_len
+        !! String Length of `tissues`
+    integer(c_int), intent(in) :: family_id_len
+        !! String Length of `family_ids`
+    integer(c_int), intent(in) :: gene_id_len
+        !! String Length of `gene_ids`
+    integer(c_int), intent(in) :: gene_type_len
+        !! String Length of `gene_types`
+    integer(c_int), intent(in) :: gene_species_len
+        !! String Length of `gene_species`
+    character(kind=c_char), dimension(filename_len), intent(in) :: filename
+        !! Name of the file to write the output to
+    character(kind=c_char), dimension(tissue_len, n_tissues), intent(in), target :: tissues
+        !! Tissue identifiers
+    character(kind=c_char), dimension(family_id_len, n_families), intent(in), target :: family_ids
+        !! Family identifiers
+    character(kind=c_char), dimension(gene_id_len, n_genes), intent(in), target :: gene_ids
+        !! Gene identifiers
+    character(kind=c_char), dimension(gene_type_len, n_genes), intent(in), target :: gene_types
+        !! Gene type string (ortholog/paralog)
+    character(kind=c_char), dimension(gene_species_len, n_genes), intent(in), target :: gene_species
+        !! Species name per gene
+    real(c_double), dimension(n_tissues, n_families), intent(in), target :: centroids
+        !! Centroid data
+    real(c_double), dimension(n_tissues, n_genes), intent(in), target :: genes
+        !! Gene data
+    integer(c_int), dimension(n_genes), intent(in) :: gene_to_fam
+        !! Gene index to Family index mapping
+    integer(c_int), dimension(n_genes), intent(in), target :: sorted_gene_to_fam_perm
+        !! Permutation vector that sorts `gene_to_fam`
+    integer(c_int), dimension(n_genes), intent(in), target :: gene_outliers
+        !! Specifies if a gene is an outlier
+    integer(c_int), intent(out) :: ierr
+        !! Error code
+
+    character(len=:), allocatable :: f_filename
+    character(len=:), allocatable :: f_tissues(:)
+    character(len=:), allocatable :: f_family_ids(:)
+    character(len=:), allocatable :: f_gene_ids(:)
+    character(len=:), allocatable :: f_gene_species(:)
+    character(len=:), allocatable :: f_gene_types(:)
+    logical, allocatable :: f_gene_outliers(:)
+
+    call c_char_1d_as_string(filename, f_filename, ierr)
+    if(is_err(ierr)) return
+    call c_char_2d_as_string(tissues, f_tissues, ierr)
+    if(is_err(ierr)) return
+    call c_char_2d_as_string(family_ids, f_family_ids, ierr)
+    if(is_err(ierr)) return
+    call c_char_2d_as_string(gene_ids, f_gene_ids, ierr)
+    if(is_err(ierr)) return
+    call c_char_2d_as_string(gene_species, f_gene_species, ierr)
+    if(is_err(ierr)) return
+    call c_char_2d_as_string(gene_types, f_gene_types, ierr)
+    if(is_err(ierr)) return
+    call c_int_as_logical(gene_outliers, f_gene_outliers)
+
+
+    call serialize_tox_data_as_flyer_json( &
+        f_filename, &
+        f_tissues, n_tissues, &
+        f_family_ids, n_families, &
+        centroids, &
+        f_gene_ids, n_genes, &
+        genes, &
+        gene_to_fam, &
+        sorted_gene_to_fam_perm, &
+        f_gene_outliers, &
+        f_gene_species, &
+        f_gene_types, &
+        ierr )
+
+end subroutine serialize_tox_data_as_flyer_json_c

@@ -285,8 +285,7 @@ def test_non_standard_arrays():
     
     if "string_matrix" in file_mapping:
         loaded_2d_char = tox_deserialize_char_nd(file_mapping["string_matrix"])
-        print(f"Loaded 2D char array shape: {loaded_2d_char.shape}")
-        print(f"String arrays equal: {np.array_equal(array_2d_char, loaded_2d_char)}")
+        assert np.array_equal(array_2d_char, loaded_2d_char), "String arrays not equal"
     
     # Cleanup extracted files
     for filename in file_mapping.values():
@@ -313,7 +312,7 @@ def test_non_standard_arrays():
     if 'filtered_gene_ids' in locals():
         temp_files.extend(["temp_standard_gene_ids.bin", "temp_standard_expr.bin"])
     
-    for temp_file in temp_files:
+    for temp_file in [*temp_files, "test_archive_1_py.zip", "test_archive_2_py.zip", "test_archive_4_py.zip", "test_non_standard_1.zip"]:
         if os.path.exists(temp_file):
             os.remove(temp_file)
             print(f"Removed: {temp_file}")
