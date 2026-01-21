@@ -433,28 +433,29 @@ subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, t
     use f42_json, only: serialize_tox_data_as_flyer_json
     use, intrinsic :: iso_c_binding, only: c_char, c_int, c_double
     use tox_conversions, only: c_char_2d_as_string, c_char_1d_as_string, c_int_as_logical
-    use tox_errors, only: set_ok, validate_dimension_size, is_err
+    use tox_errors, only: set_ok, validate_dimension_size, is_err, ERR_ALLOC_FAIL
+    M_USE_NULL_VALIDATION
     implicit none
 
-    integer(c_int), intent(in) :: n_tissues
+    integer(c_int), intent(in), target :: n_tissues
         !! Number of tissues
-    integer(c_int), intent(in) :: n_families
+    integer(c_int), intent(in), target :: n_families
         !! Number of families
-    integer(c_int), intent(in) :: n_genes
+    integer(c_int), intent(in), target :: n_genes
         !! Number of genes
-    integer(c_int), intent(in) :: filename_len
+    integer(c_int), intent(in), target :: filename_len
         !! String Length of `filename`
-    integer(c_int), intent(in) :: tissue_len
+    integer(c_int), intent(in), target :: tissue_len
         !! String Length of `tissues`
-    integer(c_int), intent(in) :: family_id_len
+    integer(c_int), intent(in), target :: family_id_len
         !! String Length of `family_ids`
-    integer(c_int), intent(in) :: gene_id_len
+    integer(c_int), intent(in), target :: gene_id_len
         !! String Length of `gene_ids`
-    integer(c_int), intent(in) :: gene_type_len
+    integer(c_int), intent(in), target :: gene_type_len
         !! String Length of `gene_types`
-    integer(c_int), intent(in) :: gene_species_len
+    integer(c_int), intent(in), target :: gene_species_len
         !! String Length of `gene_species`
-    character(kind=c_char), dimension(filename_len), intent(in) :: filename
+    character(kind=c_char), dimension(filename_len), intent(in), target :: filename
         !! Name of the file to write the output to
     character(kind=c_char), dimension(tissue_len, n_tissues), intent(in), target :: tissues
         !! Tissue identifiers
@@ -470,13 +471,13 @@ subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, t
         !! Centroid data
     real(c_double), dimension(n_tissues, n_genes), intent(in), target :: genes
         !! Gene data
-    integer(c_int), dimension(n_genes), intent(in) :: gene_to_fam
+    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
         !! Gene index to Family index mapping
     integer(c_int), dimension(n_genes), intent(in), target :: sorted_gene_to_fam_perm
         !! Permutation vector that sorts `gene_to_fam`
     integer(c_int), dimension(n_genes), intent(in), target :: gene_outliers
         !! Specifies if a gene is an outlier
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
         !! Error code
 
     character(len=:), allocatable :: f_filename
@@ -486,6 +487,28 @@ subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, t
     character(len=:), allocatable :: f_gene_species(:)
     character(len=:), allocatable :: f_gene_types(:)
     logical, allocatable :: f_gene_outliers(:)
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_tissues)
+    M_CHECK_NON_NULL(n_families)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(filename_len)
+    M_CHECK_NON_NULL(tissue_len)
+    M_CHECK_NON_NULL(family_id_len)
+    M_CHECK_NON_NULL(gene_id_len)
+    M_CHECK_NON_NULL(gene_type_len)
+    M_CHECK_NON_NULL(gene_species_len)
+    M_CHECK_NON_NULL(filename)
+    M_CHECK_NON_NULL(tissues)
+    M_CHECK_NON_NULL(family_ids)
+    M_CHECK_NON_NULL(gene_ids)
+    M_CHECK_NON_NULL(gene_types)
+    M_CHECK_NON_NULL(gene_species)
+    M_CHECK_NON_NULL(centroids)
+    M_CHECK_NON_NULL(genes)
+    M_CHECK_NON_NULL(gene_to_fam)
+    M_CHECK_NON_NULL(sorted_gene_to_fam_perm)
+    M_CHECK_NON_NULL(gene_outliers)
 
     call c_char_1d_as_string(filename, f_filename, ierr)
     if(is_err(ierr)) return
@@ -499,6 +522,8 @@ subroutine serialize_tox_data_as_flyer_json_c(filename, filename_len, tissues, t
     if(is_err(ierr)) return
     call c_char_2d_as_string(gene_types, f_gene_types, ierr)
     if(is_err(ierr)) return
+
+    M_ALLOCATE(f_gene_outliers(n_genes))
     call c_int_as_logical(gene_outliers, f_gene_outliers)
 
 
