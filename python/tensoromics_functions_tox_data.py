@@ -2,10 +2,6 @@
 TensorOmics Functions Module
 Python wrapper functions for Fortran routines via C interface
 """
-from error_handling import check_err_code
-import numpy as np
-import ctypes
-import os
 from tensoromics_functions import (
     tox_deserialize_char_nd,
     tox_serialize_char_nd,
@@ -16,13 +12,13 @@ from tensoromics_functions import (
     _create_empty_c_char_matrix,
     _strings_to_c_char_matrix,
     _c_char_matrix_to_strings,
-    _readonly
+    _readonly,
+    lib,
+    np,
+    ctypes,
+    os,
+    check_err_code
 )
-
-# Load library
-dll_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-lib = ctypes.CDLL(dll_path)
 
 
 #' Function for read_gene_ids_from_tsv_file_C
@@ -396,6 +392,7 @@ def validate_string_array_uniqueness(strings):
     )
     check_err_code(ierr.value)
 
+
 #> tox_data_validation:validate_data_structure_C: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
 def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
     """
@@ -452,6 +449,7 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
+
 
 #> tox_data_validation:validate_all_data_C: Comprehensive validation of all data components. This function performs all individual validations in one go.
 def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
