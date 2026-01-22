@@ -360,7 +360,8 @@ contains
 
         ! find index of first family (skip unassigned genes)
         first_fam_member = 1
-        do while (gene_to_fam(sorted_gene_to_fam_perm(first_fam_member)) < 1)
+        do i_gene = 1, n_genes
+            if (gene_to_fam(sorted_gene_to_fam_perm(first_fam_member)) > 0) exit
             first_fam_member = first_fam_member + 1
         end do
 
