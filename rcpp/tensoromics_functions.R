@@ -32,10 +32,10 @@ source("rcpp/error_handling.R")
 #'
 tox_euclidean_distance <- function(vec1, vec2) {
   # Input validation
-  validate_numeric_vector(vec1)
-  validate_numeric_vector(vec2)
-  validate_same_length(vec1, vec2)
-  validate_nonempty(vec1)
+  validate_is_numeric_vector(vec1)
+  validate_is_numeric_vector(vec2)
+  validate_is_same_length(vec1, vec2)
+  validate_is_nonempty(vec1)
 
   # Call Rcpp wrapper
   return(tox_euclidean_distance_rcpp(as.numeric(vec1), as.numeric(vec2)))
@@ -57,18 +57,18 @@ tox_euclidean_distance <- function(vec1, vec2) {
 #'
 tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
   # R-layer validation in rcpp/ (kept here because r/ must not be changed)
-  validate_numeric_vector(genes)
-  validate_numeric_vector(centroids)
-  validate_positive_integer_scalar(d)
+  validate_is_numeric_vector(genes)
+  validate_is_numeric_vector(centroids)
+  validate_is_positive_integer_scalar(d)
 
 #  # Validate flattened lengths are compatible with d
-  validate_divisible_length(genes, d)
-  validate_divisible_length(centroids, d)
+  validate_is_divisible_length(genes, d)
+  validate_is_divisible_length(centroids, d)
   # Calculate dimensions
   n_genes <- as.integer(length(genes) / d)
   n_families <- as.integer(length(centroids) / d)
-  validate_gene_to_family(gene_to_fam, n_genes, n_families)
-  validate_length_equals_n(gene_to_fam, n_genes)
+  validate_is_gene_to_family(gene_to_fam, n_genes, n_families)
+  validate_is_length_equals(gene_to_fam, n_genes)
 
   return(tox_distance_to_centroid_rcpp(genes, centroids, gene_to_fam, d))
 }
@@ -94,17 +94,17 @@ tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
 #'
 tox_calculate_tissue_versatility <- function(expression_vectors, vector_selection, axis_selection) {
   # R-layer validation (kept in rcpp/ to avoid touching r/)
-  validate_numeric_matrix(expression_vectors)
+  validate_is_numeric_matrix(expression_vectors)
   n_axes <- nrow(as.matrix(expression_vectors))
   n_vectors <- ncol(as.matrix(expression_vectors))
 
   # Ensure selection vectors have correct lengths and types
   #Input validation
-  validate_numeric_matrix(expression_vectors)
+  validate_is_numeric_matrix(expression_vectors)
 
   # Ensure selectors have expected lengths
-  validate_logical_or_index_vector(vector_selection)
-  validate_logical_or_index_vector(axis_selection)
+  validate_is_logical_or_index_vector(vector_selection)
+  validate_is_logical_or_index_vector(axis_selection)
 
   #Convert to appropriate types for Rcpp
   if (is.numeric(vector_selection)) {
@@ -193,10 +193,10 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
 #'   - indices_used: Number of genes used per family
 tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
   # Input validation
-  validate_numeric_vector(distances)
+  validate_is_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes)
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
+  validate_is_length_equals(gene_to_fam, n_genes)
+  validate_is_in_range(gene_to_fam, min = 1, max = n_families)
 
   # Call the Rcpp forwarder.
   result <- tox_compute_family_scaling_rcpp(distances, gene_to_fam, n_families)
@@ -241,14 +241,14 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
                                               perm_tmp, stack_left_tmp, stack_right_tmp,
                                               family_distances) {
 # Input validation
-  validate_numeric_vector(distances)
+  validate_is_numeric_vector(distances)
   n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes)
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
-  validate_length_equals_n(perm_tmp, n_genes)
-  validate_length_equals_n(stack_left_tmp, n_genes)
-  validate_length_equals_n(stack_right_tmp, n_genes)
-  validate_length_equals_n(family_distances, n_genes)
+  validate_is_length_equals(gene_to_fam, n_genes)
+  validate_is_in_range(gene_to_fam, min = 1, max = n_families)
+  validate_is_length_equals(perm_tmp, n_genes)
+  validate_is_length_equals(stack_left_tmp, n_genes)
+  validate_is_length_equals(stack_right_tmp, n_genes)
+  validate_is_length_equals(family_distances, n_genes)
 
   # Call the Rcpp forwarder.
   result <- tox_compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, perm_tmp, stack_left_tmp, stack_right_tmp,
@@ -345,8 +345,6 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
 #' @examples
 #' normalized_matrix <- tox_normalize_by_std_dev(input_matrix)
 tox_normalize_by_std_dev <- function(input_matrix) {
-
-
   result <- tox_normalize_by_std_dev_rcpp(input_matrix)
   return(matrix(result$output_vector, nrow = nrow(input_matrix), ncol = ncol(input_matrix), dimnames = dimnames(input_matrix)))
 }
@@ -367,7 +365,7 @@ tox_normalize_by_std_dev <- function(input_matrix) {
 #' @examples
 #' normalized_matrix <- tox_quantile_normalization(input_matrix)
 tox_quantile_normalization <- function(input_matrix) {
-  validate_matrix(input_matrix)
+  validate_numeric_matrix(input_matrix)
   n_genes <- nrow(input_matrix)
   n_tissues <- ncol(input_matrix)
   result <- tox_quantile_normalization_rcpp(input_matrix)
@@ -394,7 +392,7 @@ tox_quantile_normalization <- function(input_matrix) {
 #' @examples
 #' log_matrix <- tox_log2_transformation(input_matrix)
 tox_log2_transformation <- function(input_matrix) {
-  validate_matrix(input_matrix)
+  validate_numeric_matrix(input_matrix)
   n_genes <- nrow(input_matrix)
   n_tissues <- ncol(input_matrix)
   result <- tox_log2_transformation_rcpp(input_matrix)
@@ -421,7 +419,7 @@ tox_log2_transformation <- function(input_matrix) {
 #' @examples
 #' averaged_df <- tox_calculate_tissue_averages(df)
 tox_calculate_tissue_averages <- function(df) {
-  validate_matrix(df)
+  validate_numeric_matrix(df)
 
   tissue_groups <- as.character(sapply(colnames(df), tox_parse_tissue_group))
   unique_groups <- unique(tissue_groups)
@@ -465,7 +463,7 @@ tox_calculate_tissue_averages <- function(df) {
 #' @param control_pattern A string pattern to detect control columns.
 #' @param condition_patterns A character vector with patterns to detect condition columns.
 tox_calculate_fold_changes <- function(df, control_pattern, condition_patterns) {
-  validate_matrix(df)
+  validate_numeric_matrix(df)
   validate_string_scalar(control_pattern)
   validate_character_vector(condition_patterns)
 
@@ -497,12 +495,14 @@ tox_calculate_fold_changes <- function(df, control_pattern, condition_patterns) 
 #' @param group_s Integer vector: start column index for each replicate group (1-based)
 #' @param group_c Integer vector: number of columns per replicate group
 tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
-  validate_matrix(input_matrix)
-  group_s <- as.integer(group_s)
-  group_c <- as.integer(group_c)
+  validate_numeric_matrix(input_matrix)
   validate_group_vectors(group_s, group_c, ncol(input_matrix))
 
-  result <- tox_normalization_pipeline_rcpp(input_matrix, group_s, group_c)
+  result <- tox_normalization_pipeline_rcpp(
+    input_matrix,
+    as.integer(group_s),
+    as.integer(group_c)
+  )
 
   check_err_code(result$ierr)
 
@@ -881,15 +881,17 @@ tox_compute_shift_vector_field <- function(expression_vectors, family_centroids,
   # R-layer validation (kept in rcpp/)
   validate_numeric_matrix(expression_vectors)
   validate_numeric_matrix(family_centroids)
-  # Ensure matching axes (rows)
   validate_matching_rows(expression_vectors, family_centroids)
 
-  # gene_to_centroid should be integer vector with length equal to number of vectors
-  gene_to_centroid <- as.integer(gene_to_centroid)
+  # Validate gene_to_centroid before casting
   n_vectors <- ncol(as.matrix(expression_vectors))
   validate_length_equals_n(gene_to_centroid, n_vectors)
 
-  result <- tox_compute_shift_vector_field_rcpp(expression_vectors, family_centroids, gene_to_centroid)
+  result <- tox_compute_shift_vector_field_rcpp(
+    expression_vectors,
+    family_centroids,
+    as.integer(gene_to_centroid)
+  )
   check_err_code(result$ierr)
   return(list(shift_vectors = result$shift_vectors))
 }
@@ -946,6 +948,7 @@ tox_mean_vector <- function(expression_vectors, gene_indices) {
 #  1) Array metadata wrapper
 # ============================================================
 
+#> f42_array_utils:get_array_metadata_C: Get array metadata from serialized file
 tox_get_array_metadata <- function(filename, max_dims = 5L, with_clen = FALSE) {
   # Coerce to expected base types
   filename  <- as.character(filename)
@@ -978,6 +981,8 @@ tox_get_array_metadata <- function(filename, max_dims = 5L, with_clen = FALSE) {
 # ============================================================
 #  2) Deserialization (int / real / char)
 # ============================================================
+
+#> f42_deserialize_int:deserialize_int_nd_C: Deserialize integer array from binary file
 tox_deserialize_int_array <- function(filename, max_dims = 5L) {
   # validate inputs
   validate_filename(filename)
@@ -997,6 +1002,7 @@ tox_deserialize_int_array <- function(filename, max_dims = 5L) {
 }
 
 
+#> f42_deserialize_real:deserialize_real_nd_C: Deserialize real array from binary file
 tox_deserialize_real_array <- function(filename, max_dims = 5L) {
 #validate inputs
   validate_filename(filename)
@@ -1021,6 +1027,7 @@ tox_deserialize_real_array <- function(filename, max_dims = 5L) {
   array(result$values, dim = result$dims[1:result$ndim])
   }
 
+#> f42_deserialize_char:deserialize_char_nd_C: Deserialize character array from binary file
 tox_deserialize_char_array <- function(filename, max_dims = 5L) {
   #validate inputs
   validate_filename(filename)
@@ -1048,6 +1055,7 @@ tox_deserialize_char_array <- function(filename, max_dims = 5L) {
 #  3) Serialization (int / real / char)
 # ============================================================
 
+#> f42_serialize_int:serialize_int_nd_C: Serialize integer array to binary file
 tox_serialize_int_array <- function(arr, filename) {
   #validate inputs
   validate_array_or_vector(arr)
@@ -1065,6 +1073,7 @@ tox_serialize_int_array <- function(arr, filename) {
 }
 
 
+#> f42_serialize_real:serialize_real_nd_C: Serialize real array to binary file
 tox_serialize_real_array <- function(arr, filename) {
   #validate inputs
   validate_array_or_vector(arr)
@@ -1083,6 +1092,7 @@ tox_serialize_real_array <- function(arr, filename) {
 }
 
 
+#> f42_serialize_char:serialize_char_nd_C: Serialize character array to binary file
 tox_serialize_char_array <- function(arr, filename) {
   #validate inputs
   validate_array_or_vector(arr)
@@ -1101,13 +1111,420 @@ tox_serialize_char_array <- function(arr, filename) {
   invisible(NULL)
 }
 
+# ============================================================
+#  Deserialization (logical / complex)
+# ============================================================
+
+#> f42_deserialize_logical:deserialize_logical_nd_C: Deserialize logical array from binary file
+tox_deserialize_logical_array <- function(filename, max_dims = 5L) {
+  # validate inputs
+  validate_filename(filename)
+  validate_max_dims(max_dims)
+  validate_file_exists(filename)
+
+  meta <- tox_get_array_metadata(filename, max_dims, with_clen = FALSE)
+  
+  # Coerce to base types
+  filename <- as.character(filename)
+  max_dims <- as.integer(max_dims)
+
+  # Call Rcpp wrapper
+  result <- tox_deserialize_logical_array_rcpp(filename, max_dims)
+
+  # Check error code
+  check_err_code(result$ierr)
+
+  # Shape flat vector into array
+  array(result$values, dim = result$dims[1:result$ndim])
+}
+
+#> f42_deserialize_complex:deserialize_complex_nd_C: Deserialize complex array from binary file
+tox_deserialize_complex_array <- function(filename, max_dims = 5L) {
+  # validate inputs
+  validate_filename(filename)
+  validate_max_dims(max_dims)
+  validate_file_exists(filename)
+
+  meta <- tox_get_array_metadata(filename, max_dims, with_clen = FALSE)
+  
+  # Coerce to base types
+  filename <- as.character(filename)
+  max_dims <- as.integer(max_dims)
+
+  # Call Rcpp wrapper
+  result <- tox_deserialize_complex_array_rcpp(filename, max_dims)
+
+  # Check error code
+  check_err_code(result$ierr)
+
+  # Shape flat vector into array
+  array(result$values, dim = result$dims[1:result$ndim])
+}
+
+# ============================================================
+#  Serialization (logical / complex)
+# ============================================================
+
+#> f42_serialize_logical:serialize_logical_nd_C: Serialize logical array to binary file
+tox_serialize_logical_array <- function(arr, filename) {
+  # validate inputs
+  validate_array_or_vector(arr)
+  validate_filename(filename)
+  
+  # Coerce to base types
+  filename <- as.character(filename)
+  arr <- as.array(arr)
+
+  # Call Rcpp wrapper
+  result <- tox_serialize_logical_array_rcpp(arr, filename)
+
+  check_err_code(result$ierr)
+  invisible(NULL)
+}
+
+#> f42_serialize_complex:serialize_complex_nd_C: Serialize complex array to binary file
+tox_serialize_complex_array <- function(arr, filename) {
+  # validate inputs
+  validate_array_or_vector(arr)
+  validate_filename(filename)
+  
+  # Coerce to base types
+  filename <- as.character(filename)
+  arr <- as.array(arr)
+
+  # Call Rcpp wrapper
+  result <- tox_serialize_complex_array_rcpp(arr, filename)
+
+  check_err_code(result$ierr)
+  invisible(NULL)
+}
+
+# ============================================================
+#  Trajectory Contribution Analysis (TCA) Functions
+# ============================================================
+
+#> tox_trajectory_contribution_analysis:compute_contributions_c: Compute local and total contributions for factor-dependent pairs
+#' Compute local and total contributions for factor-dependent pairs
+#'
+#' Computes contribution metrics for a single factor-dependent timeseries pair
+#' using the specified baseline mode.
+#'
+#' @param factor NumericVector of factor values across timepoints
+#' @param dependent NumericVector of dependent values across timepoints (same length as factor)
+#' @param mode Character string specifying baseline mode: "raw", "min", or "mean"
+#'
+#' @return List with components:
+#'   - local_contributions: NumericVector of per-timepoint contributions
+#'   - total_contribution: Numeric scalar (sum of contributions)
+#'   - ierr: Integer error code (0 = success)
+#'
+tox_compute_contributions <- function(factor, dependent, mode = "raw") {
+  # Input validation
+  validate_numeric_vector(factor)
+  validate_numeric_vector(dependent)
+  validate_same_length(factor, dependent)
+  validate_nonempty(factor)
+  
+  if (!mode %in% c("raw", "min", "mean")) {
+    stop("mode must be one of: 'raw', 'min', 'mean'")
+  }
+  
+  # Coerce to base types
+  factor <- as.numeric(factor)
+  dependent <- as.numeric(dependent)
+  mode <- as.character(mode)
+  
+  # Call Rcpp wrapper
+  result <- tox_compute_contributions_rcpp(factor, dependent, mode)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_contribution_analysis:compute_all_contributions_c: Compute contributions for all factor-dependent pairs in trajectories
+#' Compute contributions for all factor-dependent pairs in trajectories
+#'
+#' Computes contributions across all selected factor-dependent pairs in 3D trajectory data
+#' (n_factors × n_samples × n_timepoints).
+#'
+#' @param trajectories NumericVector of flattened 3D trajectory data
+#' @param dims IntegerVector of length 3: (n_factors, n_samples, n_timepoints)
+#' @param factor_indices IntegerVector of 1-based factor indices to analyze
+#' @param dependent_indices IntegerVector of 1-based dependent indices to analyze
+#' @param mode Character string specifying baseline mode: "raw", "min", or "mean"
+#'
+#' @return List with components:
+#'   - local_contributions: 4D array of per-timepoint contributions
+#'   - total_contributions: 3D array of total contributions per factor-dependent-sample
+#'   - temp_factors: NumericMatrix of extracted factor trajectories
+#'   - temp_dependent: NumericVector of extracted dependent trajectory
+#'   - ierr: Integer error code (0 = success)
+#'
+tox_compute_all_contributions <- function(trajectories, dims, factor_indices, dependent_indices, mode = "raw") {
+  # Input validation
+  validate_numeric_vector(trajectories)
+  validate_integer_vector(dims)
+  validate_integer_vector(factor_indices)
+  validate_integer_vector(dependent_indices)
+  
+  if (!mode %in% c("raw", "min", "mean")) {
+    stop("mode must be one of: 'raw', 'min', 'mean'")
+  }
+  
+  # Coerce to base types
+  trajectories <- as.numeric(trajectories)
+  dims <- as.integer(dims)
+  factor_indices <- as.integer(factor_indices)
+  dependent_indices <- as.integer(dependent_indices)
+  mode <- as.character(mode)
+  
+  # Call Rcpp wrapper
+  result <- tox_compute_all_contributions_rcpp(trajectories, dims, factor_indices, dependent_indices, mode)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_contribution_analysis:compute_baselines_factor_dependent_c: Compute baseline values for factor and dependent variables
+#' Compute baseline values for factor and dependent variables
+#'
+#' Computes baseline values for a factor-dependent pair using the specified mode
+#' (raw = no baseline, min = minimum value, mean = mean value).
+#'
+#' @param factor NumericVector of factor values across timepoints
+#' @param dependent NumericVector of dependent values across timepoints (same length as factor)
+#' @param mode Character string specifying baseline mode: "raw", "min", or "mean"
+#'
+#' @return List with components:
+#'   - factor_baseline: Numeric scalar baseline for factor
+#'   - dependent_baseline: Numeric scalar baseline for dependent
+#'   - ierr: Integer error code (0 = success)
+#'
+tox_compute_baselines_factor_dependent <- function(factor, dependent, mode = "raw") {
+  # Input validation
+  validate_numeric_vector(factor)
+  validate_numeric_vector(dependent)
+  validate_same_length(factor, dependent)
+  validate_nonempty(factor)
+  
+  if (!mode %in% c("raw", "min", "mean")) {
+    stop("mode must be one of: 'raw', 'min', 'mean'")
+  }
+  
+  # Coerce to base types
+  factor <- as.numeric(factor)
+  dependent <- as.numeric(dependent)
+  mode <- as.character(mode)
+  
+  # Call Rcpp wrapper
+  result <- tox_compute_baselines_factor_dependent_rcpp(factor, dependent, mode)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_contribution_analysis:perform_permutation_test_c: Perform permutation test for contribution significance
+#' Perform permutation test for contribution significance
+#'
+#' Tests the significance of a contribution by comparing observed contributions
+#' to a permutation distribution.
+#'
+#' @param trajectories NumericVector of flattened 3D trajectory data
+#' @param dims IntegerVector of length 3: (n_factors, n_samples, n_timepoints)
+#' @param factor_idx Integer 1-based index of the factor
+#' @param dependent_idx Integer 1-based index of the dependent variable
+#' @param sample_idx Integer 1-based index of the sample
+#' @param mode Character string specifying baseline mode: "raw", "min", or "mean"
+#' @param n_permutations Integer number of permutations to perform
+#' @param random_seed Integer random seed for reproducibility
+#'
+#' @return List with components:
+#'   - local_contributions: 2D array of permutation local contributions
+#'   - total_contributions: NumericVector of permutation total contributions
+#'   - temp_factor: NumericVector of extracted factor trajectory
+#'   - temp_dependent: NumericVector of extracted dependent trajectory
+#'   - ierr: Integer error code (0 = success)
+#'
+tox_perform_permutation_test <- function(trajectories, dims, factor_idx, dependent_idx, sample_idx,
+                                         mode = "raw", n_permutations = 1000, random_seed = 12345) {
+  # Input validation
+  validate_numeric_vector(trajectories)
+  validate_nonempty(trajectories)
+  validate_integer_vector(dims)
+  validate_positive_integer_scalar(factor_idx, "factor_idx")
+  validate_positive_integer_scalar(dependent_idx, "dependent_idx")
+  validate_positive_integer_scalar(sample_idx, "sample_idx")
+  validate_positive_integer_scalar(n_permutations, "n_permutations")
+  validate_positive_integer_scalar(random_seed, "random_seed")
+  
+  if (!mode %in% c("raw", "min", "mean")) {
+    stop("mode must be one of: 'raw', 'min', 'mean'")
+  }
+  
+  # Coerce to base types
+  trajectories <- as.numeric(trajectories)
+  dims <- as.integer(dims)
+  factor_idx <- as.integer(factor_idx)
+  dependent_idx <- as.integer(dependent_idx)
+  sample_idx <- as.integer(sample_idx)
+  mode <- as.character(mode)
+  n_permutations <- as.integer(n_permutations)
+  random_seed <- as.integer(random_seed)
+  
+  # Call Rcpp wrapper
+  result <- tox_perform_permutation_test_rcpp(trajectories, dims, factor_idx, dependent_idx, sample_idx, 
+                                              mode, n_permutations, random_seed)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_contribution_analysis:compute_p_values_c: Compute p-values for contribution significance
+#' Compute p-values for contribution significance
+#'
+#' Computes p-values by comparing observed contributions to permutation distributions.
+#' P-values represent the fraction of permutations where the contribution was >= observed.
+#'
+#' @param local_contributions_observed NumericVector of observed per-timepoint contributions (length n_timepoints)
+#' @param total_contribution_observed Numeric scalar of observed total contribution
+#' @param local_contributions_perm NumericVector of flattened permutation local contributions (length n_timepoints * n_permutations)
+#' @param total_contributions_perm NumericVector of permutation total contributions (length n_permutations)
+#' @param dims IntegerVector of length 2: (n_timepoints, n_permutations)
+#'
+#' @return List with components:
+#'   - local_p_values: NumericVector of p-values for each timepoint
+#'   - total_p_value: Numeric scalar p-value for total contribution
+#'   - ierr: Integer error code (0 = success)
+#'
+tox_compute_p_values <- function(local_contributions_observed, total_contribution_observed, 
+                                  local_contributions_perm, total_contributions_perm, dims) {
+  # Input validation
+  validate_numeric_vector(local_contributions_observed)
+  validate_nonempty(local_contributions_observed)
+  validate_positive_numeric_scalar(total_contribution_observed, "total_contribution_observed")
+  validate_numeric_vector(local_contributions_perm)
+  validate_numeric_vector(total_contributions_perm)
+  validate_integer_vector(dims)
+  
+  if (length(dims) != 2) {
+    stop("dims must have length 2: (n_timepoints, n_permutations)")
+  }
+  
+  # Call Rcpp wrapper with type conversion
+  result <- tox_compute_p_values_rcpp(
+    as.numeric(local_contributions_observed),
+    as.numeric(total_contribution_observed),
+    as.numeric(local_contributions_perm),
+    as.numeric(total_contributions_perm),
+    as.integer(dims)
+  )
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+# ============================================================
+#  Trajectory Normalization Functions
+# ============================================================
+
+#> tox_trajectory_normalization:normalize_variable_timeseries_c: Normalize a variable timeseries using min-max scaling
+#' Normalize a variable timeseries using min-max scaling
+#'
+#' Performs min-max normalization (scaling to [0,1] range) on a single variable timeseries.
+#'
+#' @param v NumericVector of timeseries values to normalize
+#'
+#' @return List with components:
+#'   - v_norm: NumericVector of normalized values in [0,1] range
+#'   - ierr: Integer error code (0 = success)
+#'   - status: Integer status code (additional warnings/info)
+#'
+tox_normalize_variable_timeseries <- function(v) {
+  # Input validation
+  validate_numeric_vector(v)
+  validate_nonempty(v)
+  
+  # Coerce to base types
+  v <- as.numeric(v)
+  
+  # Call Rcpp wrapper
+  result <- tox_normalize_variable_timeseries_rcpp(v)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_normalization:normalize_single_trajectory_c: Normalize a single trajectory (multiple factors across timepoints)
+#' Normalize a single trajectory (multiple factors across timepoints)
+#'
+#' Performs min-max normalization independently for each factor in a trajectory
+#' (n_timepoints × n_factors matrix).
+#'
+#' @param trajectory NumericMatrix with dimensions (n_timepoints × n_factors)
+#'   Each column represents a single factor normalized across timepoints
+#'
+#' @return List with components:
+#'   - trajectory_norm: NumericMatrix with same dimensions as input, normalized per factor
+#'   - ierr: Integer error code (0 = success)
+#'   - status: Integer status code (additional warnings/info)
+#'
+tox_normalize_single_trajectory <- function(trajectory) {
+  # Input validation
+  validate_numeric_matrix(trajectory, "trajectory")
+  
+  if (nrow(trajectory) == 0 || ncol(trajectory) == 0) {
+    stop("trajectory must have non-zero dimensions")
+  }
+  
+  # Coerce to base types
+  trajectory <- as.matrix(trajectory)
+  mode(trajectory) <- "numeric"
+  
+  # Call Rcpp wrapper
+  result <- tox_normalize_single_trajectory_rcpp(trajectory)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_trajectory_normalization:normalize_all_trajectories_c: Normalize all trajectories in 3D trajectory data
+#' Normalize all trajectories in 3D trajectory data
+#'
+#' Performs min-max normalization independently for each factor across all samples and timepoints.
+#' Input: 3D array of dimensions (n_factors × n_samples × n_timepoints)
+#'
+#' @param trajectories NumericVector of flattened 3D trajectory data
+#' @param dims IntegerVector of length 3: (n_factors, n_samples, n_timepoints)
+#'
+#' @return List with components:
+#'   - trajectories_norm: NumericVector of normalized flattened data with 3D dimensions restored
+#'   - ierr: Integer error code (0 = success)
+#'   - status: Integer status code (additional warnings/info)
+#'
+tox_normalize_all_trajectories <- function(trajectories, dims) {
+  # Input validation
+  validate_numeric_vector(trajectories)
+  validate_nonempty(trajectories)
+  validate_integer_vector(dims)
+  
+  # Coerce to base types
+  trajectories <- as.numeric(trajectories)
+  dims <- as.integer(dims)
+  
+  # Call Rcpp wrapper
+  result <- tox_normalize_all_trajectories_rcpp(trajectories, dims)
+  
+  check_err_code(result$ierr)
+  return(result)
+}
+
 
 
 # ============================================================
 #  4) KD-tree index (multidimensional) + spherical KD
 # ============================================================
 
-
+#> f42_kd_tree:build_kd_index_C: Build KD-tree index for multidimensional points
 build_kd_index <- function(X, dim_order = NULL) {
   # Input validation using standardized validation functions
   validate_numeric_matrix(X, "X")
@@ -1135,6 +1552,7 @@ build_kd_index <- function(X, dim_order = NULL) {
   result$kd_ix
 }
 
+#> f42_kd_tree:build_spherical_kd_index_C: Build Spherical KD-Tree index (R-level wrapper)
 #' Build Spherical KD-Tree index (R-level wrapper)
 build_spherical_kd <- function(V, dim_order = NULL) {
   # R-layer validation
@@ -1183,16 +1601,13 @@ get_kd_point <- function(X, kd_ix, position) {
 #  5) BST index + range query
 # ============================================================
 
+#> f42_binary_search_tree:build_bst_index_C: Build binary search tree index
 #  BST index
 build_bst_index <- function(x) {
-  # Accept either a numeric vector or a single-column numeric matrix
   validate_numeric_vector(x, "x")
 
-  # Convert to appropriate type for Rcpp
-  x <- as.numeric(x)
-
-  # Call Rcpp wrapper (returns IntegerVector of indices)
-  result <- build_bst_index_rcpp(x)
+  # Call Rcpp wrapper with type conversion
+  result <- build_bst_index_rcpp(as.numeric(x))
 
   # Return index vector
   return(result)
@@ -1201,28 +1616,31 @@ build_bst_index <- function(x) {
 #' Get sorted value by BST index (R helper)
 get_sorted_value <- function(x, ix, position) {
   validate_numeric_vector(x, "x")
-  ix <- as.integer(ix)
-  position <- as.integer(position)
   validate_array_or_vector(ix, "ix")
-  return(as.numeric(x)[ix[position]])
+  
+  # Cast once and use
+  ix_int <- as.integer(ix)
+  position_int <- as.integer(position)
+  return(as.numeric(x)[ix_int[position_int]])
 }
 
 # ============================================================
 # BST range query
+
+#> f42_binary_search_tree:bst_range_query_C: Query BST index for values in range [lo, hi]
 bst_range_query <- function(x, ix, lo, hi) {
 
   validate_numeric_vector(x, "x")
-  validate_integer_vector(as.integer(ix), "ix")
+  validate_integer_vector(ix, "ix")
   validate_equal_length(x, ix, "x", "ix")
 
- # Convert types for Rcpp
-  x  <- as.numeric(x)
-  ix <- as.integer(ix)
-  lo <- as.numeric(lo)
-  hi <- as.numeric(hi)
-
-  # Call Rcpp wrapper
-  result <- bst_range_query_rcpp(x, ix, lo, hi)
+  # Call Rcpp wrapper with type conversion
+  result <- bst_range_query_rcpp(
+    as.numeric(x),
+    as.integer(ix),
+    as.numeric(lo),
+    as.numeric(hi)
+  )
 
   # Check for errors
   check_err_code(result$ierr)
@@ -1239,8 +1657,9 @@ bst_range_query <- function(x, ix, lo, hi) {
 #  6) which() helper via C backend
 # ============================================================
 
+#> f42_utils:which_C: Extract indices where mask is non-zero
 tox_which <- function(mask, m_max = length(mask)) {
-  validate_integer_vector(as.integer(mask), "mask")
+  validate_integer_vector(mask, "mask")
 
   result <- tox_which_rcpp(
     mask = as.integer(mask),
@@ -1257,6 +1676,7 @@ tox_which <- function(mask, m_max = length(mask)) {
 #  7) LOESS smoothing (2D)
 # ============================================================
 
+#> tox_get_outliers:loess_smooth_2d_c: Perform 2D LOESS smoothing with kernel weighting
 tox_loess_smooth_2d <- function(
   x_ref,
   y_ref,
@@ -1326,6 +1746,7 @@ tox_loess_smooth_2d <- function(
   )
 }
 
+#> tox_relative_axis_plane_tools:omics_vector_RAP_projection_c: Project selected vectors onto a Relative Axis Plane (RAP)
 #' Project selected vectors onto a Relative Axis Plane (RAP)
 #' 
 #' This function validates inputs and calls the C/Rcpp RAP projection wrapper.
@@ -1338,17 +1759,19 @@ tox_omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_sele
   validate_numeric_matrix(vecs, "vecs")
   n_axes <- nrow(vecs)
   n_vecs <- ncol(vecs)
-
   validate_logical_or_index_vector(vecs_selection_mask, expected_length = n_vecs, name = "vecs_selection_mask")
   validate_logical_or_index_vector(axes_selection_mask, expected_length = n_axes, name = "axes_selection_mask")
-  vecs_selection_mask <- as.integer(vecs_selection_mask)
-  axes_selection_mask <- as.integer(axes_selection_mask)
 
-  res <- tox_omics_vector_RAP_projection_rcpp(vecs, vecs_selection_mask, axes_selection_mask)
+  res <- tox_omics_vector_RAP_projection_rcpp(
+    vecs,
+    as.integer(vecs_selection_mask),
+    as.integer(axes_selection_mask)
+  )
   check_err_code(res$ierr)
   return(res$projections)
 }
 
+#> tox_relative_axis_plane_tools:omics_field_RAP_projection_c: Project selected vector fields onto a Relative Axis Plane (RAP)
 #' Project selected vector fields onto a Relative Axis Plane (RAP)
 #' 
 #' This function validates inputs and calls the C/Rcpp RAP field projection wrapper.
@@ -1363,13 +1786,17 @@ tox_omics_field_RAP_projection <- function(vecs, vecs_selection_mask, axes_selec
   n_vecs <- ncol(vecs)
   validate_logical_or_index_vector(vecs_selection_mask, expected_length = n_vecs, name = "vecs_selection_mask")
   validate_logical_or_index_vector(axes_selection_mask, expected_length = n_axes, name = "axes_selection_mask")
-  vecs_selection_mask <- as.integer(vecs_selection_mask)
-  axes_selection_mask <- as.integer(axes_selection_mask)
-  res <- tox_omics_field_RAP_projection_rcpp(vecs, vecs_selection_mask, axes_selection_mask)
+
+  res <- tox_omics_field_RAP_projection_rcpp(
+    vecs,
+    as.integer(vecs_selection_mask),
+    as.integer(axes_selection_mask)
+  )
   check_err_code(res$ierr)
   return(res$projections)
 }
 
+#> tox_relative_axis_plane_tools:relative_axes_changes_from_shift_vector_c: Compute relative axis changes from a RAP-projected and normalized shift vector
 #' Compute relative axis changes from a RAP-projected and normalized shift vector
 #' 
 #' @param vec Numeric vector (RAP-projected and normalized shift vector)
@@ -1381,6 +1808,7 @@ tox_relative_axes_changes_from_shift_vector <- function(vec) {
   return(res)
 }
 
+#> tox_relative_axis_plane_tools:relative_axes_expression_from_expression_vector_c: Compute relative axis contributions from a RAP-projected and normalized expression vector
 #' Compute relative axis contributions from a RAP-projected and normalized expression vector
 #' 
 #' @param vec Numeric vector (RAP-projected and normalized expression vector)
@@ -1392,6 +1820,7 @@ tox_relative_axes_expression_from_expression_vector <- function(vec) {
   return(res)
 }
 
+#> tox_relative_axis_plane_tools:clock_hand_angle_between_vectors_c: Compute signed clock hand angle between two RAP-projected and normalized vectors
 #' Compute signed clock hand angle between two RAP-projected and normalized vectors
 #' 
 #' @param v1 Numeric vector (first normalized vector in RAP space)
@@ -1408,6 +1837,7 @@ tox_clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signe
   return(res)
 }
 
+#> tox_relative_axis_plane_tools:clock_hand_angles_for_shift_vectors_c: Compute signed rotation angles for pairs of RAP-projected and normalized vectors
 #' Compute signed rotation angles for pairs of RAP-projected and normalized vectors
 #' 
 #' @param origins Numeric matrix (n_dims x n_vecs), first set of vectors
@@ -1424,6 +1854,7 @@ tox_clock_hand_angles_for_shift_vectors <- function(origins, targets, vecs_selec
   res <- tox_clock_hand_angles_for_shift_vectors_rcpp(origins, targets, as.integer(vecs_selection_mask), selected_axes_for_signed)
   return(res)
 }
+#> tox_clustering:cluster_factor_trajectories_k_means_c: K-means clustering on factor trajectories
 #' K-means clustering on factor trajectories
 #'
 #' Performs k-means clustering on factor trajectories (factor evolution over time).
@@ -1453,6 +1884,7 @@ tox_cluster_factor_trajectories_k_means <- function(n_clusters, trajectories, n_
   return(res)
 }
 
+#> tox_clustering:k_means_clustering_c: K-means clustering (general)
 #' K-means clustering (general)
 #'
 #' Performs k-means clustering on general data points.

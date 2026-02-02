@@ -21,63 +21,7 @@ extern "C" {
       int *ierr,
       int *max_iterations
     );
-// [[Rcpp::export]]
-List tox_cluster_factor_trajectories_k_means_rcpp(int n_clusters,
-                                 NumericVector trajectories,
-                                 int n_factors,
-                                 int n_samples,
-                                 int n_timepoints,
-                                 NumericMatrix centroids,
-                                 int max_iterations = 300) {
-    int n_points = n_samples * n_timepoints;
-    IntegerVector labels(n_points);
-    IntegerVector label_counts(n_clusters);
-    int ierr = 0;
-    // Fortran expects column-major, R matrices are column-major
-    cluster_factor_trajectories_k_means_c(&n_clusters,
-                        trajectories.begin(),
-                        &n_factors,
-                        &n_samples,
-                        &n_timepoints,
-                        centroids.begin(),
-                        labels.begin(),
-                        label_counts.begin(),
-                        &ierr,
-                        &max_iterations);
-    centroids.attr("dim") = Dimension(n_factors, n_clusters);
-    return List::create(Named("centroids") = centroids,
-              Named("labels") = labels,
-              Named("label_counts") = label_counts,
-              Named("ierr") = ierr);
-}
-
     void k_means_clustering_c(
-    int *n_clusters,
-    double *data_points,
-    int *n_points,
-    int *n_dims,
-    double *centroids,
-    int *labels,
-    int *label_counts,
-    int *ierr,
-    int *max_iterations
-  );
-
-
-
-    void cluster_factor_trajectories_k_means_c(
-    int *n_clusters,
-    double *trajectories,
-    int *n_factors,
-    int *n_samples,
-    int *n_timepoints,
-    double *centroids,
-    int *labels,
-    int *label_counts,
-    int *ierr,
-    int *max_iterations
-  );
-  void k_means_clustering_c(
     int *n_clusters,
     double *data_points,
     int *n_points,
@@ -131,16 +75,16 @@ void omics_field_RAP_projection_c(
 
 
     void normalize_by_std_dev_c(int n_genes, int n_tissues,
-                                double *input_matrix, double *output_matrix, int *ierr);
+                                double *input_matrix, double *output_matrix, int *ierr);                                    
     void quantile_normalization_c(int n_genes, int n_tissues, double *input_matrix, double *output_matrix,
                                 double *temp_col, double *rank_means,
                                   int *perm, int *stack_left, int *stack_right,
                                   int max_stack, int *ierr);
     void log2_transformation_c(int n_genes, int n_tissues,
-                               double *input_matrix, double *output_matrix, int *ierr);
+                               double *input_matrix, double *output_matrix, int *ierr); 
 
     void calc_tiss_avg_c(int n_genes, int n_grps,int *group_s, int *group_c,
-                         double *input_matrix, double *output_matrix, int *ierr);
+                         double *input_matrix, double *output_matrix, int *ierr);  
     void calc_fchange_c(int n_genes, int n_cols, int n_pairs,int *control_cols, int *cond_cols,
                         double *input_matrix, double *output_matrix, int *ierr);
 
@@ -158,8 +102,8 @@ void omics_field_RAP_projection_c(
         double* loess_x, double* loess_y, int* indices_used,
         int* ierr
       );
-
-      void compute_family_scaling_expert_c(
+      
+  void compute_family_scaling_expert_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* dscale,
@@ -168,24 +112,24 @@ void omics_field_RAP_projection_c(
         double* family_distances,
         int* ierr
       );
-
-      void compute_rdi_c(
+      
+  void compute_rdi_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* dscale,
         double* rdi, double* sorted_rdi,
         int* perm, int* stack_left, int* stack_right
       );
-
-      void identify_outliers_c(
+      
+  void identify_outliers_c(
         int n_genes,
         double* rdi, double* sorted_rdi,
         int* is_outlier_int,
         double* threshold,
         double percentile
       );
-
-      void detect_outliers_c(
+      
+  void detect_outliers_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* work_array,
@@ -196,8 +140,8 @@ void omics_field_RAP_projection_c(
         double percentile
       );
 
-
-      void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
+      
+  void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
 
   void distance_to_centroid_c(
         int n_genes, int n_families,
@@ -269,31 +213,48 @@ void loess_smooth_2d_c(
     );
          
 void deserialize_int_nd_C(
-        int* arr, int arr_size, 
-        int* filename_ascii, int fn_len, int* ierr);
+    int* arr, int arr_size,
+    const char* filename_raw, int fn_len, int* ierr);
 
 void deserialize_real_nd_C(
-        double* arr, int arr_size, 
-        int* filename_ascii, int fn_len, int* ierr);
+    double* arr, int arr_size,
+    const char* filename_raw, int fn_len, int* ierr);
 
 void deserialize_char_nd_C(
-        int* ascii_arr, int clen, 
-        int total_array_size, int* filename_ascii, int fn_len, int* ierr);
+  char* ascii_arr, int clen,
+  int total_array_size, const char* filename_raw, int fn_len, int* ierr);
 
 void serialize_int_nd_C(
-        void* arr, int* dims, 
-        int ndim, int* filename_ascii, int fn_len, int* ierr);
+    void* arr, int* dims,
+    int ndim, const char* filename_raw, int fn_len, int* ierr);
 void serialize_real_nd_C(
-        void* arr, int* dims, 
-        int ndim, int* filename_ascii, int fn_len, int* ierr);
+    void* arr, int* dims,
+    int ndim, const char* filename_raw, int fn_len, int* ierr);
 
 void serialize_char_nd_C(
-        int* ascii_arr, int* dims, 
-        int ndim, int clen, int* filename_ascii, int fn_len, int* ierr);
+  char* ascii_arr, int* dims,
+  int ndim, int clen, const char* filename_raw, int fn_len, int* ierr);
+
+void deserialize_logical_nd_C(
+  int* arr, int* arr_size,
+  const char* filename_raw, int fn_len, int* ierr);
+
+void serialize_logical_nd_C(
+  int* arr, int* dims,
+  int ndim, const char* filename_raw, int fn_len, int* ierr);   
+
+void serialize_complex_nd_C(
+  void* arr, int* dims,
+  int ndim, const char* filename_raw, int fn_len, int* ierr);
+
+void deserialize_complex_nd_C(
+  void* arr, int* arr_size,
+  const char* filename_raw, int fn_len, int* ierr);
+
 void get_array_metadata_C(
-      const int* filename_ascii,
-      int fn_len, int* dims_out, int* dims_out_capacity,
-      int* ndims, int* ierr, int* clen);
+  const char* filename_raw,
+  int fn_len, int* dims_out, int* dims_out_capacity,
+  int* ndims, int* ierr, int* clen);
 
 void build_bst_index_C(
         const double* values, 
@@ -413,48 +374,119 @@ void validate_all_data_C(int n_genes,
                          const double* shift_vectors,
                          int* ierr);
 
-void create_zip_archive_c(const char* zip_filename,
-                                  int zip_len,
-                                  const char* keys,
-                                  int keys_len,
-                                  int keys_count,
-                                  const char* filenames,
-                                  int filenames_len,
-                                  int filenames_count,
-                                  int* ierr);
 
-void extract_zip_archive_c(const char* zip_filename,
-                                   int filename_len,
-                                   int* ierr);
 
-    void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
-    void distance_to_centroid_c(int n_genes, int n_families, double* genes,
-                                double* centroids, int* gene_to_fam,
-                                double* distances, int d);
-    void compute_tissue_versatility_c(int n_axes, int n_vectors,
-                                      double* expression_vectors,
-                                      int* exp_vecs_selection_index,
-                                      int n_selected_vectors,
-                                      int* axes_selection,
-                                      int n_selected_axes,
-                                      double* tissue_versatilities,
-                                      double* tissue_angles_deg,
-                                      int* ierr);
-    void compute_shift_vector_field_c(int d, int n_genes, int n_families,
-                                      double* expression_vectors, double* family_centroids,
-                                      int* gene_to_centroid, double* shift_vectors,
-                                      int* ierr);
+  
+    void compute_all_contributions_c(
+            double* trajectories,
+            int* n_factors,
+            int* n_samples,
+            int* n_timepoints,
+            int* factor_indices,
+            int* n_selected_factors,
+            int* dependent_indices,
+            int* n_selected_dependents,
+            const char* mode,
+            double* local_contributions,
+            double* total_contributions,
+            double* temp_factors,
+            double* temp_dependent,
+            int* ierr);
+    void compute_contributions_c(
+            double* factor,
+            double* dependent,
+            int* n_dims,
+            const char* mode,
+            double* local_contributions,
+            double* total_contribution,
+            int* ierr);
+    void tox_compute_baselines_factor_dependent_c(
+            double* factor,
+            double* dependent,
+            int* n_timepoints,
+            const char* mode,
+            double* factor_baseline,
+            double* dependent_baseline,
+            int* ierr);
+    void perform_permutation_test_c(
+            double* trajectories,
+            int* n_factors,
+            int* n_samples,
+            int* n_timepoints,
+            int* factor_idx,
+            int* dependent_idx,
+            int* sample_idx,
+            const char* mode,
+            int* n_permutations,
+            double* local_contributions,
+            double* total_contributions,
+            double* temp_factor,
+            double* temp_dependent,
+            int* ierr,
+            int* random_seed);
+    void compute_p_values_c(
+            double* local_contributions_observed,
+            double* total_contribution_observed,
+            double* local_contributions_perm,
+            double* total_contributions_perm,
+            int* n_timepoints,
+            int* n_permutations,
+            double* local_p_values,
+            double* total_p_value,
+            int* ierr);
+    void normalize_variable_timeseries_C(
+            double* v,
+            double* v_norm,
+            int* n_points,
+            int* ierr,
+            int* status);
+    void normalize_single_trajectory_C(
+            double* trajectory,
+            double* trajectory_norm,
+            int* n_factors,
+            int* n_timepoints,
+            int* ierr,
+            int* status);
+    void normalize_all_trajectories_C(
+            double* trajectories,
+            double* trajectories_norm,
+            int* n_factors,
+            int* n_samples,
+            int* n_timepoints,
+            int* ierr,
+            int* status);
 
-    void mean_vector_c(double* expression_vectors, int n_axes, int n_genes,
-                       int* gene_indices, int n_selected_genes,
-                       double* centroid_col, int* ierr);
-
-    void group_centroid_c(double* expression_vectors, int n_axes, int n_genes,
-                         int* gene_to_family, int n_families,
-                         double* centroid_matrix, const char* mode,
-                         int* ortholog_set, int* selected_indices, int selected_indices_len, int* ierr);
 }
 
+  // [[Rcpp::export]]
+  List tox_cluster_factor_trajectories_k_means_rcpp(int n_clusters,
+                   NumericVector trajectories,
+                   int n_factors,
+                   int n_samples,
+                   int n_timepoints,
+                   NumericMatrix centroids,
+                   int max_iterations = 300) {
+    int n_points = n_samples * n_timepoints;
+    IntegerVector labels(n_points);
+    IntegerVector label_counts(n_clusters);
+    int ierr = 0;
+    // Fortran expects column-major, R matrices are column-major
+    cluster_factor_trajectories_k_means_c(&n_clusters,
+              trajectories.begin(),
+              &n_factors,
+              &n_samples,
+              &n_timepoints,
+              centroids.begin(),
+              labels.begin(),
+              label_counts.begin(),
+              &ierr,
+              &max_iterations);
+    centroids.attr("dim") = Dimension(n_factors, n_clusters);
+    return List::create(Named("centroids") = centroids,
+          Named("labels") = labels,
+          Named("label_counts") = label_counts,
+          Named("ierr") = ierr);
+  }
 
 // [[Rcpp::export]]
 List tox_k_means_clustering_rcpp(int n_clusters,
@@ -490,7 +522,7 @@ List tox_k_means_clustering_rcpp(int n_clusters,
 double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
     int d = vec1.length();
     double result = 0.0;
-
+    
     euclidean_distance_c(vec1.begin(), vec2.begin(), d, &result);
     return result;
 }
@@ -499,17 +531,17 @@ double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
  * Calculate distances from genes to their family centroids
  */
 // [[Rcpp::export]]
-NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector centroids,
+NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector centroids, 
                                        IntegerVector gene_to_fam, int d) {
     int n_genes = genes.length() / d;
     int n_families = centroids.length() / d;
-
+    
     NumericVector distances(n_genes);
-
-    distance_to_centroid_c(n_genes, n_families, genes.begin(),
-                          centroids.begin(), gene_to_fam.begin(),
+    
+    distance_to_centroid_c(n_genes, n_families, genes.begin(), 
+                          centroids.begin(), gene_to_fam.begin(), 
                           distances.begin(), d);
-
+    
     return distances;
 }
 
@@ -517,24 +549,24 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector c
  * Calculate Tissue Versatility
  */
 // [[Rcpp::export]]
-List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
-                                      IntegerVector vector_selection,
+List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors, 
+                                      IntegerVector vector_selection, 
                                       IntegerVector axis_selection) {
     int n_axes = expression_vectors.nrow();
     int n_vectors = expression_vectors.ncol();
     int n_selected_vectors = sum(vector_selection);
     int n_selected_axes = sum(axis_selection);
-
+    
     NumericVector tissue_versatilities(n_selected_vectors);
     NumericVector tissue_angles_deg(n_selected_vectors);
     int ierr = 0;
-
+    
     compute_tissue_versatility_c(n_axes, n_vectors, expression_vectors.begin(),
                                 vector_selection.begin(), n_selected_vectors,
                                 axis_selection.begin(), n_selected_axes,
-                                tissue_versatilities.begin(),
+                                tissue_versatilities.begin(), 
                                 tissue_angles_deg.begin(), &ierr);
-
+    
     return List::create(
         Named("tissue_versatilities") = tissue_versatilities,
         Named("tissue_angles_deg") = tissue_angles_deg,
@@ -542,7 +574,7 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
         Named("n_selected_axes") = n_selected_axes,
         Named("ierr") = ierr
     );
-
+    
 }
 
 /**
@@ -611,6 +643,8 @@ List tox_log2_transformation_rcpp(NumericMatrix input) {
     );
 }
 
+
+
 /**
  * Calculate tissue averages
  */
@@ -645,6 +679,7 @@ List tox_calc_fchange_rcpp(NumericMatrix input, IntegerVector control_cols, Inte
         Named("ierr") = ierr
     );
 }
+
 
 /**
  * Perform normalization pipeline
@@ -967,13 +1002,6 @@ double kernel_cutoff) {
         );
 }
 
-
-static std::vector<int> filename_to_ascii(const std::string &filename) {
-  std::vector<int> v;
-  for (unsigned char c : filename) v.push_back((int)c);
-  return v;
-}
-
 // --- Serialize wrappers (match R signatures: arr, filename) ---
 
 // [[Rcpp::export]]
@@ -983,10 +1011,10 @@ List tox_serialize_int_array_rcpp(IntegerVector arr, std::string filename) {
   std::vector<int> dims(ndim);
   for (int i = 0; i < ndim; ++i) dims[i] = dim[i];
 
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   int ierr = 0;
-  serialize_int_nd_C((void*)arr.begin(), dims.data(), ndim, fname.data(), fn_len, &ierr);
+  serialize_int_nd_C((void*)arr.begin(), dims.data(), ndim, fname, fn_len, &ierr);
   return List::create(Named("ierr") = ierr);
 }
 
@@ -997,10 +1025,10 @@ List tox_serialize_real_array_rcpp(NumericVector arr, std::string filename) {
   std::vector<int> dims(ndim);
   for (int i = 0; i < ndim; ++i) dims[i] = dim[i];
 
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   int ierr = 0;
-  serialize_real_nd_C((void*)arr.begin(), dims.data(), ndim, fname.data(), fn_len, &ierr);
+  serialize_real_nd_C((void*)arr.begin(), dims.data(), ndim, fname, fn_len, &ierr);
   return List::create(Named("ierr") = ierr);
 }
 
@@ -1021,16 +1049,52 @@ List tox_serialize_char_array_rcpp(CharacterVector carr, std::string filename) {
   }
   if (clen == 0) clen = 1;
 
-  std::vector<int> ascii_flat(total * clen, 0);
+  std::vector<char> ascii_flat(total * clen, 0);
   for (int i = 0; i < total; ++i) {
     std::string s = as<std::string>(carr[i]);
-    for (int j = 0; j < (int)s.size() && j < clen; ++j) ascii_flat[i*clen + j] = (unsigned char)s[j];
+    for (int j = 0; j < (int)s.size() && j < clen; ++j) ascii_flat[i*clen + j] = (char)s[j];
   }
 
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   int ierr = 0;
-  serialize_char_nd_C(ascii_flat.data(), dims.data(), ndim, clen, fname.data(), fn_len, &ierr);
+  serialize_char_nd_C(ascii_flat.data(), dims.data(), ndim, clen, fname, fn_len, &ierr);
+  return List::create(Named("ierr") = ierr);
+}
+
+// [[Rcpp::export]]
+List tox_serialize_logical_array_rcpp(LogicalVector arr, std::string filename) {
+  IntegerVector dim = arr.hasAttribute("dim") ? as<IntegerVector>(arr.attr("dim")) : IntegerVector::create((int)arr.size());
+  int ndim = dim.size();
+  std::vector<int> dims(ndim);
+  for (int i = 0; i < ndim; ++i) dims[i] = dim[i];
+
+  int total = 1;
+  for (int i = 0; i < ndim; ++i) total *= dims[i];
+
+  IntegerVector logical_int(total);
+  for (int i = 0; i < total; ++i) {
+    logical_int[i] = arr[i] ? 1 : 0;
+  }
+
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
+  int ierr = 0;
+  serialize_logical_nd_C(logical_int.begin(), dims.data(), ndim, fname, fn_len, &ierr);
+  return List::create(Named("ierr") = ierr);
+}
+
+// [[Rcpp::export]]
+List tox_serialize_complex_array_rcpp(ComplexVector arr, std::string filename) {
+  IntegerVector dim = arr.hasAttribute("dim") ? as<IntegerVector>(arr.attr("dim")) : IntegerVector::create((int)arr.size());
+  int ndim = dim.size();
+  std::vector<int> dims(ndim);
+  for (int i = 0; i < ndim; ++i) dims[i] = dim[i];
+
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
+  int ierr = 0;
+  serialize_complex_nd_C((void*)arr.begin(), dims.data(), ndim, fname, fn_len, &ierr);
   return List::create(Named("ierr") = ierr);
 }
 
@@ -1038,81 +1102,129 @@ List tox_serialize_char_array_rcpp(CharacterVector carr, std::string filename) {
 
 // [[Rcpp::export]]
 List tox_deserialize_int_array_rcpp(std::string filename, int max_dims = 5) {
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   std::vector<int> dims_out(max_dims);
   int ndims = 0;
   int ierr = 0;
   int clen = 0;
-  get_array_metadata_C(fname.data(), fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
+  get_array_metadata_C(fname, fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
   if (ierr != 0) return List::create(Named("ierr") = ierr);
 
   int total = 1;
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
   IntegerVector out(total);
-  deserialize_int_nd_C(out.begin(), total, fname.data(), fn_len, &ierr);
+  deserialize_int_nd_C(out.begin(), total, fname, fn_len, &ierr);
   return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
 }
 
+
+
+
 // [[Rcpp::export]]
 List tox_deserialize_real_array_rcpp(std::string filename, int max_dims = 5) {
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   std::vector<int> dims_out(max_dims);
   int ndims = 0;
   int ierr = 0;
   int clen = 0;
-  get_array_metadata_C(fname.data(), fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
+  get_array_metadata_C(fname, fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
   if (ierr != 0) return List::create(Named("ierr") = ierr);
 
   int total = 1;
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
   NumericVector out(total);
-  deserialize_real_nd_C(out.begin(), total, fname.data(), fn_len, &ierr);
+  deserialize_real_nd_C(out.begin(), total, fname, fn_len, &ierr);
   return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
 }
 
 // [[Rcpp::export]]
 List tox_deserialize_char_array_rcpp(std::string filename, int max_dims = 5) {
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   std::vector<int> dims_out(max_dims);
   int ndims = 0;
   int ierr = 0;
   int clen = 0;
-  get_array_metadata_C(fname.data(), fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
+  get_array_metadata_C(fname, fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
   if (ierr != 0) return List::create(Named("ierr") = ierr);
 
   int total = 1;
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
-  std::vector<int> ascii_out(total * clen);
-  deserialize_char_nd_C(ascii_out.data(), clen, total, fname.data(), fn_len, &ierr);
+  std::vector<char> ascii_out(total * clen);
+  deserialize_char_nd_C(ascii_out.data(), clen, total, fname, fn_len, &ierr);
 
   CharacterVector out(total);
   for (int i = 0; i < total; ++i) {
     std::string s;
     for (int j = 0; j < clen; ++j) {
-      int ch = ascii_out[i*clen + j];
+      unsigned char ch = static_cast<unsigned char>(ascii_out[i*clen + j]);
       if (ch == 0) break;
       s.push_back((char)ch);
     }
+    while (!s.empty() && s.back() == ' ') s.pop_back();
     out[i] = s;
   }
   return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
 }
 
 // [[Rcpp::export]]
+List tox_deserialize_logical_array_rcpp(std::string filename, int max_dims = 5) {
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
+  std::vector<int> dims_out(max_dims);
+  int ndims = 0;
+  int ierr = 0;
+  int clen = 0;
+  get_array_metadata_C(fname, fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
+  if (ierr != 0) return List::create(Named("ierr") = ierr);
+
+  int total = 1;
+  for (int i = 0; i < ndims; ++i) total *= dims_out[i];
+
+  IntegerVector logical_out(total);
+  deserialize_logical_nd_C(logical_out.begin(), &total, fname, fn_len, &ierr);
+  
+  LogicalVector out(total);
+  for (int i = 0; i < total; ++i) {
+    out[i] = (logical_out[i] != 0);
+  }
+  return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
+}
+
+// [[Rcpp::export]]
+List tox_deserialize_complex_array_rcpp(std::string filename, int max_dims = 5) {
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
+  std::vector<int> dims_out(max_dims);
+  int ndims = 0;
+  int ierr = 0;
+  int clen = 0;
+  get_array_metadata_C(fname, fn_len, dims_out.data(), &max_dims, &ndims, &ierr, &clen);
+  if (ierr != 0) return List::create(Named("ierr") = ierr);
+
+  int total = 1;
+  for (int i = 0; i < ndims; ++i) total *= dims_out[i];
+
+  ComplexVector out(total);
+  int arr_size = total;
+  deserialize_complex_nd_C((void*)out.begin(), &arr_size, fname, fn_len, &ierr);
+  return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
+}
+
+// [[Rcpp::export]]
 List tox_get_array_metadata_rcpp(std::string filename, int dims_out_capacity = 5, bool with_clen = false) {
-  auto fname = filename_to_ascii(filename);
-  int fn_len = static_cast<int>(fname.size());
+  const char* fname = filename.c_str();
+  int fn_len = static_cast<int>(filename.size());
   IntegerVector dims_res(dims_out_capacity);
   int ndims = 0;
   int ierr = 0;
   int clen = 0;
-  get_array_metadata_C(fname.data(), fn_len, dims_res.begin(), &dims_out_capacity, &ndims, &ierr, &clen);
+  get_array_metadata_C(fname, fn_len, dims_res.begin(), &dims_out_capacity, &ndims, &ierr, &clen);
   if (with_clen) {
     return List::create(Named("dims") = dims_res, Named("ndim") = ndims, Named("clen") = clen, Named("ierr") = ierr);
   }
@@ -1426,42 +1538,6 @@ List tox_validate_all_data_rcpp(RawMatrix gene_ids_raw,
 
     return List::create(Named("ierr") = ierr);
 }
-
-// [[Rcpp::export]]
-List tox_create_zip_archive_generic_rcpp(RawVector zip_filename_raw,
-                                         RawMatrix keys_raw,
-                                         RawMatrix filenames_raw) {
-    int zip_len = zip_filename_raw.size();
-    int keys_len = keys_raw.nrow();
-    int keys_count = keys_raw.ncol();
-    int filenames_len = filenames_raw.nrow();
-    int filenames_count = filenames_raw.ncol();
-    int ierr = 0;
-
-    create_zip_archive_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
-                                 zip_len,
-                                 reinterpret_cast<const char*>(keys_raw.begin()),
-                                 keys_len,
-                                 keys_count,
-                                 reinterpret_cast<const char*>(filenames_raw.begin()),
-                                 filenames_len,
-                                 filenames_count,
-                                 &ierr);
-
-    return List::create(Named("ierr") = ierr);
-}
-
-// [[Rcpp::export]]
-List tox_extract_zip_archive_generic_rcpp(RawVector zip_filename_raw) {
-    int zip_len = zip_filename_raw.size();
-    int ierr = 0;
-
-    extract_zip_archive_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
-                                  zip_len,
-                                  &ierr);
-
-    return List::create(Named("ierr") = ierr);
-}
 // ===================================================================
 
 // [[Rcpp::export]]
@@ -1610,3 +1686,302 @@ Rcpp::List tox_omics_field_RAP_projection_rcpp(Rcpp::NumericMatrix vecs,
     Rcpp::Named("ierr") = ierr
   );
 }
+
+// ============================================================
+// Trajectory Contribution Analysis (TCA) Wrappers
+// ============================================================
+
+
+// [[Rcpp::export]]
+List tox_compute_contributions_rcpp(NumericVector factor, NumericVector dependent, std::string mode) {
+  int n_dims = factor.size();
+  if (dependent.size() != n_dims) {
+    Rcpp::stop("factor and dependent must have the same length");
+  }
+
+  NumericVector local_contributions(n_dims);
+  double total_contribution = 0.0;
+  int ierr = 0;
+
+  compute_contributions_c(
+    factor.begin(),
+    dependent.begin(),
+    &n_dims,
+    mode.c_str(),
+    local_contributions.begin(),
+    &total_contribution,
+    &ierr
+  );
+
+  return List::create(
+    Named("local_contributions") = local_contributions,
+    Named("total_contribution") = total_contribution,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_compute_all_contributions_rcpp(NumericVector trajectories, IntegerVector dims,
+                    IntegerVector factor_indices, IntegerVector dependent_indices,
+                    std::string mode) {
+  if (dims.size() < 3) {
+    Rcpp::stop("dims must have length 3: (n_factors, n_samples, n_timepoints)");
+  }
+
+  int n_factors = dims[0];
+  int n_samples = dims[1];
+  int n_timepoints = dims[2];
+  int n_selected_factors = factor_indices.size();
+  int n_selected_dependents = dependent_indices.size();
+
+  NumericVector local_contributions(n_timepoints * n_selected_factors * n_selected_dependents * n_samples);
+  NumericVector total_contributions(n_selected_factors * n_selected_dependents * n_samples);
+  NumericMatrix temp_factors(n_timepoints, n_selected_factors);
+  NumericVector temp_dependent(n_timepoints);
+  int ierr = 0;
+
+  compute_all_contributions_c(
+    trajectories.begin(),
+    &n_factors,
+    &n_samples,
+    &n_timepoints,
+    factor_indices.begin(),
+    &n_selected_factors,
+    dependent_indices.begin(),
+    &n_selected_dependents,
+    mode.c_str(),
+    local_contributions.begin(),
+    total_contributions.begin(),
+    temp_factors.begin(),
+    temp_dependent.begin(),
+    &ierr
+  );
+
+  local_contributions.attr("dim") = IntegerVector::create(n_timepoints, n_selected_factors, n_selected_dependents, n_samples);
+  total_contributions.attr("dim") = IntegerVector::create(n_selected_factors, n_selected_dependents, n_samples);
+
+  return List::create(
+    Named("local_contributions") = local_contributions,
+    Named("total_contributions") = total_contributions,
+    Named("temp_factors") = temp_factors,
+    Named("temp_dependent") = temp_dependent,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_compute_baselines_factor_dependent_rcpp(NumericVector factor, NumericVector dependent, std::string mode) {
+  int n_timepoints = factor.size();
+  if (dependent.size() != n_timepoints) {
+    Rcpp::stop("factor and dependent must have the same length");
+  }
+
+  double factor_baseline = 0.0;
+  double dependent_baseline = 0.0;
+  int ierr = 0;
+
+  tox_compute_baselines_factor_dependent_c(
+    factor.begin(),
+    dependent.begin(),
+    &n_timepoints,
+    mode.c_str(),
+    &factor_baseline,
+    &dependent_baseline,
+    &ierr
+  );
+
+  return List::create(
+    Named("factor_baseline") = factor_baseline,
+    Named("dependent_baseline") = dependent_baseline,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_perform_permutation_test_rcpp(NumericVector trajectories, IntegerVector dims,
+                     int factor_idx, int dependent_idx, int sample_idx,
+                     std::string mode, int n_permutations, int random_seed) {
+  if (dims.size() < 3) {
+    Rcpp::stop("dims must have length 3: (n_factors, n_samples, n_timepoints)");
+  }
+
+  int n_factors = dims[0];
+  int n_samples = dims[1];
+  int n_timepoints = dims[2];
+
+  NumericVector local_contributions(n_timepoints * n_permutations);
+  NumericVector total_contributions(n_permutations);
+  NumericVector temp_factor(n_timepoints);
+  NumericVector temp_dependent(n_timepoints);
+  int ierr = 0;
+
+  perform_permutation_test_c(
+    trajectories.begin(),
+    &n_factors,
+    &n_samples,
+    &n_timepoints,
+    &factor_idx,
+    &dependent_idx,
+    &sample_idx,
+    mode.c_str(),
+    &n_permutations,
+    local_contributions.begin(),
+    total_contributions.begin(),
+    temp_factor.begin(),
+    temp_dependent.begin(),
+    &ierr,
+    &random_seed
+  );
+
+  local_contributions.attr("dim") = IntegerVector::create(n_timepoints, n_permutations);
+
+  return List::create(
+    Named("local_contributions") = local_contributions,
+    Named("total_contributions") = total_contributions,
+    Named("temp_factor") = temp_factor,
+    Named("temp_dependent") = temp_dependent,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_compute_p_values_rcpp(NumericVector local_contributions_observed,
+                 double total_contribution_observed,
+                 NumericVector local_contributions_perm,
+                 NumericVector total_contributions_perm,
+                 IntegerVector dims) {
+  if (dims.size() < 2) {
+    Rcpp::stop("dims must have length 2: (n_timepoints, n_permutations)");
+  }
+
+  int n_timepoints = dims[0];
+  int n_permutations = dims[1];
+
+  if (local_contributions_observed.size() != n_timepoints) {
+    Rcpp::stop("local_contributions_observed length must match n_timepoints");
+  }
+  if (total_contributions_perm.size() != n_permutations) {
+    Rcpp::stop("total_contributions_perm length must match n_permutations");
+  }
+  if (local_contributions_perm.size() != n_timepoints * n_permutations) {
+    Rcpp::stop("local_contributions_perm size must be n_timepoints * n_permutations");
+  }
+
+  NumericVector local_p_values(n_timepoints);
+  double total_p_value = 0.0;
+  double total_contribution_observed_val = total_contribution_observed;
+  int ierr = 0;
+
+  compute_p_values_c(
+    local_contributions_observed.begin(),
+    &total_contribution_observed_val,
+    local_contributions_perm.begin(),
+    total_contributions_perm.begin(),
+    &n_timepoints,
+    &n_permutations,
+    local_p_values.begin(),
+    &total_p_value,
+    &ierr
+  );
+
+  return List::create(
+    Named("local_p_values") = local_p_values,
+    Named("total_p_value") = total_p_value,
+    Named("ierr") = ierr
+  );
+}
+
+// ============================================================
+// Trajectory Normalization Wrappers
+// ============================================================
+
+// [[Rcpp::export]]
+List tox_normalize_variable_timeseries_rcpp(NumericVector v) {
+  int n_points = v.size();
+  NumericVector v_norm(n_points);
+  int ierr = 0;
+  int status = 0;
+
+  normalize_variable_timeseries_C(
+    v.begin(),
+    v_norm.begin(),
+    &n_points,
+    &ierr,
+    &status
+  );
+
+  return List::create(
+    Named("v_norm") = v_norm,
+    Named("ierr") = ierr,
+    Named("status") = status
+  );
+}
+
+// [[Rcpp::export]]
+List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
+  int n_timepoints = trajectory.nrow();
+  int n_factors = trajectory.ncol();
+  NumericMatrix trajectory_norm(n_timepoints, n_factors);
+  int ierr = 0;
+  int status = 0;
+
+  normalize_single_trajectory_C(
+    trajectory.begin(),
+    trajectory_norm.begin(),
+    &n_factors,
+    &n_timepoints,
+    &ierr,
+    &status
+  );
+
+  return List::create(
+    Named("trajectory_norm") = trajectory_norm,
+    Named("ierr") = ierr,
+    Named("status") = status
+  );
+}
+
+// [[Rcpp::export]]
+List tox_normalize_all_trajectories_rcpp(NumericVector trajectories, IntegerVector dims) {
+  if (dims.size() < 3) {
+    Rcpp::stop("dims must have length 3: (n_factors, n_samples, n_timepoints)");
+  }
+
+  int n_factors = dims[0];
+  int n_samples = dims[1];
+  int n_timepoints = dims[2];
+
+  NumericVector trajectories_norm(trajectories.size());
+  int ierr = 0;
+  int status = 0;
+
+  normalize_all_trajectories_C(
+    trajectories.begin(),
+    trajectories_norm.begin(),
+    &n_factors,
+    &n_samples,
+    &n_timepoints,
+    &ierr,
+    &status
+  );
+
+  trajectories_norm.attr("dim") = IntegerVector::create(n_factors, n_samples, n_timepoints);
+
+  return List::create(
+    Named("trajectories_norm") = trajectories_norm,
+    Named("ierr") = ierr,
+    Named("status") = status
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
