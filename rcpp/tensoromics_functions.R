@@ -1552,7 +1552,7 @@ build_kd_index <- function(X, dim_order = NULL) {
   result$kd_ix
 }
 
-#> f42_kd_tree:build_spherical_kd_index_C: Build Spherical KD-Tree index (R-level wrapper)
+#> f42_kd_tree:build_spherical_kd_C: Build Spherical KD-Tree index (R-level wrapper)
 #' Build Spherical KD-Tree index (R-level wrapper)
 build_spherical_kd <- function(V, dim_order = NULL) {
   # R-layer validation
@@ -1583,6 +1583,8 @@ build_spherical_kd <- function(V, dim_order = NULL) {
   # Return sphere index vector
   result$sphere_ix
 }
+
+#> f42_helper: Get a point from the KD index
 #' Get a point from the KD index (R-level helper)
 get_kd_point <- function(X, kd_ix, position) {
   # Input validation using standardized validation functions
@@ -1613,6 +1615,7 @@ build_bst_index <- function(x) {
   return(result)
 }
  
+#> f42_helper: Get sorted value by BST index
 #' Get sorted value by BST index (R helper)
 get_sorted_value <- function(x, ix, position) {
   validate_numeric_vector(x, "x")
@@ -1854,6 +1857,7 @@ tox_clock_hand_angles_for_shift_vectors <- function(origins, targets, vecs_selec
   res <- tox_clock_hand_angles_for_shift_vectors_rcpp(origins, targets, as.integer(vecs_selection_mask), selected_axes_for_signed)
   return(res)
 }
+
 #> tox_clustering:cluster_factor_trajectories_k_means_c: K-means clustering on factor trajectories
 #' K-means clustering on factor trajectories
 #'
