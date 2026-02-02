@@ -625,10 +625,10 @@ def build_bst_index(values):
     return indices
 
 
-#> f42_helper: Alias for build_kd_index to build a spherical KD-Tree index for the given unit vectors
+#> f42_kd_tree:build_spherical_kd_C: Build a spherical KD-Tree index for the given unit vectors
 def build_spherical_kd(vectors, dimension_order=None):
     """
-    Alias for build_kd_index to build a spherical KD-Tree index for the given unit vectors.
+    Build a spherical KD-Tree index for the given unit vectors.
 
     Parameters:
     vectors (np.array): 2D array of unit vectors (d x n, Fortran order)
@@ -637,9 +637,48 @@ def build_spherical_kd(vectors, dimension_order=None):
     Returns:
     np.array: Spherical KD-Tree indices (1-based Fortran indices)
     """
-    # For spherical KD-Tree, we use the same implementation as regular KD-Tree
-    # but with a different name for clarity
-    return build_kd_index(vectors, dimension_order)
+    d, n = vectors.shape
+
+    # Use default dimension order if not provided
+    if dimension_order is None:
+        dimension_order = np.arange(1, d + 1, dtype=np.int32)  # 1-based dimensions
+    else:
+        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
+
+    # Ensure Fortran order (column-major)
+    if not vectors.flags.f_contiguous:
+        vectors = np.asfortranarray(vectors)
+
+    # Initialize arrays
+    sphere_indices = np.empty(n, dtype=np.int32)
+    workspace = np.empty(n, dtype=np.int32)
+    value_buffer = np.empty(n, dtype=np.float64)
+    permutation = np.empty(n, dtype=np.int32)
+    stack_left = np.empty(n, dtype=np.int32)
+    stack_right = np.empty(n, dtype=np.int32)
+    ierr = ctypes.c_int()
+
+    # Configure spherical KD-Tree argument types
+    lib.build_spherical_kd_C.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),  # vectors
+        ctypes.c_int32,                                                          # d
+        ctypes.c_int32,                                                          # n
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # sphere_indices (out)
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # dimension_order
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # work
+        np.ctypeslib.ndpointer(dtype=np.float64),                                # value_buffer
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # permutation
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_left
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_right
+        ctypes.POINTER(ctypes.c_int)
+    ]
+
+    # Build spherical KD-Tree index
+    lib.build_spherical_kd_C(vectors, d, n, sphere_indices, dimension_order, workspace,
+                             value_buffer, permutation, stack_left, stack_right, ctypes.byref(ierr))
+    check_err_code(ierr.value)
+
+    return sphere_indices
 
 
 #> f42_kd_tree:bst_range_query_C: Perform a range query on BST-indexed values
@@ -2510,6 +2549,81 @@ def tox_compute_baselines_factor_dependent(factor, dependent, mode):
     return {
         'baseline_factor': baseline_factor.value,
         'baseline_dependent': baseline_dependent.value
+    }
+
+
+#> tox_clustering:cluster_factor_trajectories_k_means_c: performs k-means clustering on factor trajectories
+def tox_cluster_factor_trajectories_k_means(trajectories, n_factors, n_samples, n_timepoints, centroids, max_iter=300):
+    """
+    Wrapper for cluster_factor_trajectories_k_means_c: performs k-means clustering on factor trajectories.
+
+    Args:
+        trajectories (np.ndarray): Flattened 3D array (n_factors * n_samples * n_timepoints)
+        n_factors (int): number of factors
+        n_samples (int): number of samples
+        n_timepoints (int): number of timepoints
+        centroids (np.ndarray): 2D array of shape (n_factors, n_clusters), initial centroids
+        max_iter (int): maximum number of iterations
+
+    Returns:
+        dict: {
+            "centroids": np.ndarray of shape (n_factors, n_clusters),
+            "labels": np.ndarray of shape (n_samples * n_timepoints),
+            "label_counts": np.ndarray of shape (n_clusters)
+        }
+    """
+    trajectories = np.asarray(trajectories, dtype=np.float64)
+    if trajectories.ndim != 1:
+        trajectories = np.asfortranarray(trajectories).ravel(order="F")
+
+    expected_len = int(n_factors) * int(n_samples) * int(n_timepoints)
+    if len(trajectories) != expected_len:
+        raise ValueError("trajectories length mismatch")
+
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
+    if centroids.shape[0] != n_factors:
+        raise ValueError("centroids rows must match n_factors")
+
+    n_clusters = centroids.shape[1]
+    labels = np.empty(int(n_samples) * int(n_timepoints), dtype=np.int32)
+    label_counts = np.empty(n_clusters, dtype=np.int32)
+    ierr = ctypes.c_int(0)
+
+    cluster_c = lib.cluster_factor_trajectories_k_means_c
+    cluster_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),                                  # n_clusters
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),# trajectories
+        ctypes.POINTER(ctypes.c_int),                                  # n_factors
+        ctypes.POINTER(ctypes.c_int),                                  # n_samples
+        ctypes.POINTER(ctypes.c_int),                                  # n_timepoints
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),# centroids
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # labels
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # label_counts
+        ctypes.POINTER(ctypes.c_int),                                  # ierr
+        ctypes.POINTER(ctypes.c_int)                                   # max_iter
+    ]
+    cluster_c.restype = None
+
+    cluster_c(
+        ctypes.byref(ctypes.c_int(n_clusters)),
+        trajectories,
+        ctypes.byref(ctypes.c_int(n_factors)),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_timepoints)),
+        centroids,
+        labels,
+        label_counts,
+        ctypes.byref(ierr),
+        ctypes.byref(ctypes.c_int(max_iter))
+    )
+    check_err_code(ierr.value)
+
+    _readonly(centroids, labels, label_counts)
+
+    return {
+        "centroids": centroids,
+        "labels": labels,
+        "label_counts": label_counts
     }
 
 
