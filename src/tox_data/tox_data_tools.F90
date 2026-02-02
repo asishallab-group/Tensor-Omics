@@ -3,7 +3,7 @@ module tox_data_tools
     use iso_fortran_env, only: real64, int32, iostat_end
     use tox_errors, only: set_ok, set_err_once, is_err, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA
-    use array_utils, only :check_okay_ioerror, ERR_SIZE_MISMATCH
+    use f42_array_utils, only :check_okay_ioerror, ERR_SIZE_MISMATCH
     use config, only: DEBUG
     implicit none
     private
@@ -21,7 +21,7 @@ contains
 !> Read expression vectors from csv/tsv files
 subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
                              n_header_rows, gene_col, value_cols, start_row, ierr, delimiter)
-    use xxh3_hashmap_module
+    use f42_xxh3_hashmap
     use ieee_arithmetic, only: ieee_is_finite
     character(len=*), intent(in) :: file_list(:)
     !! List of files to read from
@@ -277,7 +277,7 @@ end subroutine read_gene_ids_from_tsv_file
 
 !> Read a family file (Orthofinder)
 subroutine read_orthofinder_file(filename, gene_ids, family_ids, gene_to_fam, ierr)
-    use xxh3_hashmap_module
+    use f42_xxh3_hashmap
     character(len=*), intent(in) :: filename
         !! Name of the file
     character(len=*), intent(in) :: gene_ids(:)

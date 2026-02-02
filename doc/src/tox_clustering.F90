@@ -108,7 +108,7 @@ contains
             end do
 
             ! if the assignments did not change, the clustering is done
-            if (is_err(ierr) .or. .not. labels_changed) exit
+            if (.not. labels_changed) exit
 
             call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
         end do
@@ -489,6 +489,7 @@ pure subroutine k_means_clustering_c(n_clusters, data_points, n_points, n_dims, 
     use tox_clustering, only: k_means_clustering
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     M_USE_NULL_VALIDATION
+    implicit none
 
     integer(c_int), intent(in), target :: n_clusters
         !! number (`k`) of clusters

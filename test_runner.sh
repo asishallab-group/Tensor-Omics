@@ -17,7 +17,7 @@ handle_args "$@"
 echo "Detected alignment: $ALIGN"
 
 if [[ -z "$NO_BUILD" ]]; then
-  bash <<'EOF'
+  bash -s -- "$@" <<'EOF'
   function get_directives() {
     echo "-D'OPEN_PAREN=(' -D'CLOSE_PAREN=)' -D'$1(KIND)=KIND(KIND)' -D'$2(KIND)=$1 OPEN_PAREN KIND CLOSE_PAREN' -D'$3(KIND)=$1 OPEN_PAREN 2 CLOSE_PAREN'"
   }
@@ -31,15 +31,17 @@ if [[ -z "$NO_BUILD" ]]; then
     test_directive=${d%% *}
     test_directive=${test_directive#-DTEST_KIND_MISMATCH_}
     echo -en "Testing safeguard for mismatch for $test_directive: "
-    if [[ $(bash build.sh "$@" "${directives}" 1>kinds.out 2>/dev/null; grep "Divi.*zero" kinds.out) ]]; then
+    if [[ $(bash build.sh "$@" "${directives}" 2>kinds.err 1>kinds.out; grep "Divi.*zero" kinds.err kinds.out) ]]; then
       echo "success"
     else
       echo "failure"
       cat kinds.out
+      cat kinds.err
       failed=1
     fi
   done
   rm kinds.out
+  rm kinds.err
   exit $failed
 EOF
   check_exit_code "Kind Mismatch Test failed"
@@ -64,6 +66,7 @@ echo "Compiling test modules..."
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
   -I$BUILD_DIR \
   -c $TEST_DIR/*.[fF]90
+check_exit_code "Test compilation failed"
 
 # Move object files to build/
 mv *.o $BUILD_DIR/ 2>/dev/null || true

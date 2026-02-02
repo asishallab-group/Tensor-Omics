@@ -1,0 +1,86 @@
+\section{Normalization of Expression Values}
+    Raw gene expression data is normalized in the following steps:
+    \begin{enumerate}
+      \item Division by gene-wise standard deviation for scale normalization. For estimation of the correct standard deviation in low dimensional data-sets see below (\ref{loess_sd_estimation}).
+        \item Quantile normalization across samples to reduce global expression biases.
+        \item Log-transformation: \( x \mapsto \log(1 + x) \) to stabilize variance and suppress outliers.
+        \item For stress response studies, log fold-changes are computed: 
+        \[
+            \Delta_{\text{stress}} = \log(1 + x_{\text{stress}}) - \log(1 + x_{\text{control}})
+        \]
+        This effectively makes each stress related axis show the fold change in
+        gene expression under stress, e.g.\ ``drought in root divided by control
+        root''.
+    \end{enumerate}
+
+    \subsection{Variance (Standard Deviation) Stabilization for Scaling}\label{loess_sd_estimation}
+
+        In Tensor Omics, normalization of expression vectors requires division by gene-wise standard deviation (SD) across samples.
+        However, empirical SD estimates are unstable for small sample sizes.
+        To address this, we implement a dimension-dependent stabilization strategy that improves robustness while maintaining geometric interpretability.
+
+        The strategy is defined as follows:
+
+        \begin{itemize}
+            \item For small sample sizes \( n < 10 \):
+            \begin{itemize}
+                \item Empirical SD estimates are highly unreliable.
+                \item Therefore, for each gene, the standard deviation is replaced by a
+                  LOESS-fitted value (see~\ref{gene_sd_loess_alg}).
+                \item The LOESS curve is fitted to model the relationship between
+                  gene-wise mean expression and gene-wise empirical SD across all
+                  genes.
+            \end{itemize}
+            
+            \item For intermediate sample sizes \( 10 \leq n < 21 \):
+            \begin{itemize}
+                \item A weighted combination of empirical SD and LOESS-fitted SD is used.
+                \item The effective standard deviation is computed as
+                      \[
+                          \text{SD}_{\text{effective}} = \lambda \times \text{SD}_{\text{empirical}} + (1-\lambda) \times \text{SD}_{\text{LOESS}},
+                      \]
+                where \( \lambda = (n-10)/11 \) increases linearly from 0 at \( n=10 \) to 1 at \( n=21 \).
+            \end{itemize}
+            
+            \item For large sample sizes \( n \geq 21 \):
+            \begin{itemize}
+                \item Empirical SD estimates are considered sufficiently stable.
+                \item Pure empirical SD is used without adjustment.
+            \end{itemize}
+        \end{itemize}
+
+        This stabilization ensures that scaling by SD is consistent and resistant to noise across a wide range of dataset sizes.
+        It preserves the empirical geometric structure of the data while suppressing variance artifacts that would otherwise distort Tensor Omics analyses, particularly in small or medium sample regimes.
+
+        \subsubsection{LOESS Estimation of Gene-wise Standard Deviation}\label{gene_sd_loess_alg}
+
+        To obtain stabilized estimates of gene-wise standard deviations for small
+        sample sizes, Tensor Omics applies a LOESS smoothing procedure based on the
+        relationship between gene-wise mean expression and gene-wise empirical SD.
+
+        The procedure consists of the following steps:
+
+        \begin{itemize}
+            \item Calculate the empirical mean and empirical standard deviation for
+              each gene across all samples.
+            \item Plot each gene as a point in a scatter plot with
+            \begin{itemize}
+                \item X-axis: gene-wise mean expression,
+                \item Y-axis: gene-wise empirical standard deviation.
+            \end{itemize}
+            \item Fit a LOESS curve to these points to model the typical dependence of
+              standard deviation on mean expression.
+            \item For each gene, given its mean expression value, predict its standard
+              deviation by evaluating the fitted LOESS curve at the gene's mean.
+        \end{itemize}
+
+        This method exploits the fact that gene-wise mean expression values are
+        substantially more stable than standard deviation estimates, especially at low
+        sample sizes. While the empirical standard deviation suffers from high
+        variability when few data points are available, the mean value remains a more
+        robust and lower-variance statistic. By basing the standard deviation
+        estimation on the more reliable mean, the procedure suppresses noise-induced
+        artifacts and yields smoothed, biologically plausible variance estimates. This
+        LOESS-based adjustment is critical for preserving the integrity of the
+        normalization process in small-sample regimes, ensuring that subsequent
+        geometric analyses remain meaningful and reproducible.

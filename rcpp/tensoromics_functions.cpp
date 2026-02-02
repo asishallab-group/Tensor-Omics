@@ -131,16 +131,16 @@ void omics_field_RAP_projection_c(
 
 
     void normalize_by_std_dev_c(int n_genes, int n_tissues,
-                                double *input_matrix, double *output_matrix, int *ierr);                                    
+                                double *input_matrix, double *output_matrix, int *ierr);
     void quantile_normalization_c(int n_genes, int n_tissues, double *input_matrix, double *output_matrix,
                                 double *temp_col, double *rank_means,
                                   int *perm, int *stack_left, int *stack_right,
                                   int max_stack, int *ierr);
     void log2_transformation_c(int n_genes, int n_tissues,
-                               double *input_matrix, double *output_matrix, int *ierr); 
+                               double *input_matrix, double *output_matrix, int *ierr);
 
     void calc_tiss_avg_c(int n_genes, int n_grps,int *group_s, int *group_c,
-                         double *input_matrix, double *output_matrix, int *ierr);  
+                         double *input_matrix, double *output_matrix, int *ierr);
     void calc_fchange_c(int n_genes, int n_cols, int n_pairs,int *control_cols, int *cond_cols,
                         double *input_matrix, double *output_matrix, int *ierr);
 
@@ -158,8 +158,8 @@ void omics_field_RAP_projection_c(
         double* loess_x, double* loess_y, int* indices_used,
         int* ierr
       );
-      
-  void compute_family_scaling_expert_c(
+
+      void compute_family_scaling_expert_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* dscale,
@@ -168,24 +168,24 @@ void omics_field_RAP_projection_c(
         double* family_distances,
         int* ierr
       );
-      
-  void compute_rdi_c(
+
+      void compute_rdi_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* dscale,
         double* rdi, double* sorted_rdi,
         int* perm, int* stack_left, int* stack_right
       );
-      
-  void identify_outliers_c(
+
+      void identify_outliers_c(
         int n_genes,
         double* rdi, double* sorted_rdi,
         int* is_outlier_int,
         double* threshold,
         double percentile
       );
-      
-  void detect_outliers_c(
+
+      void detect_outliers_c(
         int n_genes, int n_families,
         double* distances, int* gene_to_fam,
         double* work_array,
@@ -196,8 +196,8 @@ void omics_field_RAP_projection_c(
         double percentile
       );
 
-      
-  void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
+
+      void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
 
   void distance_to_centroid_c(
         int n_genes, int n_families,
@@ -268,15 +268,15 @@ void loess_smooth_2d_c(
             int* ierr
     );
          
-void deserialize_int_C(
+void deserialize_int_nd_C(
         int* arr, int arr_size, 
         int* filename_ascii, int fn_len, int* ierr);
 
-void deserialize_real_C(
+void deserialize_real_nd_C(
         double* arr, int arr_size, 
         int* filename_ascii, int fn_len, int* ierr);
 
-void deserialize_char_flat_C(
+void deserialize_char_nd_C(
         int* ascii_arr, int clen, 
         int total_array_size, int* filename_ascii, int fn_len, int* ierr);
 
@@ -287,7 +287,7 @@ void serialize_real_nd_C(
         void* arr, int* dims, 
         int ndim, int* filename_ascii, int fn_len, int* ierr);
 
-void serialize_char_flat_C(
+void serialize_char_nd_C(
         int* ascii_arr, int* dims, 
         int ndim, int clen, int* filename_ascii, int fn_len, int* ierr);
 void get_array_metadata_C(
@@ -413,7 +413,7 @@ void validate_all_data_C(int n_genes,
                          const double* shift_vectors,
                          int* ierr);
 
-void create_zip_archive_generic_c(const char* zip_filename,
+void create_zip_archive_c(const char* zip_filename,
                                   int zip_len,
                                   const char* keys,
                                   int keys_len,
@@ -423,10 +423,36 @@ void create_zip_archive_generic_c(const char* zip_filename,
                                   int filenames_count,
                                   int* ierr);
 
-void extract_zip_archive_generic_c(const char* zip_filename,
+void extract_zip_archive_c(const char* zip_filename,
                                    int filename_len,
                                    int* ierr);
 
+    void euclidean_distance_c(double* vec1, double* vec2, int d, double* result);
+    void distance_to_centroid_c(int n_genes, int n_families, double* genes,
+                                double* centroids, int* gene_to_fam,
+                                double* distances, int d);
+    void compute_tissue_versatility_c(int n_axes, int n_vectors,
+                                      double* expression_vectors,
+                                      int* exp_vecs_selection_index,
+                                      int n_selected_vectors,
+                                      int* axes_selection,
+                                      int n_selected_axes,
+                                      double* tissue_versatilities,
+                                      double* tissue_angles_deg,
+                                      int* ierr);
+    void compute_shift_vector_field_c(int d, int n_genes, int n_families,
+                                      double* expression_vectors, double* family_centroids,
+                                      int* gene_to_centroid, double* shift_vectors,
+                                      int* ierr);
+
+    void mean_vector_c(double* expression_vectors, int n_axes, int n_genes,
+                       int* gene_indices, int n_selected_genes,
+                       double* centroid_col, int* ierr);
+
+    void group_centroid_c(double* expression_vectors, int n_axes, int n_genes,
+                         int* gene_to_family, int n_families,
+                         double* centroid_matrix, const char* mode,
+                         int* ortholog_set, int* selected_indices, int selected_indices_len, int* ierr);
 }
 
 
@@ -464,7 +490,7 @@ List tox_k_means_clustering_rcpp(int n_clusters,
 double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
     int d = vec1.length();
     double result = 0.0;
-    
+
     euclidean_distance_c(vec1.begin(), vec2.begin(), d, &result);
     return result;
 }
@@ -473,17 +499,17 @@ double tox_euclidean_distance_rcpp(NumericVector vec1, NumericVector vec2) {
  * Calculate distances from genes to their family centroids
  */
 // [[Rcpp::export]]
-NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector centroids, 
+NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector centroids,
                                        IntegerVector gene_to_fam, int d) {
     int n_genes = genes.length() / d;
     int n_families = centroids.length() / d;
-    
+
     NumericVector distances(n_genes);
-    
-    distance_to_centroid_c(n_genes, n_families, genes.begin(), 
-                          centroids.begin(), gene_to_fam.begin(), 
+
+    distance_to_centroid_c(n_genes, n_families, genes.begin(),
+                          centroids.begin(), gene_to_fam.begin(),
                           distances.begin(), d);
-    
+
     return distances;
 }
 
@@ -491,24 +517,24 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes, NumericVector c
  * Calculate Tissue Versatility
  */
 // [[Rcpp::export]]
-List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors, 
-                                      IntegerVector vector_selection, 
+List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
+                                      IntegerVector vector_selection,
                                       IntegerVector axis_selection) {
     int n_axes = expression_vectors.nrow();
     int n_vectors = expression_vectors.ncol();
     int n_selected_vectors = sum(vector_selection);
     int n_selected_axes = sum(axis_selection);
-    
+
     NumericVector tissue_versatilities(n_selected_vectors);
     NumericVector tissue_angles_deg(n_selected_vectors);
     int ierr = 0;
-    
+
     compute_tissue_versatility_c(n_axes, n_vectors, expression_vectors.begin(),
                                 vector_selection.begin(), n_selected_vectors,
                                 axis_selection.begin(), n_selected_axes,
-                                tissue_versatilities.begin(), 
+                                tissue_versatilities.begin(),
                                 tissue_angles_deg.begin(), &ierr);
-    
+
     return List::create(
         Named("tissue_versatilities") = tissue_versatilities,
         Named("tissue_angles_deg") = tissue_angles_deg,
@@ -516,7 +542,7 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
         Named("n_selected_axes") = n_selected_axes,
         Named("ierr") = ierr
     );
-    
+
 }
 
 /**
@@ -585,8 +611,6 @@ List tox_log2_transformation_rcpp(NumericMatrix input) {
     );
 }
 
-
-
 /**
  * Calculate tissue averages
  */
@@ -621,7 +645,6 @@ List tox_calc_fchange_rcpp(NumericMatrix input, IntegerVector control_cols, Inte
         Named("ierr") = ierr
     );
 }
-
 
 /**
  * Perform normalization pipeline
@@ -1007,7 +1030,7 @@ List tox_serialize_char_array_rcpp(CharacterVector carr, std::string filename) {
   auto fname = filename_to_ascii(filename);
   int fn_len = static_cast<int>(fname.size());
   int ierr = 0;
-  serialize_char_flat_C(ascii_flat.data(), dims.data(), ndim, clen, fname.data(), fn_len, &ierr);
+  serialize_char_nd_C(ascii_flat.data(), dims.data(), ndim, clen, fname.data(), fn_len, &ierr);
   return List::create(Named("ierr") = ierr);
 }
 
@@ -1028,7 +1051,7 @@ List tox_deserialize_int_array_rcpp(std::string filename, int max_dims = 5) {
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
   IntegerVector out(total);
-  deserialize_int_C(out.begin(), total, fname.data(), fn_len, &ierr);
+  deserialize_int_nd_C(out.begin(), total, fname.data(), fn_len, &ierr);
   return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
 }
 
@@ -1047,7 +1070,7 @@ List tox_deserialize_real_array_rcpp(std::string filename, int max_dims = 5) {
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
   NumericVector out(total);
-  deserialize_real_C(out.begin(), total, fname.data(), fn_len, &ierr);
+  deserialize_real_nd_C(out.begin(), total, fname.data(), fn_len, &ierr);
   return List::create(Named("values") = out, Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin()+ndims), Named("ndim") = ndims, Named("ierr") = ierr);
 }
 
@@ -1066,7 +1089,7 @@ List tox_deserialize_char_array_rcpp(std::string filename, int max_dims = 5) {
   for (int i = 0; i < ndims; ++i) total *= dims_out[i];
 
   std::vector<int> ascii_out(total * clen);
-  deserialize_char_flat_C(ascii_out.data(), clen, total, fname.data(), fn_len, &ierr);
+  deserialize_char_nd_C(ascii_out.data(), clen, total, fname.data(), fn_len, &ierr);
 
   CharacterVector out(total);
   for (int i = 0; i < total; ++i) {
@@ -1415,7 +1438,7 @@ List tox_create_zip_archive_generic_rcpp(RawVector zip_filename_raw,
     int filenames_count = filenames_raw.ncol();
     int ierr = 0;
 
-    create_zip_archive_generic_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
+    create_zip_archive_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
                                  zip_len,
                                  reinterpret_cast<const char*>(keys_raw.begin()),
                                  keys_len,
@@ -1433,7 +1456,7 @@ List tox_extract_zip_archive_generic_rcpp(RawVector zip_filename_raw) {
     int zip_len = zip_filename_raw.size();
     int ierr = 0;
 
-    extract_zip_archive_generic_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
+    extract_zip_archive_c(reinterpret_cast<const char*>(zip_filename_raw.begin()),
                                   zip_len,
                                   &ierr);
 
@@ -1587,6 +1610,3 @@ Rcpp::List tox_omics_field_RAP_projection_rcpp(Rcpp::NumericMatrix vecs,
     Rcpp::Named("ierr") = ierr
   );
 }
-
-
-

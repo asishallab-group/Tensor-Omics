@@ -1,0 +1,108 @@
+\section{Empirical Distribution Estimation}\label{sec:empirical_distribution}
+
+    To enable robust outlier detection and hypothesis-free exploration, Tensor Omics constructs empirical distributions of core metrics across all gene families.
+
+    \subsection{Relative Distance Index (RDI)}
+
+        For each gene family, we define the centroid \( \vec{o} \) as the mean of all ortholog vectors \( \vec{o}_i \) across species. To assess the magnitude of a gene's divergence from this conserved expression center, we compute the Euclidean distance:
+        \[
+            d = \| \vec{p} - \vec{o} \|
+        \]
+        where \( \vec{p} \) is the expression vector of the gene being evaluated.
+
+        To normalize this distance and enable scale-independent comparison across families, we compute a family-specific scaling factor as the maximum distance between any ortholog vector and the ortholog centroid:
+        \[
+            d_{\text{scale}} = \max_i \| \vec{o}_i - \vec{o} \|
+        \]
+        This normalization is linear in the number of orthologs and avoids the quadratic cost of pairwise distance computation. The Relative Distance Index (RDI) is then defined as:
+        \[
+            \text{RDI} = \frac{\| \vec{p} - \vec{o} \|}{d_{\text{scale}}}
+        \]
+
+        In cases where ortholog annotations are unavailable or the family contains only a single ortholog, a statistical smoothing strategy is used to estimate an appropriate scaling factor. Specifically, for each gene family, we calculate:
+        \[
+            \text{FS}_i = \text{median}_j \left( \| \vec{f}_j - \vec{o}_i \| \right)
+            \quad \text{and} \quad
+            \text{FD}_i = \text{sd}_j \left( \| \vec{f}_j - \vec{o}_i \| \right)
+        \]
+        where \( \vec{f}_j \) are the expression vectors of all family members and \( \vec{o}_i \) is the family centroid (mean of all \( \vec{f}_j \)). A smoothing function \( f(\cdot) \), e.g. via LOESS, is fit to the set \( \{ (\text{FS}_i, \text{FD}_i) \} \) across all families. This yields an empirical mapping from median distance to expected spread. For families lacking orthologs, the smoothed value \( f(\text{FS}) \) is used as the denominator in:
+        \[
+            \text{RDI}_{\text{smoothed}} = \frac{\| \vec{p} - \vec{o} \|}{f(\text{FS})}
+        \]
+
+        This hybrid strategy ensures that RDI remains well-defined, interpretable, and comparable across evolutionary, functional, and statistical use cases in Tensor Omics.
+
+        All RDI values are pooled across all families to build an empirical distribution of relative intra-family divergence. This enables percentile-based filtering of significant shifts (e.g., 95th percentile for outlier detection) without requiring parametric assumptions.
+
+        \textbf{Note:} While RDI values are used to identify significant divergence, the unnormalized distances \( d_i \) are retained for all downstream geometric computations, such as vector field construction and shift vector analysis.
+
+    \subsection{Relative Angle Index (RAI)}
+
+        The angular difference between a vector \( \vec{p} \) and its centroid \(
+        \vec{o} \) is computed using the cosine formula:
+        \[
+            \text{RAI} = \cos^{-1} \left( \frac{\vec{p} \cdot \vec{o}}{\|\vec{p}\| \cdot \|\vec{o}\|} \right)
+        \]
+        This identifies divergence in direction. Thresholds (e.g. 95\%) are derived
+        from the pooled distribution of angles.
+
+    \subsection{Relative Axis Signal (RAS)}
+
+         For each unit-normalized expression vector \( \vec{p}^{\text{norm}} \), we consider its component \( \vec{p}^{\text{norm}}_i \) along each axis \( i \) (e.g., tissue). For each axis, the 5th percentile across all vectors is computed as the inactivity threshold. A gene is considered neofunctionalized in axis \( i \) if:
+        \[
+            \vec{o}^{\text{norm}}_i < T_i^{(5\%)} \quad \text{and} \quad \vec{p}^{\text{norm}}_i > T_i^{(5\%)}
+        \]
+        where \( \vec{o}^{\text{norm}} \) is the centroid.
+
+    \subsection{Rank-normalized Signal Index (RSI)}\label{sub:rsi}
+
+        To assess the local signal strength of expression or shift vectors across the space, Tensor Omics introduces the \emph{Rank-normalized Signal Index (RSI)}. This index provides a scale-independent estimate of the absolute magnitude of a vector, contextualized within the empirical distribution of magnitudes in the current field.
+
+        Given a set of vectors
+        \[
+            \mathcal{V} = \{ \vec{v}_1, \dots, \vec{v}_N \} \subset \mathbb{R}^n
+        \]
+        each vector's Euclidean norm is computed:
+        \[
+            s_i = \| \vec{v}_i \|
+        \]
+        These norms are assembled into a global magnitude distribution. To reduce the impact of noise and outliers, we extract the empirical 5th and 95th percentiles:
+        \[
+            Q_5 = \text{Percentile}_{5\%}(\{s_i\}), \quad Q_{95} = \text{Percentile}_{95\%}(\{s_i\})
+        \]
+        For each vector, the RSI is then computed as a clipped, percentile-normalized score:
+        \[
+            \text{RSI}_i = \min\left(1,\ \max\left(0,\ \frac{s_i - Q_5}{Q_{95} - Q_5}\right)\right)
+        \]
+
+        This formulation maps raw magnitudes into the unit interval \([0, 1]\), where values near 0 indicate weak or noise-like vectors, and values near 1 indicate vectors with strong signal relative to the field. Clipping ensures robustness even in the presence of heavy-tailed or multimodal distributions.
+
+        \textbf{Note:} RSI applies uniformly to expression fields and shift fields. In the context of signal-based subfield detection, it provides a direct and empirically grounded method for excluding noise vectors and prioritizing high-signal regions. In future extensions, RSI may also be computed on scalar fields derived from second-order tensors (e.g., Frobenius norm of surface tensors).
+
+    \subsection{Relative Frobenius Index (RFI)}
+
+        For any set of $d$ vectors \( \{ \vec{v}_1, \dots, \vec{v}_n \} \), e.g. gene
+        families, populations, or genes belonging to the same biological process or
+        molecular function group, the vectors are assembled as columns in a matrix
+        \( M \in \mathbb{R}^{n \times m} \). The signal strength of this vector-group
+        (matrix) is computed as:
+        \[
+            \text{RFI} = \frac{\|M\|_F}{\sqrt{m}} = \frac{\sqrt{\sum_{i=1}^{n} \sum_{j=1}^{m} M_{ij}^2}}{\sqrt{m}}
+        \]
+        This provides a normalized estimate of signal per vector and is used to assess
+        subfield strength.
+
+        \textbf{Note:} The Frobenius norm is here used as a scalar estimate of the
+        total signal energy contributed by a set of expression vectors. The matrix \( M
+        \in \mathbb{R}^{n \times m} \) contains \( m \) gene vectors (columns) embedded
+        in a fixed \( n \)-dimensional semantic space. The RFI, defined as \( \|M\|_F /
+        \sqrt{m} \), reflects the average per-vector magnitude in a root-mean-square
+        sense. This formulation emulates the cumulative effect of a gene set on a test
+        particle exposed to their additive influence, without requiring square or
+        self-adjoint structure. It supports comparison of sets with arbitrary
+        cardinality \( m \), all embedded in a shared space \( \mathbb{R}^n \).
+
+        \vspace{2em}
+
+        All empirical distributions are stored in Fortran arrays and used to assign
+        significance thresholds for downstream classification and visualization.

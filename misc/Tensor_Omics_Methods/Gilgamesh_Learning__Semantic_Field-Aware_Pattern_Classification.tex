@@ -1,0 +1,132 @@
+\section{Gilgamesh Learning: Semantic Field-Aware Pattern Classification}
+
+    \subsection{Overview}
+
+        The \textbf{Gilgamesh Learning Layer} is the first structured machine learning stage in Tensor Omics. It performs explainable, geometric pattern classification over semantically aligned vector fields, such as expression vectors or shift vectors, using robust aggregation of canonical field descriptors across a normalized subfield space. The method is fully deterministic, aligned with F42-compliant memory handling, and compatible with both supervised and unsupervised classification (e.g., SVMs or interpretable logistic regression).
+
+    \subsection{Motivation and Biological Context}
+
+        Traditional ML pipelines in omics use raw gene-level input or PCA-transformed data. These approaches:
+        \begin{itemize}
+            \item Do not respect semantic coherence of expression vector fields.
+            \item Obfuscate spatial locality or directional geometry.
+            \item Often ignore explainability in favor of brute predictive power.
+        \end{itemize}
+
+        In contrast, \textbf{Gilgamesh Learning} leverages the latent geometry of semantic fields constructed in TOX to provide biologically interpretable classification, tracing the activation of regions (cylinder bins) and their descriptors, and linking learned patterns back to cellular processes or clinical labels.
+
+    \subsection{Method}
+
+        Let $\mathcal{F} \subset \mathbb{R}^n$ be a subfield of expression or shift vectors, constructed post-normalization, smoothing, and grid interpolation. Let $H$ denote the \textbf{Mj\"olnir handle}, i.e., the primary flow axis of the subfield, computed via kernel-smoothing over Brokk root vectors as described in the corresponding section.
+
+        \subsubsection{Cylindrical Binning Along Mj\"olnir’s Handle}
+
+            \begin{enumerate}
+                \item Compute the set of \textbf{Brokk root vectors} by projecting each expression or shift vector onto $H$ and recording the foot of the perpendicular dropped from each vector onto the handle. These form a dense sampling of trajectory-aligned coordinates.
+                \item Partition the handle $H$ into $g$ equal-sized bins based on the distribution of Brokk root vector coordinates, typically using empirical quantiles (e.g., five-percentile bins).
+                \item Around each segment of $H$, construct a cylindrical region $\mathcal{C}_i$ that captures spatially co-local vectors.
+                \item Assign each vector in $\mathcal{F}$ to its corresponding $\mathcal{C}_i$ using proximity to the associated Brokk root coordinate.
+            \end{enumerate}
+
+            \textbf{Directional Alignment Convention:} To ensure consistent orientation, define "upward" along the handle as the direction in which the cosine between the global principal flow vector and the linearized Mj\"olnir handle is positive. If negative, reverse the order of bins. This ensures that all bin sequences respect a canonical semantic up–down structure across experiments and fields.
+
+        \subsubsection{Canonical Descriptors}
+
+            For each bin $\mathcal{C}_i$, construct a matrix $M_i$ from collected vectors (as columns). Extract the following descriptors:
+            \begin{itemize}
+                \item \textbf{Signal Strength} $s_i = \| M_i \|_F$ (Frobenius norm)
+                \item \textbf{Directional Spread} $r_i = \mathrm{rank}(M_i)$
+                \item \textbf{Flow Vector} $\vec{f}_i$: First eigenvector of $M_i M_i^\top$
+                \item \textbf{Rotational Moment} $\vec{\rho}_i$: Skew-symmetric component of $M_i M_i^\top$
+            \end{itemize}
+
+            Construct a \textbf{concatenated feature vector}:
+            \[
+                \vec{x} = \mathrm{concat}(s_1, r_1, \vec{f}_1, \vec{\rho}_1, \dots, s_g, r_g, \vec{f}_g, \vec{\rho}_g)
+            \]
+            This $\vec{x}$ represents the full subfield $\mathcal{F}$ in structured geometric terms.
+
+        \subsubsection{Training and Classification}
+
+            Train a supervised classifier (e.g., linear SVM) using vectors $\vec{x}$ from labeled subfields. For a trained SVM with weights $\vec{w}$ and bias $b$, the decision function is:
+            \[
+                \mathrm{score}(\vec{x}) = \vec{w}^\top \vec{x} + b
+            \]
+
+    \subsection{Explainability}
+
+        The contribution of each bin-descriptor pair can be extracted from $\vec{w}$:
+        \begin{itemize}
+            \item Rank the components $x_i \cdot w_i$ in descending order.
+            \item Use cumulative sum until 80\% of $\mathrm{score}(\vec{x})$ is explained.
+            \item Associate top-contributing bins back to their positions in $H$.
+        \end{itemize}
+
+        This yields:
+        \begin{itemize}
+            \item Spatially localized regions of activation.
+            \item Descriptor-level explanations (e.g., flow, rotation).
+            \item Optional lexical/ontological annotations via linked metadata (cf. GAWD).
+        \end{itemize}
+
+    \subsection{Semantic Alignment and Orientation of Subfields}
+
+        To enable comparability and structured learning across subfields, a consistent orientation convention is required. This is achieved via a canonical alignment using the subfield’s main flow axis and the global semantic spine.
+
+        Let $H$ denote the Mj\"olnir handle, constructed as a smoothed curve through Brokk root vectors (the perpendicular foot points of vectors projected onto the main axis). Let $\vec{v}_{\text{flow}}$ be the first eigenvector of the covariance matrix $C = M M^\top$ for all vectors in the subfield.
+
+        We define:
+        \[
+            \text{orientation sign} = \mathrm{sign}\left( \vec{v}_{\text{flow}} \cdot \vec{v}_{H} \right)
+        \]
+        where $\vec{v}_H$ is the unit vector pointing from the start to the end of the linearized handle $H$.
+
+        \begin{itemize}
+            \item If $\text{orientation sign} > 0$, the handle is already aligned "upward" (biologically or semantically increasing).
+            \item If $\text{orientation sign} < 0$, the bin sequence is reversed to restore canonical alignment.
+        \end{itemize}
+
+        This alignment step ensures that all subfields are sliced and encoded in a directionally consistent fashion, crucial for both classification and downstream glyph interpretation. It also preserves directional semantics across layers (e.g., Gilgamesh $\rightarrow$ Nubecita) and across different samples or biological conditions.
+
+    \subsection{Glyph Description via Lexical Metadata}
+
+        After training, apply the SVM model to each of the original training subfields. Compute the decision score for each. Extract the subfields falling into the top 5th percentile of decision scores. For each such activated subfield $\mathcal{F}_i$, compute its mean lexical vector $\vec{\ell}_i$ from associated metadata (e.g., Gene Ontology, KEGG, Mapman, patient notes).
+
+        The resulting set $\{\vec{\ell}_1, \dots, \vec{\ell}_k\}$ forms the ontological glyph description of the learned class. These mean vectors can be further clustered, projected, or plotted to study the coherence or diversity of the learned concept. By default, all such $\vec{\ell}_i$ are retained.
+
+    \subsection{Biological Applications}
+
+        \begin{itemize}
+            \item Identify class-specific tissue shifts (e.g., cancer vs. control).
+            \item Trace developmental trajectories (e.g., stage-specific expression flow).
+            \item Localize divergent processes across species in comparative studies.
+            \item Link clinical outcomes to geometric shifts in expression fields.
+            \item Extract data-native glyphs summarizing learned biological programs.
+        \end{itemize}
+
+    \subsection{Advantages Over Conventional ML}
+
+        \begin{itemize}
+            \item Fully explainable: input dimensions are geometric and interpretable.
+            \item Robust to noise: uses smoothed field descriptors, not raw vectors.
+            \item Compatible with GAWD and Eitri for recursive analysis.
+            \item Aligned with TOX principles: no imposed parametric model, minimal transformation.
+            \item Empowers symbolic downstream use: enables second-layer learning (Nubecita).
+        \end{itemize}
+
+    \subsection{Example Pseudocode (Sketch)}
+
+        \begin{verbatim}
+function gilgamesh_vector(subfield, mjolnir_handle, n_bins):
+    bins = split_handle_into_bins(mjolnir_handle, n_bins)
+    result = []
+    for bin in bins:
+        vectors = collect_vectors_in_cylinder(subfield, bin)
+        M = form_matrix_from_vectors(vectors)
+        s = frobenius_norm(M)
+        r = matrix_rank(M)
+        f = first_eigenvector(M * transpose(M))
+        rho = rotation_vector(skew(M * transpose(M)))
+        result.append([s, r, f, rho])
+    return concatenate(result)
+\end{verbatim}

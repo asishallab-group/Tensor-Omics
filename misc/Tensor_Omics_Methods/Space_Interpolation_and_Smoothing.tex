@@ -1,0 +1,49 @@
+\section{Space Interpolation and Smoothing}\label{sec:interpolation}
+
+    To support field-based analysis and ensure consistent representation across expression space, a regular structured grid is constructed. This grid forms the structural foundation for kernel-based interpolation and vector field smoothing.
+
+    \subsection{Grid Step Size Estimation}
+
+        The grid resolution is determined empirically from intra-family expression variation. Specifically, for each gene family, the Euclidean distance between each member's expression vector and the corresponding family centroid is computed. These intra-family distances are aggregated across all families into a single distribution. The grid step size ($e_g$) is then set as the \textbf{first quartile} (25th percentile) of this distribution.
+
+        \textit{Note:} Since this step requires family membership and centroid information, it must be performed after gene family grouping and centroid estimation (see Section~\ref{sec:centroid_estimation}).
+
+    \subsection{Gaussian Kernel Interpolation}
+
+        After grid construction, expression vectors are propagated onto the surrounding grid using a Gaussian kernel function centered at each grid vector's position. This operation produces a smoothly interpolated vector field that approximates local expression structure in the semantic space.
+
+        For a given expression vector \( \vec{v} \) and a grid point \( \vec{g} \), the interpolation weight is computed as:
+        \[
+            w(\vec{v}, \vec{g}) = \exp\left( -\frac{\|\vec{v} - \vec{g}\|^2}{\sigma^2} \right)\text{, with } \sigma = e_g \text{, the grid-step-size}
+        \]
+
+        Only expression vectors located within a cutoff radius of \( R = 3\sigma \) from the grid point contribute to its interpolated value. This follows standard statistical convention: for Gaussian kernels, 99.7\% of the total mass lies within three standard deviations. This choice ensures inclusion of nearly all local signal while excluding remote vectors that would introduce unrelated semantic influences.
+
+        The kernel width \( \sigma \) is set equal to the estimated grid step size, aligning spatial influence with the empirically defined resolution of expression variability. Each grid point \( \vec{g} \) receives the kernel-weighted average of all expression vectors within its support radius:
+        \[
+            \vec{v}_{\text{interp}}(\vec{g}) = \frac{\sum_{\vec{v} \in \mathcal{V}_g} w(\vec{v}, \vec{g}) \cdot \vec{v}}{\sum_{\vec{v} \in \mathcal{V}_g} w(\vec{v}, \vec{g})}
+        \]
+        where \( \mathcal{V}_g \) is the set of all original expression vectors within range of \( \vec{g} \). No interpolated vectors are used in this step; only original gene expression vectors contribute.
+
+    \subsection{Gaussian Kernel Smoothing}
+
+        After interpolation, a secondary smoothing step is applied to reinforce field coherence. This step uses the same Gaussian kernel formulation but is conceptually and operationally distinct from interpolation.
+
+        In smoothing, both the interpolated grid vectors \( \vec{v}_{\text{interp}} \) and the original expression vectors \( \vec{v}_{\text{orig}} \) contribute to the smoothed result. However, smoothing is applied only to the interpolated grid points, and the smoothed vectors are \emph{not} recursively used in further smoothing steps. This design ensures mathematical clarity, avoids progressive drift or oversmoothing, and enables efficient parallel computation.
+
+        The smoothed vector at grid point \( \vec{g} \) is computed as:
+        \[
+            \vec{v}_{\text{smooth}}(\vec{g}) = \frac{\sum_{\vec{v} \in \mathcal{V}_g \cup \mathcal{G}_g} w(\vec{v}, \vec{g}) \cdot \vec{v}}{\sum_{\vec{v} \in \mathcal{V}_g \cup \mathcal{G}_g} w(\vec{v}, \vec{g})}
+        \]
+        where:
+        \begin{itemize}
+            \item \( \mathcal{V}_g \) are original expression vectors within \( R = 3\sigma \) of \( \vec{g} \),
+            \item \( \mathcal{G}_g \) are neighboring interpolated grid vectors (e.g., in a Moore neighborhood),
+            \item All weights are computed using the same Gaussian kernel with width \( \sigma \).
+        \end{itemize}
+
+        Importantly, smoothed vectors are not used to further smooth neighboring grid points. This avoids recursive blending and ensures that the smoothing operation can be executed independently across grid points, supporting massive parallelization on CPU or GPU backends.
+
+        \textbf{Clarification regarding mathematical consistency:} This two-step method preserves both the semantic geometry and the quantitative scale of the original expression space. Interpolation is based solely on raw expression vectors, and smoothing includes original anchors, thereby preventing topological drift. The choice of \( R = 3\sigma \), combined with symmetric Gaussian kernels and fixed kernel width, ensures that no bias is introduced into the vector field and that all operations remain invariant under rotation and translation in expression space.
+
+        \textbf{Interpretation:} Interpolation constructs a continuous field over grid coordinates. Smoothing reinforces continuity and prepares the field for robust downstream operations such as flow estimation, rotation analysis, or module surface detection.

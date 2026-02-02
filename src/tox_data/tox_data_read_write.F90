@@ -3,12 +3,12 @@ module tox_data_read_write
     use safeguard
     use iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, is_err, is_ok
-    use serialize_int, only: serialize_int_1d
-    use int_deserialize_mod, only: deserialize_int_1D
-    use serialize_real, only: serialize_real_2D
-    use real_deserialize_mod, only: deserialize_real_2D
-    use serialize_char, only: serialize_char_1D
-    use char_deserialize_mod, only: deserialize_char_1D
+    use f42_serialize_int, only: serialize_int_1d
+    use f42_deserialize_int, only: deserialize_int_1D
+    use f42_serialize_real, only: serialize_real_2D
+    use f42_deserialize_real, only: deserialize_real_2D
+    use f42_serialize_char, only: serialize_char_1D
+    use f42_deserialize_char, only: deserialize_char_1D
     implicit none
 
 contains

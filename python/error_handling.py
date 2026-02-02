@@ -1,10 +1,8 @@
+#> tox_helper: throw error in error case
 def check_err_code(ierr: int) -> None:
     if ierr == 0:
         return
     msg = {
-        # Success
-        0: "No error, operation successful.",
-        
         # I/O errors
         101: "Could not open file.",
         102: "Could not read magic number.",

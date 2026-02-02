@@ -1,7 +1,7 @@
 module tox_conversions
-    use iso_fortran_env, only: int32, real64
-    use iso_c_binding, only: c_int, c_double, c_null_char, c_double_complex, c_char, c_int64_t, c_size_t
+    use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_null_char, c_char, c_size_t, c_int64_t
 
 contains
 
@@ -105,6 +105,35 @@ contains
            c_char_array(str_len + 1) = c_null_char
         end if
     end subroutine string_as_c_char_1d
+
+    !> Converts a string to 1D c_char array
+    pure subroutine string_as_c_char_1d_r(str, c_char_array)
+        character(len=*), intent(in) :: str
+        !! Fortran string to be converted
+        character(kind=c_char, len=1), dimension(:), intent(out) :: c_char_array
+        !! c_char array representing chars of `str`, will end with null char if space permits
+
+        integer(int32) :: i_str, str_len, max_len
+        character(len=1) :: fortran_char
+
+        max_len = size(c_char_array, 1)
+        if (max_len <= 0) return
+
+        ! Copy as many characters as possible WITHOUT reserving space for null terminator
+        str_len = min(len_trim(str), max_len)
+
+        ! Copy the actual string characters
+        do i_str = 1, str_len
+        call c_char_as_char(str(i_str:i_str), fortran_char)
+        c_char_array(i_str) = fortran_char
+        end do
+
+        ! Add null terminator AFTER the string if there's space
+        if (str_len < max_len) then
+            c_char_array(str_len + 1) = c_null_char
+        end if
+        ! If str_len == max_len, no null terminator is added (R can handle this)
+    end subroutine string_as_c_char_1d_r
 
     !> Converts a 2D c_char array to 1D string array
     pure subroutine c_char_2d_as_string(c_char_array, str_out, ierr)

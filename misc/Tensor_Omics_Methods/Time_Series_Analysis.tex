@@ -1,0 +1,179 @@
+\section{Time Series Analysis}\label{sec:time_series_smoothing}
+
+    Tensor Omics applies a two-stage process to prepare time series expression trajectories for vector field analysis. This approach addresses the common problem of sparsely sampled or unevenly spaced time points in transcriptomic time courses and ensures that divergence detection remains sensitive and robust across genes and families.
+
+    \subsection{Stage 1: Per-Gene Trajectory Interpolation}
+
+        For each gene, we construct an interpolated expression trajectory using Gaussian kernel-based interpolation. Let the original time points be \( t_1, t_2, \dots, t_n \), with corresponding expression vectors \( \vec{e}_{t_i} \in \mathbb{R}^d \). These are interpolated to a denser trajectory with \( T = \max(10n, 30) \) total time points, equally spaced over the original time interval.
+
+        Interpolation is performed independently per gene, without considering other genes. This preserves the native trajectory shape while increasing temporal resolution. For each interpolated time point \( t \), a Gaussian kernel \( K(t, t_i) \) is applied over all original points:
+        \[
+            K(t, t_i) = \exp\left( -\frac{(t - t_i)^2}{2\sigma_i^2} \right)
+        \]
+        where \( \sigma_i \) is the local kernel width, chosen adaptively based on sampling density (see below).
+
+    \subsection{Stage 2: Contextual Smoothing Across Gene Families}
+
+        To reduce noise and incorporate contextual biological similarity, each interpolated trajectory is smoothed using a Gaussian kernel over time, borrowing support from orthologs and paralogs.
+
+        Each smoothed time point \( \vec{e}'_t \) is computed as a weighted average of temporally adjacent points from:
+        \begin{itemize}
+            \item The same gene (denoted as \( G \))
+            \item Orthologs within the family (denoted as \( O \))
+            \item Paralogs within the family (denoted as \( P \))
+        \end{itemize}
+
+        The total contextual weights are distributed as:
+        \[
+            \frac{6}{9} \text{ for } G, \quad
+            \frac{2}{9} \text{ for } O, \quad
+            \frac{1}{9} \text{ for } P
+        \]
+
+        Within each group, weight is evenly divided and modulated by a temporal kernel:
+        \[
+            w_{g_i} = \frac{6}{9|G|}, \quad
+            w_{o_i} = \frac{2}{9|O|}, \quad
+            w_{p_i} = \frac{1}{9|P|}
+        \]
+
+        The Gaussian weight based on temporal distance is:
+        \[
+            K(t, t_i) = \exp\left( -\frac{(t - t_i)^2}{2\sigma_i^2} \right)
+        \]
+
+        The final smoothed vector is:
+        \[
+            \vec{e}'_t = \frac{\sum_i w_i K(t, t_i) \vec{e}_{t_i}}{\sum_i w_i K(t, t_i)}
+        \]
+
+    \subsection{Adaptive Kernel Width}
+
+        The kernel width \( \sigma_i \) adapts to local sampling density:
+        \[
+            \sigma_i =
+                \begin{cases}
+                    t_2 - t_1 & \text{if } i = 1 \\
+                    \frac{1}{2}(t_{i+1} - t_{i-1}) & \text{if } 1 < i < n \\
+                    t_n - t_{n-1} & \text{if } i = n
+                \end{cases}
+        \]
+
+    \subsection{Shift Vector Construction}
+
+        After interpolation and smoothing, the trajectory for each gene is now defined as a continuous series of vectors \( \vec{p}_t \). For any gene family, the centroid trajectory \( \vec{o}_t \) is computed as the mean expression trajectory of all orthologs. The shift vector at each time point is then:
+        \[
+            \vec{s}_t = \vec{p}_t - \vec{o}_t
+        \]
+        These shift vectors form the time-dependent shift field used for downstream divergence and angle-based analyses.
+
+    \subsection{Angular Projection and Clock Plot Modes}
+
+        For each time point \( t \), we estimate the forward velocity of the gene's expression trajectory as:
+        \[
+            \vec{v}_t = \vec{p}_{t+1} - \vec{p}_t
+        \]
+        From this velocity vector, we define a local projection plane \( \Pi_t \) orthogonal to \( \vec{v}_t \). Into this plane we project:
+
+        \begin{itemize}
+            \item the shift vector \( \vec{s}_t = \vec{p}_t - \vec{o}_t \)
+            \item the anchor axis (AA), as a fixed reference direction in \( \mathbb{R}^d \)
+        \end{itemize}
+
+        The clockwise angle between these projected vectors forms the tissue preference rotation at time \( t \), which is visualized in the time trajectory clock plot.
+
+    \subsection{Clock Plot Visualization Modes}
+
+        We define two modes for clock plot visualization based on the angular coherence of local velocity vectors \( \vec{v}_t \):
+
+        \subsubsection*{Mode A (Low Angular Variance)}
+
+            If the angular variance of the velocity vectors \( \vec{v}_t \) is below a threshold, we compute the mean velocity vector \( \vec{v}_{\text{mean}} \), derive a single global projection plane \( \Pi_{\text{mean}} \), and use this for all projections. This yields an interpretable, consistent visualization with a coherent coordinate system origin and visible angle to the space diagonal.
+
+        \subsubsection*{Mode B (High Angular Variance)}
+
+            If angular variance is high, each time point is projected into its own local plane \( \Pi_t \). These planes are stacked in the final clock plot by superimposing their origins. The anchor axis and shift vector are rendered as if co-planar. This introduces spatial distortion but preserves directional interpretation at each time point. A supplementary plot indicates angular variance over time.
+
+    \subsection{Angular Shift Velocity (ASV)}
+
+        In Mode B, we additionally compute the angular velocity of shift direction over time. At each time point \( t \), the ASV is:
+        \[
+            \text{ASV}_t = \angle\left( \vec{s}_{t+1}^{\perp}, \vec{s}_t^{\perp} \right)
+        \]
+        where \( \vec{s}_t^{\perp} \) denotes the projection of the shift vector into \( \Pi_t \). This metric captures turning behavior in shift trajectories and may reveal biological transitions or inflection points in tissue preference.
+
+    \subsection{Mjölnir's Handle — Canonical Axis Reconstruction for Eitri Surface Extraction}\label{sec:semantic_axis}
+
+        \begin{itemize}
+            \item \textbf{Purpose:}
+                  \begin{itemize}
+                      \item Defines a unified, smoothed tracing axis for surface reconstruction within a semantic subfield.
+                      \item Replaces inconsistent per-axis Brokk cylinders with a continuous, empirically derived semantic rail.
+                      \item Anchors all surface geometry: clock hands, pie slicing, and surface candidates.
+                  \end{itemize}
+
+            \item \textbf{Step 1 — Extract Brokk Axes:}
+                  \begin{itemize}
+                      \item For expression fields: apply PCA to normalized vectors to get spread axes.
+                      \item For shift fields: compute covariance matrix of shift vectors; first eigenvector is dominant flow.
+                      \item Retain 1–3 eigenvectors if needed; typically use the first (dominant) as $\vec{b}$.
+                  \end{itemize}
+
+            \item \textbf{Step 2 — Compute Clock Hand Projections:}
+                  \begin{itemize}
+                      \item For each vector $\vec{v}_i$ in the subfield, decompose:
+                            \[
+                                \vec{v}_i = \vec{r}_i + \vec{v}_i^{\text{clock}}, \quad \text{where} \quad
+                                \vec{r}_i = \langle \vec{v}_i, \vec{b} \rangle \cdot \vec{b}, \quad
+                                \vec{v}_i^{\text{clock}} = \vec{v}_i - \vec{r}_i
+                            \]
+                      \item The root vectors $\vec{r}_i$ define a rough point cloud aligned with the subfield's dominant axis.
+                  \end{itemize}
+
+            \item \textbf{Step 3 — Smooth Root Vector Cloud:}
+                  \begin{itemize}
+                      \item Apply Gaussian kernel smoothing over the set of $\vec{r}_i$.
+                      \item This produces a smooth curve through semantic space — the \textbf{Mjölnir handle}.
+                      \item Recommended kernel width:
+                            \[
+                                \sigma = 1.2 \cdot d_{\text{grid step}}, \quad \text{truncated at } 3\sigma
+                            \]
+                      \item Adaptive $\sigma$ may be used based on local density.
+                  \end{itemize}
+
+            \item \textbf{Step 4 — Surface Extraction via Eitri 2.0:}
+                  \begin{itemize}
+                  \item Divide Mjölnir's handle into equal-length or quantile-based segments.
+                  \item For each segment:
+                        \begin{itemize}
+                            \item Construct a plane orthogonal to the handle (TRAP).
+                            \item Form a cylindrical shell (tube slice) around the segment.
+                            \item Project vectors into the TRAP and perform angular binning.
+                            \item In each pie slice, select the vector with maximal radial length as a surface candidate.
+                        \end{itemize}
+                  \item Optional smoothing across overlapping segments yields continuous surfaces.
+                  \end{itemize}
+
+            \item \textbf{Interpretation:}
+                  \begin{itemize}
+                      \item Mjölnir’s handle is the \textit{semantic spine} of the surface — the first structure carved before the geometry is wrapped.
+                      \item Enables reversible and modular interpretation of subfield geometry.
+                      \item Removes ambiguity from axis choice and enforces directional consistency across surface detection.
+                  \end{itemize}
+        \end{itemize}
+
+    \subsection{Instantaneous Acceleration (Future Extension)}
+
+        As a potential extension, we define instantaneous acceleration as:
+        \[
+        \vec{a}_t = (\vec{p}_{t+1} - \vec{p}_t) - (\vec{p}_t - \vec{p}_{t-1}) = \vec{p}_{t+1} - 2\vec{p}_t + \vec{p}_{t-1}
+        \]
+        This second-order derivative could be used to detect abrupt transitions in expression dynamics, e.g., rapid shifts in cell state or bifurcation points in developmental or stress trajectories. It is currently not used in visualization but retained for future interpretability analyses.
+
+    \subsection{Biological Interpretation}
+
+        This time-aware geometric framework allows Tensor Omics to identify and interpret dynamic expression shifts. Local angular trajectories provide insight into progressive tissue reprogramming, while metrics such as ASV capture the smoothness or abruptness of functional divergence over time. The projection modes ensure interpretability across both smooth and complex expression paths, enabling application across diverse systems from developmental timelines to stress response series.
+
+    \subsection{Implementation Notes}
+
+        All trajectory interpolation, smoothing, projection, and angle computations are performed in Fortran using preallocated arrays for performance and reproducibility. Projection operations avoid.

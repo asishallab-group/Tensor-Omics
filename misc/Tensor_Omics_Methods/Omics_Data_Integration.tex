@@ -1,0 +1,344 @@
+\section{Multi Omics Data Integration: Jensen--Shannon-Divergence based compatibility test of two sets of biological replicates from different studies}
+
+\label{sec:jsd_comp_test}
+
+\subsection{Motivation and Scope}
+
+Omics research has produced a vast and continuously growing collection of high-quality public datasets, spanning multiple species, tissues, experimental conditions, and technologies. Integrating such datasets offers the potential to substantially increase statistical power and to address biological questions at a broader and more general level than is possible within individual studies.
+
+At the same time, it is well established that omics data are affected by batch effects. Even when different studies appear to sample the same tissue under comparable experimental protocols, the underlying biological state, sample handling, sequencing technology, or data processing pipelines may differ. Such differences can introduce systematic biases that are not always detectable by inspection of mean expression levels alone.
+
+A central and largely unresolved question in multi-study omics integration is therefore whether two sets of biological replicates can be treated as sampling the same biological condition, or whether they should be considered distinct conditions due to technical or biological incompatibilities. This decision has direct consequences for downstream analyses, including statistical testing, biological interpretation of expression spaces, and the training of machine learning models.
+
+The methodology introduced here addresses this problem by providing a model-free, empirical compatibility test for two sets of biological replicates originating from different studies. The test quantifies whether observed quantification variability is consistent between studies when conditioned on mean expression levels. It thus serves as a diagnostic tool for batch effect detection in transcriptomics and proteomics and for assessing whether integration of two sets of biological replicates is statistically and biologically justified.
+
+If two sets of biological replicaes are found to be incompatible, we recommend treating them as distinct experimental conditions, for example by assigning different labels in downstream analyses or in deep learning applications. If, in contrast, the replicate sets are compatible, they can be integrated to increase the effective number of biological replicates and thereby improve statistical power.
+
+\subsection{Overview of the Jensen--Shannon-Divergence based compatibility test}
+
+We introduce the Jensen--Shannon-Divergence based compatibility test (JSD-Comp-Test) to compare two sets of biological replicates from different studies. The test is applicable to transcriptomics and proteomics data alike and, more generally, to any quantitative omics modality for which biological replicates are available, including metabolomics and related mass-spectrometry based assays, provided that replicate-level variability can be empirically estimated.
+
+Both variants of the test operate on signed residuals defined as the difference between individual biological replicates and the corresponding mean quantification value. Residuals are analyzed empirically and without parametric assumptions. Crucially, residual variability is evaluated conditionally on mean expression levels to account for heteroscedasticity, which is a well-known property of omics data.
+
+The JSD-Comp-Test is provided in two complementary forms. The first ``global'' variant compares the conditional probability distributions of residuals given mean expression levels between two studies, using Jensen--Shannon divergence as a symmetric and bounded measure of distributional dissimilarity. This variant primarily assesses technical and global biological compatibility.
+
+The second ``family'' variant extends this approach by additionally conditioning residual distributions on gene family membership. By introducing gene family context, this variant incorporates information about shared molecular function, regulatory units, and evolutionary relatedness. It enables the identification of specific gene families that disproportionately contribute to incompatibility between studies, thereby offering more fine-grained biological interpretability.
+
+Together, these two variants define a general framework for empirically assessing the compatibility of biological replicate sets prior to integration and downstream analysis.
+
+\subsection{Basic concept of the JSD-Comp-Test}
+
+Conceptually, the JSD-Comp-Test compares two studies by analyzing the distributions of gene expression residuals grouped by mean expression levels. Residuals are defined as signed differences between the mean expression of a gene and the expression measured in individual biological replicates used to compute that very mean. By comparing these residual distributions conditioned on mean expression, the method explicitly accounts for the well-known heteroscedasticity of omics data while addressing the central question of how similarly gene expression values fluctuate around their respective means across the compared studies.
+
+\subsection{Mathematical Setup and Notation (Global Variant)}
+
+Assume two RNA-Seq studies $S_1$ and $S_2$ that each produced a set of biological replicates for the same tissue and nominally the same biological condition. As a concrete example, $S_1$ and $S_2$ may both measure gene expression in non-small cell lung cancer samples with an EGFR exon~19 deletion, but originate from different laboratories, cohorts, or sequencing and processing pipelines.
+
+Let $G$ denote the set of genes considered. For study $S \in \{S_1,S_2\}$, gene $g \in G$, and biological replicate index $i \in \{1,\ldots,n_{S,g}\}$, let
+\[
+x^{(S)}_{g,i}
+\]
+denote the observed expression value (for example, log-transformed TPM or another normalized abundance measure). The number of available biological replicates $n_{S,g}$ may differ between studies and may vary across genes due to filtering or missing values.
+
+We define the per-study, per-gene mean expression as
+\[
+\bar{x}^{(S)}_{g} = \frac{1}{n_{S,g}} \sum_{i=1}^{n_{S,g}} x^{(S)}_{g,i}.
+\]
+
+Signed residuals, representing replicate-level deviations from the gene mean, are defined as
+\[
+e^{(S)}_{g,i} = x^{(S)}_{g,i} - \bar{x}^{(S)}_{g}.
+\]
+These residuals quantify biological and technical variability around the mean expression of gene $g$ in study $S$. Centering by the gene mean preserves absolute expression baselines while isolating replicate variability.
+
+The global JSD-Comp-Test assesses compatibility between studies $S_1$ and $S_2$ by comparing the conditional distributions
+\[
+P(e \mid x),
+\]
+that is, the probability distribution of signed residuals $e$ conditioned on mean expression level $x$. In practice, conditional residual distributions are estimated empirically by pooling residuals from genes with similar mean expression values. The resulting conditional probability mass functions are then compared between studies using Jensen--Shannon divergence, as described in the following sections.
+
+In the context of Tensor Omics, this formulation corresponds to comparing two sets of biological replicates intended to map onto the same tissue axis; however, the JSD-Comp-Test itself is independent of the Tensor Omics framework and can be applied as a standalone compatibility diagnostic.
+
+\subsection{Global Jensen--Shannon-Divergence Compatibility Test (gJCT)}
+
+\subsubsection{Conditioning on Mean Expression Levels}
+
+Quantification variability in omics data is strongly dependent on mean expression levels. Highly expressed genes typically show lower relative variability than lowly expressed genes, a phenomenon commonly referred to as heteroscedasticity. For this reason, residual distributions must not be compared globally across all genes, but only among genes with similar mean expression values.
+
+Let $\bar{x}^{(S)}_g$ denote the mean expression of gene $g$ in study $S$, and let $e^{(S)}_{g,i} = x^{(S)}_{g,i} - \bar{x}^{(S)}_g$ denote the corresponding signed residuals. To enable matched comparison between studies, we define a shared grid of mean-expression reference points.
+
+Mean expression values $\{\bar{x}^{(S_1)}_g\} \cup \{\bar{x}^{(S_2)}_g\}$ are pooled across both studies. From this pooled set, $r$ reference points
+\[
+x^\star_1, \ldots, x^\star_r
+\]
+are defined as empirical quantiles, for example at levels $j/(r+1)$ with $j=1,\ldots,r$. This ensures that reference points are aligned between studies and cover the full dynamic range of expression while avoiding extreme tails.
+
+For each reference point $x^\star_j$, a neighborhood in mean-expression space is constructed using a k-nearest-neighbor (kNN) approach. Specifically, the $k_x$ genes whose mean expression values are closest to $x^\star_j$ (in absolute difference) are selected. Neighborhoods are allowed to overlap; overlap is expected and serves as empirical smoothing of the conditional distribution $P(e \mid x)$.
+
+The neighborhood size $k_x$ is chosen to ensure stable estimation of residual distributions. As an initialization, we use
+\[
+k_x = \min\!\left(\max\!\left(100,\left\lfloor \frac{N}{2r} \right\rfloor\right), 1000\right),
+\]
+where $N$ is the total number of genes in the pooled set. Final validation of $k_x$ is performed through histogram stability checks as described below.
+
+\subsubsection{Residual Histograms and Probability Mass Functions}
+
+For each study $S$ and each mean-expression reference point $x^\star_j$, all signed residuals $e^{(S)}_{g,i}$ belonging to genes in the corresponding kNN neighborhood are collected.
+
+Residuals are summarized using histograms defined on a fixed and shared residual range. To ensure numerical robustness, the residual range is defined as
+\[
+[-R, R],
+\]
+where $R$ is chosen as a high quantile (default: 95th) of the absolute residual values pooled across both studies. Residuals outside this range are clamped to the boundary bins rather than discarded.
+
+The interval $[-R, R]$ is partitioned into $M$ equally sized bins
+\[
+B_1, \ldots, B_M,
+\]
+with identical bin boundaries used for all studies and all reference points.
+
+Let $c^{(S)}_{j,m}$ denote the number of residuals from study $S$ in bin $B_m$ at reference point $x^\star_j$. The histogram is converted into a probability mass function (PMF) by normalization:
+\[
+p^{(S)}_{j,m} = \frac{c^{(S)}_{j,m}}{\sum_{k=1}^{M} c^{(S)}_{j,k}}, \quad m=1,\ldots,M,
+\]
+which satisfies $\sum_m p^{(S)}_{j,m} = 1$.
+
+To ensure reliable estimation, we require that the expected number of residual samples per bin is sufficiently large. Bin configurations that lead to excessive sparsity are rejected.
+
+\subsubsection{Choice and Validation of Histogram Resolution}
+
+The number of bins $M$ controls the trade-off between resolution and numerical stability. Instead of fixing $M$ a priori, we evaluate a small grid of candidate values, for example
+\[
+M \in \{20, 30, 40, 60, 80\}.
+\]
+
+For each candidate value of $M$, residual histograms and probability mass functions are constructed as described above. Numerical robustness is then assessed using bootstrap resampling of residuals within each mean-expression neighborhood. In each bootstrap iteration, residual samples are resampled with replacement from the original residual pool belonging to a given neighborhood, preserving the total number of residuals. Histograms, PMFs, and the resulting Jensen--Shannon divergence values are recomputed for each bootstrap sample.
+
+This resampling procedure is repeated a fixed number of times (default: 100 bootstrap replicates; optionally increased to 1000 for large datasets) to obtain an empirical distribution of divergence estimates for each candidate value of $M$. The variability of the divergence estimator is summarized, for example by its standard deviation or interquartile range across bootstrap replicates.
+
+The smallest value of $M$ for which the variability of the Jensen--Shannon divergence reaches a stable plateau, while still satisfying the minimum-sample-per-bin condition, is selected as the default histogram resolution. This procedure optimizes numerical stability of the estimator rather than biological effect size and reduces sensitivity to arbitrary binning choices.
+
+\subsubsection{Jensen--Shannon Divergence Between Conditional Residual Distributions}
+
+For each reference point $x^\star_j$, two PMFs
+\[
+\mathbf{p}^{(S_1)}_j = (p^{(S_1)}_{j,1}, \ldots, p^{(S_1)}_{j,M}), \quad
+\mathbf{p}^{(S_2)}_j = (p^{(S_2)}_{j,1}, \ldots, p^{(S_2)}_{j,M})
+\]
+are compared using Jensen--Shannon divergence.
+
+The Jensen--Shannon divergence is defined as
+\[
+\mathrm{JSD}(\mathbf{p}, \mathbf{q}) =
+\frac{1}{2}\mathrm{KL}(\mathbf{p} \parallel \mathbf{m}) +
+\frac{1}{2}\mathrm{KL}(\mathbf{q} \parallel \mathbf{m}),
+\]
+where
+\[
+\mathbf{m} = \frac{1}{2}(\mathbf{p} + \mathbf{q}),
+\]
+and $\mathrm{KL}$ denotes the Kullback--Leibler divergence
+\[
+\mathrm{KL}(\mathbf{p} \parallel \mathbf{m}) =
+\sum_{m=1}^{M} p_m \log \frac{p_m}{m_m}.
+\]
+
+The Jensen--Shannon divergence is symmetric, bounded, and always finite. It measures the difference in Shannon information content between two probability distributions and is therefore well suited for comparing empirical residual PMFs.
+
+For the global gJCT, divergence values $\mathrm{JSD}_j$ computed at each reference point $x^\star_j$ are aggregated into a single summary statistic. Aggregation is performed using weights proportional to the number of residual samples contributing to each mean-expression neighborhood. 
+
+Let $n_j$ denote the total number of residual samples contributing to the conditional distributions at $x^\star_j$, summed across both studies. That is,
+\[
+n_j = n^{(S_1)}_j + n^{(S_2)}_j,
+\]
+where $n^{(S)}_j$ is the number of residual samples from study $S$ used to estimate $P_S(e \mid x^\star_j)$.
+
+The global divergence is then defined as
+\[
+\mathrm{JSD}_{\mathrm{global}} = \sum_{j=1}^{r} w_j \, \mathrm{JSD}_j,
+\quad
+w_j = \frac{n_j}{\sum_{k=1}^{r} n_k}.
+\]
+
+This weighting scheme reflects the relative statistical support of each neighborhood and prevents sparsely populated regions of mean-expression space from disproportionately influencing the global compatibility score. In particular, neighborhoods with few contributing residuals yield inherently noisier divergence estimates and are therefore down-weighted. Uniform weighting corresponds to treating all neighborhoods as equally informative, which may lead to instability when gene density varies strongly across expression levels.
+
+The weighted aggregation thus yields a single scalar divergence that summarizes study compatibility across the full dynamic range of expression while respecting the empirical reliability of local divergence estimates.
+
+\subsubsection{Permutation-Based Null Hypothesis Test}
+
+To assess whether the observed Jensen--Shannon divergence can arise by chance under exchangeability of studies, we perform a permutation-based null hypothesis test. The null hypothesis states that residuals from both studies are drawn from the same conditional distribution given mean expression levels.
+
+For each mean-expression reference point $x^\star_j$, residual samples from both studies are pooled. Study labels are then randomly permuted while preserving the original number of residual samples per study. For each permutation, probability mass functions are reconstructed and the Jensen--Shannon divergence is recomputed using the same binning scheme as for the observed data.
+
+This permutation procedure is repeated $B$ times to generate an empirical null distribution of divergence values. By default, we use $B = 1000$ permutations, which provides sufficient resolution for p-values down to $10^{-3}$ and yields stable results in practice. Smaller values of $B$ (e.g. $B = 100$) may be used for exploratory analyses, while larger values increase precision at additional computational cost.
+
+The empirical p-value is computed as
+\[
+p = \frac{1 + \sum_{b=1}^{B} I\!\left(\mathrm{JSD}^{(b)} \ge \mathrm{JSD}_{\mathrm{obs}}\right)}{B + 1},
+\]
+where $\mathrm{JSD}_{\mathrm{obs}}$ denotes the observed divergence, $\mathrm{JSD}^{(b)}$ the divergence obtained in permutation $b$, and $I(\cdot)$ is the indicator function.
+
+Importantly, permutations are performed independently within each mean-expression neighborhood. This preserves the mean-expression structure and ensures that the null distribution reflects only random reassignment of study labels rather than differences in expression-level composition.
+
+A low empirical p-value indicates that the observed divergence is unlikely to arise under exchangeability of studies and therefore provides strong evidence for incompatibility between the two sets of biological replicates. Conversely, large p-values indicate that the observed divergence is consistent with replicate-level variability alone, supporting compatibility and justifying integration of the studies.
+
+\subsubsection{Interpretation and Visualization}
+
+Results are visualized by plotting the null distribution of Jensen--Shannon divergence values together with the observed divergence. A common diagnostic plot shows the permutation-based null distribution as a density or histogram, with a vertical line indicating the observed divergence and reference lines marking selected quantiles (for example the 95th percentile).
+
+Low p-values indicate that the residual variability structures of the two studies are unlikely to be compatible given their mean-expression profiles, suggesting the presence of batch effects or biological differences.
+
+\subsubsection{Extension to Multiple Studies}
+\label{ssec:multi_study_gjct}
+
+The global Jensen--Shannon–based compatibility test (gJCT) naturally extends from pairwise study comparison to the simultaneous assessment of multiple studies sampling the same nominal biological condition (e.g. the same tissue under comparable experimental context).
+
+Assume $K$ studies $\{S_1, \ldots, S_K\}$, each providing a set of biological replicates. For every ordered study pair $(S_i, S_j)$ with $i < j$, a full gJCT is performed, including conditional residual estimation, histogram-to-PMF construction, Jensen--Shannon divergence calculation, and permutation-based null hypothesis testing as described above. This yields a symmetric pairwise divergence matrix
+\[
+\mathbf{D} = (\mathrm{JSD}_{ij})_{i,j=1}^K,
+\]
+with $\mathrm{JSD}_{ii} = 0$ by definition.
+
+For each pairwise comparison, the full inferential machinery is retained: bootstrap-based stability assessment, permutation-derived null distributions, and empirical p-values. This ensures that each entry of $\mathbf{D}$ reflects a statistically calibrated measure of compatibility rather than a raw distance alone.
+
+To summarize multi-study behavior, we compute per-study aggregate statistics derived from the pairwise matrix. For a given study $S_i$, the mean divergence
+\[
+\bar{d}_i = \frac{1}{K-1} \sum_{j \ne i} \mathrm{JSD}_{ij}
+\]
+quantifies its average compatibility with all other studies, while the maximum divergence
+\[
+d^{\max}_i = \max_{j \ne i} \mathrm{JSD}_{ij}
+\]
+captures the strongest observed incompatibility involving that study. The mean divergence highlights studies that are globally shifted relative to the rest, whereas the maximum divergence is sensitive to isolated but severe mismatches, for example caused by strong batch effects or unreported biological differences.
+
+\paragraph{Pooled studies global JSD-Comp-Test}
+
+In addition to pairwise comparisons, we perform a global reference test in which each study is compared against a pooled background distribution constructed from all remaining studies. Thus, the pooled background distribution is constructed in a leave-one-study-out manner to avoid self-influence and to ensure that divergence values reflect incompatibility with the broader consensus rather than partial self-agreement. Specifically, for a given study $S_i$, residuals from all studies $S_j$ with $j \neq i$ are aggregated within each mean-expression neighborhood to form a reference distribution. Conditional probability mass functions (PMFs) are estimated using the same fixed binning scheme as in the pairwise gJCT.
+
+Let $P_i(e \mid x^\star_j)$ denote the conditional PMF of residuals for study $S_i$ at reference mean expression value $x^\star_j$, and let
+\[
+P_{\mathrm{bg}}^{(i)}(e \mid x^\star_j)
+= \frac{1}{K-1} \sum_{j \neq i} P_j(e \mid x^\star_j)
+\]
+denote the pooled background PMF obtained as the arithmetic mean of the conditional PMFs of all other studies. This construction represents the consensus residual behavior across studies and preserves the normalization constraint of probability distributions.
+
+The Jensen--Shannon divergence between study $S_i$ and the pooled background at $x^\star_j$ is then computed as
+\[
+\mathrm{JSD}_i(x^\star_j)
+= \frac{1}{2} \mathrm{KL}\!\left(P_i \,\middle\|\, M_i \right)
++ \frac{1}{2} \mathrm{KL}\!\left(P_{\mathrm{bg}}^{(i)} \,\middle\|\, M_i \right),
+\]
+where
+\[
+M_i = \frac{1}{2} \left( P_i + P_{\mathrm{bg}}^{(i)} \right)
+\]
+is the mixture distribution and $\mathrm{KL}(\cdot\|\cdot)$ denotes the Kullback--Leibler divergence.
+
+As in the pairwise case, divergence values are aggregated across reference points $x^\star_j$ using weights proportional to the total number of residual samples contributing to each neighborhood. This global reference test assesses how compatible a given study is with the overall consensus of all available data, rather than with individual counterparts alone. It is particularly informative in large consortia where most studies agree and only few deviate, allowing robust identification of outlier studies driven by technical batch effects or unreported biological differences.
+
+Multi-study comparison improves statistical robustness in several ways. First, the increased number of studies enlarges the pool of residual samples available for permutation-based null estimation, yielding more stable and better-resolved null distributions. Second, consistency of results across many pairwise tests provides internal validation, reducing the risk that apparent incompatibility arises from stochastic fluctuation in a single comparison.
+
+\paragraph{Visualizations of multi-study global JSC-Comp-Tests}
+Results are best visualized using a heatmap of the pairwise divergence matrix $\mathbf{D}$, optionally annotated with significance levels derived from permutation tests. Such heatmaps reveal clusters of mutually compatible studies, global outliers, and structured incompatibilities that may correspond to shared technical platforms, laboratories, or unrecorded biological covariates. Additionally, hierarchical clustering of the divergence matrix $\mathbf{D}$ provides an intuitive visualization of compatibility structure, revealing groups of mutually compatible studies and potential outliers.
+
+\subsection{Family-Conditioned Jensen--Shannon Compatibility Test (fJCT)}
+\label{ssec:fjct}
+
+\subsubsection{Motivation}
+
+Gene expression variability is not only determined by measurement noise and mean expression level, but is also shaped by biological organization. Genes participating in the same regulatory module, molecular function, or metabolic pathway often exhibit correlated variability patterns due to shared regulation, stoichiometric constraints, or evolutionary history.
+
+The global JSD-Comp-Test (gJCT) intentionally ignores this structure to provide a study-wide compatibility assessment. In contrast, the family JSD-Comp-Test (fJCT) extends the same statistical framework by conditioning residual variability not only on mean expression levels but also on gene family context. This enables a biologically informed comparison of studies and allows identification of specific gene families that contribute most strongly to incompatibility.
+
+\subsubsection{Gene Family Annotation Requirement}
+
+To perform the fJCT, each gene quantified in the biological replicates must be assigned to exactly one gene family. Gene families represent groups of homologous genes and may reflect shared molecular function, regulatory programs, or evolutionary origin.
+
+Family annotations can be obtained using established tools or databases, such as OrthoFinder2, PANTHER, or Pfam. The fJCT does not require orthology relationships or one-to-one gene mappings across studies; only a gene-to-family assignment consistent across all compared studies is required.
+
+\subsubsection{Residual Construction and Conditioning}
+
+Let $x_{g,i}$ denote the expression of gene $g$ in biological replicate $i$ within a given study $S$, and let
+\[
+\bar{x}_g = \frac{1}{n_g} \sum_{i=1}^{n_g} x_{g,i}
+\]
+be the mean expression of gene $g$ across its $n_g$ biological replicates.
+
+Signed residuals are defined as deviations from the gene-specific mean expression:
+\[
+e_{g,i} = x_{g,i} - \bar{x}_g.
+\]
+These residuals quantify replicate-level variability around the estimated mean and capture both biological inter-individual variation and technical measurement noise.
+
+As in the global JSD-Comp-Test (gJCT), residuals are conditioned on reference mean-expression values $x^\star_j$ using adaptive $k$-nearest-neighbor (kNN) neighborhoods in mean-expression space. Specifically, for each reference point $x^\star_j$, a neighborhood $\mathcal{N}(x^\star_j)$ is constructed that contains the $k_x$ genes whose mean expression values $\bar{x}_g$ are closest to $x^\star_j$ in absolute difference.
+
+In the family JSD-Comp-Test (fJCT), this conditioning is extended by additionally restricting residuals to genes belonging to the same gene family. Let $F(g)$ denote the gene family assignment of gene $g$, consistent across all compared studies. For a given family $f$, only residuals from genes satisfying $F(g) = f$ are considered.
+
+Let $B_1,\ldots,B_M$ denote the fixed residual bins on $[-R,R]$ as defined for the gJCT. For each reference point $x^\star_j$, family $f$, and bin index $m \in \{1,\ldots,M\}$, we count residuals as
+\[
+c^{(S)}_{j,f,m}
+=
+\sum_{\substack{g \in \mathcal{N}(x^\star_j) \\ F(g)=f}}
+\sum_{i=1}^{n_g}
+I\!\left(e_{g,i} \in B_m\right),
+\]
+where $I(\cdot)$ is the indicator function.
+
+The conditional probability mass function (PMF) of residuals for study $S$ at reference mean-expression value $x^\star_j$ within family $f$ is then obtained by normalization:
+\[
+p^{(S)}_{j,f,m}
+=
+\frac{c^{(S)}_{j,f,m}}{\sum_{k=1}^{M} c^{(S)}_{j,f,k}},
+\quad
+m=1,\ldots,M,
+\]
+which satisfies $\sum_{m=1}^{M} p^{(S)}_{j,f,m} = 1$. Equivalently, this defines the conditional distribution
+\[
+P_S(e \mid x^\star_j, f)
+\quad \text{via} \quad
+P_S(e \in B_m \mid x^\star_j, f) = p^{(S)}_{j,f,m}.
+\]
+
+Compared to the gJCT, the only modification is the additional restriction $F(g)=f$ in the summation. All other aspects of the procedure remain unchanged. In particular, the reference points $x^\star_j$, neighborhoods $\mathcal{N}(x^\star_j)$, residual range $[-R,R]$, bin boundaries $B_1,\ldots,B_M$, and the histogram resolution $M$ are identical across studies and across families.
+
+Conceptually, family conditioning restricts the \emph{samples} contributing to each conditional distribution without altering the bin geometry or histogram resolution. This allows the fJCT to isolate variability patterns specific to shared regulatory or functional gene groups while preserving full comparability across studies.
+
+\subsubsection{Minimum Family Size and Filtering}
+
+To ensure numerical stability of conditional PMF estimation, gene families must contain a sufficient number of residual samples. By default, we require a minimum family size of eight genes. With typical transcriptomics experiments containing three biological replicates per gene, this yields at least 24 residuals per study before pooling across neighborhoods and studies.
+
+Families not meeting this criterion are excluded from the fJCT analysis. This threshold represents a balance between biological specificity and statistical robustness and can be adjusted by the user.
+
+\subsubsection{Family-Level Jensen--Shannon Divergence}
+
+For each gene family $f$ and each reference mean-expression value $x^\star_j$, conditional PMFs of residuals are estimated independently for each study using only residuals from genes belonging to family $f$.
+
+The Jensen--Shannon divergence $\mathrm{JSD}_{f,j}$ is computed between the corresponding conditional PMFs as described for the gJCT. Family-level divergence is then aggregated across reference points using weights proportional to the number of residual samples contributing to each neighborhood:
+\[
+\mathrm{JSD}_f = \sum_{j=1}^{r} w_{f,j} \, \mathrm{JSD}_{f,j},
+\quad
+w_{f,j} = \frac{n_{f,j}}{\sum_{k=1}^{r} n_{f,k}},
+\]
+where $n_{f,j}$ denotes the total number of residuals from family $f$, summed across all compared studies, that contribute to reference point $x^\star_j$.
+
+\subsubsection{Family Contribution to Global Divergence}
+
+To identify gene families that contribute most strongly to study incompatibility, family-level divergences are weighted by their overall residual support:
+\[
+W_f = \frac{N_f}{\sum_{g} N_g},
+\]
+where $n_{f,j}$ denotes the total number of residuals from family $f$, summed across all compared studies, that contribute to reference point $x^\star_j$.
+
+
+The contribution score of family $f$ is then defined as
+\[
+C_f = W_f \, \mathrm{JSD}_f.
+\]
+
+Ranking families by $C_f$ highlights families that both exhibit strong divergence and contribute substantially to the overall variability structure, preventing small or sparsely sampled families from dominating the interpretation.
+
+\subsubsection{Interpretation}
+
+The fJCT enables a biologically grounded compatibility analysis by decomposing global study divergence into contributions from gene families. Families with large contribution scores may reflect regulatory modules, pathways, or molecular functions that differ systematically between studies due to technical batch effects, differences in sample handling, or genuine biological discrepancies.
+
+By combining the gJCT and fJCT, users can distinguish between broad, study-wide incompatibility and family-specific divergence patterns, enabling both robust data integration and targeted biological interpretation.

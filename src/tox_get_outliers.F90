@@ -4,8 +4,8 @@ module tox_get_outliers
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-  use f42_utils, only: loess_smooth_2d,sort_array  
-  use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, set_ok, set_err_once
+  use f42_utils, only: loess_smooth_2d, sort_array  
+  use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once
   implicit none
 
 contains
@@ -343,18 +343,17 @@ contains
     call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, work_array, perm, stack_left, stack_right)
     call identify_outliers(n_genes, rdi, work_array, is_outlier, threshold, percentile_val)
   end subroutine detect_outliers
-
-
 end module tox_get_outliers
-
 
 !> R wrapper for compute_family_scaling (expert version with pre-allocated arrays).
 !| Calls compute_family_scaling with standard Fortran types for R interface.
 !| This version requires pre-allocated work arrays for maximum performance and control.
 subroutine compute_family_scaling_expert_r(n_genes, n_families, distances, gene_to_fam, dscale, &
       loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
-  use tox_get_outliers
-  use iso_fortran_env, only: real64, int32
+  use tox_get_outliers, only: compute_family_scaling
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -390,8 +389,10 @@ end subroutine compute_family_scaling_expert_r
 !| This is the recommended version for most users as it handles memory allocation automatically.
 subroutine compute_family_scaling_r(n_genes, n_families, distances, gene_to_fam, dscale, &
       loess_x, loess_y, indices_used, ierr)
-  use tox_get_outliers
-  use iso_fortran_env, only: real64, int32
+  use tox_get_outliers, only: compute_family_scaling_alloc
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -418,8 +419,10 @@ end subroutine compute_family_scaling_r
 !| Calls compute_rdi with standard Fortran types for R interface.
 !| Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.
 subroutine compute_rdi_r(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
-  use tox_get_outliers
-  use iso_fortran_env, only: real64, int32
+  use tox_get_outliers, only: compute_rdi
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of families
@@ -446,8 +449,10 @@ end subroutine compute_rdi_r
 !> R wrapper for identify_outliers.
 !| Calls identify_outliers with standard Fortran types for R interface.
 subroutine identify_outliers_r(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
-  use tox_get_outliers
-  use iso_fortran_env, only: real64, int32
+  use tox_get_outliers, only: identify_outliers
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Array of RDI values for each gene
@@ -469,8 +474,10 @@ subroutine detect_outliers_r(n_genes, n_families, distances, gene_to_fam, &
                             work_array, perm, stack_left, stack_right, &
                             is_outlier, loess_x, loess_y, loess_n, ierr, &
                             percentile)
-  use tox_get_outliers
-  use iso_fortran_env, only: real64, int32
+  use tox_get_outliers, only: detect_outliers
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  implicit none
+
   !| Total number of genes
   integer(int32), intent(in) :: n_genes
   !| Total number of gene families
@@ -513,8 +520,10 @@ end subroutine detect_outliers_r
   subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, &
     loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, &
     family_distances, ierr) bind(C, name="compute_family_scaling_expert_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_get_outliers
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_get_outliers, only: compute_family_scaling
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene
@@ -548,8 +557,9 @@ end subroutine compute_family_scaling_expert_c
 !| This is the recommended version for most users as it handles memory allocation automatically.
 subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, &
   loess_x, loess_y, indices_used, ierr) bind(C, name="compute_family_scaling_c")
-use iso_c_binding, only : c_int, c_double
-use tox_get_outliers
+use, intrinsic :: iso_c_binding, only : c_int, c_double
+use tox_get_outliers, only: compute_family_scaling_alloc
+implicit none
 !| Total number of genes
 integer(c_int), intent(in), value :: n_genes, n_families
 !| Array of Euclidean distances for each gene
@@ -574,8 +584,10 @@ end subroutine compute_family_scaling_c
 !| Calls compute_rdi with C-compatible types for external interface.
 !| Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.
 subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right) bind(C, name="compute_rdi_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_get_outliers
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_get_outliers, only: compute_rdi
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid
@@ -601,8 +613,10 @@ end subroutine compute_rdi_c
 !| Calls identify_outliers with C-compatible types for external interface.
 subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, threshold, percentile) &
                               bind(C, name="identify_outliers_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_get_outliers
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_get_outliers, only: identify_outliers
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes
   !| Array of RDI values for each gene
@@ -641,8 +655,10 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
                           work_array, perm, stack_left, stack_right, &
                           is_outlier_int, loess_x, loess_y, loess_n, ierr, &
                           percentile) bind(C, name="detect_outliers_c")
-  use iso_c_binding, only : c_int, c_double
-  use tox_get_outliers
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
+  use tox_get_outliers, only: detect_outliers
+  implicit none
+
   !| Total number of genes
   integer(c_int), intent(in), value :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid

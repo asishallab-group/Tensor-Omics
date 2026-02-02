@@ -6,17 +6,17 @@ module mod_test_tox_data
   use tox_data_validation
   use tox_data_accessors
   use tox_data_read_write
-  use array_utils, only: get_array_metadata
+  use f42_array_utils, only: get_array_metadata
   use tox_gene_centroids
   use tox_shift_vectors
   use tox_errors
   use tox_archive, only: save_tox_data, read_tox_data, create_zip_archive, extract_zip_archive, delete_file
-  use int_deserialize_mod
-  use real_deserialize_mod
-  use char_deserialize_mod
-  use serialize_char
-  use serialize_int
-  use serialize_real
+  use f42_deserialize_int
+  use f42_deserialize_real
+  use f42_deserialize_char
+  use f42_serialize_char
+  use f42_serialize_int
+  use f42_serialize_real
   implicit none
   public
 
@@ -385,8 +385,7 @@ contains
 
   !> Test computation of shift vectors
   subroutine test_compute_shift_vectors()
-    integer(int32) :: ierr, i, j
-    real(real64), allocatable :: test_shift_vectors(:,:)
+    integer(int32) :: i
     
     call assert_true(allocated(shift_vectors), "Shift vectors should be allocated")
     call assert_equal_int(size(shift_vectors, 1), 2*total_samples, "Shift vectors should have 2*d rows")
@@ -444,7 +443,7 @@ contains
   end subroutine test_write_read_shift_vectors
 
   subroutine test_read_write_gene_ids()
-    integer(int32) :: ierr, n_loaded_genes, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     character(len=256), allocatable :: loaded_gene_ids(:)
     call save_gene_ids(gene_ids, 'test_gene_ids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving gene IDs should succeed")
@@ -462,7 +461,7 @@ contains
   end subroutine test_read_write_gene_ids
 
   subroutine test_read_write_gene_to_fam()
-    integer(int32) :: ierr, n_loaded_genes, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     integer(int32), allocatable :: loaded_gene_to_fam(:)
     call save_gene_to_family(gene_to_fam, 'test_gene_to_fam.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving gene to family mapping should succeed")
@@ -477,7 +476,7 @@ contains
   end subroutine test_read_write_gene_to_fam
 
   subroutine test_read_write_family_ids()
-    integer(int32) :: ierr, n_loaded_families, ndims, dims(1)
+    integer(int32) :: ierr, ndims, dims(1)
     character(len=256), allocatable :: loaded_family_ids(:)
     call save_family_ids(gene_family_ids, 'test_family_ids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving family IDs should succeed")
@@ -492,7 +491,7 @@ contains
   end subroutine test_read_write_family_ids
 
   subroutine test_read_write_centroids()
-    integer(int32) :: ierr, n_loaded_families, ndims, dims(2)
+    integer(int32) :: ierr, ndims, dims(2)
     real(real64), allocatable :: loaded_centroids(:,:)
     call save_family_centroids(family_centroids, 'test_family_centroids.bin', ierr)
     call assert_equal_int(ierr, ERR_OK, "Saving family centroids should succeed")
@@ -815,7 +814,7 @@ contains
     integer(int32), allocatable :: read_int_2d(:,:)
     real(real64), allocatable :: read_real_1d(:)
     real(real64), allocatable :: read_real_2d(:,:)
-    character(len=20), allocatable :: read_char_1d(:)
+    character(len=:), allocatable :: read_char_1d(:)
     
     call set_ok(ierr)
     
@@ -967,7 +966,7 @@ contains
   end subroutine test_manual_archive
 
   subroutine test_hashing()
-    use xxh3_hashmap_module
+    use f42_xxh3_hashmap
     type(hashmap_type) :: test_hashmap
     type(hashset_type) :: test_hashset
     character(len=6), allocatable :: keys(:)

@@ -1,0 +1,130 @@
+\section{Geometric Tools for Semantic Interpretation}\label{sec:geometric_tools}
+
+    Tensor Omics provides a suite of geometric tools—referred to as \textit{semantic geometry measures}—that support interpretation, subfield detection, and comparative analysis of expression vector fields. These tools operate directly on the vector space and are designed to align with intuitive biological hypotheses.
+
+    \subsection{Direction-Based Subfield Collector}\label{sec:directional_collector}
+
+        To detect expression subfields aligned with a biologically meaningful trend, the user defines a direction-of-interest (DOI) vector \( \vec{v}_{\text{doi}} \in \mathbb{R}^n \). This may correspond to, for example, increased healing rate, higher oil content, or a linear combination of expression axes.
+
+        For each expression vector \( \vec{v}_i \), the cosine similarity with the DOI is computed. The method supports two modes, controlled by a Boolean input argument:
+
+        \begin{itemize}
+            \item \textbf{Normalization enabled:} both vectors are normalized to unit length, and the cosine is computed as:
+                  \[
+                      \cos(\theta_i) = \vec{v}_i^{\text{norm}} \cdot \vec{v}_{\text{doi}}^{\text{norm}}
+                  \]
+                  This mode emphasizes \emph{direction} over magnitude and is suited for analyses where only the semantic trend matters, such as expression coordination in transcription factors or between tissues.
+
+            \item \textbf{Normalization disabled:} the cosine is computed relative to the magnitude of the expression vector:
+                  \[
+                      \cos(\theta_i) = \frac{\vec{v}_i \cdot \vec{v}_{\text{doi}}^{\text{norm}}}{\|\vec{v}_i\|}
+                  \]
+                  This mode retains the influence of vector magnitude and is recommended when working in fold-change spaces (e.g., stress responses), where high expression shifts carry biological meaning.
+        \end{itemize}
+
+        The resulting cosine values \( \cos(\theta_i) \) are used to construct an empirical distribution. Vectors with the strongest projection onto the DOI (e.g., top 5\% by cosine value) are selected as a directional subfield. These can then be characterized using the Subfield Descriptor (Section~\ref{sec:module_descriptors}).
+
+        \subsubsection{When to Normalize (Direction-Only Interpretation)}
+
+            Normalization is recommended when:
+            \begin{itemize}
+                \item The biological question relates to the \textbf{direction of change} in expression across conditions.
+                \item Expression magnitude is not meaningful (e.g., low-expression transcription factors).
+                \item Comparing semantic shifts across gene families or tissues.
+            \end{itemize}
+
+        \subsubsection{When Not to Normalize (Magnitude Matters)}
+
+            Omitting normalization is appropriate when:
+            \begin{itemize}
+                \item The space encodes \textbf{magnitude changes}, e.g., fold-change after stress.
+                \item High-magnitude responses are biologically meaningful, such as upregulation in immune response genes.
+                \item The DOI is used to detect strong response contributors in a specific context.
+            \end{itemize}
+
+        \subsubsection{Selection of Directional Subfield}
+
+            The cosine values \( \cos(\theta_i) \) are collected across all vectors and an empirical distribution is formed. The top 5\% (or another percentile threshold) are selected as the directional subfield—those vectors with the strongest alignment (largest projection) onto the DOI.
+
+            The selected subset is returned as a list of vector indices and can be further analyzed using subfield descriptors (Section~\ref{sec:module_descriptors}).
+
+    \subsection{Signal-Based Subfield Detection}\label{sec:signal_based_subfield_detection}
+
+        In addition to metadata-driven and direction-of-interest-based methods for subfield collection, Tensor Omics supports a purely signal-based approach for identifying coherent expression or shift regions. This method—referred to as \textbf{Signal-Based Subfield Detection}—operates solely on vector magnitude and can be applied to both expression and shift fields. It provides a simple yet robust means of discovering compact, high-activity modules without assumptions about directionality or coherence, and serves as an efficient precursor to tensor field analysis.
+
+        \subsubsection{Vector Collection}
+
+            The procedure begins by selecting the tensor field to be analyzed:
+
+            \begin{itemize}
+                \item the \textbf{expression field}, consisting of gene expression vectors \( \vec{p} \in \mathbb{R}^n \), or
+                \item the \textbf{shift field}, with shift vectors defined as \( \vec{s} = \vec{p} - \vec{o} \), where \( \vec{o} \) is the gene family's centroid.
+            \end{itemize}
+
+            The full set of vectors is assembled as:
+            \[
+                \mathcal{V} = \{ \vec{v}_1, \dots, \vec{v}_N \} \subset \mathbb{R}^n
+            \]
+            Each \( \vec{v}_i \) is selected from one or more of the following:
+
+            \begin{itemize}
+                \item Original expression or shift vectors (raw),
+                \item Interpolated vectors at grid points,
+                \item Smoothed vectors obtained from post-interpolation Gaussian smoothing.
+            \end{itemize}
+
+            For each vector \( \vec{v}_i \), the signal strength measure depends on the chosen field:
+            \begin{itemize}
+                \item In the \textbf{expression field}, signal strength is evaluated using the Rank-normalized Signal Index (RSI), as described in Section~\ref{sub:rsi}. This ensures percentile-based normalization across diverse signal ranges.
+                \item In the \textbf{shift field}, signal strength is computed directly via the Euclidean norm \( \| \vec{s}_i \| \), which reflects absolute expression change relative to the centroid.
+            \end{itemize}
+
+            This modular design enables application across multiple resolution levels, from raw data to interpolated or smoothed fields. While the default implementation targets interpolated shift vectors, the framework generalizes to any well-defined vector field, including future fields derived from second-order tensors.
+
+            \textbf{Note:} In future extensions, this method may be applied to scalar fields derived from surface or covariance tensors (e.g., Frobenius norm of second-order structures). In such cases, the same region detection logic can be applied to identify coherent high-curvature or high-rotation zones.
+
+        \subsubsection{Magnitude Distribution and Noise Filtering}
+
+            To isolate signal-dense regions, the Euclidean norms \( \| \vec{v}_i \| \) of all vectors in \( \mathcal{V} \) are computed. An empirical noise threshold is then derived by estimating the lower 5th percentile:
+            \[
+                \tau = \text{Percentile}_{5\%} \left( \left\{ \| \vec{v}_i \| \right\}_{i=1}^N \right)
+            \]
+            Vectors with norm less than \( \tau \) are considered sub-threshold and excluded from further region growth.
+
+        \subsubsection{Region Growing}
+
+            From each unmarked vector \( \vec{v}_j \) with \( \| \vec{v}_j \| \geq \tau \), a local subfield is grown radially:
+
+            \begin{itemize}
+                \item Initialize the region with the seed \( \vec{v}_j \) at radius \( r = 0 \).
+                \item Increment the radius stepwise, adding unmarked neighboring vectors within radius \( r \), provided they meet the magnitude threshold \( \tau \).
+                \item If a full radius expansion includes only sub-threshold vectors, the region terminates.
+            \end{itemize}
+
+            All spatial distances are computed in the native semantic space \( \mathbb{R}^n \) using Euclidean distance. Grid vectors and original data vectors may both serve as candidates in the same collection, depending on analysis scope.
+
+        \subsubsection{Region Marking and Continuation}
+
+            All vectors added to a region are marked. The procedure continues iteratively over the remaining unmarked, non-noise vectors until no new regions can be seeded.
+
+        \subsubsection{Interpretation}
+
+            This method segments the vector field into coherent \emph{signal-rich subfields} based solely on local vector magnitude. In the expression field, the resulting regions may reflect domains of elevated transcriptional activity. In the shift field, they may reveal adaptation zones, such as tissue-specific neofunctionalization or spatially localized responses to perturbation. Because no directionality or covariance modeling is involved, this method is resilient to noise and sample sparsity.
+
+            \textbf{Note:} The threshold \( \tau \) may be adjusted (e.g., 1\%, 10\%) to modulate sensitivity. The procedure generalizes naturally to higher-order tensors by applying the same algorithm to scalar-valued summary fields (e.g., Frobenius norms of second-order tensors).
+
+    \subsection{Workbench for Interactive Exploration}\label{sec:workbench}
+
+        The Tensor Omics workbench is a lightweight, browser-based environment for exploring the expression space and its geometric structures. It supports:
+
+        \begin{itemize}
+            \item 2D and 3D projections (e.g., RAP plane, PCA), with zoom and rotation.
+            \item Efficient filtering via metadata or geometric queries using K-D Trees.
+            \item Visual encoding of vector properties (color, shape, size) by metadata attributes.
+            \item Highlighting of gene families, pathways, or other annotated subsets.
+        \end{itemize}
+
+        Plots are exportable (e.g., to SVG or PDF), and the current view state can be
+        serialized and restored for reproducibility e.g.\ by attaching it as request
+        parameters and thus enabling linking to preconfigured interactive plots. This
+        supports sharing, publication, and reproducible workflows.

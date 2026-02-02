@@ -50,7 +50,8 @@ lines <- c(
   gene_ids <- gene_ids_res$gene_ids
   cat("\nRead gene_ids:", paste0('"', gene_ids, '"', collapse=", "), "\n")
   cat("Expected gene_ids:", paste0('"', dataset$gene_ids, '"', collapse=", "), "\n")
-  cat("Comparison result:", all.equal(trimws(gene_ids), dataset$gene_ids), "\n")
+  cat("Comparison result:", identical(trimws(gene_ids), dataset$gene_ids), "\n")
+
   stopifnot(identical(trimws(gene_ids), dataset$gene_ids))
 
   expr_res <- read_expression_vectors_tsv(
@@ -69,8 +70,8 @@ lines <- c(
   print(dataset$expression)
   cat("Difference (expr - expected):\n")
   print(expr - dataset$expression)
-  cat("all.equal result:\n")
-  print(all.equal(expr, dataset$expression, tolerance = 1e-8))
+  cat("identical result:\n")
+  print(identical(trimws(gene_ids), dataset$gene_ids))
   # Ignore dimnames for comparison
   stopifnot(isTRUE(all.equal(unname(expr), unname(dataset$expression), tolerance = 1e-8)))
 

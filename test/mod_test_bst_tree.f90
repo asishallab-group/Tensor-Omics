@@ -1,7 +1,7 @@
 ! filepath: test/mod_test_bst.f90
 !> Unit test suite for binary_search_tree module.
 module mod_test_bst
-  use binary_search_tree
+  use f42_binary_search_tree
   use tox_errors, only: is_ok, set_ok
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
