@@ -583,9 +583,9 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     real(real64) :: smoothed(n_dims, n_points)
     real(real64) :: expected_smoothed(n_dims, n_points)
     integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points)
+    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
     integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points)
+    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
     integer(int32) :: ierr
 
     ! Initialize test data
@@ -601,8 +601,8 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
         n_dims, n_dims, n_points, 5, &
         kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, &
-        0, 1.0_real64, ierr)
+        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
+        0, 1.0_real64, sd_arr, ierr)
 
     ! Check for no errors
     call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode0: no error")
@@ -628,9 +628,9 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     real(real64) :: smoothed(n_dims, n_points)
     real(real64) :: expected_smoothed(n_dims, n_points)
     integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points)
+    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
     integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points)
+    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
     integer(int32) :: ierr
 
     ! Initialize test data
@@ -647,8 +647,8 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
         n_dims, n_dims, n_points, 5, &
         kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, &
-        1, 0.5_real64, ierr)
+        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
+        1, 0.5_real64, sd_arr, ierr)
 
     ! Check for no errors
     call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode1: no error")
@@ -674,9 +674,9 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     real(real64) :: smoothed(n_dims, n_points)
     real(real64) :: expected_smoothed(n_dims, n_points)
     integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points)
+    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
     integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points)
+    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
     integer(int32) :: ierr
 
     ! Initialize test data
@@ -693,8 +693,8 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
         n_dims, n_dims, n_points, 5, &
         kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, left_stack, right_stack, &
-        2, 1.0_real64, ierr)
+        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
+        2, 1.0_real64, sd_arr, ierr)
 
     ! Check for no errors
     call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode2: no error")

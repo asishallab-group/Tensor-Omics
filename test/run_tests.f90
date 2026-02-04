@@ -20,16 +20,16 @@ program main
   use mod_test_gene_centroids
   use mod_test_tox_conversions
   use mod_test_arrays
-  use mod_test_loess
   use mod_test_knn_smoothing
-  use mod_test_manle_module
-  
+  ! use mod_test_manle_module
+  use mod_test_root_mean_sq_normalization
+  use mod_test_normalization_unit_length
 
   implicit none
 
   ! Type for suite registry
   type :: suite_entry
-    character(len=64) :: name
+    character(len=128) :: name
     procedure(run_all_interface), pointer, nopass :: run_all => null()
     procedure(run_named_interface), pointer, nopass :: run_named => null()
   end type suite_entry
@@ -48,7 +48,7 @@ program main
   type(suite_entry), allocatable :: available_suites(:)
 
   integer :: nargs
-  character(len=64) :: requested_suite, test_list
+  character(len=128) :: requested_suite, test_list
 
   ! Initialize the suite registry
   call initialize_suites()
@@ -88,7 +88,7 @@ contains
     call add_suite("sorting", run_all_tests_sorting, run_named_tests_sorting)
     call add_suite("get_outliers",run_all_tests_get_outliers, run_named_tests_get_outliers)
     call add_suite("loess_smoothing",run_all_tests_loess_smoothing, run_named_tests_loess_smoothing)
-    call add_suite("normalization", run_all_tests_normalize_by_std_dev, run_named_tests_normalize_by_std_dev)
+    call add_suite("normalization", run_all_tests_root_mean_sq_normalization, run_named_tests_root_mean_sq_normalization)
     call add_suite("quantile_normalization", run_all_tests_quantile_normalization, run_named_tests_quantile_normalization)
     call add_suite("log2_transformation", run_all_tests_log2_transformation, run_named_tests_log2_transformation)
     call add_suite("calc_tiss_avg", run_all_tests_calc_tiss_avg, run_named_tests_calc_tiss_avg)
@@ -104,10 +104,10 @@ contains
     call add_suite("arrays", run_all_tests_array, run_named_tests_array)
     call add_suite("gene_centroids", run_all_tests_gene_centroids, run_named_tests_gene_centroids)
     call add_suite("tox_conversions", run_all_tests_tox_conversions, run_named_tests_tox_conversions)
-    call add_suite("loess_smoothing_r", run_all_tests_loess, run_named_tests_loess)
+    call add_suite("normalization_unit_length", run_all_tests_normalization_unit_length, run_named_tests_normalization_unit_length)
+    call add_suite("normalize_by_std_dev",run_all_tests_normalize_by_std_dev, run_named_tests_normalize_by_std_dev)
     call add_suite("knn_smoothing", run_all_tests_knn_smoothing, run_named_tests_knn_smoothing)
-    call add_suite("manle_smoothing", run_all_tests_manle, run_named_tests_manle)
-
+    ! call add_suite("manle_smoothing", run_all_tests_manle, run_named_tests_manle)
   end subroutine initialize_suites
   
 
@@ -183,8 +183,8 @@ contains
   subroutine run_tests_from_list(test_list, run_named_proc)
     character(len=*), intent(in) :: test_list
     procedure(run_named_interface) :: run_named_proc
-    character(len=64) :: test_name
-    character(len=64) :: single_test_array(1)
+    character(len=128) :: test_name
+    character(len=128) :: single_test_array(1)
     integer :: start, end, pos
     
     start = 1

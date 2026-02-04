@@ -1,4 +1,5 @@
 module manle_module
+  use safeguard
   use iso_fortran_env, only: int32, real64
   use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT
   use kd_tree, only: build_kd_index, kd_knn_query
@@ -243,15 +244,15 @@ end subroutine project_to_subspace
 
     ! Buffers for k-d tree and smoothing
     integer(int32) :: kd_indices(n_points), dimension_order(n_coord_dims)
-    integer(int32) :: neighbors(k_neighbors), workspace(n_points), permutation(n_points)
+    integer(int32) :: neighbors(k_neighbors), workspace(n_points), permutation(n_points), permutation_distances(k_neighbors)
     integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(k_neighbors), value_buffer(n_points)
+    real(real64) :: distances(k_neighbors), value_buffer(n_points), sd_arr(n_points)
 
     ! Call the smoothing subroutine from the ANWIL module
     call smooth_vectors_gaussian_adaptive(coords, vectors, smoothed, &
                                           n_coord_dims, n_vector_dims, n_points, k_neighbors, &
                                           kd_indices, dimension_order, neighbors, distances, &
-                                          workspace, value_buffer, permutation, left_stack, right_stack, 0, 1.0_real64, ierr)
+                                          workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 0, 1.0_real64, sd_arr, ierr)
   end subroutine apply_anwil_smoothing
 
   !> Subroutine to apply anisotropic smoothing using the AManLe algorithm and KD-Tree.

@@ -1,70 +1,9 @@
 module tox_conversions
-    use iso_fortran_env, only: int32, real64
-    use iso_c_binding, only: c_int, c_double, c_null_char, c_double_complex, c_char
+    use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err
-    implicit none
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_null_char, c_char, c_size_t, c_int64_t
 
 contains
-
-    !> Converts a c_double value to real64, elemental -> any shape
-    elemental subroutine c_double_as_real64(c_val, f_val)
-        real(c_double), intent(in) :: c_val
-         !! the element containing the c variant of the number
-        real(real64), intent(out) :: f_val
-         !! the element that will hold the real64 representation of the c_double
-
-        f_val = real(c_val, kind=real64)
-    end subroutine c_double_as_real64
-
-    !> Converts a real64 value to c_double, elemental -> any shape
-    elemental subroutine real64_as_c_double(f_val, c_val)
-        real(real64), intent(in) :: f_val
-         !! the element containing the fortran variant of the number
-        real(c_double), intent(out) :: c_val
-         !! the element that will hold the c_double representation of the real64
-
-        c_val = real(f_val, kind=c_double)
-    end subroutine real64_as_c_double
-
-    !> Converts a c_double_complex value to fortran complex(real64), elemental -> any shape
-    elemental subroutine c_complex_as_complex(c_val, f_val)
-        complex(c_double_complex), intent(in) :: c_val
-         !! the element containing the c variant of the number
-        complex(real64), intent(out) :: f_val
-         !! the element that will hold the complex(real64) representation of the c_double_complex
-
-        f_val = cmplx(real(c_val), aimag(c_val), kind=real64)
-    end subroutine c_complex_as_complex
-
-    !> Converts a fortran complex(real64) value to c_double_complex, elemental -> any shape
-    elemental subroutine complex_as_c_complex(f_val, c_val)
-        complex(real64), intent(in) :: f_val
-         !! the element containing the fortran variant of the number
-        complex(c_double_complex), intent(out) :: c_val
-         !! the element that will hold the c_double_complex representation of the complex(real64)
-
-        c_val = cmplx(real(f_val), aimag(f_val), kind=c_double_complex)
-    end subroutine complex_as_c_complex
-
-    !> Converts a c_int value to int32, elemental -> any shape
-    elemental subroutine c_int_as_int32(c_val, f_val)
-        integer(c_int), intent(in) :: c_val
-         !! the element containing the c variant of the number
-        integer(int32), intent(out) :: f_val
-         !! the element that will hold the int32 representation of the c_int
-
-        f_val = int(c_val, kind=int32)
-    end subroutine c_int_as_int32
-
-    !> Converts a int32 value to c_int, elemental -> any shape
-    elemental subroutine int32_as_c_int(f_val, c_val)
-        integer(int32), intent(in) :: f_val
-         !! the element containing the fortran variant of the number
-        integer(c_int), intent(out) :: c_val
-         !! the element that will hold the c_int representation of the int32
-
-        c_val = int(f_val, kind=c_int)
-    end subroutine int32_as_c_int
 
     !> Converts a c_int value to logical, elemental -> any shape
     elemental subroutine c_int_as_logical(c_val, f_val)
@@ -167,6 +106,35 @@ contains
         end if
     end subroutine string_as_c_char_1d
 
+    !> Converts a string to 1D c_char array
+    pure subroutine string_as_c_char_1d_r(str, c_char_array)
+        character(len=*), intent(in) :: str
+        !! Fortran string to be converted
+        character(kind=c_char, len=1), dimension(:), intent(out) :: c_char_array
+        !! c_char array representing chars of `str`, will end with null char if space permits
+
+        integer(int32) :: i_str, str_len, max_len
+        character(len=1) :: fortran_char
+
+        max_len = size(c_char_array, 1)
+        if (max_len <= 0) return
+
+        ! Copy as many characters as possible WITHOUT reserving space for null terminator
+        str_len = min(len_trim(str), max_len)
+
+        ! Copy the actual string characters
+        do i_str = 1, str_len
+        call c_char_as_char(str(i_str:i_str), fortran_char)
+        c_char_array(i_str) = fortran_char
+        end do
+
+        ! Add null terminator AFTER the string if there's space
+        if (str_len < max_len) then
+            c_char_array(str_len + 1) = c_null_char
+        end if
+        ! If str_len == max_len, no null terminator is added (R can handle this)
+    end subroutine string_as_c_char_1d_r
+
     !> Converts a 2D c_char array to 1D string array
     pure subroutine c_char_2d_as_string(c_char_array, str_out, ierr)
         character(kind=c_char, len=1), dimension(:, :), intent(in) :: c_char_array
@@ -205,11 +173,71 @@ contains
         character(kind=c_char, len=1), dimension(:, :), intent(out) :: c_char_array
          !! c int array, columns as ascii arrays
 
-        integer(int32) :: i_str, n_strings
+        integer(int32) :: i_str
 
         do i_str = 1, size(strings, 1)
            call string_as_c_char_1d(strings(i_str), c_char_array(:, i_str))
         end do
     end subroutine string_as_c_char_2d
+
+    !> Converts int32 to c_int64_t, elemental -> any shape
+    elemental subroutine int32_as_c_int64(f_val, c_val)
+        integer(int32), intent(in) :: f_val
+        !! the element containing the fortran variant of the number
+        integer(c_int64_t), intent(out) :: c_val
+        !! the element that will hold the c_int64_t representation
+
+        c_val = int(f_val, kind=c_int64_t)
+    end subroutine int32_as_c_int64
+
+    !> Converts c_int64_t to int32, elemental -> any shape  
+    elemental subroutine c_int64_as_int32(c_val, f_val)
+        integer(c_int64_t), intent(in) :: c_val
+        !! the element containing the c variant of the number
+        integer(int32), intent(out) :: f_val
+        !! the element that will hold the int32 representation
+
+        f_val = int(c_val, kind=int32)
+    end subroutine c_int64_as_int32
+
+    !> Converts int32 to c_size_t, elemental -> any shape
+    elemental subroutine int32_as_c_size(f_val, c_val)
+        integer(int32), intent(in) :: f_val
+        !! the element containing the fortran variant of the number
+        integer(c_size_t), intent(out) :: c_val
+        !! the element that will hold the c_size_t representation
+
+        c_val = int(f_val, kind=c_size_t)
+    end subroutine int32_as_c_size
+
+    !> Converts c_size_t to int32, elemental -> any shape
+    elemental subroutine c_size_as_int32(c_val, f_val)
+        integer(c_size_t), intent(in) :: c_val
+        !! the element containing the c variant of the number
+        integer(int32), intent(out) :: f_val
+        !! the element that will hold the int32 representation
+
+        f_val = int(c_val, kind=int32)
+    end subroutine c_size_as_int32
+
+    !> Converts c_int64_t to c_size_t, elemental -> any shape
+    elemental subroutine c_int64_as_c_size(c64_val, csize_val)
+        integer(c_int64_t), intent(in) :: c64_val
+        !! the element containing the c_int64_t value
+        integer(c_size_t), intent(out) :: csize_val
+        !! the element that will hold the c_size_t representation
+
+        csize_val = int(c64_val, kind=c_size_t)
+    end subroutine c_int64_as_c_size
+
+    !> Converts c_size_t to c_int64_t, elemental -> any shape
+    elemental subroutine c_size_as_c_int64(csize_val, c64_val)
+        integer(c_size_t), intent(in) :: csize_val
+        !! the element containing the c_size_t value
+        integer(c_int64_t), intent(out) :: c64_val
+        !! the element that will hold the c_int64_t representation
+
+        c64_val = int(csize_val, kind=c_int64_t)
+    end subroutine c_size_as_c_int64
 
 end module tox_conversions

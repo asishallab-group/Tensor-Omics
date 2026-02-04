@@ -8,3 +8,5 @@ library = true
 [library]
 type = "shared" 
 
+[build]
+link = ["lapack", "blas", "xxhash", "zip", "loess_netlib"]

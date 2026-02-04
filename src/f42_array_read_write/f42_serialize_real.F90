@@ -1,7 +1,8 @@
-module serialize_real
+module f42_serialize_real
+  use safeguard
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use iso_c_binding, only: c_loc
-  use array_utils, only: write_file_header
+  use f42_array_utils, only: write_file_header
   use tox_errors
   implicit none
 
@@ -29,7 +30,7 @@ contains
     call set_ok(ierr)
     call set_ok(ioerror)
 
-    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 1, dims, ierr)
+    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 1_int32, dims, ierr)
     if (.not. is_ok(ierr)) return
 
     write(unit, iostat=ioerror) arr
@@ -57,7 +58,7 @@ contains
     call set_ok(ioerror)
 
     dims = shape(arr)
-    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 2, dims, ierr)
+    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 2_int32, dims, ierr)
     if(.not. is_ok(ierr)) return
 
     write(unit, iostat=ioerror) arr
@@ -85,7 +86,7 @@ contains
     call set_ok(ioerror)
 
     dims = shape(arr)
-    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 3, dims, ierr)
+    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 3_int32, dims, ierr)
     if(.not. is_ok(ierr)) return
 
     write(unit, iostat=ioerror) arr
@@ -113,7 +114,7 @@ contains
     call set_ok(ioerror)
     dims = shape(arr)
 
-    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 4, dims, ierr)
+    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 4_int32, dims, ierr)
     if(.not. is_ok(ierr)) return
 
     write(unit, iostat=ioerror) arr
@@ -141,7 +142,7 @@ contains
     call set_ok(ioerror)
 
     dims = shape(arr)
-    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 5, dims, ierr)
+    call write_file_header(filename, unit, ARRAY_TYPE_REAL, 5_int32, dims, ierr)
     if(.not. is_ok(ierr)) return
 
     write(unit, iostat=ioerror) arr
@@ -184,15 +185,16 @@ contains
     close(unit)
   end subroutine
  
-end module serialize_real
+end module f42_serialize_real
 
 !> Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
 !! R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.
-subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_ascii, fn_len, ierr)
+subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_raw, fn_len, ierr)
   use iso_fortran_env, only: int32, real64
-  use array_utils, only: ascii_to_string
-  use serialize_real, only: serialize_real_nd
-  use tox_errors, only : set_ok
+  use f42_serialize_real, only: serialize_real_nd
+  use tox_errors, only : set_ok, is_ok
+  use tox_conversions, only: c_char_1d_as_string
+  use iso_c_binding, only: c_char
   implicit none
 
   integer(int32), intent(in) :: ndim
@@ -205,7 +207,7 @@ subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_ascii, fn
     !! Dimensions of the array
   integer(int32), intent(in) :: fn_len
     !! length of the filename array
-  integer(int32), intent(in) :: filename_ascii(fn_len)
+  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
   character(len=:), allocatable :: filename
   integer(int32), intent(out) :: ierr
@@ -215,8 +217,8 @@ subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_ascii, fn
 
   call set_ok(ierr)
 
-  call ascii_to_string(filename_ascii, fn_len, filename)
-
+  call c_char_1d_as_string(filename_raw, filename, ierr)
+  if (.not. is_ok(ierr)) return
   ! calculate total size
   total_len = 1
   do i = 1, ndim
@@ -224,39 +226,35 @@ subroutine serialize_real_flat_r(arr, array_size, dims, ndim, filename_ascii, fn
   end do
 
   call serialize_real_nd(arr(1:total_len), dims(1:ndim), ndim, filename, ierr)
-end subroutine
+end subroutine serialize_real_flat_r
 
-subroutine serialize_real_nd_C(arr, dims, ndim, filename_ascii, fn_len, ierr) bind(C, name="serialize_real_nd_C")
-  use iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_double
-  use array_utils, only: ascii_to_string
-  use serialize_real, only: serialize_real_nd
-  use tox_errors, only : set_ok
+subroutine serialize_real_nd_C(arr, dims, ndim, filename_raw, fn_len, ierr) bind(C, name="serialize_real_nd_C")
+  use iso_c_binding, only: c_int, c_double, c_char
+  use f42_serialize_real, only: serialize_real_nd
+  use tox_errors, only : set_ok, is_ok
   use iso_fortran_env, only : int32
+  use tox_conversions, only: c_char_1d_as_string
   implicit none
 
   ! Input parameters
-  type(c_ptr), value :: arr
-    !! Pointer to the flat real array
   integer(c_int), value :: ndim
     !! Number of dimensions
   integer(c_int), intent(in) :: dims(ndim)
     !! Dimensions of the array
+  real(c_double) :: arr(product(dims))
+    !! Pointer to the flat real array  
   integer(c_int), value :: fn_len
     !! Length of the filename array
-  integer(c_int), intent(in) :: filename_ascii(fn_len)
+  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
   integer(c_int), intent(out) :: ierr
 
   ! Local
   character(len=:), allocatable :: filename
-  real(c_double), pointer :: arr_f(:)
-  integer(int32) :: i
 
-  call ascii_to_string(filename_ascii, fn_len, filename)
-
-  ! 1D-Array from C pointer
-  call c_f_pointer(arr, arr_f, [product(dims(1:ndim))])
-
+  call set_ok(ierr)
+  call c_char_1d_as_string(filename_raw, filename, ierr)
+  if(.not. is_ok(ierr)) return
   ! save
-  call serialize_real_nd(arr_f, dims, ndim, filename, ierr)
-end subroutine
+  call serialize_real_nd(arr, dims, ndim, filename, ierr)
+end subroutine serialize_real_nd_C

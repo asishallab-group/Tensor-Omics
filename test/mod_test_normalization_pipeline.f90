@@ -119,8 +119,8 @@ contains
     group_s = [1,2]; group_c = [1,1]
 
     ! Manual stepwise normalization
-    call normalize_by_std_dev(n_genes, n_tissues, input_matrix, buf_stddev, ierr)
-    call assert_equal_int(ierr, 0, "normalize_by_std_dev returned error")
+    call root_mean_sq_normalization(n_genes, n_tissues, input_matrix, buf_stddev, ierr)
+    call assert_equal_int(ierr, 0, "root_mean_sq_normalization returned error")
     call quantile_normalization(n_genes, n_tissues, buf_stddev, buf_quant, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
     call assert_equal_int(ierr, 0, "quantile_normalization returned error")
     call calc_tiss_avg(n_genes, n_grps, group_s, group_c, buf_quant, buf_avg, ierr)

@@ -1,4 +1,5 @@
 module anwil
+  use safeguard
   use kd_tree, only: build_kd_index, kd_knn_query
   use iso_fortran_env, only: int32, real64
   use tox_errors, only: set_ok, set_err_once, is_ok, ERR_INVALID_INPUT

@@ -2,6 +2,7 @@
 !! This module provides functions and subroutines for performing KNN-based smoothing
 !! with Gaussian kernels and adaptive bandwidth selection.
 module knn_smoothing
+   use safeguard
   use kd_tree,      only: build_kd_index, kd_knn_query
   use iso_fortran_env, only: int32, real64
   use, intrinsic :: ieee_arithmetic, only: ieee_is_nan

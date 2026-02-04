@@ -1,11 +1,11 @@
 !> Module for array utilities
-module array_utils
+module f42_array_utils
+    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors
     implicit none
 
-    PUBLIC :: get_array_metadata, ascii_to_string, read_file_header, write_file_header, string_to_ascii_arr, check_okay_dims
-    public :: check_okay_ndims
+    public :: get_array_metadata, read_file_header, write_file_header, check_okay_ndims
 
     integer(int32), parameter :: ARRAY_FILE_MAGIC = int(z'46413230', int32) ! 'FA20' in hex
     !! Magic number for array files
@@ -32,22 +32,6 @@ module array_utils
     
   end subroutine
 
-  !> check if array dimensions match the expected dimensions
-  subroutine check_okay_dims(dims, expected, ierr)
-    integer(int32), intent(in) :: dims(:)
-    !! array of actual dimensions
-    integer(int32), intent(in) :: expected
-    !! expected number of dimensions
-    integer(int32), intent(out) :: ierr
-    !! error code
-
-    if (size(dims) /= expected) then
-      call set_err_once(ierr, ERR_DIM_MISMATCH)
-      RETURN
-    end if
-
-  end subroutine
-
   subroutine check_okay_ndims(ndims, expected, unit, ierr)
     integer(int32), intent(in):: ndims
     !! number of dimensions
@@ -61,7 +45,7 @@ module array_utils
     if(ndims /= expected) then
       close(unit)
       call set_err_once(ierr, ERR_DIM_MISMATCH)
-      RETURN
+      return
     end if
 
   end Subroutine
@@ -124,8 +108,8 @@ module array_utils
     integer(int32), intent(out) :: unit
     !! Fortran unit number for the file
     integer(int32), intent(out) :: type_code
-    !! type code of the array (1=int, 2=real, 3=char)
-    integer(int32), INTENT(out) :: ndims
+    !! type code of the array (1=int, 2=real, 3=char, 4=logical, 5=complex)
+    integer(int32), intent(out) :: ndims
     !! number of dimensions
     integer(int32), intent(out) :: clen
     !! character length (only for character arrays)
@@ -159,21 +143,33 @@ module array_utils
 
     read(unit, iostat=ioerror) type_code
     call check_okay_ioerror(ioerror, ierr, ERR_READ_TYPE, unit)
-    if (.not. is_ok(ierr)) return
+    if (.not. is_ok(ierr)) then
+      close(unit)
+      return
+    end if
 
     read(unit, iostat=ioerror) ndims
     call check_okay_ioerror(ioerror, ierr, ERR_READ_NDIMS, unit)
-    if (.not. is_ok(ierr)) return
+    if (.not. is_ok(ierr)) then
+      close(unit)
+      return
+    end if
 
     allocate(dims(ndims))
     read(unit, iostat=ioerror) dims
     call check_okay_ioerror(ioerror, ierr, ERR_READ_DIMS, unit)
-    if (.not. is_ok(ierr)) return
+    if (.not. is_ok(ierr)) then
+      close(unit)
+      return
+    end if
 
     if(type_code==3) then
       read(unit, iostat=ioerror) clen
       call check_okay_ioerror(ioerror, ierr, ERR_READ_CHARLEN, unit)
-      if (.not. is_ok(ierr)) return
+      if (.not. is_ok(ierr)) then
+        close(unit)
+        return
+      end if
     else
       clen = 0 ! Not applicable for non-character types
     end if
@@ -194,7 +190,7 @@ module array_utils
     !! Array to store output dimensions
     integer(int32), intent(out) :: ierr
     !! Error code
-    integer(int32), INTENT(OUT), OPTIONAL :: clen
+    integer(int32), intent(out), optional :: clen
     !! length of each string (needed for char arrays)
 
     integer(int32) :: unit
@@ -212,7 +208,7 @@ module array_utils
 
     if(size(dims) > dims_out_capacity) then
       call set_err_once(ierr, ERR_DIM_MISMATCH)
-      RETURN
+      return
     end if
 
     do i = 1, ndims
@@ -223,62 +219,21 @@ module array_utils
       clen = local_clen
     end if
   end subroutine
-
-  !> subroutine to convert an ASCII array to a string
-  subroutine ascii_to_string(ascii_array, clen, str)
-    implicit none
-    integer(int32), intent(in) :: clen
-      !! Length of the ASCII array
-    integer(int32), intent(in) :: ascii_array(clen)
-      !! Array of ASCII characters
-    
-    character(len=:), allocatable, INTENT(OUT) :: str
-    !! Output string
-    integer(int32) :: i
-    !! loop variable
-
-    allocate(character(len=clen) :: str)
-    do i = 1, clen
-      str(i:i) = char(ascii_array(i))
-    end do
-  end subroutine ascii_to_string
-
-  !> converts a string array to an ascii array
-  subroutine string_to_ascii_arr(flat, array_size, ascii_arr, clen)
-    implicit none
-    integer(int32), intent(in) :: array_size
-    !! size of the input array
-    integer(int32), intent(in) :: clen
-    !! length of the longest string
-    integer(int32), intent(out) :: ascii_arr(array_size*clen)
-    !! ascii output array
-    character(len=*), intent(in) :: flat(array_size)
-    !! input array with characters
-    
-    integer(int32) :: i, j
-
-    do i = 1, array_size
-      do j = 1, clen
-        if (j <= len_trim(flat(i))) then
-          ascii_arr((i - 1) * clen + j) = iachar(flat(i)(j:j))
-        else
-          ascii_arr((i - 1) * clen + j) = 0
-        end if
-      end do
-    end do
-  end subroutine string_to_ascii_arr
-end module array_utils
+end module f42_array_utils
 
 !> Subroutine to get the dimensions of an array file
-subroutine get_array_metadata_r(filename_ascii, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen)
+subroutine get_array_metadata_r(filename_raw, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen)
   use iso_fortran_env, only: int32
-  use array_utils, only: ascii_to_string, get_array_metadata
+  use iso_c_binding, only: c_char
+  use f42_array_utils, only: get_array_metadata
+  use tox_conversions, only: c_char_1d_as_string
+  use tox_errors, only : set_ok, is_ok
   implicit none
 
   ! Input
   integer(int32), intent(in) :: fn_len
     !! Length of the filename array
-  integer(int32), intent(in) :: filename_ascii(fn_len)
+  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
   integer(int32), intent(in) :: dims_out_capacity
   ! Output
@@ -293,23 +248,28 @@ subroutine get_array_metadata_r(filename_ascii, fn_len, dims_out, dims_out_capac
   !! Error code
   character(len=:), allocatable :: filename
 
-  call ascii_to_string(filename_ascii, fn_len, filename)
+  call set_ok(ierr)
+
+  call c_char_1d_as_string(filename_raw, filename, ierr)
+  if( .not. is_ok(ierr)) return
 
   call get_array_metadata(filename, dims_out, dims_out_capacity, ndims, ierr, clen)
 
 end subroutine get_array_metadata_r
 
 !> C binding for the subroutine to get the dimensions of an array file
-subroutine get_array_metadata_C(filename_ascii, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_C")
-  use iso_c_binding, only: c_int
+subroutine get_array_metadata_C(filename_raw, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_C")
+  use iso_c_binding, only: c_int, c_char
   use iso_fortran_env, only : int32
-  use array_utils, only : ascii_to_string, get_array_metadata
+  use f42_array_utils, only : get_array_metadata
+  use tox_conversions, only : c_char_1d_as_string
+  use tox_errors, only : set_ok, is_ok
   implicit none
 
   ! Input
   integer(c_int), value :: fn_len
     !! Length of the filename array
-  integer(c_int), intent(in) :: filename_ascii(fn_len)
+  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
   integer(c_int), intent(in) :: dims_out_capacity
   
@@ -328,7 +288,8 @@ subroutine get_array_metadata_C(filename_ascii, fn_len, dims_out, dims_out_capac
    !! Filename as a string
   
 
-  call ascii_to_string(filename_ascii, fn_len, filename)
+  call c_char_1d_as_string(filename_raw, filename, ierr)
+  if( .not. is_ok(ierr)) return
 
   call get_array_metadata(filename, dims_out, dims_out_capacity, ndims, ierr, clen)
 end subroutine get_array_metadata_C

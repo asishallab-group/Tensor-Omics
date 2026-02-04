@@ -1,4 +1,5 @@
 module knn_smoothing_nadaraya_watson
+  use safeguard
   use kd_tree, only: build_kd_index, kd_knn_query
   use iso_fortran_env, only: int32, real64
   use, intrinsic :: ieee_arithmetic, only: ieee_is_nan

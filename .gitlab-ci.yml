@@ -1,29 +1,58 @@
 stages:
   - run-tests
-  - generate-docs
+  - generate-snippets-and-docs
+  - done
 
 image: archlinux:latest
-before_script:
-  # install gfortran, python, pip, git
-  - pacman -Sy --noconfirm archlinux-keyring
-  - pacman -Syu --noconfirm
-  - pacman -S --noconfirm gcc-fortran python python-pip git
+
+.install-r: &install-r
+  - pacman -S --needed --noconfirm r make gcc
   - pacman -Scc --noconfirm
+  - R --version
+  # install Rcpp, readr
+  - Rscript -e 'install.packages("Rcpp", repos="https://cloud.r-project.org")'
+  - Rscript -e 'installed.packages()[, c("Package", "Version")]'
 
-  # install fpm
-  - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
-  - chmod a+x /usr/local/bin/fpm
-
-  # install ford
+.install-python: &install-python
+  - pacman -S --needed --noconfirm python python-pip
+  - pacman -Scc --noconfirm
   - python -m venv .venv
   - source .venv/bin/activate
   - pip install --upgrade pip
-  - pip install ford
+  - pip install numpy pandas
+  - pip list
+  - python --version
+  - pip --version
 
+.prepare-fortran: &prepare-fortran
+  - pacman -S --needed --noconfirm libzip xxhash
+  - pacman -Scc --noconfirm
+  # install fpm
+  - curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+  - chmod a+x /usr/local/bin/fpm
+  # set up installation functions
+  - |
+    function install-gfortran() {
+      pacman -S --needed --noconfirm gcc-fortran
+      pacman -Scc --noconfirm
+      gfortran --version
+    }
+  - |
+    function install-ifx() {
+      pacman -S --needed --noconfirm gcc  # ifx needs some libs from gcc
+      pacman -Scc --noconfirm
+      curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/724303ca-6927-4327-a560-e0aabb55b010/intel-fortran-compiler-2025.3.1.16_offline.sh -o install_ifx.sh
+      bash install_ifx.sh -a -s --eula accept
+      source /opt/intel/oneapi/setvars.sh
+      ifx --version
+    }
+
+.install-git: &install-git
+  - pacman -S --needed --noconfirm git
+  - pacman -Scc --noconfirm
   # set up git
   - git config --global user.email "ci-bot@yourdomain.com"
   - git config --global user.name "CI Bot"
-  - git remote set-url origin @gitlab.com/your-namespace/your-project.git
   - |
     function git-push() {
       git add -f "${@:2}"
@@ -31,67 +60,91 @@ before_script:
       git push https://oauth2:${JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_BRANCH
     }
 
-  # show versions
-  - echo "Versions:"
-  - python --version
-  - pip --version
+.generate-docs: &generate-docs
+  # install ford
+  - *install-python
+  - pip install ford
   - ford --version
-  - gfortran --version
+
+  # generate docs
+  - ford ford.yml
+  - echo "generated documentation successfully"
+
+.generate-snippets: &generate-snippets
+  # install python
+  - *install-python
+
+  # generate snippets
+  - python helper/generate_snippets.py
+  - echo "generated snippets successfully"
+
+before_script:
+  # update system
+  - pacman -Sy --noconfirm archlinux-keyring
+  - pacman -Syu --noconfirm
 
 run-tests:
   stage: run-tests
   rules:
-    # trigger when pushing to main directly, but only if src/ or test/ changed
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    # trigger only when a MR or commit to 'main'
+    - if: '$CI_COMMIT_BRANCH == "main" || ($CI_PIPELINE_SOURCE == "merge_request_event")'
       changes:
+        - rcpp/**
+        - python/**
         - src/**
         - test/**
         - test_runner.sh
-      when: always
-
-    # trigger only when a MR to 'main' is created and src/ or test/ changed
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
-      changes:
-        - src/**
-        - test/**
-        - test_runner.sh
-      when: always
+        - build.sh
+        - build_utils.sh
 
     # prevent running on other branches outside MR context
     - when: never
+  parallel:
+    matrix:
+      - FC: [gfortran, ifx]
 
   script:
-    # install ifx
-    - curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/466b0d65-e502-4172-9e06-24c565029b96/intel-fortran-compiler-2025.2.1.9_offline.sh -o install_ifx.sh
-    - bash install_ifx.sh -a -s --eula accept
-    - source /opt/intel/oneapi/setvars.sh
+    - *prepare-fortran
+    - install-"$FC"
+    - FC="$FC" bash test_runner.sh
 
-    # run tests using ifx
-    - echo Run tests with ifx
-    - FC=ifx bash test_runner.sh
-    - echo Run tests with gfortran
+    - *install-r
+    - for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
 
-    # run tests using gfortran
-    - bash test_runner.sh
+    - *install-python
+    - for i in python/test/*.py; do echo ; echo $i ; python $i ; done
 
+    # test snippet generation
+    - python helper/generate_snippets.py
 
-generate-docs:  # generate documentation after tests have passed
-  stage: generate-docs
+generate-snippets-and-docs:  # generate documentation after tests have passed
+  stage: generate-snippets-and-docs
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_REF_NAME == "main"'
       changes:
-        - src/**
-        - test/**
+        - src/**/*.[fF90]
         - ford.yml
-      when: always
+        - python/*.py
+        - rcpp/*.R
+        - helper/generate_snippets.py
     - when: never
   needs:
     - job: run-tests
       optional: true  # if ford.yml was changed, the test stage does not exist in the pipeline
   script:
-    # generate docs
-    - ford ford.yml
-    - echo "generated documentation successfully"
+    - *generate-docs
+    - *generate-snippets
 
     # add and commit changes to docs folder
-    - git-push "Update generated documentation" doc
+    - *install-git
+    - git-push "Update generated documentation and snippets" doc snippets
+
+done: # Final stage that will be in a pipeline if all needed jobs exist or none of them -> at least one job always
+  stage: done
+  needs:
+    - job: run-tests
+      optional: true
+    - job: generate-snippets-and-docs
+      optional: true
+  script:
+    - echo "All jobs passed"

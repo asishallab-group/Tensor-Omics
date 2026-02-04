@@ -1,6 +1,6 @@
 !> Unit tests for compute_relative_axis_contributions and wrappers
 module mod_test_relative_axis_contributions
-  use relative_axis_plane_tools
+  use tox_relative_axis_plane_tools
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic

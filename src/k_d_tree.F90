@@ -1,4 +1,5 @@
 module kd_tree
+    use safeguard
     use f42_utils, only: sort_array
     use iso_fortran_env, only: int32, real64
     use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH, ERR_SIZE_MISMATCH, set_ok, set_err_once, is_ok, validate_dimension_size
