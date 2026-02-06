@@ -70,6 +70,11 @@ function handle_args() {
       ARGS="$ARGS $arg"
     fi
   done
+
+  # if extra directives are added, a clean build is necessary. Otherwise fpm doesn't recompile
+  if [[ $DIRECTIVES ]]; then
+    CLEAN_BUILD=1
+  fi
 }
 
 function stderr() {
@@ -127,4 +132,41 @@ function check_exit_code() {
     echo "Exit code: $code"
     exit $code
   fi
+}
+
+function generate_fpm_toml() {
+  extra_libs=   # space, tab or comma separated list, like: "lib1, lib2"
+  if [[ "$2" == "ifx" ]]; then
+    extra_libs="iomp5"
+  fi
+
+  awk -v extra_libs="$extra_libs" '
+{
+  line = $0
+
+  # match category, like "build" from [build] or "test.dependencies" from [test.dependencies]
+  match($0, /^[ \t]*\[[ \t]*([a-z\.]+)[ \t]*\]/, arr)
+
+  if (arr[1]) {
+    category = arr[1]
+  }
+
+  if (category == "build") {
+    # match: link = [ "lib_1.0" , "lib_2.0" ]
+    # and extract the array elements
+    match($0, /^[ \t]*link[ \t]*=[ \t]*\[([ \ta-z,",_0-9\.]+)\]/, arr)
+
+    if (arr[1]) {
+      # unify separators, trim start and wrap each lib in: ",\"<lib>\""
+      gsub(/[\t,]/," ",extra_libs)
+      sub(/^ +/,"",extra_libs)
+      gsub(/[^ ]+/,",\"&\"",extra_libs)
+
+      line = sprintf("link = [%s %s]", arr[1], extra_libs)
+    }
+  }
+
+  print line
+}
+' $1
 }

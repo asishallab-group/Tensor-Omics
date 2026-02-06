@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title="10.8% of total for modules and submodules.">587 statements</a>
+                 title=" 9.4% of total for modules and submodules.">739 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -129,6 +129,7 @@
       </a>
       <div id="vars-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_utils.html#variable-pi">PI</a>
             <a class="list-group-item" href="../module/f42_utils.html#variable-eps">EPS</a>
         </div>
       </div>
@@ -149,6 +150,8 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_utils.html#interface-sort_array">sort_array</a>
             <a class="list-group-item" href="../module/f42_utils.html#interface-sort_array_heapsort">sort_array_heapsort</a>
+            <a class="list-group-item" href="../module/f42_utils.html#interface-shuffle_vector">shuffle_vector</a>
+            <a class="list-group-item" href="../module/f42_utils.html#interface-clamp">clamp</a>
         </div>
       </div>
     </div>
@@ -162,8 +165,15 @@
       </a>
       <div id="funcs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_utils.html#proc-clamp_real">clamp_real</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-clamp_int">clamp_int</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-rand_range">rand_range</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-below">below</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-above">above</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-is_close">is_close</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-next_power_of_two">next_power_of_two</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-radians">radians</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-norm">norm</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-real_less">real_less</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-real_greater">real_greater</a>
         </div>
@@ -177,6 +187,13 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_utils.html#proc-logx">logx</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-init_random">init_random</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-shuffle_vector_real">shuffle_vector_real</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-shuffle_vector_int">shuffle_vector_int</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-angle_between">angle_between</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-add_vector">add_vector</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-subtract_vector">subtract_vector</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_real">sort_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_integer">sort_integer</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_character">sort_character</a>
@@ -190,11 +207,13 @@
             <a class="list-group-item" href="../module/f42_utils.html#proc-heapsort_integer">heapsort_integer</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-heapsort_character">heapsort_character</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-swap_int">swap_int</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-swap_real">swap_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-which">which</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-loess_smooth_2d">loess_smooth_2d</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-compute_edf">compute_edf</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-compute_edf_alloc">compute_edf_alloc</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile">calc_percentile</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile_helper">calc_percentile_helper</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile_alloc">calc_percentile_alloc</a>
         </div>
       </div>
@@ -222,10 +241,10 @@ This module provides general-purpose utility functions for data analysis, to be 
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
               </ul>
             </li>
         </ul>
@@ -248,6 +267,23 @@ This module provides general-purpose utility functions for data analysis, to be 
 <th></th><th scope="col">Initial</th>        <th scope="col"></th>
     </thead>
     <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pi"></span>
+              real(kind=real64),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>PI</strong></td>
+<td> =</td>
+                <td>4.0_real64*atan(1.0_real64)</td>
+            <td>
+                
+            </td>
+        </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-eps"></span>
@@ -303,7 +339,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~2"></span>
+              <span class="anchor" id="variable-array"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -318,7 +354,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~7"></span>
+              <span class="anchor" id="variable-perm"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -333,7 +369,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~7"></span>
+              <span class="anchor" id="variable-stack_left"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -348,7 +384,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~7"></span>
+              <span class="anchor" id="variable-stack_right"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -388,7 +424,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~3"></span>
+              <span class="anchor" id="variable-array~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -403,7 +439,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~8"></span>
+              <span class="anchor" id="variable-perm~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -418,7 +454,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~8"></span>
+              <span class="anchor" id="variable-stack_left~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -433,7 +469,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~8"></span>
+              <span class="anchor" id="variable-stack_right~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -473,7 +509,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~4"></span>
+              <span class="anchor" id="variable-array~3"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -488,7 +524,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~9"></span>
+              <span class="anchor" id="variable-perm~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -503,7 +539,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~9"></span>
+              <span class="anchor" id="variable-stack_left~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -518,7 +554,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~9"></span>
+              <span class="anchor" id="variable-stack_right~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -568,7 +604,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~5"></span>
+              <span class="anchor" id="variable-array~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -583,7 +619,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~10"></span>
+              <span class="anchor" id="variable-perm~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -623,7 +659,7 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~6"></span>
+              <span class="anchor" id="variable-array~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -638,7 +674,7 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~11"></span>
+              <span class="anchor" id="variable-perm~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -678,7 +714,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~7"></span>
+              <span class="anchor" id="variable-array~6"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -693,7 +729,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~12"></span>
+              <span class="anchor" id="variable-perm~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -714,6 +750,252 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     </ul>
   </div>
 
+              <div class="card">
+    <div class="card-header bg-light codesum">
+      <span class="anchor" id="interface-shuffle_vector"></span>
+      <h3>public        interface <a href='../interface/shuffle_vector.html'>shuffle_vector</a> 
+      </h3>
+    </div>
+    <ul class="list-group">
+          <li class="list-group-item">
+                <h3>
+    public  subroutine <a href='../proc/shuffle_vector_real.html'>shuffle_vector_real</a>(vec)  
+
+    </h3>
+    
+  <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Output permutation array</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+          </li>
+          <li class="list-group-item">
+                <h3>
+    public  subroutine <a href='../proc/shuffle_vector_int.html'>shuffle_vector_int</a>(vec)  
+
+    </h3>
+    
+  <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Output permutation array</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+          </li>
+    </ul>
+  </div>
+
+              <div class="card">
+    <div class="card-header bg-light codesum">
+      <span class="anchor" id="interface-clamp"></span>
+      <h3>public        interface <a href='../interface/clamp.html'>clamp</a> 
+      </h3>
+    </div>
+    <ul class="list-group">
+          <li class="list-group-item">
+                <h3>
+    public pure function <a href='../proc/clamp_real.html'>clamp_real</a>(val, min_val, max_val) result(clamped)  
+
+    </h3>
+    
+  <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+<p>Value to be clamped</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min_val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min_val</strong></td>
+            <td>
+<p>Lower bound</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max_val</strong></td>
+            <td>
+<p>Upper bound</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+          </li>
+          <li class="list-group-item">
+                <h3>
+    public pure function <a href='../proc/clamp_int.html'>clamp_int</a>(val, min_val, max_val) result(clamped)  
+
+    </h3>
+    
+  <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+<p>Value to be clamped</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min_val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min_val</strong></td>
+            <td>
+<p>Lower bound</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max_val</strong></td>
+            <td>
+<p>Upper bound</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+          </li>
+    </ul>
+  </div>
+
         </section>
         <br>
 
@@ -721,6 +1003,306 @@ Uses lexicographic ordering and permutation vector sorting.</p>
 
         <section>
           <h2>Functions</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-clamp_real"></span> <h3>public pure function <a href='../proc/clamp_real.html'>clamp_real</a>(val, min_val, max_val) result(clamped)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+<p>Value to be clamped</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min_val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min_val</strong></td>
+            <td>
+<p>Lower bound</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_val"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max_val</strong></td>
+            <td>
+<p>Upper bound</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-clamp_int"></span> <h3>public pure function <a href='../proc/clamp_int.html'>clamp_int</a>(val, min_val, max_val) result(clamped)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+<p>Value to be clamped</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min_val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min_val</strong></td>
+            <td>
+<p>Lower bound</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_val~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max_val</strong></td>
+            <td>
+<p>Upper bound</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-rand_range"></span> <h3>public  function <a href='../proc/rand_range.html'>rand_range</a>(min, max) result(rand_num)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Returns a random real number <code>min &lt;= rand_num &lt; max</code>. If <code>min &gt; max</code>, it will be <code>max &lt;= rand_num &lt; min</code>. If <code>min == max</code>, it will be <code>min</code>.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min</strong></td>
+            <td>
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max</strong></td>
+            <td>
+
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-below"></span> <h3>public pure function <a href='../proc/below.html'>below</a>(val)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-above"></span> <h3>public pure function <a href='../proc/above.html'>above</a>(val)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
               <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-is_close"></span> <h3>public pure function <a href='../proc/is_close.html'>is_close</a>(a, b)  
 </h3></div>
@@ -801,7 +1383,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~2"></span>
+              <span class="anchor" id="variable-n"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -827,13 +1409,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-real_less"></span> <h3>public pure function <a href='../proc/real_less.html'>real_less</a>(a, b)  
+    <div class="card-header codesum"><span class="anchor" id="proc-radians"></span> <h3>public pure function <a href='../proc/radians.html'>radians</a>(degrees)  
 </h3></div>
     <div class="card-body">
           
-  <p>NaN-aware less-than comparison for real(real64).
-Finite values are always considered smaller than NaN.
-Two NaNs are treated as equal (neither less nor greater).</p>
+  <p>Returns the given degrees in positive radian value <script type="math/tex"> -90^{\circ} \Rightarrow \frac{3\cdot \pi}{2}, \text{not} -\frac{\pi}{2} </script>
+</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -848,7 +1429,7 @@ Two NaNs are treated as equal (neither less nor greater).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~3"></span>
+              <span class="anchor" id="variable-degrees"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -856,24 +1437,9 @@ Two NaNs are treated as equal (neither less nor greater).</p>
               
             </td>
             <td>::</td>
-            <td><strong>a</strong></td>
+            <td><strong>degrees</strong></td>
             <td>
-
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-b~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>b</strong></td>
-            <td>
-
+<p>degrees to be converted</p>
             </td>
         </tr>
     </tbody>
@@ -881,7 +1447,7 @@ Two NaNs are treated as equal (neither less nor greater).</p>
 
     <h4>
     Return Value
-    <small>logical</small>
+    <small>real(kind=real64)</small>
     </h4>
     
 
@@ -889,13 +1455,58 @@ Two NaNs are treated as equal (neither less nor greater).</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-real_greater"></span> <h3>public pure function <a href='../proc/real_greater.html'>real_greater</a>(a, b)  
+    <div class="card-header codesum"><span class="anchor" id="proc-norm"></span> <h3>public pure function <a href='../proc/norm.html'>norm</a>(vector)  
 </h3></div>
     <div class="card-body">
           
-  <p>NaN-aware greater-than comparison for real(real64).
-NaN is treated as greater than any finite number.
-Two NaNs are treated as equal.</p>
+  <p>Calculates the euclidean norm of a vector</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vector"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vector</strong></td>
+            <td>
+<p>Input vector the norm will be calcuated for</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-real_less"></span> <h3>public pure function <a href='../proc/real_less.html'>real_less</a>(a, b)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>NaN-aware less-than comparison for real(real64).
+Finite values are always considered smaller than NaN.
+Two NaNs are treated as equal (neither less nor greater).</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -950,11 +1561,488 @@ Two NaNs are treated as equal.</p>
     </div>
   </div>
 
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-real_greater"></span> <h3>public pure function <a href='../proc/real_greater.html'>real_greater</a>(a, b)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>NaN-aware greater-than comparison for real(real64).
+NaN is treated as greater than any finite number.
+Two NaNs are treated as equal.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-a~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>a</strong></td>
+            <td>
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-b~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>b</strong></td>
+            <td>
+
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>logical</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
         </section>
         <br>
 
         <section>
           <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-logx"></span> <h3>public pure subroutine <a href='../proc/logx.html'>logx</a>(val, base, exponent, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Compute logarithm for any base</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-val~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>val</strong></td>
+            <td>
+<p>Value (<code>x</code> in <script type="math/tex"> b^y = x </script>)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-base"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>base</strong></td>
+            <td>
+<p>Base (<code>b</code> in <script type="math/tex"> b^y = x </script>)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-exponent"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>exponent</strong></td>
+            <td>
+<p>Exponent (<code>y</code> in <script type="math/tex"> b^y = x </script>)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-init_random"></span> <h3>public  subroutine <a href='../proc/init_random.html'>init_random</a>(seed)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Initialize Fortran's random number generator</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-seed"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>seed</strong></td>
+            <td>
+<p>optional random seed, default: 42</p><a href="../proc/init_random.html#variable-seed" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-shuffle_vector_real"></span> <h3>public  subroutine <a href='../proc/shuffle_vector_real.html'>shuffle_vector_real</a>(vec)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Output permutation array</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-shuffle_vector_int"></span> <h3>public  subroutine <a href='../proc/shuffle_vector_int.html'>shuffle_vector_int</a>(vec)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Output permutation array</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-angle_between"></span> <h3>public pure subroutine <a href='../proc/angle_between.html'>angle_between</a>(v1, v2, n_dims, angle, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Computes the radian angle between two vectors</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-v1"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>v1</strong></td>
+            <td>
+<p>first vector for angle calculation</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-v2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>v2</strong></td>
+            <td>
+<p>second vector for angle calculation</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>number of elements in <code>v1</code> and <code>v2</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-angle"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>angle</strong></td>
+            <td>
+<p>will hold calculated angle</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-add_vector"></span> <h3>public pure subroutine <a href='../proc/add_vector.html'>add_vector</a>(vector, to_be_added)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Adds two vectors in-place</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vector~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vector</strong></td>
+            <td>
+<p>First vector, it will be modified in-place</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-to_be_added"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>to_be_added</strong></td>
+            <td>
+<p>Vector that should be added to <code>vector</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-subtract_vector"></span> <h3>public pure subroutine <a href='../proc/subtract_vector.html'>subtract_vector</a>(vector, to_be_subtracted)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Subtracts two vectors in-place</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vector~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vector</strong></td>
+            <td>
+<p>First vector, it will be modified in-place</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-to_be_subtracted"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>to_be_subtracted</strong></td>
+            <td>
+<p>Vector that should be subtracted from <code>vector</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
               <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-sort_real"></span> <h3>public pure subroutine <a href='../proc/sort_real.html'>sort_real</a>(array, perm, stack_left, stack_right)  
 </h3></div>
@@ -976,7 +2064,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~2"></span>
+              <span class="anchor" id="variable-array"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -991,7 +2079,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~7"></span>
+              <span class="anchor" id="variable-perm"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1006,7 +2094,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~7"></span>
+              <span class="anchor" id="variable-stack_left"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1021,7 +2109,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~7"></span>
+              <span class="anchor" id="variable-stack_right"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1062,7 +2150,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~3"></span>
+              <span class="anchor" id="variable-array~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1077,7 +2165,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~8"></span>
+              <span class="anchor" id="variable-perm~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1092,7 +2180,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~8"></span>
+              <span class="anchor" id="variable-stack_left~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1107,7 +2195,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~8"></span>
+              <span class="anchor" id="variable-stack_right~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1148,7 +2236,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~4"></span>
+              <span class="anchor" id="variable-array~3"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1163,7 +2251,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~9"></span>
+              <span class="anchor" id="variable-perm~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1178,7 +2266,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~9"></span>
+              <span class="anchor" id="variable-stack_left~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1193,7 +2281,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~9"></span>
+              <span class="anchor" id="variable-stack_right~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1234,7 +2322,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~5"></span>
+              <span class="anchor" id="variable-array~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1249,7 +2337,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~10"></span>
+              <span class="anchor" id="variable-perm~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1290,7 +2378,7 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~6"></span>
+              <span class="anchor" id="variable-array~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1305,7 +2393,7 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~11"></span>
+              <span class="anchor" id="variable-perm~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1346,7 +2434,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~7"></span>
+              <span class="anchor" id="variable-array~6"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1361,7 +2449,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~12"></span>
+              <span class="anchor" id="variable-perm~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1402,7 +2490,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~8"></span>
+              <span class="anchor" id="variable-array~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1417,7 +2505,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~13"></span>
+              <span class="anchor" id="variable-perm~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1432,7 +2520,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~3"></span>
+              <span class="anchor" id="variable-n~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1447,7 +2535,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~10"></span>
+              <span class="anchor" id="variable-stack_left~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1462,7 +2550,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~10"></span>
+              <span class="anchor" id="variable-stack_right~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1503,7 +2591,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~9"></span>
+              <span class="anchor" id="variable-array~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1518,7 +2606,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~14"></span>
+              <span class="anchor" id="variable-perm~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1533,7 +2621,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~4"></span>
+              <span class="anchor" id="variable-n~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1548,7 +2636,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~11"></span>
+              <span class="anchor" id="variable-stack_left~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1563,7 +2651,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~11"></span>
+              <span class="anchor" id="variable-stack_right~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1604,7 +2692,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~10"></span>
+              <span class="anchor" id="variable-array~9"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1619,7 +2707,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~15"></span>
+              <span class="anchor" id="variable-perm~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1634,7 +2722,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~5"></span>
+              <span class="anchor" id="variable-n~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1649,7 +2737,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~12"></span>
+              <span class="anchor" id="variable-stack_left~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1664,7 +2752,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~12"></span>
+              <span class="anchor" id="variable-stack_right~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1704,7 +2792,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~11"></span>
+              <span class="anchor" id="variable-array~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1719,7 +2807,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~16"></span>
+              <span class="anchor" id="variable-perm~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1760,7 +2848,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~13"></span>
+              <span class="anchor" id="variable-array~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1775,7 +2863,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~18"></span>
+              <span class="anchor" id="variable-perm~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1816,7 +2904,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~15"></span>
+              <span class="anchor" id="variable-array~14"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1831,7 +2919,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~20"></span>
+              <span class="anchor" id="variable-perm~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1907,6 +2995,61 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-swap_real"></span> <h3>public pure subroutine <a href='../proc/swap_real.html'>swap_real</a>(a, b)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Swap two real values in-place.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-a~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>a</strong></td>
+            <td>
+<p>First real to swap</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-b~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>b</strong></td>
+            <td>
+<p>Second real to swap</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-which"></span> <h3>public pure subroutine <a href='../proc/which.html'>which</a>(mask, n, idx_out, m_max, m_out, ierr)  
 </h3></div>
     <div class="card-body">
@@ -1941,7 +3084,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~9"></span>
+              <span class="anchor" id="variable-n~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2001,7 +3144,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~117"></span>
+              <span class="anchor" id="variable-ierr~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2103,7 +3246,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~7"></span>
+              <span class="anchor" id="variable-indices_used"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2193,7 +3336,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~118"></span>
+              <span class="anchor" id="variable-ierr~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2214,7 +3357,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf"></span> <h3>public  subroutine <a href='../proc/compute_edf.html'>compute_edf</a>(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf"></span> <h3>public pure subroutine <a href='../proc/compute_edf.html'>compute_edf</a>(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)  
 </h3></div>
     <div class="card-body">
           
@@ -2266,7 +3409,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~22"></span>
+              <span class="anchor" id="variable-perm~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2326,7 +3469,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~119"></span>
+              <span class="anchor" id="variable-ierr~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2347,7 +3490,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_alloc"></span> <h3>public  subroutine <a href='../proc/compute_edf_alloc.html'>compute_edf_alloc</a>(values, n_values, unique_values, cdf_values, n_unique, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_alloc"></span> <h3>public pure subroutine <a href='../proc/compute_edf_alloc.html'>compute_edf_alloc</a>(values, n_values, unique_values, cdf_values, n_unique, ierr)  
 </h3></div>
     <div class="card-body">
           
@@ -2443,7 +3586,7 @@ Use this for convenience; use compute_edf directly for custom sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~120"></span>
+              <span class="anchor" id="variable-ierr~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2484,7 +3627,7 @@ Uses linear interpolation between adjacent values.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~17"></span>
+              <span class="anchor" id="variable-array~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2499,7 +3642,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation~7"></span>
+              <span class="anchor" id="variable-permutation"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2514,7 +3657,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~11"></span>
+              <span class="anchor" id="variable-percentile"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2544,7 +3687,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~121"></span>
+              <span class="anchor" id="variable-ierr~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2565,7 +3708,93 @@ Uses linear interpolation between adjacent values.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_alloc"></span> <h3>public  subroutine <a href='../proc/calc_percentile_alloc.html'>calc_percentile_alloc</a>(array, percentile, value, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_helper"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_helper.html'>calc_percentile_helper</a>(array, permutation, percentile, value)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>(no input validation) Calculate the percentile of an array given a sorted permutation.
+Uses linear interpolation between adjacent values.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~17"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(:)</td>
+            <td>
+<p>input array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-permutation~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>permutation</strong>(:)</td>
+            <td>
+<p>permutation vector representing sorted order</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>percentile</strong></td>
+            <td>
+<p>desired percentile (0-100)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>output percentile value</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_alloc"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_alloc.html'>calc_percentile_alloc</a>(array, percentile, value, ierr)  
 </h3></div>
     <div class="card-body">
           
@@ -2599,7 +3828,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~12"></span>
+              <span class="anchor" id="variable-percentile~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2614,7 +3843,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~2"></span>
+              <span class="anchor" id="variable-value~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -2629,7 +3858,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~122"></span>
+              <span class="anchor" id="variable-ierr~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2665,14 +3894,14 @@ Uses linear interpolation between adjacent values.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2025 
+ was developed by TensorOmics Developers<br>              &copy; 2026 
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2025-11-23 17:36 +0000"             </p>
+ on "2026-02-04 22:23 +0000"             </p>
           </div>
         </div>
         <br>

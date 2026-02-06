@@ -257,7 +257,6 @@ contains
     integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
     real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
     integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-    logical :: ortholog_set(n_genes)
 
     vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
     gene_to_family = [1, 1, 2, 3, 1] ! Invalid family mapping since family 3 does not exist

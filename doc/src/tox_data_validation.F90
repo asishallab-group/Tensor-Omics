@@ -316,7 +316,7 @@ contains
 
     !> Validate that no string appears more than once
     subroutine validate_string_array_uniqueness(str_arr, ierr)
-        use xxh3_hashmap_module, only: hashset_type, hashset_create, hashset_put, hashset_destroy
+        use f42_xxh3_hashmap, only: hashset_type, hashset_create, hashset_put, hashset_destroy
         character(len=*), intent(in) :: str_arr(:)
             !! string array
         integer(int32), intent(out) :: ierr

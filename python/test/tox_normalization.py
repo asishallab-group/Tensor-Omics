@@ -11,11 +11,64 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import (
     tox_normalize_by_std_dev,
-    tox_quantile_normalization, 
+    tox_quantile_normalization,
     tox_log2_transformation,
     tox_calculate_tissue_averages,
     tox_calculate_fold_changes,
+    tox_normalize_unit_length
 )
+
+
+def test_normalize_unit_length():
+    import numpy as np
+
+    TOL = 1e-12
+
+    # -------------------------------
+    # Case 1: Normal vector
+    # -------------------------------
+    vec = np.array([3.0, 4.0, -123.0], dtype=np.float64)
+    expected = vec / np.linalg.norm(vec)
+    result = tox_normalize_unit_length(vec.copy())
+    assert np.allclose(result, expected, atol=TOL), "normal vector: result mismatch"
+
+    # -------------------------------
+    # Case 2: Zero vector
+    # -------------------------------
+    vec = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+    try:
+        tox_normalize_unit_length(vec.copy())
+        raise AssertionError("zero vector: should raise RuntimeError")
+    except RuntimeError:
+        pass  # expected
+
+    # -------------------------------
+    # Case 3: Already normalized
+    # -------------------------------
+    vec = np.array([0.6164770879765119, -0.42, 0.666], dtype=np.float64)
+    result = tox_normalize_unit_length(vec.copy())
+    assert np.allclose(result, vec, atol=0.0), "already normalized vector: result mismatch"
+
+    # -------------------------------
+    # Case 4: NaN
+    # -------------------------------
+    vec = np.array([0.6164770879765119, -0.42, np.nan], dtype=np.float64)
+    try:
+        tox_normalize_unit_length(vec.copy())
+        raise AssertionError("NaN vector: should raise RuntimeError")
+    except RuntimeError:
+        pass  # expected
+
+    # -------------------------------
+    # Case 5: Infinity
+    # -------------------------------
+    vec = np.array([0.6164770879765119, -0.42, np.inf], dtype=np.float64)
+    try:
+        tox_normalize_unit_length(vec.copy())
+        raise AssertionError("Infinity vector: should raise RuntimeError")
+    except RuntimeError:
+        pass  # expected
+
 
 def print_matrix(name, mat):
     """Pretty print matrix with name"""
@@ -303,7 +356,7 @@ def test_error_handling():
 
 
 if __name__ == "__main__":
-    print("TENSOR-OMICS PYTHON TOX_ FUNCTIONS TEST SUITE")
+    print("TENSOR-OMICS PYTHON TOX_NORMALIZATION FUNCTIONS TEST SUITE")
     print("Testing wrapper functions with tox_ prefix...")
     
     try:
@@ -317,10 +370,10 @@ if __name__ == "__main__":
         test_tox_calc_fchange_example_1()
         test_tox_calc_fchange_example_2()
         test_error_handling()
+        test_normalize_unit_length()
         
         print("\n" + "="*50)
-        print("ALL TOX_ FUNCTION TESTS COMPLETED SUCCESSFULLY!")
-        print("All normalization and utility functions working correctly with tox_ prefix.")
+        print("ALL TOX_NORMALIZATION FUNCTION TESTS COMPLETED SUCCESSFULLY!")
         print("="*50)
 
     except Exception as e:

@@ -1,0 +1,184 @@
+\section{Trajectory-Based Signed Contribution Analysis}
+
+    \subsection{World Bank Example Dataset}
+
+        To illustrate the methodology, we consider a simplified World Bank style dataset comprising socio-economic indicators collected annually over $T = 21$ years for approximately $200$ countries. Each year is represented by a table whose rows correspond to countries and whose columns correspond to quantitative indicators. By stacking the yearly tables in temporal order, each country forms a trajectory
+        \[
+            \vec{p}_1,\, \vec{p}_2,\, \ldots,\, \vec{p}_{21},
+        \]
+        that is, a sequence of vectors moving through a semantic space in which each axis represents a specific measurement.
+
+        Typical indicators include female and male illiteracy rates, female and male income, mortality rates, unemployment levels, vaccination coverage, and per-capita GDP. These indicators serve as \textbf{factors} in our analysis, describing socio-economic conditions that might influence selected outcomes. Additional indicators, such as the proportion of women over 60 or composite gender-equality indices, act as \textbf{dependent variables}. Together, these measurements provide a high-dimensional representation of each country's temporal evolution, making the dataset well suited for trajectory-based signed contribution analysis as described above.
+
+    \subsection{Trajectory related scientific questions}
+
+        In order to analyse which socio-economic factors most strongly contribute to improvements or deteriorations in selected dependent variables over time, we consider each country as a trajectory in a semantic vector space. Each axis of this space represents one measured indicator, for example female illiteracy, male income, female mortality rate, unemployment, or per-capita GDP. This representation preserves semantic interpretability, since every dimension corresponds to a concrete and meaningful quantity. For each country we observe a sequence of yearly vectors
+        \[
+            \vec{p}_t = (x_{t,1}, x_{t,2}, \ldots, x_{t,n}), \qquad t = 1,\ldots,T,
+        \]
+        where $T$ denotes the number of temporal measurements (e.g.\ 21 years). This formulation allows us to address two central scientific questions: \textbf{(i)} which factors contribute most strongly to the evolution of a dependent variable over the entire trajectory, and \textbf{(ii)} at which specific time points do exceptional or anomalous contributions occur.
+
+    \subsection{Covariance-Based Contribution Decomposition}
+
+        Given a dependent variable $D$ and a factor $F$, each represented as scalar coordinates of the trajectory vector $\vec{p}_t$, we quantify their instantaneous co-deviation at time $t$ through the signed contribution
+        \[
+            c_{D,F}(t) = \big(D_t - b_D\big)\,\big(F_t - b_F\big),
+        \]
+        where $b_D$ and $b_F$ denote chosen baselines for the dependent and factor variables. The sign of $c_{D,F}(t)$ encodes directional co-movement: positive contributions indicate that both variables increase simultaneously or decrease simultaneously relative to their baselines, whereas negative contributions indicate divergence. The magnitude reflects the strength of this alignment or misalignment at a specific time point.
+
+        Over the full trajectory the total signed contribution is defined as
+        \[
+            C_T(D,F) = \sum_{t=1}^{T} c_{D,F}(t).
+        \]
+        This cumulative measure captures the overall explanatory co-deviation of factor $F$ for dependent $D$ across the entire temporal span.
+
+    \subsection{Linear Combinations of Factors and Dependents}
+
+        The geometric formulation immediately generalises to linear combinations of factors and dependents. Let
+        \[
+            F^{\ast} = \sum_{j \in \mathcal{F}} \alpha_j\,F_j
+            \qquad\text{and}\qquad
+            D^{\ast} = \sum_{k \in \mathcal{D}} \beta_k\,D_k,
+        \]
+        where the coefficients $\alpha_j$ and $\beta_k$ are scientifically motivated weights that reflect clearly articulated hypotheses rather than algorithmic optimisation. The instantaneous contribution between $F^{\ast}$ and $D^{\ast}$ becomes
+        \[
+            c_{D^{\ast},F^{\ast}}(t)
+              = \big(D^{\ast}_t - b_{D^{\ast}}\big)\,\big(F^{\ast}_t - b_{F^{\ast}}\big),
+        \]
+        with total contribution $C_T(D^{\ast},F^{\ast})$ defined analogously. This enables the investigator to formulate hypotheses such as ``the combined unemployment and income gap contributes to the gender-equality index'' in a mathematically precise and interpretable manner.
+
+    \subsection{Baseline Modes}
+
+        Three baseline modes are supported in order to accommodate different scientific aims.
+
+        \subsubsection{Raw Contributions}
+            In the raw mode we set $b_D = 0$ and $b_F = 0$, analysing the contributions directly on the original scale. This mode is appropriate when deviations from absolute zero are meaningful or when the variables exhibit no strong directional trends.
+
+        \subsubsection{Minimum-Centred Contributions}
+            For monotonic or growth-oriented variables, such as literacy rates, per-capita GDP, or gender-equality indicators, minimum-centred baselines are often more intuitive. Here we set
+            \[
+                b_D = \min_{t}(D_t) \qquad \text{and} \qquad b_F = \min_{t}(F_t),
+            \]
+            so that $D_t - b_D$ and $F_t - b_F$ represent deviations above historically observed minima. This avoids sign inversions that arise when early values lie below the mean and provides a clear interpretation of improvement or deterioration.
+
+        \subsubsection{Mean-Centred Contributions}
+            For oscillatory or approximately stationary variables it is often favourable to subtract the trajectory mean. In this case
+            \[
+                b_D = \frac{1}{T}\sum_{t=1}^{T} D_t \qquad \text{and} \qquad
+                b_F = \frac{1}{T}\sum_{t=1}^{T} F_t.
+            \]
+            Mean centring yields symmetric deviation structure and is appropriate for variables with no strict monotonic trend.
+
+    \subsection{Optional Inter-Trajectory Normalisation}
+
+        When comparing contributions across multiple trajectories (for instance, across countries with vastly different magnitudes of income or literacy), it may be advantageous to normalise each trajectory prior to analysis. A natural and robust scaling is
+        \[
+            v_t^{\text{norm}} =
+            \frac{v_t - \min_{k}(v_k)}{\max_{k}(v_k) - \min_{k}(v_k) + \varepsilon},
+        \]
+        where $\varepsilon$ is a small constant that prevents division by zero. This rescaling maps each trajectory to the interval $[0,1]$ without altering its shape or directionality. The downstream contribution analysis remains unchanged, because normalisation occurs solely upstream of the contribution computation.
+
+    \subsection{Permutation Tests}
+
+        To assess statistical significance for both time-resolved spikes $c_{D,F}(t)$ and total contributions $C_T(D,F)$, we employ permutation tests. The null hypothesis asserts that the factor trajectory and the dependent trajectory are unrelated. Consequently, the temporal structure within each trajectory must be preserved while the pairing between factor and dependent trajectories must be broken. Formally, for each permutation we replace the dependent trajectory $D$ of a given country with the dependent trajectory $D^{\ast}$ drawn from a different country, computing the permuted contributions
+        \[
+            c_{D^{\ast},F}(t)
+            \qquad\text{and}\qquad
+            C_T(D^{\ast},F).
+        \]
+        Repeating this procedure generates an empirical null distribution against which observed contributions are compared. Spike-level significance is obtained by comparing individual $c_{D,F}(t)$ values to their null distribution, while trajectory-level significance is based on $C_T(D,F)$.
+
+    \subsection{Comparisons Between Groups of Trajectories}
+
+        The above framework extends naturally to group comparisons, for example contrasting contributions between industrialised and developing countries. For group-level inference we compute the empirical distributions of spike values and total contributions for each group. Non-parametric two-sample tests, such as the Wilcoxon rank-sum test, can then be applied to assess systematic differences between groups. Permutation-based group comparisons can also be constructed by permuting group labels under the assumption of exchangeability.
+
+    \subsection{Visualisation Strategies}
+
+        Several visualisation modes serve to illustrate the behaviour of contributions. First, distributions of spike values and total trajectory contributions can be shown as histograms or density plots, optionally accompanied by significance thresholds derived from permutation tests. Second, time-resolved spike contributions can be visualised as jittered scatter plots analogous to Manhattan plots, with dotted horizontal lines marking significance cutoffs. Third, factor--dependent summaries can be displayed in two-dimensional scatter plots with axes representing factors and dependents, in which significant trajectories or spikes are highlighted by colour.
+
+    \subsection{Discussion}
+
+        A critical reader may raise concerns regarding correlations between factors or between dependents. Although the semantic vector space treats axes as orthogonal by construction, correlations manifest in the empirical positions of the trajectories and therefore appear directly in the contribution values. This framework thus does not eliminate correlation structure; it measures how such structure contributes to co-deviations in a time-resolved manner. A second concern pertains to the choice of baseline. Minimum-centred baselines are particularly suited for growth processes, whereas mean-centred baselines are preferable for oscillatory variables. This flexibility is not a weakness, but ensures that deviations retain their semantic interpretation. Finally, the validity of permutation tests relies on exchangeability across trajectories, a reasonable assumption for many socio-economic analyses but one that can be refined by stratified or region-specific permutation schemes. Overall, the proposed methodology is internally consistent, conceptually transparent, and provides a novel geometric perspective on temporal co-deviation in multivariate systems.
+
+    \subsection{Velocity- and Acceleration-Based Contribution Analysis}
+
+        In addition to analysing the trajectories $\vec{p}_t$ themselves, we also examine their discrete temporal derivatives in order to capture the dynamics of change. Throughout this subsection we assume that the time steps are constant (for example, yearly measurements in the World Bank dataset). If time steps were irregular, interpolation would be required prior to the derivative computation, which is not supported in the current implementation.
+
+        \subsubsection{Velocity Contributions}
+
+            The discrete velocity vectors are defined as
+            \[
+                \vec{v}_t = \vec{p}_t - \vec{p}_{t-1}, \qquad t = 2,\ldots,T.
+            \]
+            These vectors quantify how the entire socio-economic profile of a country changes from one year to the next. Each component $v_{t,j}$ represents the year-to-year increment or decrement of indicator $j$, and the magnitude $\|\vec{v}_t\|$ provides a scalar measure of the overall change occurring at time $t$.
+
+            Signed contributions for velocities are defined analogously to ambient contributions. For a dependent variable $D$ and a factor $F$, and with selected baselines $b^{\mathrm{vel}}_D$ and $b^{\mathrm{vel}}_F$, we write
+            \[
+                c^{\mathrm{vel}}_{D,F}(t)
+                  = \big(v_{t,D} - b^{\mathrm{vel}}_D\big)\,\big(v_{t,F} - b^{\mathrm{vel}}_F\big).
+            \]
+            The global contribution across the trajectory is then
+            \[
+                C^{\mathrm{vel}}_T(D,F)
+                  = \sum_{t=2}^{T} c^{\mathrm{vel}}_{D,F}(t).
+            \]
+            Velocity-based contributions therefore quantify how co-increments or co-decrements of $D$ and $F$ align through time. The largest year-to-year change can be identified by the maximum of $\|\vec{v}_t\|$, marking the point of strongest development or deterioration.
+
+            The directional role of individual factors can further be examined by the cosine between the velocity vector and axis $F$,
+            \[
+                \cos\big(\vec{v}_t, e_F\big) = \frac{v_{t,F}}{\|\vec{v}_t\|},
+            \]
+            which describes how much of the total developmental movement at time $t$ is aligned with factor $F$.
+
+        \subsubsection{Acceleration Contributions}
+
+            The discrete acceleration vectors constitute second differences of the trajectory,
+            \[
+                \vec{a}_t = \vec{v}_t - \vec{v}_{t-1}
+                         = \vec{p}_t - 2\vec{p}_{t-1} + \vec{p}_{t-2},
+                \qquad t = 3,\ldots,T.
+            \]
+            Acceleration captures changes in the rate of development. Large values of $\|\vec{a}_t\|$ highlight temporal turning points, shocks, or abrupt transitions in socio-economic behaviour.
+
+            Signed contributions for accelerations are defined by
+            \[
+                c^{\mathrm{acc}}_{D,F}(t)
+                  = \big(a_{t,D} - b^{\mathrm{acc}}_D\big)\,\big(a_{t,F} - b^{\mathrm{acc}}_F\big),
+            \]
+            with trajectory-level totals
+            \[
+                C^{\mathrm{acc}}_T(D,F)
+                  = \sum_{t=3}^{T} c^{\mathrm{acc}}_{D,F}(t).
+            \]
+            Acceleration contributions identify moments where the rate of improvement or deterioration in a factor aligns with the rate of improvement or deterioration in the dependent variable. They therefore highlight joint shocks or inflection points in developmental trajectories.
+
+    \subsection{RAP-Based Trajectory Contributions}
+
+        All contribution analyses described above can be performed not only in ambient space but also in the Relative Axes Plane (RAP), where vectors are projected orthogonally to the space diagonal. RAP projection removes the global magnitude component of each trajectory vector, isolating its relative or compositional structure. Formally, letting $\vec{p}^{\mathrm{RAP}}_t$ denote the RAP projection of $\vec{p}_t$, we define
+        \[
+            \vec{v}^{\mathrm{RAP}}_t = \vec{p}^{\mathrm{RAP}}_t - \vec{p}^{\mathrm{RAP}}_{t-1},
+            \qquad
+            \vec{a}^{\mathrm{RAP}}_t = \vec{v}^{\mathrm{RAP}}_t - \vec{v}^{\mathrm{RAP}}_{t-1},
+        \]
+        and compute ambient, velocity, and acceleration contributions using $\vec{p}^{\mathrm{RAP}}_t$, $\vec{v}^{\mathrm{RAP}}_t$, and $\vec{a}^{\mathrm{RAP}}_t$, respectively.
+
+        While ambient analyses describe absolute improvements or deteriorations, RAP-based analyses characterise relative rebalancing among axes. In the context of the World Bank example, RAP contributions identify whether changes in socio-economic conditions shift the \emph{composition} of development towards or away from gender-related indicators, health axes, or economic axes, independent of overall magnitude changes. This dual perspective of absolute and compositional dynamics provides a more complete geometric characterisation of temporal behaviour in semantic vector spaces.
+
+    \subsection{Group-Level Trajectory Field Descriptors}
+
+        In many analyses it is desirable to move beyond individual trajectories and examine the temporal behaviour of entire groups of entities, such as industrialised countries, developing countries, or countries of the global south. In the present context, a group is treated as a collection of trajectories, each of which is observed over the same sequence of time points. Throughout this subsection we assume that the temporal sampling is uniform and that all trajectories share identical time intervals. If time steps were irregular or missing, interpolation would be required prior to constructing group-level descriptors; interpolation is, however, not part of the current implementation.
+
+        For each group and each time point $t$ we construct a \textbf{local module} by aggregating the trajectory vectors of all group members in a weighted manner. Specifically, we place a Gaussian kernel in time with standard deviation $\sigma = 1$ (the default), which covers a temporal window of approximately three steps to each side. The weight assigned to the vector of country $i$ at time point $s$ is given by
+        \[
+            w_{t,s} = \exp\!\left(-\frac{(t-s)^2}{2\sigma^2}\right),
+        \]
+        and only values with $|t-s| \leq 3$ contribute appreciably when $\sigma=1$. For a group containing $G$ trajectories, the module at time $t$ therefore consists of the $7G$ vectors from time points $t-3$ to $t+3$, each multiplied by the corresponding weight $w_{t,s}$. We assemble these weighted vectors as columns of the module matrix
+        \[
+            M_{\mathrm{group},t} = \big[\, w_{t,s_1}\,\vec{p}_{s_1}^{(1)} \;\; w_{t,s_2}\,\vec{p}_{s_2}^{(2)} \;\; \cdots \;\;
+            w_{t,s_{7G}}\,\vec{p}_{s_{7G}}^{(G)} \big],
+        \]
+        where $\vec{p}_{s}^{(i)}$ denotes the trajectory vector of country $i$ at time point $s$.
+
+        From each module matrix $M_{\mathrm{group},t}$ we compute the four Tensor Omics field descriptors introduced in section \ref{field-descs}.
+
+        Taken together, the group-level field descriptors provide a coherent geometric summary of development patterns across multiple entities. They reveal, for example, whether first-world countries undergo smooth, low-rank, high-coordination shifts, whether developing countries experience bursts of high-energy, multi-dimensional change, or whether global-south countries traverse distinct phases in their flow or rotation trajectories. These descriptors also highlight temporal regions of heightened rebalancing, shocks, or directional pivots, thereby offering a compact and interpretable characterisation of group-level dynamics in high-dimensional semantic spaces.

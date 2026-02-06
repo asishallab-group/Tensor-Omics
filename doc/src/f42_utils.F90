@@ -1,10 +1,12 @@
+#include "macros.h"
+
 !> Utility module for data analysis.
 !| This module provides general-purpose utility functions for data analysis, to be used as needed.
 module f42_utils
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, set_ok, set_err_once
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+  use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size
+  use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
   implicit none
 
   public :: sort_real, sort_integer, sort_character
@@ -19,9 +21,154 @@ module f42_utils
     module procedure sort_real_heapsort, sort_integer_heapsort, sort_character_heapsort
   end interface sort_array_heapsort
 
-  real(real64), parameter :: EPS = epsilon(1.0_real64)
+  interface shuffle_vector
+    module procedure shuffle_vector_real, shuffle_vector_int
+  end interface shuffle_vector
 
+  interface clamp
+    module procedure clamp_real, clamp_int
+  end interface clamp
+
+  real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
+  real(real64), parameter :: EPS = epsilon(1.0_real64)
 contains
+
+  !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
+  pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
+    real(real64), intent(in) :: val
+      !! Value to be clamped
+    real(real64), intent(in) :: min_val
+      !! Lower bound
+    real(real64), intent(in) :: max_val
+      !! Upper bound
+  
+    clamped = max(min_val, min(val, max_val))
+  end function clamp_real
+
+  !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
+  pure integer(int32) function clamp_int(val, min_val, max_val) result(clamped)
+    integer(int32), intent(in) :: val
+      !! Value to be clamped
+    integer(int32), intent(in) :: min_val
+      !! Lower bound
+    integer(int32), intent(in) :: max_val
+      !! Upper bound
+  
+    clamped = max(min_val, min(val, max_val))
+  end function clamp_int
+
+  !> Compute logarithm for any base
+  pure subroutine logx(val, base, exponent, ierr)
+      real(real64), intent(in) :: val
+        !! Value (`x` in \( b^y = x \))
+      real(real64), intent(in) :: base
+        !! Base (`b` in \( b^y = x \))
+      real(real64), intent(out) :: exponent
+        !! Exponent (`y` in \( b^y = x \))
+      integer(int32), intent(out) :: ierr
+        !! Error code
+
+      call set_ok(ierr)
+      call validate_in_range_real(val, ierr, min=above(0.0_real64))
+      call validate_in_range_real(base, ierr, min=above(0.0_real64))
+      if (is_close(base, 1.0_real64)) call set_err(ierr, ERR_DIVISION_BY_ZERO)
+      if (is_err(ierr)) return
+      
+      exponent = log(val) / log(base)
+  end subroutine logx
+
+  !> Initialize Fortran's random number generator
+  subroutine init_random(seed)
+    integer(int32), intent(in), optional :: seed
+      !! optional random seed, default: 42
+      !!
+      !! @note
+      !! This subroutine uses the intrinsic `random_seed` subroutine that expects default kind integer.
+      !! To map `int32` to default kind, it is being clamped by modulo to be in range.
+      !! @endnote
+
+    integer(int32) :: actual_seed
+
+    ! IMPORTANT: these locals need to be default kind integer
+    integer :: seed_default_kind, size, i
+    integer(int32), parameter :: max_default_kind_val = int(huge(1), kind=int32)
+
+    M_DEFAULT_VAL(seed, actual_seed, 42_int32)
+
+    ! clamp to default kind range
+    seed_default_kind = int(mod(actual_seed, max_default_kind_val))
+
+    ! determine needed array size to seed random numbers
+    call random_seed(size=size)
+
+    ! create the seeding array, has negligible size
+    call random_seed(put=[(seed_default_kind,i=1,size)])
+  end subroutine init_random
+
+  !> Returns a random real number `min <= rand_num < max`. If `min > max`, it will be `max <= rand_num < min`. If `min == max`, it will be `min`.
+  real(real64) function rand_range(min, max) result(rand_num)
+    real(real64), intent(in) :: min
+    real(real64), intent(in) :: max
+
+    call random_number(rand_num)
+    rand_num = min + rand_num * (max - min)
+  end function rand_range
+
+  !> Shuffle a vector in-place, using Fisher-Yates shuffle
+  subroutine shuffle_vector_real(vec)
+      real(real64), dimension(:), intent(inout) :: vec
+          !! Output permutation array
+
+      integer(int32) :: i, rand_idx
+      real(real64) :: rand_val
+      
+      ! Fisher-Yates shuffle
+      do i = size(vec, kind=int32), 2, -1
+          ! Generate random integer in range [1, i]
+          rand_idx = int(rand_range(1.0_real64, real(i, real64)), int32)
+
+          call swap_real(vec(i), vec(rand_idx))
+      end do
+  end subroutine shuffle_vector_real
+
+  !> Shuffle a vector in-place, using Fisher-Yates shuffle
+  subroutine shuffle_vector_int(vec)
+      integer(int32), dimension(:), intent(inout) :: vec
+          !! Output permutation array
+
+      integer(int32) :: i, rand_idx
+      real(real64) :: rand_val
+      
+      ! Fisher-Yates shuffle
+      do i = size(vec, kind=int32), 2, -1
+          ! Generate random integer in range [1, i]
+          rand_idx = int(rand_range(1.0_real64, real(i, real64)), int32)
+
+          call swap_int(vec(i), vec(rand_idx))
+      end do
+  end subroutine shuffle_vector_int
+
+  !> Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.
+  pure real(real64) function below(val)
+      real(real64), intent(in) :: val
+  
+      if (val == 0.0_real64) then
+          below = -tiny(1.0_real64)
+      else
+          below = ieee_next_after(val, M_NEG_INF)
+      end if
+  end function below
+
+  !> Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges.
+  pure real(real64) function above(val)
+      real(real64), intent(in) :: val
+  
+      if (val == 0.0_real64) then
+          above = tiny(1.0_real64)
+      else
+          above = ieee_next_after(val, M_POS_INF)
+      end if
+  end function above
 
   pure logical function is_close(a, b)
     real(real64), intent(in) :: a
@@ -29,7 +176,14 @@ contains
     real(real64), intent(in) :: b
       !! Second variable of comparison a==b
 
-    is_close = abs(a - b) <= EPS * max(abs(a), abs(b))
+    real(real64) :: rel_tolerance
+
+    if (ieee_is_finite(a) .and. ieee_is_finite(b)) then
+      rel_tolerance = EPS * max(abs(a), abs(b))
+      is_close = abs(a - b) <= max(rel_tolerance, 1d-12)
+    else
+      is_close = a == b
+    end if
   end function is_close
 
   !> Find the next power of two greater than or equal to n
@@ -42,6 +196,93 @@ contains
       power = 2 ** (bit_size(n) - leadz(n - 1))
   end function next_power_of_two
 
+  !> Computes the radian angle between two vectors
+  pure subroutine angle_between(v1, v2, n_dims, angle, ierr)
+    integer(int32), intent(in) :: n_dims
+      !! number of elements in `v1` and `v2`
+    real(real64), dimension(n_dims), intent(in) :: v1
+      !! first vector for angle calculation
+    real(real64), dimension(n_dims), intent(in) :: v2
+      !! second vector for angle calculation
+    real(real64), intent(out) :: angle
+      !! will hold calculated angle
+    integer(int32), intent(out) :: ierr
+      !! Error code
+
+    integer(int32) :: i
+    real(real64) :: theta, dot_product, norm1, norm2, norm_product
+
+    call set_ok(ierr)
+
+    dot_product = 0
+    norm1 = 0
+    norm2 = 0
+    do i = 1, size(v1)
+      dot_product = dot_product + v1(i) * v2(i)
+      norm1 = norm1 + v1(i) ** 2
+      norm2 = norm2 + v2(i) ** 2
+    end do
+    norm_product = sqrt(norm1) * sqrt(norm2)
+    if (is_close(norm_product, 0.0_real64)) then
+        call set_err(ierr, ERR_DIVISION_BY_ZERO)
+        return
+    end if
+
+    theta = dot_product / norm_product
+    theta = clamp(theta, -1.0_real64, 1.0_real64)
+    angle = acos(theta)
+  end subroutine angle_between
+
+  !> Returns the given degrees in positive radian value \( -90^{\circ} \Rightarrow \frac{3\cdot \pi}{2}, \text{not} -\frac{\pi}{2} \)
+  pure real(real64) function radians(degrees)
+    real(real64), intent(in) :: degrees
+        !! degrees to be converted
+
+    radians = modulo(degrees, 360.0_real64) * PI / 180 
+  end function radians
+
+  !> Calculates the euclidean norm of a vector
+  pure real(real64) function norm(vector)
+    real(real64), dimension(:), intent(in) :: vector
+        !! Input vector the norm will be calcuated for
+
+    integer(int32) :: i_dim
+
+    norm = 0
+    do i_dim = 1, size(vector)
+      norm = norm + vector(i_dim) ** 2
+    end do
+    norm = sqrt(norm)
+  end function norm
+
+  !> Adds two vectors in-place
+  pure subroutine add_vector(vector, to_be_added)
+    real(real64), dimension(:), intent(inout) :: vector
+        !! First vector, it will be modified in-place
+    real(real64), dimension(:), intent(in) :: to_be_added
+        !! Vector that should be added to `vector`
+
+    integer(int32) :: i_dim
+
+    do i_dim = 1, size(vector)
+      vector(i_dim) = vector(i_dim) + to_be_added(i_dim)
+    end do
+  end subroutine add_vector
+
+  !> Subtracts two vectors in-place
+  pure subroutine subtract_vector(vector, to_be_subtracted)
+    real(real64), dimension(:), intent(inout) :: vector
+        !! First vector, it will be modified in-place
+    real(real64), dimension(:), intent(in) :: to_be_subtracted
+        !! Vector that should be subtracted from `vector`
+
+    integer(int32) :: i_dim
+
+    do i_dim = 1, size(vector)
+      vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
+    end do
+  end subroutine subtract_vector
+  
   !> Sort a real array indirectly using quicksort.
   !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
   pure subroutine sort_real(array, perm, stack_left, stack_right)
@@ -519,6 +760,16 @@ contains
     temp = a; a = b; b = temp
   end subroutine swap_int
 
+  !> Swap two real values in-place.
+  pure subroutine swap_real(a, b)
+    !| First real to swap
+    real(real64), intent(inout) :: a
+    !| Second real to swap
+    real(real64), intent(inout) :: b
+    real(real64) :: temp
+    temp = a; a = b; b = temp
+  end subroutine swap_real
+
   ! Helper: NaN-aware comparisons for real(real64).
   ! We treat NaN as greater than any numeric value so that NaNs end up at the
   ! end of ascending sorts. These helpers define a total-like ordering where
@@ -738,7 +989,7 @@ contains
   !| Returns the sorted unique values and their cumulative frequencies in [0,1].
   !| Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
   !| The number of unique values can be determined by finding the last non-zero cdf_value.
-  subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
+  pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
     !| Array of observed data values (e.g., contributions or spikes).
     real(real64), intent(in) :: values(n_values)
     !| Number of values in the input array.
@@ -803,7 +1054,7 @@ contains
   !> Helper routine that sorts and calls compute_edf.
   !| Allocates workspace internally and performs sorting before computing EDF.
   !| Use this for convenience; use compute_edf directly for custom sorting.
-  subroutine compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+  pure subroutine compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
     !| Array of observed data values (e.g., contributions or spikes).
     real(real64), intent(in) :: values(n_values)
     !| Number of values in the input array.
@@ -849,32 +1100,39 @@ contains
     integer(int32), intent(out) :: ierr
     !! Error code
     
-    integer(int32) :: n, lower_index
-    real(real64) :: index, fraction, lower_value, upper_value
+    integer(int32) :: n
     
     ! Initialize error
     call set_ok(ierr)
     
     ! Input validation
     n = size(array)
-    if (n == 0) then
-      call set_err_once(ierr, ERR_EMPTY_INPUT)
-      value = 0.0_real64
-      return
-    end if
+    call validate_dimension_size(n, ierr)
+    if (size(permutation) /= n) call set_err_once(ierr, ERR_INVALID_INPUT)
+    call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64)
+
+    if (is_err(ierr)) return
+
+    call calc_percentile_helper(array, permutation, percentile, value)
+  end subroutine calc_percentile
+
+  !> (no input validation) Calculate the percentile of an array given a sorted permutation.
+  !! Uses linear interpolation between adjacent values.
+  pure subroutine calc_percentile_helper(array, permutation, percentile, value)
+    real(real64), intent(in) :: array(:)
+    !! input array
+    integer(int32), intent(in) :: permutation(:)
+    !! permutation vector representing sorted order
+    real(real64), intent(in) :: percentile
+    !! desired percentile (0-100)
+    real(real64), intent(out) :: value
+    !! output percentile value
     
-    if (size(permutation) /= n) then
-      call set_err_once(ierr, ERR_INVALID_INPUT)
-      value = 0.0_real64
-      return
-    end if
+    integer(int32) :: n, lower_index
+    real(real64) :: index, fraction, lower_value, upper_value
     
-    if (percentile < 0.0_real64 .or. percentile > 100.0_real64) then
-      call set_err_once(ierr, ERR_INVALID_INPUT)
-      value = 0.0_real64
-      return
-    end if
-    
+    n = size(array)
+
     ! Handle single element case
     if (n == 1) then
       value = array(1)
@@ -899,11 +1157,11 @@ contains
       upper_value = array(permutation(lower_index + 1))
       value = lower_value + fraction * (upper_value - lower_value)
     end if
-  end subroutine calc_percentile
+  end subroutine calc_percentile_helper
 
   !> Calculate the percentile of an array, allocating necessary arrays when no sorting permutation is given
   !! @note This subroutine uses quicksort internally which may cause a spike in memory usage for large arrays.
-  subroutine calc_percentile_alloc(array, percentile, value, ierr)
+  pure subroutine calc_percentile_alloc(array, percentile, value, ierr)
     use tox_errors, only: ERR_EMPTY_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, is_err
     real(real64), intent(in) :: array(:)
     !! Input array
@@ -948,8 +1206,6 @@ contains
 
 end module f42_utils
 
-
-
 ! === R WRAPPERS ===
 
 !> R wrapper for loess_smooth_2d.
@@ -991,7 +1247,7 @@ end subroutine loess_smooth_2d_r
 !> C wrapper for which.
 !| Converts integer mask to logical and calls which.
 subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
-  use iso_c_binding
+  use, intrinsic :: iso_c_binding, only: c_int
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: which
   implicit none
@@ -1020,7 +1276,7 @@ end subroutine which_c
 !| Direct wrapper - user must pre-filter indices in C before calling.
 subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")
-  use iso_c_binding, only : c_int, c_double
+  use, intrinsic :: iso_c_binding, only : c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: loess_smooth_2d
   implicit none
@@ -1062,7 +1318,7 @@ end subroutine loess_smooth_2d_c
 !| The number of unique values is returned via n_unique output parameter.
 subroutine compute_edf_c(values, n_values, unique_values, cdf_values, n_unique, ierr) &
   bind(C, name="compute_edf_c")
-  use iso_c_binding, only: c_int, c_double
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf_alloc
   implicit none
@@ -1088,7 +1344,7 @@ end subroutine compute_edf_c
 !| for better performance when the caller has full control.
 subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_values, n_unique, ierr) &
     bind(C, name="compute_edf_expert_c")
-  use iso_c_binding, only: c_int, c_double
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf
   implicit none

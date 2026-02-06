@@ -3,6 +3,7 @@
 module mod_test_log2_transformation
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use tox_normalization
   implicit none
   public
 
@@ -88,7 +89,7 @@ contains
     ! Matrix: [0, 7; 3, 15] in column-major (flattened: [0, 3, 7, 15])
     input_flat = [0.0d0, 3.0d0, 7.0d0, 15.0d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     ! Expected: log2(x+1) = [log2(1), log2(4), log2(8), log2(16)] = [0, 2, 3, 4]
@@ -111,7 +112,7 @@ contains
     input_flat = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
     expected_flat = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_equal_array_real(output_flat, expected_flat, 4, 1d-12, &
@@ -127,7 +128,7 @@ contains
     n_genes = 2; n_tissues = 3
     input_flat = [1.0d0, 2.0d0, 3.0d0, 4.0d0, 5.0d0, 6.0d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     ! Check that we get exactly the same number of elements
@@ -146,7 +147,7 @@ contains
     n_genes = 1; n_tissues = 1
     input_flat = [7.0d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_equal_real(output_flat(1), log(8.0d0)/LOG2, 1d-12, &
@@ -162,7 +163,7 @@ contains
     n_genes = 2; n_tissues = 2
     input_flat = [1d6, 1d9, 1d12, 1d15]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     ! Check that results are finite and reasonable
@@ -183,7 +184,7 @@ contains
     n_genes = 2; n_tissues = 2
     input_flat = [1d-6, 1d-9, 1d-12, 1d-15]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_no_nan_real(output_flat, 4, "test_log2_small_values: NaN in result")
@@ -203,7 +204,7 @@ contains
     input_flat = [1.0d0, 3.0d0, 7.0d0, 15.0d0]  ! 2^1-1, 2^2-1, 2^3-1, 2^4-1
     expected_flat = [1.0d0, 2.0d0, 3.0d0, 4.0d0]  ! log2(2), log2(4), log2(8), log2(16)
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_equal_array_real(output_flat, expected_flat, 4, 1d-12, &
@@ -226,7 +227,7 @@ contains
     call random_number(input_flat)
     input_flat = input_flat * 100.0d0  ! Scale to [0, 100]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_no_nan_real(output_flat, n_genes * n_tissues, "test_log2_random_matrix: NaN in result")
@@ -249,7 +250,7 @@ contains
     n_genes = 2; n_tissues = 2
     input_flat = [-0.5d0, -0.9d0, -0.99d0, -0.999d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_no_nan_real(output_flat, 4, "test_log2_negative_handling: NaN in result")
@@ -268,7 +269,7 @@ contains
     n_genes = 2; n_tissues = 2
     input_flat = [0.0d0, 1.0d0, huge(1.0d0), tiny(1.0d0)]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     call assert_no_nan_real(output_flat, 4, "test_log2_edge_cases: NaN in result")
@@ -287,7 +288,7 @@ contains
     n_genes = 5; n_tissues = 1
     input_flat = [1.0d0, 2.0d0, 5.0d0, 10.0d0, 20.0d0]  ! Increasing sequence
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     ! Check strict monotonicity
@@ -306,7 +307,7 @@ contains
     n_genes = 4; n_tissues = 2
     input_flat = [1.0d0, 3.0d0, 7.0d0, 15.0d0, 2.0d0, 6.0d0, 14.0d0, 30.0d0]
     
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 0, "log2_transformation_r returned error")
     
     ! Property: log2((2x)+1) ≈ log2(2x) = log2(2) + log2(x) = 1 + log2(x)
@@ -326,7 +327,7 @@ contains
     integer(int32) :: n_genes, n_tissues, ierr
     real(real64), dimension(0) :: input_flat, output_flat
     n_genes = 0; n_tissues = 0
-    call log2_transformation_r(n_genes, n_tissues, input_flat, output_flat, ierr)
+    call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
     call assert_equal_int(ierr, 202, "log2_transformation_r should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_log2_empty_matrix

@@ -13,7 +13,7 @@ RUN curl -L --output /usr/local/bin/fpm \
   chmod a+x /usr/local/bin/fpm
 
 # Install R zip package
-RUN Rscript -e "install.packages('zip', repos='https://cloud.r-project.org/')"
+RUN Rscript -e "install.packages('Rcpp', repos='https://cloud.r-project.org/')"
 
 WORKDIR /opt
 

@@ -8,25 +8,25 @@ module safeguard
 #ifdef TEST_KIND_MISMATCH_C_INT
     use tox_conversions, only: c_char_as_char
     use config
-    use iso_c_binding, only: c_double, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_double, c_double_complex
     implicit none
     integer(int32), parameter :: c_int = int32 * 2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE
     use tox_conversions, only: c_char_as_char
     use config
-    use iso_c_binding, only: c_int, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
     implicit none
     integer(int32), parameter ::  c_double = real64 * 2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX
     use tox_conversions, only: c_char_as_char
     use config
-    use iso_c_binding, only: c_int, c_double
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
     implicit none
     integer(int32), parameter ::  c_double_complex = real64 * 2
 #else
-    use iso_c_binding, only: c_int, c_double, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex
     implicit none
 #endif
 #endif

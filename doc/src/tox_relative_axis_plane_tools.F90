@@ -1,9 +1,9 @@
 !> Module for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space
-module relative_axis_plane_tools
+module tox_relative_axis_plane_tools
    use safeguard
    use, intrinsic :: iso_fortran_env, only: real64, int32
    use, intrinsic :: ieee_arithmetic
-   use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, set_ok, set_err_once, is_ok
+   use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once, is_ok
    implicit none
 
 contains
@@ -357,11 +357,11 @@ contains
       orientation_sign = sign(1.0_real64, dotprod)
    end function cross_product_orientation_sign
 
-end module relative_axis_plane_tools
+end module tox_relative_axis_plane_tools
 
 ! Updated wrappers to pass and return ierr
 subroutine relative_axes_changes_from_shift_vector_r(vec, n_axes, contributions, ierr)
-   use relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
+   use tox_relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -378,8 +378,8 @@ subroutine relative_axes_changes_from_shift_vector_r(vec, n_axes, contributions,
 end subroutine relative_axes_changes_from_shift_vector_r
 
 subroutine relative_axes_changes_from_shift_vector_c(vec, n_axes, contributions, ierr) bind(C, name="relative_axes_changes_from_shift_vector_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
    implicit none
 
    real(c_double), dimension(n_axes), intent(in) :: vec
@@ -395,7 +395,7 @@ subroutine relative_axes_changes_from_shift_vector_c(vec, n_axes, contributions,
 end subroutine relative_axes_changes_from_shift_vector_c
 
 subroutine relative_axes_expression_from_expression_vector_r(vec, n_axes, contributions, ierr)
-   use relative_axis_plane_tools, only: relative_axes_expression_from_expression_vector
+   use tox_relative_axis_plane_tools, only: relative_axes_expression_from_expression_vector
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -412,8 +412,8 @@ subroutine relative_axes_expression_from_expression_vector_r(vec, n_axes, contri
 end subroutine relative_axes_expression_from_expression_vector_r
 
 subroutine relative_axes_expression_from_expression_vector_c(vec, n_axes, contributions, ierr) bind(C, name="relative_axes_expression_from_expression_vector_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: relative_axes_expression_from_expression_vector
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: relative_axes_expression_from_expression_vector
    implicit none
 
    real(c_double), dimension(n_axes), intent(in) :: vec
@@ -429,7 +429,7 @@ subroutine relative_axes_expression_from_expression_vector_c(vec, n_axes, contri
 end subroutine relative_axes_expression_from_expression_vector_c
 
 subroutine omics_vector_RAP_projection_r(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)
-   use relative_axis_plane_tools, only: omics_vector_RAP_projection
+   use tox_relative_axis_plane_tools, only: omics_vector_RAP_projection
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -456,8 +456,8 @@ subroutine omics_vector_RAP_projection_r(vecs, n_axes, n_vecs, vecs_selection_ma
 end subroutine omics_vector_RAP_projection_r
 
 subroutine omics_vector_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_vector_RAP_projection_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: omics_vector_RAP_projection
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: omics_vector_RAP_projection
    implicit none
 
    real(c_double), dimension(n_axes, n_vecs), intent(in) :: vecs
@@ -483,7 +483,7 @@ subroutine omics_vector_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_ma
 end subroutine omics_vector_RAP_projection_c
 
 subroutine omics_field_RAP_projection_r(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)
-   use relative_axis_plane_tools, only: omics_field_RAP_projection
+   use tox_relative_axis_plane_tools, only: omics_field_RAP_projection
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -510,8 +510,8 @@ subroutine omics_field_RAP_projection_r(vecs, n_axes, n_vecs, vecs_selection_mas
 end subroutine omics_field_RAP_projection_r
 
 subroutine omics_field_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_field_RAP_projection_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: omics_field_RAP_projection
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: omics_field_RAP_projection
    implicit none
 
    real(c_double), dimension(2 * n_axes, n_vecs), intent(in) :: vecs
@@ -537,7 +537,7 @@ subroutine omics_field_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mas
 end subroutine omics_field_RAP_projection_c
 
 subroutine clock_hand_angle_between_vectors_r(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)
-   use relative_axis_plane_tools, only: clock_hand_angle_between_vectors
+   use tox_relative_axis_plane_tools, only: clock_hand_angle_between_vectors
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -558,8 +558,8 @@ subroutine clock_hand_angle_between_vectors_r(v1, v2, n_dims, signed_angle, sele
 end subroutine clock_hand_angle_between_vectors_r
 
 subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr) bind(C, name="clock_hand_angle_between_vectors_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: clock_hand_angle_between_vectors
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: clock_hand_angle_between_vectors
    implicit none
 
    real(c_double), dimension(n_dims), intent(in) :: v1
@@ -579,7 +579,7 @@ subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle, sele
 end subroutine clock_hand_angle_between_vectors_c
 
 subroutine clock_hand_angles_for_shift_vectors_r(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr)
-   use relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
+   use tox_relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
    use, intrinsic :: iso_fortran_env, only: real64, int32
    implicit none
 
@@ -606,8 +606,8 @@ subroutine clock_hand_angles_for_shift_vectors_r(origins, targets, n_dims, n_vec
 end subroutine clock_hand_angles_for_shift_vectors_r
 
 subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")
-   use iso_c_binding, only: c_double, c_int
-   use relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
    implicit none
 
    real(c_double), dimension(n_dims, n_vecs), intent(in) :: origins

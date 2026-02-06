@@ -83,7 +83,6 @@ contains
     real(real64), dimension(6) :: values = [1.0_real64, 3.0_real64, 1.0_real64, &
                                              2.0_real64, 3.0_real64, 3.0_real64]
     integer(int32) :: n_values = 6
-    integer(int32) :: perm(6)
     real(real64) :: unique_values(6), cdf_values(6)
     real(real64) :: expected_unique(3), expected_cdf(3)
   integer(int32) :: ierr, n_unique
@@ -105,7 +104,6 @@ contains
     real(real64), dimension(5) :: values = [5.0_real64, 1.0_real64, 3.0_real64, &
                                              2.0_real64, 4.0_real64]
     integer(int32) :: n_values = 5
-    integer(int32) :: perm(5)
     real(real64) :: unique_values(5), cdf_values(5)
     real(real64) :: expected_unique(5), expected_cdf(5)
   integer(int32) :: ierr, i, n_unique
@@ -128,7 +126,6 @@ contains
   subroutine test_edf_all_same()
     real(real64), dimension(7) :: values = 2.5_real64
     integer(int32) :: n_values = 7
-    integer(int32) :: perm(7)
     real(real64) :: unique_values(7), cdf_values(7)
   integer(int32) :: ierr, n_unique
    ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
@@ -144,7 +141,6 @@ contains
     real(real64), dimension(6) :: values = [1.0_real64, 1.0_real64, 2.0_real64, &
                                              2.0_real64, 2.0_real64, 3.0_real64]
     integer(int32) :: n_values = 6
-    integer(int32) :: perm(6)
     real(real64) :: unique_values(6), cdf_values(6)
     real(real64) :: expected_cdf(3)
   integer(int32) :: ierr, n_unique
@@ -163,7 +159,6 @@ contains
   subroutine test_edf_single_value()
     real(real64), dimension(1) :: values = [42.0_real64]
     integer(int32) :: n_values = 1
-    integer(int32) :: perm(1)
     real(real64) :: unique_values(1), cdf_values(1)
   integer(int32) :: ierr, n_unique
   ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
@@ -179,7 +174,6 @@ contains
   subroutine test_edf_empty_input()
     real(real64), dimension(5) :: values = 0.0_real64
     integer(int32) :: n_values = 0  ! Empty input
-    integer(int32) :: perm(5)
     real(real64) :: unique_values(5), cdf_values(5)
   integer(int32) :: ierr, n_unique
   ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
@@ -193,7 +187,6 @@ contains
   subroutine test_edf_large_dataset()
     integer(int32), parameter :: n = 100
     real(real64), dimension(n) :: values
-    integer(int32) :: perm(n)
     real(real64) :: unique_values(n), cdf_values(n)
   integer(int32) :: ierr, i, n_unique
     
@@ -219,7 +212,6 @@ contains
     real(real64), dimension(7) :: values = [-2.0_real64, 0.0_real64, -1.0_real64, &
                                              1.0_real64, -2.0_real64, 0.0_real64, 2.0_real64]
     integer(int32) :: n_values = 7
-    integer(int32) :: perm(7)
     real(real64) :: unique_values(7), cdf_values(7)
     real(real64) :: expected_unique(5)
   integer(int32) :: ierr, n_unique

@@ -1,0 +1,92 @@
+{
+  "Parallel Loop": {
+    "prefix": "toxdev:do-parallel",
+    "body": [
+      "integer :: ${1:i}",
+      "integer :: ${2:N}",
+      "integer :: start_${1:i}, end_${1:i}",
+      "",
+      "${2:N} = ${3:10}",
+      "",
+      "! ----------------------",
+      "! START OF PARALLEL LOOP",
+      "! ----------------------",
+      "#ifdef USE_COARRAY",
+      "  start_${1:i} = (this_image() - 1) * ${2:N} / num_images() + 1",
+      "  end_${1:i}   = min(this_image() * ${2:N} / num_images(), ${2:N})",
+      "  do ${1:i} = start_${1:i}, end_${1:i}",
+      "",
+      "#elif defined(USE_OPENMP)",
+      "  !$$omp parallel do private(${1:i})",
+      "  do ${1:i} = 1, ${2:N}",
+      "",
+      "#else",
+      "  do ${1:i} = 1, ${2:N}",
+      "#endif",
+      "",
+      "! BODY OF THE PARALLEL LOOP",
+      "! -----------------------------",
+      "    ${4:! Your code here}",
+      "! -----------------------------",
+      "! END BODY OF THE PARALLEL LOOP",
+      "",
+      "  end do",
+      "",
+      "#ifdef USE_COARRAY",
+      "  sync all",
+      "#endif",
+      "",
+      "#ifdef USE_OPENMP",
+      "  !$$omp end parallel do",
+      "#endif",
+      "! --------------------",
+      "! END OF PARALLEL LOOP",
+      "! --------------------",
+      "$0"
+    ],
+    "description": "Unified parallel loop for Coarray, OpenMP, or serial fallback with tab stops"
+  },
+  "R wrapper legend": {
+    "prefix": "toxdev:legend_r",
+    "body": [
+    "!> IMPORTANT - When using these R wrapper functions, copies of the arrays will be created.",
+    "!| No direct modification of the original R objects occurs."
+    ],
+    "description": "Standard legend for R wrappers about array copy behavior"
+  },
+  "C wrapper legend": {
+    "prefix": "toxdev:legend_c",
+    "body": [
+    "!> IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.",
+    "!| The Fortran routine will operate directly on the memory provided by the caller."
+    ],
+    "description": "Standard legend for C wrappers about direct memory access"
+  },
+  "Wrapper C/Python": {
+    "prefix": "toxdev:wrapper_c",
+    "body": [
+      "! -- use this snippet or helper_c_srapper.py to generate the C wrapper",
+      "subroutine ${1:core_name}_c(${2:args}) bind(C, name=\"${1:core_name}_c\")",
+      "  use iso_c_binding",
+      "  use ${3:module}",
+      "  ${4:! -- declare arguments here with snippets c_arg or flat_array_2d as needed --}",
+      "  call ${1:core_name}(${2:args})",
+      "end subroutine ${1:core_name}_c"
+    ],
+    "description": "Wrapper for C/Python (bind(C), flat arrays)"
+  },
+  "Fortran argument declaration": {
+    "prefix": "toxdev:f_arg",
+    "body": [
+      "${1:type}, intent(${2:inout}) :: ${3:name}${4:(dimensions)}"
+    ],
+    "description": "Fortran standard argument declaration"
+  },
+  "C argument declaration": {
+    "prefix": "toxdev:c_arg",
+    "body": [
+      "${1:c_type}, intent(${2:inout}), target :: ${3:name}(*)"
+    ],
+    "description": "C-style argument declaration"
+  }
+}

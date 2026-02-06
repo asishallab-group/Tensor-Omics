@@ -1,0 +1,30 @@
+\section{Construction of Expression Vector Space}\label{sec:vecspace}
+    \begin{itemize}
+        \item Biological replicates belonging to the same axis (tissue, stressed tissue, etc.) are averaged post-normalization.
+        \item Each gene is represented as a vector \( \vec{p} \in \mathbb{R}^n \),
+              where \( n \) is the number of conditions or tissues.
+              Hence the analysis is embedded in an $n$-dimensional ambient space.
+        \item Expression vectors are stored in Fortran arrays. \emph{Importantly}
+              Fortran is column major and vectors \emph{must} be columns.
+        \item Two K-D Trees are constructed:
+              \begin{itemize}
+                  \item A raw-space K-D Tree (unnormalized vectors) for Euclidean queries.
+                  \item A normalized-space K-D Tree (unit-length vectors) for cosine similarity and angular queries.
+              \end{itemize}
+        \item The first axis is designated the \textbf{Anchor Axis (AA)} for
+              visualization.
+    \end{itemize}
+
+    \subsection{Vector Space Storage in Fortran}\label{sec:vecstore}
+
+        All expression vectors in Tensor Omics are stored in a central memory structure optimized for performance and access in Fortran. This architecture ensures efficient storage, lookup, and downstream computation.
+
+        \begin{itemize}
+            \item \textbf{vec\_store:} A two-dimensional Fortran array of size \( n \times v \), where \( n \) is the number of expression dimensions (e.g., tissues or conditions), and \( v \) is the number of vectors (e.g., genes). Each column represents one expression vector.
+
+            \item \textbf{cart\_tree:} A K-D Tree constructed on the raw (unnormalized) vectors stored in \texttt{vec\_store}. This structure enables rapid spatial neighborhood queries using Euclidean distance in the original expression space. This is not initialized until step~\ref{sec:kdtree}.
+
+            \item \textbf{sphere\_tree:} A second K-D Tree constructed from unit-length normalized vectors derived from \texttt{vec\_store}. This structure supports directional queries based on cosine similarity or angular distance. This is not initialized until step~\ref{sec:kdtree}.
+        \end{itemize}
+
+        Together, these data structures allow both magnitude-sensitive and direction-sensitive operations across expression fields.

@@ -46,13 +46,6 @@ normalized_matrix_qtl <- tox_quantile_normalization(normalized_matrix_std)  # Ap
 normalized_matrix_log <- tox_log2_transformation(normalized_matrix_qtl)     # Log2(x+1) transformation
 averaged_df <- tox_calculate_tissue_averages(normalized_matrix_log)         # Average replicates by tissue
 
-# # === Calculate fold changes between specified groups ===
-# fc_df <- calculate_fc_by_patterns(
-#   df = averaged_df,
-#   control_pattern = "dietM",           # Define control pattern
-#   condition_patterns = c("dietP")       # Define conditions pattern(s)
-# )
-
 # === Save the resulting normalized and transformed data ===
 print("Sample of original matrix:")
 print(head(df_matrix_clean))

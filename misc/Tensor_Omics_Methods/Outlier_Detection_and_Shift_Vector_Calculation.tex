@@ -1,0 +1,24 @@
+\section{Outlier Detection and Shift Vector Calculation}\label{sec:outlier_detection}
+
+    After constructing the vector space and identifying gene families, Tensor Omics detects divergent expression profiles within each family by comparing individual expression vectors to their respective family centroid.
+
+    Let \( \vec{o} \in \mathbb{R}^n \) denote the centroid of a given family (typically the mean ortholog expression vector), and let \( \vec{p} \) denote the expression vector of a candidate paralog. The \emph{raw shift distance} between \( \vec{p} \) and the centroid is defined as:
+    \[
+        d_{po} = \| \vec{p} - \vec{o} \|
+    \]
+
+    To determine whether this shift is significant, we normalize the raw distance using the maximum intra-family distance from the centroid. Let \( \vec{f}_i \) denote all other expression vectors in the same family. The \emph{Relative Distance Index (RDI)} is calculated as:
+    \[
+        \text{RDI}_{po} = \frac{d_{po}}{\max_i \| \vec{f}_i - \vec{o} \|}
+    \]
+
+    Vectors with an RDI greater than the 95th percentile of the empirical RDI distribution (pooled across all families) are flagged as significant outliers.
+
+    \textbf{Important:} Only the raw shift distance \( d_{po} \) is used for downstream geometric interpretation, such as vector field construction, trajectory analysis, and clock plot projection. The normalized RDI is used solely for filtering purposes, to robustly identify biologically meaningful divergence across gene families.
+
+    Identified outliers are stored as index references in a dedicated Fortran array. For each significant outlier, a corresponding \emph{shift vector} is calculated:
+    \[
+        \vec{s}_{po} = \vec{p} - \vec{o}
+    \]
+    These shift vectors are added to the central vector space store (`vec\_store`)
+    and indexed in the relevant K-D Trees (see Section~\ref{sec:vecstore}).

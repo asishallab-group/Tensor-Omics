@@ -1,0 +1,9 @@
+\section{From Raw Data to Expression Vectors}
+
+    The starting point for all downstream analyses is a table of gene-wise expression measurements across a set of biological samples, such as tissues, developmental stages, or experimental conditions. These measurements may originate from transcriptomic, proteomic, or metabolomic experiments, typically normalized to account for sequencing depth and technical variation.
+
+    \noindent\textbf{What is Gene Expression Data?} For each gene, a real-valued quantity is recorded that reflects its biological activity in a given sample. In the case of transcriptomics, this is often the abundance of messenger RNA (mRNA) molecules transcribed from that gene, estimated via sequencing and mapped back to the gene's known sequence. The result is a non-negative real number proportional to the gene's transcriptional activity in that sample. After normalization and transformation, these values can be treated as coordinates in a real vector space.
+
+    Thus, each gene is represented as a vector \( \vec{v} \in \mathbb{R}^n \), where \( n \) is the number of biological samples (e.g., tissues or time points), and each component \( v_i \geq 0 \) corresponds to the expression level in sample \( i \). These vectors encode the distribution of gene activity across conditions and form the geometric basis for all downstream analyses.
+
+    \noindent\textbf{Note on Stress Responses.} In certain studies, a subset of the samples may correspond to stress conditions. Here, “stress” refers to any external or internal perturbation—such as mechanical damage, heat shock, pathogen infection, or nutrient deprivation—that triggers measurable changes in gene expression. These are often analyzed relative to baseline conditions using log fold-change transformations, such that the resulting vectors reflect differential expression patterns, including up- and downregulation across dimensions.

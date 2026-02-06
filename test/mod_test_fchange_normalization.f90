@@ -3,6 +3,7 @@
 module mod_test_calc_fchange
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use tox_normalization
   implicit none
   public
 
@@ -92,7 +93,7 @@ contains
     control_cols = [1]
     cond_cols = [2]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! Expected fold changes: geneA = 4-1 = 3, geneB = 8-2 = 6
@@ -116,7 +117,7 @@ contains
     control_cols = [1]
     cond_cols = [2]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! Check specific values as in R test
@@ -140,7 +141,7 @@ contains
     control_cols = [1, 3]  ! Control columns
     cond_cols = [2, 4]     ! Condition columns
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! Output should have n_genes * n_pairs elements
@@ -162,7 +163,7 @@ contains
     control_cols = [1]
     cond_cols = [2]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! Expected: 15 - 5 = 10
@@ -185,7 +186,7 @@ contains
     control_cols = [1, 3, 5]  ! Control samples
     cond_cols = [2, 4, 6]     ! Condition samples
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     call assert_no_nan_real(o_matrix, 6, "test_calc_fchange_multiple_pairs: NaN in result")
@@ -210,7 +211,7 @@ contains
     control_cols = [1, 3]  ! Columns with negative values
     cond_cols = [2, 4]     ! Columns with positive values
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     call assert_no_nan_real(o_matrix, 4, "test_calc_fchange_negative_values: NaN in result")
@@ -234,7 +235,7 @@ contains
     control_cols = [1]
     cond_cols = [2]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! Expected: gene1: 5-0=5, gene2: 10-0=10
@@ -256,7 +257,7 @@ contains
     control_cols = [1]
     cond_cols = [2]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     call assert_no_nan_real(o_matrix, 2, "test_calc_fchange_large_values: NaN in result")
@@ -281,7 +282,7 @@ contains
     control_cols = [1, 3]  ! Identical to condition columns
     cond_cols = [2, 4]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     ! All fold changes should be zero (identical values)
@@ -313,7 +314,7 @@ contains
     control_cols = [1, 3, 5]
     cond_cols = [2, 4, 6]
     
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 0, "calc_fchange_r returned error")
     
     call assert_no_nan_real(o_matrix, 9, "test_calc_fchange_mixed_values: NaN in result")
@@ -334,7 +335,7 @@ contains
     integer(int32), dimension(0) :: control_cols, cond_cols
     real(real64), dimension(0) :: i_matrix, o_matrix
     n_genes = 0; n_cols = 0; n_pairs = 0
-    call calc_fchange_r(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(ierr, 202, "calc_fchange_r should return error for empty input")
   end subroutine test_calc_fchange_empty_matrix
 

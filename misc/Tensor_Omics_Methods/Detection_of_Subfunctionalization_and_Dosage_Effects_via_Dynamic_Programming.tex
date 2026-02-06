@@ -1,0 +1,120 @@
+\section{Detection of Subfunctionalization and Dosage Effects via Dynamic Programming}
+
+    This section formalizes the algorithmic strategies to identify subfunctionalization and dosage effect patterns among in-paralogous gene sets, based on semantic expression vectors in Tensor Omics. The procedures leverage dynamic programming and bitmask representations to achieve efficient, branch-pruned exploration of possible paralog subsets.
+
+    \subsection{Overview}
+
+        Given:
+        \begin{itemize}
+            \item The ancestral ortholog expression vector $\vec{o}$.
+            \item A set of $n$ in-paralog expression vectors $\vec{p}_1, \vec{p}_2, \dots, \vec{p}_n$, stored as columns of a Fortran 2D array.
+        \end{itemize}
+
+        The goal is to identify subsets of paralogs whose summed expression vectors approximate $\vec{o}$, within a threshold defined as the lower five percentile of family centroid distances (RDI threshold). Two detection scenarios are supported:
+
+        \begin{enumerate}
+            \item \textbf{Subfunctionalization:} The paralogs exhibit significant angles to the ortholog, partitioning ancestral expression.
+            \item \textbf{Dosage effect:} The paralogs have small angles to the ortholog and sum to a magnitude significantly exceeding $\|\vec{o}\|$.
+        \end{enumerate}
+
+        \subsection{Data Structures}
+
+        \begin{itemize}
+            \item All subset membership is encoded as bitmasks of the ranks of the paralog indices, stored as integer values.
+            \item A dynamic programming storage array $M$ holds the active subsets to be extended at each iteration, also represented as bitmasks.
+            \item An array of norms for each paralog, sorted ascending, is maintained for pruning decisions.
+            \item A logical vector marks which paralogs remain candidates at each step.
+        \end{itemize}
+
+    \subsection{Algorithm Steps}
+
+        \paragraph{Initialization}
+        \begin{itemize}
+            \item For all single paralogs, measure their angle to $\vec{o}$.
+            \item Apply angle threshold filters:
+            \begin{itemize}
+                \item Subfunctionalization: only paralogs with angles greater than the gene-family median angle are marked active.
+                \item Dosage effect: only paralogs with angles below the gene-family median or lower five percentile are marked active.
+            \end{itemize}
+            \item Generate all pairs (k=2) of active paralogs to begin.
+        \end{itemize}
+
+        \paragraph{Dynamic Programming Iteration}
+        For each iteration $k$:
+        \begin{enumerate}
+            \item Iterate over the bitmask-encoded subsets of size $k-1$ stored in $M$.
+            \item For each such subset:
+                \begin{enumerate}
+                    \item Extend the subset by adding one more paralog, using bitwise operations to set zero bits to one.
+                    \item Compute the sum of the expression vectors of the extended subset.
+                    \item Compute the residual:
+                        \[
+                        \vec{r} = \vec{o} - \sum_{i \in S} \vec{p}_i
+                        \]
+                    \item Test whether:
+                        \[
+                        \|\vec{r}\| < \text{RDI threshold}
+                        \]
+                    If true, store this bitmask in the results array and \emph{do not} pass it to the next iteration.
+                    \item Otherwise, apply pruning logic:
+                    \item For \emph{subfunctionalization}:
+                          \begin{itemize}
+                              \item Check the minimal length of any still-active paralog:
+                                    \[
+                                    \min_{i} \|\vec{p}_i\| < \|\vec{r}\|
+                                    \]
+                                    If this fails, prune the subset as further extension is impossible.
+                          \end{itemize}
+                    \item For \emph{dosage effect}:
+                          \begin{itemize}
+                              \item For dosage effect, measure the angle of the current subset sum to $\vec{o}$ and prune if this exceeds the acceptable bound.
+                          \end{itemize}
+                    \item If the subset is marked to continue, store its bitmask in $M$ for the next iteration.
+                \end{enumerate}
+            \item Increment $k$ and repeat until $k$ exceeds the maximum paralog search size or no active subsets remain.
+        \end{enumerate}
+
+        \paragraph{Final Filtering}
+        At the end of the dynamic program, all positive hits are stored as bitmask-encoded subsets. These represent:
+        \begin{itemize}
+            \item Subfunctionalized paralog subsets whose summed expression reconstructs $\vec{o}$ within the RDI threshold.
+            \item Dosage-effect subsets whose sum is aligned with $\vec{o}$ but exceeds its magnitude.
+        \end{itemize}
+
+    \subsection{Notes on Implementation}
+
+        \begin{itemize}
+            \item Subset bitmasks can be efficiently enumerated by setting zero bits in rank order to one.
+            \item Final validation should always be performed using the RDI threshold, regardless of pruning.
+            \item A global maximum paralog subset size (e.g., 15) is recommended to control complexity.
+            \item For large families, consider pre-filtering based on tissue specificity, expression variance, or percentile angles.
+        \end{itemize}
+
+    \subsection{Pseudocode}
+
+        \begin{verbatim}
+Initialize:
+results = []
+active_sets = all bitmask pairs from angle-filtered paralogs
+
+for k = 2 to MAX_PARALOGS:
+    next_active_sets = []
+    for each bitmask in active_sets:
+        for each still-active paralog not in bitmask:
+            candidate_mask = bitmask with paralog bit set
+            sum_vector = sum of paralogs in candidate_mask
+            residual = o - sum_vector
+            if norm(residual) < threshold:
+                store candidate_mask in results
+            else:
+                if dosage:
+                    if angle(sum_vector, o) too large:
+                        continue
+                if min(paralog norms) >= norm(residual):
+                    continue
+                next_active_sets.append(candidate_mask)
+    active_sets = next_active_sets
+\end{verbatim}
+
+        \noindent
+        This algorithm achieves robust and scalable detection of subfunctionalization and dosage patterns by systematic, bitmask-driven dynamic programming with domain-motivated pruning rules.

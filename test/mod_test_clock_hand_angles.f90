@@ -1,6 +1,6 @@
 module mod_test_clock_hand_angles
   use asserts
-  use relative_axis_plane_tools
+  use tox_relative_axis_plane_tools
   use, intrinsic :: iso_fortran_env, only: real64
   implicit none
   public
