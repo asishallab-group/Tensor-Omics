@@ -1,0 +1,516 @@
+\subsubsection{Data Integration}
+The R module provides comprehensive routines for data integration, based on Jensen-Shannon Divergence. This is very useful for cross-study data.
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{Calculate Jensen-Shannon Compatibility Score}: Score to evaluate how compatible two studies are.
+    \item \textbf{Perform JSD Permutation Test}: Random sampling of the input data and recalculation of the JS score to test stability of the compatibility.
+    \item \textbf{Family-Wise Score Contribution}: Calculates the impact of selected families on the calculated score.
+\end{itemize}
+
+\begin{enumerate}
+    \item \textbf{Compute Gene Means}
+
+        Compute per‑gene mean expression values across replicates, handling \lstinline!NaN! values appropriately.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!expr!: numeric matrix of expression values \lstinline!(replicates * genes)!.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!numeric!: vector of per‑gene mean expression values.
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Per‑Gene Mean Expression}]
+means <- tox_compute_gene_means(expr)
+        \end{lstlisting}
+
+    \item \textbf{Compute Signed Residuals}
+
+        Compute signed residuals for each gene by subtracting the per‑gene mean expression from each replicate.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!expr!: numeric matrix \lstinline!(replicates * genes)!.
+            \item \lstinline!means!: numeric vector of per‑gene mean expression values.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!numeric!: matrix of signed residuals \lstinline!(replicates * genes)!.
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Signed Residual Computation}]
+resid <- tox_compute_residuals(expr, means)
+        \end{lstlisting}
+
+    \item \textbf{Pool Mean Expression Values}
+
+        Pool per‑gene mean expression values from two studies and compute reference points for neighborhood construction.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!mean_S1!: numeric vector of mean expression values for study 1.
+            \item \lstinline!mean_S2!: numeric vector of mean expression values for study 2.
+            \item \lstinline!n_points!: integer number of reference points to compute.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!n_pool!: integer number of valid pooled means,\\
+                \lstinline!x_star!: numeric vector of reference points
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Pooling Mean Expression Values}]
+out <- tox_pool_means(mean_S1, mean_S2, n_points)
+
+n_pool <- out$n_pool
+x_star <- out$x_star
+        \end{lstlisting}
+
+    \item \textbf{Pool Mean Expression Values (Expert)}
+
+        Pool mean‑expression values using pre‑pooled and pre‑sorted arrays.  
+        This expert interface bypasses internal pooling and sorting, allowing direct computation of reference points.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!pooled_means!: numeric vector of pooled mean expression values.
+            \item \lstinline!pooled_perm!: integer vector giving the sorting permutation for \lstinline!pooled_means!.
+            \item \lstinline!n_points!: integer number of reference points to compute.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!n_pool!: integer number of valid pooled means,\\
+                \lstinline!x_star!: numeric vector of reference points
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Pooling Means (Expert Interface)}]
+out <- tox_pool_means_expert(
+  pooled_means,
+  pooled_perm,
+  n_points
+)
+
+n_pool <- out$n_pool
+x_star <- out$x_star
+        \end{lstlisting}
+
+    \item \textbf{Construct Neighborhoods}
+
+        Construct neighborhood‑based residual sets by selecting, for each reference point, the closest genes in mean‑expression space.  
+        The neighborhood size is determined automatically unless a desired size is specified.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!x_star!: numeric vector of reference mean‑expression points.
+            \item \lstinline!n_pool!: integer number of pooled mean‑expression values.
+            \item \lstinline!mean_S!: numeric vector of per‑gene mean expression values.
+            \item \lstinline!resid_S!: numeric matrix of signed residuals \lstinline!(replicates * genes)!.
+            \item \lstinline!desired_n_neighbors!: integer desired neighborhood size (default \lstinline!0!).
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!neighborhood_residuals!: numeric array,\\
+                \lstinline!neighborhood_indices!: integer matrix of gene indices
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Neighborhood Construction}]
+out <- tox_construct_neighborhoods(
+  x_star,
+  n_pool,
+  mean_S,
+  resid_S,
+  desired_n_neighbors = 0
+)
+
+neigh_res <- out$neighborhood_residuals
+neigh_idx <- out$neighborhood_indices
+        \end{lstlisting}
+
+    \item \textbf{Determine Shared Residual Range (Expert)}
+
+        Compute the shared residual range \(R\) from a precomputed residual pool and its sorting permutation.  
+        This expert interface assumes that residuals have already been flattened, cleaned, and sorted externally.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!residual_pool!: numeric vector of absolute residuals (NaNs removed).
+            \item \lstinline!residual_pool_perm!: integer vector giving the permutation that sorts \lstinline!residual_pool!.
+            \item \lstinline!residual_range_quantile!: numeric scalar specifying the percentile (default \lstinline!95.0!).
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!numeric!: shared residual range \(R\).
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Shared Residual Range (Expert)}]
+R <- tox_determine_shared_residual_range_expert(
+  residual_pool,
+  residual_pool_perm,
+  residual_range_quantile = 95.0
+)
+        \end{lstlisting}
+
+    \item \textbf{Determine Shared Residual Range}
+
+        Compute the shared residual range \(R\) from two residual matrices.  
+        Both matrices are flattened, pooled, and the percentile threshold is applied to determine the symmetric range \([-R, R]\).
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1!: numeric matrix \lstinline!(n_residuals * n_neighbors)!.
+            \item \lstinline!neighborhood_residuals_S2!: numeric matrix \lstinline!(n_residuals * n_neighbors)!.
+            \item \lstinline!residual_range_quantile!: numeric scalar (default \lstinline!95.0!).
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!numeric!: shared residual range \(R\).
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Shared Residual Range}]
+R <- tox_determine_shared_residual_range(
+  neighborhood_residuals_S1,
+  neighborhood_residuals_S2,
+  residual_range_quantile = 95.0
+)
+        \end{lstlisting}
+
+    \item \textbf{Build Residual Histograms}
+
+Build histogram bin counts and normalized probability mass functions (PMFs) for each neighbor.  
+Residuals are binned using a shared residual range and a fixed number of bins.
+
+\textbf{Arguments:}
+\begin{itemize}
+    \item \lstinline!neighborhood_residuals!: numeric matrix \lstinline!(n_residuals * n_neighbors)!.
+    \item \lstinline!shared_residual_range!: numeric scalar \(R\).
+    \item \lstinline!n_bins!: integer number of histogram bins.
+\end{itemize}
+
+\textbf{Returns:}
+\begin{itemize}
+    \item \lstinline!list!: \{
+        \lstinline!counts!: integer matrix \lstinline!(n_neighbors * n_bins)!,\\
+        \lstinline!pmf!: numeric matrix \lstinline!(n_neighbors * n_bins)!,\\
+        \lstinline!included_n_residuals!: integer vector \lstinline!(n_neighbors)!
+    \}
+\end{itemize}
+
+\begin{lstlisting}[language=R, caption={Residual Histogram Construction}]
+out <- tox_build_residual_histograms(
+  neighborhood_residuals,
+  shared_residual_range,
+  n_bins
+)
+
+counts <- out$counts
+pmf <- out$pmf
+included <- out$included_n_residuals
+\end{lstlisting}
+
+    \item \textbf{Build Residual Histograms (Filtered)}
+
+        Build histogram bin counts and normalized probability mass functions (PMFs) for each neighbor, using a shared residual range and a fixed number of bins.  
+        A logical or integer mask selects which neighbors contribute to each reference point’s histogram.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals!: numeric matrix \lstinline!(n_residuals * n_neighbors)!.
+            \item \lstinline!shared_residual_range!: numeric scalar \(R\).
+            \item \lstinline!n_bins!: integer number of histogram bins.
+            \item \lstinline!neighbor_mask!: logical or integer matrix \lstinline!(n_neighbors * n_points)!, where non‑zero indicates inclusion.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!counts!: integer matrix \lstinline!(n_neighbors * n_bins)!,\\
+                \lstinline!pmf!: numeric matrix \lstinline!(n_neighbors * n_bins)!,\\
+                \lstinline!included_n_residuals!: integer vector \lstinline!(n_neighbors)!
+            \}
+        \end{itemize}
+
+\begin{lstlisting}[language=R, caption={Filtered Residual Histogram Construction}]
+out <- tox_build_residual_histograms_filtered(
+  neighborhood_residuals,
+  shared_residual_range,
+  n_bins,
+  neighbor_mask
+)
+
+counts   <- out$counts
+pmf      <- out$pmf
+included <- out$included_n_residuals
+\end{lstlisting}
+
+    \item \textbf{Compute Divergence per Reference Point}
+
+        Compute the Jensen–Shannon divergence for each neighbor using two PMF matrices.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!pmf_S1!: numeric matrix \lstinline!(n_neighbors * n_bins)!.
+            \item \lstinline!pmf_S2!: numeric matrix \lstinline!(n_neighbors * n_bins)!.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!numeric!: vector of length \lstinline!n_neighbors! containing JSD values.
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Per‑Neighbor JSD}]
+jsd <- tox_compute_divergence_per_reference_point(
+  pmf_S1,
+  pmf_S2
+)
+        \end{lstlisting}
+
+    \item \textbf{Compute Weighted Global Divergence}
+
+        Compute the weighted global Jensen–Shannon divergence from per‑neighbor divergences and included residual counts.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!js_divergences!: numeric vector of length \lstinline!n_neighbors!.
+            \item \lstinline!included_n_residuals_S1!: integer vector of length \lstinline!n_neighbors!.
+            \item \lstinline!included_n_residuals_S2!: integer vector of length \lstinline!n_neighbors!.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!global_js_divergence!: numeric scalar,\\
+                \lstinline!weights!: numeric vector \lstinline!(n_neighbors)!
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Weighted Global JSD}]
+out <- tox_compute_weighted_global_divergence(
+  js_divergences,
+  included_n_residuals_S1,
+  included_n_residuals_S2
+)
+
+global_jsd <- out$global_js_divergence
+weights <- out$weights
+        \end{lstlisting}
+
+    \item \textbf{Permutation Test for Global JSD}
+
+        Estimate how likely the observed global Jensen–Shannon divergence is to occur by chance under the null hypothesis that both studies are exchangeable.  
+        Residuals for each reference point are concatenated, shuffled, and reassigned to generate null‑distribution JSD values.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1!: numeric vector or array of residuals for study 1.
+            \item \lstinline!neighborhood_residuals_S2!: numeric vector or array of residuals for study 2.
+            \item \lstinline!global_jsd_observed!: numeric scalar, the observed global weighted JSD.
+            \item \lstinline!n_bins!: integer number of histogram bins.
+            \item \lstinline!shared_residual_range!: numeric scalar specifying the shared residual range.
+            \item \lstinline!n_permutations!: integer number of permutations.
+            \item \lstinline!random_seed!: integer seed for reproducibility.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!jsd_null!: numeric vector of length \lstinline!n_permutations!,\\
+                \lstinline!p_value!: numeric scalar
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Permutation Test for Global JSD}]
+out <- tox_gjct_permutation_test(
+  neighborhood_residuals_S1,
+  neighborhood_residuals_S2,
+  global_jsd_observed,
+  n_bins,
+  shared_residual_range,
+  n_permutations,
+  random_seed = 42
+)
+
+jsd_null <- out$jsd_null
+p_value  <- out$p_value
+        \end{lstlisting}
+
+    \item \textbf{Permutation Test for Global JSD (Filtered)}
+
+        Estimate how likely the observed global Jensen–Shannon divergence is to occur by chance under the null hypothesis that both studies are exchangeable.  
+        Neighbor masks allow excluding specific neighbors for each reference point in each study during histogram construction.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1!: numeric array \lstinline!(n_reps * n_neighbors * n_points)! for study 1.
+            \item \lstinline!neighborhood_residuals_S2!: numeric array \lstinline!(n_reps * n_neighbors * n_points)! for study 2.
+            \item \lstinline!global_jsd_observed!: numeric scalar, the observed global weighted JSD.
+            \item \lstinline!n_bins!: integer number of histogram bins.
+            \item \lstinline!shared_residual_range!: numeric scalar specifying the shared residual range.
+            \item \lstinline!n_permutations!: integer number of permutations.
+            \item \lstinline!neighbor_mask_S1!: logical or integer matrix \lstinline!(n_neighbors * n_points)! for study 1.
+            \item \lstinline!neighbor_mask_S2!: logical or integer matrix \lstinline!(n_neighbors * n_points)! for study 2.
+            \item \lstinline!random_seed!: integer seed for reproducibility.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!jsd_null!: numeric vector of length \lstinline!n_permutations!,\\
+                \lstinline!p_value!: numeric scalar
+            \}
+        \end{itemize}
+
+\begin{lstlisting}[language=R, caption={Filtered Permutation Test for Global JSD}]
+out <- tox_gjct_permutation_test_filtered(
+  neighborhood_residuals_S1,
+  neighborhood_residuals_S2,
+  global_jsd_observed,
+  n_bins,
+  shared_residual_range,
+  n_permutations,
+  neighbor_mask_S1,
+  neighbor_mask_S2,
+  random_seed = 42
+)
+
+jsd_null <- out$jsd_null
+p_value  <- out$p_value
+\end{lstlisting}
+
+    \item \textbf{Compute Family-Level JSD}
+
+        Compute the family-level Jensen–Shannon divergence for a given paralog family.  
+        Residuals are filtered by family membership, histograms are constructed, per‑point JSD values are computed, and a weighted global divergence is returned.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!family_idx!: integer index of the gene family.
+            \item \lstinline!gene_to_family_S1!: integer vector of length \lstinline!n_genes_S1! mapping genes in study 1 to families.
+            \item \lstinline!gene_to_family_S2!: integer vector of length \lstinline!n_genes_S2! mapping genes in study 2 to families.
+            \item \lstinline!neighborhood_residuals_S1!: numeric array \lstinline!(n_reps_S1 * n_neighbors * n_points)!.
+            \item \lstinline!neighborhood_residuals_S2!: numeric array \lstinline!(n_reps_S2 * n_neighbors * n_points)!.
+            \item \lstinline!neighborhood_genes_S1!: integer matrix \lstinline!(n_neighbors * n_points)!.
+            \item \lstinline!neighborhood_genes_S2!: integer matrix \lstinline!(n_neighbors * n_points)!.
+            \item \lstinline!n_bins!: integer number of histogram bins.
+            \item \lstinline!shared_residual_range!: numeric scalar specifying the shared residual range.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!js_divergences!: numeric vector \lstinline!(n_points)!,\\
+                \lstinline!included_n_reps_S1!: integer vector \lstinline!(n_points)!,\\
+                \lstinline!included_n_reps_S2!: integer vector \lstinline!(n_points)!,\\
+                \lstinline!total_included_n_reps!: integer scalar,\\
+                \lstinline!global_js_divergence!: numeric scalar,\\
+                \lstinline!weights!: numeric vector \lstinline!(n_points)!,\\
+                \lstinline!ierr!: integer error code
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Family-Level JSD}]
+out <- tox_fjct_compute_jsd(
+  family_idx,
+  gene_to_family_S1,
+  gene_to_family_S2,
+  neighborhood_residuals_S1,
+  neighborhood_residuals_S2,
+  neighborhood_genes_S1,
+  neighborhood_genes_S2,
+  n_bins,
+  shared_residual_range
+)
+
+jsd        <- out$js_divergences
+global_jsd <- out$global_js_divergence
+weights    <- out$weights
+        \end{lstlisting}
+
+    \item \textbf{Compute Family-Level JSD (Expert)}
+
+        Compute family-level Jensen–Shannon divergence using precomputed neighbor masks.  
+        This expert interface bypasses family‑mapping logic and directly applies masks to select neighbors for each reference point.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1!: numeric array \lstinline!(n_reps_S1 * n_neighbors * n_points)!.
+            \item \lstinline!neighborhood_residuals_S2!: numeric array \lstinline!(n_reps_S2 * n_neighbors * n_points)!.
+            \item \lstinline!neighbor_mask_S1!: logical or integer matrix \lstinline!(n_neighbors * n_points)!.
+            \item \lstinline!neighbor_mask_S2!: logical or integer matrix \lstinline!(n_neighbors * n_points)!.
+            \item \lstinline!n_bins!: integer number of histogram bins.
+            \item \lstinline!shared_residual_range!: numeric scalar specifying the shared residual range.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!js_divergences!,\\
+                \lstinline!included_n_reps_S1!,\\
+                \lstinline!included_n_reps_S2!,\\
+                \lstinline!total_included_n_reps!,\\
+                \lstinline!global_js_divergence!,\\
+                \lstinline!weights!,\\
+                \lstinline!pmf_S1!,\\
+                \lstinline!pmf_S2!,\\
+                \lstinline!tmp_counts!,\\
+                \lstinline!ierr!
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Family-Level JSD (Expert Interface)}]
+out <- tox_fjct_compute_jsd_expert(
+  neighborhood_residuals_S1,
+  neighborhood_residuals_S2,
+  neighbor_mask_S1,
+  neighbor_mask_S2,
+  n_bins,
+  shared_residual_range
+)
+
+global_jsd <- out$global_js_divergence
+weights    <- out$weights
+        \end{lstlisting}
+
+    \item \textbf{Compute Contribution Scores}
+
+        Compute per‑family contribution scores from global JSD values and the number of included residuals per family.  
+        Contribution scores quantify how strongly each family contributes to the overall divergence.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!global_js_divergences!: numeric vector of length \lstinline!k_families!.
+            \item \lstinline!total_included_n_reps_per_f!: integer vector of length \lstinline!k_families!.
+        \end{itemize}
+
+        \textbf{Returns:}
+        \begin{itemize}
+            \item \lstinline!list!: \{
+                \lstinline!support_weights!: numeric vector,\\
+                \lstinline!contribution_scores!: numeric vector,\\
+                \lstinline!ierr!: integer error code
+            \}
+        \end{itemize}
+
+        \begin{lstlisting}[language=R, caption={Contribution Score Computation}]
+out <- tox_fjct_compute_contribution_scores(
+  global_js_divergences,
+  total_included_n_reps_per_f
+)
+
+scores <- out$contribution_scores
+weights <- out$support_weights
+        \end{lstlisting}
+\end{enumerate}
