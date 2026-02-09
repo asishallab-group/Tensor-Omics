@@ -16,8 +16,8 @@
   - [Linux](#linux)
   - [Windows-11](#windows-11)
   - [macOS](#macos)
-- **[Installation for R and Python](#installation-for-r-and-python)**
-  - [R Integration](#r-integration)
+- **[Installation for Rcpp and Python](#installation-for-rcpp-and-python)**
+  - [Rcpp Integration](#rcpp-integration)
   - [Python Integration](#python-integration)
 - **[Usage](#usage)**
 - **[Testing](#testing)**
@@ -64,8 +64,8 @@ This repository contains the source code, methods, snippets and tests for the **
 /python
   └── ...       # Python scripts that execute pipeline logic and invoke subroutines
 
-/r
-  └── ...       # R scripts that execute pipeline logic and invoke subroutines
+/rcpp
+  └── ...       # Rcpp scripts that execute pipeline logic and invoke subroutines
 
 /snippets
 └── ...         # Code templates or reusable short logic blocks 
@@ -93,7 +93,7 @@ test_runner.sh  # Compile and generate unit test
 * **`/misc`** contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
 
 * **`/python`** includes python scripts that coordinate analysis workflows
-* **`/r`** includes R scripts that coordinate analysis workflows
+* **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows
 * **`/snippets/`** includes frequently used or testable units of logic reused across development stages. 
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
@@ -155,9 +155,9 @@ See `snippets/readme.md` for details.
 
 ## Compilation
 
-> **Note:** If you're using prebuilt binaries from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases), you can skip compilation and proceed directly to [Installation](#installation) → [Installation for R and Python](#installation-for-r-and-python) → [Usage](#usage).
+> **Note:** If you're using prebuilt binaries from [Releases](https://gitlab.rlp.net/a.hallab/tensor-omics/-/releases), you can skip compilation and proceed directly to [Installation](#installation) → [Installation for Rcpp and Python](#installation-for-rcpp-and-python) → [Usage](#usage).
 >
-> **If compiling from source:** Follow this workflow: [Compilation](#compilation) → [Installation](#installation) → [Installation for R and Python](#installation-for-r-and-python) → [Usage](#usage)
+> **If compiling from source:** Follow this workflow: [Compilation](#compilation) → [Installation](#installation) → [Installation for Rcpp and Python](#installation-for-rcpp-and-python) → [Usage](#usage)
 
 Tensor Omics can be compiled using a **local toolchain** or via the reproducible **Docker environment**.
 
@@ -314,33 +314,44 @@ Prebuilt binaries for Linux, Windows-11, and macOS are automatically generated b
 
 ---
 
-## Installation for R and Python
+## Installation for Rcpp and Python
 
-Once the Tensor Omics shared library is available (either from prebuilt binaries or after compilation), follow these steps to use it from R and Python.
+Once the Tensor Omics shared library is available (either from prebuilt binaries or after compilation), follow these steps to use it from Rcpp and Python.
 
 ---
 
-## R Integration
+## Rcpp Integration
 
 ### Requirements
 
 -  **R ≥ 3.6**
+-  **Rcpp** (for interfacing with C/C++ code)
   
 ### Installation Steps
 
-#### Step 1: Load the Library and Wrapper Functions
+
+#### Step 1: Install Required Rcpp Packages
+```r
+install.packages("Rcpp")
+```
+#### Step 2: Load the Rcpp Interface and Import Tensor Omics Functions
 
 In your R session or script:
 
 ```r
-dyn.load("build/libtensor-omics.so")  # On Linux
-# dyn.load("build/libtensor-omics.dylib")  # On macOS
-# dyn.load("build/libtensor-omics.dll")  # On Windows
+# Load Rcpp package
+library(Rcpp)
 
-source("r/tensoromics_functions.R")
-source("r/error_handling.R")
-````
-#### Step 2: Verify Installation
+# Get absolute path to build directory containing the compiled Fortran library
+lib_path <- shQuote(normalizePath("build"))
+
+# Set environment variable for Rcpp to find the library and its dependencies
+Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path," -L", lib_path," -ltensor-omics -lgfortran"))
+
+# Compile and load all Tensor Omics Rcpp wrapper functions
+Rcpp::sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+```
+#### Step 3: Verify Installation
 
 Test a simple function to confirm everything is working:
 
@@ -348,7 +359,7 @@ Test a simple function to confirm everything is working:
 # Test a simple function
 result <- tox_euclidean_distance(c(1, 2, 3), c(4, 5, 6))
 print(result)  # Should output: 5.196152
-````
+```
 
 ---
 
@@ -426,11 +437,10 @@ Tensor Omics provides a comprehensive set of functions for analyzing high-dimens
 
 #### Euclidean Distance Calculation
 
-**R Example:**
+**Rcpp Example:**
 ```r
 # Load library and functions
-dyn.load("build/libtensor-omics.so")
-source("r/tensoromics_functions.R")
+source("rcpp/tensoromics_functions.R")
 
 # Calculate distance between two points
 vec1 <- c(0, 0)
@@ -478,22 +488,22 @@ The test suite framework provides a robust and scalable system for organizing an
 Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
 See `test/readme.md` for details
 
-## R and Python Integration Tests
+## Rcpp and Python Integration Tests
 
-After installation, verify R and Python integration:
+After installation, verify Rcpp and Python integration:
 
-**R Tests**
+**Rcpp Tests**
 
 ```bash
-# Run R-level tests
-Rscript test/euclidean_distance.R
+# Run Rcpp-level tests
+Rscript rcpp/test/euclidean_distance.R
 ```
 
 **Python Tests**
 
 ```bash
 # Run Python-level tests 
-pytest test/euclidean_distance.py
+python3 python/test/euclidean_distance.py
 ```
 
 
