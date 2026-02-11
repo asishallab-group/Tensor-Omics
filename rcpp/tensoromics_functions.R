@@ -38,9 +38,7 @@ tox_euclidean_distance <- function(vec1, vec2) {
   # Call Rcpp wrapper 
   return(tox_euclidean_distance_rcpp(as.numeric(vec1), as.numeric(vec2)))
 }
-# ===================================================================
-# DISTANCE TO CENTROID FUNCTIONS
-# ===================================================================
+
 
 #' Calculate distances from genes to their family centroids
 #' 
@@ -134,89 +132,11 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   ))
 
 }
-# ===================================================================
-# OUTLIER DETECTION FUNCTIONS 
-# ===================================================================
-#' Complete outlier detection workflow
-#'
-#' This function performs the complete outlier detection workflow:
-#' 1. Computes family scaling factors using LOESS
-#' 2. Calculates RDI values
-#' 3. Identifies outliers based on percentile threshold
-#'
-#' @param distances Numeric vector of gene distances
-#' @param gene_to_fam Integer vector mapping genes to family indices
-#' @param n_families Integer number of families
-#' @param percentile Percentile threshold for outlier detection (default: 95.0)
-#' @return List with components:
-#'   - is_outlier: Logical vector indicating outliers
-#'   - loess_x: Family median distances
-#'   - loess_y: Family standard deviations
-#'   - loess_n: Number of genes used per family
-tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
-  # Input validation
-  validate_numeric_vector(distances)
-  n_genes <- as.integer(length(distances))
 
-  # Call Rcpp wrapper
-  result <- tox_detect_outliers_rcpp(distances, gene_to_fam, n_families, percentile)
-
-  # Check for error (ierr returned by the Rcpp wrapper)
-  check_err_code(result$ierr)
-
-  # Return structured result
-  return(list(
-    is_outlier = result$is_outlier,
-    loess_x = result$loess_x,
-    loess_y = result$loess_y,
-    loess_n = result$loess_n
-  ))
-
-}
 
 # ===================================================================
-# FAMILY SCALING AND RDI FUNCTIONS
+#  OUTLIER IDENTIFICATION FUNCTIONS
 # ===================================================================
-
-#' Compute family scaling factors using LOESS smoothing
-#'
-#' This function calculates scaling factors for gene families based on distance distributions.
-#' It uses LOESS smoothing to estimate the relationship between family median distances
-#' and their standard deviations.
-#'
-#' @param distances Numeric vector of gene distances
-#' @param gene_to_fam Integer vector mapping genes to family indices
-#' @param n_families Integer number of families
-#' @return List with components:
-#'   - dscale: Scaling factors for each family
-#'   - loess_x: Family median distances 
-#'   - loess_y: Family standard deviations
-#'   - indices_used: Number of genes used per family
-tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
-  # Input validation
-  validate_numeric_vector(distances)
-  n_genes <- as.integer(length(distances))
-  validate_length_equals_n(gene_to_fam, n_genes)
-  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
-
-  # Call the Rcpp forwarder.
-  result <- tox_compute_family_scaling_rcpp(distances, gene_to_fam, n_families)
-
-  # Check for error
-  check_err_code(result$ierr)
-  
-  # Return structured result
-  return(list(
-    dscale = as.numeric(result$dscale),
-    loess_x = as.numeric(result$loess_x),
-    loess_y = as.numeric(result$loess_y),
-    indices_used = as.integer(result$indices_used)
-  ))
-}
-# ===================================================================
-# EXPERT FAMILY SCALING FUNCTION
-# ===================================================================
-
 
 #' Compute family scaling factors using LOESS smoothing (Expert Version)
 #'
@@ -275,10 +195,42 @@ tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families
 
   ))
 }
-# ===================================================================
-# RDI FUNCTIONS
-# ===================================================================
 
+#' Compute family scaling factors using LOESS smoothing
+#'
+#' This function calculates scaling factors for gene families based on distance distributions.
+#' It uses LOESS smoothing to estimate the relationship between family median distances
+#' and their standard deviations.
+#'
+#' @param distances Numeric vector of gene distances
+#' @param gene_to_fam Integer vector mapping genes to family indices
+#' @param n_families Integer number of families
+#' @return List with components:
+#'   - dscale: Scaling factors for each family
+#'   - loess_x: Family median distances 
+#'   - loess_y: Family standard deviations
+#'   - indices_used: Number of genes used per family
+tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
+  # Input validation
+  validate_numeric_vector(distances)
+  n_genes <- as.integer(length(distances))
+  validate_length_equals_n(gene_to_fam, n_genes)
+  validate_index_bounds(gene_to_fam, low = 1, high = n_families)
+
+  # Call the Rcpp forwarder.
+  result <- tox_compute_family_scaling_rcpp(distances, gene_to_fam, n_families)
+
+  # Check for error
+  check_err_code(result$ierr)
+  
+  # Return structured result
+  return(list(
+    dscale = as.numeric(result$dscale),
+    loess_x = as.numeric(result$loess_x),
+    loess_y = as.numeric(result$loess_y),
+    indices_used = as.integer(result$indices_used)
+  ))
+}
 
 #' Compute Relative Distance Index (RDI) for genes
 #'
@@ -307,10 +259,6 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
     sorted_rdi = result$sorted_rdi
   ))
 }
-# ===================================================================
-# OUTLIER IDENTIFICATION FUNCTIONS
-# ===================================================================
-
 
 #' Identify outliers based on RDI percentiles
 #'
@@ -334,9 +282,46 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
   ))
 
 }
+#' Complete outlier detection workflow
+#'
+#' This function performs the complete outlier detection workflow:
+#' 1. Computes family scaling factors using LOESS
+#' 2. Calculates RDI values
+#' 3. Identifies outliers based on percentile threshold
+#'
+#' @param distances Numeric vector of gene distances
+#' @param gene_to_fam Integer vector mapping genes to family indices
+#' @param n_families Integer number of families
+#' @param percentile Percentile threshold for outlier detection (default: 95.0)
+#' @return List with components:
+#'   - is_outlier: Logical vector indicating outliers
+#'   - loess_x: Family median distances
+#'   - loess_y: Family standard deviations
+#'   - loess_n: Number of genes used per family
+tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
+  # Input validation
+  validate_numeric_vector(distances)
+  n_genes <- as.integer(length(distances))
+
+  # Call Rcpp wrapper
+  result <- tox_detect_outliers_rcpp(distances, gene_to_fam, n_families, percentile)
+
+  # Check for error (ierr returned by the Rcpp wrapper)
+  check_err_code(result$ierr)
+
+  # Return structured result
+  return(list(
+    is_outlier = result$is_outlier,
+    loess_x = result$loess_x,
+    loess_y = result$loess_y,
+    loess_n = result$loess_n
+  ))
+
+}
 # ===================================================================
 # NORMALIZATION FUNCTIONS
 # ===================================================================
+
 #' Normalize gene expression values by standard deviation
 #'
 #' This function wraps the Fortran subroutine `normalize_by_std_dev`
@@ -357,10 +342,6 @@ tox_normalize_by_std_dev <- function(input_matrix) {
   result <- tox_normalize_by_std_dev_rcpp(input_matrix)  
   return(matrix(result$output_vector, nrow = nrow(input_matrix), ncol = ncol(input_matrix), dimnames = dimnames(input_matrix)))
 }
-# ===================================================================
-# # NORMALIZATION PIPELINE FUNCTIONS
-# ===================================================================
-
 
 #' Quantile normalization of gene expression values
 #'
@@ -386,10 +367,6 @@ tox_quantile_normalization <- function(input_matrix) {
   
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
-# ===================================================================
-# LOG2 TRANSFORMATION FUNCTIONS
-# ===================================================================
-
 
 #' Apply log2(x + 1) transformation to gene expression values
 #'
@@ -416,9 +393,6 @@ tox_log2_transformation <- function(input_matrix) {
   
   return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
 }
-# ===================================================================
-# TISSUE AVERAGING FUNCTIONS
-# ===================================================================
 
 
 #' Calculate average expression across replicates for each tissue group
@@ -473,10 +447,6 @@ tox_calculate_tissue_averages <- function(df) {
   rownames(output_matrix) <- rownames(df)
   return(as.data.frame(output_matrix))
 }
-# ===================================================================
-# LOG2 FOLD CHANGE CALCULATION FUNCTIONS
-# ===================================================================
-
 
 #' Calculate log2 fold changes based on control and condition patterns
 #' @param df A data frame with genes as rows and tissues/conditions as columns.
@@ -507,10 +477,6 @@ tox_calculate_fc_by_patterns <- function(df, control_pattern, condition_patterns
 
   return(as.data.frame(output_matrix))
 }
-# ===================================================================
-# COMPLETE NORMALIZATION PIPELINE FUNCTIONS
-# ===================================================================
-
 
 #' Complete normalization pipeline for gene expression data (up to log2(x+1))
 #' @param input_matrix Numeric matrix (genes x tissues)
@@ -529,6 +495,7 @@ tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
 
   return(matrix(result$buf_log, nrow = nrow(input_matrix), ncol = length(group_s)))
 }
+
 
 ##################################################
 ## Helper Functions for normalization
@@ -952,9 +919,6 @@ tox_group_centroid <- function(expression_vectors, gene_to_family, n_families, o
   return(result)
 }
 
-# ===================================================================
-# MEAN VECTOR FUNCTIONS
-# ===================================================================
 
 #' Compute the element-wise mean for a given set of gene expression vectors
 #'
