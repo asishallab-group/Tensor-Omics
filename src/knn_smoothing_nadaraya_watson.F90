@@ -130,14 +130,14 @@ contains
     integer(int32), intent(in)    :: n_vector_dims
     integer(int32), intent(in)    :: n_points
     integer(int32), intent(in)    :: k_neighbors
-    real(real64),  intent(in)     :: coords(n_coord_dims, n_points)
+    real(real64),  intent(in)     :: coords(n_coord_dims, n_points), sigma_factor
     real(real64),  intent(in)     :: vectors(n_vector_dims, n_points)
     real(real64),  intent(out)    :: smoothed(n_vector_dims, n_points)
 
     integer(int32), intent(out)   :: kd_indices(n_points), dimension_order(n_coord_dims)
     integer(int32), intent(inout) :: workspace(n_points), permutation(n_points)
     integer(int32), intent(inout) :: left_stack(n_points), right_stack(n_points)
-    real(real64),  intent(inout)  :: value_buffer(n_points)
+    real(real64),  intent(inout)  :: value_buffer(n_coord_dims)
 
     integer(int32), intent(inout) :: neighbors(k_neighbors)
     real(real64),  intent(inout)  :: distances(k_neighbors)
@@ -145,11 +145,12 @@ contains
 
     ! Internos generales
     integer(int32) :: i, j, d
-    real(real64)   :: kd_start_time, kd_end_time, queries_start_time, queries_end_time
+    real(real64)   :: kd_start_time, kd_end_time, queries_start_time, queries_end_time, dist_k
+    integer(int32) :: permutation_distances(n_points)
 
     ! Para 1D (NW completo)
     real(real64)   :: all_distances(n_points)
-    real(real64)   :: mean_dist, variance, std_dev, sigma_factor
+    real(real64)   :: mean_dist, variance, std_dev
     real(real64)   :: min_pos, inv_two_sigma2
     real(real64)   :: wsum, w
     real(real64)   :: work(n_vector_dims)
@@ -160,11 +161,12 @@ contains
 
     ! Para N-D (ruta anterior basada en k-d tree + KNN)
     real(real64)   :: kd_workspace(n_coord_dims)
-    integer(int32) :: recursion_stack(3, n_points)
+    integer(int32) :: recursion_stack(3, n_points), idx
     integer(int32) :: query_ierr
     integer(int32) :: local_neighbors(k_neighbors)
     real(real64)   :: local_distances(k_neighbors)
     real(real64)   :: local_mean_dist, local_variance, local_std_dev, local_sigma
+    integer(int32) :: p_idx
 
     call set_ok(ierr)
 
@@ -178,7 +180,8 @@ contains
     ! ======================================================
     ! CASO 1D: Nadaraya–Watson completo (toma TODOS los puntos)
     ! ======================================================
-    if (n_coord_dims == 1) then
+    if (n_coord_dims < 1) then
+      ! print *, "Entro a n1"
       queries_start_time = get_time()
       timing_query_count = n_points
 
@@ -281,7 +284,108 @@ contains
       timing_knn_queries  = timing_knn_queries + (queries_end_time - queries_start_time)
       timing_gaussian_calc= 0.0_real64
       return
-    end if  ! fin caso 1D
+    else 
+      ! ======================================================
+      ! CASO N-D: SUAVIZADO GEOMÉTRICO (Kernel Adaptativo k-NN)
+      ! ======================================================
+      ! print *, "Entro a n>1"
+      dimension_order = [(i, i=1, n_coord_dims)]
+      call build_kd_index(coords, n_coord_dims, n_points, kd_indices, dimension_order, &
+                          workspace, value_buffer, permutation, left_stack, right_stack, &
+                          recursion_stack, ierr )
+      if (.not. is_ok(ierr)) return
+
+      do i = 1, n_points
+          ! 1. Búsqueda de k-Vecinos Cercanos
+          call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
+                            coords(:,i), k_neighbors, neighbors, distances, &
+                            query_ierr)
+
+          
+          ! ------------------------------------------------------
+          ! 2. ORDENAMIENTO DE VECINOS
+          ! ------------------------------------------------------
+          ! Inicializamos el vector de permutación para no perder la relación (distancia <-> índice)
+          permutation_distances = [(j, j = 1, k_neighbors)]
+          
+          ! Ordenamos distances de menor a mayor
+          call sort_real(distances, permutation_distances, left_stack, right_stack)
+          
+          ! ------------------------------------------------------
+          ! 3. SIGMA ADAPTATIVO (Distancia al vecino k)
+          ! ------------------------------------------------------
+          ! Ahora estamos 100% seguros: distances(k_neighbors) es la mayor distancia
+          dist_k = distances(permutation_distances(k_neighbors))
+          
+          ! Definimos el ancho de banda
+          local_sigma = sigma_factor * dist_k
+          
+          ! Piso de seguridad: si todos los vecinos están en el mismo sitio, sigma no puede ser 0
+          if (local_sigma < 1.0e-8_real64) local_sigma = 1.0e-8_real64
+          inv_two_sigma2 = 0.5_real64 / (local_sigma**2)
+
+          ! 4. ACUMULACIÓN DE PESOS (Nadaraya-Watson)
+          work(:) = 0.0_real64
+          wsum    = 0.0_real64
+          
+          do j = 1, k_neighbors
+              ! Usamos la permutación para sacar el índice del vecino y su distancia
+              p_idx = permutation_distances(j) 
+              idx   = neighbors(p_idx)
+
+              if (idx == i) cycle
+
+              
+              if (idx <= 0) cycle
+              
+              ! Peso Gaussiano usando la distancia correctamente indexada
+              w = exp(-(distances(p_idx)**2) * inv_two_sigma2)
+              
+              wsum = wsum + w
+              do d = 1, n_vector_dims
+                  work(d) = work(d) + w * vectors(d, idx)
+              end do
+          end do
+
+          ! ------------------------------------------------------
+          ! DIAGNÓSTICO: Inspección de puntos específicos
+          ! ------------------------------------------------------
+          !select case (i)
+          !case (25, 50, 100, 200, 250, 275, 350, 500)
+          !    print *, " "
+          !    print *, "=== DIAGNÓSTICO PUNTO i =", i, " ==="
+          !    print *, "Coordenadas query:", coords(:,i)
+          !    print *, "Distancia al vecino k (dist_k):", dist_k
+          !    print *, "Sigma Local (factor * dist_k):", local_sigma
+          !    print *, "Vecinos encontrados:", k_neighbors
+          !    print *, "ID_Vecino_Original | Dist_Original | ID_Vecino_Ordenado | Dist_Ordenada | Peso_W"
+          !    print *, "-------------------------------------------------------------------------------------"
+          !    
+          !    do j = 1, k_neighbors
+          !        p_idx = permutation_distances(j) ! Índice según el orden de distancia
+          !        
+          !        ! Calculamos el peso que tendría este vecino
+          !        w = exp(-(distances(p_idx)**2) * inv_two_sigma2)
+          !        
+          !        ! Imprimimos: 
+          !        ! 1. El ID del punto vecino (neighbors(p_idx))
+          !        ! 2. La distancia sin ordenar (distances(j)) -> para ver el desorden inicial
+          !        ! 3. La distancia ordenada (distances(p_idx)) -> para verificar el sort
+          !        ! 4. El peso final en el promedio
+          !        write(*, "(I8, ' | ', F12.6, ' | ', I8, ' | ', F12.6, ' | ', F8.4)") &
+          !            neighbors(j), distances(j), neighbors(p_idx), distances(p_idx), w
+          !    end do
+          !    print *, "==============================================="
+          !end select
+
+          ! 5. RESULTADO FINAL
+          if (wsum > 1.0e-18_real64) then
+              smoothed(:, i) = work(:) / wsum
+          else
+              smoothed(:, i) = vectors(:, i)
+          end if
+      end do
+    end if
 
 
   end subroutine smooth_vectors_gaussian_adaptive_nw

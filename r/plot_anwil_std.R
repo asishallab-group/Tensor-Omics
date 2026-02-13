@@ -1,20 +1,24 @@
 # Load necessary libraries
 library(ggplot2)
 
+print("Starting to generate plots for anwil_std...")
 # Parse command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 2) {
-  stop("Usage: Rscript plot_anwil_std.R <k_value> <max_iter>")
+if (length(args) < 5) {
+  stop("Usage: Rscript plot_anwil_std.R <k_neighbors> <span> <max_iter> <kernel_type> <k_neighbors_sigma>")
 }
 
-# Extract k and max_iter from arguments
+# Extract k_neighbors, span, and n_iters_max from arguments
 k <- args[1]
-max_iter <- args[2]
+span <- args[2]
+max_iter <- args[3]
+kernel_type <- args[4]
+k_neighbors_sigma <- args[5]
 
 # Define the input and output directories
 input_dir <- "results/data"
 output_dir <- "results/plots"
-output_pdf <- file.path(output_dir, paste0("anwil_std_plots_k", k, "_iter", max_iter, ".pdf"))
+output_pdf <- file.path(output_dir, paste0("anwil_std_plots_k", k, "_iter", max_iter, "_span", format(span, nsmall = 2), "_ksigma", k_neighbors_sigma, "_kernel", kernel_type, ".pdf"))
 
 # Create the output directory if it doesn't exist
 if (!dir.exists(output_dir)) {
@@ -22,7 +26,7 @@ if (!dir.exists(output_dir)) {
 }
 
 # Get the list of CSV files matching "anwil_std"
-csv_files <- list.files(input_dir, pattern = paste0("k", k, "_iter", max_iter, "_anwil_std.*\\.csv$"), full.names = TRUE)
+csv_files <- list.files(input_dir, pattern = paste0("k",k,"_iter",max_iter,"_span",span,"_ksigma", k_neighbors_sigma, "_kernel", kernel_type,"_anwil_std.*\\.csv$"), full.names = TRUE)
 
 # Open a PDF device to save all plots together
 pdf(output_pdf)
@@ -39,12 +43,14 @@ for (csv_file in csv_files) {
   dataset_name <- sub("_smoothed.*", "", basename(csv_file))
 
   # Generate the plot
-  p <- ggplot(data, aes(x = x, y = local_sigma)) +
-    geom_line(color = "blue") +
-    ggtitle(paste("Dataset:", dataset_name, "| k=", k, ", iter=", max_iter)) +
+  p <- ggplot(data) +
+    geom_point(aes(x = x, y = local_sigma_raw), color = "red", size = 1.5) +
+    geom_line(aes(x = x, y = local_sigma_smooth), color = "blue") +
+    ggtitle(paste("Dataset:", dataset_name, "| k=", k, ", iter=", max_iter, ", span=", span, ", k_sigma=", k_neighbors_sigma, ", kernel=", kernel_type)) +
     xlab("X") +
     ylab("Local Sigma") +
-    theme_minimal()
+    theme_minimal() +
+    theme(plot.title = element_text(size = 10))
 
   # Print the plot to the PDF device
   print(p)

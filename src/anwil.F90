@@ -3,7 +3,8 @@ module anwil
   use kd_tree, only: build_kd_index, kd_knn_query
   use iso_fortran_env, only: int32, real64
   use tox_errors, only: set_ok, set_err_once, is_ok, ERR_INVALID_INPUT
-  use f42_utils, only: sort_real
+  use f42_utils, only: sort_real, calculate_mean, count_valid, get_median
+  use knn_smoothing_nadaraya_watson, only: smooth_vectors_gaussian_adaptive_nw
   implicit none
 
   ! === TIMING GLOBALS FOR PERFORMANCE ANALYSIS ===
@@ -25,7 +26,7 @@ module anwil
   ! - Very sparse data: Adaptive sigma handles large distance variations
   
     interface
-    subroutine dpotrf(uplo, n, a, lda, info)
+    pure subroutine dpotrf(uplo, n, a, lda, info)
       use iso_fortran_env, only: real64, int32
       character(len=1), intent(in) :: uplo
       integer(int32), intent(in)   :: n, lda
@@ -33,7 +34,7 @@ module anwil
       integer(int32), intent(out)  :: info
     end subroutine dpotrf
 
-    subroutine dpotri(uplo, n, a, lda, info)
+    pure subroutine dpotri(uplo, n, a, lda, info)
       use iso_fortran_env, only: real64, int32
       character(len=1), intent(in) :: uplo
       integer(int32), intent(in)   :: n, lda
@@ -78,7 +79,7 @@ contains
     write(*, '(A, F10.6, A)') "Avg query time:      ", avg_query_time * 1000.0, " ms"
     write(*, '(A, F8.1, A)') "Queries per second:  ", queries_per_sec, " queries/sec"
     write(*, '(A)') "========================================="
-  end subroutine ! print_timing_stats
+  end subroutine print_timing_stats
 
   ! Helper function to get current time
   function get_time() result(time_seconds)
@@ -210,22 +211,22 @@ subroutine smooth_vectors_gaussian_adaptive( &
   ! =====================
   do i = 1, n_points
     ! Debugging: Processing point
-    !print *, "Debug: Processing point", i
-    !print *, "Debug: Coordinates of point:", coords(:,i)
-    !print *, "Debug: Original vector:", vectors(:,i)
+    ! print *, "Debug: Processing point", i
+    ! print *, "Debug: Coordinates of point:", coords(:,i)
+    ! print *, "Debug: Original vector:", vectors(:,i)
 
     ! 1. Initialize and query K neighbors (including self)
     distances(1:k_neighbors) = huge(1.0_real64)
     call kd_knn_query( &
       coords, kd_indices, n_coord_dims, n_points, dimension_order, &
-      coords(:,i), k_neighbors, neighbors, distances, value_buffer, ierr )
+      coords(:,i), k_neighbors, neighbors, distances, ierr )
     if (.not. is_ok(ierr)) return
 
     if (i == 250) then 
       ! Debugging: After kd_knn_query
-      !print *, "Debug: kd_knn_query succeeded for point", i
-      !print *, "Debug: Neighbors indices:", neighbors
-      !print *, "Debug: Distances:", distances
+      ! print *, "Debug: kd_knn_query succeeded for point", i
+      ! print *, "Debug: Neighbors indices:", neighbors
+      ! print *, "Debug: Distances:", distances
     end if 
 
     ! 2. Sort distances and obtain permutation_distances
@@ -234,8 +235,8 @@ subroutine smooth_vectors_gaussian_adaptive( &
 
     if (i == 250) then
       ! Debugging: After sorting distances
-      !print *, "Debug: Distances sorted for point", i, distances(permutation_distances)
-      !print *, "Debug: permutation_distances array:", permutation_distances
+      ! print *, "Debug: Distances sorted for point", i, distances(permutation_distances)
+      ! print *, "Debug: permutation_distances array:", permutation_distances
     end if
 
     ! 3. Reorder neighbors using the same permutation_distances
@@ -246,7 +247,7 @@ subroutine smooth_vectors_gaussian_adaptive( &
 
     if (i == 250) then
       ! Debugging: After reordering neighbors
-      !print *, "Debug: Reordered neighbors:", neighbors
+      ! print *, "Debug: Reordered neighbors:", neighbors
     end if
 
     ! 4. Calculate the Median (Excluding self and HUGE)
@@ -282,7 +283,7 @@ subroutine smooth_vectors_gaussian_adaptive( &
     end if
 
     if (i == 250) then
-      !print *, "Debug: real neighbors", k_eff_neighbors
+      ! print *, "Debug: real neighbors", k_eff_neighbors
     end if 
 
     c = 1.0_real64 / sqrt(log(real(k_eff_neighbors, real64)))
@@ -291,7 +292,7 @@ subroutine smooth_vectors_gaussian_adaptive( &
 
     ! Debugging: Local sigma and median
     if (i == 250) then
-      !print *, "Debug: Local sigma:", local_sigma, "Local median:", local_median
+      ! print *, "Debug: Local sigma:", local_sigma, "Local median:", local_median
     end if
     if (anisotropy_mode == 2) then
     
@@ -385,12 +386,12 @@ subroutine smooth_vectors_gaussian_adaptive( &
       ! Debugging: Neighbor analysis
       if (i == 250) then
         if (j < 50 .or. j > 450) then 
-          !print *, "Debug: Point", i, "Neighbor", j
-          !print *, "Debug: Neighbor index:", idx
-          !print *, "Debug: Distance squared (d2):", d2
-          !print *, "Debug: Weight (local_w):", local_w
-          !print *, "Debug: Accumulated local_work:", local_work
-          !print *, "Debug: Accumulated local_wsum:", local_wsum
+          ! print *, "Debug: Point", i, "Neighbor", j
+          ! print *, "Debug: Neighbor index:", idx
+          ! print *, "Debug: Distance squared (d2):", d2
+          ! print *, "Debug: Weight (local_w):", local_w
+          ! print *, "Debug: Accumulated local_work:", local_work
+          ! print *, "Debug: Accumulated local_wsum:", local_wsum
         end if 
       end if
     end do
@@ -409,7 +410,310 @@ subroutine smooth_vectors_gaussian_adaptive( &
 
   end subroutine smooth_vectors_gaussian_adaptive
 
-pure subroutine identity_matrix(A, n)
+pure real(real64) function kernel_weight(d2, kernel_type) result(w)
+  use iso_fortran_env, only: real64
+  implicit none
+
+  real(real64), intent(in) :: d2
+  integer,      intent(in) :: kernel_type
+
+  real(real64) :: r
+
+  ! Seguridad numérica
+  if (d2 < 0.0_real64) then
+    w = 0.0_real64
+    return
+  end if
+
+  select case (kernel_type)
+
+
+  case (1)
+    ! Gaussiano estándar: exp(-d2)
+    w = exp(-d2)
+
+  case (2)
+    ! d2 = r^2 / 2  -->  r = sqrt(2*d2)
+    r = sqrt(2.0_real64 * d2)
+    if (r < 1.0_real64) then
+      w = (1.0_real64 - r**3)**3
+    else
+      w = 0.0_real64
+    end if
+
+  case default
+    w = 0.0_real64
+
+  end select
+end function kernel_weight
+
+
+subroutine anwil_smooth_sigma( &
+    coords, vectors, smoothed, &
+    n_coord_dims, n_vector_dims, n_points, k_neighbors, &
+    kd_indices, dimension_order, workspace, value_buffer, &
+    permutation, left_stack, right_stack, sigma_raw, sd_arr, &
+    anisotropy_mode, anisotropy_factor, k_neighbors_sigma, kernel_type, ierr , &
+    ! --- NUEVOS ARGUMENTOS PARA MODO 3 ---
+    U, singular_values, k_intrinsic )
+
+    use iso_fortran_env, only: real64, int32
+    use tox_errors, only: set_ok, set_err_once, is_ok, ERR_INVALID_INPUT
+    use f42_utils, only: sort_real
+    use kd_tree, only: build_kd_index, kd_knn_query
+    implicit none
+
+    ! Argumentos existentes
+    integer(int32), intent(in)    :: n_coord_dims, n_vector_dims, n_points, k_neighbors
+    real(real64),    intent(in)    :: coords(n_coord_dims, n_points), vectors(n_vector_dims, n_points)
+    real(real64),    intent(out)   :: smoothed(n_vector_dims, n_points), sigma_raw(1, n_points)
+    integer(int32), intent(out)   :: ierr, kd_indices(n_points), dimension_order(n_coord_dims)
+    integer(int32), intent(inout) :: workspace(n_points), permutation(n_points)
+    integer(int32), intent(inout) :: left_stack(n_points), right_stack(n_points)
+    real(real64),    intent(inout) :: value_buffer(n_points), sd_arr(n_vector_dims, n_points)
+    integer(int32), intent(in) :: kernel_type ! 1 gaussian, 2 tricubic
+    integer(int32), intent(in) :: k_neighbors_sigma
+    
+    ! NUEVOS Argumentos para Anisotropía
+    integer(int32), intent(in)    :: anisotropy_mode
+    real(real64),    intent(in)    :: anisotropy_factor
+    ! integer(int32), parameter :: k_neighbors_sigma = 200_int32
+    integer(int32) :: i, recursion_stack(3, n_points)
+    integer(int32) :: n_tmp(k_neighbors_sigma) 
+    real(real64)   :: d_tmp(k_neighbors_sigma)
+
+    ! Nuevas declaraciones
+    real(real64), intent(in), optional :: U(:,:)
+    real(real64), intent(in), optional :: singular_values(:)
+    integer(int32), intent(in), optional :: k_intrinsic
+
+  call set_ok(ierr)
+
+  if (anisotropy_mode == 3) then
+    if (.not. present(U) .or. .not. present(singular_values) .or. .not. present(k_intrinsic)) then
+        call set_err_once(ierr, ERR_INVALID_INPUT)
+        return
+    end if
+  end if
+
+  ! 1. KD-Tree (Serie)
+  dimension_order = [(i, i=1, n_coord_dims)]
+  call build_kd_index(coords, n_coord_dims, n_points, kd_indices, dimension_order, &
+                      workspace, value_buffer, permutation, left_stack, right_stack, &
+                      recursion_stack, ierr )
+  if (.not. is_ok(ierr)) return
+
+  ! Initialization of outputs
+  smoothed(:,:) = 0.0_real64
+
+  ! ==========================================================
+  ! FASE 1: SIGMAS CRUDOS (Concurrent)  -- CORREGIDA
+  !   - Ordena por distancia (usando permutación)
+  !   - Detecta cuántos vecinos válidos hay (excluyendo NaN/HUGE)
+  !   - Calcula mediana REAL de distancias excluyendo self (j=2..j_last)
+  !   - c = 1/sqrt(log(k_eff+1))  (incluyendo self)
+  ! ==========================================================
+  do concurrent (i = 1:n_points)
+    block
+      integer(int32) :: n_loc(k_neighbors), p_loc(k_neighbors), ierr_loc
+      integer(int32) :: j, j_last, k_eff, j1, j2
+      real(real64)   :: d_loc(k_neighbors)
+      real(real64)   :: c_loc, local_median
+      integer(int32) :: l_stack_loc(k_neighbors), r_stack_loc(k_neighbors)
+
+      call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
+                        coords(:,i), k_neighbors, n_loc, d_loc, ierr_loc)
+
+      ! Si quieres: si kd_knn_query puede fallar por punto, pon fallback
+      if (.not. is_ok(ierr_loc)) then
+        sigma_raw(1,i) = 1.0e-12_real64
+        cycle
+      end if
+
+      p_loc = [(j, j = 1, k_neighbors)]
+      call sort_real(d_loc, p_loc, l_stack_loc, r_stack_loc)
+
+      ! Encontrar el último índice válido (NaN y HUGE quedan al final)
+      j_last = 0
+      do j = 1, k_neighbors
+        if (d_loc(p_loc(j)) < 1.0e20_real64) j_last = j
+      end do
+
+      ! k_eff = #vecinos reales excluyendo self (asumiendo self en j=1)
+      if (j_last >= 2) then
+        k_eff = j_last - 1
+      else
+        k_eff = 0
+      end if
+
+      if (k_eff < 1) then
+        sigma_raw(1,i) = 1.0e-12_real64
+      else
+        ! Mediana de distancias en j=2..j_last (k_eff elementos)
+        if (mod(k_eff, 2) == 0) then
+          ! par: promedio de los dos centrales
+          j1 = 2 + (k_eff/2) - 1      ! = 1 + k_eff/2
+          j2 = j1 + 1
+          local_median = 0.5_real64 * ( d_loc(p_loc(j1)) + d_loc(p_loc(j2)) )
+        else
+          ! impar: el central
+          j1 = 2 + (k_eff - 1)/2
+          local_median = d_loc(p_loc(j1))
+        end if
+
+        ! Constante del kernel (si quieres incluir self en "n": k_eff+1)
+        c_loc = 1.0_real64 / sqrt(log(real(k_eff + 1, real64)))
+        !c_loc = 1.0_real64
+
+        sigma_raw(1,i) = max(c_loc * local_median, 1.0e-12_real64)
+      end if
+
+    end block
+  end do
+
+
+
+  ! ==========================================================
+  ! FASE 2: SUAVIZADO DE SIGMAS (Modo Geométrico / Vecinos)
+  ! ==========================================================
+  ! print *, "Entro a anwil"
+  call smooth_vectors_gaussian_adaptive_nw( &
+      coords,           & ! Pasas X e Y (n_coord_dims = 2)
+      sigma_raw,        & ! Los sigmas ruidosos
+      sd_arr(1:1, :),   & ! El resultado va a la primera fila de sd_arr
+      n_coord_dims,     & ! Aquí pasas 2 (activas la ruta de vecinos)
+      1,                & ! Solo suavizamos 1 escalar (el sigma)
+      n_points,         &
+      k_neighbors_sigma,      &
+      kd_indices, dimension_order, n_tmp, d_tmp, & 
+      workspace, value_buffer, permutation, left_stack, right_stack, &
+      3.0_real64, ierr )
+
+  ! print *, sigma_raw
+  ! print *, sd_arr
+  ! sd_arr(1, :) = sigma_raw(1, :)
+
+! ==========================================================
+  ! FASE 3: SUAVIZADO CON ANISOTROPÍA ADAPTATIVA
+  ! ==========================================================
+  do concurrent (i = 1:n_points)
+    block
+      integer(int32) :: n_loc(k_neighbors), p_loc(k_neighbors), ierr_loc, j, idx, r
+      real(real64)   :: d_loc(k_neighbors), w_loc, wsum_loc, d2
+      real(real64)   :: work_loc(n_vector_dims), delta(n_coord_dims)
+      real(real64)   :: s_i, sigma_parallel, sigma_orth, s_dot_ur, zeta_r
+      real(real64)   :: cov(n_coord_dims, n_coord_dims), cov_inv(n_coord_dims, n_coord_dims)
+      real(real64)   :: tmp_vec(n_coord_dims), trace_cov, scale_factor
+      integer(int32) :: l_stack_loc(k_neighbors), r_stack_loc(k_neighbors)
+      real(real64) :: displacement(n_vector_dims)
+
+      ! 1. Búsqueda de vecinos
+      call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
+                        coords(:,i), k_neighbors, n_loc, d_loc, ierr_loc)
+
+      ! 2. Ordenamiento local para asegurar consistencia
+      p_loc = [(j, j = 1, k_neighbors)]
+      call sort_real(d_loc, p_loc, l_stack_loc, r_stack_loc) 
+
+      ! 3. Determinar Sigma Local (puedes usar el sd_arr de la Fase 2)
+      s_i = max(sd_arr(1,i), 1.0e-12_real64) * 3.0_real64 ! Usamos el factor como multiplicador general
+
+      ! 4. Lógica para MODO 2 (Covarianza)
+      if (anisotropy_mode == 2) then
+          cov = 0.0_real64
+          do j = 2, k_neighbors
+              idx = n_loc(p_loc(j))
+              delta = coords(:,idx) - coords(:,i)
+              ! cov += delta * delta^T
+              cov = cov + spread(delta, dim=2, ncopies=n_coord_dims) * &
+                          spread(delta, dim=1, ncopies=n_coord_dims)
+          end do
+          cov = cov / real(k_neighbors-1, real64)
+          
+          ! Regularización para evitar matrices singulares
+          trace_cov = sum([(cov(j,j), j=1,n_coord_dims)])
+          scale_factor = (s_i**2 * real(n_coord_dims, real64)) / max(trace_cov, 1.0e-12_real64)
+          !cov = cov * scale_factor + (1.0e-9_real64 * s_i**2) ! Identidad pequeña integrada
+          cov = cov * scale_factor
+          do j = 1, n_coord_dims
+            cov(j,j) = cov(j,j) + 1.0e-9_real64 * s_i**2
+          end do
+
+          
+          cov_inv = cov
+          call invert_small_matrix_spd(cov_inv, n_coord_dims, ierr_loc)
+      end if
+
+      ! 5. Bucle de Pesado
+      wsum_loc = 0.0_real64
+      work_loc = 0.0_real64
+
+      do j = 1, k_neighbors
+        idx = n_loc(p_loc(j))
+        if (idx <= 0 .or. idx == i) cycle
+        
+        delta = coords(:,idx) - coords(:,i)
+        displacement = vectors(:, idx) - coords(:, i) 
+
+        select case (anisotropy_mode)
+        case (0) ! Isotrópico
+            !d2 = d_loc(p_loc(j))**2
+            !w_loc = exp(-d2 / (2.0_real64 * s_i**2))
+            d2 = (d_loc(p_loc(j))**2) / (2.0_real64 * s_i**2)
+            
+        case (1) ! Diagonal (X suaviza menos que Y si factor < 1)
+            sigma_parallel = s_i
+            sigma_orth     = s_i * anisotropy_factor ! Ejemplo: forzar más suavizado en Y
+            d2 = delta(1)**2 / (2.0_real64 * sigma_parallel**2)
+            if (n_coord_dims > 1) then
+                d2 = d2 + sum(delta(2:)**2) / (2.0_real64 * sigma_orth**2)
+            end if
+            !w_loc = exp(-d2)
+            
+        case (2) ! Full Covariance
+            tmp_vec = matmul(cov_inv, delta)
+            ! d2 = dot_product(delta, tmp_vec)
+            ! w_loc = exp(-0.5_real64 * d2)
+            d2 = 0.5_real64 * dot_product(delta, tmp_vec)
+            
+        case (3) ! MODO AMANLE (SVD Global + Sigma Adaptativo)
+              d2 = 0.0_real64
+              do r = 1, n_coord_dims
+                  ! Proyección del desplazamiento sobre el componente singular r
+                  s_dot_ur = dot_product(displacement, U(:, r))
+                  
+                  if (r <= k_intrinsic) then
+                      ! TANGENTE: Usamos s_i (el sigma adaptativo ya suavizado)
+                      d2 = d2 + (s_dot_ur**2) / (2.0_real64 * s_i**2)
+                  else
+                      ! NORMAL: Penalizamos con zeta_r y el factor de anisotropía
+                      zeta_r = max(singular_values(r), 1.0e-12_real64)
+                      ! sigma_N es s_i escalado por anisotropy_factor
+                      d2 = d2 + (s_dot_ur**2) / (2.0_real64 * s_i**2 * zeta_r)
+                  end if
+              end do
+              ! w_loc = exp(-d2)
+          end select
+
+        w_loc = kernel_weight(d2, kernel_type)
+
+        work_loc = work_loc + w_loc * vectors(:, idx)
+        wsum_loc = wsum_loc + w_loc
+      end do
+
+      ! 6. Asignación Final
+      if (wsum_loc > 1.0e-18_real64) then
+        smoothed(:, i) = work_loc / wsum_loc
+      else
+        smoothed(:, i) = vectors(:, i)
+      end if
+    end block
+  end do
+
+end subroutine anwil_smooth_sigma
+
+
+  pure subroutine identity_matrix(A, n)
     integer(int32), intent(in) :: n
     real(real64),   intent(out) :: A(n,n)
     integer(int32) :: ii
@@ -419,7 +723,7 @@ pure subroutine identity_matrix(A, n)
     end do
   end subroutine identity_matrix
 
-  subroutine invert_small_matrix_spd(A, n, ierr_local)
+  pure subroutine invert_small_matrix_spd(A, n, ierr_local)
     ! In-place inverse of SPD matrix using Cholesky (dpotrf+dpotri).
     integer(int32), intent(in) :: n
     real(real64),   intent(inout) :: A(n,n)

@@ -234,7 +234,7 @@ contains
     real(real64)  :: kd_workspace(n_coord_dims)
 
     call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
-                      query_point, k_max, neighbors, distances, kd_workspace, ierr)
+                      query_point, k_max, neighbors, distances, ierr)
     ! Si ocurre error, se propaga en ierr
   end subroutine kd_request_neighbors
 

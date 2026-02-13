@@ -1121,6 +1121,334 @@ contains
     call calc_percentile(array, perm, percentile, value, ierr)
   end subroutine calc_percentile_alloc
 
+  pure function get_median(dist, perm, k_real) result(res)
+    real(real64), intent(in) :: dist(:)
+    integer(int32), intent(in) :: perm(:), k_real
+    real(real64) :: res
+    ! El índice 1 es self, la mediana de los vecinos empieza después
+    res = dist(perm(1 + (k_real+1)/2))
+  end function
+
+  pure function count_valid(dist, perm, k_total) result(res)
+    real(real64), intent(in) :: dist(:)
+    integer(int32), intent(in) :: perm(:), k_total
+    integer(int32) :: res, j
+    res = 0
+    do j = 2, k_total
+      if (dist(perm(j)) < 1.0e20_real64) res = res + 1
+    end do
+  end function
+
+  pure function calculate_mean(arr, n) result(res)
+    real(real64), intent(in) :: arr(:)
+    integer(int32), intent(in) :: n
+    real(real64) :: res
+    res = sum(arr) / real(n, real64)
+  end function
+
+  !> This subroutine calculates the roughness of a smoothed field based on the
+  !! geometric neighborhood structure. Roughness quantifies the average weighted
+  !! disagreement between neighboring points, providing a measure of local oscillations
+  !! or irregularities in the field.
+  pure subroutine compute_roughness(y, sigma, neighbors, distances, &
+                             n_points, n_dims, k_neighbors, roughness)
+      integer(int32), intent(in) :: n_points       
+      !| Number of points in the dataset
+      integer(int32), intent(in) :: n_dims         
+      !| Number of dimensions for each point
+      integer(int32), intent(in) :: k_neighbors    
+      !| Number of nearest neighbors per point
+      real(real64), intent(in) :: y(n_dims, n_points)       
+      !| Smoothed field values for each point
+      real(real64), intent(in) :: sigma(n_points)           
+      !| Adaptive bandwidth for each point
+      integer(int32), intent(in) :: neighbors(k_neighbors, n_points)  
+      !| Indices of k-nearest neighbors
+      real(real64), intent(in) :: distances(k_neighbors, n_points)  
+      !| Distances to k-nearest neighbors
+      real(real64), intent(out) :: roughness     
+      !| Computed roughness value
+
+      ! --- Local variables ---
+      integer(int32) :: i, j_idx, neighbor_id, m   
+      !| Loop indices and neighbor identifiers
+      real(real64) :: d2, w_ij, w_ji, W_sym      
+      !| Distance squared and weights
+      real(real64) :: sum_diff2           
+      !| Squared difference of smoothed field
+      real(real64) :: R_acc, Z_acc               
+      !| Accumulators for roughness and normalization
+      real(real64) :: inv_2s2(n_points)
+      !| Inverse of 2 * sigma^2 for points i and j
+
+      ! Precompute the inverse factor for sigma of point i
+      do i = 1_int32, n_points
+          if (sigma(i) > 1.0e-12_real64) then
+              inv_2s2(i) = 1.0_real64 / (2.0_real64 * sigma(i)**2)
+          else
+              inv_2s2(i) = 0.0_real64
+          end if
+      end do
+
+      ! 1. Initialize accumulators
+      R_acc = 0.0_real64  ! Total weighted local variation
+      Z_acc = 0.0_real64  ! Total weight mass for normalization
+
+      ! 2. Iterate over each point i
+      do i = 1_int32, n_points
+          
+          if (inv_2s2(i) <= 0.0_real64) cycle
+
+          ! Iterate over each neighbor j of point i
+          do j_idx = 1_int32, k_neighbors
+              neighbor_id = neighbors(j_idx, i)  ! Neighbor index
+
+              if (neighbor_id < 1_int32 .or. neighbor_id > n_points) cycle
+
+              ! Skip self-loops if the kNN includes the point itself
+              if (neighbor_id == i) cycle
+
+              if (inv_2s2(neighbor_id) <= 0.0_real64) cycle
+
+              ! (a) Compute directed weights
+              ! Use the precomputed distance d_ij
+              d2 = distances(j_idx, i)**2
+
+              w_ij = exp(-d2 * inv_2s2(i))
+              w_ji = exp(-d2 * inv_2s2(neighbor_id))
+
+              ! (b) Compute symmetric weight (geometric mean)
+              W_sym = sqrt(w_ij * w_ji)
+
+              ! (c) Compute squared difference of the smoothed field (diff2)
+              sum_diff2 = 0.0_real64
+              do m = 1_int32, n_dims
+                  sum_diff2 = sum_diff2 + (y(m, i) - y(m, neighbor_id))**2
+              end do
+
+              ! (d) Accumulate contributions
+              R_acc = R_acc + (W_sym * sum_diff2)  ! Weighted local variation
+              Z_acc = Z_acc + W_sym                ! Total weight mass
+          end do
+      end do
+
+      ! 3. Final normalization
+      if (Z_acc > 1.0e-15) then
+          roughness = R_acc / Z_acc  ! Normalize total variation by total weight
+      else
+          roughness = 0.0_real64  ! Default to zero if no weights are present
+      end if
+
+  end subroutine compute_roughness
+
+  !> This subroutine calculates the Root Mean Square Error (RMSE) between
+  !! the current smoothed field (y) and the original input field (y0).
+  !! It serves as a measure of global distortion or fidelity loss.
+  pure subroutine compute_rmse(y0, y, n_points, n_dims, rmse)      
+      integer(int32), intent(in) :: n_points
+      !| Number of points 
+      integer(int32), intent(in) :: n_dims
+      !| Number of dimensions
+      real(real64), intent(in) :: y0(n_dims, n_points) 
+      !| Original data
+      real(real64), intent(in) :: y(n_dims, n_points)  
+      !| Current smoothed field
+      real(real64), intent(out) :: rmse                
+      !| Output scalar
+
+      ! --- Local variables ---
+      integer(int32) :: i, m
+      real(real64) :: s_acc, diff_val
+
+      s_acc = 0.0_real64
+
+      ! i as outer loop + m as inner loop = Stride-1 access (Fastest in Fortran)
+      do i = 1_int32, n_points
+          do m = 1_int32, n_dims
+              diff_val = y(m, i) - y0(m, i)
+              s_acc = s_acc + (diff_val * diff_val) ! Faster than **2
+          end do
+      end do
+
+      if (n_points > 0_int32) then
+          ! Normalizing by n_points as per user specification (Euclidean drift)
+          rmse = sqrt(s_acc / real(n_points, real64))
+      else
+          rmse = 0.0_real64
+      end if
+
+  end subroutine compute_rmse
+  
+  !> Calculates the Coverage metric and its penalty using a precomputed reference diameter
+  !> and frozen anchor indices (i1,i2) computed at t0.
+  pure subroutine compute_coverage(d0, i1, i2, y, n_points, n_dims, coverage, coverage_penalty)
+      real(real64), intent(in) :: d0
+      !| Precomputed original diameter (from t0)
+      integer(int32), intent(in) :: i1, i2
+      !| Frozen anchor indices (from t0)
+      integer(int32), intent(in) :: n_points
+      !| Number of points
+      integer(int32), intent(in) :: n_dims
+      !| Number of dimensions
+      real(real64), intent(in) :: y(n_dims, n_points)
+      !| Current field
+      real(real64), intent(out) :: coverage
+      !| Proportion of points covered by the algorithm. (higher is better)
+      real(real64), intent(out) :: coverage_penalty
+      !| Associated with the coverage, used to adjust or regularize the result (lower is better)
+
+      ! --- Local variables ---
+      real(real64) :: dt_sq, dt, diff
+      integer(int32) :: m
+      real(real64), parameter :: eps = 1.0e-12_real64
+
+      ! 1. Compute current anchor distance (frozen anchors)
+      dt_sq = 0.0_real64
+      do m = 1, n_dims
+          diff = y(m, i1) - y(m, i2)
+          dt_sq = dt_sq + diff * diff
+      end do
+      dt = sqrt(max(0.0_real64, dt_sq))
+
+      ! 2. Compute Coverage ratio using the passed d0
+      if (d0 > eps) then
+          coverage = dt / d0
+      else
+          ! Degenerate cases: if original was a point
+          if (dt < eps) then
+              coverage = 1.0_real64
+          else
+              coverage = 0.0_real64
+          end if
+      end if
+
+      ! 3. Compute Penalty (lower is better)
+      coverage_penalty = 1.0_real64 / (coverage + eps)
+
+  end subroutine compute_coverage
+
+
+  !> 2-sweep farthest-point heuristic for approximate diameter.
+  !> Also returns the anchor indices (i1,i2) defining the approximate diameter.
+  pure subroutine get_approx_diameter(field, n, dim, diameter, i1_out, i2_out)
+      integer(int32), intent(in) :: n
+      !| Number of points in the field.
+      integer(int32), intent(in) :: dim
+      !| Dimensionality of the field
+      real(real64), intent(in) :: field(dim, n)
+      !| Input array representing the field
+      real(real64), intent(out) :: diameter
+      !| diameter of the field
+      integer(int32), intent(out) :: i1_out, i2_out
+      !| Anchor indices defining the approximate diameter
+
+      integer(int32) :: j, m
+      real(real64) :: max_dist_sq, current_dist_sq, diff
+
+      if (n < 2_int32) then
+          diameter = 0.0_real64
+          i1_out = 1
+          i2_out = 1
+          return
+      end if
+
+      ! Step 1: Find i1 farthest from index 1 (O(n))
+      i1_out = 1
+      max_dist_sq = -1.0_real64
+      do j = 1, n
+          current_dist_sq = 0.0_real64
+          do m = 1, dim
+              diff = field(m, j) - field(m, 1)
+              current_dist_sq = current_dist_sq + diff * diff
+          end do
+          if (current_dist_sq > max_dist_sq) then
+              max_dist_sq = current_dist_sq
+              i1_out = j
+          end if
+      end do
+
+      ! Step 2: Find i2 farthest from i1 (O(n))
+      i2_out = i1_out
+      max_dist_sq = -1.0_real64
+      do j = 1, n
+          current_dist_sq = 0.0_real64
+          do m = 1, dim
+              diff = field(m, j) - field(m, i1_out)
+              current_dist_sq = current_dist_sq + diff * diff
+          end do
+          if (current_dist_sq > max_dist_sq) then
+              max_dist_sq = current_dist_sq
+              i2_out = j
+          end if
+      end do
+
+      if (max_dist_sq > 0.0_real64) then
+          diameter = sqrt(max_dist_sq)
+      else
+          diameter = 0.0_real64
+      end if
+  end subroutine get_approx_diameter
+
+  !> Computes the composite smoothing score (St) using a geometric mean.
+  !! Balances roughness, fidelity (RMSE), and coverage.
+  !! Lower is better.
+  pure subroutine compute_smoothing_score(roughness_t, roughness_0, &
+                                          rmse_t, diameter_0, &
+                                          coverage_penalty_t, epsilon, &
+                                          score_t)
+    
+      real(real64), intent(in) :: roughness_t
+      !| Current roughness at iteration t.
+      real(real64), intent(in) :: roughness_0
+      !| Reference roughness of the original noisy data (t=0). Used for normalization.
+      real(real64), intent(in) :: rmse_t
+      !| Root Mean Square Error between current field and original input.
+      real(real64), intent(in) :: diameter_0
+      !| Approximate geometric diameter of original data. Acts as the global length scale.
+      real(real64), intent(in) :: coverage_penalty_t
+      !| Dimensionless penalty (1/coverage). Tracks global contraction or collapse.
+      real(real64), intent(in) :: epsilon
+      !| Safety constant to prevent division by zero in normalizations.
+      real(real64), intent(out) :: score_t
+      !| Composite dimensionless score (geometric mean). Lower values indicate better trade-offs.
+
+      ! --- Local variables ---
+      real(real64) :: r_norm, e_norm, combined_product
+      real(real64) :: Rt, R0, Et, D0, pt, eps
+      real(real64), parameter :: one_third = 0.3333333333333333_real64
+
+      ! Defensive clamps (these quantities should be non-negative)
+      Rt  = max(0.0_real64, roughness_t)
+      R0  = max(0.0_real64, roughness_0)
+      Et  = max(0.0_real64, rmse_t)
+      D0  = max(0.0_real64, diameter_0)
+      pt  = max(0.0_real64, coverage_penalty_t)
+      eps = max(0.0_real64, epsilon)
+
+      ! 1. Normalize Roughness (starts at ~1.0)
+      r_norm = Rt / (R0 + eps)
+
+      ! 2. Normalize RMSE (starts at 0.0)
+      ! Normalized by diameter to make it dimensionless and scale-independent
+      e_norm = Et / (D0 + eps)
+
+      ! 3. Composite product
+      ! We use (1 + e_norm) to prevent the product from being zero at t=0
+      combined_product = r_norm * (1.0_real64 + e_norm) * pt
+
+      ! 4. Geometric Mean (Cube root)
+      ! Lowering any factor lowers the score.
+      if (combined_product > 0.0_real64) then
+          score_t = combined_product**one_third
+      else
+          ! If something degenerates (e.g., pt=0), return a large score rather than "perfect"
+          score_t = huge(1.0_real64)
+      end if
+
+  end subroutine compute_smoothing_score
+
+
+
 end module f42_utils
 
 ! === R WRAPPERS ===

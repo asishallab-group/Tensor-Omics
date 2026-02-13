@@ -369,14 +369,11 @@ contains
     do k = 5, 20, 5
       write(*,*) 'Testing with k = ', k
       do i = 1, n
-        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, ierr)
         if (.not. is_ok(ierr)) then
           write(*,*) 'KNN query failed for 20 points (random Y): ', ierr
           error stop
         end if
-        ! write(*,*) 'Original point (random Y, ', i, '): ', X(:,i)
-        ! write(*,*) 'Neighbors: ', neighbors(1:k)
-        ! write(*,*) 'Distances: ', distances(1:k)
         call assert_true(all(neighbors(1:k) >= 1 .and. neighbors(1:k) <= n), 'Neighbors indices out of bounds (random Y)')
         call assert_true(all(distances(1:k) >= 0.0_real64), 'Distances are non-negative (random Y)')
         do j = 1, k
@@ -384,11 +381,6 @@ contains
             call assert_true(neighbors(j) /= neighbors(l), 'Duplicate neighbor returned')
           end do
         end do
-        ! Print all distances to other points
-        do l = 1, n
-          all_distances(l) = sqrt(sum((X(:,i) - X(:,l))**2))
-        end do
-        write(*,*) 'All distances from point ', i, ': ', all_distances
       end do
     end do
 
@@ -403,14 +395,11 @@ contains
     do k = 5, 20, 5
       write(*,*) 'Testing with k = ', k
       do i = 1, n
-        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, ierr)
         if (.not. is_ok(ierr)) then
           write(*,*) 'KNN query failed for 20 points (consequential Y): ', ierr
           error stop
         end if
-        write(*,*) 'Original point (consequential Y, ', i, '): ', X(:,i)
-        write(*,*) 'Neighbors: ', neighbors(1:k)
-        write(*,*) 'Distances: ', distances(1:k)
         call assert_true(all(neighbors(1:k) >= 1 .and. neighbors(1:k) <= n), 'Neighbors indices out of bounds (consequential Y)')
         call assert_true(all(distances(1:k) >= 0.0_real64), 'Distances are non-negative (consequential Y)')
         do j = 1, k
@@ -418,11 +407,6 @@ contains
             call assert_true(neighbors(j) /= neighbors(l), 'Duplicate neighbor returned')
           end do
         end do
-        ! Print all distances to other points
-        do l = 1, n
-          all_distances(l) = sqrt(sum((X(:,i) - X(:,l))**2))
-        end do
-        write(*,*) 'All distances from point ', i, ': ', all_distances
       end do
     end do
   end subroutine test_kd_knn_query_20_points
@@ -454,7 +438,7 @@ contains
       k = ks(t)
       write(*,*) 'Testing 500 points with k = ', k
       do i = 1, n
-        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, ierr)
         if (.not. is_ok(ierr)) then
           write(*,*) 'KNN query failed for 500 points (random values): ', ierr
           error stop
@@ -470,11 +454,6 @@ contains
           end do
         end do
 
-        ! Print the central point for each k
-        ! if (i == n / 2) then
-        !  write(*,*) 'Central point for k = ', k, ': ', X(:,i)
-        !  write(*,*) 'Neighbors: ', neighbors(1:k)
-        ! end if
       end do
     end do
 
@@ -492,7 +471,7 @@ contains
       k = ks(t)
       write(*,*) 'Testing 500 points with k = ', k
       do i = 1, n
-        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, subarray, ierr)
+        call kd_knn_query(X, kd_ix, d, n, dim_order, X(:,i), k, neighbors, distances, ierr)
         if (.not. is_ok(ierr)) then
           write(*,*) 'KNN query failed for 500 points (increasing values): ', ierr
           error stop

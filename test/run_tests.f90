@@ -24,6 +24,7 @@ program main
   ! use mod_test_manle_module
   use mod_test_root_mean_sq_normalization
   use mod_test_normalization_unit_length
+  use mod_test_smoothing_metrics
 
   implicit none
 
@@ -108,6 +109,8 @@ contains
     call add_suite("normalize_by_std_dev",run_all_tests_normalize_by_std_dev, run_named_tests_normalize_by_std_dev)
     call add_suite("knn_smoothing", run_all_tests_knn_smoothing, run_named_tests_knn_smoothing)
     ! call add_suite("manle_smoothing", run_all_tests_manle, run_named_tests_manle)
+    call add_suite("smoothing_metrics", run_all_tests_smoothing_metrics, run_named_tests_smoothing_metrics)
+
   end subroutine initialize_suites
   
 

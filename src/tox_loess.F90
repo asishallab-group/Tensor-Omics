@@ -3,7 +3,7 @@
 module tox_loess
   use safeguard
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, ERR_INVALID_INPUT, ERR_ALLOC_FAIL
+  use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_alloc_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
   
   ! ---- LOESS netlib externals ----
   ! ============================================================
@@ -124,6 +124,8 @@ module tox_loess
     end subroutine lowesw
   end interface
 
+real(real64), parameter :: EPS_LOESS = 1.0e-12_real64
+
 contains
 
   ! ============================================================
@@ -202,7 +204,9 @@ contains
     real(real64), intent(out) :: yhat(n)
     !| Smoothed response variable array
     integer(int32), intent(out) :: ierr
-    !! Error code
+    !| Error code
+    integer(int32) :: n_eff
+    !| Number of effective points
 
     ! Initialize error code
     call set_ok(ierr)
@@ -214,12 +218,12 @@ contains
     end if
 
     if (n == 1) then
+      write(*, '(A)') "LOESS: Single point detected. Skipping adjustment (yhat = y)."
       yhat(1) = y(1)
-      call set_err(ierr, ERR_INVALID_INPUT)
       return 
     end if
 
-    call validate_in_range_real(span, ierr, min=0.0_real64)
+    call validate_in_range_real(span, ierr, min=EPS_LOESS, max=1.0_real64)
     if (is_err(ierr)) then
       return
     end if
@@ -230,7 +234,20 @@ contains
       return
     end if
 
-    call lowesd(106, iv, liv, lv, wv, 1, n, span, degree, nvmax, setlf)
+    ! Validate degree 
+    if (degree < 0_int32 .or. degree > 2_int32) then
+      call set_err(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+
+    ! Validate effective points 
+    n_eff = max(2_int32, int(ceiling(span * real(n, real64))))
+    if (n_eff < degree + 3_int32) then
+      call set_err(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+
+    call lowesd(106, iv, liv, lv, wv, 1_int32, n, span, degree, nvmax, setlf)
     call lowesb(x, y, w, diagl, infl, iv, liv, lv, wv)
     call lowese(iv, liv, lv, wv, n, z, yhat)
 
@@ -290,16 +307,19 @@ contains
     real(real64), intent(out) :: yhat(n)
     !| Smoothed response variable array
     integer(int32), intent(out) :: ierr
-    !! Error code
+    !| Error code
+    integer(int32) :: n_eff
+    !| Number of effective points
 
-    integer :: it, i, dim_val
+    integer(int32) :: it, i, dim_val
 
     ! Initialize error code
     call set_ok(ierr)
 
     ! Validate inputs
     call validate_dimension_size(n, ierr)
-    call validate_in_range_real(span, ierr, min=0.0_real64)
+    call validate_in_range_real(span, ierr, min=EPS_LOESS, max=1.0_real64)
+    call validate_in_range_int(n_iters, ierr, min= 1_int32)
     if (is_err(ierr)) return
 
     ! Validate workspace sizes
@@ -309,20 +329,36 @@ contains
     end if
 
     if (n == 1) then
+      write(*, '(A)') "LOESS: Single point detected. Skipping adjustment (yhat = y)."
       yhat(1) = y(1)
-      call set_err(ierr, ERR_INVALID_INPUT)
       return 
     end if
 
+    ! Validate degree 
+    if (degree < 0_int32 .or. degree > 2_int32) then
+      call set_err(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+
+    ! Validate effective points 
+    n_eff = max(2_int32, int(ceiling(span * real(n, real64))))
+    if (n_eff < degree + 3_int32) then
+      call set_err(ierr, ERR_INVALID_INPUT)
+      return
+    end if
+
     rw = 1.0_real64
-    dim_val = 1
+    dim_val = 1_int32
 
     do it = 1, n_iters
+      iv = 0_int32
+      wv = 0.0_real64
+
       do i = 1, n
         ww(i) = w(i) * rw(i)
       end do
 
-      call lowesd(106, iv, liv, lv, wv, dim_val, n, span, degree, nvmax, setlf)
+      call lowesd(106_int32, iv, liv, lv, wv, dim_val, n, span, degree, nvmax, setlf)
       call lowesb(x, y, ww, diagl, infl, iv, liv, lv, wv)
       call lowese(iv, liv, lv, wv, n, z, yhat)
 
@@ -370,37 +406,120 @@ contains
     !| Error code
 
     ! Local variables
-    integer(int32) :: n, liv, lv
+    integer(int32) :: n, liv, lv, istat
     integer(int32), allocatable :: iv(:), pi(:)
     real(real64), allocatable :: wv(:), diagl(:), rw(:), ww(:), res(:), w_init(:), z_mat(:,:)
+    real(real64) :: range_x
+    integer(int32) :: uniq_count, need_uniq
+    real(real64) :: uniq_x(4)
+    logical :: found
+    integer(int32) :: i, j
+    real(real64) :: tol
 
     ! Initialize variables
     n = size(y)
     call set_ok(ierr)
+    call set_ok(istat)
 
-    ! Compute workspace sizes based on Netlib formulas
+    if (size(x) /= size(y)) then
+      call set_err(ierr, ERR_SIZE_MISMATCH)
+      return
+    end if
+
+    call validate_dimension_size(n, ierr)
+    if (is_err(ierr)) return
+
+    call validate_in_range_int(mode, ierr, min=0_int32, max=1_int32)
+    if (is_err(ierr)) return
+
+    call validate_in_range_int(degree, ierr, min=0_int32, max=2_int32)
+    if (is_err(ierr)) return
+
+    call validate_in_range_real(span, ierr, min=EPS_LOESS, max=1.0_real64)
+    if (is_err(ierr)) return
+
+    if (mode == 1_int32) then
+      call validate_in_range_int(n_iters, ierr, min=1_int32)
+      if (is_err(ierr)) return
+    end if
+
+    if (n == 1) then
+      write(*, '(A)') "LOESS: Single point detected. Skipping adjustment (yhat = y)."
+      yhat(1) = y(1)
+      call set_ok(ierr)
+      return
+    end if
+
+    call validate_all_in_range_real(x, n, ierr)  
+    if (is_err(ierr)) return
+
+    range_x = maxval(x) - minval(x)
+    if (range_x <= EPS_LOESS) then
+      write(*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
+      yhat = y
+      call set_ok(ierr)
+      return
+    end if
+
+    need_uniq  = min(4_int32, degree + 2_int32)
+    uniq_count = 0_int32
+    uniq_x     = 0.0_real64
+
+    do i = 1, n
+      ! tolerance to compare floats
+      tol = EPS_LOESS * max(1.0_real64, abs(x(i)))
+
+      found = .false.
+      do j = 1, uniq_count
+        if (abs(x(i) - uniq_x(j)) <= tol) then
+          found = .true.
+          exit
+        end if
+      end do
+
+      if (.not. found) then
+        uniq_count = uniq_count + 1_int32
+        uniq_x(uniq_count) = x(i)
+        if (uniq_count >= need_uniq) exit
+      end if
+    end do
+
+    if (uniq_count < need_uniq) then
+      ! a lot of same values to adjust
+      write(*, '(A, I2, A, I2, A)') "LOESS: Insufficient unique points (Found ", uniq_count, &
+                                    " but need ", need_uniq, "). Using identity mapping."
+      yhat = y
+      return
+    end if
+
     call tox_loess_required_workspace(1_int32, n, liv, lv, .false.)
 
     ! Allocate workspace arrays
-    allocate(iv(liv), wv(lv), diagl(n), w_init(n), z_mat(n, 1), stat=ierr)
-    if (ierr /= 0) return
+    allocate(iv(liv), wv(lv), diagl(n), w_init(n), z_mat(n, 1), stat=istat)
+    call check_alloc_stat(istat, ierr)
+    if(is_err(ierr)) return
 
     ! Initialize arrays
-    iv = 1_int32
+    iv = 0_int32
     w_init = 1.0_real64
+    diagl = 0.0_real64
     z_mat(:, 1) = x
+    wv = 0.0_real64
+
 
     ! Allocate additional arrays for robust mode
-    if (mode == 1) then
-      allocate(rw(n), ww(n), res(n), pi(n), stat=ierr)
-      if (ierr /= 0) then
+    if (mode == 1_int32) then
+      allocate(rw(n), ww(n), res(n), pi(n), stat=istat)
+      call check_alloc_stat(istat, ierr)
+      if (is_err(ierr)) then
         deallocate(iv, wv, diagl, w_init, z_mat)
         return
       end if
     end if
 
+
     ! Call the appropriate LOESS fitting subroutine
-    if (mode == 0) then
+    if (mode == 0_int32) then
       call loess_fit_plain(n, x, y, w_init, z_mat, span, degree, n, &
                           .false., .false., iv, liv, wv, lv, diagl, yhat, ierr)
     else

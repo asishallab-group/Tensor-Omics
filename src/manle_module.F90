@@ -3,6 +3,7 @@ module manle_module
   use iso_fortran_env, only: int32, real64
   use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT
   use kd_tree, only: build_kd_index, kd_knn_query
+  use anwil, only: smooth_vectors_gaussian_adaptive, anwil_smooth_sigma
 
   implicit none
 
@@ -234,25 +235,32 @@ subroutine project_to_subspace(data, Uk, k, n_points, n_dims, projected_data, ie
 end subroutine project_to_subspace
 
   !> Subroutine to apply adaptive smoothing using the ANWIL module
-  subroutine apply_anwil_smoothing(coords, vectors, smoothed, n_coord_dims, n_vector_dims, n_points, k_neighbors, ierr)
-    use anwil, only: smooth_vectors_gaussian_adaptive
+  subroutine apply_anwil_smoothing(coords, vectors, smoothed, n_coord_dims, n_vector_dims, n_points, k_neighbors, k_neighbors_sigma, kernel_type, ierr)
+    use anwil, only: smooth_vectors_gaussian_adaptive, anwil_smooth_sigma
     integer(int32), intent(in) :: n_coord_dims, n_vector_dims, n_points, k_neighbors
     real(real64), intent(inout) :: coords(n_coord_dims, n_points)
     real(real64), intent(inout) :: vectors(n_vector_dims, n_points)
     real(real64), intent(out) :: smoothed(n_vector_dims, n_points)
     integer(int32), intent(out) :: ierr
+    integer(int32), intent(in) :: kernel_type ! 1 gaussian, 2 tricubic
+    integer(int32), intent(in) :: k_neighbors_sigma
 
     ! Buffers for k-d tree and smoothing
     integer(int32) :: kd_indices(n_points), dimension_order(n_coord_dims)
     integer(int32) :: neighbors(k_neighbors), workspace(n_points), permutation(n_points), permutation_distances(k_neighbors)
     integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(k_neighbors), value_buffer(n_points), sd_arr(n_points)
+    real(real64) :: distances(k_neighbors), value_buffer(n_points), sd_arr(n_coord_dims,n_points), sigma_raw(1,n_points)
+
+    call anwil_smooth_sigma( coords, vectors, smoothed, &
+                            n_coord_dims, n_vector_dims, n_points, k_neighbors, &
+                            kd_indices, dimension_order, &
+                            workspace, value_buffer, permutation, left_stack, right_stack, sigma_raw, sd_arr, 0, 1.0_real64, k_neighbors_sigma, kernel_type, ierr )
 
     ! Call the smoothing subroutine from the ANWIL module
-    call smooth_vectors_gaussian_adaptive(coords, vectors, smoothed, &
-                                          n_coord_dims, n_vector_dims, n_points, k_neighbors, &
-                                          kd_indices, dimension_order, neighbors, distances, &
-                                          workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 0, 1.0_real64, sd_arr, ierr)
+    !call smooth_vectors_gaussian_adaptive(coords, vectors, smoothed, &
+    !                                      n_coord_dims, n_vector_dims, n_points, k_neighbors, &
+    !                                      kd_indices, dimension_order, neighbors, distances, &
+    !                                      workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, 0, 1.0_real64, sd_arr, ierr)
   end subroutine apply_anwil_smoothing
 
   !> Subroutine to apply anisotropic smoothing using the AManLe algorithm and KD-Tree.
@@ -320,13 +328,13 @@ end subroutine project_to_subspace
           ! A. QUERY K-NEAREST NEIGHBORS (Using coords - the current geometry of the manifold)
 
           call kd_knn_query(coords, kd_indices, n_coord_dims, n_points, dimension_order, &
-                        coords(:, i), k_neighbors, neighbors, distances, value_buffer, ierr)
+                        coords(:, i), k_neighbors, neighbors, distances, ierr)
           if (.not. is_ok(ierr)) return
 
           ! Verify that the indices are within bounds before calling kd_knn_query
           if (any(neighbors < 1) .or. any(neighbors > n_points)) then
               call set_err_once(ierr, ERR_INVALID_INPUT)
-              print *, "Error: Neighbor indices out of range in kd_knn_query."
+              ! ! print *, "Error: Neighbor indices out of range in kd_knn_query."
               return
           end if
 
@@ -337,7 +345,7 @@ end subroutine project_to_subspace
               idx = neighbors(j) ! Use the neighbor's index
 
               ! B. CALCULATE DISPLACEMENT (in the ambient space, NOT the projected one)
-              displacement = vectors(:, idx) - vectors(:, i) 
+              displacement = vectors(:, idx) - coords(:, i)
               
               d2 = 0.0_real64
 
@@ -382,7 +390,7 @@ subroutine manle_pipeline( &
     data, n_points, n_dims, &
     k_neighbors, n_iters_max, tol, &
     Omega, Y, Q, B, Stmp, Utmp, tau, work, lwork, &
-    manifold, svd_line, ierr )
+    manifold, svd_line, k_neighbors_sigma, kernel_type, ierr )
 
   use iso_fortran_env, only: real64, int32
   use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT
@@ -403,6 +411,8 @@ subroutine manle_pipeline( &
   real(real64), intent(inout) :: tau(:)
   real(real64), intent(inout) :: work(lwork)
   integer(int32), intent(in)  :: lwork
+  integer(int32), intent(in) :: kernel_type ! 1 gaussian, 2 tricubic
+  integer(int32), intent(in) :: k_neighbors_sigma
 
   real(real64), intent(out) :: manifold(n_dims, n_points)
   real(real64), intent(out) :: svd_line(n_dims, n_points)  ! Added output for SVD line
@@ -459,7 +469,7 @@ subroutine manle_pipeline( &
 
      call apply_anwil_smoothing( &
           coords, data_centered, tmp, &
-          1, n_dims, n_points, k_neighbors, ierr )
+          1, n_dims, n_points, k_neighbors, k_neighbors_sigma, kernel_type, ierr )
      if (ierr /= 0) return
 
      diff  = tmp - manifold
@@ -478,7 +488,7 @@ subroutine amanle_pipeline( &
     data, n_points, n_dims, &
     k_intrinsic, k_neighbors, n_iters_max, tol, &
     work, lwork, &
-    manifold, svd_line, ierr )
+    manifold, svd_line, k_neighbors_sigma, kernel_type, ierr )
 
   use iso_fortran_env, only: real64, int32
   use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT, is_ok
@@ -492,6 +502,8 @@ subroutine amanle_pipeline( &
   real(real64), intent(in)   :: data(n_dims, n_points)   ! <- fixed originals
   real(real64), intent(inout):: work(lwork)
   integer(int32), intent(in) :: lwork
+  integer(int32), intent(in) :: kernel_type ! 1 gaussian, 2 tricubic
+  integer(int32), intent(in) :: k_neighbors_sigma
 
   ! OUTPUT
   real(real64), intent(out) :: manifold(n_dims, n_points)
@@ -517,7 +529,8 @@ subroutine amanle_pipeline( &
   integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
   integer(int32) :: neighbors(k_neighbors), workspace_knn(n_points), permutation(n_points)
   integer(int32) :: left_stack(n_points), right_stack(n_points)
-  real(real64)   :: distances(k_neighbors), value_buffer_knn(n_points)
+  real(real64)   :: distances(k_neighbors), value_buffer_knn(n_points), sd_arr(n_dims, n_points), sigma_raw(1, n_points)
+  
 
   integer(int32) :: t, r
   real(real64)   :: dotval
@@ -532,7 +545,7 @@ subroutine amanle_pipeline( &
 
   if (info /= 0) then
     call set_err_once(ierr, ERR_INVALID_INPUT)
-    print *, "Error: allocate(U_full) failed."
+    ! print *, "Error: allocate(U_full) failed."
     return
   end if
 
@@ -540,7 +553,7 @@ subroutine amanle_pipeline( &
   allocate(Vt_dummy(1, 1), stat=info)
   if (info /= 0) then
     call set_err_once(ierr, ERR_INVALID_INPUT)
-    print *, "Error: allocate(Vt_dummy) failed."
+    ! print *, "Error: allocate(Vt_dummy) failed."
     if (allocated(U_full)) deallocate(U_full)
     return
   end if
@@ -548,14 +561,14 @@ subroutine amanle_pipeline( &
   ! Validación mínima
   if (k_intrinsic < 1 .or. k_intrinsic >= n_dims) then
     call set_err_once(ierr, ERR_INVALID_INPUT)
-    print *, "Error: Invalid k_intrinsic."
+    ! print *, "Error: Invalid k_intrinsic."
     return
   end if
 
   ! 1) CENTRADO (una sola vez)
   call center_module(data, n_points, n_dims, data_centered, ierr)
   if (.not. is_ok(ierr)) then
-    print *, "Error in center_module. ierr=", ierr
+    ! print *, "Error in center_module. ierr=", ierr
     return
   end if
 
@@ -566,19 +579,19 @@ subroutine amanle_pipeline( &
               U_full, n_dims, Vt_dummy, 1, work_query, -1, info)
   if (info /= 0) then
     ierr = info
-    print *, "Error in SVD workspace query. info=", info
+    ! print *, "Error in SVD workspace query. info=", info
     return
   end if
   lwork_svd = int(work_query(1), kind=int32)
 
-  print *, "DBG: lwork passed=", lwork
-  print *, "DBG: work_query(1)=", work_query(1)
-  print *, "DBG: lwork_svd=", lwork_svd
+  ! print *, "DBG: lwork passed=", lwork
+  ! print *, "DBG: work_query(1)=", work_query(1)
+  ! print *, "DBG: lwork_svd=", lwork_svd
 
 
   if (lwork < lwork_svd) then
     call set_err_once(ierr, ERR_INVALID_INPUT)
-    print *, "Error: Insufficient workspace size. Need lwork >=", lwork_svd
+    ! print *, "Error: Insufficient workspace size. Need lwork >=", lwork_svd
     return
   end if
 
@@ -588,7 +601,7 @@ subroutine amanle_pipeline( &
               U_full, n_dims, Vt_dummy, 1, work, lwork_svd, info)
   if (info /= 0) then
     ierr = info
-    print *, "Error in SVD computation. info=", info
+    ! print *, "Error in SVD computation. info=", info
     return
   end if
 
@@ -612,31 +625,48 @@ subroutine amanle_pipeline( &
   ! 4) ITERACIONES: solo evoluciona manifold; targets y SVD quedan fijos
   do t = 1, n_iters_max
 
-     call apply_amanle_smoothing( &
-          manifold, data_centered, tmp_next, &
-          n_dims, n_dims, n_points, k_neighbors, &
-          k_intrinsic, U_full, S_full, current_sigma_T, current_sigma_N, ierr, &
-          kd_indices, dimension_order, workspace_knn, value_buffer_knn, &
-          neighbors, distances, permutation, left_stack, right_stack )
+    !call apply_amanle_smoothing( &
+    !     manifold, data_centered, tmp_next, &
+    !     n_dims, n_dims, n_points, k_neighbors, &
+    !     k_intrinsic, U_full, S_full, current_sigma_T, current_sigma_N, ierr, &
+    !     kd_indices, dimension_order, workspace_knn, value_buffer_knn, &
+    !     neighbors, distances, permutation, left_stack, right_stack )
 
-     if (.not. is_ok(ierr)) then
-        print *, "Error in apply_amanle_smoothing. ierr=", ierr
-        return
-     end if
+    call anwil_smooth_sigma( &
+        manifold,           & ! Coordenadas actuales (donde busco vecinos)
+        data_centered,      & ! Targets originales (el valor que promedio)
+        tmp_next,           & ! Resultado: nuevo manifold
+        n_dims, n_dims, n_points, k_neighbors, &
+        kd_indices, dimension_order, workspace_knn, value_buffer_knn, &
+        permutation, left_stack, right_stack, sigma_raw, sd_arr, &
+        3,                  & ! anisotropy_mode = 3 (AManLe)
+        1.0_real64,  k_neighbors_sigma, kernel_type, & 
+        ierr,               &
+        U_full,             & ! PASAMOS LA ESTRUCTURA SVD
+        S_full,             & 
+        k_intrinsic         & 
+    )
 
-     diff  = tmp_next - manifold
-     delta = maxval( sqrt(sum(diff**2, dim=1)) )
-     print *, "Delta: ", delta
+    if (.not. is_ok(ierr)) return
 
-     manifold = tmp_next
+    if (.not. is_ok(ierr)) then
+      ! print *, "Error in apply_amanle_smoothing. ierr=", ierr
+      return
+    end if
 
-     if (delta < tol) then
-        print *, "Convergence achieved."
-        exit
-     end if
+    diff  = tmp_next - manifold
+    delta = maxval( sqrt(sum(diff**2, dim=1)) )
+    ! print *, "Delta: ", delta
+
+    manifold = tmp_next
+
+    if (delta < tol) then
+      ! print *, "Convergence achieved."
+      exit
+    end if
   end do
 
-  print *, "amanle_pipeline completed successfully."
+  ! print *, "amanle_pipeline completed successfully."
 
   if (allocated(U_full))    deallocate(U_full)
   if (allocated(Vt_dummy))  deallocate(Vt_dummy)
@@ -647,7 +677,7 @@ end subroutine amanle_pipeline
 subroutine anwil_iterative( &
     data, n_points, n_dims, &
     k_neighbors, n_iters_max, tol, &
-    tmp, manifold, ierr )
+    tmp, manifold, k_neighbors_sigma, kernel_type, ierr )
 
   use iso_fortran_env, only: real64, int32
   use tox_errors, only: set_ok
@@ -658,6 +688,8 @@ subroutine anwil_iterative( &
   integer(int32), intent(in) :: k_neighbors, n_iters_max
   real(real64),   intent(in) :: tol
   real(real64),   intent(in) :: data(n_dims, n_points)   ! (x1, x2, ..., xn)
+  integer(int32), intent(in) :: kernel_type ! 1 gaussian, 2 tricubic
+  integer(int32), intent(in) :: k_neighbors_sigma
 
   ! WORK
   real(real64), intent(inout) :: tmp(n_dims, n_points)
@@ -688,7 +720,7 @@ subroutine anwil_iterative( &
 
      call apply_anwil_smoothing( &
           coords, manifold, smoothed, &
-          n_dims, n_dims, n_points, k_neighbors, ierr )
+          n_dims, n_dims, n_points, k_neighbors, k_neighbors_sigma, kernel_type, ierr )
      if (ierr /= 0) return
 
      diff  = smoothed - manifold
