@@ -141,12 +141,12 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_reps_S1, ierr)
-        call validate_dimension_size(n_reps_S2, ierr)
-        call validate_dimension_size(n_neighbors, ierr)
-        call validate_dimension_size(n_points, ierr)
-        call validate_in_range_int(n_bins, ierr, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64)
+        call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=9_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=10_int32, min=0.0_real64)
 
         if (is_err(ierr)) return
 

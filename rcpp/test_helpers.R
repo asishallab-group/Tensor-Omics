@@ -27,6 +27,7 @@ run_all_tests <- function(env = parent.frame(), test_only = TRUE) {
         passed <- passed + 1
       },
       error = function(e) {
+        stop(e)
         msg <- conditionMessage(e)
 
         # Same skip logic as Python version

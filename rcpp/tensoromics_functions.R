@@ -1456,7 +1456,9 @@ tox_fjct_compute_jsd <- function(
     shared_residual_range
   )
 
-  check_err_code(result$ierr)
+  check_err_code(result$ierr, list(
+    "9" = deparse(substitute(n_bins))
+  ))
   result
 }
 

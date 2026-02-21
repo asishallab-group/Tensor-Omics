@@ -2728,7 +2728,15 @@ def tox_detect_neofunctionalization(ancestors, genes, gene_to_fam, thresholds):
     # Call Fortran routine
     detect_neofunc_c(ancestors, ctypes.byref(n_families), genes, ctypes.byref(n_axes),
                      gene_to_fam, ctypes.byref(n_genes), thresholds, neofunc, ctypes.byref(ierr))
-    check_err_code(ierr.value)
+    check_err_code(ierr.value, {
+        1: "ancestors",
+        2: "ancestors",
+        3: "genes",
+        4: "ancestors",
+        5: "gene_to_fam",
+        6: "genes",
+        7: "thresholds"
+    })
 
     neofunc_bool = neofunc > 0
 
