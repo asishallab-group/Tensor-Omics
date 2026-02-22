@@ -31,6 +31,7 @@ module f42_utils
 
   real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
   real(real64), parameter :: EPS = epsilon(1.0_real64)
+  real(real64), parameter :: LOG_2 = log(2.0_real64)
 contains
 
   !> Function to find the position to place a value in a sorted array using binary search
@@ -1172,6 +1173,16 @@ contains
     call calc_percentile_helper(array, permutation, percentile, value)
   end subroutine calc_percentile
 
+  !> Calculate the fractional index using linear interpolation method
+  pure function calc_percentile_rank(percentile, n) result(rank)
+    integer(int32), intent(in) :: n
+      !! Sample size
+    real(real64), intent(in) :: percentile
+      !! desired percentile (0-100)
+
+    rank = (percentile / 100.0_real64) * real(n - 1, real64) + 1.0_real64
+  end function calc_percentile_rank
+
   !> (no input validation) Calculate the percentile of an array given a sorted permutation.
   !! Uses linear interpolation between adjacent values.
   pure subroutine calc_percentile_helper(array, permutation, percentile, value)
@@ -1195,10 +1206,7 @@ contains
       return
     end if
     
-    ! Calculate the fractional index using linear interpolation method
-    ! This follows the method used in numpy.percentile with interpolation='linear'
-    index = (percentile / 100.0_real64) * real(n - 1, real64) + 1.0_real64
-    
+    index = calc_percentile_rank(percentile, n)
     lower_index = floor(index)
     fraction = index - real(lower_index, real64)
     

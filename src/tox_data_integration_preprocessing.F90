@@ -7,7 +7,7 @@ submodule (tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
-    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion
+    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion, LOG_2
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err
     implicit none
 
@@ -137,6 +137,90 @@ contains
 
     end subroutine compute_residuals_helper
 
+    pure module subroutine estimate_bin_count_and_resid_range()
+        real(real64), intent(in) :: resid(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+            !! Matrix of signed residuals
+    end subroutine estimate_bin_count_and_resid_range
+
+    pure module subroutine estimate_bin_count_and_resid_range_helper(resid, resid_perm, n_bins, n_neighbors)
+        integer(int32), intent(out) :: n_neighbors
+            !! Neighborhood size
+        real(real64), intent(in) :: resid(max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: resid_perm(max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
+            !! Sorting permutation for `resid`
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), intent(out) :: shared_residual_range
+            !! Computed residual range (R)
+
+        integer(int32) :: n_pool, i_pool, left, right, lower_index
+        real(real64) :: bin_width, quartile_25, quartile_75, n_reps_neighborhood, fraction, index, upper_val
+
+        n_pool = find_last_non_nan(resid, resid_perm, size(resid, kind=int32))
+        if (n_pool == 0) then
+            n_bins = 0
+            return
+        else
+            n_reps_neighborhood = real(max_n_reps_all_studies * n_neighbors, kind=real64)
+
+            ! Residual range: Calculate quantile for absolute values
+            index = calc_percentile_rank(0.95_real64, n_pool)
+            lower_index = floor(index)
+            fraction = index - real(lower_index, real64)
+            if (lower_index < 2) then
+                shared_residual_range = resid(1)  ! No empty arrays in helper
+            else
+                ! As resid might have negative values, pick from top and bottom until rank is reached
+                left = 1
+                right = n_pool
+                do i_pool = lower_index, n_pool
+                    if (i_pool == n_pool) upper_val = shared_residual_range
+                    if (abs(resid(resid_perm(left))) > abs(resid(resid_perm(right)))) then
+                        shared_residual_range = abs(resid(resid_perm(left)))
+                        left = left + 1
+                    else
+                        shared_residual_range = abs(resid(resid_perm(right)))
+                        right = right - 1
+                    end if
+                end do
+
+                shared_residual_range = shared_residual_range + (upper_val - shared_residual_range) * fraction
+            end if
+
+            ! Estimate n_bins
+            ! Sturges
+            n_bins = 1 + nint(log(n_reps_neighborhood) / LOG_2)
+
+            ! Freedman-Diaconis
+            call calc_percentile_helper(resid(:n_pool), resid_perm(:n_pool), 0.25_real64, quartile_25)
+            call calc_percentile_helper(resid(:n_pool), resid_perm(:n_pool), 0.75_real64, quartile_75)
+            bin_width = 2.0_real64 * ((quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64)))
+
+            n_bins = max(n_bins, nint((shared_residual_range * 2) / bin_width))
+        end if
+    end subroutine estimate_bin_count_and_resid_range_helper
+
+    pure module function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
+        real(real64), dimension(n_elements), intent(in) :: arr
+            !! Array to find the last non-NaN index
+        integer(int32), dimension(n_elements), intent(in) :: arr_perm
+            !! Sorting permutation for `arr`
+
+        integer(int32) :: i_element
+
+        idx = n_elements
+
+        ! NaN is always last -> find last non-NaN index for percentile calculation
+        do i_element = n_elements, 1, -1
+            if (ieee_is_nan(arr(arr_perm(i_element)))) then
+                idx = idx - 1
+            else
+                exit
+            end if
+        end do
+    end function find_last_non_nan
+
     !> Pool per-gene mean expression values across studies
     pure module subroutine pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
         integer(int32), intent(in) :: n_genes_S1
@@ -234,16 +318,7 @@ contains
         integer(int32) :: i_gene, i_point
         real(real64) :: quantile_level
 
-        n_pool = size(pooled_means, kind=int32)
-
-        ! NaN is always last -> find last non-NaN index for percentile calculation
-        do i_gene = n_pool, 1, -1
-            if (ieee_is_nan(pooled_means(pooled_means_perm(i_gene)))) then
-                n_pool = n_pool - 1
-            else
-                exit
-            end if
-        end do
+        n_pool = find_last_non_nan(pooled_means, pooled_means_perm, pool_size)
 
         if (n_pool == 0) then
             x_star = M_NAN
