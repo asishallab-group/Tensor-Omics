@@ -55,6 +55,10 @@ module tox_data_integration
 
     interface compute_residuals
         !> Compute signed residuals (centering by mean)
+        !|
+        !| @note
+        !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
+        !| @endnote
         pure module subroutine compute_residuals(n_genes, n_reps, expr, means, resid, ierr)
             integer(int32), intent(in) :: n_genes
                 !! Number of genes in the study
@@ -73,6 +77,10 @@ module tox_data_integration
 
     interface compute_residuals_helper
         !> (no input validation) Compute signed residuals (centering by mean)
+        !|
+        !| @note
+        !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
+        !| @endnote
         pure module subroutine compute_residuals_helper(n_genes, n_reps, expr, means, resid)
             integer(int32), intent(in) :: n_genes
                 !! Number of genes in the study

@@ -33,6 +33,62 @@ module f42_utils
   real(real64), parameter :: EPS = epsilon(1.0_real64)
 contains
 
+  !> Function to find the position to place a value in a sorted array using binary search
+  pure integer(int32) function binary_search_insertion(arr, perm, value, lower_idx, upper_idx) result(idx)
+    real(real64), dimension(:), contiguous, intent(in) :: arr
+      !! Array of values
+    integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
+      !! Sorting permutation of `arr`
+    real(real64), intent(in) :: value
+      !! Value to find
+    integer(int32), intent(in), optional :: lower_idx
+      !! The lower index to start searching in the array, default `1` -> searching in `perm(lower_idx:upper_idx)`
+    integer(int32), intent(in), optional :: upper_idx
+      !! The upper index to stop searching in the array, default `size(arr)` -> searching in `perm(lower_idx:upper_idx)`
+
+    integer(int32) :: actual_lower_idx, actual_upper_idx, mid_idx, n
+
+    n = size(arr, kind=int32)
+
+    M_DEFAULT_VAL(lower_idx, actual_lower_idx, 1_int32)
+    actual_lower_idx = clamp(actual_lower_idx, min_val=1_int32, max_val=n)
+    M_DEFAULT_VAL(actual_upper_idx, actual_actual_upper_idx, n + 1)
+    actual_upper_idx = clamp(actual_upper_idx, min_val=actual_lower_idx-1, max_val=n) + 1
+
+    do while (actual_lower_idx < actual_upper_idx)
+      actual_mid_idx = (actual_lower_idx + actual_upper_idx) / 2
+      if (real_less(arr(perm(actual_mid_idx)), value)) then
+        actual_lower_idx = actual_mid_idx + 1
+      else
+        actual_upper_idx = actual_mid_idx
+      end if
+    end do
+
+    idx = actual_lower_idx
+  end function binary_search_insertion
+
+  !> Function to find a value in a sorted array using binary search. Returns -1 if not found
+  pure integer(int32) function binary_search_insertion(arr, perm, value) result(idx)
+    real(real64), dimension(:), contiguous, intent(in) :: arr
+      !! Array of values
+    integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
+      !! Sorting permutation of `arr`
+    real(real64), intent(in) :: value
+      !! Value to find
+
+    real(real64) :: found
+
+    if (size(arr, kind=int32) == 0) then
+      idx = 0
+    else
+      idx = binary_search_insertion(arr, perm, value)
+      found = arr(perm(idx))
+      if (found /= value .and. .not. (ieee_is_nan(found) .and. ieee_is_nan(value))) then
+        idx = -1
+      end if
+    end if
+  end function binary_search_insertion
+
   !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
   pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
     real(real64), intent(in) :: val
