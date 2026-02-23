@@ -125,6 +125,115 @@ contains
         call determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range_alloc
 
+    pure module subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i_residual
+        integer(int32), dimension(:), allocatable :: residuals_perm
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
+
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(residuals_perm(n_residuals))
+
+        ! initialize permutation
+        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
+            residuals_perm(i_residual) = i_residual
+        end do
+
+        call sort_array_heapsort(residuals, residuals_perm)
+
+        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    end subroutine estimate_bin_count_alloc
+
+    pure module subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `residuals`
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arp_pos=2_int32)
+
+        if (is_err(ierr)) return
+
+        call estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    end subroutine estimate_bin_count
+
+    pure module subroutine estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `residuals`
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+
+        integer(int32) :: n_pool
+        real(real64) :: bin_width, quartile_25, quartile_75, n_reps_neighborhood
+
+        n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
+        if (n_pool == 0) then
+            n_bins = 0
+        else
+            n_reps_neighborhood = real(max_n_reps_all_studies * n_neighbors, kind=real64)
+
+            ! Estimate n_bins
+            ! Sturges
+            n_bins = 1 + nint(log(n_reps_neighborhood) / LOG_2)
+
+            ! Freedman-Diaconis
+            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 25.0_real64, quartile_25)
+            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 75.0_real64, quartile_75)
+            bin_width = 2.0_real64 * ((quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64)))
+
+            n_bins = max(n_bins, nint((shared_residual_range * 2) / bin_width))
+        end if
+    end subroutine estimate_bin_count_helper
+
     !> Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
     pure module subroutine build_residual_histograms(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, ierr, neighbor_mask)
         integer(int32), intent(in) :: n_reps
