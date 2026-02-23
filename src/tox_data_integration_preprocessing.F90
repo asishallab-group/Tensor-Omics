@@ -6,7 +6,7 @@
 submodule (tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite, ieee_positive_inf
     use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion, LOG_2
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err, validate_all_in_range_int
     implicit none
@@ -143,18 +143,8 @@ contains
         integer(int32), dimension(n_elements), intent(in) :: arr_perm
             !! Sorting permutation for `arr`
 
-        integer(int32) :: i_element
-
-        idx = n_elements
-
-        ! NaN is always last -> find last non-NaN index for percentile calculation
-        do i_element = n_elements, 1, -1
-            if (ieee_is_nan(arr(arr_perm(i_element)))) then
-                idx = idx - 1
-            else
-                exit
-            end if
-        end do
+        ! Search for positive infinity. As NaN is always sorted to the end, the insertion index will point to the first NaN.
+        idx = binary_search_insertion(arr, arr_perm, M_POS_INF) - 1
     end function find_last_non_nan
 
     !> Pool per-gene mean expression values across studies
