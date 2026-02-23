@@ -8,7 +8,7 @@ submodule (tox_data_integration) tox_data_integration_preprocessing
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
     use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion, LOG_2
-    use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err
+    use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err, validate_all_in_range_int
     implicit none
 
 contains
@@ -137,69 +137,114 @@ contains
 
     end subroutine compute_residuals_helper
 
-    pure module subroutine estimate_bin_count_and_resid_range()
-        real(real64), intent(in) :: resid(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals
-    end subroutine estimate_bin_count_and_resid_range
-
-    pure module subroutine estimate_bin_count_and_resid_range_helper(resid, resid_perm, n_bins, n_neighbors)
-        integer(int32), intent(out) :: n_neighbors
+    pure module subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+        integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
-        real(real64), intent(in) :: resid(max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
             !! Matrix of signed residuals
-        integer(int32), intent(in) :: resid_perm(max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
-            !! Sorting permutation for `resid`
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
         integer(int32), intent(out) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
-        real(real64), intent(out) :: shared_residual_range
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i_residual
+        integer(int32), dimension(:), allocatable :: residuals_perm
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
+
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(residuals_perm(n_residuals))
+
+        ! initialize permutation
+        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
+            residuals_perm(i_residual) = i_residual
+        end do
+
+        call sort_array_heapsort(residuals, residuals_perm)
+
+        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    end subroutine estimate_bin_count_alloc
+
+    pure module subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `residuals`
+        real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-        integer(int32) :: n_pool, i_pool, left, right, lower_index
-        real(real64) :: bin_width, quartile_25, quartile_75, n_reps_neighborhood, fraction, index, upper_val
+        call set_ok(ierr)
 
-        n_pool = find_last_non_nan(resid, resid_perm, size(resid, kind=int32))
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arp_pos=2_int32)
+
+        if (is_err(ierr)) return
+
+        call estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    end subroutine estimate_bin_count
+
+    pure module subroutine estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `residuals`
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+
+        integer(int32) :: n_pool
+        real(real64) :: bin_width, quartile_25, quartile_75, n_reps_neighborhood
+
+        n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
         if (n_pool == 0) then
             n_bins = 0
-            return
         else
             n_reps_neighborhood = real(max_n_reps_all_studies * n_neighbors, kind=real64)
-
-            ! Residual range: Calculate quantile for absolute values
-            index = calc_percentile_rank(0.95_real64, n_pool)
-            lower_index = floor(index)
-            fraction = index - real(lower_index, real64)
-            if (lower_index < 2) then
-                shared_residual_range = resid(1)  ! No empty arrays in helper
-            else
-                ! As resid might have negative values, pick from top and bottom until rank is reached
-                left = 1
-                right = n_pool
-                do i_pool = lower_index, n_pool
-                    if (i_pool == n_pool) upper_val = shared_residual_range
-                    if (abs(resid(resid_perm(left))) > abs(resid(resid_perm(right)))) then
-                        shared_residual_range = abs(resid(resid_perm(left)))
-                        left = left + 1
-                    else
-                        shared_residual_range = abs(resid(resid_perm(right)))
-                        right = right - 1
-                    end if
-                end do
-
-                shared_residual_range = shared_residual_range + (upper_val - shared_residual_range) * fraction
-            end if
 
             ! Estimate n_bins
             ! Sturges
             n_bins = 1 + nint(log(n_reps_neighborhood) / LOG_2)
 
             ! Freedman-Diaconis
-            call calc_percentile_helper(resid(:n_pool), resid_perm(:n_pool), 0.25_real64, quartile_25)
-            call calc_percentile_helper(resid(:n_pool), resid_perm(:n_pool), 0.75_real64, quartile_75)
+            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 25.0_real64, quartile_25)
+            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 75.0_real64, quartile_75)
             bin_width = 2.0_real64 * ((quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64)))
 
             n_bins = max(n_bins, nint((shared_residual_range * 2) / bin_width))
         end if
-    end subroutine estimate_bin_count_and_resid_range_helper
+    end subroutine estimate_bin_count_helper
 
     pure module function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
         real(real64), dimension(n_elements), intent(in) :: arr
@@ -379,7 +424,7 @@ contains
     end function calc_neighborhood_size
 
     !> Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, abs_mean_S, neighborhood_residuals, n_neighbors, ierr)
+    pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -389,7 +434,7 @@ contains
         real(real64), intent(in) :: x_star(n_points)
             !! Mean-expression reference points
         real(real64), intent(in) :: mean_S(n_genes_S)
-            !! Array of absolute per-gene mean values
+            !! Array of per-gene mean values
         real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
@@ -401,9 +446,7 @@ contains
             !! Error code
 
         integer(int32) :: i_gene
-        real(real64), dimension(:), allocatable :: abs_mean_S
-        integer(int32), dimension(:), allocatable :: abs_mean_S_perm
-        logical :: already_abs
+        integer(int32), dimension(:), allocatable :: mean_S_perm
 
         call set_ok(ierr)
 
@@ -413,34 +456,19 @@ contains
 
         if (is_err(ierr)) return
 
-        M_ALLOCATE(abs_mean_S_perm(n_genes_S))
+        M_ALLOCATE(mean_S_perm(n_genes_S))
 
-        ! Check if all values are already absolute and initialize perm
-        already_abs = .true.
-        do concurrent (i_gene = 1:n_genes_S) shared(mean_S, abs_mean_S_perm) reduce(.and.:already_abs)
-            if (.not. ieee_is_nan(mean_S(i_gene))) then
-                already_abs = already_abs .and. mean_S(i_gene) >= 0
-            end if
-            abs_mean_S_perm(i_gene) = i_gene
+        ! Initialize perm
+        do concurrent (i_gene = 1:n_genes_S) shared(mean_S_perm)
+            mean_S_perm(i_gene) = i_gene
         end do
 
-        ! If all values are already absolute, just use them directly
-        if (already_abs) then
-            call heapsort_real(mean_S, abs_mean_S_perm)
-            call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, abs_mean_S_perm, neighborhood_residuals, n_neighbors)
-        else
-            M_ALLOCATE(abs_mean_S(n_genes_S))
-            do concurrent (i_gene = 1:n_genes) shared(abs_mean_S, mean_S)
-                abs_mean_S(i_gene) = abs(mean_S(i_gene))
-            end do
-
-            call heapsort_real(abs_mean_S, abs_mean_S_perm)
-            call construct_neighborhoods_helper(n_points, x_star, n_genes_S, abs_mean_S, abs_mean_S_perm, neighborhood_residuals, n_neighbors)
-        end if
+        call heapsort_real(mean_S, mean_S_perm)
+        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
     end subroutine construct_neighborhoods_alloc
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods(n_points, x_star, n_genes_S, abs_mean_S, abs_mean_S_perm, neighborhood_residuals, n_neighbors, ierr)
+    pure module subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -449,10 +477,10 @@ contains
             !! Number of neighbors, **CALCULATE IT WITH [[tox_data_integration(module):calc_neighborhood_size(interface)]]**
         real(real64), intent(in) :: x_star(n_points)
             !! Mean-expression reference points
-        real(real64), intent(in) :: abs_mean_S(n_genes_S)
-            !! Array of absolute per-gene mean values
-        integer(int32), intent(in) :: abs_mean_S_perm(n_genes_S)
-            !! Sorting permutation for `abs_mean_S`
+        real(real64), intent(in) :: mean_S(n_genes_S)
+            !! Array of per-gene mean values
+        integer(int32), intent(in) :: mean_S_perm(n_genes_S)
+            !! Sorting permutation for `mean_S`
         real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
@@ -468,15 +496,15 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=6_int32)
-        call validate_all_in_range_int(abs_mean_S_perm, n_genes_S, ierr, min=1_int32, max=n_genes_S)
+        call validate_all_in_range_int(mean_S_perm, n_genes_S, ierr, min=1_int32, max=n_genes_S)
 
         if (is_err(ierr)) return
 
-        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, abs_mean_S, abs_mean_S_perm, neighborhood_residuals, n_neighbors)
+        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
     end subroutine construct_neighborhoods
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, abs_mean_S, abs_mean_S_perm, neighborhood_residuals, n_neighbors)
+    pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -485,10 +513,10 @@ contains
             !! Number of neighbors, **CALCULATE IT WITH [[tox_data_integration(module):calc_neighborhood_size(interface)]]**
         real(real64), intent(in) :: x_star(n_points)
             !! Mean-expression reference points
-        real(real64), intent(in) :: abs_mean_S(n_genes_S)
-            !! Array of absolute per-gene mean values
-        integer(int32), intent(in) :: abs_mean_S_perm(n_genes_S)
-            !! Sorting permutation for `abs_mean_S`
+        real(real64), intent(in) :: mean_S(n_genes_S)
+            !! Array of per-gene mean values
+        integer(int32), intent(in) :: mean_S_perm(n_genes_S)
+            !! Sorting permutation for `mean_S`
         real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
@@ -501,16 +529,22 @@ contains
         real(real64) :: x_star_val
 
         ! Process each reference point
-        do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, abs_mean_S, abs_mean_S_perm)
+        do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
 
             x_star_val = x_star(i_point)
-            x_star_idx = binary_search_insertion(abs_mean_S, abs_mean_S_perm, x_star_val)
 
-            if (x_star_idx == 1 .or. ieee_is_nan(x_star_val)) then
+            ! If x_star is NaN, all gene expressions/residuals are NaN -> first element
+            if (ieee_is_nan(x_star_val)) then
+                x_star_idx = 1
+            else
+                x_star_idx = binary_search_insertion(mean_S, mean_S_perm, x_star_val)
+            end if
+
+            if (x_star_idx == 1) then
                 ! The first `n_neighbors` genes are the closest to `x_star_val`
                 do concurrent (i_neighbor = 1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_residuals, i_point)
                     if (i_neighbor <= n_genes_S) then
-                        gene_idx = abs_mean_S_perm(i_neighbor)
+                        gene_idx = mean_S_perm(i_neighbor)
                     else
                         gene_idx = i_neighbor
                     end if
@@ -527,20 +561,20 @@ contains
                         if (right_gene > n_genes_S) then
                             neighborhood_residuals(i_neighbor, i_point) = i_neighbor
                         else
-                            neighborhood_residuals(i_neighbor, i_point) = abs_mean_S_perm(right_gene)
+                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
                             right_gene = right_gene + 1
                         end if
                     ! if no values higher than x_star are left, fill with left side
                     else if (right_gene > n_genes_S) then
-                        neighborhood_residuals(i_neighbor, i_point) = abs_mean_S_perm(left_gene)
+                        neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
                         left_gene = left_gene - 1
                     else
                         ! if left side is closer than right side of x_star, take left side, else right side
-                        if (x_star_val - abs_mean_S(abs_mean_S_perm(left_gene)) < abs_mean_S(abs_mean_S_perm(right_gene)) - x_star_val) then
-                            neighborhood_residuals(i_neighbor, i_point) = abs_mean_S_perm(left_gene)
+                        if (x_star_val - mean_S(mean_S_perm(left_gene)) < mean_S(mean_S_perm(right_gene)) - x_star_val) then
+                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
                             left_gene = left_gene - 1
                         else
-                            neighborhood_residuals(i_neighbor, i_point) = abs_mean_S_perm(right_gene)
+                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
                             right_gene = right_gene + 1
                         end if
                     end if
@@ -549,223 +583,3 @@ contains
         end do
     end subroutine construct_neighborhoods_helper
 end submodule tox_data_integration_preprocessing
-
-!> C-compatible wrapper for [[tox_data_integration(module):compute_gene_means(interface)]]
-pure subroutine compute_gene_means_c(n_genes, n_reps, expr, means, ierr) &
-    bind(C, name="compute_gene_means_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: compute_gene_means
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes in the study
-    integer(c_int), intent(in), target :: n_reps
-        !! Number of biological replicates in the study
-    real(c_double), dimension(n_reps, n_genes), intent(in), target :: expr
-        !! Expression matrix
-    real(c_double), dimension(n_genes), intent(out), target :: means
-        !! Per-gene mean expression values
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_reps)
-    M_CHECK_NON_NULL(expr)
-    M_CHECK_NON_NULL(means)
-
-    call compute_gene_means(n_genes, n_reps, expr, means, ierr)
-end subroutine compute_gene_means_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):compute_residuals(interface)]]
-pure subroutine compute_residuals_c(n_genes, n_reps, expr, means, resid, ierr) &
-    bind(C, name="compute_residuals_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: compute_residuals
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes in the study
-    integer(c_int), intent(in), target :: n_reps
-        !! Number of biological replicates in the study
-    real(c_double), dimension(n_reps, n_genes), intent(in), target :: expr
-        !! Expression matrix containing
-    real(c_double), dimension(n_genes), intent(in), target :: means
-        !! Per-gene mean expression values
-    real(c_double), dimension(n_reps, n_genes), intent(out), target :: resid
-        !! Matrix of signed residuals
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_reps)
-    M_CHECK_NON_NULL(expr)
-    M_CHECK_NON_NULL(means)
-    M_CHECK_NON_NULL(resid)
-
-    call compute_residuals(n_genes, n_reps, expr, means, resid, ierr)
-end subroutine compute_residuals_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):pool_means_alloc(interface)]]
-pure subroutine pool_means_c(n_genes_S1, mean_S1, n_genes_S2, mean_S2, &
-    n_points, n_pool, x_star, ierr) bind(C, name="pool_means_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: pool_means_alloc
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_genes_S1
-        !! Number of genes in study S1
-    real(c_double), dimension(n_genes_S1), intent(in), target :: mean_S1
-        !! Per-gene mean expression values
-    integer(c_int), intent(in), target :: n_genes_S2
-        !! Number of genes in study S2
-    real(c_double), dimension(n_genes_S2), intent(in), target :: mean_S2
-        !! Per-gene mean expression values
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points to define
-    integer(c_int), intent(out), target :: n_pool
-        !! Total number of included (non-NaN) pooled mean-expression values
-    real(c_double), dimension(n_points), intent(out), target :: x_star
-        !! Mean-expression reference points
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes_S1)
-    M_CHECK_NON_NULL(mean_S1)
-    M_CHECK_NON_NULL(n_genes_S2)
-    M_CHECK_NON_NULL(mean_S2)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(n_pool)
-    M_CHECK_NON_NULL(x_star)
-
-    call pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, &
-                          n_points, n_pool, x_star, ierr)
-end subroutine pool_means_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):pool_means(interface)]]
-pure subroutine pool_means_expert_c(pooled_means, pooled_means_perm, &
-    pool_size, n_points, n_pool, x_star, ierr) &
-    bind(C, name="pool_means_expert_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: pool_means
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: pool_size
-        !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points to define
-    real(c_double), dimension(pool_size), intent(in), target :: pooled_means
-        !! Pooled means
-    integer(c_int), dimension(pool_size), intent(in), target :: pooled_means_perm
-        !! Sorting permutation for `pooled_means`
-    integer(c_int), intent(out), target :: n_pool
-        !! Total number of included (non-NaN) pooled mean-expression values
-    real(c_double), dimension(n_points), intent(out), target :: x_star
-        !! Mean-expression reference points
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(pool_size)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(pooled_means)
-    M_CHECK_NON_NULL(pooled_means_perm)
-    M_CHECK_NON_NULL(n_pool)
-    M_CHECK_NON_NULL(x_star)
-
-    call pool_means(pooled_means, pooled_means_perm, &
-                    pool_size, n_points, n_pool, x_star, ierr)
-end subroutine pool_means_expert_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):calc_neighborhood_size(interface)]]
-pure subroutine calc_neighborhood_size_c(n_pool, n_points, n_genes_S, mean_S, &
-    desired_size, n_neighbors, ierr) bind(C, name="calc_neighborhood_size_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: calc_neighborhood_size
-    use tox_errors, only: set_ok
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_pool
-        !! Total number of pooled mean-expression values across both studies
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points
-    integer(c_int), intent(in), target :: n_genes_S
-        !! Number of genes in the current study
-    real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
-        !! Per-gene mean expression values
-    integer(c_int), intent(in), target :: desired_size
-        !! Optional desired neighborhood size, default=1000
-    integer(c_int), intent(out), target :: n_neighbors
-        !! Neighborhood size used (constant for all reference points)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_pool)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(n_genes_S)
-    M_CHECK_NON_NULL(mean_S)
-    M_CHECK_NON_NULL(desired_size)
-    M_CHECK_NON_NULL(n_neighbors)
-
-    if (desired_size > 0_c_int) then
-        n_neighbors = calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size)
-    else
-        n_neighbors = calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S)
-    end if
-
-    call set_ok(ierr)
-end subroutine calc_neighborhood_size_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):construct_neighborhoods_alloc(interface)]]
-pure subroutine construct_neighborhoods_c(n_points, x_star, n_genes_S, mean_S, &
-    n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr) &
-    bind(C, name="construct_neighborhoods_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_data_integration, only: construct_neighborhoods_alloc
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points
-    real(c_double), dimension(n_points), intent(in), target :: x_star
-        !! Mean-expression reference points
-    integer(c_int), intent(in), target :: n_genes_S
-        !! Number of genes in the current study
-    real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
-        !! Per-gene mean expression values
-    integer(c_int), intent(in), target :: n_reps_S
-        !! Number of biological replicates in the study
-    real(c_double), dimension(n_reps_S, n_genes_S), intent(in), target :: resid_S
-        !! Matrix of signed residuals
-    real(c_double), dimension(n_reps_S, n_neighbors, n_points), intent(out), target :: neighborhood_residuals
-        !! Collection of residual vectors for each neighborhood
-    integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
-        !! Indices of selected neighborhood genes
-    integer(c_int), intent(in), target :: n_neighbors
-        !! Number of neighbors
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(x_star)
-    M_CHECK_NON_NULL(n_genes_S)
-    M_CHECK_NON_NULL(mean_S)
-    M_CHECK_NON_NULL(n_reps_S)
-    M_CHECK_NON_NULL(resid_S)
-    M_CHECK_NON_NULL(neighborhood_residuals)
-    M_CHECK_NON_NULL(neighborhood_indices)
-    M_CHECK_NON_NULL(n_neighbors)
-
-    call construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, &
-                                       n_reps_S, resid_S, neighborhood_residuals, &
-                                       neighborhood_indices, n_neighbors, ierr)
-end subroutine construct_neighborhoods_c

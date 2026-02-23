@@ -13,134 +13,116 @@ submodule (tox_data_integration) tox_data_integration_jsd
 contains
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, ierr, residual_range_quantile)
-        integer(int32), intent(in) :: pool_size
-            !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+    pure module subroutine determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, ierr, residual_range_quantile)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `resid`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
-            !! The absolute residual values of the concatenated S1,S2 residuals
-        integer(int32), dimension(pool_size), intent(in) :: abs_residual_pool_perm
-            !! The permutation vector that sorts `abs_residual_pool`
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: 95.0
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 
-        call validate_dimension_size(pool_size, ierr)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64)
-        call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, min=1_int32, max=pool_size)
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arp_pos=6_int32)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arp_pos=2_int32)
 
         if (is_err(ierr)) return
 
-        call determine_shared_residual_range_helper(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
+        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range
 
     !> (no input validation) Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range_helper(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
-        integer(int32), intent(in) :: pool_size
-            !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+    pure module subroutine determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
+        integer(int32), intent(in) :: residuals_perm(n_residuals)
+            !! Sorting permutation for `resid`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
-            !! The absolute residual values of the concatenated S1,S2 residuals
-        integer(int32), dimension(pool_size), intent(in) :: abs_residual_pool_perm
-            !! The permutation vector that sorts `abs_residual_pool`
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: 95.0
 
-        integer(int32) :: i_pool, last_non_nan
-        real(real64) :: actual_quantile
+        integer(int32) :: i_pool, n_pool, lower_index, left, right
+        real(real64) :: actual_quantile, index, fraction, upper_val
 
         M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 95.0_real64)
+        
+        n_pool = find_last_non_nan(resid, resid_perm, size(resid, kind=int32))
 
-        last_non_nan = pool_size
-        ! NaN is always last -> find last non-NaN index for percentile calculation
-        do i_pool = last_non_nan, 1, -1
-            if (ieee_is_nan(abs_residual_pool(abs_residual_pool_perm(i_pool)))) then
-                last_non_nan = last_non_nan - 1
-            else
-                exit
+        shared_residual_range = 0.0_real64
+        
+        if (n_pool == 0) return
+
+        ! Residual range: Calculate quantile for values
+        index = calc_percentile_rank(actual_quantile, n_pool)
+        lower_index = floor(index)
+        fraction = index - real(lower_index, real64)
+        if (lower_index < 2) then
+            shared_residual_range = resid(1)  ! No empty arrays in helper
+        else
+            ! As resid might have negative values, pick from top and bottom until rank is reached
+            left = 1
+            right = n_pool
+            do i_pool = lower_index, n_pool
+                if (i_pool == n_pool) upper_val = shared_residual_range
+                if (abs(resid(resid_perm(left))) > abs(resid(resid_perm(right)))) then
+                    shared_residual_range = abs(resid(resid_perm(left)))
+                    left = left + 1
+                else
+                    shared_residual_range = abs(resid(resid_perm(right)))
+                    right = right - 1
+                end if
+            end do
+
+            ! Do interpolation only if there are higher values
+            if (lower_index /= n_pool) then
+                shared_residual_range = shared_residual_range + (upper_val - shared_residual_range) * fraction
             end if
-        end do
-
-        if (last_non_nan == 0) then
-            shared_residual_range = 0.0_real64
-            return
         end if
-
-        call calc_percentile_helper(abs_residual_pool(:last_non_nan), abs_residual_pool_perm(:last_non_nan), actual_quantile, shared_residual_range)
     end subroutine determine_shared_residual_range_helper
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range_alloc(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, shared_residual_range, ierr, residual_range_quantile)
-        integer(int32), intent(in) :: n_reps_S1
-            !! Number of replicates in study 1
-        integer(int32), intent(in) :: n_reps_S2
-            !! Number of replicates in study 2
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
-            !! Computed neighborhood residuals for study 1 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
-            !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+    pure module subroutine determine_shared_residual_range_alloc(residuals, n_residuals, shared_residual_range, ierr, residual_range_quantile)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of residuals
+        real(real64), intent(in) :: residuals(n_residuals)
+            !! Matrix of signed residuals
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: 95.0
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i_rep, i_neighbor, pool_size, pool_idx, n_predecessors, i_point
-        real(real64), dimension(:, :, :), allocatable, target :: abs_residual_pool
-        real(real64), dimension(:), pointer :: abs_residual_pool_flat
-        integer(int32), dimension(:, :, :), allocatable, target :: perm
-        integer(int32), dimension(:), pointer :: perm_flat
+        integer(int32) :: i_residual
+        integer(int32), dimension(:), allocatable :: residuals_perm
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_reps_S1, ierr)
-        call validate_dimension_size(n_reps_S2, ierr)
-        call validate_dimension_size(n_neighbors, ierr)
-        call validate_dimension_size(n_points, ierr)
+        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arp_pos=5_int32)
 
         if (is_err(ierr)) return
 
-        M_ALLOCATE(abs_residual_pool(n_reps_S1 + n_reps_S2, n_neighbors, n_points))
-        M_ALLOCATE(perm(n_reps_S1 + n_reps_S2, n_neighbors, n_points))
+        M_ALLOCATE(residuals_perm(n_residuals))
 
-        pool_size = size(abs_residual_pool, kind=int32)
-
-        ! Collect the absolute residual values and compute the percentile value
-        do concurrent (i_point = 1:n_points)
-            do concurrent (i_neighbor = 1:n_neighbors) local(n_predecessors) shared(i_point, n_reps_S1, n_reps_S2)
-                n_predecessors = ((i_point - 1) * n_neighbors + (i_neighbor - 1)) * (n_reps_S1 + n_reps_S2)
-                do concurrent (i_rep = 1:n_reps_S1) shared(n_predecessors, perm, neighborhood_residuals_S1, abs_residual_pool, i_point, i_neighbor)
-                    abs_residual_pool(i_rep, i_neighbor, i_point) = abs(neighborhood_residuals_S1(i_rep, i_neighbor, i_point))
-
-                    perm(i_rep, i_neighbor, i_point) = n_predecessors + i_rep
-                end do
-
-                do concurrent (i_rep = 1:n_reps_S2) local(pool_idx) shared(n_predecessors, perm, neighborhood_residuals_S2, abs_residual_pool, i_point, i_neighbor)
-                    pool_idx = i_rep + n_reps_S1
-
-                    abs_residual_pool(pool_idx, i_neighbor, i_point) = abs(neighborhood_residuals_S2(i_rep, i_neighbor, i_point))
-
-                    perm(pool_idx, i_neighbor, i_point) = n_predecessors + pool_idx
-                end do
-            end do
+        ! initialize permutation
+        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
+            residuals_perm(i_residual) = i_residual
         end do
 
-        abs_residual_pool_flat(1:pool_size) => abs_residual_pool
-        perm_flat(1:pool_size) => perm
+        call sort_array_heapsort(residuals, residuals_perm)
 
-        call sort_array_heapsort(abs_residual_pool_flat, perm_flat)
-
-        call determine_shared_residual_range(abs_residual_pool_flat, perm_flat, pool_size, shared_residual_range, ierr, residual_range_quantile)
+        call determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range_alloc
 
     !> Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
@@ -443,7 +425,7 @@ end submodule tox_data_integration_jsd
 
 !> C-compatible wrapper for [[tox_data_integration(module):determine_shared_residual_range(interface)]]
 pure subroutine determine_shared_residual_range_expert_c( &
-    abs_residual_pool, abs_residual_pool_perm, pool_size, &
+    residual_pool, residual_pool_perm, pool_size, &
     residual_range_quantile, shared_residual_range, ierr &
     ) bind(C, name="determine_shared_residual_range_expert_c")
 
@@ -453,15 +435,15 @@ pure subroutine determine_shared_residual_range_expert_c( &
     implicit none
 
     integer(c_int), intent(in), target :: pool_size
-        !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
+        !! Size of pool of residuals `residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
     real(c_double), intent(in), target :: residual_range_quantile
         !! Quantile for determining the residual range, default: 95.0
     real(c_double), intent(out), target :: shared_residual_range
         !! Computed residual range (R)
-    real(c_double), dimension(pool_size), intent(in), target :: abs_residual_pool
-        !! The absolute residual values of the concatenated S1,S2 residuals
-    integer(c_int), dimension(pool_size), intent(in), target :: abs_residual_pool_perm
-        !! The permutation vector that sorts `abs_residual_pool`
+    real(c_double), dimension(pool_size), intent(in), target :: residual_pool
+        !! The residual values of the concatenated S1,S2 residuals
+    integer(c_int), dimension(pool_size), intent(in), target :: residual_pool_perm
+        !! The permutation vector that sorts `residual_pool`
     integer(c_int), intent(out), target :: ierr
         !! Error code
 
@@ -469,11 +451,11 @@ pure subroutine determine_shared_residual_range_expert_c( &
     M_CHECK_NON_NULL(pool_size)
     M_CHECK_NON_NULL(residual_range_quantile)
     M_CHECK_NON_NULL(shared_residual_range)
-    M_CHECK_NON_NULL(abs_residual_pool)
-    M_CHECK_NON_NULL(abs_residual_pool_perm)
+    M_CHECK_NON_NULL(residual_pool)
+    M_CHECK_NON_NULL(residual_pool_perm)
 
     call determine_shared_residual_range( &
-        abs_residual_pool, abs_residual_pool_perm, pool_size, &
+        residual_pool, residual_pool_perm, pool_size, &
         shared_residual_range, ierr, residual_range_quantile )
 
 end subroutine determine_shared_residual_range_expert_c
