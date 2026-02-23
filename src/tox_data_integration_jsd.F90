@@ -56,7 +56,7 @@ contains
 
         M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 95.0_real64)
         
-        n_pool = find_last_non_nan(resid, resid_perm, size(resid, kind=int32))
+        n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
 
         shared_residual_range = 0.0_real64
         
@@ -67,18 +67,18 @@ contains
         lower_index = floor(index)
         fraction = index - real(lower_index, real64)
         if (lower_index < 2) then
-            shared_residual_range = resid(1)  ! No empty arrays in helper
+            shared_residual_range = residuals(1)  ! No empty arrays in helper
         else
-            ! As resid might have negative values, pick from top and bottom until rank is reached
+            ! As residuals might have negative values, pick from top and bottom until rank is reached
             left = 1
             right = n_pool
             do i_pool = lower_index, n_pool
                 if (i_pool == n_pool) upper_val = shared_residual_range
-                if (abs(resid(resid_perm(left))) > abs(resid(resid_perm(right)))) then
-                    shared_residual_range = abs(resid(resid_perm(left)))
+                if (abs(residuals(residuals_perm(left))) > abs(residuals(residuals_perm(right)))) then
+                    shared_residual_range = abs(residuals(residuals_perm(left)))
                     left = left + 1
                 else
-                    shared_residual_range = abs(resid(resid_perm(right)))
+                    shared_residual_range = abs(residuals(residuals_perm(right)))
                     right = right - 1
                 end if
             end do

@@ -175,7 +175,7 @@ contains
   pure logical function is_err(ierr) result(not_ok)
     integer(int32), intent(in) :: ierr
       !! Error code
-    not_ok = (mod(ierr, 1000) /= ERR_OK)
+    not_ok = (get_err_code(ierr) /= ERR_OK)
   end function is_err
 
   !> check if the error code indicates success
