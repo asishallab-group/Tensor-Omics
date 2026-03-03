@@ -26,7 +26,7 @@ function get_compiler() {
 
 function get_flags() {
   # Libraries
-  echo -en "-lzip -lxxhash "
+  echo -en "-lzip -lxxhash -lgsl "
 
   # Detect compiler and choose appropriate profile:
   if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
