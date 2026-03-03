@@ -11,6 +11,10 @@ module tox_data_integration_jsd
     use f42_utils, only: clamp, calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2
     use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
+
+    integer(int32), parameter :: JOIN_MIN = 0
+    integer(int32), parameter :: JOIN_MAX = 1
+    integer(int32), parameter :: JOIN_MEDIAN = 2
 contains
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
@@ -235,7 +239,7 @@ contains
         end if
     end subroutine estimate_bin_count_helper
 
-    pure subroutine js_comp_test(residuals, gene_means, gene_means_perms, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_bins, shared_residual_range, n_points_candidates, n_point_counts, max_n_points_candidate, n_neighbors_candidates, n_neighbor_counts, max_n_neighbors_candidate, neighborhood_residuals, neighborhood_ranges, x_star, pmfs, counts, included_n_reps, mean_pmfs, mean_pmfs_included_n_reps, weights, js_divergences, global_js_divergence, confidence_interval)
+    pure subroutine js_comp_test(residuals, gene_means, gene_means_perms, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_bins, shared_residual_range, n_points_candidates, n_point_counts, max_n_points_candidate, n_neighbors_candidates, n_neighbor_counts, max_n_neighbors_candidate, neighborhood_residuals, neighborhood_ranges, x_star, pmfs, counts, included_n_reps, mean_pmfs, mean_pmfs_included_n_reps, weights, js_divergences, global_js_divergence, confidence_interval, tmp_confidence_interval, join_method)
         integer(int32), intent(in) :: n_studies
             !! Neighborhood size
         integer(int32), intent(in) :: max_n_points_candidate
@@ -282,18 +286,16 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
         real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: weights
         real(real64), dimension(2, n_studies), intent(out) :: confidence_interval
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
+        integer(int32), intent(in) :: join_method
 
-        integer(int32) :: n_points, n_neighbors, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, joined_ci_idx
-        real(real64) :: prev_params_CI_min, prev_params_CI_max, best_params_CI_width, best_params_CI_min, best_params_CI_max, joined_ci_overlap, joined_ci_width
+        integer(int32) :: n_points, n_neighbors, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, exceeds_min_CI_overlap
         logical :: plateau_found, all_have_min_overlap
 
-        prev_params_CI_min = M_POS_INF
-        prev_params_CI_max = M_POS_INF
-        best_params_CI_width = M_POS_INF
-        best_params_CI_min = M_POS_INF
-        best_params_CI_max = M_POS_INF
+        tmp_confidence_interval = M_POS_INF
         best_params_CI_i_point_count = 1
         best_params_CI_i_neighbor_count = 1
+        best_params_exceeded_CI_overlap = 0
         plateau_found = .false.
         do i_point_count = 1, n_point_counts
             n_points = n_points_candidates(i_point_count)
@@ -316,7 +318,13 @@ contains
                 if (all_have_min_overlap) then
                     call create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1))
 
-                    do concurrent (i_study = 1:n_studies) shared(mean_pmfs, mean_pmfs_included_n_reps, pmfs, n_points, n_bins, js_divergences, included_n_reps, global_js_divergence, confidence_interval)
+                    exceeds_min_CI_overlap = 0_int32
+                    do concurrent (i_study = 1:n_studies)&
+                        reduce(+:exceeds_min_CI_overlap)&
+                        shared(mean_pmfs, mean_pmfs_included_n_reps, pmfs, n_points, n_bins, js_divergences, included_n_reps,&
+                            global_js_divergence, weights, confidence_interval, tmp_confidence_interval&
+                        )
+
                         ! each study needs its own mean_pmf copy for performing bootstrapping
                         mean_pmfs(:, :, i_study) = mean_pmfs(:, :, 1)
                         ! own mean_pmf means own included n reps as well
@@ -327,31 +335,38 @@ contains
                         confidence_interval(1, i_study) = global_js_divergence(i_study)
                         confidence_interval(2, i_study) = global_js_divergence(i_study)
                         ! TODO call bootstrap_histogram(counts(:, :, i_study), pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), confidence_interval(:, i_study))
-                        global_js_divergence(i_study) = compute_relative_overlap_helper(confidence_interval(1, i_study), confidence_interval(2, i_study), prev_params_CI_min, prev_params_CI_max)
-                    end do
-
-                    ! join by mininum overlap
-                    joined_ci_idx = 1
-                    joined_ci_overlap = global_js_divergence(1)
-                    do i_study = 2, n_studies
-                        if (global_js_divergence(i_study) < joined_ci_overlap) then
-                            joined_ci_overlap = global_js_divergence(i_study)
-                            joined_ci_idx = i_study
+                        if (compute_relative_overlap_helper(&
+                                confidence_interval(1, i_study), confidence_interval(2, i_study),&
+                                tmp_confidence_interval(1, i_study), tmp_confidence_interval(2, i_study)&
+                            ) > 0.9_real64)&
+                        then
+                            exceeds_min_CI_overlap = exceeds_min_CI_overlap + 1
                         end if
                     end do
 
-                    prev_params_CI_min = confidence_interval(1, joined_ci_idx)
-                    prev_params_CI_max = confidence_interval(2, joined_ci_idx)
-                    joined_ci_width = prev_params_CI_max - prev_params_CI_min
-                    plateau_found = joined_ci_overlap > 0.9
-                    if (joined_ci_width < best_params_CI_width .or. plateau_found) then
-                        best_params_CI_width = joined_ci_width
-                        best_params_CI_min = prev_params_CI_min
-                        best_params_CI_max = prev_params_CI_max
+                    ! If the parameter set is not at least as good as the previous, exit and use previous pair as best
+                    if (exceeds_min_CI_overlap < best_params_exceeded_CI_overlap) then
+                        plateau_found = .true.
+                        exit
+                    else
                         best_params_CI_i_point_count = i_point_count
-                        best_params_CI_i_neighbor_count = i_neighbor_count
+                        best_params_CI_i_neighbor_count = n_neighbors
+                        best_params_exceeded_CI_overlap = exceeds_min_CI_overlap
+
+                        select case (join_method)
+                            case (JOIN_MIN)
+                                ! If all overlaps exceed the threshold, there is no lower one that doesn't
+                                plateau_found = exceeds_min_CI_overlap == n_studies
+                            case (JOIN_MAX)
+                                ! If at least one overlap exceeds the threshold, the max overlap will do either
+                                plateau_found = exceeds_min_CI_overlap > 0
+                            case (JOIN_MEDIAN)
+                                ! If 50% of the studies' overlaps exceed the threshold, the median will do either
+                                plateau_found = exceeds_min_CI_overlap >= n_studies / 2
+                        end select
+
+                        if (plateau_found) exit
                     end if
-                    if (plateau_found) exit
                 end if
             end do
             if (plateau_found) exit
