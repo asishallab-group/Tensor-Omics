@@ -25,8 +25,8 @@ function get_compiler() {
 }
 
 function get_flags() {
-  # Libraries
-  echo -en "-lzip -lxxhash -lgsl "
+  # Libraries: greps the libraries from .fpm.toml and translates them from '"<lib>"' to '-l<lib>'
+  printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
 
   # Detect compiler and choose appropriate profile:
   if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
