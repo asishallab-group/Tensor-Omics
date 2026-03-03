@@ -54,6 +54,8 @@ contains
     pure real(real64) function rand_range(min, max, key, count) result(res)
         integer(int32), intent(in) :: key
         integer(int32), intent(in) :: count
+        real(real64), intent(in) :: min
+        real(real64), intent(in) :: max
 
         res = min + random_uniform(key, count) * (max - min)
     end function rand_range

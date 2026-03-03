@@ -3,22 +3,23 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
 !| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]].
-submodule (tox_data_integration) tox_data_integration_jsd
+module tox_data_integration_jsd
     use safeguard
+    use tox_data_integration_preprocessing
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_utils, only: clamp, calc_percentile_helper, is_close, sort_array_heapsort, shuffle_vector, init_random
+    use f42_utils, only: clamp, calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2
     use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
 contains
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, ierr, residual_range_quantile)
+    pure subroutine determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, ierr, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
-        integer(int32), intent(in) :: residuals_perm(n_residuals)
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
             !! Sorting permutation for `resid`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
@@ -29,9 +30,9 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arp_pos=6_int32)
-        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arp_pos=2_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=6_int32)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arg_pos=2_int32)
 
         if (is_err(ierr)) return
 
@@ -39,12 +40,12 @@ contains
     end subroutine determine_shared_residual_range
 
     !> (no input validation) Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+    pure subroutine determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
-        integer(int32), intent(in) :: residuals_perm(n_residuals)
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
             !! Sorting permutation for `resid`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
@@ -91,10 +92,10 @@ contains
     end subroutine determine_shared_residual_range_helper
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
-    pure module subroutine determine_shared_residual_range_alloc(residuals, n_residuals, shared_residual_range, ierr, residual_range_quantile)
+    pure subroutine determine_shared_residual_range_alloc(residuals, n_residuals, shared_residual_range, ierr, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
@@ -108,8 +109,8 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arp_pos=5_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=5_int32)
 
         if (is_err(ierr)) return
 
@@ -122,17 +123,17 @@ contains
 
         call sort_array_heapsort(residuals, residuals_perm)
 
-        call determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range_alloc
 
-    pure module subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+    pure subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
@@ -146,10 +147,10 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arg_pos=6_int32)
 
         if (is_err(ierr)) return
 
@@ -165,16 +166,16 @@ contains
         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
     end subroutine estimate_bin_count_alloc
 
-    pure module subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+    pure subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
-        integer(int32), intent(in) :: residuals_perm(n_residuals)
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
             !! Sorting permutation for `residuals`
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
@@ -185,27 +186,27 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_residuals, ierr, arp_pos=3_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arp_pos=6_int32)
-        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arp_pos=2_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arg_pos=6_int32)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, min=1_int32, max=n_residuals, arg_pos=2_int32)
 
         if (is_err(ierr)) return
 
-        call estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
     end subroutine estimate_bin_count
 
-    pure module subroutine estimate_bin_count_helper(residuals, resid_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    pure subroutine estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), intent(in) :: residuals(n_residuals)
+        real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
-        integer(int32), intent(in) :: residuals_perm(n_residuals)
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
             !! Sorting permutation for `residuals`
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
@@ -234,24 +235,235 @@ contains
         end if
     end subroutine estimate_bin_count_helper
 
+    pure subroutine js_comp_test(residuals, gene_means, gene_means_perms, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_bins, shared_residual_range, n_points_candidates, n_point_counts, max_n_points_candidate, n_neighbors_candidates, n_neighbor_counts, max_n_neighbors_candidate, neighborhood_residuals, neighborhood_ranges, x_star, pmfs, counts, included_n_reps, mean_pmfs, mean_pmfs_included_n_reps, weights, js_divergences, global_js_divergence, confidence_interval)
+        integer(int32), intent(in) :: n_studies
+            !! Neighborhood size
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: max_n_neighbors_candidate
+            !! Neighborhood size
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        integer(int32), dimension(max_n_neighbors_candidate, max_n_points_candidate, n_studies), intent(out) :: neighborhood_residuals
+            !! Indices of selected neighborhood genes per reference point.
+            !!
+            !! @note 
+            !! All indices in range `1<=idx<=max(max_n_neighbors_candidate, n_genes_S)`. So in case `n_genes_S` is lower than `max_n_neighbors_candidate`,
+            !! remaining indices will be filled with the ones from `n_genes_S+1...max_n_neighbors_candidate`
+            !! @endnote
+        integer(int32), dimension(2, max_n_points_candidate, n_studies), intent(out) :: neighborhood_ranges
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is [1, 1]
+        integer(int32), intent(in) :: n_point_counts
+        integer(int32), intent(in) :: n_neighbor_counts
+        integer(int32), dimension(n_point_counts), intent(in) :: n_points_candidates
+        integer(int32), dimension(n_neighbor_counts), intent(in) :: n_neighbors_candidates
+        real(real64), dimension(max_n_neighbors_candidate), intent(out) :: x_star
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
+        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: pmfs
+        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: counts
+        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: mean_pmfs
+        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: included_n_reps
+        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: mean_pmfs_included_n_reps
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: js_divergences
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: weights
+        real(real64), dimension(2, n_studies), intent(out) :: confidence_interval
+
+        integer(int32) :: n_points, n_neighbors, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, joined_ci_idx
+        real(real64) :: prev_params_CI_min, prev_params_CI_max, best_params_CI_width, best_params_CI_min, best_params_CI_max, joined_ci_overlap, joined_ci_width
+        logical :: plateau_found, all_have_min_overlap
+
+        prev_params_CI_min = M_POS_INF
+        prev_params_CI_max = M_POS_INF
+        best_params_CI_width = M_POS_INF
+        best_params_CI_min = M_POS_INF
+        best_params_CI_max = M_POS_INF
+        best_params_CI_i_point_count = 1
+        best_params_CI_i_neighbor_count = 1
+        plateau_found = .false.
+        do i_point_count = 1, n_point_counts
+            n_points = n_points_candidates(i_point_count)
+
+            do i_neighbor_count = 1, n_neighbor_counts
+                n_neighbors = n_neighbors_candidates(i_neighbor_count)
+
+                ! TODO: calc x_star
+
+                all_have_min_overlap = .true.
+                do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors, shared_residual_range, n_bins, counts, pmfs, included_n_reps)
+                    call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)
+                    if (test_neighborhood_overlaps_helper(neighborhood_ranges(:, :, i_study), n_points)) then
+                        call build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study))
+                    else
+                        all_have_min_overlap = .false.
+                    end if
+                end do
+
+                if (all_have_min_overlap) then
+                    call create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1))
+
+                    do concurrent (i_study = 1:n_studies) shared(mean_pmfs, mean_pmfs_included_n_reps, pmfs, n_points, n_bins, js_divergences, included_n_reps, global_js_divergence, confidence_interval)
+                        ! each study needs its own mean_pmf copy for performing bootstrapping
+                        mean_pmfs(:, :, i_study) = mean_pmfs(:, :, 1)
+                        ! own mean_pmf means own included n reps as well
+                        mean_pmfs_included_n_reps(:, i_study) = mean_pmfs_included_n_reps(:, 1)
+
+                        call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, js_divergences(:, i_study))
+                        call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), global_js_divergence(i_study), weights(:, i_study))
+                        confidence_interval(1, i_study) = global_js_divergence(i_study)
+                        confidence_interval(2, i_study) = global_js_divergence(i_study)
+                        ! TODO call bootstrap_histogram(counts(:, :, i_study), pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), confidence_interval(:, i_study))
+                        global_js_divergence(i_study) = compute_relative_overlap_helper(confidence_interval(1, i_study), confidence_interval(2, i_study), prev_params_CI_min, prev_params_CI_max)
+                    end do
+
+                    ! join by mininum overlap
+                    joined_ci_idx = 1
+                    joined_ci_overlap = global_js_divergence(1)
+                    do i_study = 2, n_studies
+                        if (global_js_divergence(i_study) < joined_ci_overlap) then
+                            joined_ci_overlap = global_js_divergence(i_study)
+                            joined_ci_idx = i_study
+                        end if
+                    end do
+
+                    prev_params_CI_min = confidence_interval(1, joined_ci_idx)
+                    prev_params_CI_max = confidence_interval(2, joined_ci_idx)
+                    joined_ci_width = prev_params_CI_max - prev_params_CI_min
+                    plateau_found = joined_ci_overlap > 0.9
+                    if (joined_ci_width < best_params_CI_width .or. plateau_found) then
+                        best_params_CI_width = joined_ci_width
+                        best_params_CI_min = prev_params_CI_min
+                        best_params_CI_max = prev_params_CI_max
+                        best_params_CI_i_point_count = i_point_count
+                        best_params_CI_i_neighbor_count = i_neighbor_count
+                    end if
+                    if (plateau_found) exit
+                end if
+            end do
+            if (plateau_found) exit
+        end do
+    
+        n_points = n_points_candidates(best_params_CI_i_point_count)
+        n_neighbors = n_neighbors_candidates(best_params_CI_i_neighbor_count)
+        do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors)
+            call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)
+            call build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study))
+        end do
+        call create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1))
+
+        do concurrent (i_study = 1:n_studies) shared(mean_pmfs, mean_pmfs_included_n_reps, pmfs, n_points, n_bins, js_divergences, included_n_reps, global_js_divergence, confidence_interval)
+            ! each study needs its own mean_pmf copy for performing bootstrapping
+            mean_pmfs(:, :, i_study) = mean_pmfs(:, :, 1)
+            ! own mean_pmf means own included n reps as well
+            mean_pmfs_included_n_reps(:, i_study) = mean_pmfs_included_n_reps(:, 1)
+
+            call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, js_divergences(:, i_study))
+            call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), global_js_divergence(i_study), weights(:, i_study))
+            ! TODO call gjct_permutation_test_helper(counts(:, :, i_study), pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), p_values(i_study))
+        end do
+    end subroutine js_comp_test
+
+    pure subroutine create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmf, mean_pmf_included_n_reps)
+        integer(int32), intent(in) :: n_studies
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(n_bins, n_points, n_studies), intent(in) :: pmfs
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+
+        integer(int32) :: i_study, i_point, i_bin
+
+        mean_pmf = 0.0_real64
+        mean_pmf_included_n_reps = 0_int32
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                do i_bin = 1, n_bins
+                    mean_pmf(i_bin, i_point) = mean_pmf(i_bin, i_point) + pmfs(i_bin, i_point, i_study) / real(n_studies, real64)
+                end do
+                mean_pmf_included_n_reps(i_point) = mean_pmf_included_n_reps(i_point) + included_n_reps(i_point, i_study)
+            end do
+        end do
+    
+    end subroutine create_mean_pmf_helper
+
+    pure logical function test_neighborhood_overlaps_helper(neighborhood_range, n_points) result(all_have_min_overlap)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        integer(int32), dimension(2, n_points), intent(in) :: neighborhood_range
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is [1, 1]
+
+        integer(int32) :: i_point
+        real(real64) :: overlap
+
+        all_have_min_overlap = .true.
+        do concurrent (i_point = 1:n_points - 1) local(overlap) shared(neighborhood_range, all_have_min_overlap)
+            overlap = compute_relative_overlap_helper(&
+                real(neighborhood_range(1, i_point), real64),&
+                real(neighborhood_range(2, i_point), real64),&
+                real(neighborhood_range(1, i_point + 1), real64),&
+                real(neighborhood_range(2, i_point + 1), real64)&
+            )
+            if (overlap < 0.1_real64) all_have_min_overlap = .false.
+        end do
+    
+    end function test_neighborhood_overlaps_helper
+
+    pure real(real64) function compute_relative_overlap_helper(a_min, a_max, b_min, b_max) result(overlap_percent)
+        real(real64), intent(in) :: a_min
+        real(real64), intent(in) :: a_max
+        real(real64), intent(in) :: b_min
+        real(real64), intent(in) :: b_max
+        if (a_min < b_min) then
+            overlap_percent = (min(a_max, b_max) - b_min) / (b_max - a_min)
+        else
+            overlap_percent = (min(b_max, b_max) - a_min) / (a_max - b_min)
+        end if
+    end function compute_relative_overlap_helper
+
     !> Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
-    pure module subroutine build_residual_histograms(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, ierr, neighbor_mask)
-        integer(int32), intent(in) :: n_reps
-            !! Number of replicates of the study
+    pure subroutine build_residual_histograms(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts, pmf, included_n_reps, ierr, neighbor_mask)
         integer(int32), intent(in) :: n_neighbors
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_points
             !! Number of reference points in the studies
-        real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), dimension(n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies), intent(in) :: residuals
+            !! Matrix of signed residuals for one study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R) from [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
-        integer(int32), dimension(n_points, n_bins), intent(out) :: counts
+        integer(int32), dimension(n_bins, n_points), intent(out) :: counts
             !! Absolute counts of a residual per bin
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
-            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+        real(real64), dimension(n_bins, n_points), intent(out) :: pmf
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
         integer(int32), intent(out) :: ierr
@@ -261,41 +473,47 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_reps, ierr)
+        call validate_dimension_size(max_n_reps_all_studies, ierr)
+        call validate_dimension_size(max_n_genes_all_studies, ierr)
         call validate_dimension_size(n_neighbors, ierr)
         call validate_dimension_size(n_points, ierr)
         call validate_dimension_size(n_bins, ierr)
         call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64)
+        call validate_all_in_range_int(neighborhood_residuals, size(neighborhood_residuals, kind=int32), ierr, min=1_int32, max=max_n_genes_all_studies)
 
         if (is_err(ierr)) return
 
-        call build_residual_histograms_helper(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
+        call build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
     end subroutine build_residual_histograms
 
     !> (no input validation) Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
-    pure module subroutine build_residual_histograms_helper(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
-        integer(int32), intent(in) :: n_reps
-            !! Number of replicates of the study
+    pure subroutine build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
         integer(int32), intent(in) :: n_neighbors
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_points
-            !! Number of reference points in the study
-        real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), dimension(n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies), intent(in) :: residuals
+            !! Matrix of signed residuals for one study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R) from [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
-        integer(int32), dimension(n_points, n_bins), intent(out) :: counts
+        integer(int32), dimension(n_bins, n_points), intent(out) :: counts
             !! Absolute counts of a residual per bin
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
-            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+        real(real64), dimension(n_bins, n_points), intent(out) :: pmf
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
         logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
             !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 
-        real(real64) :: bin_width, clamped_residual
+        real(real64) :: bin_width, clamped_residual, replicate
         integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
         logical :: filter_neighbors
 
@@ -310,8 +528,8 @@ contains
         do concurrent (i_point = 1:n_points) local(included_reps) shared(included_n_reps)
             included_reps = 0_int32
             do concurrent (i_neighbor = 1:n_neighbors) &
-                    local(i_rep, clamped_residual, bin_idx) &
-                    shared(filter_neighbors, n_reps, counts, neighborhood_residuals, shared_residual_range, bin_width) &
+                    local(i_rep, clamped_residual, bin_idx, replicate) &
+                    shared(filter_neighbors, max_n_reps_all_studies, counts, neighborhood_residuals, shared_residual_range, bin_width) &
                     reduce(+:included_reps)
                 ! Exclude neighbor if desired
                 if (filter_neighbors) then
@@ -319,10 +537,11 @@ contains
                 end if
 
                 ! Count non-NaNs and assign the to a bin
-                do i_rep = 1, n_reps
-                    if (.not. ieee_is_nan(neighborhood_residuals(i_rep, i_neighbor, i_point))) then
+                do i_rep = 1, max_n_reps_all_studies
+                    replicate = residuals(i_rep, neighborhood_residuals(i_neighbor, i_point))
+                    if (.not. ieee_is_nan(replicate)) then
                         ! clamp residual to histogram range
-                        clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), min_val=-shared_residual_range, max_val=shared_residual_range)
+                        clamped_residual = clamp(replicate, min_val=-shared_residual_range, max_val=shared_residual_range)
 
                         ! assign bin to residual
                         bin_idx = min(n_bins, int( (clamped_residual + shared_residual_range) / bin_width ) + 1)
@@ -336,26 +555,26 @@ contains
         end do
 
         ! 2. calculate pmf
-        do concurrent (i_bin = 1:n_bins)
-            do concurrent (i_point = 1:n_points) shared(pmf, i_bin, included_n_reps, counts)
+        do concurrent (i_point = 1:n_points)
+            do concurrent (i_bin = 1:n_bins) shared(pmf, i_point, included_n_reps, counts)
                 if (included_n_reps(i_point) == 0) then
-                    pmf(i_point, i_bin) = 0.0_real64
+                    pmf(i_bin, i_point) = 0.0_real64
                 else
-                    pmf(i_point, i_bin) = real(counts(i_point, i_bin), real64) / real(included_n_reps(i_point), real64)
+                    pmf(i_bin, i_point) = real(counts(i_bin, i_point), real64) / real(included_n_reps(i_point), real64)
                 end if
             end do
         end do
     end subroutine build_residual_histograms_helper
 
     !> Having the probabilities `pmf` from [[tox_data_integration(module):build_residual_histograms(interface)]], this subroutine computes the Jensen-Shannon divergence per reference point/neighbor
-    pure module subroutine compute_divergence_per_reference_point(pmf_S1, pmf_S2, n_points, n_bins, js_divergences, ierr)
+    pure subroutine compute_divergence_per_reference_point(pmf_S1, pmf_S2, n_points, n_bins, js_divergences, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
-        real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
+        real(real64), dimension(n_bins, n_points), intent(in) :: pmf_S1
             !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
-        real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
+        real(real64), dimension(n_bins, n_points), intent(in) :: pmf_S2
             !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point
@@ -375,14 +594,14 @@ contains
     end subroutine compute_divergence_per_reference_point
 
     !> (no input validation) Having the probabilities `pmf` from [[tox_data_integration(module):build_residual_histograms(interface)]], this subroutine computes the Jensen-Shannon divergence per reference point/neighbor
-    pure module subroutine compute_divergence_per_reference_point_helper(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
+    pure subroutine compute_divergence_per_reference_point_helper(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
-        real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
+        real(real64), dimension(n_bins, n_points), intent(in) :: pmf_S1
             !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
-        real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
+        real(real64), dimension(n_bins, n_points), intent(in) :: pmf_S2
             !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point
@@ -417,12 +636,12 @@ contains
 
         ! 2. Compute the js_divergences
         do concurrent (i_point = 1:n_points) shared(js_divergences)
-            js_divergences(i_point) = 0.5_real64 * js_divergences(i_point)
+            js_divergences(i_point) = (0.5_real64 * js_divergences(i_point)) / LOG_2  ! Div by ln2 to have a 0-1 scaling instead of 0-ln2
         end do
     end subroutine compute_divergence_per_reference_point_helper
 
     !> Computes the global weighted Jensen-Shannon divergence from the per-neighbor divergences calculated by [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
-    pure module subroutine compute_weighted_global_divergence(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, ierr)
+    pure subroutine compute_weighted_global_divergence(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         real(real64), dimension(n_points), intent(in) :: js_divergences
@@ -451,7 +670,7 @@ contains
     end subroutine compute_weighted_global_divergence
 
     !> (no input validation) Computes the global weighted Jensen-Shannon divergence from the per-neighbor divergences calculated by [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
-    pure module subroutine compute_weighted_global_divergence_helper(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
+    pure subroutine compute_weighted_global_divergence_helper(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         real(real64), dimension(n_points), intent(in) :: js_divergences
@@ -485,350 +704,4 @@ contains
             end do
         end if
     end subroutine compute_weighted_global_divergence_helper
-
-    !> Helper to run the pipeline `build_residual_histograms` \(\Rightarrow\) `compute_weighted_global_divergence`
-    pure module subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
-        integer(int32), intent(in) :: n_reps_S1
-            !! Number of replicates in study 1
-        integer(int32), intent(in) :: n_reps_S2
-            !! Number of replicates in study 2
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
-            !! Computed neighborhood residuals for study 1 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
-            !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-        integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins used for the studies in [[tox_data_integration(module):build_residual_histograms(interface)]]
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range for both studies, from [[tox_data_integration(module):determine_shared_residual_range(interface)]]
-        real(real64), dimension(n_points), intent(out) :: js_divergences
-            !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S1
-            !! Count of non-NaN residuals (included ones) in study 1 (obtained from [[tox_data_integration(module):build_residual_histograms(interface)]])
-        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S2
-            !! Count of non-NaN residuals (included ones) in study 2 (obtained from [[tox_data_integration(module):build_residual_histograms(interface)]])
-        real(real64), intent(out) :: global_js_divergence
-            !! Weighted global Jensen-Shannon divergence
-        real(real64), dimension(n_points), intent(out) :: weights
-            !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S1
-            !! Absolute counts of a residual per bin obtained from [[tox_data_integration(module):build_residual_histograms(interface)]]
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S2
-            !! Absolute counts of a residual per bin obtained from [[tox_data_integration(module):build_residual_histograms(interface)]]
-        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
-            !! Working array for [[tox_data_integration(module):build_residual_histograms(interface)]]
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
-            !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
-            !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
-
-        call build_residual_histograms_helper(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, shared_residual_range, n_bins, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)
-        call build_residual_histograms_helper(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, shared_residual_range, n_bins, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
-        call compute_divergence_per_reference_point_helper(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
-        call compute_weighted_global_divergence_helper(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
-    end subroutine jct_compute_jsd_pipeline_helper
-end submodule tox_data_integration_jsd
-
-!> C-compatible wrapper for [[tox_data_integration(module):determine_shared_residual_range(interface)]]
-pure subroutine determine_shared_residual_range_expert_c( &
-    residual_pool, residual_pool_perm, pool_size, &
-    residual_range_quantile, shared_residual_range, ierr &
-    ) bind(C, name="determine_shared_residual_range_expert_c")
-
-    use tox_data_integration, only: determine_shared_residual_range
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: pool_size
-        !! Size of pool of residuals `residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
-    real(c_double), intent(in), target :: residual_range_quantile
-        !! Quantile for determining the residual range, default: 95.0
-    real(c_double), intent(out), target :: shared_residual_range
-        !! Computed residual range (R)
-    real(c_double), dimension(pool_size), intent(in), target :: residual_pool
-        !! The residual values of the concatenated S1,S2 residuals
-    integer(c_int), dimension(pool_size), intent(in), target :: residual_pool_perm
-        !! The permutation vector that sorts `residual_pool`
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(pool_size)
-    M_CHECK_NON_NULL(residual_range_quantile)
-    M_CHECK_NON_NULL(shared_residual_range)
-    M_CHECK_NON_NULL(residual_pool)
-    M_CHECK_NON_NULL(residual_pool_perm)
-
-    call determine_shared_residual_range( &
-        residual_pool, residual_pool_perm, pool_size, &
-        shared_residual_range, ierr, residual_range_quantile )
-
-end subroutine determine_shared_residual_range_expert_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
-pure subroutine determine_shared_residual_range_c( &
-    neighborhood_residuals_S1, neighborhood_residuals_S2, &
-    n_reps_S1, n_reps_S2, n_neighbors, n_points, &
-    residual_range_quantile, &
-    shared_residual_range, ierr ) &
-    bind(C, name="determine_shared_residual_range_c")
-
-    use tox_data_integration, only: determine_shared_residual_range_alloc
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_reps_S1
-        !! Number of replicates in study 1
-    integer(c_int), intent(in), target :: n_reps_S2
-        !! Number of replicates in study 2
-    integer(c_int), intent(in), target :: n_neighbors
-        !! Number of reference points (k)
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points in the studies
-    real(c_double), dimension(n_reps_S1, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S1
-        !! Computed neighborhood residuals for study 1 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-    real(c_double), dimension(n_reps_S2, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S2
-        !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-    real(c_double), intent(in), target :: residual_range_quantile
-        !! Quantile for determining the residual range, default: 95.0
-    real(c_double), intent(out), target :: shared_residual_range
-        !! Computed residual range (R)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_reps_S1)
-    M_CHECK_NON_NULL(n_reps_S2)
-    M_CHECK_NON_NULL(n_neighbors)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(neighborhood_residuals_S1)
-    M_CHECK_NON_NULL(neighborhood_residuals_S2)
-    M_CHECK_NON_NULL(residual_range_quantile)
-    M_CHECK_NON_NULL(shared_residual_range)
-
-    call determine_shared_residual_range_alloc( &
-        neighborhood_residuals_S1, neighborhood_residuals_S2, &
-        n_reps_S1, n_reps_S2, n_neighbors, n_points, &
-        shared_residual_range, ierr, residual_range_quantile )
-
-end subroutine determine_shared_residual_range_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):build_residual_histograms(interface)]]
-pure subroutine build_residual_histograms_c( &
-    neighborhood_residuals, &
-    n_reps, n_neighbors, n_points, &
-    shared_residual_range, &
-    n_bins, &
-    counts, pmf, included_n_reps, &
-    ierr ) &
-    bind(C, name="build_residual_histograms_c")
-
-    use tox_data_integration, only: build_residual_histograms
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_reps
-        !! Number of replicates in the study
-    integer(c_int), intent(in), target :: n_neighbors
-        !! Number of reference points (k)
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points in the studies
-    real(c_double), dimension(n_reps, n_neighbors, n_points), intent(in), target :: neighborhood_residuals
-        !! Computed neighborhood residuals for a study ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-    real(c_double), intent(in), target :: shared_residual_range
-        !! Computed residual range (R) from [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
-    integer(c_int), intent(in), target :: n_bins
-        !! Number of equally sized histogram bins in range [-R,R]
-    integer(c_int), dimension(n_points, n_bins), intent(out), target :: counts
-        !! Absolute counts of a residual per bin
-    real(c_double), dimension(n_points, n_bins), intent(out), target :: pmf
-        !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
-    integer(c_int), dimension(n_points), intent(out), target :: included_n_reps
-        !! Stores the count of non-NaN replicates (included ones)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(neighborhood_residuals)
-    M_CHECK_NON_NULL(n_reps)
-    M_CHECK_NON_NULL(n_neighbors)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(shared_residual_range)
-    M_CHECK_NON_NULL(n_bins)
-    M_CHECK_NON_NULL(counts)
-    M_CHECK_NON_NULL(pmf)
-    M_CHECK_NON_NULL(included_n_reps)
-
-    call build_residual_histograms( &
-        neighborhood_residuals, &
-        n_reps, n_neighbors, n_points, &
-        shared_residual_range, &
-        n_bins, &
-        counts, pmf, included_n_reps, &
-        ierr )
-
-end subroutine build_residual_histograms_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):build_residual_histograms(interface)]], including neighbor mask for filtered analysis
-pure subroutine build_residual_histograms_filtered_c( &
-    neighborhood_residuals, &
-    n_reps, n_neighbors, n_points, &
-    shared_residual_range, &
-    n_bins, &
-    counts, pmf, included_n_reps, &
-    ierr, neighbor_mask ) &
-    bind(C, name="build_residual_histograms_filtered_c")
-
-    use tox_data_integration, only: build_residual_histograms
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_conversions, only: c_int_as_logical
-    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_ALLOC_FAIL
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_reps
-        !! Number of replicates in the study
-    integer(c_int), intent(in), target :: n_neighbors
-        !! Number of reference points (k)
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points in the studies
-    real(c_double), dimension(n_reps, n_neighbors, n_points), intent(in), target :: neighborhood_residuals
-        !! Computed neighborhood residuals for a study ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
-    real(c_double), intent(in), target :: shared_residual_range
-        !! Computed residual range (R) from [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
-    integer(c_int), intent(in), target :: n_bins
-        !! Number of equally sized histogram bins in range [-R,R]
-    integer(c_int), dimension(n_points, n_bins), intent(out), target :: counts
-        !! Absolute counts of a residual per bin
-    real(c_double), dimension(n_points, n_bins), intent(out), target :: pmf
-        !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
-    integer(c_int), dimension(n_points), intent(out), target :: included_n_reps
-        !! Stores the count of non-NaN replicates (included ones)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    integer(c_int), dimension(n_neighbors, n_points), intent(in), target :: neighbor_mask
-        !! Mask to exclude specific neighbors (e.g. for family-wise analysis)
-
-    logical, dimension(:, :), allocatable :: f_neighbor_mask
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(neighborhood_residuals)
-    M_CHECK_NON_NULL(n_reps)
-    M_CHECK_NON_NULL(n_neighbors)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(shared_residual_range)
-    M_CHECK_NON_NULL(n_bins)
-    M_CHECK_NON_NULL(counts)
-    M_CHECK_NON_NULL(pmf)
-    M_CHECK_NON_NULL(included_n_reps)
-    M_CHECK_NON_NULL(neighbor_mask)
-
-    call set_ok(ierr)
-
-    call validate_dimension_size(n_neighbors, ierr)
-    call validate_dimension_size(n_points, ierr)
-
-    if (is_err(ierr)) return
-
-    M_ALLOCATE(f_neighbor_mask(n_neighbors, n_points))
-
-    call c_int_as_logical(neighbor_mask, f_neighbor_mask)
-
-    call build_residual_histograms( &
-        neighborhood_residuals, &
-        n_reps, n_neighbors, n_points, &
-        shared_residual_range, &
-        n_bins, &
-        counts, pmf, included_n_reps, &
-        ierr, f_neighbor_mask )
-
-end subroutine build_residual_histograms_filtered_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
-pure subroutine compute_divergence_per_reference_point_c( &
-    pmf_S1, pmf_S2, &
-    n_points, n_bins, &
-    js_divergences, ierr ) &
-    bind(C, name="compute_divergence_per_reference_point_c")
-
-    use tox_data_integration, only: compute_divergence_per_reference_point
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points (k)
-    integer(c_int), intent(in), target :: n_bins
-        !! Number of equally sized histogram bins in range [-R,R]
-    real(c_double), dimension(n_points, n_bins), intent(in), target :: pmf_S1
-        !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
-    real(c_double), dimension(n_points, n_bins), intent(in), target :: pmf_S2
-        !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
-    real(c_double), dimension(n_points), intent(out), target :: js_divergences
-        !! Jensen-Shannon divergence per reference point
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(n_bins)
-    M_CHECK_NON_NULL(pmf_S1)
-    M_CHECK_NON_NULL(pmf_S2)
-    M_CHECK_NON_NULL(js_divergences)
-
-    call compute_divergence_per_reference_point( &
-        pmf_S1, pmf_S2, &
-        n_points, n_bins, &
-        js_divergences, ierr )
-
-end subroutine compute_divergence_per_reference_point_c
-
-!> C-compatible wrapper for [[tox_data_integration(module):compute_weighted_global_divergence(interface)]]
-pure subroutine compute_weighted_global_divergence_c( &
-    js_divergences, &
-    n_points, &
-    included_n_reps_S1, included_n_reps_S2, &
-    global_js_divergence, weights, &
-    ierr ) &
-    bind(C, name="compute_weighted_global_divergence_c")
-
-    use tox_data_integration, only: compute_weighted_global_divergence
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_points
-        !! Number of reference points (k)
-    real(c_double), dimension(n_points), intent(in), target :: js_divergences
-        !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-    integer(c_int), dimension(n_points), intent(in), target :: included_n_reps_S1
-        !! Count of non-NaN residuals (included ones) in study 1
-    integer(c_int), dimension(n_points), intent(in), target :: included_n_reps_S2
-        !! Count of non-NaN residuals (included ones) in study 2
-    real(c_double), intent(out), target :: global_js_divergence
-        !! Weighted global Jensen-Shannon divergence
-    real(c_double), dimension(n_points), intent(out), target :: weights
-        !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(js_divergences)
-    M_CHECK_NON_NULL(included_n_reps_S1)
-    M_CHECK_NON_NULL(included_n_reps_S2)
-    M_CHECK_NON_NULL(global_js_divergence)
-    M_CHECK_NON_NULL(weights)
-
-    call compute_weighted_global_divergence( &
-        js_divergences, n_points, &
-        included_n_reps_S1, included_n_reps_S2, &
-        global_js_divergence, weights, ierr )
-
-end subroutine compute_weighted_global_divergence_c
+end module tox_data_integration_jsd

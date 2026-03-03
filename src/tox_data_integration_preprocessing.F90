@@ -3,18 +3,18 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
 !|
 !| This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.
-submodule (tox_data_integration) tox_data_integration_preprocessing
+module tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite, ieee_positive_inf
-    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion, LOG_2
+    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err, validate_all_in_range_int
     implicit none
 
 contains
 
     !> Compute per-gene mean expression, ignoring NaN values
-    pure module subroutine compute_gene_means(n_genes, n_reps, expr, means, ierr)
+    pure subroutine compute_gene_means(n_genes, n_reps, expr, means, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -37,7 +37,7 @@ contains
     end subroutine compute_gene_means
 
     !> (no input validation) Compute per-gene mean expression, ignoring NaN values
-    pure module subroutine compute_gene_means_helper(n_genes, n_reps, expr, means)
+    pure subroutine compute_gene_means_helper(n_genes, n_reps, expr, means)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -73,7 +73,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure module subroutine compute_residuals(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid, ierr)
+    pure subroutine compute_residuals(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -97,7 +97,7 @@ contains
         ! family means and expr containing NaN is expected behaviour
         if (is_err(ierr)) return
 
-        call compute_residuals_helper(n_genes, n_reps, expr, means, resid)
+        call compute_residuals_helper(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid)
     end subroutine compute_residuals
 
     !> (no input validation) Compute signed residuals (centering by mean)
@@ -105,7 +105,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure module subroutine compute_residuals_helper(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid)
+    pure subroutine compute_residuals_helper(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -137,7 +137,9 @@ contains
 
     end subroutine compute_residuals_helper
 
-    pure module function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
+    pure integer(int32) function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
+        integer(int32), intent(in) :: n_elements
+            !! Number of elements in `arr`
         real(real64), dimension(n_elements), intent(in) :: arr
             !! Array to find the last non-NaN index
         integer(int32), dimension(n_elements), intent(in) :: arr_perm
@@ -148,7 +150,7 @@ contains
     end function find_last_non_nan
 
     !> Pool per-gene mean expression values across studies
-    pure module subroutine pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
+    pure subroutine pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
         integer(int32), intent(in) :: n_genes_S1
             !! Number of genes in study S1
         integer(int32), intent(in) :: n_genes_S2
@@ -200,7 +202,7 @@ contains
     end subroutine pool_means_alloc
 
     !> Pool per-gene mean expression values across studies
-    pure module subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+    pure subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
         integer(int32), intent(in), target :: pool_size
             !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
         integer(int32), intent(in) :: n_points
@@ -227,7 +229,7 @@ contains
     end subroutine pool_means
 
     !> (no input validation) Pool per-gene mean expression values across studies
-    pure module subroutine pool_means_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+    pure subroutine pool_means_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
         integer(int32), intent(in), target :: pool_size
             !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
         integer(int32), intent(in) :: n_points
@@ -241,7 +243,7 @@ contains
         real(real64), intent(out) :: x_star(n_points)
             !! Mean-expression reference points
 
-        integer(int32) :: i_gene, i_point
+        integer(int32) :: i_point
         real(real64) :: quantile_level
 
         n_pool = find_last_non_nan(pooled_means, pooled_means_perm, pool_size)
@@ -262,7 +264,7 @@ contains
     !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
     !|
     !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
-    pure module function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
+    pure function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
         integer(int32), intent(in) :: n_pool
             !! Total number of pooled mean-expression values across both studies
         integer(int32), intent(in) :: n_points
@@ -305,7 +307,7 @@ contains
     end function calc_neighborhood_size
 
     !> Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, n_neighbors, ierr)
+    pure subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -316,13 +318,19 @@ contains
             !! Mean-expression reference points
         real(real64), intent(in) :: mean_S(n_genes_S)
             !! Array of per-gene mean values
-        real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
+        integer(int32), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
             !! @note 
             !! All indices in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case `n_genes_S` is lower than `n_neighbors`,
             !! remaining indices will be filled with the ones from `n_genes_S+1...n_neighbors`
             !! @endnote
+        integer(int32), intent(out) :: neighborhood_range(2, n_points)
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is [1, 1]
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -345,11 +353,11 @@ contains
         end do
 
         call heapsort_real(mean_S, mean_S_perm)
-        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
+        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
     end subroutine construct_neighborhoods_alloc
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors, ierr)
+    pure subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -362,13 +370,19 @@ contains
             !! Array of per-gene mean values
         integer(int32), intent(in) :: mean_S_perm(n_genes_S)
             !! Sorting permutation for `mean_S`
-        real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
+        integer(int32), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
             !! @note 
             !! All indices in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case `n_genes_S` is lower than `n_neighbors`,
             !! remaining indices will be filled with the ones from `n_genes_S+1...n_neighbors`
             !! @endnote
+        integer(int32), intent(out) :: neighborhood_range(2, n_points)
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is [1, 1]
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -381,11 +395,11 @@ contains
 
         if (is_err(ierr)) return
 
-        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
+        call construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
     end subroutine construct_neighborhoods
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, n_neighbors)
+    pure subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -398,15 +412,21 @@ contains
             !! Array of per-gene mean values
         integer(int32), intent(in) :: mean_S_perm(n_genes_S)
             !! Sorting permutation for `mean_S`
-        real(real64), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
+        integer(int32), intent(out) :: neighborhood_residuals(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
             !! @note 
             !! All indices in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case `n_genes_S` is lower than `n_neighbors`,
             !! remaining indices will be filled with the ones from `n_genes_S+1...n_neighbors`
             !! @endnote
+        integer(int32), intent(out) :: neighborhood_range(2, n_points)
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is [1, 1]
 
-        integer(int32) :: i_point, i_neighbor, gene_idx, left_gene, right_gene
+        integer(int32) :: i_point, i_neighbor, gene_idx, left_gene, right_gene, x_star_idx
         real(real64) :: x_star_val
 
         ! Process each reference point
@@ -422,6 +442,13 @@ contains
             end if
 
             if (x_star_idx == 1) then
+                neighborhood_range(1, i_point) = 1_int32
+                if (ieee_is_nan(x_star_val)) then
+                    neighborhood_range(1, i_point) = 1_int32
+                else
+                    neighborhood_range(2, i_point) = n_genes_S
+                end if
+
                 ! The first `n_neighbors` genes are the closest to `x_star_val`
                 do concurrent (i_neighbor = 1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_residuals, i_point)
                     if (i_neighbor <= n_genes_S) then
@@ -450,17 +477,21 @@ contains
                         neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
                         left_gene = left_gene - 1
                     else
-                        ! if left side is closer than right side of x_star, take left side, else right side
-                        if (x_star_val - mean_S(mean_S_perm(left_gene)) < mean_S(mean_S_perm(right_gene)) - x_star_val) then
-                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
-                            left_gene = left_gene - 1
-                        else
+                        ! if right side is closer than left side of x_star, take right side, else left side
+                        ! Note: In the sorted array, NaNs are always last -> right side
+                        ! -> if condition is false because of NaN it is because right value is NaN or both
+                        if (mean_S(mean_S_perm(right_gene)) - x_star_val > x_star_val - mean_S(mean_S_perm(left_gene))) then
                             neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
                             right_gene = right_gene + 1
+                        else
+                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
+                            left_gene = left_gene - 1
                         end if
                     end if
                 end do
+                neighborhood_range(1, i_point) = left_gene + 1
+                neighborhood_range(2, i_point) = right_gene - 1
             end if
         end do
     end subroutine construct_neighborhoods_helper
-end submodule tox_data_integration_preprocessing
+end module tox_data_integration_preprocessing

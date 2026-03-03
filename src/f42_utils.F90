@@ -53,15 +53,15 @@ contains
 
     M_DEFAULT_VAL(lower_idx, actual_lower_idx, 1_int32)
     actual_lower_idx = clamp(actual_lower_idx, min_val=1_int32, max_val=n)
-    M_DEFAULT_VAL(actual_upper_idx, actual_actual_upper_idx, n + 1)
+    M_DEFAULT_VAL(upper_idx, actual_upper_idx, n + 1)
     actual_upper_idx = clamp(actual_upper_idx, min_val=actual_lower_idx-1, max_val=n) + 1
 
     do while (actual_lower_idx < actual_upper_idx)
-      actual_mid_idx = (actual_lower_idx + actual_upper_idx) / 2
-      if (real_less(arr(perm(actual_mid_idx)), value)) then
-        actual_lower_idx = actual_mid_idx + 1
+      mid_idx = (actual_lower_idx + actual_upper_idx) / 2
+      if (real_less(arr(perm(mid_idx)), value)) then
+        actual_lower_idx = mid_idx + 1
       else
-        actual_upper_idx = actual_mid_idx
+        actual_upper_idx = mid_idx
       end if
     end do
 
@@ -69,7 +69,7 @@ contains
   end function binary_search_insertion
 
   !> Function to find a value in a sorted array using binary search. Returns -1 if not found
-  pure integer(int32) function binary_search_insertion(arr, perm, value) result(idx)
+  pure integer(int32) function binary_search(arr, perm, value) result(idx)
     real(real64), dimension(:), contiguous, intent(in) :: arr
       !! Array of values
     integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
@@ -88,7 +88,7 @@ contains
         idx = -1
       end if
     end if
-  end function binary_search_insertion
+  end function binary_search
 
   !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
   pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
@@ -1174,7 +1174,7 @@ contains
   end subroutine calc_percentile
 
   !> Calculate the fractional index using linear interpolation method
-  pure function calc_percentile_rank(percentile, n) result(rank)
+  pure real(real64) function calc_percentile_rank(percentile, n) result(rank)
     integer(int32), intent(in) :: n
       !! Sample size
     real(real64), intent(in) :: percentile
