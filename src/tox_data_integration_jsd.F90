@@ -239,7 +239,7 @@ contains
         end if
     end subroutine estimate_bin_count_helper
 
-    pure subroutine js_comp_test(residuals, gene_means, gene_means_perms, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_bins, shared_residual_range, n_points_candidates, n_point_counts, max_n_points_candidate, n_neighbors_candidates, n_neighbor_counts, max_n_neighbors_candidate, neighborhood_residuals, neighborhood_ranges, x_star, pmfs, counts, included_n_reps, mean_pmfs, mean_pmfs_included_n_reps, weights, js_divergences, global_js_divergence, confidence_interval, tmp_confidence_interval, join_method)
+    pure subroutine js_comp_test(residuals, gene_means, gene_means_perms, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_bins, shared_residual_range, n_points_candidates, n_point_counts, max_n_points_candidate, n_neighbors_candidates, n_neighbor_counts, max_n_neighbors_candidate, neighborhood_residuals, neighborhood_ranges, x_star, pmfs, counts, included_n_reps, mean_pmfs, mean_pmfs_included_n_reps, mean_pmfs_counts, weights, js_divergences, global_js_divergence, confidence_interval, tmp_confidence_interval, join_method)
         integer(int32), intent(in) :: n_studies
             !! Neighborhood size
         integer(int32), intent(in) :: max_n_points_candidate
@@ -279,6 +279,7 @@ contains
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
         real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: pmfs
         integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: counts
+        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: mean_pmfs_counts
         real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: mean_pmfs
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: included_n_reps
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: mean_pmfs_included_n_reps
@@ -288,6 +289,9 @@ contains
         real(real64), dimension(2, n_studies), intent(out) :: confidence_interval
         real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
         integer(int32), intent(in) :: join_method
+
+        real(real64), parameter :: succeeding_overlap = 0.9_real64
+        integer(int32), parameter :: min_count_per_mean_bin = 5_int32
 
         integer(int32) :: n_points, n_neighbors, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, exceeds_min_CI_overlap
         logical :: plateau_found, all_have_min_overlap
@@ -316,7 +320,8 @@ contains
                 end do
 
                 if (all_have_min_overlap) then
-                    call create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1))
+                    call create_mean_pmf_helper(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1), mean_pmfs_counts(:, :, 1))
+                    if (.not. test_mean_pmf_min_counts_helper(mean_pmfs_counts(:, :, 1), n_bins, n_points, min_count_per_mean_bin)) cycle
 
                     exceeds_min_CI_overlap = 0_int32
                     do concurrent (i_study = 1:n_studies)&
@@ -325,10 +330,14 @@ contains
                             global_js_divergence, weights, confidence_interval, tmp_confidence_interval&
                         )
 
-                        ! each study needs its own mean_pmf copy for performing bootstrapping
-                        mean_pmfs(:, :, i_study) = mean_pmfs(:, :, 1)
-                        ! own mean_pmf means own included n reps as well
-                        mean_pmfs_included_n_reps(:, i_study) = mean_pmfs_included_n_reps(:, 1)
+                        if (i_study > 1) then
+                            ! each study needs its own mean_pmf copy for performing bootstrapping
+                            mean_pmfs(:, :, i_study) = mean_pmfs(:, :, 1)
+                            ! own mean_pmf means own included n reps as well
+                            mean_pmfs_included_n_reps(:, i_study) = mean_pmfs_included_n_reps(:, 1)
+
+                            mean_pmfs_counts(:, :, i_study) = mean_pmfs_counts(:, :, 1)
+                        end if
 
                         call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, js_divergences(:, i_study))
                         call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), global_js_divergence(i_study), weights(:, i_study))
@@ -338,7 +347,7 @@ contains
                         if (compute_relative_overlap_helper(&
                                 confidence_interval(1, i_study), confidence_interval(2, i_study),&
                                 tmp_confidence_interval(1, i_study), tmp_confidence_interval(2, i_study)&
-                            ) > 0.9_real64)&
+                            ) > succeeding_overlap)&
                         then
                             exceeds_min_CI_overlap = exceeds_min_CI_overlap + 1
                         end if
@@ -378,7 +387,7 @@ contains
             call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)
             call build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study))
         end do
-        call create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1))
+        call create_mean_pmf_helper(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmfs(:, :, 1), mean_pmfs_included_n_reps(:, 1), mean_pmfs_counts(:, :, 1))
 
         do concurrent (i_study = 1:n_studies) shared(mean_pmfs, mean_pmfs_included_n_reps, pmfs, n_points, n_bins, js_divergences, included_n_reps, global_js_divergence, confidence_interval)
             ! each study needs its own mean_pmf copy for performing bootstrapping
@@ -386,13 +395,36 @@ contains
             ! own mean_pmf means own included n reps as well
             mean_pmfs_included_n_reps(:, i_study) = mean_pmfs_included_n_reps(:, 1)
 
+            mean_pmfs_counts(:, :, i_study) = mean_pmfs_counts(:, :, 1)
+
             call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, js_divergences(:, i_study))
             call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), global_js_divergence(i_study), weights(:, i_study))
             ! TODO call gjct_permutation_test_helper(counts(:, :, i_study), pmfs(:, :, i_study), mean_pmfs(:, :, i_study), n_points, n_bins, included_n_reps(:, i_study), mean_pmfs_included_n_reps(:, i_study), p_values(i_study))
         end do
     end subroutine js_comp_test
 
-    pure subroutine create_mean_pmf_helper(pmfs, n_bins, n_points, n_studies, included_n_reps, mean_pmf, mean_pmf_included_n_reps)
+    pure logical function test_mean_pmf_min_counts_helper(mean_pmf_counts, n_bins, n_points, min) result(all_bins_have_min_count)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: min
+        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+
+        integer(int32) :: i_point, i_bin
+
+        all_bins_have_min_count = .true.
+        do concurrent (i_point = 1:n_points)
+            do concurrent (i_bin = 1:n_bins) shared(mean_pmf_counts, min, i_point, all_bins_have_min_count)
+                if (mean_pmf_counts(i_bin, i_point) < min) then
+                    all_bins_have_min_count = .false.
+                end if
+            end do
+        end do
+    
+    end function test_mean_pmf_min_counts_helper
+
+    pure subroutine create_mean_pmf_helper(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, mean_pmf_included_n_reps, mean_pmf_counts)
         integer(int32), intent(in) :: n_studies
             !! Neighborhood size
         integer(int32), intent(in) :: n_points
@@ -400,18 +432,23 @@ contains
         integer(int32), intent(in) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
         real(real64), dimension(n_bins, n_points, n_studies), intent(in) :: pmfs
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(in) :: counts
         real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
 
         integer(int32) :: i_study, i_point, i_bin
 
         mean_pmf = 0.0_real64
         mean_pmf_included_n_reps = 0_int32
+        mean_pmf_counts = 0_int32
+
         do i_study = 1, n_studies
             do i_point = 1, n_points
                 do i_bin = 1, n_bins
                     mean_pmf(i_bin, i_point) = mean_pmf(i_bin, i_point) + pmfs(i_bin, i_point, i_study) / real(n_studies, real64)
+                    mean_pmf_counts(i_bin, i_point) = mean_pmf_counts(i_bin, i_point) + counts(i_bin, i_point, i_study)
                 end do
                 mean_pmf_included_n_reps(i_point) = mean_pmf_included_n_reps(i_point) + included_n_reps(i_point, i_study)
             end do
