@@ -1,6 +1,7 @@
 !> This module interfaces with the random number generation from the GNU Scientific Library.
 !| Thus, for selecting the RNG algorithm or seed, use the environment variables `GSL_RNG_TYPE` and `GSL_RNG_SEED` as defined [in the documentation](https://www.gnu.org/software/gsl/doc/html/rng.html#random-number-environment-variables):
 module f42_random_gsl
+    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64, int64
     use, intrinsic :: iso_c_binding, only: c_ptr, c_associated, c_double, c_int
     implicit none
@@ -40,7 +41,7 @@ module f42_random_gsl
         function random_binomial(rng, p, n_samples) result(n_drawn) bind(C, name="gsl_ran_binomial")
             import
             type(c_ptr), intent(in), value :: rng
-            real(real64), intent(in), value :: p
+            real(c_double), intent(in), value :: p
             integer(c_int), intent(in), value :: n_samples
             integer(c_int) :: n_drawn
         end function random_binomial
@@ -51,11 +52,34 @@ contains
         rng = alloc_rng(get_rng_type())
     end function create_rng
 
-    real(real64) function rand_range(min, max, rng) result(res)
+    real(real64) function rand_range(rng, min, max) result(res)
         type(c_ptr), intent(in) :: rng
         real(real64), intent(in) :: min
         real(real64), intent(in) :: max
 
         res = min + random_uniform(rng) * (max - min)
     end function rand_range
+
+    subroutine random_multiv_binom(rng, population_sizes, n_populations, total_population, drawn)
+        integer(int32), intent(in) :: n_populations
+        type(c_ptr), intent(in) :: rng
+        integer(int32), dimension(n_populations), intent(in) :: population_sizes
+        integer(int32), intent(in) :: total_population
+        integer(int32), dimension(n_populations), intent(out) :: drawn
+
+        integer(int32) :: remaining_population, i_population
+        real(real64) :: p
+
+        remaining_population = total_population
+        drawn = 0_int32
+        do i_population = 1, n_populations - 1
+            p = real(population_sizes(i_population), real64) / real(remaining_population, real64)
+            drawn(i_population) = random_binomial(rng, p, remaining_population)
+            remaining_population = remaining_population - drawn(i_population)
+
+            if (remaining_population == 0) exit
+        end do
+
+        drawn(n_populations) = remaining_population
+    end subroutine random_multiv_binom
 end module f42_random_gsl

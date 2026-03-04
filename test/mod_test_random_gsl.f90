@@ -84,11 +84,11 @@ contains
         print *, random_binomial(rng, 0.6_real64, 5_int32)
         print *, random_binomial(rng, 0.6_real64, 5_int32)
         print *, random_binomial(rng, 0.6_real64, 5_int32)
-        print *, rand_range(0.6_real64, 1.5_real64, rng)
-        print *, rand_range(0.6_real64, 1.5_real64, rng)
-        print *, rand_range(0.6_real64, 1.5_real64, rng)
-        print *, rand_range(0.6_real64, 1.5_real64, rng)
-        print *, rand_range(0.6_real64, 1.5_real64, rng)
+        print *, rand_range(rng, 0.6_real64, 1.5_real64)
+        print *, rand_range(rng, 0.6_real64, 1.5_real64)
+        print *, rand_range(rng, 0.6_real64, 1.5_real64)
+        print *, rand_range(rng, 0.6_real64, 1.5_real64)
+        print *, rand_range(rng, 0.6_real64, 1.5_real64)
         call free_rng(rng)
     end subroutine test
 end module mod_test_random_gsl
