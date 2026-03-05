@@ -32,8 +32,7 @@ contains
     all_tests(5) = test_case("test_project_to_subspace", test_project_to_subspace)
     all_tests(6) = test_case("test_project_to_subspace_k1", test_project_to_subspace_k1)
     all_tests(7) = test_case("test_smooth_vectors_gaussian_adaptive_mode0", test_smooth_vectors_gaussian_adaptive_mode0)
-    ! all_tests(8) = test_case("test_smooth_vectors_gaussian_adaptive_mode1", test_smooth_vectors_gaussian_adaptive_mode1)
-    ! all_tests(9) = test_case("test_smooth_vectors_gaussian_adaptive_mode2", test_smooth_vectors_gaussian_adaptive_mode2)
+
   end function get_all_tests
 
   subroutine run_all_tests_manle()
@@ -577,136 +576,77 @@ subroutine test_smooth_vectors_gaussian_adaptive_mode0()
     use iso_fortran_env, only: real64, int32
     implicit none
 
+    ! Dimension parameters
     integer(int32), parameter :: n_points = 5, n_dims = 2
-    real(real64) :: coords(n_dims, n_points)
-    real(real64) :: vecs(n_dims, n_points)
-    real(real64) :: smoothed(n_dims, n_points)
-    real(real64) :: expected_smoothed(n_dims, n_points)
-    integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
-    integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
-    integer(int32) :: ierr
+    
+    ! Arguments for the subroutine
+    real(real64)    :: coords(n_dims, n_points)
+    real(real64)    :: vecs(n_dims, n_points)
+    real(real64)    :: smoothed(n_dims, n_points)
+    real(real64)    :: sigma_raw(1, n_points)      ! Required by the new signature
+    integer(int32)  :: kd_indices(n_points)
+    integer(int32)  :: dimension_order(n_dims)
+    integer(int32)  :: workspace(n_points)
+    real(real64)    :: value_buffer(n_points)
+    integer(int32)  :: permutation(n_points)
+    integer(int32)  :: left_stack(n_points)
+    integer(int32)  :: right_stack(n_points)
+    real(real64)    :: sd_arr(n_dims, n_points)    ! Adjusted to (n_vector_dims, n_points)
+    integer(int32)  :: ierr
+    
+    ! Control parameters
+    integer(int32)  :: k_neighbors = 5
+    integer(int32)  :: k_neighbors_sigma = 3       
+    integer(int32)  :: kernel_type = 1             ! 1: Gaussian
+    integer(int32)  :: anisotropy_mode = 0         ! Mode 0: Isotropic
+    real(real64)    :: anisotropy_factor = 1.0_real64
 
-    ! Initialize test data
-    coords = reshape([1.0, 2.0, 3.0, 4.0, 5.0, &
-                      1.0, 2.0, 3.0, 4.0, 5.0], [n_dims, n_points])
-    vecs = reshape([10.0, 20.0, 30.0, 40.0, 50.0, &
-                    5.0, 10.0, 15.0, 20.0, 25.0], [n_dims, n_points])
+    ! Test data and expected results
+    real(real64)    :: expected_smoothed(n_dims, n_points)
 
-    ! Expected smoothed values (manually calculated or from a trusted source)
-    expected_smoothed = reshape([23.861929093451685,21.907633336401815,16.722814001864784,18.932113720189815,17.731420749740607,25.231420749740611,22.135772559620364,27.451268882624056,24.585696583374318,23.995634110957173], [n_dims, n_points])
+    ! Initialize coordinates and vectors
+    ! Using reshape to ensure specific mapping [dim, point]
+    coords = reshape([1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 5.0], [n_dims, n_points])
+    vecs = reshape([10.0, 5.0, 20.0, 10.0, 30.0, 15.0, 40.0, 20.0, 50.0, 25.0], [n_dims, n_points])
 
-    ! Call the subroutine for mode 0 (isotropic)
-    call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
-        n_dims, n_dims, n_points, 5, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
-        0, 1.0_real64, sd_arr, ierr)
+    ! Expected smoothed values from original test logic
+    expected_smoothed = reshape([23.861929093451685, 25.231420749740611, &
+                                 21.907633336401815, 22.135772559620364, &
+                                 16.722814001864784, 27.451268882624056, &
+                                 18.932113720189815, 24.585696583374318, &
+                                 17.731420749740607, 23.995634110957173], [n_dims, n_points])
 
-    ! Check for no errors
-    call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode0: no error")
+    ! Call the updated subroutine
+    ! Optional arguments (U, singular_values, k_intrinsic) are omitted for Mode 0
+    call anwil_smooth_sigma( &
+        coords              = coords, &
+        vectors             = vecs, &
+        smoothed            = smoothed, &
+        n_coord_dims        = n_dims, &
+        n_vector_dims       = n_dims, &
+        n_points            = n_points, &
+        k_neighbors         = k_neighbors, &
+        kd_indices          = kd_indices, &
+        dimension_order     = dimension_order, &
+        workspace           = workspace, &
+        value_buffer        = value_buffer, &
+        permutation         = permutation, &
+        left_stack          = left_stack, &
+        right_stack         = right_stack, &
+        sigma_raw           = sigma_raw, &
+        sd_arr              = sd_arr, &
+        anisotropy_mode     = anisotropy_mode, &
+        anisotropy_factor   = anisotropy_factor, &
+        k_neighbors_sigma   = k_neighbors_sigma, &
+        kernel_type         = kernel_type, &
+        ierr                = ierr)
 
-    ! Print smoothed and expected values for debugging
-    print *, "Smoothed values (mode 0):"
-    print *, smoothed
-    print *, "Expected values (mode 0):"
-    print *, expected_smoothed
+    ! Assertions
+    call assert_equal_int(ierr, 0, "test_smooth_vectors_mode0: ierr should be 0")
 
-    ! Check that the smoothed values match the expected values
     call assert_true(all(abs(smoothed - expected_smoothed) < 1.0e-6), &
-        "smooth_vectors_gaussian_adaptive_mode0: smoothed values match expected")
+        "test_smooth_vectors_mode0: result should match expected values")
+
   end subroutine test_smooth_vectors_gaussian_adaptive_mode0
 
-  subroutine test_smooth_vectors_gaussian_adaptive_mode1()
-    use iso_fortran_env, only: real64, int32
-    implicit none
-
-    integer(int32), parameter :: n_points = 5, n_dims = 2
-    real(real64) :: coords(n_dims, n_points)
-    real(real64) :: vecs(n_dims, n_points)
-    real(real64) :: smoothed(n_dims, n_points)
-    real(real64) :: expected_smoothed(n_dims, n_points)
-    integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
-    integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
-    integer(int32) :: ierr
-
-    ! Initialize test data
-    coords = reshape([1.0, 2.0, 3.0, 4.0, 5.0, &
-                      1.0, 2.0, 3.0, 4.0, 5.0], [n_dims, n_points])
-    vecs = reshape([10.0, 20.0, 30.0, 40.0, 50.0, &
-                    5.0, 10.0, 15.0, 20.0, 25.0], [n_dims, n_points])
-
-    ! Expected smoothed values (manually calculated or from a trusted source)
-    expected_smoothed = reshape([12.0, 22.0, 32.0, 42.0, 50.0, &
-                                  6.0, 11.0, 16.0, 21.0, 25.0], [n_dims, n_points])
-
-    ! Call the subroutine for mode 1 (anisotropic, diagonal)
-    call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
-        n_dims, n_dims, n_points, 5, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
-        1, 0.5_real64, sd_arr, ierr)
-
-    ! Check for no errors
-    call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode1: no error")
-
-    ! Print smoothed and expected values for debugging
-    print *, "Smoothed values (mode 1):"
-    print *, smoothed
-    print *, "Expected values (mode 1):"
-    print *, expected_smoothed
-
-    ! Check that the smoothed values match the expected values
-    call assert_true(all(abs(smoothed - expected_smoothed) < 1.0e-6), &
-        "smooth_vectors_gaussian_adaptive_mode1: smoothed values match expected")
-  end subroutine test_smooth_vectors_gaussian_adaptive_mode1
-
-  subroutine test_smooth_vectors_gaussian_adaptive_mode2()
-    use iso_fortran_env, only: real64, int32
-    implicit none
-
-    integer(int32), parameter :: n_points = 5, n_dims = 2
-    real(real64) :: coords(n_dims, n_points)
-    real(real64) :: vecs(n_dims, n_points)
-    real(real64) :: smoothed(n_dims, n_points)
-    real(real64) :: expected_smoothed(n_dims, n_points)
-    integer(int32) :: kd_indices(n_points), dimension_order(n_dims)
-    integer(int32) :: neighbors(5), workspace(n_points), permutation(n_points), permutation_distances(5)
-    integer(int32) :: left_stack(n_points), right_stack(n_points)
-    real(real64) :: distances(5), value_buffer(n_points), sd_arr(n_points)
-    integer(int32) :: ierr
-
-    ! Initialize test data
-    coords = reshape([1.0, 2.0, 3.0, 4.0, 5.0, &
-                      1.0, 2.0, 3.0, 4.0, 5.0], [n_dims, n_points])
-    vecs = reshape([10.0, 20.0, 30.0, 40.0, 50.0, &
-                    5.0, 10.0, 15.0, 20.0, 25.0], [n_dims, n_points])
-
-    ! Expected smoothed values (manually calculated or from a trusted source)
-    expected_smoothed = reshape([11.0, 21.0, 31.0, 41.0, 50.0, &
-                                  5.5, 10.5, 15.5, 20.5, 25.0], [n_dims, n_points])
-
-    ! Call the subroutine for mode 2 (anisotropic, Mahalanobis)
-    call smooth_vectors_gaussian_adaptive(coords, vecs, smoothed, &
-        n_dims, n_dims, n_points, 5, &
-        kd_indices, dimension_order, neighbors, distances, &
-        workspace, value_buffer, permutation, permutation_distances, left_stack, right_stack, &
-        2, 1.0_real64, sd_arr, ierr)
-
-    ! Check for no errors
-    call assert_equal_int(ierr, 0, "smooth_vectors_gaussian_adaptive_mode2: no error")
-
-    ! Print smoothed and expected values for debugging
-    print *, "Smoothed values (mode 2):"
-    print *, smoothed
-    print *, "Expected values (mode 2):"
-    print *, expected_smoothed
-
-    ! Check that the smoothed values match the expected values
-    call assert_true(all(abs(smoothed - expected_smoothed) < 1.0e-6), &
-        "smooth_vectors_gaussian_adaptive_mode2: smoothed values match expected")
-  end subroutine test_smooth_vectors_gaussian_adaptive_mode2
 end module mod_test_manle_module

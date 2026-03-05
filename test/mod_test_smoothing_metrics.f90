@@ -606,13 +606,17 @@ contains
         call assert_equal_real(pen1, pen2, 1d-12, "Scale: penalty must be invariant under consistent scaling")
     end subroutine test_coverage_scale_consistency
 
-    ! ==========================================================================
+    ! =========================================================================
     ! SMOOTHING SCORE
-    ! ==========================================================================
+    ! =========================================================================
 
     !> t0 sanity: Rt=R0, Et=0, pt=1 => score = 1
     subroutine test_smoothing_score_t0_is_one()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 2.5_real64
         R0  = 2.5_real64
         Et  = 0.0_real64
@@ -620,77 +624,97 @@ contains
         pt  = 1.0_real64
         eps = 1.0e-12_real64
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
         call assert_equal_real(score, 1.0_real64, 1d-12, "Score t0 must be 1 when Rt=R0, Et=0, pt=1")
     end subroutine test_smoothing_score_t0_is_one
 
     !> Roughness only: halve Rt with others unchanged => score = (0.5)^(1/3)
     subroutine test_smoothing_score_roughness_halved()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score, expected
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 5.0_real64
-        R0  = 10.0_real64      ! r_norm = 0.5
-        Et  = 0.0_real64       ! (1+e_norm)=1
+        R0  = 10.0_real64       ! r_norm = 0.5
+        Et  = 0.0_real64
         D0  = 1.0_real64
         pt  = 1.0_real64
-        eps = 0.0_real64       ! exact arithmetic for test
+        eps = 1e-30_real64       
 
         expected = (0.5_real64)**(1.0_real64/3.0_real64)
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
-        call assert_equal_real(score, expected, 1d-12, "Score must scale with cube-root of r_norm when others fixed")
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
+        call assert_equal_real(score, expected, 1d-12, "Score must scale with cube-root of r_norm")
     end subroutine test_smoothing_score_roughness_halved
 
     !> Fidelity only: Et/D0 = 0.5 => (1+e_norm)=1.5, others 1 => score = (1.5)^(1/3)
     subroutine test_smoothing_score_fidelity_increase()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score, expected
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 7.0_real64
-        R0  = 7.0_real64       ! r_norm=1
+        R0  = 7.0_real64       
         Et  = 5.0_real64
-        D0  = 10.0_real64      ! e_norm=0.5 => (1+e)=1.5
+        D0  = 10.0_real64      
         pt  = 1.0_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
 
         expected = (1.5_real64)**(1.0_real64/3.0_real64)
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
-        call assert_equal_real(score, expected, 1d-12, "Score must increase with cube-root of (1+e_norm) when others fixed")
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
+        call assert_equal_real(score, expected, 1d-12, "Score must increase with cube-root of (1+e_norm)")
     end subroutine test_smoothing_score_fidelity_increase
 
     !> Coverage penalty only: pt=2, others 1 => score = 2^(1/3)
     subroutine test_smoothing_score_coverage_penalty_increase()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score, expected
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 3.0_real64
-        R0  = 3.0_real64       ! r_norm=1
+        R0  = 3.0_real64
         Et  = 0.0_real64
         D0  = 10.0_real64
         pt  = 2.0_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
 
         expected = (2.0_real64)**(1.0_real64/3.0_real64)
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
-        call assert_equal_real(score, expected, 1d-12, "Score must increase with cube-root of coverage_penalty when others fixed")
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
+        call assert_equal_real(score, expected, 1d-12, "Score must increase with cube-root of pt")
     end subroutine test_smoothing_score_coverage_penalty_increase
 
     !> Combined known product: r_norm=0.25, (1+e)=2.0, pt=4.0 => product=2.0 => score = 2^(1/3)
     subroutine test_smoothing_score_known_product()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score, expected
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 1.0_real64
-        R0  = 4.0_real64       ! r_norm=0.25
+        R0  = 4.0_real64
         Et  = 1.0_real64
-        D0  = 1.0_real64       ! e_norm=1 => (1+e)=2
-        pt  = 4.0_real64       ! product = 0.25*2*4 = 2
-        eps = 0.0_real64
+        D0  = 1.0_real64
+        pt  = 4.0_real64
+        eps = 1e-30_real64
 
         expected = (2.0_real64)**(1.0_real64/3.0_real64)
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
-        call assert_equal_real(score, expected, 1d-12, "Score must match cube-root of combined product")
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
+        call assert_equal_real(score, expected, 1d-12, "Score must match combined product in geometric mode")
     end subroutine test_smoothing_score_known_product
 
-    !> Epsilon stability: with eps>0, t0 should still be ~1 (within tolerance)
+    !> Epsilon stability: with eps>0, t0 should still be ~1
     subroutine test_smoothing_score_t0_with_epsilon_close_to_one()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 1.0_real64
         R0  = 1.0_real64
         Et  = 0.0_real64
@@ -698,128 +722,153 @@ contains
         pt  = 1.0_real64
         eps = 1.0e-12_real64
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
         call assert_equal_real(score, 1.0_real64, 1d-10, "Score should remain ~1 at t0 even with epsilon")
     end subroutine test_smoothing_score_t0_with_epsilon_close_to_one
 
-    !> Monotonicity in Rt: if Rt decreases with others fixed, score must decrease
+    !> Monotonicity in Rt: if Rt decreases, score must decrease
     subroutine test_smoothing_score_decreases_when_roughness_decreases()
         real(real64) :: Rt1, Rt2, R0, Et, D0, pt, eps, s1, s2
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 1 ; wr = 1.0; we = 1.0; wc = 1.0
         R0  = 10.0_real64
         Et  = 2.0_real64
         D0  = 10.0_real64
         pt  = 1.2_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
 
         Rt1 = 8.0_real64
-        Rt2 = 4.0_real64   ! smaller roughness
+        Rt2 = 4.0_real64
 
-        call compute_smoothing_score(Rt1, R0, Et, D0, pt, eps, s1)
-        call compute_smoothing_score(Rt2, R0, Et, D0, pt, eps, s2)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt1, R0, Et, D0, pt, eps, s1)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt2, R0, Et, D0, pt, eps, s2)
 
-        call assert_true(s2 < s1, "Score must decrease when roughness decreases (others fixed)")
+        call assert_true(s2 < s1, "Score must decrease when roughness decreases")
     end subroutine test_smoothing_score_decreases_when_roughness_decreases
 
-    !> Monotonicity in Et: if RMSE increases with others fixed, score must increase
+    !> Monotonicity in Et: if RMSE increases, score must increase
     subroutine test_smoothing_score_increases_when_rmse_increases()
         real(real64) :: Rt, R0, Et1, Et2, D0, pt, eps, s1, s2
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 1 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 5.0_real64
         R0  = 5.0_real64
         D0  = 10.0_real64
         pt  = 1.0_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
 
         Et1 = 0.0_real64
         Et2 = 5.0_real64
 
-        call compute_smoothing_score(Rt, R0, Et1, D0, pt, eps, s1)
-        call compute_smoothing_score(Rt, R0, Et2, D0, pt, eps, s2)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et1, D0, pt, eps, s1)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et2, D0, pt, eps, s2)
 
-        call assert_true(s2 > s1, "Score must increase when RMSE increases (others fixed)")
+        call assert_true(s2 > s1, "Score must increase when RMSE increases")
     end subroutine test_smoothing_score_increases_when_rmse_increases
 
-    !> Monotonicity in pt: if coverage penalty increases with others fixed, score must increase
+    !> Monotonicity in pt: if coverage penalty increases, score must increase
     subroutine test_smoothing_score_increases_when_penalty_increases()
         real(real64) :: Rt, R0, Et, D0, pt1, pt2, eps, s1, s2
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 1 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 5.0_real64
         R0  = 5.0_real64
         Et  = 1.0_real64
         D0  = 10.0_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
 
         pt1 = 1.0_real64
         pt2 = 3.0_real64
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt1, eps, s1)
-        call compute_smoothing_score(Rt, R0, Et, D0, pt2, eps, s2)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt1, eps, s1)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt2, eps, s2)
 
-        call assert_true(s2 > s1, "Score must increase when coverage_penalty increases (others fixed)")
+        call assert_true(s2 > s1, "Score must increase when pt increases")
     end subroutine test_smoothing_score_increases_when_penalty_increases
 
-    !> Scale invariance for Rt/R0: scaling both by c leaves score unchanged (others fixed)
+    !> Scale invariance for Rt/R0
     subroutine test_smoothing_score_invariant_to_scaling_of_roughness_pair()
         real(real64) :: Rt, R0, Et, D0, pt, eps, c, s1, s2
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 2.0_real64
         R0  = 8.0_real64
         Et  = 1.0_real64
         D0  = 5.0_real64
         pt  = 1.1_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
+        c   = 7.0_real64
 
-        c = 7.0_real64
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, s1)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt*c, R0*c, Et, D0, pt, eps, s2)
 
-        call compute_smoothing_score(Rt,     R0,     Et, D0, pt, eps, s1)
-        call compute_smoothing_score(Rt * c, R0 * c, Et, D0, pt, eps, s2)
-
-        call assert_equal_real(s1, s2, 1d-12, "Scaling Rt and R0 equally must not change the score")
+        call assert_equal_real(s1, s2, 1d-12, "Scaling Rt and R0 equally must not change score")
     end subroutine test_smoothing_score_invariant_to_scaling_of_roughness_pair
 
-    !> Scale invariance for Et/D0: scaling both Et and D0 by c leaves score unchanged (others fixed)
+    !> Scale invariance for Et/D0
     subroutine test_smoothing_score_invariant_to_scaling_of_rmse_and_diameter()
         real(real64) :: Rt, R0, Et, D0, pt, eps, c, s1, s2
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 1.0_real64
         R0  = 2.0_real64
         Et  = 3.0_real64
         D0  = 6.0_real64
         pt  = 1.0_real64
-        eps = 0.0_real64
+        eps = 1e-30_real64
+        c   = 4.0_real64
 
-        c = 4.0_real64
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, s1)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et*c, D0*c, pt, eps, s2)
 
-        call compute_smoothing_score(Rt, R0, Et,     D0,     pt, eps, s1)
-        call compute_smoothing_score(Rt, R0, Et * c, D0 * c, pt, eps, s2)
-
-        call assert_equal_real(s1, s2, 1d-12, "Scaling RMSE and diameter equally must not change the score")
+        call assert_equal_real(s1, s2, 1d-12, "Scaling Et and D0 equally must not change score")
     end subroutine test_smoothing_score_invariant_to_scaling_of_rmse_and_diameter
 
-    !> Extreme contraction: pt huge, score should be huge^(1/3) (finite, positive)
+    !> Extreme contraction: pt huge, score should be large but finite
     subroutine test_smoothing_score_extreme_penalty_large_but_finite()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 2 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = 1.0_real64
         R0  = 1.0_real64
         Et  = 0.0_real64
         D0  = 1.0_real64
         pt  = 1.0e12_real64
-        eps = 1.0e-12_real64
+        eps = 1e-30_real64
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
         call assert_true(score > 1.0e3_real64, "Extreme pt: score should be very large")
-        call assert_true(score < 1.0e5_real64, "Extreme pt: cube-root should still be finite and not overflow")
+        call assert_true(score < 1.0e5_real64, "Extreme pt: cube-root should still be finite")
     end subroutine test_smoothing_score_extreme_penalty_large_but_finite
 
-    !> Robustness: negative combined product should not crash (if implementation guards).
-    !! NOTE: This test is only relevant if your implementation returns 0.0 when product <= 0.
+    !> Robustness: negative inputs should not crash
     subroutine test_smoothing_score_negative_inputs_do_not_crash()
         real(real64) :: Rt, R0, Et, D0, pt, eps, score
+        integer      :: m_flag
+        real(real64) :: wr, we, wc
+        
+        m_flag = 1 ; wr = 1.0; we = 1.0; wc = 1.0
         Rt  = -1.0_real64
         R0  =  1.0_real64
         Et  =  0.0_real64
         D0  =  1.0_real64
         pt  =  1.0_real64
-        eps =  0.0_real64
+        eps =  1e-30_real64
 
-        call compute_smoothing_score(Rt, R0, Et, D0, pt, eps, score)
-        call assert_true(score >= 0.0_real64, "Negative inputs: score must be non-negative (guarded)")
+        call compute_smoothing_score(m_flag, wr, we, wc, Rt, R0, Et, D0, pt, eps, score)
+        call assert_true(score >= 0.0_real64, "Negative inputs: score must be non-negative (clamped)")
     end subroutine test_smoothing_score_negative_inputs_do_not_crash
 
 
