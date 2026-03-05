@@ -1389,63 +1389,75 @@ contains
       end if
   end subroutine get_approx_diameter
 
-  !> Computes the composite smoothing score (St) using a geometric mean.
-  !! Balances roughness, fidelity (RMSE), and coverage.
-  !! Lower is better.
-  pure subroutine compute_smoothing_score(roughness_t, roughness_0, &
-                                          rmse_t, diameter_0, &
-                                          coverage_penalty_t, epsilon, &
-                                          score_t)
-    
-      real(real64), intent(in) :: roughness_t
-      !| Current roughness at iteration t.
-      real(real64), intent(in) :: roughness_0
-      !| Reference roughness of the original noisy data (t=0). Used for normalization.
-      real(real64), intent(in) :: rmse_t
-      !| Root Mean Square Error between current field and original input.
-      real(real64), intent(in) :: diameter_0
-      !| Approximate geometric diameter of original data. Acts as the global length scale.
-      real(real64), intent(in) :: coverage_penalty_t
-      !| Dimensionless penalty (1/coverage). Tracks global contraction or collapse.
-      real(real64), intent(in) :: epsilon
-      !| Safety constant to prevent division by zero in normalizations.
-      real(real64), intent(out) :: score_t
-      !| Composite dimensionless score (geometric mean). Lower values indicate better trade-offs.
+  
+  pure subroutine compute_smoothing_score(method_flag, &
+                                            w_r, w_e, w_c, &
+                                            roughness_t, roughness_0, &
+                                            rmse_t, diameter_0, &
+                                            coverage_penalty_t, epsilon, &
+                                            score_t)
 
-      ! --- Local variables ---
-      real(real64) :: r_norm, e_norm, combined_product
-      real(real64) :: Rt, R0, Et, D0, pt, eps
-      real(real64), parameter :: one_third = 0.3333333333333333_real64
+        use iso_fortran_env, only: real64
+        implicit none
 
-      ! Defensive clamps (these quantities should be non-negative)
-      Rt  = max(0.0_real64, roughness_t)
-      R0  = max(0.0_real64, roughness_0)
-      Et  = max(0.0_real64, rmse_t)
-      D0  = max(0.0_real64, diameter_0)
-      pt  = max(0.0_real64, coverage_penalty_t)
-      eps = max(0.0_real64, epsilon)
+        ! --- Arguments ---
+        integer, intent(in)        :: method_flag      ! 1 = Arithmetic Mean, 2 = Geometric Mean
+        real(real64), intent(in)   :: w_r, w_e, w_c    ! Weights for Roughness (R), Error (E), and Coverage (C)
+        real(real64), intent(in)   :: roughness_t, roughness_0
+        real(real64), intent(in)   :: rmse_t, diameter_0
+        real(real64), intent(in)   :: coverage_penalty_t, epsilon
+        real(real64), intent(out)  :: score_t
 
-      ! 1. Normalize Roughness (starts at ~1.0)
-      r_norm = Rt / (R0 + eps)
+        ! --- Local variables ---
+        real(real64) :: Rt, R0, Et, D0, pt, eps
+        real(real64) :: r_norm, e_norm, w_sum, L
 
-      ! 2. Normalize RMSE (starts at 0.0)
-      ! Normalized by diameter to make it dimensionless and scale-independent
-      e_norm = Et / (D0 + eps)
+        ! 1) Defensive clamps (prevent negative values or floating point garbage)
+        Rt  = max(0.0_real64, roughness_t)
+        R0  = max(0.0_real64, roughness_0)
+        Et  = max(0.0_real64, rmse_t)
+        D0  = max(0.0_real64, diameter_0)
+        pt  = max(0.0_real64, coverage_penalty_t)
+        eps = max(1.0e-300_real64, max(0.0_real64, epsilon))
 
-      ! 3. Composite product
-      ! We use (1 + e_norm) to prevent the product from being zero at t=0
-      combined_product = r_norm * (1.0_real64 + e_norm) * pt
+        ! 2) Normalization
+        ! r_norm: Relative roughness compared to the original data
+        ! e_norm: RMSE relative to the total diameter of the point cloud
+        r_norm = Rt / (R0 + eps)
+        e_norm = Et / (D0 + eps)
+        
+        ! Ensure positive values for logarithmic operations
+        r_norm = max(r_norm, eps)
+        pt     = max(pt, eps)
 
-      ! 4. Geometric Mean (Cube root)
-      ! Lowering any factor lowers the score.
-      if (combined_product > 0.0_real64) then
-          score_t = combined_product**one_third
-      else
-          ! If something degenerates (e.g., pt=0), return a large score rather than "perfect"
-          score_t = huge(1.0_real64)
-      end if
+        ! 3) Sum of weights
+        w_sum = w_r + w_e + w_c
+        if (w_sum <= eps) then
+            score_t = huge(1.0_real64)
+            return
+        end if
 
-  end subroutine compute_smoothing_score
+        ! 4) Method Selection
+        select case (method_flag)
+        case (1) 
+            ! --- WEIGHTED ARITHMETIC MEAN ---
+            ! Formula: $Score = \frac{w_1 x_1 + w_2 x_2 + w_3 x_3}{\sum w}$
+            score_t = (w_r * r_norm + w_e * e_norm + w_c * pt) / w_sum
+
+        case (2)
+            ! --- WEIGHTED GEOMETRIC MEAN ---
+            ! Formula: $Score = \exp\left( \frac{w_1 \ln(x_1) + w_2 \ln(x_2) + w_3 \ln(x_3)}{\sum w} \right)$
+            ! Note: Uses log(1 + e_norm) to stabilize the error term
+            L = w_r * log(r_norm) + w_e * log(1.0_real64 + e_norm) + w_c * log(pt)
+            score_t = exp(L / w_sum)
+
+        case default
+            ! Return high penalty for invalid method flag
+            score_t = huge(1.0_real64)
+        end select
+
+    end subroutine compute_smoothing_score
+
 
 
 
