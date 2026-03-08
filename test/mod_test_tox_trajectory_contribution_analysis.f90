@@ -26,7 +26,8 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(14)
+        type(test_case) :: all_tests(20)
+
         all_tests(1) = test_case("test_compute_baselines_factor_dependent", test_compute_baselines_factor_dependent)
         all_tests(2) = test_case("test_compute_contributions", test_compute_contributions)
         all_tests(3) = test_case("test_compute_all_contributions", test_compute_all_contributions)
@@ -41,7 +42,43 @@ contains
         all_tests(12) = test_case("test_compute_baselines_factor_dependent", test_compute_baselines_factor_dependent)
         all_tests(13) = test_case("test_compute_contributions", test_compute_contributions)
         all_tests(14) = test_case("test_compute_all_contributions", test_compute_all_contributions)
+        all_tests(15) = test_case("test_compute_velocity_trajectories", test_compute_velocity_trajectories)
+        all_tests(16) = test_case("test_compute_acceleration_from_velocity", test_compute_acceleration_from_velocity)
+        all_tests(17) = test_case("test_compute_velocity_acceleration_contributions", test_compute_velocity_acceleration_contributions)
+        all_tests(18) = test_case("test_compute_velocity_acceleration_contributions_alloc", test_compute_velocity_acceleration_contribs_alloc)
+        all_tests(19) = test_case("test_compute_velocity_trajectory", test_compute_velocity_trajectory)
+        all_tests(20) = test_case("test_compute_acceleration_from_velocity_trajectory", test_compute_acceleration_from_velocity_trajectory)
     end function get_all_tests
+
+    !> Test for compute_velocity_trajectory
+    subroutine test_compute_velocity_trajectory()
+        integer(int32), parameter :: n_timepoints = 5
+        real(real64) :: trajectory(n_timepoints), velocity(n_timepoints-1), expected_velocity(n_timepoints-1)
+        integer(int32) :: ierr
+
+        ! Simple increasing sequence
+        trajectory = [1.0_real64, 2.0_real64, 4.0_real64, 7.0_real64, 11.0_real64]
+        expected_velocity = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+
+        call compute_velocity_trajectory(trajectory, velocity, n_timepoints, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_compute_velocity_trajectory: ierr")
+        call assert_equal_array_real(velocity, expected_velocity, n_timepoints-1, TOL, "test_compute_velocity_trajectory: velocity")
+    end subroutine test_compute_velocity_trajectory
+
+    !> Test for compute_acceleration_from_velocity_trajectory
+    subroutine test_compute_acceleration_from_velocity_trajectory()
+        integer(int32), parameter :: n_timepoints = 5
+        real(real64) :: velocity(n_timepoints-1), acceleration(n_timepoints-2), expected_acceleration(n_timepoints-2)
+        integer(int32) :: ierr
+
+        ! Simple increasing velocity
+        velocity = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+        expected_acceleration = [1.0_real64, 1.0_real64, 1.0_real64]
+
+        call compute_acceleration_from_velocity_trajectory(velocity, acceleration, n_timepoints, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_compute_acceleration_from_velocity_trajectory: ierr")
+        call assert_equal_array_real(acceleration, expected_acceleration, n_timepoints-2, TOL, "test_compute_acceleration_from_velocity_trajectory: acceleration")
+    end subroutine test_compute_acceleration_from_velocity_trajectory
 
     !> Run all tox_trajectory_contribution_analysis tests.
     subroutine run_all_tests_tox_trajectory_contribution_analysis
@@ -81,6 +118,203 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_trajectory_contribution_analysis
+
+   subroutine test_compute_velocity_trajectories()
+        real(real64) :: trajectories(2,2,4)  ! (n_factors, n_samples, n_timepoints)
+       real(real64) :: velocity(3,2,2)      ! (n_timepoints-1, n_factors, n_samples)
+       real(real64) :: expected(3,2,2)
+        integer(int32) :: ierr
+        integer(int32) :: factor, sample, t
+
+        ! Reshape to (n_factors=2, n_samples=2, n_timepoints=4)
+        ! Data order in Fortran column-major: varies fastest → slowest is factor, sample, time
+        ! So list all factors for sample1/time1, then sample2/time1, then sample1/time2, etc.
+        trajectories = reshape([ &
+            1.0_real64, 0.0_real64, &      
+            2.0_real64, -3.0_real64, &     
+            2.0_real64, -1.0_real64, &    
+            5.0_real64, -1.0_real64, &    
+            4.0_real64, -1.0_real64, &     
+            9.0_real64, 0.0_real64, &      
+            7.0_real64, 0.0_real64, &      
+            14.0_real64, 0.0_real64], & 
+            shape=[2,2,4])
+
+        ! Compute expected compact velocities: velocity(t) = trajectory(t+1) - trajectory(t)
+        expected = 0.0_real64
+        do sample = 1, 2
+            do factor = 1, 2
+                do t = 1, 3
+                    expected(t, factor, sample) = trajectories(factor, sample, t+1) - trajectories(factor, sample, t)
+                end do
+            end do
+        end do
+
+        call compute_velocity_trajectories(trajectories, velocity, 2, 2, 4, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_trajectories: expected OK status")
+
+        call assert_equal_array_real(velocity, &
+                                     expected, &
+                                     size(velocity), TOL, &
+                                     "compute_velocity_trajectories: velocity mismatch")
+    end subroutine test_compute_velocity_trajectories
+
+    subroutine test_compute_acceleration_from_velocity()
+        real(real64) :: velocity(3,2,2)      ! (n_timepoints-1, n_factors, n_samples)
+        real(real64) :: acceleration(2,2,2)  ! (n_timepoints-2, n_factors, n_samples)
+        real(real64) :: expected(2,2,2)
+        integer(int32) :: ierr
+        integer(int32) :: factor, sample, t
+
+        ! Compact velocity layout: (time=3, factor=2, sample=2)
+        velocity = reshape([ &
+            0.0_real64, 0.0_real64, &      
+            0.0_real64, 0.0_real64, &     
+            1.0_real64, -1.0_real64, &     
+            3.0_real64, 2.0_real64, &      
+            2.0_real64, 0.0_real64, &      
+            4.0_real64, 1.0_real64], &
+            shape=[3,2,2])
+
+
+        expected = 0.0_real64
+        do sample = 1, 2
+            do factor = 1, 2
+                do t = 1, 2
+                    expected(t, factor, sample) = velocity(t+1, factor, sample) - velocity(t, factor, sample)
+                end do
+            end do
+        end do
+
+        call compute_acceleration_from_velocity(velocity, acceleration, 2, 2, 4, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_acceleration_from_velocity: expected OK status")
+
+        call assert_equal_array_real(acceleration, &
+                                     expected, &
+                                     size(acceleration), TOL, &
+                                     "compute_acceleration_from_velocity: acceleration mismatch")
+    end subroutine test_compute_acceleration_from_velocity
+
+    subroutine test_compute_velocity_acceleration_contributions()
+        real(real64) :: trajectories(2,1,4)
+        real(real64) :: C_vel(2,2,1)
+        real(real64) :: C_acc(2,2,1)
+        real(real64) :: series_vel(4,2,2,1)
+        real(real64) :: series_acc(4,2,2,1)
+        real(real64) :: velocity(3,2,1)
+        real(real64) :: acceleration(2,2,1)
+        real(real64) :: expected_total_vel, expected_total_acc
+        real(real64) :: expected_series_vel(4), expected_series_acc(4)
+        real(real64) :: factor_velocity(3,2)
+        real(real64) :: dependent_velocity(3)
+        real(real64) :: factor_acceleration(2,2)
+        real(real64) :: dependent_acceleration(2)
+        real(real64) :: raw_velocity_contrib(3)
+        real(real64) :: raw_acceleration_contrib(2)
+        integer(int32) :: ierr
+        integer(int32) :: mode
+
+        call set_ok(ierr)
+
+       ! Reshape to (n_factors=2, n_samples=1, n_timepoints=4)
+        trajectories = reshape([ &
+            1.0_real64, 1.0_real64, 3.0_real64, 2.0_real64, 6.0_real64, 2.0_real64, 10.0_real64, 1.0_real64], &
+            shape=[2,1,4])
+
+        mode = BASELINE_RAW
+
+           call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
+               factor_velocity, dependent_velocity, raw_velocity_contrib, &
+               C_vel, series_vel, C_acc, series_acc, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_acceleration_contributions: expected OK status")
+
+        call compute_velocity_trajectories(trajectories, velocity, 2, 1, 4, ierr)
+        call assert_equal_int(ierr, ERR_OK, "velocity back-reference")
+
+        call compute_acceleration_from_velocity(velocity, acceleration, 2, 1, 4, ierr)
+        call assert_equal_int(ierr, ERR_OK, "acceleration back-reference")
+
+        factor_velocity(:,1) = velocity(:,1,1)
+        dependent_velocity = velocity(:,2,1)
+
+        call compute_contributions(factor_velocity(:,1), dependent_velocity, &
+            int(size(dependent_velocity), kind=int32), mode, raw_velocity_contrib, expected_total_vel, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_acceleration_contributions: expected velocity contribution status")
+
+        expected_series_vel = 0.0_real64
+        expected_series_vel(2:4) = raw_velocity_contrib
+
+        factor_acceleration(:,1) = acceleration(:,1,1)
+        dependent_acceleration = acceleration(:,2,1)
+
+        call compute_contributions(factor_acceleration(:,1), dependent_acceleration, &
+            int(size(dependent_acceleration), kind=int32), mode, raw_acceleration_contrib, expected_total_acc, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_acceleration_contributions: expected acceleration contribution status")
+
+        expected_series_acc = 0.0_real64
+        expected_series_acc(3:4) = raw_acceleration_contrib
+
+        call assert_equal_real(C_vel(1,2,1), expected_total_vel, TOL, &
+            "compute_velocity_acceleration_contributions: total velocity contribution")
+
+        call assert_equal_array_real(series_vel(:,1,2,1), expected_series_vel, size(expected_series_vel), TOL, &
+            "compute_velocity_acceleration_contributions: velocity series")
+
+        call assert_equal_real(C_acc(1,2,1), expected_total_acc, TOL, &
+            "compute_velocity_acceleration_contributions: total acceleration contribution")
+
+        call assert_equal_array_real(series_acc(:,1,2,1), expected_series_acc, size(expected_series_acc), TOL, &
+                "compute_velocity_acceleration_contributions: acceleration series")
+    end subroutine test_compute_velocity_acceleration_contributions
+
+    subroutine test_compute_velocity_acceleration_contribs_alloc()
+        real(real64) :: trajectories(2,1,4)
+        real(real64) :: factor_velocity(3,2)
+        real(real64) :: dependent_velocity(3)
+        real(real64) :: velocity_contrib(3)
+        real(real64) :: C_vel_ref(2,2,1)
+        real(real64) :: C_acc_ref(2,2,1)
+        real(real64) :: series_vel_ref(4,2,2,1)
+        real(real64) :: series_acc_ref(4,2,2,1)
+        real(real64) :: C_vel_alloc(2,2,1)
+        real(real64) :: C_acc_alloc(2,2,1)
+        real(real64) :: series_vel_alloc(4,2,2,1)
+        real(real64) :: series_acc_alloc(4,2,2,1)
+        integer(int32) :: ierr
+        integer(int32) :: mode
+
+        ! Reshape to (n_factors=2, n_samples=1, n_timepoints=4)
+        trajectories = reshape([ &
+            1.0_real64, 1.0_real64, 3.0_real64, 2.0_real64, 6.0_real64, 2.0_real64, 10.0_real64, 1.0_real64], &
+            shape=[2,1,4])
+
+        mode = BASELINE_RAW
+
+        call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
+            factor_velocity, dependent_velocity, velocity_contrib, &
+            C_vel_ref, series_vel_ref, C_acc_ref, series_acc_ref, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_acceleration_contributions_alloc: reference call")
+
+        call compute_velocity_acceleration_contributions_alloc(trajectories, 2, 1, 4, mode, &
+            C_vel_alloc, series_vel_alloc, C_acc_alloc, series_acc_alloc, ierr)
+        call assert_equal_int(ierr, ERR_OK, "compute_velocity_acceleration_contributions_alloc: expected OK status")
+
+        call assert_equal_array_real(reshape(C_vel_alloc, [size(C_vel_alloc)]), &
+            reshape(C_vel_ref, [size(C_vel_ref)]), size(C_vel_alloc), TOL, &
+            "compute_velocity_acceleration_contributions_alloc: velocity totals")
+
+        call assert_equal_array_real(reshape(series_vel_alloc, [size(series_vel_alloc)]), &
+            reshape(series_vel_ref, [size(series_vel_ref)]), size(series_vel_alloc), TOL, &
+            "compute_velocity_acceleration_contributions_alloc: velocity series")
+
+        call assert_equal_array_real(reshape(C_acc_alloc, [size(C_acc_alloc)]), &
+            reshape(C_acc_ref, [size(C_acc_ref)]), size(C_acc_alloc), TOL, &
+            "compute_velocity_acceleration_contributions_alloc: acceleration totals")
+
+        call assert_equal_array_real(reshape(series_acc_alloc, [size(series_acc_alloc)]), &
+            reshape(series_acc_ref, [size(series_acc_ref)]), size(series_acc_alloc), TOL, &
+            "compute_velocity_acceleration_contributions_alloc: acceleration series")
+    end subroutine test_compute_velocity_acceleration_contribs_alloc
 
     !> initializes random number generator with a randomly selected seed
     subroutine setup_random
@@ -204,7 +438,7 @@ contains
         call assert_equal_array_real(local_contributions, expected_local, n_timepoints * n_permutations, TOL, "test_perform_permutation_test: Case 1 local contributions")
         call assert_equal_array_real(total_contributions, expected_total, n_permutations, TOL, "test_perform_permutation_test: Case 1 total contribution")
 
-        ! Case 2: test randomness reproducibility: without seed -> not reproducible
+        ! Case 2: test randomness reproducibility: without seed -> not reproducible 
         call random_number(trajectories)
         call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
             factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
@@ -216,8 +450,7 @@ contains
             local_contributions, total_contributions, temp_factor, temp_dependent, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_perform_permutation_test: Case 2 Permutation test ierr")
 
-        call assert_false(all(local_contributions == expected_local), "test_perform_permutation_test: Case 2 should not be reproducible")
-
+           call assert_false(all(local_contributions == expected_local), "test_perform_permutation_test: Case 2 should not be reproducible")
         ! Case 3: test randomness reproducibility: with seed -> reproducible
         call random_number(trajectories)
         call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
@@ -732,3 +965,7 @@ contains
     end subroutine test_normalize_invalid_inputs
 
 end module mod_test_tox_traj_contrib_analysis
+
+
+
+

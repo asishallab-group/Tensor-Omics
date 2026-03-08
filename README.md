@@ -5,6 +5,9 @@ Tensor Omics is a high-performance framework for explainable, geometry-based ana
 
 Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
 
+## Detailed Method Description
+
+Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
 
 ## Key Features
 
