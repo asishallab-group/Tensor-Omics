@@ -62,6 +62,12 @@ if [ -e "$EXECUTABLE" ]; then
   rm -f "$EXECUTABLE"
 fi
 
+# Compile mod_test_suite.f90 first to generate mod_test_suite.mod
+$COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
+  -I$BUILD_DIR \
+  -c $TEST_DIR/mod_test_suite.f90
+check_exit_code "mod_test_suite compilation failed"
+
 echo "Compiling test modules..."
 # Then compile test/ modules using .mod files from build/
 $COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
