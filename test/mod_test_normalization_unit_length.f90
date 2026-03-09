@@ -6,70 +6,24 @@ module mod_test_normalization_unit_length
     use tox_normalization, only: normalize_unit_length
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_errors
+    use mod_test_suite, only: test_case
     implicit none
 
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
-
+   
     real(real64), parameter :: TOL = epsilon(1.0_real64)
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(1)
+    function get_all_tests_normalization_unit_length() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
 
+        allocate(all_tests(1))
         all_tests(1) = test_case("test_normalization_unit_length", test_normalize_unit_length)
-    end function get_all_tests
+    end function get_all_tests_normalization_unit_length
 
-    !> Run all normalization_unit_length tests.
-    subroutine run_all_tests_normalization_unit_length
-       type(test_case) :: all_tests(1)
-        integer :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print *, trim(all_tests(i)%name), " passed."
-        end do
-        print *, "All normalization_unit_length tests passed successfully."
-    end subroutine run_all_tests_normalization_unit_length
-
-    !> Run specific normalization_unit_length tests by name.
-    subroutine run_named_tests_normalization_unit_length(test_names)
-        character(len=*), intent(in) :: test_names(:)
-         type(test_case) :: all_tests(1)
-         integer :: i, j
-
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print *, trim(test_names(i)), " passed."
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_normalization_unit_length
+    
+    
 
     !> Test the normalize_unit_length function with various cases.
     subroutine test_normalize_unit_length()

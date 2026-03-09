@@ -5,26 +5,17 @@ module mod_test_loess_smoothing
   use f42_utils
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use mod_test_suite, only: test_case
   implicit none
   public
 
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
-
+  
 contains
 
   !> Get array of all available LOESS tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(14)
+  function get_all_tests_loess_smoothing() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(14))
     all_tests(1) = test_case("test_loess_constant_input", test_loess_constant_input)
     all_tests(2) = test_case("test_loess_linear_trend", test_loess_linear_trend)
     all_tests(3) = test_case("test_loess_outlier_suppression", test_loess_outlier_suppression)
@@ -39,44 +30,10 @@ contains
     all_tests(12) = test_case("test_loess_invalid_dimensions", test_loess_invalid_dimensions)
     all_tests(13) = test_case("test_loess_invalid_parameters", test_loess_invalid_parameters)
     all_tests(14) = test_case("test_loess_invalid_indices", test_loess_invalid_indices)
-  end function get_all_tests
+  end function get_all_tests_loess_smoothing
 
-  !> Run all LOESS smoothing tests.
-  subroutine run_all_tests_loess_smoothing()
-    type(test_case) :: all_tests(14)
-    integer(int32) :: i
-
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All LOESS smoothing tests passed successfully."
-  end subroutine run_all_tests_loess_smoothing
-
-  !> Run specific LOESS smoothing tests by name.
-  subroutine run_named_tests_loess_smoothing(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(14)
-    integer(int32) :: i, j
-    logical :: found
-
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_loess_smoothing
+  
+  
   
   !> Test LOESS smoothing with constant input
   subroutine test_loess_constant_input()

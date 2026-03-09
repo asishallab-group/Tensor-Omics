@@ -1,226 +1,278 @@
+! filepath: test/run_tests.f90
 program main
-  use mod_test_compute_edf
-  use mod_test_bst
-  use mod_test_kd_tree
-  use mod_test_sorting
-  use mod_test_get_outliers
-  use mod_test_loess_smoothing
-  use mod_test_normalize_by_std_dev
-  use mod_test_quantile_normalization
-  use mod_test_log2_transformation
-  use mod_test_calc_tiss_avg
-  use mod_test_calc_fchange
-  use mod_test_euclidean_distance
-  use mod_test_rap_tools_omics_vector_RAP_projection, only: run_all_tests_rap_tools_omics_vector_RAP_projection => run_all_tests, run_named_tests_rap_tools_omics_vector_RAP_projection => run_named_tests
-  use mod_test_rap_tools_omics_field_RAP_projection, only: run_all_tests_rap_tools_omics_field_RAP_projection => run_all_tests, run_named_tests_rap_tools_omics_field_RAP_projection => run_named_tests
-  use mod_test_clock_hand_angles
-  use mod_test_relative_axis_contributions
-  use mod_test_tissue_versatility
-  use mod_test_tox_data
-  use mod_test_normalization_pipeline
-  use mod_test_shift_vectors
-  use mod_test_gene_centroids
-  use mod_test_conversions
-  use mod_test_arrays
-  use mod_test_paralog_analysis
-  use mod_test_trajectory_contribution_analysis
-  use mod_test_trajectory_normalization
-  use mod_test_normalization_unit_length
-  use mod_test_clustering
-  use mod_test_data_integration
+  use, intrinsic :: iso_fortran_env, only: int32
+
+  use mod_test_suite, only: test_case, get_all_interface
+
+  use mod_test_compute_edf, only: get_all_tests_compute_edf
+  use mod_test_bst, only: get_all_tests_bst
+  use mod_test_kd_tree, only: get_all_tests_kd_tree
+  use mod_test_sorting, only: get_all_tests_sorting
+  use mod_test_get_outliers, only: get_all_tests_get_outliers
+  use mod_test_loess_smoothing, only: get_all_tests_loess_smoothing
+  use mod_test_normalize_by_std_dev, only: get_all_tests_normalize_by_std_dev
+  use mod_test_quantile_normalization, only: get_all_tests_quantile_normalization
+  use mod_test_log2_transformation, only: get_all_tests_log2_transformation
+  use mod_test_calc_tiss_avg, only: get_all_tests_tiss_avg
+  use mod_test_calc_fchange, only: get_all_tests_calc_fchange
+  use mod_test_euclidean_distance, only: get_all_tests_euclidean_distance
+
+  ! If these RAP modules still export get_all_tests(), rename on import:
+  use mod_test_rap_tools_omics_vector_RAP_projection, only: get_all_tests_rap_tools_omics_vector_RAP_projection
+  use mod_test_rap_tools_omics_field_RAP_projection, only: get_all_tests_rap_tools_omics_field_RAP_projection
+
+  use mod_test_clock_hand_angles, only: get_all_tests_clock_hand_angles
+  use mod_test_relative_axis_contributions, only: get_all_tests_relative_axis_contributions
+  use mod_test_tissue_versatility, only: get_all_tests_tissue_versatility
+  use mod_test_tox_data, only: get_all_tests_tox_data
+  use mod_test_normalization_pipeline, only: get_all_tests_normalization_pipeline
+  use mod_test_shift_vectors, only: get_all_tests_shift_vectors
+  use mod_test_gene_centroids, only: get_all_tests_gene_centroids
+  use mod_test_conversions, only: get_all_tests_conversions
+  use mod_test_arrays, only: get_all_tests_arrays
+  use mod_test_paralog_analysis, only: get_all_tests_paralog_analysis
+  use mod_test_trajectory_contribution_analysis, only: &
+    get_all_tests_trajectory_contribution_analysis
+  use mod_test_trajectory_normalization, only: get_all_tests_trajectory_normalization
+  use mod_test_normalization_unit_length, only: get_all_tests_normalization_unit_length
+  use mod_test_clustering, only: get_all_tests_clustering
+  use mod_test_data_integration, only: get_all_tests_data_integration
 
   implicit none
-
-  ! Type for suite registry
+ !> Type to hold suite information.
   type :: suite_entry
     character(len=128) :: name
-    procedure(run_all_interface), pointer, nopass :: run_all => null()
-    procedure(run_named_interface), pointer, nopass :: run_named => null()
+    procedure(get_all_interface), pointer, nopass :: get_all => null()
   end type suite_entry
 
-  ! Abstract interfaces
-  abstract interface
-    subroutine run_all_interface()
-    end subroutine run_all_interface
-    
-    subroutine run_named_interface(test_names)
-      character(len=*), intent(in) :: test_names(:)
-    end subroutine run_named_interface
-  end interface
-
-  ! Registry of all available suites
   type(suite_entry), allocatable :: available_suites(:)
 
   integer :: nargs
-  character(len=128) :: requested_suite, test_list
+  character(len=128) :: requested_suite
+  character(len=512) :: test_list
 
-  ! Initialize the suite registry
   call initialize_suites()
 
   nargs = command_argument_count()
-  
-  if (nargs == 0) then
-    ! Run all tests from all suites
+
+  select case (nargs)
+  case (0)
     call run_all_suites()
-    
-  else if (nargs == 1) then
-    ! Run all tests in specified suite
+
+  case (1)
     call get_command_argument(1, requested_suite)
     call run_suite_all(trim(requested_suite))
-    
-  else if (nargs == 2) then
-    ! Run specific tests in suite
+
+  case (2)
     call get_command_argument(1, requested_suite)
     call get_command_argument(2, test_list)
-    call run_suite_named(trim(requested_suite), test_list)
-    
-  else
-    print *, "Too many arguments"
+    call run_suite_named(trim(requested_suite), trim(test_list))
+
+  case default
+    print *, "Too many arguments."
     call print_usage()
     stop 1
-  end if
+  end select
 
 contains
 
-  !> Initialize the suite registry - ADD NEW SUITES HERE (no numbers!)
+  !> Register all test suites here.
   subroutine initialize_suites()
-    ! Start with empty registry
     allocate(available_suites(0))
-    
-    call add_suite("bst", run_all_tests_bst, run_named_tests_bst)
-  call add_suite("compute_edf", run_all_tests_compute_edf, run_named_tests_compute_edf)
-    call add_suite("k-d-tree", run_all_tests_kd_tree, run_named_tests_kd_tree)
-    call add_suite("sorting", run_all_tests_sorting, run_named_tests_sorting)
-    call add_suite("get_outliers",run_all_tests_get_outliers, run_named_tests_get_outliers)
-    call add_suite("loess_smoothing",run_all_tests_loess_smoothing, run_named_tests_loess_smoothing)
-    call add_suite("normalization", run_all_tests_normalize_by_std_dev, run_named_tests_normalize_by_std_dev)
-    call add_suite("quantile_normalization", run_all_tests_quantile_normalization, run_named_tests_quantile_normalization)
-    call add_suite("log2_transformation", run_all_tests_log2_transformation, run_named_tests_log2_transformation)
-    call add_suite("calc_tiss_avg", run_all_tests_calc_tiss_avg, run_named_tests_calc_tiss_avg)
-    call add_suite("calc_fchange", run_all_tests_calc_fchange, run_named_tests_calc_fchange)
-    call add_suite("euclidean_distance", run_all_tests_euclidean_distance, run_named_tests_euclidean_distance)
-    call add_suite("rap_tools_omics_vector_RAP_projection", run_all_tests_rap_tools_omics_vector_RAP_projection, run_named_tests_rap_tools_omics_vector_RAP_projection)
-    call add_suite("rap_tools_omics_field_RAP_projection", run_all_tests_rap_tools_omics_field_RAP_projection, run_named_tests_rap_tools_omics_field_RAP_projection)
-    call add_suite("clock_hand_angles", run_all_tests_clock_hand_angles, run_named_tests_clock_hand_angles)
-    call add_suite("relative_axis_contributions", run_all_tests_relative_axis, run_named_tests_relative_axis)
-    call add_suite("tissue_versatility", run_all_tests_tissue_versatility, run_named_tests_tissue_versatility)
-    call add_suite("tox_data", run_all_tests_tox_data, run_named_tests_tox_data)
-    call add_suite("normalization_pipeline", run_all_tests_normalization_pipeline, run_named_tests_normalization_pipeline)
-    call add_suite("shift_vectors", run_all_tests_shift_vectors, run_named_tests_shift_vectors)
-    call add_suite("arrays", run_all_tests_array, run_named_tests_array)
-    call add_suite("gene_centroids", run_all_tests_gene_centroids, run_named_tests_gene_centroids)
-    call add_suite("conversions", run_all_tests_conversions, run_named_tests_conversions)
-    call add_suite("paralog_analysis", run_all_tests_paralog_analysis, run_named_tests_paralog_analysis)
-    call add_suite("trajectory_contribution_analysis", run_all_tests_trajectory_contribution_analysis, run_named_tests_trajectory_contribution_analysis)
-    call add_suite("trajectory_normalization", run_all_tests_trajectory_normalization, run_named_tests_trajectory_normalization)
-    call add_suite("normalization_unit_length", run_all_tests_normalization_unit_length, run_named_tests_normalization_unit_length)
-    call add_suite("clustering", run_all_tests_clustering, run_named_tests_clustering)
-    call add_suite("data_integration", run_all_tests_data_integration, run_named_tests_data_integration)
-  end subroutine initialize_suites
-  
 
-  !> Add a suite to the registry (grows automatically)
-  subroutine add_suite(name, run_all_proc, run_named_proc)
+    call add_suite("bst", get_all_tests_bst)
+    call add_suite("compute_edf", get_all_tests_compute_edf)
+    call add_suite("k-d-tree", get_all_tests_kd_tree)
+    call add_suite("sorting", get_all_tests_sorting)
+    call add_suite("get_outliers", get_all_tests_get_outliers)
+    call add_suite("loess_smoothing", get_all_tests_loess_smoothing)
+    call add_suite("normalization", get_all_tests_normalize_by_std_dev)
+    call add_suite("quantile_normalization", get_all_tests_quantile_normalization)
+    call add_suite("log2_transformation", get_all_tests_log2_transformation)
+    call add_suite("calc_tiss_avg", get_all_tests_tiss_avg)
+    call add_suite("calc_fchange", get_all_tests_calc_fchange)
+    call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
+    call add_suite("rap_tools_omics_vector_RAP_projection", &
+      get_all_tests_rap_tools_omics_vector_RAP_projection)
+    call add_suite("rap_tools_omics_field_RAP_projection", &
+      get_all_tests_rap_tools_omics_field_RAP_projection)
+    call add_suite("clock_hand_angles", get_all_tests_clock_hand_angles)
+    call add_suite("relative_axis_contributions", get_all_tests_relative_axis_contributions)
+    call add_suite("tissue_versatility", get_all_tests_tissue_versatility)
+    call add_suite("tox_data", get_all_tests_tox_data)
+    call add_suite("normalization_pipeline", get_all_tests_normalization_pipeline)
+    call add_suite("shift_vectors", get_all_tests_shift_vectors)
+    call add_suite("arrays", get_all_tests_arrays)
+    call add_suite("gene_centroids", get_all_tests_gene_centroids)
+    call add_suite("conversions", get_all_tests_conversions)
+    call add_suite("paralog_analysis", get_all_tests_paralog_analysis)
+    call add_suite("trajectory_contribution_analysis", &
+      get_all_tests_trajectory_contribution_analysis)
+    call add_suite("trajectory_normalization", get_all_tests_trajectory_normalization)
+    call add_suite("normalization_unit_length", get_all_tests_normalization_unit_length)
+    call add_suite("clustering", get_all_tests_clustering)
+    call add_suite("data_integration", get_all_tests_data_integration)
+  end subroutine initialize_suites
+
+  !> Add a new test suite to the registry.
+  subroutine add_suite(name, get_all_proc)
     character(len=*), intent(in) :: name
-    procedure(run_all_interface) :: run_all_proc
-    procedure(run_named_interface) :: run_named_proc
+    procedure(get_all_interface) :: get_all_proc
     type(suite_entry), allocatable :: temp_suites(:)
     integer :: n
-    
+
     n = size(available_suites)
-    
-    ! Create temporary array with one more slot
     allocate(temp_suites(n + 1))
-    
-    ! Copy existing suites
+
     if (n > 0) then
       temp_suites(1:n) = available_suites(1:n)
     end if
-    
-    ! Add new suite
-    temp_suites(n + 1) = suite_entry(name, run_all_proc, run_named_proc)
-    
-    ! Replace the registry
+
+    temp_suites(n + 1)%name = name
+    temp_suites(n + 1)%get_all => get_all_proc
+
     call move_alloc(temp_suites, available_suites)
   end subroutine add_suite
 
-  !> Run all tests from all suites
+  !> Run all tests in a given suite.
+  subroutine run_all_tests(suite_name, all_tests)
+    character(len=*), intent(in) :: suite_name
+    type(test_case), intent(in) :: all_tests(:)
+    integer(int32) :: i
+
+    do i = 1, size(all_tests)
+      call all_tests(i)%test_proc()
+      print "(' ',A,' passed.')", trim(all_tests(i)%name)
+    end do
+
+    print "('All ',A,' tests passed successfully.')", trim(suite_name)
+  end subroutine run_all_tests
+
+  !> Run selected tests by name from a given suite.
+  subroutine run_named_tests(test_names, all_tests)
+    character(len=*), intent(in) :: test_names(:)
+    type(test_case), intent(in) :: all_tests(:)
+    integer(int32) :: i, j
+    logical :: found
+
+    do i = 1, size(test_names)
+      found = .false.
+
+      do j = 1, size(all_tests)
+        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
+          call all_tests(j)%test_proc()
+          print "(' ',A,' passed.')", trim(test_names(i))
+          found = .true.
+          exit
+        end if
+      end do
+
+      if (.not. found) then
+        print *, "Unknown test: ", trim(test_names(i))
+      end if
+    end do
+  end subroutine run_named_tests
+
+  !> Run every registered suite.
   subroutine run_all_suites()
     integer :: i
+    type(test_case), allocatable :: all_tests(:)
+
     do i = 1, size(available_suites)
       print *, "Running suite: ", trim(available_suites(i)%name)
-      call available_suites(i)%run_all()
+      all_tests = available_suites(i)%get_all()
+      call run_all_tests(trim(available_suites(i)%name), all_tests)
     end do
   end subroutine run_all_suites
 
-  !> Run all tests in a specific suite
+  !> Run one whole suite by name.
   subroutine run_suite_all(requested_suite)
     character(len=*), intent(in) :: requested_suite
     integer :: i
-    
+    type(test_case), allocatable :: all_tests(:)
+
     do i = 1, size(available_suites)
-      if (trim(available_suites(i)%name) == requested_suite) then
-        call available_suites(i)%run_all()
+      if (trim(available_suites(i)%name) == trim(requested_suite)) then
+        all_tests = available_suites(i)%get_all()
+        call run_all_tests(trim(requested_suite), all_tests)
         return
       end if
     end do
-    
-    print *, "Unknown test suite: ", requested_suite
+
+    print *, "Unknown test suite: ", trim(requested_suite)
     call print_usage()
     stop 1
   end subroutine run_suite_all
 
-  !> Run named tests in a specific suite
+  !> Run selected tests from one suite.
   subroutine run_suite_named(requested_suite, test_list)
     character(len=*), intent(in) :: requested_suite, test_list
     integer :: i
-    
+    type(test_case), allocatable :: all_tests(:)
+    character(len=128), allocatable :: test_names(:)
+
     do i = 1, size(available_suites)
-      if (trim(available_suites(i)%name) == requested_suite) then
-        call run_tests_from_list(test_list, available_suites(i)%run_named)
+      if (trim(available_suites(i)%name) == trim(requested_suite)) then
+        all_tests = available_suites(i)%get_all()
+        call split_test_list(test_list, test_names)
+        call run_named_tests(test_names, all_tests)
         return
       end if
     end do
-    
-    print *, "Unknown test suite: ", requested_suite
+
+    print *, "Unknown test suite: ", trim(requested_suite)
     call print_usage()
     stop 1
   end subroutine run_suite_named
 
-  !> Run tests from comma-separated list using a specific runner
-  subroutine run_tests_from_list(test_list, run_named_proc)
+  !> Split a comma-separated list of test names into an array.
+  subroutine split_test_list(test_list, test_names)
     character(len=*), intent(in) :: test_list
-    procedure(run_named_interface) :: run_named_proc
-    character(len=128) :: test_name
-    character(len=128) :: single_test_array(1)
-    integer :: start, end, pos
-    
-    start = 1
-    
-    do while (start <= len_trim(test_list))
-      pos = index(test_list(start:), ',')
-      if (pos > 0) then
-        end = start + pos - 2
-      else
-        end = len_trim(test_list)
-      end if
-      
-      test_name = trim(adjustl(test_list(start:end)))
-      single_test_array(1) = test_name
-      call run_named_proc(single_test_array)
-      
-      start = end + 2
-      if (pos == 0) exit
-    end do
-  end subroutine run_tests_from_list
+    character(len=128), allocatable, intent(out) :: test_names(:)
 
-  !> Print usage information
+    integer :: i, n_items, lenstr
+    integer :: start_pos, comma_pos, item_idx
+
+    lenstr = len_trim(test_list)
+
+    if (lenstr == 0) then
+      allocate(test_names(0))
+      return
+    end if
+
+    n_items = 1
+    do i = 1, lenstr
+      if (test_list(i:i) == ',') n_items = n_items + 1
+    end do
+
+    allocate(test_names(n_items))
+    test_names = ""
+
+    start_pos = 1
+    item_idx = 1
+
+    do
+      comma_pos = index(test_list(start_pos:), ',')
+
+      if (comma_pos == 0) then
+        test_names(item_idx) = trim(adjustl(test_list(start_pos:lenstr)))
+        exit
+      else
+        test_names(item_idx) = trim(adjustl(test_list(start_pos:start_pos + comma_pos - 2)))
+        start_pos = start_pos + comma_pos
+        item_idx = item_idx + 1
+      end if
+    end do
+  end subroutine split_test_list
+
+  !> Print usage information.
   subroutine print_usage()
     integer :: i
+
     print *, "Usage:"
-    print *, "  run_tests                                   # Run all tests"
-    print *, "  run_tests <suite>                           # Run all tests in suite"
-    print *, "  run_tests <suite> <test1,test2,...>         # Run specific tests"
+    print *, "  run_tests"
+    print *, "  run_tests <suite>"
+    print *, "  run_tests <suite> <test1,test2,...>"
     print *, ""
     print *, "Available test suites:"
     do i = 1, size(available_suites)

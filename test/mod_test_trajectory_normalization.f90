@@ -5,68 +5,24 @@ module mod_test_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_trajectory_normalization
     use tox_errors
+    use mod_test_suite, only: test_case
     implicit none
 
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
     real(real64), parameter :: TOL = 1.0e-10_real64
 
 contains
 
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(3)
+    function get_all_tests_trajectory_normalization() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
 
+        allocate(all_tests(3))
         all_tests(1) = test_case("test_normalize_variable_timeseries", test_normalize_variable_timeseries)
         all_tests(2) = test_case("test_normalize_single_trajectory", test_normalize_single_trajectory)
         all_tests(3) = test_case("test_normalize_all_trajectories", test_normalize_all_trajectories)
-    end function get_all_tests
+    end function get_all_tests_trajectory_normalization
 
-   !> Run all tox_trajectory_normalization tests.
-    subroutine run_all_tests_trajectory_normalization
-        type(test_case) :: all_tests(3)
-        integer :: i
-
-
-        all_tests = get_all_tests()
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print *, trim(all_tests(i)%name), " passed."
-        end do
-        print *, "All trajectory_normalization tests passed successfully."
-    end subroutine run_all_tests_trajectory_normalization
-
-    !> Run specific tox_trajectory_normalization tests by name.
-    subroutine run_named_tests_trajectory_normalization(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case) :: all_tests(3)
-        integer :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print *, trim(all_tests(i)%name), " passed."
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_trajectory_normalization
+   
 
     !> Test the normalization of variable timeseries.
     subroutine test_normalize_variable_timeseries()

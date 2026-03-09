@@ -4,28 +4,20 @@ module mod_test_paralog_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_paralog_analysis
+    use mod_test_suite, only: test_case
     use tox_errors
     implicit none
 
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
+    
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(20)
+    function get_all_tests_paralog_analysis() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
+        allocate(all_tests(20))
 
         all_tests(1) = test_case("test_paralog_analysis_mask_set_state", test_mask_set_state)
         all_tests(2) = test_case("test_paralog_analysis_mask_check_state", test_mask_check_state)
@@ -47,46 +39,10 @@ contains
         all_tests(18) = test_case("test_paralog_analysis_detect_neofunctionalization", test_detect_neofunctionalization)
         all_tests(19) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
         all_tests(20) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
-    end function get_all_tests
+    end function get_all_tests_paralog_analysis
 
-    !> Run all tox_paralog_analysis tests.
-    subroutine run_all_tests_paralog_analysis
-        type(test_case) :: all_tests(20)
-        integer :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print *, trim(all_tests(i)%name), " passed."
-        end do
-        print *, "All paralog_analysis tests passed successfully."
-    end subroutine run_all_tests_paralog_analysis
-
-    !> Run specific tox_paralog_analysis tests by name.
-    subroutine run_named_tests_paralog_analysis(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case) :: all_tests(20)
-        integer :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print *, trim(test_names(i)), " passed."
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_paralog_analysis
+    
+    
 
     !> Test the detect_neofunctionalization function with simple synthetic examples.
     subroutine test_detect_neofunctionalization()

@@ -5,27 +5,18 @@ module mod_test_quantile_normalization
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
   use tox_normalization
+  use mod_test_suite, only: test_case
   implicit none
   public
 
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
-
+  
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(13)
-    
+  function get_all_tests_quantile_normalization() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(13))
+
     all_tests(1) = test_case("test_qn_preserves_dimensions", test_qn_preserves_dimensions)
     all_tests(2) = test_case("test_qn_identical_rows", test_qn_identical_rows)
     all_tests(3) = test_case("test_qn_no_nans_and_standardizes", test_qn_no_nans_and_standardizes)
@@ -39,46 +30,10 @@ contains
     all_tests(11) = test_case("test_qn_reverse_sorted", test_qn_reverse_sorted)
     all_tests(12) = test_case("test_qn_edge_cases", test_qn_edge_cases)
     all_tests(13) = test_case("test_qn_empty_matrix", test_qn_empty_matrix)
-  end function get_all_tests
+  end function get_all_tests_quantile_normalization
 
-  !> Run all quantile_normalization tests.
-  subroutine run_all_tests_quantile_normalization()
-    type(test_case) :: all_tests(13)
-    integer(int32) :: i
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All quantile_normalization tests passed successfully."
-  end subroutine run_all_tests_quantile_normalization
-
-  !> Run specific quantile_normalization tests by name.
-  subroutine run_named_tests_quantile_normalization(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(13)
-    integer(int32) :: i, j
-    logical :: found
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_quantile_normalization
+  
+  
 
   !> Test that quantile normalization preserves matrix dimensions.
   subroutine test_qn_preserves_dimensions()

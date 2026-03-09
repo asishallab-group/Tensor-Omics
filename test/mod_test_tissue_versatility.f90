@@ -5,24 +5,18 @@ module mod_test_tissue_versatility
   use tox_tissue_versatility
   use tox_errors, only: ERR_OK, ERR_EMPTY_INPUT
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use mod_test_suite, only: test_case
   implicit none
   public
 
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
 
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(10)
+  function get_all_tests_tissue_versatility() result(all_tests)
+    type(test_case) ,allocatable:: all_tests(:)
+    allocate(all_tests(10))
     all_tests(1) = test_case("test_partial_axis_selection", test_partial_axis_selection)
     all_tests(2) = test_case("test_mixed_vectors", test_mixed_vectors)
     all_tests(3) = test_case("test_angle_degrees", test_angle_degrees)
@@ -33,43 +27,9 @@ contains
     all_tests(8) = test_case("test_edge_case_needs_clamp", test_edge_case_needs_clamp)
     all_tests(9) = test_case("test_unbalanced_components", test_unbalanced_components)
     all_tests(10) = test_case("test_comprehensive_edge_cases", test_comprehensive_edge_cases)
-  end function get_all_tests
+  end function get_all_tests_tissue_versatility
 
-  !> Run all tissue versatility tests.
-  subroutine run_all_tests_tissue_versatility()
-    type(test_case) :: all_tests(10)
-    integer(int32) :: i
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All tissue versatility tests passed successfully."
-  end subroutine run_all_tests_tissue_versatility
-
-  !> Run specific tissue versatility tests by name.
-  subroutine run_named_tests_tissue_versatility(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(10)
-    integer(int32) :: i, j
-    logical :: found
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_tissue_versatility
-
+  
 
   !> Test axis selection (subspace).
   subroutine test_partial_axis_selection()

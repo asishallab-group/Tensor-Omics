@@ -7,27 +7,19 @@ module mod_test_data_integration
     use tox_data_integration
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
+    use mod_test_suite, only: test_case
+
     implicit none
 
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
     real(real64), parameter :: TOL = 1d-12
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(21)
+    function get_all_tests_data_integration() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
+        allocate(all_tests(21))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -55,46 +47,10 @@ contains
 
         all_tests(21) = test_case("test_fjct", test_fjct)
         ! all_tests(22) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
-    end function get_all_tests
+    end function get_all_tests_data_integration
 
-    !> Run all tox_data_integration tests.
-    subroutine run_all_tests_data_integration
-        type(test_case) :: all_tests(21)
-        integer(int32) :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print *, trim(all_tests(i)%name), " passed."
-        end do
-        print *, "All data_integration tests passed successfully."
-    end subroutine run_all_tests_data_integration
-
-    !> Run specific tox_data_integration tests by name.
-    subroutine run_named_tests_data_integration(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case) :: all_tests(21)
-        integer(int32) :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print *, trim(test_names(i)), " passed."
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_data_integration
+    
+    
 
     !> Test the fjct_compute_jsd_alloc function.
     subroutine test_fjct

@@ -4,26 +4,16 @@ module mod_test_euclidean_distance
   use asserts
   use tox_euclidean_distance
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use mod_test_suite, only: test_case
   implicit none
   public
-
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(17)
+  function get_all_tests_euclidean_distance() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(17))
     
     all_tests(1) = test_case("test_euclidean_distance_3d", test_euclidean_distance_3d)
     all_tests(2) = test_case("test_euclidean_distance_2d_origin", test_euclidean_distance_2d_origin)
@@ -42,46 +32,10 @@ contains
     all_tests(15) = test_case("test_numerical_precision_close", test_numerical_precision_close)
     all_tests(16) = test_case("test_performance_large_scale", test_performance_large_scale)
     all_tests(17) = test_case("test_column_major_optimization", test_column_major_optimization)
-  end function get_all_tests
+  end function get_all_tests_euclidean_distance
 
-  !> Run all euclidean distance tests.
-  subroutine run_all_tests_euclidean_distance()
-    type(test_case) :: all_tests(17)
-    integer(int32) :: i
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All euclidean distance tests passed successfully."
-  end subroutine run_all_tests_euclidean_distance
-
-  !> Run specific euclidean distance tests by name.
-  subroutine run_named_tests_euclidean_distance(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(17)
-    integer(int32) :: i, j
-    logical :: found
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_euclidean_distance
+  
+  
 
   !> Test euclidean distance with standard 3D vectors.
   subroutine test_euclidean_distance_3d()

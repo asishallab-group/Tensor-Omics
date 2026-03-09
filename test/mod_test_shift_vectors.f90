@@ -5,68 +5,27 @@ module mod_test_shift_vectors
   use tox_shift_vectors
   use tox_errors, only: ERR_OK, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use mod_test_suite, only: test_case
   implicit none
   public
 
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
 
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(6)
+  function get_all_tests_shift_vectors() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(6))
     all_tests(1) = test_case("test_correct_family_mapping", test_correct_family_mapping)
     all_tests(2) = test_case("test_invalid_family_mapping", test_invalid_family_mapping)
     all_tests(3) = test_case("test_zero_distance", test_zero_distance)
     all_tests(4) = test_case("test_multiple_genes_per_family", test_multiple_genes_per_family)
     all_tests(5) = test_case("test_single_gene_per_family", test_single_gene_per_family)
     all_tests(6) = test_case("test_dimension_edge_cases", test_dimension_edge_cases)
-  end function get_all_tests
+  end function get_all_tests_shift_vectors
 
-  !> Run all shift vector tests.
-  subroutine run_all_tests_shift_vectors()
-    type(test_case) :: all_tests(6)
-    integer(int32) :: i
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All shift vector tests passed successfully."
-  end subroutine run_all_tests_shift_vectors
 
-  !> Run specific shift vector tests by name.
-  subroutine run_named_tests_shift_vectors(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(6)
-    integer(int32) :: i, j
-    logical :: found
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_shift_vectors
 
   !> Test correct mapping between families and genes.
   subroutine test_correct_family_mapping()

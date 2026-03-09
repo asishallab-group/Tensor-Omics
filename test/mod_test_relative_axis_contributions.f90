@@ -5,28 +5,18 @@ module mod_test_relative_axis_contributions
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic
+  use mod_test_suite, only: test_case
   implicit none
   public 
 
-
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 
 contains
 
   !> Get array of all available tests for relative axis contributions
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(11)
+  function get_all_tests_relative_axis_contributions() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(11))
     all_tests(1) = test_case("test_positive_vector", test_positive_vector)
     all_tests(2) = test_case("test_negative_vector", test_negative_vector)
     all_tests(3) = test_case("test_mixed_vector", test_mixed_vector)
@@ -38,41 +28,9 @@ contains
     all_tests(9) = test_case("test_nan_vector", test_nan_vector)
     all_tests(10) = test_case("test_inf_vector", test_inf_vector)
     all_tests(11) = test_case("test_empty_vector", test_empty_vector)
-  end function get_all_tests
-  !> Run all relative axis contribution tests
-  subroutine run_all_tests_relative_axis()
-    type(test_case) :: all_tests(11)
-    integer :: i
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All relative axis contribution tests passed successfully."
-  end subroutine run_all_tests_relative_axis
-
-  !> Run specific relative axis tests by name
-  subroutine run_named_tests_relative_axis(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(11)
-    integer :: i, j
-    logical :: found
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_relative_axis
+  end function get_all_tests_relative_axis_contributions
+  
+  
 
   !> Test: vector with all positive values
   subroutine test_positive_vector()
