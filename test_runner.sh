@@ -51,7 +51,7 @@ rm -f manifest.txt
 echo "Running tests..."
 
 # Run the executable
-utils_fpm test ${TEST_TARGET:-all}
+utils_fpm test ${TEST_TARGET:-run_tests}
 
 check_exit_code "Tests failed"
 

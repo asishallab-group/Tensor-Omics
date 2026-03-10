@@ -130,8 +130,12 @@ contains
       call validate_in_range_real(base, ierr, min=above(0.0_real64))
       if (is_close(base, 1.0_real64)) call set_err(ierr, ERR_DIVISION_BY_ZERO)
       if (is_err(ierr)) return
-      
-      exponent = log(val) / log(base)
+
+      if (base == 2.0_real64) then
+        exponent = log(val) / LOG_2
+      else
+        exponent = log(val) / log(base)
+      end if
   end subroutine logx
 
   !> Initialize Fortran's random number generator
@@ -655,12 +659,12 @@ contains
         end if
 
         ! If the larger child is greater than current, swap permutation entries
-        if (real_greater(array(perm(largest_idx)), array(perm(current)))) then
+        ! if (real_greater(array(perm(largest_idx)), array(perm(current)))) then
           call swap_int(perm(current), perm(largest_idx))
           current = largest_idx
-        else
-          exit
-        end if
+        ! else
+        !   exit
+        ! end if
       end do
     end subroutine heapify_real
   end subroutine heapsort_real

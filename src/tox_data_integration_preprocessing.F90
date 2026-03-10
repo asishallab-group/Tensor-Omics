@@ -14,57 +14,79 @@ module tox_data_integration_preprocessing
 contains
 
     !> Compute per-gene mean expression, ignoring NaN values
-    pure subroutine compute_gene_means(n_genes, n_reps, expr, means, ierr)
+    !|
+    !| @note
+    !| The means of all studies should be in contiguous memory afterwards, so for using this subroutine pass `means` as `means(:, study_idx)`
+    !| @endnote
+    pure subroutine compute_gene_means(expr, n_genes, n_reps, means, max_n_genes_all_studies, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
             !! Number of biological replicates in the study
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
         real(real64), intent(in) :: expr(n_reps, n_genes)
             !! Expression matrix
-        real(real64), intent(out) :: means(n_genes)
+        real(real64), intent(out) :: means(max_n_genes_all_studies)
             !! Per-gene mean expression values
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 
+        call validate_dimension_size(max_n_genes_all_studies, ierr)
         call validate_dimension_size(n_genes, ierr)
         call validate_dimension_size(n_reps, ierr)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes)
         ! expression can contain NaN
         if (is_err(ierr)) return
 
-        call compute_gene_means_helper(n_genes, n_reps, expr, means)
+        call compute_gene_means_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies)
     end subroutine compute_gene_means
 
     !> (no input validation) Compute per-gene mean expression, ignoring NaN values
-    pure subroutine compute_gene_means_helper(n_genes, n_reps, expr, means)
+    !|
+    !| @note
+    !| The means of all studies should be in contiguous memory afterwards, so for using this subroutine pass `means` as `means(:, study_idx)`
+    !| @endnote
+    pure subroutine compute_gene_means_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
             !! Number of biological replicates in the study
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
         real(real64), intent(in) :: expr(n_reps, n_genes)
             !! Expression matrix
-        real(real64), intent(out) :: means(n_genes)
+        real(real64), intent(out) :: means(max_n_genes_all_studies)
             !! Per-gene mean expression values
 
         integer(int32) :: i_gene, i_rep, n_included
         real(real64) :: sum_val, expr_val
 
         ! Use do concurrent for parallelization across genes
-        do concurrent(i_gene=1:n_genes) local(sum_val, n_included)
-            sum_val = 0.0_real64
-            n_included = 0
+        do concurrent(i_gene=1:max_n_genes_all_studies) local(sum_val, n_included)
+            if (i_gene > n_genes) then
+                means(i_gene) = M_NAN
+            else
+                sum_val = 0.0_real64
+                n_included = 0
 
-            ! Count valid (non-NaN) replicates and compute sum
-            do concurrent(i_rep=1:n_reps) local(expr_val) shared(expr) reduce(+:sum_val, n_included)
-                expr_val = expr(i_rep, i_gene)
-                if ((.not. ieee_is_nan(expr_val)) .and. ieee_is_finite(expr_val)) then
-                    sum_val = sum_val + expr(i_rep, i_gene)
-                    n_included = n_included + 1
+                ! Count valid (non-NaN) replicates and compute sum
+                do concurrent(i_rep=1:n_reps) local(expr_val) shared(expr) reduce(+:sum_val, n_included)
+                    expr_val = expr(i_rep, i_gene)
+                    if ((.not. ieee_is_nan(expr_val)) .and. ieee_is_finite(expr_val)) then
+                        sum_val = sum_val + expr(i_rep, i_gene)
+                        n_included = n_included + 1
+                    end if
+                end do
+
+                if (n_included > 0) then
+                    means(i_gene) = sum_val/real(n_included, real64)
+                else
+                    means(i_gene) = M_NAN
                 end if
-            end do
-
-            means(i_gene) = sum_val/real(n_included, real64)
+            end if
         end do
     end subroutine compute_gene_means_helper
 
@@ -84,7 +106,7 @@ contains
             !! Maximum number of replicates across all studies
         real(real64), intent(in) :: expr(n_reps, n_genes)
             !! Expression matrix containing
-        real(real64), intent(in) :: means(n_genes)
+        real(real64), intent(in) :: means(max_n_genes_all_studies)
             !! Per-gene mean expression values
         real(real64), intent(out) :: resid(max_n_reps_all_studies, max_n_genes_all_studies)
             !! Matrix of signed residuals
@@ -92,8 +114,12 @@ contains
             !! Error code
 
         call set_ok(ierr)
+        call validate_dimension_size(max_n_genes_all_studies, ierr)
+        call validate_dimension_size(max_n_reps_all_studies, ierr)
         call validate_dimension_size(n_genes, ierr)
         call validate_dimension_size(n_reps, ierr)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, min=n_reps)
         ! family means and expr containing NaN is expected behaviour
         if (is_err(ierr)) return
 
@@ -150,16 +176,14 @@ contains
     end function find_last_non_nan
 
     !> Pool per-gene mean expression values across studies
-    pure subroutine pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
-        integer(int32), intent(in) :: n_genes_S1
-            !! Number of genes in study S1
-        integer(int32), intent(in) :: n_genes_S2
-            !! Number of genes in study S2
+    pure subroutine pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, n_pool, x_star, ierr)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
         integer(int32), intent(in) :: n_points
             !! Number of reference points to define
-        real(real64), intent(in) :: mean_S1(n_genes_S1)
-            !! Per-gene mean expression values
-        real(real64), intent(in) :: mean_S2(n_genes_S2)
+        real(real64), intent(in) :: means(max_n_genes_all_studies * n_studies)
             !! Per-gene mean expression values
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
@@ -168,43 +192,33 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        real(real64), allocatable :: pooled_means(:)
         integer(int32), allocatable :: perm(:)
         integer(int32) :: i_gene, pool_idx, pool_size
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_genes_S1, ierr)
-        call validate_dimension_size(n_genes_S2, ierr)
+        call validate_dimension_size(max_n_genes_all_studies, ierr)
+        call validate_dimension_size(n_studies, ierr)
         ! mean values can contain NaN
         if (is_err(ierr)) return
 
         ! Allocate arrays for pooled means
-        pool_size = n_genes_S1 + n_genes_S2
-        M_ALLOCATE(pooled_means(pool_size))
+        pool_size = size(means, kind=int32)
         M_ALLOCATE(perm(pool_size))
 
-        do concurrent(i_gene=1:n_genes_S1) shared(pooled_means, mean_S1)
-            pooled_means(i_gene) = mean_S1(i_gene)
+        do concurrent(i_gene=1:pool_size) shared(perm)
             perm(i_gene) = i_gene
         end do
 
-        do concurrent(i_gene=1:n_genes_S2) local(pool_idx) shared(pooled_means, mean_S2)
-            pool_idx = n_genes_S1 + i_gene
-            pooled_means(pool_idx) = mean_S2(i_gene)
-            perm(pool_idx) = pool_idx
-        end do
+        call heapsort_real(means, perm)
 
-        call heapsort_real(pooled_means, perm)
-
-        call pool_means(pooled_means, perm, pool_size, n_points, n_pool, x_star, ierr)
-
+        call pool_means(means, perm, pool_size, n_points, n_pool, x_star, ierr)
     end subroutine pool_means_alloc
 
     !> Pool per-gene mean expression values across studies
     pure subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
-        integer(int32), intent(in), target :: pool_size
-            !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
+        integer(int32), intent(in) :: pool_size
+            !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
         integer(int32), intent(in) :: n_points
             !! Number of reference points to define
         integer(int32), intent(out) :: n_pool
@@ -230,8 +244,8 @@ contains
 
     !> (no input validation) Pool per-gene mean expression values across studies
     pure subroutine pool_means_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
-        integer(int32), intent(in), target :: pool_size
-            !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
+        integer(int32), intent(in) :: pool_size
+            !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
         integer(int32), intent(in) :: n_points
             !! Number of reference points to define
         integer(int32), intent(out) :: n_pool
@@ -243,12 +257,30 @@ contains
         real(real64), intent(out) :: x_star(n_points)
             !! Mean-expression reference points
 
+        n_pool = find_last_non_nan(pooled_means, pooled_means_perm, pool_size)
+
+        call pool_means_n_pool_input_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+    end subroutine pool_means_helper
+
+    !> (no input validation) Pool per-gene mean expression values across studies
+    pure subroutine pool_means_n_pool_input_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+        integer(int32), intent(in) :: pool_size
+            !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points to define
+        integer(int32), intent(in) :: n_pool
+            !! Total number of included (non-NaN) pooled mean-expression values
+        real(real64), intent(in) :: pooled_means(pool_size)
+            !! Pooled means
+        integer(int32), intent(in) :: pooled_means_perm(pool_size)
+            !! Sorting permutation for `pooled_means`
+        real(real64), intent(out) :: x_star(n_points)
+            !! Mean-expression reference points
+
         integer(int32) :: i_point
         real(real64) :: quantile_level
 
-        n_pool = find_last_non_nan(pooled_means, pooled_means_perm, pool_size)
-
-        if (n_pool == 0) then
+        if (n_pool <= 0) then
             x_star = M_NAN
         else
             ! Compute reference points as empirical quantiles using the permutation
@@ -259,7 +291,7 @@ contains
                 call calc_percentile_helper(pooled_means(:n_pool), pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
             end do
         end if
-    end subroutine pool_means_helper
+    end subroutine pool_means_n_pool_input_helper
 
     !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
     !|

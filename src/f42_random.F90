@@ -2,6 +2,7 @@
 !|
 !| It uses the squares CBRNG, inspired by reference: https://squaresrng.wixsite.com/rand   (version 8 - Feb 4, 2024)
 module f42_random
+    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64, int64
     implicit none
 

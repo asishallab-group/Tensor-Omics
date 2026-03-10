@@ -1,15 +1,21 @@
 function init() {
+  ALIGN=$(get_alignment)
+
+  # handle_args overwrites:
+  # ALIGN if --align=<align> specified
+  # FC if --fc=<compiler> specified
+  handle_args "$@"
+
+  # --compiler beats --fc beats global $FC
   COMPILER=$(get_compiler)
   FLAGS=$(get_flags)
-  ALIGN=$(get_alignment)
-  handle_args "$@"
 }
 
 function utils_fpm() {
   declare prefix="fpm build"
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
-    prefix="fpm test --target ${2:-all}"
+    prefix="fpm test --target ${2:-run_tests}"
     libpath=build:"$libpath"
   fi
   LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG" -- $ARGS
@@ -30,11 +36,17 @@ function get_alignment() {
   echo $ALIGN
 }
 
+# gets compiler from context, it uses
+# 1. $COMPILER if defined (by --compiler)
+# 2. else $FC
+# falls back to gfortran if the set compiler is not known
 function get_compiler() {
+  declare compiler=${COMPILER:-$FC}
+
   # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
+  if [[ "$compiler" == "ifx" || "$compiler" == "ifort" ]]; then
     echo ifx
-  elif [[ "$FC" == "nvfortran" ]]; then
+  elif [[ "$compiler" == "nvfortran" ]]; then
     echo nvfortran
   else
     echo gfortran
@@ -46,24 +58,12 @@ function get_flags() {
   printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
 
   # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
+  if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
     echo "-O2 -fopenmp-target-do-concurrent -warn all -diag-enable=all -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  elif [[ "$FC" == "nvfortran" ]]; then
+  elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
     echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
-  fi
-}
-
-function get_module_flag() {
-  if [[ $1 ]]; then
-    if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-      echo "-module $1"
-    elif [[ "$FC" == "nvfortran" ]]; then
-      echo "-module $1"
-    else
-      echo "-J$1"
-    fi
   fi
 }
 
@@ -93,48 +93,6 @@ function handle_args() {
 
 function stderr() {
   echo "$@" >&2
-}
-
-function check_build() {
-  if [[ "$@" ]]; then
-    missing=()
-    for c in "$@"; do
-      if [[ ! $(find build -name "$c") ]]; then
-        missing+=(" '$c'")
-      fi
-    done
-    if [[ "$missing" ]]; then
-      stderr "Missing files:$(IFS=', ';echo "${missing[*]}")"
-      return 1
-    fi
-  fi
-
-  mod_count=$(find build -name "*.mod" | wc -l)
-  obj_count=$(find build -name "*.o" | wc -l) 
-  so_count=$(find build -name "*.so" | wc -l)
-
-  if [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod files"
-    return 2
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o files"
-    return 3
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o and .so files"
-    return 4
-  elif [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .so files"
-    return 5
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .o files"
-    return 6
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .o and .so files"
-    return 7
-  elif [ ! $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .so files"
-    return 8
-  fi
 }
 
 function check_exit_code() {

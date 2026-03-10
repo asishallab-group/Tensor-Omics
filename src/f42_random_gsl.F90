@@ -60,26 +60,56 @@ contains
         res = min + random_uniform(rng) * (max - min)
     end function rand_range
 
-    subroutine random_multiv_binom(rng, population_sizes, n_populations, total_population, drawn)
+    subroutine random_multiv_binomial(rng, population_sizes, n_populations, total_population, n_to_draw, drawn)
         integer(int32), intent(in) :: n_populations
         type(c_ptr), intent(in) :: rng
         integer(int32), dimension(n_populations), intent(in) :: population_sizes
         integer(int32), intent(in) :: total_population
+        integer(int32), intent(in) :: n_to_draw
         integer(int32), dimension(n_populations), intent(out) :: drawn
 
-        integer(int32) :: remaining_population, i_population
+        integer(int32) :: remaining_population, i_population, remaining_draws
         real(real64) :: p
 
         remaining_population = total_population
+        remaining_draws = n_to_draw
         drawn = 0_int32
         do i_population = 1, n_populations - 1
             p = real(population_sizes(i_population), real64) / real(remaining_population, real64)
-            drawn(i_population) = random_binomial(rng, p, remaining_population)
+            drawn(i_population) = random_binomial(rng, p, remaining_draws)
             remaining_population = remaining_population - drawn(i_population)
+            remaining_draws = remaining_draws - drawn(i_population)
 
             if (remaining_population == 0) exit
         end do
 
-        drawn(n_populations) = remaining_population
-    end subroutine random_multiv_binom
+        drawn(n_populations) = remaining_draws
+    end subroutine random_multiv_binomial
+
+    subroutine random_multiv_hypergeom(rng, population_sizes, n_populations, total_population, n_to_draw, drawn)
+        integer(int32), intent(in) :: n_populations
+        type(c_ptr), intent(in) :: rng
+        integer(int32), dimension(n_populations), intent(inout) :: population_sizes
+        integer(int32), intent(in) :: total_population
+        integer(int32), intent(in) :: n_to_draw
+        integer(int32), dimension(n_populations), intent(out) :: drawn
+
+        integer(int32) :: remaining_population, i_population, remaining_draws, current_population, n_drawn
+
+        remaining_population = total_population
+        remaining_draws = min(total_population, n_to_draw)
+        drawn = 0_int32
+        do i_population = 1, n_populations - 1
+            current_population = population_sizes(i_population)
+            remaining_population = remaining_population - current_population
+            n_drawn = random_hypergeom(rng, current_population, remaining_population, remaining_draws)
+            drawn(i_population) = n_drawn
+            remaining_draws = remaining_draws - n_drawn
+            population_sizes(i_population) = population_sizes(i_population) - n_drawn
+
+            if (remaining_population == 0) exit
+        end do
+
+        drawn(n_populations) = remaining_draws
+    end subroutine random_multiv_hypergeom
 end module f42_random_gsl
