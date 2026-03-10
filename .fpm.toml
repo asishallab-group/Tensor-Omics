@@ -10,3 +10,8 @@ type = "shared"
 
 [build]
 link = ["xxhash", "zip", "gsl"]
+
+[[test]]
+name = "all"
+source-dir = "test"
+main = "run_tests.f90"

@@ -5,10 +5,7 @@
 
 source build_utils.sh
 
-COMPILER=$(get_compiler)
-FLAGS=$(get_flags)
-ALIGN=$(get_alignment)
-handle_args "$@"
+init "$@"
 
 # trigger clean build on branch switch
 if [[ $(which git) ]]; then
@@ -27,16 +24,19 @@ fi
 
 # Build with FPM first
 generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
-fpm build --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG"
+utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
-rm fpm.toml
+if [[ -z "$KEEP_FPM_TOML" ]]; then
+  rm fpm.toml
+fi
 
 # Copy .mod, .o and .so files from FPM build directories to build
 rm -f build/*.o build/*.mod
 
-# Copy .so, .mod, .o files if they exist
-find build/"${COMPILER}"_*/ \( -name "*.so" -o -name "*.mod" -o -name "*.o" \) -exec cp {} build/ \;
+# Copy latest .so
+cp "$(find build/"${COMPILER}"_*/ \( -name "*.so" \) -printf "%T@ %p\n" | sort -n | tail -1 | sed "s/^[^ ]* //" )" build
+check_exit_code "No .so file found"
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"

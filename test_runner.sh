@@ -1,18 +1,8 @@
 #!/bin/bash
 
-SOURCE_DIR="src"
-TEST_DIR="test"
-BUILD_DIR="build"
-EXECUTABLE="$BUILD_DIR/run_tests"
-
 source build_utils.sh
 
-COMPILER=$(get_compiler)
-FLAGS=$(get_flags)
-ALIGN=$(get_alignment)
-MODULE_FLAG=$(get_module_flag $BUILD_DIR)
-
-handle_args "$@"
+init "$@"
 
 echo "Detected alignment: $ALIGN"
 
@@ -45,53 +35,27 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   echo "Compiling src/"
-  bash build.sh --clean-build "$@"
+  bash build.sh --clean-build --keep-fpm-toml "$@"
   check_exit_code "Build failed"
 else
-  bash build.sh "$@"
+  bash build.sh --keep-fpm-toml "$@"
   check_exit_code "Build failed"
 fi
 
 echo "Using compiler: $COMPILER"
-
-mkdir -p $BUILD_DIR
-
-# Clean up any existing run_tests file/directory
-if [ -e "$EXECUTABLE" ]; then
-  echo "Removing existing $EXECUTABLE..."
-  rm -f "$EXECUTABLE"
-fi
-
-echo "Compiling test modules..."
-# Then compile test/ modules using .mod files from build/
-$COMPILER $FLAGS $MODULE_FLAG -DDEFAULT_ALIGNMENT=$ALIGN $MAX_PERF_FLAG \
-  -I$BUILD_DIR \
-  -c $TEST_DIR/*.[fF]90
-check_exit_code "Test compilation failed"
-
-# Move object files to build/
-mv *.o $BUILD_DIR/
-
-check_build "*.o" "*.mod"
-check_exit_code "Module compilation failed"
-
-
-echo "Linking executable..."
-# Finally link everything together
-$COMPILER $FLAGS -I$BUILD_DIR \
-  $BUILD_DIR/*.o -o $EXECUTABLE
-
-check_exit_code "Executable compilation failed"
 
 rm -f test_*.bin
 rm -f test_*.zip
 rm -f manifest.txt
 
 echo "Running tests..."
+
 # Run the executable
-$EXECUTABLE $ARGS
+utils_fpm test ${TEST_TARGET:-all}
 
 check_exit_code "Tests failed"
+
+rm fpm.toml
 
 if [[ -z "$KEEP_BIN" && -z "$KEEP_FILES" ]]; then
   rm -f test_*.bin

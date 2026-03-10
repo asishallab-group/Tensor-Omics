@@ -1,3 +1,20 @@
+function init() {
+  COMPILER=$(get_compiler)
+  FLAGS=$(get_flags)
+  ALIGN=$(get_alignment)
+  handle_args "$@"
+}
+
+function utils_fpm() {
+  declare prefix="fpm build"
+  declare libpath="$LD_LIBRARY_PATH"
+  if [[ "$1" == "test" ]]; then
+    prefix="fpm test --target ${2:-all}"
+    libpath=build:"$libpath"
+  fi
+  LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG" -- $ARGS
+}
+
 function get_alignment() {
   ALIGN=32
   # Detect capabilities in order of descending priority:
@@ -54,6 +71,7 @@ function handle_args() {
   MAX_PERF_FLAG=""
   ARGS=""
   DIRECTIVES=""
+  
   for arg in "$@"; do
     if [[ "$arg" == "--max-performance" ]]; then
       MAX_PERF_FLAG="-DMAX_PERFORMANCE"
@@ -62,19 +80,15 @@ function handle_args() {
     # genericly handle optional flags
     elif [[ "$arg" == --* ]]; then
       declare undashed=${arg:2}
-      declare key=${undashed%=*}
-      declare val=${undashed##$key}
-      if [[ ! $val ]];then val=1;fi
+      declare key=${undashed%%=*}
+      # extract value after first '=' if present, else set to 1
+      declare val=$(echo "$undashed" | sed 's/^'$key'\(=\(.*\)\?\)\?/\2/g')
+      : ${val:=1}
       declare -g "$(echo "$key" | sed 's/\W/_/g; s/\w/\U&/g')=$val"
     else
       ARGS="$ARGS $arg"
     fi
   done
-
-  # if extra directives are added, a clean build is necessary. Otherwise fpm doesn't recompile
-  if [[ $DIRECTIVES ]]; then
-    CLEAN_BUILD=1
-  fi
 }
 
 function stderr() {
