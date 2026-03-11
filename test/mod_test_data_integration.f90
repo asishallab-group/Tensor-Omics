@@ -5,7 +5,7 @@ module mod_test_data_integration
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use tox_data_integration_preprocessing
+    use tox_data_integration
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
     implicit none
@@ -731,13 +731,16 @@ contains
     ! Test case 9: Basic pool_means_alloc functionality.
     subroutine test_pool_means_alloc_basic()
         integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 5, n_points = 3, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
-        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        real(real64), target :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
         integer(int32) :: N_pool, ierr
+        real(real64), dimension(:), pointer :: means_flat
+
+        means_flat(1:size(means, kind=int32)) => means
         
         means(:, 1) = [1.0, 3.0, 5.0, 7.0, 9.0]
         means(:, 2) = [2.0, 4.0, 6.0, 8.0, 10.0]
         
-        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        call pool_means_alloc(means_flat, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
         
         call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_basic: should succeed")
         call assert_equal_int(N_pool, 10, "test_pool_means_alloc_basic: N_pool should be 10")
@@ -754,13 +757,16 @@ contains
     ! Test case 10: pool_means_alloc with NaN values.
     subroutine test_pool_means_alloc_with_nan()
         integer, parameter :: n_genes_S1 = 4, n_genes_S2 = 4, n_points = 2, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
-        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        real(real64), target :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
         integer(int32) :: N_pool, ierr
+        real(real64), dimension(:), pointer :: means_flat
+
+        means_flat(1:size(means, kind=int32)) => means
         
         means(:, 1) = [1.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 3.0_real64, 5.0_real64]
         means(:, 2) = [2.0_real64, 4.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 6.0_real64]
         
-        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        call pool_means_alloc(means_flat, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
         
         call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_with_nan: should succeed")
         call assert_equal_int(N_pool, 6, "test_pool_means_alloc_with_nan: N_pool should exclude NaN values")
@@ -774,12 +780,15 @@ contains
     ! Test case 11: pool_means_alloc with single study.
     subroutine test_pool_means_alloc_single_study()
         integer, parameter :: n_genes_S1 = 5, n_points = 3, max_n_genes_all_studies = n_genes_S1, n_studies = 1
-        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        real(real64), target :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
         integer(int32) :: N_pool, ierr
+        real(real64), dimension(:), pointer :: means_flat
+
+        means_flat(1:size(means, kind=int32)) => means
 
         means(:, 1) = [1.0, 2.0, 3.0, 4.0, 5.0]
         
-        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        call pool_means_alloc(means_flat, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
         
         call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_single_study: should succeed")
     end subroutine test_pool_means_alloc_single_study
@@ -787,18 +796,21 @@ contains
     ! Test case 12: pool_means_alloc with invalid input.
     subroutine test_pool_means_alloc_invalid_input()
         integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 5, n_points = 3, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
-        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        real(real64), target :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
         integer(int32) :: N_pool, ierr
+        real(real64), dimension(:), pointer :: means_flat
+
+        means_flat(1:size(means, kind=int32)) => means
         
         means(:, 1) = [1.0, 2.0, 3.0, 4.0, 5.0]
         means(:, 2) = [1.0, 2.0, 3.0, 4.0, 5.0]
         
         ! Test with zero genes in S1
-        call pool_means_alloc(means, 0_int32, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        call pool_means_alloc(means_flat, 0_int32, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 2_int32), "test_pool_means_alloc_invalid_input: zero studies should fail")
         
         ! Test with zero points
-        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, 0_int32, N_pool, x_star, ierr)
+        call pool_means_alloc(means_flat, n_studies, max_n_genes_all_studies, 0_int32, N_pool, x_star, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 4_int32), "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
 

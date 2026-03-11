@@ -3,7 +3,7 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
 !|
 !| This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.
-module tox_data_integration_preprocessing
+submodule (tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite, ieee_positive_inf
@@ -18,7 +18,7 @@ contains
     !| @note
     !| The means of all studies should be in contiguous memory afterwards, so for using this subroutine pass `means` as `means(:, study_idx)`
     !| @endnote
-    pure subroutine compute_gene_means(expr, n_genes, n_reps, means, max_n_genes_all_studies, ierr)
+    pure module subroutine compute_gene_means(expr, n_genes, n_reps, means, max_n_genes_all_studies, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -49,7 +49,7 @@ contains
     !| @note
     !| The means of all studies should be in contiguous memory afterwards, so for using this subroutine pass `means` as `means(:, study_idx)`
     !| @endnote
-    pure subroutine compute_gene_means_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies)
+    pure module subroutine compute_gene_means_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -95,7 +95,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure subroutine compute_residuals(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid, ierr)
+    pure module subroutine compute_residuals(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -131,7 +131,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure subroutine compute_residuals_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid)
+    pure module subroutine compute_residuals_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -163,20 +163,23 @@ contains
 
     end subroutine compute_residuals_helper
 
-    pure integer(int32) function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
+    !> Returns the last index in a sorted array that has a value unlike NaN (NaN sorted to the end)
+    pure module function find_last_non_nan(arr, arr_perm, n_elements) result(idx)
         integer(int32), intent(in) :: n_elements
             !! Number of elements in `arr`
         real(real64), dimension(n_elements), intent(in) :: arr
             !! Array to find the last non-NaN index
         integer(int32), dimension(n_elements), intent(in) :: arr_perm
             !! Sorting permutation for `arr`
+        integer(int32) :: idx
+            !! Index in `arr` with non-NaN value
 
         ! Search for positive infinity. As NaN is always sorted to the end, the insertion index will point to the first NaN.
         idx = binary_search_insertion(arr, arr_perm, M_POS_INF) - 1
     end function find_last_non_nan
 
     !> Pool per-gene mean expression values across studies
-    pure subroutine pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, n_pool, x_star, ierr)
+    pure module subroutine pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, n_pool, x_star, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         integer(int32), intent(in) :: max_n_genes_all_studies
@@ -193,7 +196,7 @@ contains
             !! Error code
 
         integer(int32), allocatable :: perm(:)
-        integer(int32) :: i_gene, pool_idx, pool_size
+        integer(int32) :: i_gene, pool_size
 
         call set_ok(ierr)
 
@@ -216,7 +219,7 @@ contains
     end subroutine pool_means_alloc
 
     !> Pool per-gene mean expression values across studies
-    pure subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+    pure module subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
         integer(int32), intent(in) :: pool_size
             !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
         integer(int32), intent(in) :: n_points
@@ -244,7 +247,7 @@ contains
     end subroutine pool_means
 
     !> (no input validation) Pool per-gene mean expression values across studies
-    pure subroutine pool_means_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+    pure module subroutine pool_means_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
         integer(int32), intent(in) :: pool_size
             !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
         integer(int32), intent(in) :: n_points
@@ -264,7 +267,7 @@ contains
     end subroutine pool_means_helper
 
     !> (no input validation) Pool per-gene mean expression values across studies
-    pure subroutine pool_means_n_pool_input_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+    pure module subroutine pool_means_n_pool_input_helper(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
         integer(int32), intent(in) :: pool_size
             !! Number of means in the pool, usually `2 * max_n_genes_all_studies`
         integer(int32), intent(in) :: n_points
@@ -297,7 +300,7 @@ contains
     !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
     !|
     !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
-    pure function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
+    pure module function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
         integer(int32), intent(in) :: n_pool
             !! Total number of pooled mean-expression values across both studies
         integer(int32), intent(in) :: n_points
@@ -340,7 +343,7 @@ contains
     end function calc_neighborhood_size
 
     !> Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -390,7 +393,7 @@ contains
     end subroutine construct_neighborhoods_alloc
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    pure module subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -432,7 +435,7 @@ contains
     end subroutine construct_neighborhoods
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
+    pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -527,4 +530,4 @@ contains
             end if
         end do
     end subroutine construct_neighborhoods_helper
-end module tox_data_integration_preprocessing
+end submodule tox_data_integration_preprocessing
