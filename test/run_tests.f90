@@ -85,6 +85,7 @@ program main
       call print_usage()
       stop 1
   end select
+  
   contains
     !> Print usage information.
     subroutine print_usage()
