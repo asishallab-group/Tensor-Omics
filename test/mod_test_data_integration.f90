@@ -28,7 +28,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(2)
+        type(test_case) :: all_tests(6)
         ! ! jsd
         ! all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
@@ -50,13 +50,13 @@ contains
         ! all_tests(13) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
         ! all_tests(14) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
         
-        ! all_tests(15) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
-        ! all_tests(16) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
-        ! all_tests(17) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
-        ! all_tests(18) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(1) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
+        all_tests(2) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
+        all_tests(3) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
+        all_tests(4) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
         
-        all_tests(1) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(2) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
+        all_tests(5) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(6) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
 
         ! ! per-family
         ! all_tests(21) = test_case("test_fjct", test_fjct)
@@ -553,6 +553,84 @@ contains
     !     call assert_equal_real(global_jsd, expected, TOL, "test_compute_weighted_global_divergence: Test 5: weighted global JSD")
 
     ! end subroutine test_compute_weighted_global_divergence
+
+    ! --------------------------------------------------------------------------
+    ! Test Cases for pool_means_alloc
+    ! --------------------------------------------------------------------------
+
+    ! Test case 9: Basic pool_means_alloc functionality.
+    subroutine test_pool_means_alloc_basic()
+        integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 5, n_points = 3, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
+        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        integer(int32) :: N_pool, ierr
+        
+        means(:, 1) = [1.0, 3.0, 5.0, 7.0, 9.0]
+        means(:, 2) = [2.0, 4.0, 6.0, 8.0, 10.0]
+        
+        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_basic: should succeed")
+        call assert_equal_int(N_pool, 10, "test_pool_means_alloc_basic: N_pool should be 10")
+        
+        ! Check that x_star contains quantiles from pooled data
+        ! Pooled data: [1,2,3,4,5,6,7,8,9,10]
+        ! For n_points=3, quantiles at positions: 10/4=2.5, 20/4=5.0, 30/4=7.5
+        ! Floored: 2, 5, 7 -> values: 2, 5, 7 -> interpolation to 3.25, 5.5 and 7.75
+        call assert_equal_real(x_star(1), 3.25_real64, TOL, "test_pool_means_alloc_basic: first quantile")
+        call assert_equal_real(x_star(2), 5.5_real64, TOL, "test_pool_means_alloc_basic: second quantile")
+        call assert_equal_real(x_star(3), 7.75_real64, TOL, "test_pool_means_alloc_basic: third quantile")
+    end subroutine test_pool_means_alloc_basic
+
+    ! Test case 10: pool_means_alloc with NaN values.
+    subroutine test_pool_means_alloc_with_nan()
+        integer, parameter :: n_genes_S1 = 4, n_genes_S2 = 4, n_points = 2, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
+        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        integer(int32) :: N_pool, ierr
+        
+        means(:, 1) = [1.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 3.0_real64, 5.0_real64]
+        means(:, 2) = [2.0_real64, 4.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 6.0_real64]
+        
+        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_with_nan: should succeed")
+        call assert_equal_int(N_pool, 6, "test_pool_means_alloc_with_nan: N_pool should exclude NaN values")
+        
+        ! Pooled data (excluding NaN): [1,2,3,4,5,6]
+        ! Values: 2.666, 4.3333 -> interpolation
+        call assert_equal_real(x_star(1), 2.0_real64 + 2.0_real64/3.0_real64, TOL, "test_pool_means_alloc_with_nan: first quantile")
+        call assert_equal_real(x_star(2), 4.0_real64 + 1.0_real64/3.0_real64, TOL, "test_pool_means_alloc_with_nan: second quantile")
+    end subroutine test_pool_means_alloc_with_nan
+
+    ! Test case 11: pool_means_alloc with single study.
+    subroutine test_pool_means_alloc_single_study()
+        integer, parameter :: n_genes_S1 = 5, n_points = 3, max_n_genes_all_studies = n_genes_S1, n_studies = 1
+        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        integer(int32) :: N_pool, ierr
+
+        means(:, 1) = [1.0, 2.0, 3.0, 4.0, 5.0]
+        
+        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_pool_means_alloc_single_study: should succeed")
+    end subroutine test_pool_means_alloc_single_study
+
+    ! Test case 12: pool_means_alloc with invalid input.
+    subroutine test_pool_means_alloc_invalid_input()
+        integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 5, n_points = 3, max_n_genes_all_studies = max(n_genes_S1, n_genes_S2), n_studies = 2
+        real(real64) :: means(max_n_genes_all_studies, n_studies), x_star(n_points)
+        integer(int32) :: N_pool, ierr
+        
+        means(:, 1) = [1.0, 2.0, 3.0, 4.0, 5.0]
+        means(:, 2) = [1.0, 2.0, 3.0, 4.0, 5.0]
+        
+        ! Test with zero genes in S1
+        call pool_means_alloc(means, 0_int32, max_n_genes_all_studies, n_points, N_pool, x_star, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 2_int32), "test_pool_means_alloc_invalid_input: zero studies should fail")
+        
+        ! Test with zero points
+        call pool_means_alloc(means, n_studies, max_n_genes_all_studies, 0_int32, N_pool, x_star, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 4_int32), "test_pool_means_alloc_invalid_input: zero points should fail")
+    end subroutine test_pool_means_alloc_invalid_input
 
     subroutine test_construct_neighborhoods_basic()
         integer(int32), parameter :: n_points    = 3

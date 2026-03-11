@@ -197,8 +197,8 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(max_n_genes_all_studies, ierr)
-        call validate_dimension_size(n_studies, ierr)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=2_int32)
         ! mean values can contain NaN
         if (is_err(ierr)) return
 
@@ -234,8 +234,9 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(pool_size, ierr)
-        call validate_dimension_size(n_points, ierr)
+        call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
+        call validate_all_in_range_int(pooled_means_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         ! mean values can contain NaN
         if (is_err(ierr)) return
 
@@ -339,7 +340,7 @@ contains
     end function calc_neighborhood_size
 
     !> Construct neighborhood-based residual sets (kNN)
-    subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    pure subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -389,7 +390,7 @@ contains
     end subroutine construct_neighborhoods_alloc
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    pure subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -431,7 +432,7 @@ contains
     end subroutine construct_neighborhoods
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
+    pure subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
