@@ -829,7 +829,7 @@ contains
         ! Inputs
         ! -----------------------------
         x_star = [ 0.0_real64, 2.0_real64, 10.0_real64 ]
-        mean_S = [ 1.0, 2.5, 9.0, 10.5, 20.0 ]
+        mean_S = [ 1.0, 2.5, 2.5, 10.5, 20.0 ]
 
         ! -----------------------------
         ! Call routine
@@ -838,27 +838,24 @@ contains
 
         call assert_equal_int(ierr, ERR_OK, "ierr must be ERR_OK")
 
-        ! -----------------------------
-        ! Expected neighbors
-        !
-        ! For x_star(2)=2.0:
-        !   distances = [1.0, 0.5, 7.0, 8.5, 18.0]
-        !   sorted → gene 2, gene 1
-        !   tie-breaking: ascending gene index  <-- IMPORTANT
-        !
-        ! For x_star(3)=10.0:
-        !   distances = [9.0, 7.5, 1.0, 0.5, 10.0]
-        !   sorted → gene 4, gene 3
-        ! -----------------------------
 
-        call assert_equal_array_int( neighborhood_residuals(:,1), [1,2], n_neighbors, &
+        ! third gene sorts before second
+        call assert_equal_array_int( neighborhood_residuals(:,1), [1,3], n_neighbors, &
             "test_construct_neighborhoods_basic: Incorrect neighborhood residuals for point 1" )
+        call assert_equal_array_int( neighborhood_range(:,1), [1,3], n_neighbors, &
+            "test_construct_neighborhoods_basic: Incorrect neighborhood range for point 1" )
 
-        call assert_equal_array_int( neighborhood_residuals(:,2), [2,1], n_neighbors, &
+        ! third gene sorts before second
+        call assert_equal_array_int( neighborhood_residuals(:,2), [3,2], n_neighbors, &
             "test_construct_neighborhoods_basic: Incorrect neighborhood residuals for point 2" )
+        call assert_equal_array_int( neighborhood_range(:,2), [2,3], n_neighbors, &
+            "test_construct_neighborhoods_basic: Incorrect neighborhood range for point 2" )
 
-        call assert_equal_array_int( neighborhood_residuals(:,3), [4,3], n_neighbors, &
+        ! third gene sorts before second
+        call assert_equal_array_int( neighborhood_residuals(:,3), [4,2], n_neighbors, &
             "test_construct_neighborhoods_basic: Incorrect neighborhood residuals for point 3" )
+        call assert_equal_array_int( neighborhood_range(:,3), [2,4], n_neighbors, &
+            "test_construct_neighborhoods_basic: Incorrect neighborhood range for point 3" )
 
         call construct_neighborhoods_alloc(0_int32, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
 
@@ -894,8 +891,13 @@ contains
         ! Only genes 1 and 3 are valid (non-NaN)
         call assert_equal_array_int( neighborhood_residuals(:,1), [1,3], n_neighbors, &
             "test_construct_neighborhoods_nan_handling: NaN mean handling incorrect" )
-        call assert_equal_array_int( neighborhood_residuals(:,2), [1,2], n_neighbors, &
+        call assert_equal_array_int( neighborhood_range(:,1), [1,2], n_neighbors, &
+            "test_construct_neighborhoods_nan_handling: NaN mean handling Incorrect neighborhood range for point 1")
+
+        call assert_equal_array_int( neighborhood_residuals(:,2), [1,3], n_neighbors, &
             "test_construct_neighborhoods_nan_handling: NaN x_star handling incorrect" )
+        call assert_equal_array_int( neighborhood_range(:,2), [1,2], n_neighbors, &
+            "test_construct_neighborhoods_nan_handling: NaN x star handling Incorrect neighborhood range for point 2")
     end subroutine test_construct_neighborhoods_nan_handling
 
 end module mod_test_data_integration

@@ -460,13 +460,13 @@ contains
             !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
             !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
             !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
-            !! If all mean values are NaN, the range is [1, 1]
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
 
-        integer(int32) :: i_point, i_neighbor, gene_idx, left_gene, right_gene, x_star_idx
+        integer(int32) :: i_point, i_neighbor, gene_idx, left_gene, right_gene, x_star_idx, last_gene
         real(real64) :: x_star_val
 
         ! Process each reference point
-        do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
+        do concurrent (i_point = 1:n_points) local(last_gene, x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
 
             x_star_val = x_star(i_point)
 
@@ -479,11 +479,7 @@ contains
 
             if (x_star_idx == 1) then
                 neighborhood_range(1, i_point) = 1_int32
-                if (ieee_is_nan(x_star_val)) then
-                    neighborhood_range(1, i_point) = 1_int32
-                else
-                    neighborhood_range(2, i_point) = n_genes_S
-                end if
+                neighborhood_range(2, i_point) = min(n_genes_S, n_neighbors)
 
                 ! The first `n_neighbors` genes are the closest to `x_star_val`
                 do concurrent (i_neighbor = 1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_residuals, i_point)
@@ -492,7 +488,7 @@ contains
                     else
                         gene_idx = i_neighbor
                     end if
-                    neighborhood_residuals(gene_idx, i_point) = gene_idx
+                    neighborhood_residuals(i_neighbor, i_point) = gene_idx
                 end do
             else
                 ! Collect the closest values around x_star_val
@@ -528,6 +524,26 @@ contains
                 neighborhood_range(1, i_point) = left_gene + 1
                 neighborhood_range(2, i_point) = right_gene - 1
             end if
+
+            last_gene = neighborhood_range(1, i_point)
+            do i_neighbor = last_gene - 1, 1, -1
+                if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                    last_gene = i_neighbor
+                else
+                    exit
+                end if
+            end do
+            neighborhood_range(1, i_point) = last_gene
+
+            last_gene = neighborhood_range(2, i_point)
+            do i_neighbor = last_gene + 1, n_genes_S
+                if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                    last_gene = i_neighbor
+                else
+                    exit
+                end if
+            end do
+            neighborhood_range(2, i_point) = last_gene
         end do
     end subroutine construct_neighborhoods_helper
 end submodule tox_data_integration_preprocessing
