@@ -51,6 +51,16 @@ contains
 
     n = size(arr, kind=int32)
 
+    ! NaN is sorted to the end -> If value and last element is NaN, return n, else it is not found
+    if (ieee_is_nan(value)) then
+      if (ieee_is_nan(arr(perm(n)))) then
+        idx = n
+      else
+        idx = n+1
+      end if
+      return
+    end if
+
     M_DEFAULT_VAL(lower_idx, actual_lower_idx, 1_int32)
     actual_lower_idx = clamp(actual_lower_idx, min_val=1_int32, max_val=n)
     M_DEFAULT_VAL(upper_idx, actual_upper_idx, n + 1)
@@ -58,7 +68,9 @@ contains
 
     do while (actual_lower_idx < actual_upper_idx)
       mid_idx = (actual_lower_idx + actual_upper_idx) / 2
-      if (real_less(arr(perm(mid_idx)), value)) then
+
+      ! Update bounds: Note that NaN is sorted to the end -> if condition fails because of NaN, the upper bound will be reduced
+      if (arr(perm(mid_idx)) < value) then
         actual_lower_idx = mid_idx + 1
       else
         actual_upper_idx = mid_idx
@@ -77,15 +89,22 @@ contains
     real(real64), intent(in) :: value
       !! Value to find
 
+    integer(int32) :: n
     real(real64) :: found
 
-    if (size(arr, kind=int32) == 0) then
+    n = size(arr, kind=int32)
+
+    if (n == 0) then
       idx = 0
     else
       idx = binary_search_insertion(arr, perm, value)
-      found = arr(perm(idx))
-      if (found /= value .and. .not. (ieee_is_nan(found) .and. ieee_is_nan(value))) then
+      if (idx == n + 1) then
         idx = -1
+      else
+        found = arr(perm(idx))
+        if (found /= value .and. .not. (ieee_is_nan(found) .and. ieee_is_nan(value))) then
+          idx = -1
+        end if
       end if
     end if
   end function binary_search

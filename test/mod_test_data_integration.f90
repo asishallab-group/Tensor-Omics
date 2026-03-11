@@ -28,7 +28,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(10)
+        type(test_case) :: all_tests(14)
         ! ! jsd
         ! all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
@@ -40,23 +40,23 @@ contains
         ! all_tests(6) = test_case("test_gjct_permutation_test", test_gjct_permutation_test)
 
         ! ! preprocessing
-        ! all_tests(7) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
-        ! all_tests(8) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
-        ! all_tests(9) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
-        ! all_tests(10) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
+        all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
+        all_tests(2) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
+        all_tests(3) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
+        all_tests(4) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
         
-        all_tests(1) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
-        all_tests(2) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
-        all_tests(3) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
-        all_tests(4) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
+        all_tests(5) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
+        all_tests(6) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
+        all_tests(7) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
+        all_tests(8) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
         
-        all_tests(5) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
-        all_tests(6) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
-        all_tests(7) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
-        all_tests(8) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(9) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
+        all_tests(10) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
+        all_tests(11) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
+        all_tests(12) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
         
-        all_tests(9) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(10) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
+        all_tests(13) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(14) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
 
         ! ! per-family
         ! all_tests(21) = test_case("test_fjct", test_fjct)
@@ -553,6 +553,89 @@ contains
     !     call assert_equal_real(global_jsd, expected, TOL, "test_compute_weighted_global_divergence: Test 5: weighted global JSD")
 
     ! end subroutine test_compute_weighted_global_divergence
+
+    ! --------------------------------------------------------------------------
+    ! Test Cases for compute_gene_means
+    ! --------------------------------------------------------------------------
+
+    ! Test case 1: Basic compute_gene_means functionality.
+    subroutine test_compute_gene_means_basic()
+        integer, parameter :: n_genes = 4, n_reps = 3
+        real(real64) :: expr(n_reps, n_genes), means(n_genes)
+        real(real64) :: expected_means(n_genes)
+        integer(int32) :: ierr
+        
+        ! Test data
+        expr = reshape([1.0, 2.0, 3.0,    &   ! Gene 1: mean = 2.0
+                        4.0, 5.0, 6.0,    &   ! Gene 2: mean = 5.0
+                        10.0, 20.0, 30.0, &   ! Gene 3: mean = 20.0
+                        0.0, 0.0, 0.0],   &   ! Gene 4: mean = 0.0
+                       [n_reps, n_genes])
+        
+        expected_means = [2.0, 5.0, 20.0, 0.0]
+        
+        call compute_gene_means(expr, n_genes, n_reps, means, n_genes, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_gene_means_basic: should succeed")
+        call assert_allclose_array_real(means, expected_means, n_genes, 0.0_real64, &
+                                        TOL, "test_compute_gene_means_basic: means")
+    end subroutine test_compute_gene_means_basic
+
+    ! Test case 2: compute_gene_means with NaN values.
+    subroutine test_compute_gene_means_with_nan()
+        integer, parameter :: n_genes = 3, n_reps = 4
+        real(real64) :: expr(n_reps, n_genes), means(n_genes)
+        integer(int32) :: ierr
+        
+        expr(:, 1) = [1.0_real64, 2.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 3.0_real64]  ! mean = (1+2+3)/3 = 2.0
+        expr(:, 2) = [ieee_value(1.0_real64, ieee_quiet_nan), 5.0_real64, 7.0_real64, 9.0_real64]  ! mean = (5+7+9)/3 = 7.0
+        expr(:, 3) = [10.0, 20.0, 30.0, 40.0]  ! mean = 25.0
+        
+        call compute_gene_means(expr, n_genes, n_reps, means, n_genes, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_gene_means_with_nan: should succeed")
+        call assert_equal_real(means(1), 2.0_real64, TOL, "test_compute_gene_means_with_nan: gene 1 mean")
+        call assert_equal_real(means(2), 7.0_real64, TOL, "test_compute_gene_means_with_nan: gene 2 mean")
+        call assert_equal_real(means(3), 25.0_real64, TOL, "test_compute_gene_means_with_nan: gene 3 mean")
+    end subroutine test_compute_gene_means_with_nan
+
+    ! Test case 3: compute_gene_means with all NaN values for a gene.
+    subroutine test_compute_gene_means_all_nan()
+        integer, parameter :: n_genes = 2, n_reps = 3
+        real(real64) :: expr(n_reps, n_genes), means(n_genes)
+        integer(int32) :: ierr
+        
+        expr(:, 1) = [1.0, 2.0, 3.0]  ! Normal gene
+        expr(:, 2) = ieee_value(1.0_real64, ieee_quiet_nan)  ! All NaN gene
+        
+        call compute_gene_means(expr, n_genes, n_reps, means, n_genes, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_gene_means_all_nan: should succeed")
+        call assert_equal_real(means(1), 2.0_real64, TOL, "test_compute_gene_means_all_nan: gene 1 mean")
+        call assert_true(ieee_is_nan(means(2)), "test_compute_gene_means_all_nan: gene 2 should be NaN")
+    end subroutine test_compute_gene_means_all_nan
+
+    ! Test case 4: compute_gene_means with invalid input.
+    subroutine test_compute_gene_means_invalid_input()
+        integer, parameter :: n_genes = 5, n_reps = 3, n_genes_neg = -1
+        real(real64) :: expr(3, 1), means(1)
+        integer(int32) :: ierr
+        
+        ! Test with zero genes
+        call compute_gene_means(expr, 0_int32, n_reps, means, n_genes, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 2_int32), "test_compute_gene_means_invalid_input: zero genes should fail")
+
+        call compute_gene_means(expr, n_genes, n_reps, means, 0_int32, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 5_int32), "test_compute_gene_means_invalid_input: zero max_n_genes should fail")
+        
+        ! Test with negative genes
+        call compute_gene_means(expr, n_genes_neg, n_reps, means, n_genes_neg, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 2_int32), "test_compute_gene_means_invalid_input: negative genes should fail")
+
+        ! Test with zero replicates
+        call compute_gene_means(expr, n_genes, 0_int32, means, n_genes, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 3_int32), "test_compute_gene_means_invalid_input: zero replicates should fail")
+    end subroutine test_compute_gene_means_invalid_input
 
     ! --------------------------------------------------------------------------
     ! Test Cases for compute_residuals

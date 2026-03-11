@@ -34,10 +34,10 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(max_n_genes_all_studies, ierr)
-        call validate_dimension_size(n_genes, ierr)
-        call validate_dimension_size(n_reps, ierr)
-        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes)
+        call validate_dimension_size(n_genes, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_reps, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=5_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes, arg_pos=5_int32)
         ! expression can contain NaN
         if (is_err(ierr)) return
 
