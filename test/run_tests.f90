@@ -85,6 +85,23 @@ program main
       call print_usage()
       stop 1
   end select
+  contains
+    !> Print usage information.
+    subroutine print_usage()
+      integer :: i
+
+      print *, "Usage:"
+      print *, "  run_tests"
+      print *, "  run_tests <suite>"
+      print *, "  run_tests <suite> <test1,test2,...>"
+      print *, ""
+      print *, "Available test suites:"
+      do i = 1, size(available_suites)
+        print *, "  ", trim(available_suites(i)%name)
+      end do
+    end subroutine print_usage
+ 
+    
 end program main
     
 

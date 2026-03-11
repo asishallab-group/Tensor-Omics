@@ -9,7 +9,7 @@ module test_suite
   public :: get_all_interface
   public :: suite_entry
   public :: available_suites
-  public :: initialize_suites, add_suite, run_all_tests, run_named_tests, run_all_suites, run_suite_all, run_suite_named, split_test_list, print_usage
+  public :: initialize_suites, add_suite, run_all_tests, run_named_tests, run_all_suites, run_suite_all, run_suite_named, split_test_list
 
   !> Common interface for all test procedures.
   abstract interface
@@ -132,7 +132,6 @@ contains
     end do
 
     print *, "Unknown test suite: ", trim(requested_suite)
-    call print_usage()
     stop 1
   end subroutine run_suite_all
 
@@ -153,7 +152,6 @@ contains
     end do
 
     print *, "Unknown test suite: ", trim(requested_suite)
-    call print_usage()
     stop 1
   end subroutine run_suite_named
 
@@ -197,19 +195,6 @@ contains
     end do
   end subroutine split_test_list
 
-  !> Print usage information.
-  subroutine print_usage()
-    integer :: i
-
-    print *, "Usage:"
-    print *, "  run_tests"
-    print *, "  run_tests <suite>"
-    print *, "  run_tests <suite> <test1,test2,...>"
-    print *, ""
-    print *, "Available test suites:"
-    do i = 1, size(available_suites)
-      print *, "  ", trim(available_suites(i)%name)
-    end do
-  end subroutine print_usage
+ 
 
 end module test_suite
