@@ -659,12 +659,12 @@ contains
         end if
 
         ! If the larger child is greater than current, swap permutation entries
-        ! if (real_greater(array(perm(largest_idx)), array(perm(current)))) then
+        if (real_greater(array(perm(largest_idx)), array(perm(current)))) then
           call swap_int(perm(current), perm(largest_idx))
           current = largest_idx
-        ! else
-        !   exit
-        ! end if
+        else
+          exit
+        end if
       end do
     end subroutine heapify_real
   end subroutine heapsort_real

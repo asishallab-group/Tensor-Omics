@@ -97,8 +97,12 @@ contains
                 if (heap(right) < heap(smallest)) smallest = right
             end if
 
-            call swap_real(heap(i), heap(smallest))
-            i = smallest
+            if (heap(smallest) < heap(i)) then
+                call swap_real(heap(i), heap(smallest))
+                i = smallest
+            else
+                exit
+            end if
         end do
     end subroutine minheap_sift_down
 
@@ -183,21 +187,25 @@ contains
         integer(int32), intent(in) :: n
         real(real64), intent(inout) :: heap(n)
 
-        integer(int32) :: i, left, right, smallest
+        integer(int32) :: i, left, right, largest
 
         i = 1
         do
-            smallest = 2*i
-            right = smallest + 1
+            largest = 2*i
+            right = largest + 1
 
-            if (smallest > n) exit
+            if (largest > n) exit
 
             if (right <= n) then
-                if (heap(right) > heap(smallest)) smallest = right
+                if (heap(right) > heap(largest)) largest = right
             end if
 
-            call swap_real(heap(i), heap(smallest))
-            i = smallest
+            if (heap(largest) > heap(i)) then
+                call swap_real(heap(i), heap(largest))
+                i = largest
+            else
+                exit
+            end if
         end do
     end subroutine maxheap_sift_down
 end module f42_heaps

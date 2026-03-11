@@ -26,7 +26,7 @@ program main
   use mod_test_tox_traj_contrib_analysis
   use mod_test_normalization_unit_length
   use mod_test_tox_clustering
-  ! use mod_test_data_integration
+  use mod_test_data_integration
   use mod_test_random_gsl
 
   implicit none
@@ -114,7 +114,7 @@ contains
     call add_suite("tox_trajectory_contribution_analysis", run_all_tests_tox_trajectory_contribution_analysis, run_named_tests_tox_trajectory_contribution_analysis)
     call add_suite("normalization_unit_length", run_all_tests_normalization_unit_length, run_named_tests_normalization_unit_length)
     call add_suite("tox_clustering", run_all_tests_tox_clustering, run_named_tests_tox_clustering)
-    ! call add_suite("tox_data_integration", run_all_tests_tox_data_integration, run_named_tests_tox_data_integration)
+    call add_suite("tox_data_integration", run_all_tests_tox_data_integration, run_named_tests_tox_data_integration)
     call add_suite("random_gsl", run_all_tests_random_gsl, run_named_tests_random_gsl)
   end subroutine initialize_suites
   

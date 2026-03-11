@@ -339,7 +339,7 @@ contains
     end function calc_neighborhood_size
 
     !> Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -373,7 +373,7 @@ contains
 
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=6_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=7_int32)
 
         if (is_err(ierr)) return
 
@@ -389,7 +389,7 @@ contains
     end subroutine construct_neighborhoods_alloc
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
+    subroutine construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -422,8 +422,8 @@ contains
 
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=6_int32)
-        call validate_all_in_range_int(mean_S_perm, n_genes_S, ierr, min=1_int32, max=n_genes_S)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=8_int32)
+        call validate_all_in_range_int(mean_S_perm, n_genes_S, ierr, arg_pos=5_int32, min=1_int32, max=n_genes_S)
 
         if (is_err(ierr)) return
 
@@ -431,7 +431,7 @@ contains
     end subroutine construct_neighborhoods
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
-    pure subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
+    subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, mean_S_perm, neighborhood_residuals, neighborhood_range, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -462,7 +462,8 @@ contains
         real(real64) :: x_star_val
 
         ! Process each reference point
-        do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
+        ! do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
+        do i_point = 1, n_points
 
             x_star_val = x_star(i_point)
 
@@ -512,7 +513,7 @@ contains
                         ! if right side is closer than left side of x_star, take right side, else left side
                         ! Note: In the sorted array, NaNs are always last -> right side
                         ! -> if condition is false because of NaN it is because right value is NaN or both
-                        if (mean_S(mean_S_perm(right_gene)) - x_star_val > x_star_val - mean_S(mean_S_perm(left_gene))) then
+                        if (mean_S(mean_S_perm(right_gene)) - x_star_val < x_star_val - mean_S(mean_S_perm(left_gene))) then
                             neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
                             right_gene = right_gene + 1
                         else
