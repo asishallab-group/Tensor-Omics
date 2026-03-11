@@ -5,7 +5,7 @@ module mod_test_bst
   use tox_errors, only: is_ok, set_ok
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

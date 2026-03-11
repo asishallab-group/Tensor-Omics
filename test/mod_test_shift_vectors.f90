@@ -5,7 +5,7 @@ module mod_test_shift_vectors
   use tox_shift_vectors
   use tox_errors, only: ERR_OK, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

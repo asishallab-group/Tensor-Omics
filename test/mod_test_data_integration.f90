@@ -7,7 +7,7 @@ module mod_test_data_integration
     use tox_data_integration
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
 
     implicit none
 

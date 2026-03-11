@@ -5,7 +5,7 @@ module mod_test_compute_edf
   use f42_utils
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

@@ -18,7 +18,7 @@ module mod_test_tox_data
   use f42_serialize_char
   use f42_serialize_int
   use f42_serialize_real
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

@@ -3,7 +3,7 @@
 module mod_test_get_outliers
   use asserts
   use tox_get_outliers
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   use, intrinsic :: iso_fortran_env, only: real64, int32
   implicit none
   public

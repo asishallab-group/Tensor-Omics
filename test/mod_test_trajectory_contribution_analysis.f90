@@ -7,7 +7,7 @@ module mod_test_trajectory_contribution_analysis
     use tox_trajectory_contribution_analysis
     use tox_errors
     use tox_trajectory_normalization
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
 
     

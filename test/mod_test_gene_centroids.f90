@@ -5,7 +5,7 @@ module mod_test_gene_centroids
   use tox_gene_centroids
   use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

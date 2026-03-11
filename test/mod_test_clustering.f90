@@ -6,7 +6,7 @@ module mod_test_clustering
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf  
     use tox_clustering  
     use tox_errors
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
     public
     

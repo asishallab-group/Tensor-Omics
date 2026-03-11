@@ -4,7 +4,7 @@ module mod_test_calc_tiss_avg
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

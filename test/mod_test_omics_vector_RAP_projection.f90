@@ -4,7 +4,7 @@ module mod_test_rap_tools_omics_vector_RAP_projection
    use asserts
    use tox_relative_axis_plane_tools
    use, intrinsic :: iso_fortran_env, only: real64, int32
-   use mod_test_suite, only: test_case
+   use test_suite, only: test_case
    implicit none
    public
 

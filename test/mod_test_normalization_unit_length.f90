@@ -6,7 +6,7 @@ module mod_test_normalization_unit_length
     use tox_normalization, only: normalize_unit_length
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_errors
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
 
    

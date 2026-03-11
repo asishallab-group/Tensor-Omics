@@ -6,7 +6,7 @@ module mod_test_conversions
     use iso_c_binding
     use tox_conversions
     use tox_errors
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
     public
 

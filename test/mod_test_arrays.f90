@@ -16,7 +16,7 @@ module mod_test_arrays
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use iso_c_binding
     use tox_errors
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
     public
 

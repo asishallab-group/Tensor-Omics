@@ -4,7 +4,7 @@ module mod_test_paralog_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_paralog_analysis
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     use tox_errors
     implicit none
 

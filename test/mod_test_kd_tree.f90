@@ -6,7 +6,7 @@ module mod_test_kd_tree
   use tox_errors, only: set_ok, is_ok
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use mod_test_suite, only: test_case
+  use test_suite, only: test_case
   implicit none
   public
 

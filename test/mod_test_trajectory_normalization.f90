@@ -5,7 +5,7 @@ module mod_test_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_trajectory_normalization
     use tox_errors
-    use mod_test_suite, only: test_case
+    use test_suite, only: test_case
     implicit none
 
 
