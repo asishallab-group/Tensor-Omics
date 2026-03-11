@@ -6,6 +6,7 @@ module mod_test_data_integration
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
+    use tox_data_integration_jsd
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
     implicit none
@@ -28,9 +29,9 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(14)
+        type(test_case) :: all_tests(15)
         ! ! jsd
-        ! all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
+        all_tests(15) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         ! all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         ! all_tests(4) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
@@ -101,6 +102,146 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_determine_shared_residual_range
+        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2, n_points = 2, n_studies = 2, max_n_reps_all_studies = max(n_reps_S1, n_reps_S2)
+        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, 2), target :: S
+        real(real64), dimension(:), pointer :: S_flat
+        real(real64) :: R
+        integer(int32) :: ierr, n_S
+        real(real64) :: q
+        n_S = size(S, kind=int32)
+
+        ! ============================================================
+        ! Test 1 — Basic correctness with simple values
+        ! ============================================================
+        !
+        S = reshape([ &
+            1.0_real64,2.0_real64,3.0_real64,4.0_real64,&
+            5.0_real64,6.0_real64,-7.0_real64,8.0_real64,&
+            9.0_real64,10.0_real64,11.0_real64,12.0_real64,&
+            1.0_real64,1.0_real64,1.0_real64,1.0_real64,&
+            2.0_real64,-4.0_real64,6.0_real64,M_NAN,&
+            8.0_real64,1.0_real64,3.0_real64,M_NAN,&
+            5.0_real64,7.0_real64,9.0_real64,M_NAN,&
+            0.0_real64,1.0_real64,2.0_real64,M_NAN  ], shape(S))
+        S_flat(1:n_S) => S
+
+        ! Sorted pool:
+        !   [0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12]
+        !
+        ! 95% quantile → 0.95 * (28 - 1) + 1 = 26.65
+        ! sorted(26) = 10
+        ! sorted(27) = 11
+        !
+        ! Expected R = 10 + 0.65 * (11-10) = 10.65
+        !
+
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 1: ierr should be OK")
+        call assert_equal_real(R, 10.65_real64, TOL, "test_determine_shared_residual_range: Test 1: R should be 10.65")
+
+        ! ============================================================
+        ! Test 2 — Custom quantile (50%)
+        ! ============================================================
+        !
+        ! Median of sorted array above = 0.5 * (sorted(12) + sorted(13)) = 5.5
+        !
+        q = 50.0_real64
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 2: ierr should be OK")
+        call assert_equal_real(R, 4.0_real64, TOL, "test_determine_shared_residual_range: Test 2: R should be 4.0")
+
+        ! ============================================================
+        ! Test 3 — Quantile < 0 → error
+        ! ============================================================
+        q = below(0.0_real64)
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 5_int32), "test_determine_shared_residual_range: Test 3: ierr should be INVALID_INPUT")
+
+        ! ============================================================
+        ! Test 4 — Quantile > 100 → error
+        ! ============================================================
+        q = above(100.0_real64)
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 5_int32), "test_determine_shared_residual_range: Test 4: ierr should be INVALID_INPUT")
+
+        ! ============================================================
+        ! Test 5 — NaNs must be ignored
+        ! ============================================================
+        !
+        ! Replace some values with NaN; remaining values should determine R.
+        !
+        S = reshape([ &
+            M_NAN, 2.0_real64, 3.0_real64, 4.0_real64, &
+            5.0_real64, 6.0_real64, -7.0_real64, 8.0_real64, &
+            9.0_real64, 10.0_real64, -11.0_real64, 12.0_real64, &
+            1.0_real64,1.0_real64,1.0_real64,1.0_real64, &
+            -1.0_real64, 2.0_real64, 3.0_real64, M_NAN,&
+            4.0_real64, 5.0_real64, 6.0_real64, M_NAN,&
+            -7.0_real64, 8.0_real64, 9.0_real64, M_NAN,&
+            10.0_real64, -11.0_real64, M_NAN, M_NAN ], shape(S))
+
+        ! Pool now excludes two NaNs → 26 values
+        ! sorted = [1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+        ! 95% quantile → 0.95*(26-1)+1=24.75
+        ! sorted(24) = 11
+        ! sorted(25) = 11
+        ! -> R = 11
+        !
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 5: ierr should be OK")
+        call assert_equal_real(R, 11.0_real64, TOL, "test_determine_shared_residual_range: Test 5: R should ignore NaNs")
+
+        ! ============================================================
+        ! Test 6 — All zeros
+        ! ============================================================
+        S = 0.0_real64
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 6: ierr should be OK")
+        call assert_equal_real(R, 0.0_real64, TOL, "test_determine_shared_residual_range: Test 6: R should be zero")
+
+        ! ============================================================
+        ! Test 7 — Single residual (n_reps_S1=1, n_reps_S2=1, n_neighbors=1, n_points=1)
+        ! ============================================================
+        S_flat(1) = 3.0_real64
+        S_flat(2) = -4.0_real64
+        ! sorted = [3, 4]
+        ! rank = 0.95 * (2-1) + 1 = 1.95
+        ! R = 3 + (4-3)*0.95 = 3.95
+        call determine_shared_residual_range_alloc(S_flat, 2_int32, R, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 7: ierr should be OK")
+        call assert_equal_real(R, 3.95_real64, TOL, "test_determine_shared_residual_range: Test 7: R should be 3.95")
+
+        ! ============================================================
+        ! Test 8 — Edge case, only NaN residuals
+        ! ============================================================
+        S_flat(1) = M_NAN
+        call determine_shared_residual_range_alloc(S_flat, 1_int32, R, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 8: ierr should be OK")
+        call assert_equal_real(R, 0.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 8: R should be 0.0")
+
+        ! ============================================================
+        ! Test 9 — Edge case, min/max quantile
+        ! ============================================================
+        S = reshape([ &
+            M_NAN, 2.0_real64, 3.0_real64, 4.0_real64, &
+            5.0_real64, 6.0_real64, -7.0_real64, 8.0_real64, &
+            9.0_real64, 10.0_real64, -13.0_real64, 12.0_real64, &
+            1.0_real64,1.0_real64,1.0_real64,1.0_real64, &
+            -1.0_real64, 2.0_real64, 3.0_real64, M_NAN,&
+            4.0_real64, 5.0_real64, 6.0_real64, M_NAN,&
+            -7.0_real64, 8.0_real64, 9.0_real64, M_NAN,&
+            10.0_real64, -11.0_real64, M_NAN, M_NAN ], shape(S))
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, 100.0_real64)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 9: max quantile ierr should be OK")
+        call assert_equal_real(R, 13.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 9: max quantile should be max abs value")
+
+        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, 0.0_real64)
+        call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 9: min quantile ierr should be OK")
+        call assert_equal_real(R, 1.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 9: min quantile should be min abs value")
+
+    end subroutine test_determine_shared_residual_range
 
     ! subroutine test_build_residual_histograms
     !     integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
