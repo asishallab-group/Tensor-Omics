@@ -95,7 +95,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure subroutine compute_residuals(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid, ierr)
+    pure subroutine compute_residuals(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -114,16 +114,16 @@ contains
             !! Error code
 
         call set_ok(ierr)
-        call validate_dimension_size(max_n_genes_all_studies, ierr)
-        call validate_dimension_size(max_n_reps_all_studies, ierr)
-        call validate_dimension_size(n_genes, ierr)
-        call validate_dimension_size(n_reps, ierr)
-        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes)
-        call validate_in_range_int(max_n_reps_all_studies, ierr, min=n_reps)
+        call validate_dimension_size(n_genes, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_reps, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=5_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=6_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, min=n_genes, arg_pos=5_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, min=n_reps, arg_pos=6_int32)
         ! family means and expr containing NaN is expected behaviour
         if (is_err(ierr)) return
 
-        call compute_residuals_helper(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid)
+        call compute_residuals_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid)
     end subroutine compute_residuals
 
     !> (no input validation) Compute signed residuals (centering by mean)
@@ -131,7 +131,7 @@ contains
     !| @note
     !| The residuals of all studies should be in contiguous memory afterwards, so for using this subroutine pass `expr` as `expr(:, :, study_idx)`
     !| @endnote
-    pure subroutine compute_residuals_helper(expr, n_genes, n_reps, max_n_genes_all_studies, max_n_reps_all_studies, means, resid)
+    pure subroutine compute_residuals_helper(expr, n_genes, n_reps, means, max_n_genes_all_studies, max_n_reps_all_studies, resid)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
         integer(int32), intent(in) :: n_reps
@@ -463,8 +463,7 @@ contains
         real(real64) :: x_star_val
 
         ! Process each reference point
-        ! do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
-        do i_point = 1, n_points
+        do concurrent (i_point = 1:n_points) local(x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
 
             x_star_val = x_star(i_point)
 

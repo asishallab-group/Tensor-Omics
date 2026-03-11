@@ -28,7 +28,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(6)
+        type(test_case) :: all_tests(10)
         ! ! jsd
         ! all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
@@ -45,18 +45,18 @@ contains
         ! all_tests(9) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
         ! all_tests(10) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
         
-        ! all_tests(11) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
-        ! all_tests(12) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
-        ! all_tests(13) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
-        ! all_tests(14) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
+        all_tests(1) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
+        all_tests(2) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
+        all_tests(3) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
+        all_tests(4) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
         
-        all_tests(1) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
-        all_tests(2) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
-        all_tests(3) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
-        all_tests(4) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(5) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
+        all_tests(6) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
+        all_tests(7) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
+        all_tests(8) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
         
-        all_tests(5) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(6) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
+        all_tests(9) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(10) = test_case("test_construct_neighborhoods_nan_handling", test_construct_neighborhoods_nan_handling)
 
         ! ! per-family
         ! all_tests(21) = test_case("test_fjct", test_fjct)
@@ -553,6 +553,93 @@ contains
     !     call assert_equal_real(global_jsd, expected, TOL, "test_compute_weighted_global_divergence: Test 5: weighted global JSD")
 
     ! end subroutine test_compute_weighted_global_divergence
+
+    ! --------------------------------------------------------------------------
+    ! Test Cases for compute_residuals
+    ! --------------------------------------------------------------------------
+
+    ! Test case 5: Basic compute_residuals functionality.
+    subroutine test_compute_residuals_basic()
+        integer, parameter :: n_genes = 4, n_reps = 3
+        real(real64) :: expr(n_reps, n_genes), means(n_genes), resid(n_reps, n_genes)
+        real(real64) :: expected_resid(n_reps, n_genes)
+        integer(int32) :: ierr
+        
+        expr = reshape([1.0, 2.0, 3.0,    &   ! Gene 1
+                        4.0, 5.0, 6.0,    &   ! Gene 2
+                        10.0, 20.0, 30.0, &   ! Gene 3
+                        0.0, 0.0, 0.0],   &   ! Gene 4
+                       [n_reps, n_genes])
+        
+        means = [2.0, 5.0, 20.0, 0.0]
+        expected_resid = reshape([-1.0, 0.0, 1.0,     &   ! Gene 1 residuals
+                                  -1.0, 0.0, 1.0,     &   ! Gene 2 residuals
+                                  -10.0, 0.0, 10.0,   &   ! Gene 3 residuals
+                                  0.0, 0.0, 0.0],     &   ! Gene 4 residuals
+                                 [n_reps, n_genes])
+        
+        call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_residuals_basic: should succeed")
+        call assert_allclose_array_real(resid, &
+                                        expected_resid, &
+                                        n_reps*n_genes, 0.0_real64, TOL, &
+                                        "test_compute_residuals_basic: residuals")
+    end subroutine test_compute_residuals_basic
+
+    ! Test case 6: compute_residuals with NaN values.
+    subroutine test_compute_residuals_with_nan()
+        integer, parameter :: n_genes = 2, n_reps = 4
+        real(real64) :: expr(n_reps, n_genes), means(n_genes), resid(n_reps, n_genes)
+        integer(int32) :: ierr
+        
+        expr(:, 1) = [1.0_real64, 2.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 3.0_real64]
+        expr(:, 2) = [ieee_value(1.0_real64, ieee_quiet_nan), 5.0_real64, 7.0_real64, 9.0_real64]
+        means = [2.0_real64, 7.0_real64]
+        
+        call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_residuals_with_nan: should succeed")
+        ! Check specific values
+        call assert_equal_real(resid(1, 1), -1.0_real64, TOL, "test_compute_residuals_with_nan: resid(1,1)")
+        call assert_equal_real(resid(2, 1), 0.0_real64, TOL, "test_compute_residuals_with_nan: resid(2,1)")
+        call assert_true(ieee_is_nan(resid(3, 1)), "test_compute_residuals_with_nan: resid(3,1) should be NaN")
+        call assert_equal_real(resid(4, 1), 1.0_real64, TOL, "test_compute_residuals_with_nan: resid(4,1)")
+        
+        call assert_true(ieee_is_nan(resid(1, 2)), "test_compute_residuals_with_nan: resid(1,2) should be NaN")
+        call assert_equal_real(resid(2, 2), -2.0_real64, TOL, "test_compute_residuals_with_nan: resid(2,2)")
+        call assert_equal_real(resid(3, 2), 0.0_real64, TOL, "test_compute_residuals_with_nan: resid(3,2)")
+        call assert_equal_real(resid(4, 2), 2.0_real64, TOL, "test_compute_residuals_with_nan: resid(4,2)")
+    end subroutine test_compute_residuals_with_nan
+
+    ! Test case 7: compute_residuals with all NaN values.
+    subroutine test_compute_residuals_all_nan()
+        integer, parameter :: n_genes = 2, n_reps = 3
+        real(real64) :: expr(n_reps, n_genes), means(n_genes), resid(n_reps, n_genes)
+        integer(int32) :: ierr
+        
+        expr(:, 1) = [1.0, 2.0, 3.0]
+        expr(:, 2) = ieee_value(1.0_real64, ieee_quiet_nan)  ! All NaN
+        means = [2.0, 0.0]  ! Second mean is irrelevant
+        
+        call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)
+        
+        call assert_equal_int(ierr, ERR_OK, "test_compute_residuals_all_nan: should succeed")
+        ! All residuals for gene 2 should be NaN
+        call assert_true(all(ieee_is_nan(resid(:, 2))), "test_compute_residuals_all_nan: all residuals for NaN gene should be NaN")
+    end subroutine test_compute_residuals_all_nan
+
+    ! Test case 8: compute_residuals with invalid input.
+    subroutine test_compute_residuals_invalid_input()
+        integer, parameter :: n_genes = 0, n_reps = 3
+        real(real64) :: expr(3, 1), means(1), resid(3, 1)
+        integer(int32) :: ierr
+        
+        ! Test with zero genes
+        call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)
+        call assert_not_equal_int(ierr, ERR_OK, "test_compute_residuals_invalid_input: zero genes should fail")
+
+    end subroutine test_compute_residuals_invalid_input
 
     ! --------------------------------------------------------------------------
     ! Test Cases for pool_means_alloc
