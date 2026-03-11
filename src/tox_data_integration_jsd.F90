@@ -27,7 +27,7 @@ contains
         real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
         integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
-            !! Sorting permutation for `resid`
+            !! Sorting permutation for `residuals`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
@@ -53,7 +53,7 @@ contains
         real(real64), dimension(n_residuals), intent(in) :: residuals
             !! Matrix of signed residuals
         integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
-            !! Sorting permutation for `resid`
+            !! Sorting permutation for `residuals`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
@@ -128,6 +128,53 @@ contains
 
         call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range_alloc
+
+    !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+    pure subroutine determine_bin_count_and_shared_residual_range_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, ierr, residual_range_quantile)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        real(real64), intent(out) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(out) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: 95.0
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i_residual, n_residuals
+        integer(int32), dimension(:), allocatable :: residuals_perm
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=5_int32)
+
+        if (is_err(ierr)) return
+
+        n_residuals = size(residuals, kind=int32)
+
+        M_ALLOCATE(residuals_perm(n_residuals))
+
+        ! initialize permutation
+        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
+            residuals_perm(i_residual) = i_residual
+        end do
+
+        call sort_array_heapsort(residuals, residuals_perm)
+
+        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    end subroutine determine_bin_count_and_shared_residual_range_alloc
 
     pure subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
@@ -807,10 +854,10 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_points, ierr)
-        call validate_dimension_size(n_bins, ierr)
-        call validate_all_in_range_real(pmf_S1, size(pmf_S1, kind=int32), ierr, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(pmf_S2, size(pmf_S2, kind=int32), ierr, min=0.0_real64, max=1.0_real64)
+        call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_bins, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(pmf_S1, size(pmf_S1, kind=int32), ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(pmf_S2, size(pmf_S2, kind=int32), ierr, arg_pos=2_int32, min=0.0_real64, max=1.0_real64)
 
         if (is_err(ierr)) return
 
@@ -842,8 +889,8 @@ contains
         ! but cache locality still beats that, except for the case of thousands of neighbors, which might not be the common case.
         do i_bin = 1, n_bins
             do concurrent (i_point = 1:n_points) local(s1_val, s2_val, S_mean) shared(i_bin, pmf_S1, pmf_S2, js_divergences)
-                s1_val = pmf_S1(i_point, i_bin)
-                s2_val = pmf_S2(i_point, i_bin)
+                s1_val = pmf_S1(i_bin, i_point)
+                s2_val = pmf_S2(i_bin, i_point)
                 S_mean = 0.5_real64 * (s1_val + s2_val)
 
                 if (.not. is_close(S_mean, 0.0_real64)) then
@@ -883,10 +930,10 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_points, ierr)
-        call validate_all_in_range_real(js_divergences, size(js_divergences, kind=int32), ierr, min=0.0_real64)
-        call validate_all_in_range_int(included_n_reps_S1, size(included_n_reps_S1, kind=int32), ierr, min=0_int32)
-        call validate_all_in_range_int(included_n_reps_S2, size(included_n_reps_S2, kind=int32), ierr, min=0_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(js_divergences, size(js_divergences, kind=int32), ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(included_n_reps_S1, size(included_n_reps_S1, kind=int32), ierr, arg_pos=3_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps_S2, size(included_n_reps_S2, kind=int32), ierr, arg_pos=4_int32, min=0_int32)
 
         if (is_err(ierr)) return
 
