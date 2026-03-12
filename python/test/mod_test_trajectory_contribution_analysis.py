@@ -1,6 +1,6 @@
 """
-Test script for clock hand angle functions
-Python equivalent of the R and Fortran clock hand angle tests
+Test script for trajectory contribution analysis functions.
+Python equivalent of the R and Fortran trajectory contribution tests.
 """
 
 import numpy as np

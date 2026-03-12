@@ -5015,7 +5015,7 @@ def fjct_compute_contribution_scores(
     }
 
 
-#> tox_trajectory_contribution_analysis:tox_compute_velocity_trajectories_c: Compute velocity (first differences) for each trajectory time series
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectories_c: Compute velocity (first differences) for each trajectory time series
 def tox_compute_velocity_trajectories(trajectories):
     """
     Compute velocity (first differences) for each trajectory time series.
@@ -5025,10 +5025,6 @@ def tox_compute_velocity_trajectories(trajectories):
     
     Returns:
         np.ndarray: Velocity trajectories of shape (n_factors, n_samples, n_timepoints)
-    
-    Raises:
-        ValueError: If input is not 3D
-        RuntimeError: If error occurs in Fortran/C layer
     """
     trajectories = np.asarray(trajectories, dtype=np.float64)
 
@@ -5050,7 +5046,7 @@ def tox_compute_velocity_trajectories(trajectories):
     n_timepoints_c = ctypes.c_int(n_timepoints)
 
 
-    compute_velocity = lib.tox_compute_velocity_trajectories_c
+    compute_velocity = lib.compute_velocity_trajectories_c
     compute_velocity.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
@@ -5080,7 +5076,7 @@ def tox_compute_velocity_trajectories(trajectories):
     return velocity_f
 
 
-#> tox_trajectory_contribution_analysis:tox_compute_acceleration_from_velocity_c: Compute acceleration (second differences) from velocity trajectories
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_c: Compute acceleration (second differences) from velocity trajectories
 def tox_compute_acceleration_from_velocity(velocity):
     """
     Compute acceleration (second differences) from velocity trajectories.
@@ -5090,10 +5086,7 @@ def tox_compute_acceleration_from_velocity(velocity):
     
     Returns:
         np.ndarray: Acceleration trajectories of shape (n_factors, n_samples, n_timepoints)
-    
-    Raises:
-        ValueError: If input is not 3D
-        RuntimeError: If error occurs in Fortran/C layer
+
     """
     velocity = np.asarray(velocity, dtype=np.float64)
 
@@ -5113,7 +5106,7 @@ def tox_compute_acceleration_from_velocity(velocity):
     n_samples_c = ctypes.c_int(n_samples)
     n_timepoints_c = ctypes.c_int(n_timepoints)
 
-    compute_acceleration = lib.tox_compute_acceleration_from_velocity_c
+    compute_acceleration = lib.compute_acceleration_from_velocity_c
     compute_acceleration.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
@@ -5141,7 +5134,7 @@ def tox_compute_acceleration_from_velocity(velocity):
     _readonly(acceleration_f)
     return acceleration_f
 
-#> tox_trajectory_contribution_analysis:tox_compute_velocity_acceleration_contributions_alloc_c: Compute velocity and acceleration contributions for all variable pairs
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_alloc_c: Compute velocity and acceleration contributions for all variable pairs
 def tox_compute_velocity_acceleration_contributions(trajectories, mode):
     """
     Compute velocity and acceleration contributions for all variable pairs.
@@ -5151,7 +5144,13 @@ def tox_compute_velocity_acceleration_contributions(trajectories, mode):
         mode (str): Baseline mode ("raw", "min", "mean")
     
     Returns:
-        dict with C_velocity, velocity_contribution_series, C_acceleration, acceleration_contribution_series
+        dict: {
+            "C_velocity": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "velocity_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints),
+            "C_acceleration": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "acceleration_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints)
+        }
+            
     """
     trajectories = np.asarray(trajectories, dtype=np.float64)
 
@@ -5179,7 +5178,7 @@ def tox_compute_velocity_acceleration_contributions(trajectories, mode):
     n_samples_c = ctypes.c_int(n_samples)
     n_timepoints_c = ctypes.c_int(n_timepoints)
 
-    compute_contribs = lib.tox_compute_velocity_acceleration_contributions_alloc_c
+    compute_contribs = lib.compute_velocity_acceleration_contributions_alloc_c
     compute_contribs.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
@@ -5225,7 +5224,7 @@ def tox_compute_velocity_acceleration_contributions(trajectories, mode):
         "acceleration_contribution_series": acceleration_series,
     }
 
-#> tox_trajectory_contribution_analysis:tox_compute_velocity_acceleration_contributions_c: Compute velocity and acceleration contributions for all variable pairs
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_c: Compute velocity and acceleration contributions for all variable pairs
 def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
     """
     Compute velocity and acceleration contributions using the expert (non-allocating) Fortran routine.
@@ -5271,7 +5270,7 @@ def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
     n_timepoints_c = ctypes.c_int(n_timepoints)
 
     # Setup C wrapper for expert (non-allocating) routine
-    compute_contribs_expert = lib.tox_compute_velocity_acceleration_contributions_c
+    compute_contribs_expert = lib.compute_velocity_acceleration_contributions_c
     compute_contribs_expert.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectories
         ctypes.POINTER(ctypes.c_int),                                    # n_factors
@@ -5323,20 +5322,15 @@ def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
         "acceleration_contribution_series": acceleration_series,
     }
 
-#> tox_trajectory_contribution_analysis:tox_compute_velocity_trajectory_c: Compute velocity for a single trajectory (1D array)
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectory_c: Compute velocity for a single trajectory (1D array)
 def tox_compute_velocity_trajectory(trajectory):
     """
     Compute velocity for a single trajectory (1D array).
 
     Args:
         trajectory (np.ndarray): 1D array of shape (n_timepoints,)
-
     Returns:
-        dict: {'velocity': np.ndarray of shape (n_timepoints,)}
-
-    Raises:
-        ValueError: If input is not 1D
-        RuntimeError: If error occurs in Fortran/C layer
+        np.ndarray: Velocity of shape (n_timepoints,)
     """
     trajectory = np.ascontiguousarray(trajectory, dtype=np.float64)
     if trajectory.ndim != 1:
@@ -5344,7 +5338,7 @@ def tox_compute_velocity_trajectory(trajectory):
     n_timepoints = len(trajectory)
     velocity = np.zeros_like(trajectory)
     ierr = ctypes.c_int(0)
-    compute_velocity_c = lib.tox_compute_velocity_trajectory_c
+    compute_velocity_c = lib.compute_velocity_trajectory_c
     compute_velocity_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
@@ -5369,7 +5363,7 @@ def tox_compute_velocity_trajectory(trajectory):
     return velocity
 
 
-#> tox_trajectory_contribution_analysis:tox_compute_acceleration_from_velocity_trajectory_c: Compute acceleration for a single velocity trajectory (1D array)
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_trajectory_c: Compute acceleration for a single velocity trajectory (1D array)
 def tox_compute_acceleration_from_velocity_trajectory(velocity):
     """
     Compute acceleration for a single velocity trajectory (1D array).
@@ -5380,9 +5374,6 @@ def tox_compute_acceleration_from_velocity_trajectory(velocity):
     Returns:
         np.ndarray: Acceleration of shape (n_timepoints,)
 
-    Raises:
-        ValueError: If input is not 1D
-        RuntimeError: If error occurs in Fortran/C layer
     """
     velocity = np.ascontiguousarray(velocity, dtype=np.float64)
     if velocity.ndim != 1:
@@ -5390,7 +5381,7 @@ def tox_compute_acceleration_from_velocity_trajectory(velocity):
     n_timepoints = len(velocity)
     acceleration = np.zeros_like(velocity)
     ierr = ctypes.c_int(0)
-    compute_accel_c = lib.tox_compute_acceleration_from_velocity_trajectory_c
+    compute_accel_c = lib.compute_acceleration_from_velocity_trajectory_c
     compute_accel_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
