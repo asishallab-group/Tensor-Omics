@@ -3149,7 +3149,7 @@ tox_compute_contributions <- function(factor, dependent, mode) {
                                            dependent,
                                            mode
   )
-
+    
   # Check for errors
   check_err_code(result$ierr)
 
@@ -3173,7 +3173,7 @@ tox_compute_contributions <- function(factor, dependent, mode) {
 #'   \item{total_contributions}{Numeric 3D array (n_selected_factors x n_selected_dependents x n_samples)}
 #' }
 #' @examples
-#' res <- tox_compute_all_contributions(trajectories, 1:2, 1:2, "raw")
+#' res <- tox_compute_all_contributions(trajectories, c(1,2), c(1,2), "raw")
 tox_compute_all_contributions <- function(trajectories, factor_indices, dependent_indices, mode) {
   # Input Validation
   validate_numeric_array(trajectories)
@@ -3214,13 +3214,182 @@ tox_compute_all_contributions <- function(trajectories, factor_indices, dependen
     dim = c(n_timepoints, n_selected_factors, n_selected_dependents, n_samples))
   total_contributions <- array(result$total_contributions,
     dim = c(n_selected_factors, n_selected_dependents, n_samples))
-  
   # Return structured result
   return(list(
     local_contributions = local_contributions,
     total_contributions = total_contributions
   ))
 }
+
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectories_c: Compute velocity for all trajectories
+#' Compute velocity for all trajectories
+#' 
+#' @param trajectories 3D numeric array (factors x samples x timepoints)
+#' @return Numeric array (n_timepoints-1 x n_factors x n_samples)
+tox_compute_velocity_trajectories <- function(trajectories) {
+    # Input Validation
+    validate_numeric_array(trajectories)
+    dims <- dim(trajectories)
+    validate_length_equals_n(dims, 3)
+    n_factors <- dims[1]
+    n_samples <- dims[2]
+    n_timepoints <- dims[3]
+    # Call the Rcpp forwarder
+      result <- tox_compute_velocity_trajectories_rcpp(trajectories,
+        n_factors,
+        n_samples,
+        n_timepoints
+      )
+    # Check for errors
+    check_err_code(result$ierr)
+
+    # Return structured result
+    return(array(result$velocity, dim = c(n_timepoints - 1, n_factors, n_samples)))
+    
+  
+  }
+
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_c: Compute acceleration for all velocity trajectories
+#' Compute acceleration for all velocity trajectories
+#' 
+#' @param velocity 3D numeric array of velocity trajectories (factors x samples x timepoints-1)
+#' @return Numeric array (n_timepoints-2 x n_factors x n_samples)
+tox_compute_acceleration_from_velocity <- function(velocity) {
+    # Input Validation
+    validate_numeric_array(velocity)
+    dims <- dim(velocity)
+    validate_length_equals_n(dims, 3)
+    n_vel <- dims[1]
+    n_factors <- dims[2]
+    n_samples <- dims[3]
+    n_timepoints <- n_vel + 1
+    # Call the Rcpp forwarder
+    result <- tox_compute_acceleration_from_velocity_rcpp(velocity,
+      n_factors,
+      n_samples,
+      n_timepoints
+    )
+    # Check for errors
+    check_err_code(result$ierr)
+
+    # Return structured result
+    return(array(result$acceleration, dim = c(n_timepoints - 2, n_factors, n_samples)))
+  }
+
+  
+
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectory_c: Compute velocity for a single trajectory
+#' Compute velocity for a single trajectory
+#' 
+#' @param trajectory Numeric vector (length n_timepoints)
+#' @return Numeric vector (length n_timepoints-1)
+tox_compute_velocity_trajectory <- function(trajectory) {
+    # Input Validation
+    validate_numeric_vector(trajectory)
+    n_timepoints <- length(trajectory)
+    # Call the Rcpp forwarder
+    result <- tox_compute_velocity_trajectory_rcpp(trajectory, n_timepoints)
+    # Return velocity vector directly
+    return(result)
+  }
+
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_trajectory_c: Compute acceleration for a single velocity trajectory
+#' Compute acceleration for a single velocity trajectory
+#' 
+#' @param velocity Numeric vector (length n_timepoints-1)
+#' @return Numeric vector (length n_timepoints-2)
+tox_compute_acceleration_from_velocity_trajectory <- function(velocity) {
+    # Input Validation
+    validate_numeric_vector(velocity)
+    n_timepoints <- length(velocity) + 1
+    # Call the Rcpp forwarder
+    result <- tox_compute_acceleration_from_velocity_trajectory_rcpp(velocity, n_timepoints)
+    # Return acceleration vector directly
+    return(result)
+  }
+
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_c: Compute velocity and acceleration contributions for a single factor-dependent pair
+#' Compute velocity and acceleration contributions for a single factor-dependent pair
+#' 
+#' @param factor Numeric vector (n_timepoints)
+#' @param dependent Numeric vector (n_timepoints)
+#' @param mode Baseline mode: "raw", "min", or "mean"
+#' @return A list with:
+#' \describe{
+#'  \item{contrib_velocity}{Numeric scalar total velocity contribution}
+#' \item{velocity_contribution_series}{Numeric vector of velocity contributions over time}
+#' \item{contrib_acceleration}{Numeric scalar total acceleration contribution}
+#' \item{acceleration_contribution_series}{Numeric vector of acceleration contributions over time}
+#' }
+#' 
+tox_compute_velocity_acceleration_contributions <- function(trajectories, mode) {
+    # Input Validation
+    validate_numeric_array(trajectories)
+    dims <- dim(trajectories)
+    validate_length_equals_n(dims, 3)
+    n_factors <- dims[1]
+    n_samples <- dims[2]
+    n_timepoints <- dims[3]
+    validate_string_scalar(mode)
+    
+    # Call the Rcpp forwarder
+    result <- tox_compute_velocity_acceleration_contributions_rcpp(trajectories,
+      n_factors,
+      n_samples,
+      n_timepoints,
+      mode
+    )
+    # Check for errors
+    check_err_code(result$ierr)
+
+    # Return structured result
+    return(list(
+      contrib_velocity = result$contrib_velocity,
+      velocity_contribution_series = result$velocity_contribution_series,
+      contrib_acceleration = result$contrib_acceleration,
+      acceleration_contribution_series = result$acceleration_contribution_series
+    ))
+  }
+
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_alloc_c: Compute velocity and acceleration contributions with pre-allocated output
+#' Compute velocity and acceleration contributions with pre-allocated output
+#' 
+#' @param trajectories 3D numeric array (factors x samples x timepoints)
+#' @param mode Baseline mode: "raw", "min", or "mean"
+#' @return A list with:
+#' \describe{
+#' \item{contrib_velocity}{Numeric scalar total velocity contribution}
+#' \item{velocity_contribution_series}{Numeric vector of velocity contributions over time}
+#' \item{contrib_acceleration}{Numeric scalar total acceleration contribution}
+#' \item{acceleration_contribution_series}{Numeric vector of acceleration contributions over time}
+#' }
+tox_compute_velocity_acceleration_contributions_alloc <- function(trajectories, mode) {
+    # Input Validation
+    validate_numeric_array(trajectories)
+    dims <- dim(trajectories)
+    validate_length_equals_n(dims, 3)
+    n_factors <- dims[1]
+    n_samples <- dims[2]
+    n_timepoints <- dims[3]
+    validate_string_scalar(mode)
+    # Call the Rcpp forwarder
+      result <- tox_compute_velocity_acceleration_contributions_alloc_rcpp(trajectories,
+        n_factors,
+        n_samples,
+        n_timepoints,
+        mode
+      )
+    # Check for errors
+    check_err_code(result$ierr)
+
+    # Return structured result
+    return(list(
+      contrib_velocity = result$contrib_velocity,
+      velocity_contribution_series = result$velocity_contribution_series,
+      contrib_acceleration = result$contrib_acceleration,
+      acceleration_contribution_series = result$acceleration_contribution_series
+    ))
+  }
 
 # ============================================================
 #  UTILITY FUNCTION
@@ -3289,10 +3458,9 @@ tox_loess_smooth_2d <- function(x_ref, y_ref, x_query, indices_used = NULL, kern
   check_err_code(result$ierr)
 
   # Return structured result
-  y_out <- result$y_out
   return(list(
-    y_out = y_out,
-    smoothed_values = y_out
+    y_out = result$y_out,
+    smoothed_values = result$smoothed_values
   ))
 }
 

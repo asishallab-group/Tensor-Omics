@@ -1,4 +1,3 @@
-
 #include <Rcpp.h>
 using namespace Rcpp;
 
@@ -87,6 +86,62 @@ void compute_p_values_c(
   const int* n_permutations,
   double* local_p_values,
   double* total_p_value,
+  int* ierr
+);
+
+void compute_velocity_trajectories_c(
+  const double* trajectories,
+  const int* n_factors,
+  const int* n_samples,
+  const int* n_timepoints,
+  double* velocity,
+  int* ierr
+);
+void compute_acceleration_from_velocity_c(
+  const double* velocity,
+  const int* n_factors,
+  const int* n_samples,
+  const int* n_timepoints,
+  double* acceleration,
+  int* ierr
+);
+void compute_velocity_trajectory_c(
+  const double* trajectory,
+  const int* n_timepoints,
+  double* velocity,
+  int* ierr
+);
+void compute_acceleration_from_velocity_trajectory_c(
+  const double* velocity,
+  const int* n_timepoints,
+  double* acceleration,
+  int* ierr
+);
+void compute_velocity_acceleration_contributions_c(
+  const double* trajectories,
+  const int* n_factors,
+  const int* n_samples,
+  const int* n_timepoints,
+  const char* mode,
+  double* factor_workspace,
+  double* dependent_workspace,
+  double* contributions_workspace,
+  double* contrib_velocity,
+  double* velocity_contribution_series,
+  double* contrib_acceleration,
+  double* acceleration_contribution_series,
+  int* ierr
+);
+void compute_velocity_acceleration_contributions_alloc_c(
+  const double* trajectories,
+  const int* n_factors,
+  const int* n_samples,
+  const int* n_timepoints,
+  const char* mode,
+  double* contrib_velocity,
+  double* velocity_contribution_series,
+  double* contrib_acceleration,
+  double* acceleration_contribution_series,
   int* ierr
 );
 void cluster_factor_trajectories_k_means_c(
@@ -4290,6 +4345,203 @@ List tox_compute_p_values_rcpp(NumericVector local_contributions_observed,
                       Named("ierr") = ierr);
 }
 
+
+//' Compute velocity for a single trajectory
+//'
+//' @param trajectory Numeric vector representing a single trajectory (length = n_timepoints)
+//' @param n_timepoints Integer number of timepoints
+//' @return Numeric vector of velocity values (length = n_timepoints - 1)
+// [[Rcpp::export]]
+NumericVector tox_compute_velocity_trajectory_rcpp(NumericVector trajectory,
+                                                   int n_timepoints) {
+  NumericVector velocity(n_timepoints - 1);
+  int ierr = 0;
+  compute_velocity_trajectory_c(trajectory.begin(),
+                                &n_timepoints,
+                                velocity.begin(),
+                                &ierr);
+  return velocity;
+}
+
+//' Compute acceleration from velocity for a single trajectory
+//'
+//' @param velocity Numeric vector of velocity values (length = n_timepoints - 1)
+//' @param n_timepoints Integer number of timepoints
+//' @return Numeric vector of acceleration values (length = n_timepoints - 2)
+// [[Rcpp::export]]
+NumericVector tox_compute_acceleration_from_velocity_trajectory_rcpp(NumericVector velocity,
+                                                           int n_timepoints) {
+  NumericVector acceleration(n_timepoints - 2);
+  int ierr = 0;
+
+  compute_acceleration_from_velocity_trajectory_c(velocity.begin(),
+                                                  &n_timepoints,
+                                                  acceleration.begin(),
+                                                  &ierr);
+  return acceleration;
+}
+
+//' Compute velocity for all trajectories 
+//'
+//' @param trajectories Numeric vector of flattened trajectories (factors x samples x timepoints)
+//' @param n_factors Integer number of factors
+//' @param n_samples Integer number of samples
+//' @param n_timepoints Integer number of timepoints
+//' @return List with numeric vector of velocity values (length = (n_timepoints - 1) x n_factors x n_samples) and error code from velocity calculation function
+// [[Rcpp::export]]
+List tox_compute_velocity_trajectories_rcpp(NumericVector trajectories,
+                                            int n_factors,
+                                            int n_samples,
+                                            int n_timepoints) {
+
+  NumericVector velocity((n_timepoints - 1) * n_factors * n_samples);
+  int ierr = 0;
+
+  compute_velocity_trajectories_c(trajectories.begin(),
+                                  &n_factors,
+                                  &n_samples,
+                                  &n_timepoints,
+                                  velocity.begin(),
+                                  &ierr);
+velocity.attr("dim") = IntegerVector::create(n_timepoints - 1, n_factors, n_samples);
+return List::create(Named("velocity") = velocity,
+                    Named("ierr") = ierr);
+}
+
+//' Compute acceleration from velocity for all trajectories (batch mode)
+//'
+//' @param velocity Numeric vector of velocity values (length = (n_timepoints - 1) x n_factors x n_samples)
+//' @param n_factors Integer number of factors
+//' @param n_samples Integer number of samples
+//' @param n_timepoints Integer number of timepoints
+//' @return List with numeric vector of acceleration values (length = (n_timepoints - 2) x n_factors x n_samples) and error code from acceleration calculation function
+// [[Rcpp::export]]
+List tox_compute_acceleration_from_velocity_rcpp(NumericVector velocity,
+                                                 int n_factors,
+                                                 int n_samples,
+                                                 int n_timepoints) {
+
+  NumericVector acceleration((n_timepoints - 2) * n_factors * n_samples);
+  int ierr = 0;
+
+  compute_acceleration_from_velocity_c(velocity.begin(),
+                                       &n_factors,
+                                       &n_samples,
+                                       &n_timepoints,
+                                       acceleration.begin(),
+                                       &ierr);
+  acceleration.attr("dim") = IntegerVector::create(n_timepoints - 2, n_factors, n_samples);
+  return List::create(Named("acceleration") = acceleration,
+                      Named("ierr") = ierr);
+}
+
+//' Compute velocity and acceleration contributions for all trajectories
+//'
+//' @param trajectories Numeric vector of flattened trajectories (factors x samples x timepoints)
+//' @param n_factors Integer number of factors
+//' @param n_samples Integer number of samples
+//' @param n_timepoints Integer number of timepoints
+//' @param mode String indicating calculation mode (e.g., 'raw', 'min', 'mean')
+//' @return List with velocity and acceleration contributions, series, and error code
+// [[Rcpp::export]]
+List tox_compute_velocity_acceleration_contributions_rcpp(NumericVector trajectories,
+                                                          int n_factors,
+                                                          int n_samples,
+                                                          int n_timepoints,
+                                                          std::string mode) {
+
+  // Allocate workspace arrays
+  NumericVector factor_workspace((n_timepoints - 1) * n_factors);
+  NumericVector dependent_workspace(n_timepoints - 1);
+  NumericVector contributions_workspace(n_timepoints - 1);
+
+  // Allocate output arrays with correct shapes
+  NumericVector contrib_velocity(n_factors * n_factors * n_samples);
+  NumericVector velocity_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
+  NumericVector contrib_acceleration(n_factors * n_factors * n_samples);
+  NumericVector acceleration_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
+  int ierr = 0;
+  char mode_c[8] = {' '};
+  size_t len = std::min(mode.size(), size_t(8));
+  std::memcpy(mode_c, mode.c_str(), len);
+
+  compute_velocity_acceleration_contributions_c(
+    trajectories.begin(),
+    &n_factors,
+    &n_samples,
+    &n_timepoints,
+    mode_c,
+    factor_workspace.begin(),
+    dependent_workspace.begin(),
+    contributions_workspace.begin(),
+    contrib_velocity.begin(),
+    velocity_contribution_series.begin(),
+    contrib_acceleration.begin(),
+    acceleration_contribution_series.begin(),
+    &ierr
+  );
+
+  // Set dimensions for output arrays
+  contrib_velocity.attr("dim") = IntegerVector::create(n_factors, n_factors, n_samples);
+  velocity_contribution_series.attr("dim") = IntegerVector::create(n_timepoints, n_factors, n_factors, n_samples);
+  contrib_acceleration.attr("dim") = IntegerVector::create(n_factors, n_factors, n_samples);
+  acceleration_contribution_series.attr("dim") = IntegerVector::create(n_timepoints, n_factors, n_factors, n_samples);
+
+  return List::create(Named("contrib_velocity") = contrib_velocity,
+                      Named("velocity_contribution_series") = velocity_contribution_series,
+                      Named("contrib_acceleration") = contrib_acceleration,
+                      Named("acceleration_contribution_series") = acceleration_contribution_series,
+                      Named("ierr") = ierr
+  );
+}
+
+//' Compute velocity and acceleration contributions for all trajectories (alloc version)
+//'
+//' @param trajectories Numeric vector of flattened trajectories (factors x samples x timepoints)
+//' @param n_factors Integer number of factors
+//' @param n_samples Integer number of samples
+//' @param n_timepoints Integer number of timepoints
+//' @param mode String indicating calculation mode (e.g., 'raw', 'min', 'mean')
+//' @return List with velocity and acceleration contributions, series, and error code
+// [[Rcpp::export]]
+List tox_compute_velocity_acceleration_contributions_alloc_rcpp(NumericVector trajectories,
+                                                               int n_factors,
+                                                               int n_samples,
+                                                               int n_timepoints,
+                                                               std::string mode) {
+
+  NumericVector contrib_velocity(n_factors * n_factors * n_samples);
+  NumericVector velocity_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
+  NumericVector contrib_acceleration(n_factors * n_factors * n_samples);
+  NumericVector acceleration_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
+  int ierr = 0;
+  char mode_c[8] = {' '};
+  size_t len = std::min(mode.size(), size_t(8));
+  std::memcpy(mode_c, mode.c_str(), len);
+
+  compute_velocity_acceleration_contributions_alloc_c(trajectories.begin(),
+                                                     &n_factors,
+                                                     &n_samples,
+                                                     &n_timepoints,
+                                                     mode_c,
+                                                     contrib_velocity.begin(),
+                                                     velocity_contribution_series.begin(),
+                                                     contrib_acceleration.begin(),
+                                                     acceleration_contribution_series.begin(),
+                                                     &ierr);
+  // Set dimensions for output arrays
+  contrib_velocity.attr("dim") = IntegerVector::create(n_factors, n_factors, n_samples);
+  velocity_contribution_series.attr("dim") = IntegerVector::create(n_timepoints, n_factors, n_factors, n_samples);
+  contrib_acceleration.attr("dim") = IntegerVector::create(n_factors, n_factors, n_samples);
+  acceleration_contribution_series.attr("dim") = IntegerVector::create(n_timepoints, n_factors, n_factors, n_samples);
+
+  return List::create(Named("contrib_velocity") = contrib_velocity,
+                      Named("velocity_contribution_series") = velocity_contribution_series,
+                      Named("contrib_acceleration") = contrib_acceleration,
+                      Named("acceleration_contribution_series") = acceleration_contribution_series,
+                      Named("ierr") = ierr);
+}
+
 //' Compute empirical distribution function (EDF) for a numeric vector of values
 //'
 //' @param values Numeric vector of values to compute EDF for
@@ -4302,6 +4554,7 @@ List tox_compute_edf_rcpp(NumericVector values) {
   NumericVector cdf_values(n_values);
   int n_unique = 0;
   int ierr = 0;
+
   compute_edf_c(values.begin(),
                 &n_values,
                 unique_values.begin(),
@@ -4329,6 +4582,7 @@ List tox_compute_edf_expert_rcpp(NumericVector values,
   NumericVector cdf_values(n_values);
   int n_unique = 0;
   int ierr = 0;
+
   compute_edf_expert_c(values.begin(),
                        &n_values,
                        perm.begin(),

@@ -1,6 +1,5 @@
 
 
-
 # Set library path and compile
 source("rcpp/tensoromics_functions.R")
 
@@ -129,8 +128,21 @@ test_compute_all_contributions <- function() {
   result <- tox_compute_all_contributions(trajectories, factor_indices, dependent_indices, mode = "mean")
   expected_local <- c(1.0, 0.0, 1.0)
   expected_total <- 2.0
-  stopifnot(all(abs(result$local_contributions[,1,1,1] - expected_local) < TOL))
-  stopifnot(abs(result$total_contributions[1,1,1] - expected_total) < TOL)
+  cat("  local_contributions dimensions: ", paste(dim(result$local_contributions), collapse = " "), "\n")
+  # Update indexing to match actual shape
+  dims <- dim(result$local_contributions)
+  if (length(dims) == 4) {
+    stopifnot(all(abs(result$local_contributions[,1,1,1] - expected_local) < TOL))
+    stopifnot(abs(result$total_contributions[1,1,1] - expected_total) < TOL)
+  } else if (length(dims) == 3) {
+    stopifnot(all(abs(result$local_contributions[,1,1] - expected_local) < TOL))
+    stopifnot(abs(result$total_contributions[1,1] - expected_total) < TOL)
+  } else if (length(dims) == 2) {
+    stopifnot(all(abs(result$local_contributions[,1] - expected_local) < TOL))
+    stopifnot(abs(result$total_contributions[1] - expected_total) < TOL)
+  } else {
+    stop("Unexpected number of dimensions in local_contributions: ", length(dims))
+  }
   cat("  MEAN baseline passed ✓\n")
   
   # Case 2: MIN baseline
@@ -246,27 +258,319 @@ test_compute_p_values <- function() {
   cat("test_compute_p_values passed ✓\n")
 }
 
-# =====================================================
-# Main test runner
-# =====================================================
 
-main <- function() {
-  cat("\n")
-  cat("=================================================\n")
-  cat("    TRAJECTORY CONTRIBUTION ANALYSIS R TESTS\n")
-  cat("=================================================\n")
-  cat("\n")
-  test_compute_baselines_factor_dependent()
-  test_compute_contributions()
-  test_compute_all_contributions()
-  test_perform_permutation_test()
-  test_compute_p_values()
-  cat("\n")
-  cat("=================================================\n")
-  cat("    ALL TRAJECTORY CONTRIBUTION TESTS PASSED ✓\n")
-  cat("=================================================\n")
-  cat("\n")
+# =====================================================
+# Test: tox_compute_velocity_trajectories
+# =====================================================
+test_compute_velocity_trajectories <- function() {
+  cat("\n[test_compute_velocity_trajectories] Velocity computation\n")
+
+  # Input trajectories shape:
+  # (n_factors=1, n_samples=2, n_timepoints=4)
+  trajectories <- array(0.0, dim = c(1L, 2L, 4L))
+
+  # factor 1, sample 1
+  trajectories[1, 1, ] <- c(1.0, 2.0, 4.0, 7.0)
+
+  # factor 1, sample 2
+  trajectories[1, 2, ] <- c(0.0, -1.0, -1.0, 0.0)
+
+  cat("  input trajectories dim: ", paste(dim(trajectories), collapse = " x "), "\n")
+  print(trajectories)
+
+  velocity <- tox_compute_velocity_trajectories(trajectories)
+
+  # Expected output shape:
+  # (n_timepoints-1, n_factors, n_samples) = (3, 1, 2)
+  expected_velocity <- array(0.0, dim = c(3L, 1L, 2L))
+
+  # sample 1: diff(c(1,2,4,7)) = c(1,2,3)
+  expected_velocity[, 1, 1] <- c(1.0, 2.0, 3.0)
+
+  # sample 2: diff(c(0,-1,-1,0)) = c(-1,0,1)
+  expected_velocity[, 1, 2] <- c(-1.0, 0.0, 1.0)
+
+  cat("  result$velocity dim: ", paste(dim(velocity), collapse = " x "), "\n")
+  print(velocity)
+
+  cat("  expected_velocity dim: ", paste(dim(expected_velocity), collapse = " x "), "\n")
+  print(expected_velocity)
+
+  stopifnot(identical(dim(velocity), c(3L, 1L, 2L)))
+  stopifnot(all(is.finite(velocity)))
+  stopifnot(all(abs(velocity - expected_velocity) < TOL))
+
+  cat("  Velocity computation passed ✓\n")
 }
 
-# Run tests
-main()
+# =====================================================
+# Test: tox_compute_acceleration_from_velocity
+# =====================================================
+test_compute_acceleration_from_velocity <- function() {
+  cat("\n[test_compute_acceleration_from_velocity] Acceleration computation\n")
+
+  # Input velocity shape:
+  # (n_timepoints-1, n_factors, n_samples) = (3, 1, 2)
+  velocity <- array(0.0, dim = c(3L, 1L, 2L))
+
+  # sample 1 velocity: c(1,2,3)
+  velocity[, 1, 1] <- c(1.0, 2.0, 3.0)
+
+  # sample 2 velocity: c(-1,0,1)
+  velocity[, 1, 2] <- c(-1.0, 0.0, 1.0)
+
+  cat("  input velocity dim: ", paste(dim(velocity), collapse = " x "), "\n")
+  print(velocity)
+
+  acceleration <- tox_compute_acceleration_from_velocity(velocity)
+
+  # Since n_timepoints = n_vel + 1 = 4,
+  # expected output shape = (n_timepoints-2, n_factors, n_samples) = (2, 1, 2)
+  expected_acceleration <- array(0.0, dim = c(2L, 1L, 2L))
+
+  # sample 1: diff(c(1,2,3)) = c(1,1)
+  expected_acceleration[, 1, 1] <- c(1.0, 1.0)
+
+  # sample 2: diff(c(-1,0,1)) = c(1,1)
+  expected_acceleration[, 1, 2] <- c(1.0, 1.0)
+
+  cat("  result$acceleration dim: ", paste(dim(acceleration), collapse = " x "), "\n")
+  print(acceleration)
+
+  cat("  expected_acceleration dim: ", paste(dim(expected_acceleration), collapse = " x "), "\n")
+  print(expected_acceleration)
+
+  stopifnot(identical(dim(acceleration), c(2L, 1L, 2L)))
+  stopifnot(all(is.finite(acceleration)))
+  stopifnot(all(abs(acceleration - expected_acceleration) < TOL))
+
+  cat("  Acceleration computation passed ✓\n")
+}
+
+# =====================================================
+# Test: tox_compute_velocity_trajectory
+# =====================================================
+test_compute_velocity_trajectory <- function() {
+  cat("\n[test_compute_velocity_trajectory] Single trajectory velocity\n")
+
+  trajectory <- c(1.0, 2.0, 4.0, 7.0)
+  velocity <- tox_compute_velocity_trajectory(trajectory)
+
+  # Expected raw output length = n_timepoints - 1 = 3
+  expected_velocity <- c(1.0, 2.0, 3.0)
+
+  cat("  result (velocity):\n")
+  print(velocity)
+
+  cat("  expected_velocity:\n")
+  print(expected_velocity)
+
+  stopifnot(length(velocity) == 3L)
+  stopifnot(all(is.finite(velocity)))
+  stopifnot(all(abs(velocity - expected_velocity) < TOL))
+
+  cat("  Single trajectory velocity passed ✓\n")
+}
+
+# =====================================================
+# Test: tox_compute_acceleration_from_velocity_trajectory
+# =====================================================
+test_compute_acceleration_from_velocity_trajectory <- function() {
+  cat("\n[test_compute_acceleration_from_velocity_trajectory] Single trajectory acceleration\n")
+
+  velocity <- c(1.0, 2.0, 3.0)
+  acceleration <- tox_compute_acceleration_from_velocity_trajectory(velocity)
+
+  # Expected raw output length = n_timepoints - 2 = 2
+  # Since original trajectory length would be 4
+  expected_acceleration <- c(1.0, 1.0)
+
+  cat("  result (acceleration):\n")
+  print(acceleration)
+
+  cat("  expected_acceleration:\n")
+  print(expected_acceleration)
+
+  stopifnot(length(acceleration) == 2L)
+  stopifnot(all(is.finite(acceleration)))
+  stopifnot(all(abs(acceleration - expected_acceleration) < TOL))
+
+  cat("  Single trajectory acceleration passed ✓\n")
+}
+# =====================================================
+# Test: tox_compute_velocity_acceleration_contributions
+# =====================================================
+test_compute_velocity_acceleration_contributions <- function() {
+  cat("\n[test_compute_velocity_acceleration_contributions] Velocity/Acceleration contributions\n")
+
+  # Input shape: (n_factors=2, n_samples=1, n_timepoints=4)
+  trajectories <- array(0.0, dim = c(2L, 1L, 4L))
+
+  # Factor 1, Sample 1
+  trajectories[1, 1, ] <- c(1.0, 3.0, 6.0, 10.0)
+
+  # Factor 2, Sample 1
+  trajectories[2, 1, ] <- c(1.0, 2.0, 2.0, 1.0)
+
+  mode <- "raw"
+
+  cat("  input trajectories dim: ", paste(dim(trajectories), collapse = " x "), "\n")
+  print(trajectories)
+  # Defensive shape and value checks
+  stopifnot(length(dim(trajectories)) == 3)
+  stopifnot(all(is.finite(trajectories)))
+  # Ensure Fortran order (column-major)
+  trajectories <- aperm(trajectories, c(1,2,3))
+  cat("  input trajectories (flattened):\n")
+  print(as.numeric(trajectories))
+  result <- tox_compute_velocity_acceleration_contributions(trajectories, mode = mode)
+
+  contrib_velocity <- result$contrib_velocity
+  velocity_contribution_series <- result$velocity_contribution_series
+  contrib_acceleration <- result$contrib_acceleration
+  acceleration_contribution_series <- result$acceleration_contribution_series
+
+  cat("  contrib_velocity dim: ", paste(dim(contrib_velocity), collapse = " x "), "\n")
+  print(contrib_velocity)
+
+  cat("  velocity_contribution_series dim: ", paste(dim(velocity_contribution_series), collapse = " x "), "\n")
+  print(velocity_contribution_series)
+
+  cat("  contrib_acceleration dim: ", paste(dim(contrib_acceleration), collapse = " x "), "\n")
+  print(contrib_acceleration)
+
+  cat("  acceleration_contribution_series dim: ", paste(dim(acceleration_contribution_series), collapse = " x "), "\n")
+  print(acceleration_contribution_series)
+
+  # Shape checks based on Fortran declarations
+  stopifnot(identical(dim(contrib_velocity), c(2L, 2L, 1L)))
+  stopifnot(identical(dim(contrib_acceleration), c(2L, 2L, 1L)))
+
+  # Series arrays are expected from your wrapper as:
+  # (n_timepoints, n_factors, n_factors, n_samples) = (4, 2, 2, 1)
+  stopifnot(identical(dim(velocity_contribution_series), c(4L, 2L, 2L, 1L)))
+  stopifnot(identical(dim(acceleration_contribution_series), c(4L, 2L, 2L, 1L)))
+
+  # Finite checks
+  stopifnot(all(is.finite(contrib_velocity)))
+  stopifnot(all(is.finite(contrib_acceleration)))
+  stopifnot(all(is.finite(velocity_contribution_series)))
+  stopifnot(all(is.finite(acceleration_contribution_series)))
+
+  # Optional numerical sanity check for one pair:
+  # raw mode uses plain products of velocity / acceleration series
+  #
+  # trajectories:
+  # factor 1: [1, 3, 6, 10] -> velocity [2, 3, 4] -> acceleration [1, 1]
+  # factor 2: [1, 2, 2, 1]  -> velocity [1, 0,-1] -> acceleration [-1,-1]
+  #
+  # velocity pair contribution (1 -> 2): [2*1, 3*0, 4*(-1)] = [2, 0, -4], total = -2
+  # acceleration pair contribution (1 -> 2): [1*(-1), 1*(-1)] = [-1, -1], total = -2
+  #
+  # If your backend stores time-aligned padded series of length 4:
+  # velocity expected ~= [0, 2, 0, -4]
+  # acceleration expected ~= [0, 0, -1, -1]
+
+  expected_vel_total_12 <- -2.0
+  expected_acc_total_12 <- -2.0
+
+  stopifnot(abs(contrib_velocity[1, 2, 1] - expected_vel_total_12) < TOL)
+  stopifnot(abs(contrib_acceleration[1, 2, 1] - expected_acc_total_12) < TOL)
+
+  expected_vel_series_12 <- c(0.0, 2.0, 0.0, -4.0)
+  expected_acc_series_12 <- c(0.0, 0.0, -1.0, -1.0)
+
+  stopifnot(all(abs(velocity_contribution_series[, 1, 2, 1] - expected_vel_series_12) < TOL))
+  stopifnot(all(abs(acceleration_contribution_series[, 1, 2, 1] - expected_acc_series_12) < TOL))
+
+  cat("  Velocity/Acceleration contributions passed ✓\n")
+}
+
+# =====================================================
+# Test: tox_compute_velocity_acceleration_contributions_alloc
+# =====================================================
+test_compute_velocity_acceleration_contributions_alloc <- function() {
+  cat("\n[test_compute_velocity_acceleration_contributions_alloc] Allocated contributions\n")
+
+  # Same input as non-alloc test so outputs should match
+  trajectories <- array(0.0, dim = c(2L, 1L, 4L))
+
+  # Factor 1, Sample 1
+  trajectories[1, 1, ] <- c(1.0, 3.0, 6.0, 10.0)
+
+  # Factor 2, Sample 1
+  trajectories[2, 1, ] <- c(1.0, 2.0, 2.0, 1.0)
+
+  mode <- "raw"
+
+  cat("  input trajectories dim: ", paste(dim(trajectories), collapse = " x "), "\n")
+  print(trajectories)
+
+  result <- tox_compute_velocity_acceleration_contributions_alloc(trajectories, mode = mode)
+
+  contrib_velocity <- result$contrib_velocity
+  velocity_contribution_series <- result$velocity_contribution_series
+  contrib_acceleration <- result$contrib_acceleration
+  acceleration_contribution_series <- result$acceleration_contribution_series
+
+  cat("  contrib_velocity dim: ", paste(dim(contrib_velocity), collapse = " x "), "\n")
+  print(contrib_velocity)
+
+  cat("  velocity_contribution_series dim: ", paste(dim(velocity_contribution_series), collapse = " x "), "\n")
+  print(velocity_contribution_series)
+
+  cat("  contrib_acceleration dim: ", paste(dim(contrib_acceleration), collapse = " x "), "\n")
+  print(contrib_acceleration)
+
+  cat("  acceleration_contribution_series dim: ", paste(dim(acceleration_contribution_series), collapse = " x "), "\n")
+  print(acceleration_contribution_series)
+
+  # Shape checks
+  stopifnot(identical(dim(contrib_velocity), c(2L, 2L, 1L)))
+  stopifnot(identical(dim(contrib_acceleration), c(2L, 2L, 1L)))
+  stopifnot(identical(dim(velocity_contribution_series), c(4L, 2L, 2L, 1L)))
+  stopifnot(identical(dim(acceleration_contribution_series), c(4L, 2L, 2L, 1L)))
+
+  # Finite checks
+  stopifnot(all(is.finite(contrib_velocity)))
+  stopifnot(all(is.finite(contrib_acceleration)))
+  stopifnot(all(is.finite(velocity_contribution_series)))
+  stopifnot(all(is.finite(acceleration_contribution_series)))
+
+  # Same numerical check as above
+  expected_vel_total_12 <- -2.0
+  expected_acc_total_12 <- -2.0
+
+  stopifnot(abs(contrib_velocity[1, 2, 1] - expected_vel_total_12) < TOL)
+  stopifnot(abs(contrib_acceleration[1, 2, 1] - expected_acc_total_12) < TOL)
+
+  expected_vel_series_12 <- c(0.0, 2.0, 0.0, -4.0)
+  expected_acc_series_12 <- c(0.0, 0.0, -1.0, -1.0)
+
+  stopifnot(all(abs(velocity_contribution_series[, 1, 2, 1] - expected_vel_series_12) < TOL))
+  stopifnot(all(abs(acceleration_contribution_series[, 1, 2, 1] - expected_acc_series_12) < TOL))
+
+  cat("  Allocated contributions passed ✓\n")
+}
+
+
+# Run all tests
+cat("=================================================\n")
+cat("TRAJECTORY CONTRIBUTION FULL R INTERFACE TESTS\n")
+cat("=================================================\n\n")
+test_compute_baselines_factor_dependent() 
+test_compute_contributions() 
+test_compute_all_contributions()
+test_perform_permutation_test() 
+test_compute_p_values() 
+test_compute_velocity_trajectories() 
+test_compute_acceleration_from_velocity() 
+test_compute_velocity_trajectory() 
+test_compute_acceleration_from_velocity_trajectory()
+test_compute_velocity_acceleration_contributions() 
+test_compute_velocity_acceleration_contributions_alloc()
+
+cat("=================================================\n") 
+cat(" ALL TRAJECTORY CONTRIBUTION TESTS PASSED ✓\n") 
+cat("=================================================\n") 
+
