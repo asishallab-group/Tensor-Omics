@@ -18,7 +18,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_trajectory_contribution_analysis() result(all_tests)
         type(test_case),allocatable :: all_tests(:)
-        allocate(all_tests(20))
+        allocate(all_tests(17))
         all_tests(1) = test_case("test_compute_baselines_factor_dependent", test_compute_baselines_factor_dependent)
         all_tests(2) = test_case("test_compute_contributions", test_compute_contributions)
         all_tests(3) = test_case("test_compute_all_contributions", test_compute_all_contributions)
@@ -30,15 +30,12 @@ contains
         all_tests(9) = test_case("test_normalize_all_trajectories", test_normalize_all_trajectories)
         all_tests(10) = test_case("test_normalize_edge_cases", test_normalize_edge_cases)
         all_tests(11) = test_case("test_normalize_invalid_inputs", test_normalize_invalid_inputs)
-        all_tests(12) = test_case("test_compute_baselines_factor_dependent", test_compute_baselines_factor_dependent)
-        all_tests(13) = test_case("test_compute_contributions", test_compute_contributions)
-        all_tests(14) = test_case("test_compute_all_contributions", test_compute_all_contributions)
-        all_tests(15) = test_case("test_compute_velocity_trajectories", test_compute_velocity_trajectories)
-        all_tests(16) = test_case("test_compute_acceleration_from_velocity", test_compute_acceleration_from_velocity)
-        all_tests(17) = test_case("test_compute_velocity_acceleration_contributions", test_compute_velocity_acceleration_contributions)
-        all_tests(18) = test_case("test_compute_velocity_acceleration_contributions_alloc", test_compute_velocity_acceleration_contribs_alloc)
-        all_tests(19) = test_case("test_compute_velocity_trajectory", test_compute_velocity_trajectory)
-        all_tests(20) = test_case("test_compute_acceleration_from_velocity_trajectory", test_compute_acceleration_from_velocity_trajectory)
+        all_tests(12) = test_case("test_compute_velocity_trajectories", test_compute_velocity_trajectories)
+        all_tests(13) = test_case("test_compute_acceleration_from_velocity", test_compute_acceleration_from_velocity)
+        all_tests(14) = test_case("test_compute_velocity_acceleration_contributions", test_compute_velocity_acceleration_contributions)
+        all_tests(15) = test_case("test_compute_velocity_acceleration_contributions_alloc", test_compute_velocity_acceleration_contribs_alloc)
+        all_tests(16) = test_case("test_compute_velocity_trajectory", test_compute_velocity_trajectory)
+        all_tests(17) = test_case("test_compute_acceleration_from_velocity_trajectory", test_compute_acceleration_from_velocity_trajectory)
 
     end function get_all_tests_trajectory_contribution_analysis
 
