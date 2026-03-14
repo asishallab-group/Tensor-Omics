@@ -292,7 +292,7 @@ contains
                 quantile_level = real(i_point, real64)/real(n_points + 1, real64)*100.0_real64
 
                 ! Use calc_percentile to compute the value
-                call calc_percentile_helper(pooled_means(:n_pool), pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
+                call calc_percentile_helper(pooled_means, pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
             end do
         end if
     end subroutine pool_means_n_pool_input_helper

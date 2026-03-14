@@ -29,12 +29,13 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(17)
+        type(test_case) :: all_tests(18)
         ! ! jsd
         all_tests(15) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         all_tests(17) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
+        all_tests(18) = test_case("test_estimate_bin_count", test_estimate_bin_count)
 
         ! ! stats
         ! all_tests(5) = test_case("test_shuffle_reference_point_helper", test_shuffle_reference_point_helper)
@@ -103,6 +104,150 @@ contains
         end do
     end subroutine run_named_tests_tox_data_integration
 
+    subroutine test_estimate_bin_count()
+        ! Inputs
+        integer(int32) :: n_neighbors, n_residuals, max_n_reps_all_studies
+        real(real64), allocatable :: residuals(:)
+        real(real64) :: shared_residual_range
+        integer(int32) :: n_bins, ierr, n_bins_ref, i
+
+        !===============================
+        ! Start of tests
+        !===============================
+        !----------------------------------------------------
+        ! 1) Freedman-Diaconis case: Freedman-Diaconis max
+        !----------------------------------------------------
+        n_neighbors             = 5_int32
+        n_residuals             = 8_int32; allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        shared_residual_range   = 3.0_real64
+
+        ! IQR = (2-0.5)=1.5 -> Freed = 3 / (1.5/(40^(1/3))) = 3/0.43860266073192994 = nint(6.839903786706787) = 7
+        ! Sturges = 1 + nint(ln(40)/ln(2)) = 1 + 5 = 6
+        residuals = [0.0_real64, 0.0_real64, 1.0_real64, 1.0_real64, &
+                   2.0_real64, 2.0_real64, 3.0_real64, 3.0_real64]
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+
+        call assert_equal_int(ierr, ERR_OK, "test_estimate_bin_count: Case 1: freedman case, ierr")
+        call assert_equal_int(n_bins, 7_int32, "test_estimate_bin_count: Case 1: freedman case, n_bins")
+
+
+        !----------------------------------------------------
+        ! 2) Very small sample size (n_residuals = 1)
+        !    -> Freedman bin width is zero -> Sturges fallback = 1 + log(1) / log(2) = 1 + 2 = 3
+        !----------------------------------------------------
+        n_neighbors             = 3_int32
+        n_residuals             = 1_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        residuals = 0.0_real64
+        shared_residual_range   = 0.0_real64
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+
+        call assert_equal_int(ierr, ERR_OK, "test_estimate_bin_count: Case 2: one residual case, ierr")
+        call assert_equal_int(n_bins, 3_int32, "test_estimate_bin_count: Case 2: one residual case, n_bins")
+
+
+        !----------------------------------------------------
+        ! 3) Invalid parameters: non-positive n_neighbors or max_n_reps_all_studies
+        !----------------------------------------------------
+        n_neighbors             = 0_int32
+        n_residuals             = 5_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        residuals = [(-2.0_real64), -1.0_real64, 0.0_real64, 1.0_real64, 2.0_real64]
+        shared_residual_range   = 4.0_real64
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 5_int32), "test_estimate_bin_count: Case 3: expected error for invalid neighbor count")
+
+        n_neighbors             = 3_int32
+        max_n_reps_all_studies  = 0_int32
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, 2_int32), "test_estimate_bin_count: Case 3: expected error for invalid max_n_reps_all_studies value (zero)")
+
+        !----------------------------------------------------
+        ! 4) Invalid shared_residual_range (<= 0) with non-constant data
+        !----------------------------------------------------
+        n_neighbors             = 4_int32
+        max_n_reps_all_studies  = 20_int32
+        n_residuals             = 4_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        residuals = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
+        shared_residual_range   = -1.0_real64
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 6_int32), "test_estimate_bin_count: Case 4: expected error for negative shared_residual_range")
+
+
+        !----------------------------------------------------
+        ! 5) NaNs in residuals -> NaNs ignored
+        !----------------------------------------------------
+        ! NaN not ignored:
+        !     Sturges = 1+log(5*50)/log(2) = 3
+        !     Freed = NaN  (interplation with NaN)
+        ! NaN ignored:
+        !     Sturges = 1+log(5*50)/log(2) = 3
+        !     Freed: IQR = 2.25 - 0.75 = 1.5 -> nint(4 / ( 1.5/((5*50)**(1/3)) )) = 17
+        n_neighbors             = 50_int32
+        n_residuals             = 5_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        shared_residual_range   = 4.0_real64
+        residuals = [0.0_real64, 1.0_real64, M_NAN, &
+                   2.0_real64, 3.0_real64]
+
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(n_bins, 17_int32, "test_estimate_bin_count: Case 5: NaN case, n_bins")
+
+        !----------------------------------------------------
+        ! 6) Monotonicity in effective sample size:
+        !    increasing max_n_reps_all_studies * n_neighbors
+        !    should not decrease n_bins
+        !----------------------------------------------------
+        n_residuals             = 20_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        residuals = [(real(i, real64), i=1,n_residuals)]
+        shared_residual_range   = real(n_residuals-1, real64)
+
+        n_neighbors             = 5_int32
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins_ref, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_estimate_bin_count: Case 6: monotonicity base: ierr == 0")
+
+        n_residuals             = 200_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        residuals = [(real(i, real64), i=1,n_residuals)]
+        shared_residual_range   = real(n_residuals-1, real64)
+        n_neighbors             = 5_int32
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_estimate_bin_count: Case 6: monotonicity larger neighborhood size: ierr == 0")
+        call assert_true(n_bins >= n_bins_ref, "test_estimate_bin_count: Case 6: n_bins should not decrease with larger neighborhood size")
+
+
+        !----------------------------------------------------
+        ! 7) Very large effective sample size: check that Sturges grows ~ log2(n_eff)
+        !----------------------------------------------------
+        n_residuals             = 1000000_int32; deallocate(residuals); allocate(residuals(n_residuals))
+        max_n_reps_all_studies  = n_residuals
+        residuals = [(real(i, real64), i=1,n_residuals)]
+        shared_residual_range   = 0.0_real64 ! -> Freedman is zero
+
+        ! Sturges = nint(1+log(10000000)/log(2)) = 24
+        n_neighbors             = 10_int32
+        call estimate_bin_count_alloc(residuals, max_n_reps_all_studies, 1_int32, 1_int32, &
+                                    n_neighbors, shared_residual_range, n_bins, ierr)
+        call assert_equal_int(ierr, 0_int32, "test_estimate_bin_count: Case 7: large n_eff: ierr == 0")
+
+        call assert_equal_int(n_bins, 24_int32, "test_estimate_bin_count: Case 7: large n_eff: n_bins >= Sturges")
+    end subroutine test_estimate_bin_count
+
     subroutine test_determine_shared_residual_range
         integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2, n_points = 2, n_studies = 2, max_n_reps_all_studies = max(n_reps_S1, n_reps_S2)
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, 2), target :: S
@@ -137,7 +282,7 @@ contains
         ! Expected R = 10 + 0.65 * (11-10) = 10.65
         !
 
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 1: ierr should be OK")
         call assert_equal_real(R, 10.65_real64, TOL, "test_determine_shared_residual_range: Test 1: R should be 10.65")
 
@@ -148,7 +293,7 @@ contains
         ! Median of sorted array above = 0.5 * (sorted(12) + sorted(13)) = 5.5
         !
         q = 50.0_real64
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr, q)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 2: ierr should be OK")
         call assert_equal_real(R, 4.0_real64, TOL, "test_determine_shared_residual_range: Test 2: R should be 4.0")
 
@@ -156,14 +301,14 @@ contains
         ! Test 3 — Quantile < 0 → error
         ! ============================================================
         q = below(0.0_real64)
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr, q)
         call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 5_int32), "test_determine_shared_residual_range: Test 3: ierr should be INVALID_INPUT")
 
         ! ============================================================
         ! Test 4 — Quantile > 100 → error
         ! ============================================================
         q = above(100.0_real64)
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, q)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr, q)
         call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 5_int32), "test_determine_shared_residual_range: Test 4: ierr should be INVALID_INPUT")
 
         ! ============================================================
@@ -189,7 +334,7 @@ contains
         ! sorted(25) = 11
         ! -> R = 11
         !
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 5: ierr should be OK")
         call assert_equal_real(R, 11.0_real64, TOL, "test_determine_shared_residual_range: Test 5: R should ignore NaNs")
 
@@ -197,7 +342,7 @@ contains
         ! Test 6 — All zeros
         ! ============================================================
         S = 0.0_real64
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 6: ierr should be OK")
         call assert_equal_real(R, 0.0_real64, TOL, "test_determine_shared_residual_range: Test 6: R should be zero")
 
@@ -209,7 +354,7 @@ contains
         ! sorted = [3, 4]
         ! rank = 0.95 * (2-1) + 1 = 1.95
         ! R = 3 + (4-3)*0.95 = 3.95
-        call determine_shared_residual_range_alloc(S_flat, 2_int32, R, ierr)
+        call determine_shared_residual_range_alloc(S_flat, 2_int32, 1_int32, 1_int32, R, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 7: ierr should be OK")
         call assert_equal_real(R, 3.95_real64, TOL, "test_determine_shared_residual_range: Test 7: R should be 3.95")
 
@@ -217,7 +362,7 @@ contains
         ! Test 8 — Edge case, only NaN residuals
         ! ============================================================
         S_flat(1) = M_NAN
-        call determine_shared_residual_range_alloc(S_flat, 1_int32, R, ierr)
+        call determine_shared_residual_range_alloc(S_flat, 1_int32, 1_int32, 1_int32, R, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 8: ierr should be OK")
         call assert_equal_real(R, 0.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 8: R should be 0.0")
 
@@ -233,11 +378,11 @@ contains
             4.0_real64, 5.0_real64, 6.0_real64, M_NAN,&
             -7.0_real64, 8.0_real64, 9.0_real64, M_NAN,&
             10.0_real64, -11.0_real64, M_NAN, M_NAN ], shape(S))
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, 100.0_real64)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr, 100.0_real64)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 9: max quantile ierr should be OK")
         call assert_equal_real(R, 13.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 9: max quantile should be max abs value")
 
-        call determine_shared_residual_range_alloc(S_flat, n_S, R, ierr, 0.0_real64)
+        call determine_shared_residual_range_alloc(S_flat, n_S, 1_int32, 1_int32, R, ierr, 0.0_real64)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 9: min quantile ierr should be OK")
         call assert_equal_real(R, 1.0_real64, 0.0_real64, "test_determine_shared_residual_range: Test 9: min quantile should be min abs value")
 
@@ -485,7 +630,7 @@ contains
         expected_jsd = 0.0_real64
         expected_jsd(1) = 0.5_real64 * ( &
             0.5_real64*log(2.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) &
-          + log(1.0_real64/0.75_real64) )
+            + log(1.0_real64/0.75_real64) )
 
         expected_jsd = expected_jsd / log(2.0)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 3: analytic partial-overlap JSD")
@@ -804,9 +949,9 @@ contains
         
         means = [2.0, 5.0, 20.0, 0.0]
         expected_resid = reshape([-1.0, 0.0, 1.0,     &   ! Gene 1 residuals
-                                  -1.0, 0.0, 1.0,     &   ! Gene 2 residuals
-                                  -10.0, 0.0, 10.0,   &   ! Gene 3 residuals
-                                  0.0, 0.0, 0.0],     &   ! Gene 4 residuals
+                                    -1.0, 0.0, 1.0,     &   ! Gene 2 residuals
+                                    -10.0, 0.0, 10.0,   &   ! Gene 3 residuals
+                                    0.0, 0.0, 0.0],     &   ! Gene 4 residuals
                                  [n_reps, n_genes])
         
         call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)

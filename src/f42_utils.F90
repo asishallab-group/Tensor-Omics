@@ -202,7 +202,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -219,7 +218,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -1223,10 +1221,10 @@ contains
     integer(int32) :: n, lower_index
     real(real64) :: index, fraction, lower_value, upper_value
     
-    n = size(array)
+    n = size(permutation, kind=int32)
 
     ! Handle single element case
-    if (n == 1) then
+    if (size(array, kind=int32) == 1) then
       value = array(1)
       return
     end if

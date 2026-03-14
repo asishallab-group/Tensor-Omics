@@ -198,6 +198,16 @@ contains
     end if
   end subroutine
 
+  !> Assert that an integer value is within a given range [minval, maxval].
+  subroutine assert_in_range_int(a, minval, maxval, msg)
+    integer(int32), intent(in) :: a, minval, maxval
+    character(*), intent(in) :: msg
+    if (a < minval .or. a > maxval) then
+      write(error_unit,*) "ASSERTION FAILED: ", trim(msg), " (value ", a, " not in [", minval, ",", maxval, "])"
+      stop 1
+    end if
+  end subroutine
+
   !> Assert that an integer array contains a given value.
   subroutine assert_contains_int(arr, n, val, msg)
     integer(int32), intent(in) :: arr(n), n, val

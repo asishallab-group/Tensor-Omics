@@ -12,7 +12,7 @@ module tox_data_integration_jsd
     use f42_heaps, only: top_k_heap_push, bottom_k_heap_push, init_top_k_heap, init_bottom_k_heap
     use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom
     use f42_utils, only: clamp, calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2
-    use tox_errors, only: map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
+    use tox_errors, only: ERR_INVALID_INPUT, map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
 
     integer(int32), parameter :: JOIN_MIN = 0
@@ -95,11 +95,15 @@ contains
     end subroutine determine_shared_residual_range_helper
 
     !> Computes the shared residual range [-R, R] for the computed residuals from all studies
-    pure subroutine determine_shared_residual_range_alloc(residuals, n_residuals, shared_residual_range, ierr, residual_range_quantile)
-        integer(int32), intent(in) :: n_residuals
-            !! Number of residuals
-        real(real64), dimension(n_residuals), intent(in) :: residuals
-            !! Matrix of signed residuals
+    pure subroutine determine_shared_residual_range_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, shared_residual_range, ierr, residual_range_quantile)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
@@ -111,9 +115,8 @@ contains
 
         n_bins = 1_int32
 
-        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, n_residuals, 1_int32, 1_int32, 1_int32, shared_residual_range, n_bins, determine_bin_count=.false., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
+        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, 1_int32, shared_residual_range, n_bins, determine_bin_count=.false., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
 
-        ! Quantile position is different
         call map_err_arg_pos(ierr, 11_int32, 5_int32)
     end subroutine determine_shared_residual_range_alloc
 
@@ -143,9 +146,13 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
+        call set_ok(ierr)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=4_int32)
+        if (is_err(ierr)) return
+
         call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
         
-        ! Quantile position is different
         call map_err_arg_pos(ierr, 11_int32, 9_int32)
     end subroutine determine_bin_count_and_shared_residual_range_alloc
 
@@ -189,12 +196,12 @@ contains
         call validate_dimension_size(n_studies, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
         call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=11_int32)
+        if (.not. determine_shared_residual_range) call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arg_pos=6_int32)
 
         if (is_err(ierr)) return
 
         if (determine_bin_count .or. determine_shared_residual_range) then
             n_residuals = size(residuals, kind=int32)
-
             M_ALLOCATE(residuals_perm(n_residuals))
 
             ! initialize permutation
@@ -221,15 +228,17 @@ contains
     !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
     !| so finally
     !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
-    pure subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
+    pure subroutine estimate_bin_count_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
-        integer(int32), intent(in) :: n_residuals
-            !! Number of residuals
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), dimension(n_residuals), intent(in) :: residuals
-            !! Matrix of signed residuals
+        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
         integer(int32), intent(out) :: n_bins
@@ -241,7 +250,7 @@ contains
 
         tmp_shared_residual_range = shared_residual_range
 
-        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, n_residuals, 1_int32, 1_int32, n_neighbors, tmp_shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.false., ierr=ierr)
+        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, tmp_shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.false., ierr=ierr)
     end subroutine estimate_bin_count_alloc
 
     !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
@@ -306,7 +315,7 @@ contains
             !! Appropriate number of bins to do the JSD Compatibility test for
 
         integer(int32) :: n_pool
-        real(real64) :: bin_width, quartile_25, quartile_75, n_reps_neighborhood
+        real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood
 
         n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
         if (n_pool == 0) then
@@ -319,11 +328,15 @@ contains
             n_bins = 1 + nint(log(n_reps_neighborhood) / LOG_2)
 
             ! Freedman-Diaconis
-            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 25.0_real64, quartile_25)
-            call calc_percentile_helper(residuals(:n_pool), residuals_perm(:n_pool), 75.0_real64, quartile_75)
-            bin_width = 2.0_real64 * ((quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64)))
+            call calc_percentile_helper(residuals, residuals_perm(:n_pool), 25.0_real64, quartile_25)
+            call calc_percentile_helper(residuals, residuals_perm(:n_pool), 75.0_real64, quartile_75)
 
-            n_bins = max(n_bins, nint((shared_residual_range * 2) / bin_width))
+            ! bin width as defined by Freedman-Diaconis, but without doubling the value.
+            ! With doubling the value, the bin count would be calculated as `2*shared_residual_range/(2*bin_width)` -> the 2 is unnecessary
+            half_bin_width = (quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64))
+            if (.not. is_close(half_bin_width, 0.0_real64)) then
+                n_bins = max(n_bins, nint(shared_residual_range / half_bin_width))
+            end if
         end if
     end subroutine estimate_bin_count_helper
 
@@ -409,7 +422,7 @@ contains
         do i_point_count = 1, n_point_counts
             n_points = n_points_candidates(i_point_count)
 
-            call pool_means_helper(gene_means_flat, gene_means_perm_all_flat, n_gene_means, n_points, n_pool, x_star)
+            call pool_means_n_pool_input_helper(gene_means_flat, gene_means_perm_all_flat, n_gene_means, n_points, n_pool, x_star)
 
             do i_neighbor_count = 1, n_neighbor_counts
                 n_neighbors = n_neighbors_candidates(i_neighbor_count)
@@ -542,7 +555,7 @@ contains
         real(real64), dimension(n_studies), intent(out) :: p_values
         type(c_ptr), intent(in) :: rng
 
-        integer(int32) :: i_permutation, i_point, i_bin, bin_count, i_study
+        integer(int32) :: i_permutation, i_point, i_study
 
         p_values = 0.0_real64
         do i_permutation = 1, n_permutations
@@ -593,7 +606,7 @@ contains
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
         type(c_ptr), intent(in) :: rng
 
-        integer(int32) :: i_bootstrap, i_point, i_bin, i_study
+        integer(int32) :: i_bootstrap, i_point, i_study
 
         do concurrent (i_study = 1:n_studies) shared(n_bootstrapping_top_k_jsds, bootstrapping_top_k_jsds, confidence_interval)
             call init_bottom_k_heap(bootstrapping_top_k_jsds(:, 1, i_study), n_bootstrapping_top_k_jsds)
@@ -836,7 +849,7 @@ contains
             !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 
         real(real64) :: bin_width, clamped_residual, replicate
-        integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
+        integer(int32) :: bin_idx, i_neighbor, i_rep, included_reps, i_point
         logical :: filter_neighbors
 
         bin_width = 2.0_real64 * shared_residual_range / real(n_bins, real64)
