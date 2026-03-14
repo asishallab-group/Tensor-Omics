@@ -10,7 +10,7 @@ module tox_data_integration_jsd
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_positive_inf
     use, intrinsic :: iso_c_binding, only: c_ptr
     use f42_heaps, only: top_k_heap_push, bottom_k_heap_push, init_top_k_heap, init_bottom_k_heap
-    use f42_random_gsl, only: random_multiv_binomial, create_rng, random_multiv_hypergeom
+    use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom
     use f42_utils, only: clamp, calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2
     use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
@@ -589,7 +589,7 @@ contains
         do i_bootstrap = 1, n_bootstraps
             do i_study = 1, n_studies
                 do i_point = 1, n_points
-                    call random_multiv_binomial(rng, mean_pmf_counts(:, i_point), n_bins, mean_pmf_included_n_reps(i_point), included_n_reps(i_point, i_study), counts(:, i_point, i_study))
+                    call random_multinomial(rng, mean_pmf_counts(:, i_point), n_bins, mean_pmf_included_n_reps(i_point), included_n_reps(i_point, i_study), counts(:, i_point, i_study))
                 end do
                 call calc_pmf_helper(counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study), n_bins, n_points)
             end do

@@ -30,6 +30,7 @@ contains
         type(test_case) :: all_tests(3)
 
         all_tests(1) = test_case("test_top_k_heap", test_top_k_heap)
+        all_tests(1) = test_case("test_bottom_k_heap", test_bottom_k_heap)
         all_tests(2) = test_case("test_min_heap", test_min_heap)
         all_tests(3) = test_case("test_max_heap", test_max_heap)
     end function get_all_tests
@@ -117,6 +118,51 @@ contains
         call top_k_heap_push(heap, heap_size, M_NAN)
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_top_k_heap: Push NaN on full heap, should be ignored")
     end subroutine test_top_k_heap
+
+    subroutine test_bottom_k_heap()
+        integer(int32), parameter :: heap_size = 5
+        real(real64), dimension(heap_size) :: heap, expected_heap
+
+        ! Initialize
+        call init_bottom_k_heap(heap, heap_size)
+        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, M_NEG_INF, M_NEG_INF]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Init")
+
+        ! Push values
+        call bottom_k_heap_push(heap, heap_size, M_NAN)
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push NaN on fresh initializes heap, should be ignored")
+
+        call bottom_k_heap_push(heap, heap_size, 5.0_real64)
+        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, 5.0_real64, M_NEG_INF]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: First push")
+
+        call bottom_k_heap_push(heap, heap_size, 7.0_real64)
+        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, 5.0_real64, 7.0_real64]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Second push")
+
+        call bottom_k_heap_push(heap, heap_size, 10.0_real64)
+        expected_heap = [M_NEG_INF, 5.0_real64, M_NEG_INF, 10.0_real64, 7.0_real64]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Third push")
+
+        call bottom_k_heap_push(heap, heap_size, 6.0_real64)
+        expected_heap = [M_NEG_INF, 5.0_real64, 6.0_real64, 10.0_real64, 7.0_real64]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Fourth push")
+
+        call bottom_k_heap_push(heap, heap_size, 11.0_real64)
+        expected_heap = [5.0_real64, 7.0_real64, 6.0_real64, 10.0_real64, 11.0_real64]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Fifth push")
+
+        call bottom_k_heap_push(heap, heap_size, 4.0_real64)
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push worse, should be ignored")
+
+        call bottom_k_heap_push(heap, heap_size, 12.0_real64)
+        expected_heap = [6.0_real64, 7.0_real64, 12.0_real64, 10.0_real64, 11.0_real64]
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push on full heap")
+
+        ! Push NaN (should be ignored)
+        call bottom_k_heap_push(heap, heap_size, M_NAN)
+        call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push NaN on full heap, should be ignored")
+    end subroutine test_bottom_k_heap
 
     subroutine test_min_heap()
         integer(int32), parameter :: heap_size = 5

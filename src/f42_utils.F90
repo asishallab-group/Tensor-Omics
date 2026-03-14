@@ -188,7 +188,9 @@ contains
   !> Returns a random real number `min <= rand_num < max`. If `min > max`, it will be `max <= rand_num < min`. If `min == max`, it will be `min`.
   real(real64) function rand_range(min, max) result(rand_num)
     real(real64), intent(in) :: min
+      !! Lower bound
     real(real64), intent(in) :: max
+      !! Upper bound
 
     call random_number(rand_num)
     rand_num = min + rand_num * (max - min)

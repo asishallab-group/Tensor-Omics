@@ -30,7 +30,7 @@ contains
         type(test_case) :: all_tests(2)
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
-        all_tests(2) = test_case("test_binary_search_insertion", test_binary_search)
+        all_tests(2) = test_case("test_binary_search", test_binary_search)
     end function get_all_tests
 
     !> Run all binary_search tests.
