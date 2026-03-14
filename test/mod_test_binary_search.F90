@@ -114,52 +114,50 @@ contains
         call assert_equal_int(idx, 4_int32, "test_binary_search_insertion: Insert inside restricted duplicate range")
     end subroutine test_binary_search_insertion
 
-subroutine test_binary_search()
-    real(real64), dimension(7) :: arr
-    integer(int32), dimension(7) :: perm
-    integer(int32) :: idx
+    subroutine test_binary_search()
+        real(real64), dimension(7) :: arr
+        integer(int32), dimension(7) :: perm
+        integer(int32) :: idx
 
-    ! Unsorted array with duplicates and NaN
-    arr  = [10.0_real64, 5.0_real64, 20.0_real64, 15.0_real64, 5.0_real64, 30.0_real64, M_NAN]
-    perm = [2,5,1,4,3,6,7]
-    ! arr(perm) = [5,5,10,15,20,30,NaN]
+        ! Unsorted array with duplicates and NaN
+        arr  = [10.0_real64, 5.0_real64, 20.0_real64, 15.0_real64, 5.0_real64, 30.0_real64, M_NAN]
+        perm = [2,5,1,4,3,6,7]
+        ! arr(perm) = [5,5,10,15,20,30,NaN]
 
-    ! Find first duplicate value
-    idx = binary_search(arr, perm, 5.0_real64)
-    call assert_equal_int(idx, 1_int32, "test_binary_search: Find first occurrence of duplicate")
+        ! Find first duplicate value
+        idx = binary_search(arr, perm, 5.0_real64)
+        call assert_equal_int(idx, 1_int32, "test_binary_search: Find first occurrence of duplicate")
 
-    ! Find middle value
-    idx = binary_search(arr, perm, 15.0_real64)
-    call assert_equal_int(idx, 4_int32, "test_binary_search: Find middle value")
+        ! Find middle value
+        idx = binary_search(arr, perm, 15.0_real64)
+        call assert_equal_int(idx, 4_int32, "test_binary_search: Find middle value")
 
-    ! Find last real value
-    idx = binary_search(arr, perm, 30.0_real64)
-    call assert_equal_int(idx, 6_int32, "test_binary_search: Find last real value")
+        ! Find last real value
+        idx = binary_search(arr, perm, 30.0_real64)
+        call assert_equal_int(idx, 6_int32, "test_binary_search: Find last real value")
 
-    ! Search for NaN (should not be found)
-    idx = binary_search(arr, perm, M_NAN)
-    call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: NaN should not be found")
+        ! Search for NaN (should not be found)
+        idx = binary_search(arr, perm, M_NAN)
+        call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: NaN should not be found")
 
-    ! Search for value smaller than all elements
-    idx = binary_search(arr, perm, -100.0_real64)
-    call assert_equal_int(idx, -1_int32, "test_binary_search: Value smaller than all elements")
+        ! Search for value smaller than all elements
+        idx = binary_search(arr, perm, -100.0_real64)
+        call assert_equal_int(idx, -1_int32, "test_binary_search: Value smaller than all elements")
 
-    ! Search for value larger than all elements
-    idx = binary_search(arr, perm, 100.0_real64)
-    call assert_equal_int(idx, -1_int32, "test_binary_search: Value larger than all elements")
+        ! Search for value larger than all elements
+        idx = binary_search(arr, perm, 100.0_real64)
+        call assert_equal_int(idx, -1_int32, "test_binary_search: Value larger than all elements")
 
-    ! Search for value between duplicates
-    idx = binary_search(arr, perm, 7.0_real64)
-    call assert_equal_int(idx, -1_int32, "test_binary_search: Value between duplicates but not present")
+        ! Search for value between duplicates
+        idx = binary_search(arr, perm, 7.0_real64)
+        call assert_equal_int(idx, -1_int32, "test_binary_search: Value between duplicates but not present")
 
-    ! Search in array with only NaN
-    arr  = M_NAN
-    idx = binary_search(arr, perm, 1.0_real64)
-    call assert_equal_int(idx, -1_int32, "test_binary_search: Search non-NaN in all-NaN array")
-    idx = binary_search(arr, perm, M_NAN)
-    call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: Search non-NaN in all-NaN array")
+        ! Search in array with only NaN
+        arr  = M_NAN
+        idx = binary_search(arr, perm, 1.0_real64)
+        call assert_equal_int(idx, -1_int32, "test_binary_search: Search non-NaN in all-NaN array")
+        idx = binary_search(arr, perm, M_NAN)
+        call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: Search non-NaN in all-NaN array")
 
-end subroutine test_binary_search
-
-
+    end subroutine test_binary_search
 end module mod_test_binary_search

@@ -29,6 +29,7 @@ program main
   use mod_test_data_integration
   use mod_test_random_gsl
   use mod_test_binary_search
+  use mod_test_heaps
 
   implicit none
 
@@ -118,6 +119,7 @@ contains
     call add_suite("tox_data_integration", run_all_tests_tox_data_integration, run_named_tests_tox_data_integration)
     call add_suite("random_gsl", run_all_tests_random_gsl, run_named_tests_random_gsl)
     call add_suite("binary_search", run_all_tests_binary_search, run_named_tests_binary_search)
+    call add_suite("heaps", run_all_tests_heaps, run_named_tests_heaps)
   end subroutine initialize_suites
   
 
