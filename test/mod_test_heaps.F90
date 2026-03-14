@@ -125,7 +125,7 @@ contains
 
         ! Initialize
         call init_bottom_k_heap(heap, heap_size)
-        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, M_NEG_INF, M_NEG_INF]
+        expected_heap = [M_POS_INF, M_POS_INF, M_POS_INF, M_POS_INF, M_POS_INF]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Init")
 
         ! Push values
@@ -133,30 +133,30 @@ contains
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push NaN on fresh initializes heap, should be ignored")
 
         call bottom_k_heap_push(heap, heap_size, 5.0_real64)
-        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, 5.0_real64, M_NEG_INF]
+        expected_heap = [M_POS_INF, M_POS_INF, M_POS_INF, 5.0_real64, M_POS_INF]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: First push")
 
-        call bottom_k_heap_push(heap, heap_size, 7.0_real64)
-        expected_heap = [M_NEG_INF, M_NEG_INF, M_NEG_INF, 5.0_real64, 7.0_real64]
+        call bottom_k_heap_push(heap, heap_size, 10.0_real64)
+        expected_heap = [M_POS_INF, M_POS_INF, M_POS_INF, 5.0_real64, 10.0_real64]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Second push")
 
-        call bottom_k_heap_push(heap, heap_size, 10.0_real64)
-        expected_heap = [M_NEG_INF, 5.0_real64, M_NEG_INF, 10.0_real64, 7.0_real64]
+        call bottom_k_heap_push(heap, heap_size, 7.0_real64)
+        expected_heap = [M_POS_INF, 10.0_real64, M_POS_INF, 5.0_real64, 7.0_real64]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Third push")
 
         call bottom_k_heap_push(heap, heap_size, 6.0_real64)
-        expected_heap = [M_NEG_INF, 5.0_real64, 6.0_real64, 10.0_real64, 7.0_real64]
+        expected_heap = [M_POS_INF, 10.0_real64, 6.0_real64, 5.0_real64, 7.0_real64]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Fourth push")
 
         call bottom_k_heap_push(heap, heap_size, 11.0_real64)
-        expected_heap = [5.0_real64, 7.0_real64, 6.0_real64, 10.0_real64, 11.0_real64]
+        expected_heap = [11.0_real64, 10.0_real64, 6.0_real64, 5.0_real64, 7.0_real64]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Fifth push")
 
-        call bottom_k_heap_push(heap, heap_size, 4.0_real64)
+        call bottom_k_heap_push(heap, heap_size, 12.0_real64)
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push worse, should be ignored")
 
-        call bottom_k_heap_push(heap, heap_size, 12.0_real64)
-        expected_heap = [6.0_real64, 7.0_real64, 12.0_real64, 10.0_real64, 11.0_real64]
+        call bottom_k_heap_push(heap, heap_size, 4.0_real64)
+        expected_heap = [10.0_real64, 7.0_real64, 6.0_real64, 5.0_real64, 4.0_real64]
         call assert_equal_array_real(heap, expected_heap, heap_size, TOL, "test_bottom_k_heap: Push on full heap")
 
         ! Push NaN (should be ignored)
