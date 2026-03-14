@@ -12,7 +12,7 @@ module tox_data_integration_jsd
     use f42_heaps, only: top_k_heap_push, bottom_k_heap_push, init_top_k_heap, init_bottom_k_heap
     use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom
     use f42_utils, only: clamp, calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2
-    use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
+    use tox_errors, only: map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
 
     integer(int32), parameter :: JOIN_MIN = 0
@@ -107,26 +107,14 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i_residual
-        integer(int32), dimension(:), allocatable :: residuals_perm
+        integer(int32) :: n_bins
 
-        call set_ok(ierr)
+        n_bins = 1_int32
 
-        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=5_int32)
+        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, n_residuals, 1_int32, 1_int32, 1_int32, shared_residual_range, n_bins, determine_bin_count=.false., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
 
-        if (is_err(ierr)) return
-
-        M_ALLOCATE(residuals_perm(n_residuals))
-
-        ! initialize permutation
-        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
-            residuals_perm(i_residual) = i_residual
-        end do
-
-        call sort_array_heapsort(residuals, residuals_perm)
-
-        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+        ! Quantile position is different
+        call map_err_arg_pos(ierr, 11_int32, 5_int32)
     end subroutine determine_shared_residual_range_alloc
 
     !> More efficient shorthand for the pipeline:
@@ -155,31 +143,76 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
+        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
+        
+        ! Quantile position is different
+        call map_err_arg_pos(ierr, 11_int32, 9_int32)
+    end subroutine determine_bin_count_and_shared_residual_range_alloc
+
+    !> (with input validation) Root helper for:
+    !|
+    !| - [[tox_data_integration(module):determine_bin_count_and_shared_residual_range_alloc(interface)]]
+    !| - [[tox_data_integration(module):estimate_bin_count_alloc(interface)]]
+    !| - [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
+    !|
+    pure subroutine determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, determine_bin_count, determine_shared_residual_range, ierr, residual_range_quantile)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        real(real64), intent(inout) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(inout) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: 95.0
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        logical, intent(in) :: determine_bin_count
+            !! Should bin count be determined? If not, `n_bins` remains unchanged
+        logical, intent(in) :: determine_shared_residual_range
+            !! Should shared residual range be determined? If not, `shared_residual_range` is taken as input
+
         integer(int32) :: i_residual, n_residuals
         integer(int32), dimension(:), allocatable :: residuals_perm
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=5_int32)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=11_int32)
 
         if (is_err(ierr)) return
 
-        n_residuals = size(residuals, kind=int32)
+        if (determine_bin_count .or. determine_shared_residual_range) then
+            n_residuals = size(residuals, kind=int32)
 
-        M_ALLOCATE(residuals_perm(n_residuals))
+            M_ALLOCATE(residuals_perm(n_residuals))
 
-        ! initialize permutation
-        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
-            residuals_perm(i_residual) = i_residual
-        end do
+            ! initialize permutation
+            do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
+                residuals_perm(i_residual) = i_residual
+            end do
 
-        call sort_array_heapsort(residuals, residuals_perm)
+            call sort_array_heapsort(residuals, residuals_perm)
 
-        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
-        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
-    end subroutine determine_bin_count_and_shared_residual_range_alloc
+            if (determine_shared_residual_range) then
+                call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+            end if
+
+            if (determine_bin_count) then
+                call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+            end if
+        end if
+    end subroutine determine_bin_count_and_shared_residual_range_alloc_helper
 
     !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
     !| using the maximum value returned by the Sturges rule
@@ -204,28 +237,11 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i_residual
-        integer(int32), dimension(:), allocatable :: residuals_perm
+        real(real64) :: tmp_shared_residual_range
 
-        call set_ok(ierr)
+        tmp_shared_residual_range = shared_residual_range
 
-        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
-        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arg_pos=6_int32)
-
-        if (is_err(ierr)) return
-
-        M_ALLOCATE(residuals_perm(n_residuals))
-
-        ! initialize permutation
-        do concurrent (i_residual = 1:n_residuals) shared(residuals_perm)
-            residuals_perm(i_residual) = i_residual
-        end do
-
-        call sort_array_heapsort(residuals, residuals_perm)
-
-        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, n_residuals, 1_int32, 1_int32, n_neighbors, tmp_shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.false., ierr=ierr)
     end subroutine estimate_bin_count_alloc
 
     !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],

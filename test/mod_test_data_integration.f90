@@ -626,7 +626,7 @@ contains
         ! T = 20
         ! w = [0, 10/20, 0, 10/20] = [0,0.5,0,0.5]
         !
-        ! global_jsd = 0.5*1.0 + 0.5*4.0 = 2.5
+        ! global_jsd = 0.5*1.0 + 0.5*0.5 = 0.75
         !
         jsd = [0.5_real64, 1.0_real64, 0.2_real64, 0.5_real64]
         n1  = [0_int32,10_int32,0_int32,5_int32]
@@ -639,7 +639,7 @@ contains
 
         expected_weights = [0.0_real64,0.5_real64,0.0_real64,0.5_real64]
         call assert_equal_array_real(w, expected_weights, size(w, kind=int32), TOL, "test_compute_weighted_global_divergence: Test 3: weights with zero-sample neighborhoods")
-        call assert_equal_real(global_jsd, 2.5_real64, TOL, "test_compute_weighted_global_divergence: Test 3: weighted global JSD")
+        call assert_equal_real(global_jsd, 0.75_real64, TOL, "test_compute_weighted_global_divergence: Test 3: weighted global JSD")
 
         ! ============================================================
         ! Test 4 — All neighborhoods have zero samples → weights=0, global JSD=0
