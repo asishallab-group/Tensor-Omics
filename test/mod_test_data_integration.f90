@@ -1,4 +1,4 @@
-#include "../src/macros.h"
+#include "macros.h"
 
 !> Unit test suite for tox_data_integration routine.
 module mod_test_data_integration

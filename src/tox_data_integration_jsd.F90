@@ -20,7 +20,7 @@ module tox_data_integration_jsd
     integer(int32), parameter :: JOIN_MEDIAN = 2
 contains
 
-    !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+    !> Computes the shared residual range [-R, R] for the computed residuals from all studies
     pure subroutine determine_shared_residual_range(residuals, residuals_perm, n_residuals, shared_residual_range, ierr, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
@@ -46,7 +46,7 @@ contains
         call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range
 
-    !> (no input validation) Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+    !> (no input validation) Computes the shared residual range [-R, R] for the computed residuals from all studies
     pure subroutine determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
@@ -94,7 +94,7 @@ contains
         end if
     end subroutine determine_shared_residual_range_helper
 
-    !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+    !> Computes the shared residual range [-R, R] for the computed residuals from all studies
     pure subroutine determine_shared_residual_range_alloc(residuals, n_residuals, shared_residual_range, ierr, residual_range_quantile)
         integer(int32), intent(in) :: n_residuals
             !! Number of residuals
@@ -129,7 +129,12 @@ contains
         call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
     end subroutine determine_shared_residual_range_alloc
 
-    !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+    !> More efficient shorthand for the pipeline:
+    !|
+    !| 1. [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]] 
+    !| 2. [[tox_data_integration(module):estimate_bin_count_alloc(interface)]] 
+    !|
+    !| It is faster because it sorts the residuals only once, while the separate calls do it twice. 
     pure subroutine determine_bin_count_and_shared_residual_range_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, ierr, residual_range_quantile)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -176,6 +181,13 @@ contains
         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
     end subroutine determine_bin_count_and_shared_residual_range_alloc
 
+    !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
+    !| using the maximum value returned by the Sturges rule
+    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| and the Freedman-Diaconis rule
+    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| so finally
+    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
     pure subroutine estimate_bin_count_alloc(residuals, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -216,6 +228,13 @@ contains
         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
     end subroutine estimate_bin_count_alloc
 
+    !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
+    !| using the maximum value returned by the Sturges rule
+    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| and the Freedman-Diaconis rule
+    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| so finally
+    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
     pure subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -247,6 +266,13 @@ contains
         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
     end subroutine estimate_bin_count
 
+    !> (no input validation) Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
+    !| using the maximum value returned by the Sturges rule
+    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| and the Freedman-Diaconis rule
+    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| so finally
+    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
     pure subroutine estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size

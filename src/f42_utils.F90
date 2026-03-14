@@ -39,7 +39,7 @@ contains
     real(real64), dimension(:), contiguous, intent(in) :: arr
       !! Array of values
     integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
-      !! Sorting permutation of `arr`
+      !! Sorting permutation of `arr`, NaNs sorted to the end
     real(real64), intent(in) :: value
       !! Value to find
     integer(int32), intent(in), optional :: lower_idx
@@ -85,7 +85,7 @@ contains
     real(real64), dimension(:), contiguous, intent(in) :: arr
       !! Array of values
     integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
-      !! Sorting permutation of `arr`
+      !! Sorting permutation of `arr`, NaNs sorted to the end
     real(real64), intent(in) :: value
       !! Value to find
 
@@ -94,8 +94,8 @@ contains
 
     n = size(arr, kind=int32)
 
-    if (n == 0) then
-      idx = 0
+    if (n <= 0) then
+      idx = -1
     else
       idx = binary_search_insertion(arr, perm, value)
       if (idx == n + 1) then
