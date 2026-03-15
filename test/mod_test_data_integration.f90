@@ -30,19 +30,18 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(18)
-        ! ! jsd
-        all_tests(15) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
+        type(test_case) :: all_tests(19)
+        ! jsd
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         all_tests(17) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
+
+        ! js_comp_test
+        all_tests(15) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(18) = test_case("test_estimate_bin_count", test_estimate_bin_count)
+        all_tests(19) = test_case("test_compute_relative_overlap", test_compute_relative_overlap)
 
-        ! ! stats
-        ! all_tests(5) = test_case("test_shuffle_reference_point_helper", test_shuffle_reference_point_helper)
-        ! all_tests(6) = test_case("test_gjct_permutation_test", test_gjct_permutation_test)
-
-        ! ! preprocessing
+        ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
         all_tests(2) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
         all_tests(3) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
@@ -104,6 +103,51 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_compute_relative_overlap()
+        real(real64) :: a(2), b(2), overlap, overlap_rev
+
+        ! Touching intervals a1 a2=b1 b2
+        a = [-1.0_real64, 666.123_real64]
+        b = [a(2), huge(1.0_real64)]
+        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_relative_overlap: 1. touching intervals a,b")
+        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_relative_overlap: 1. touching intervals b,a")
+
+        ! Partial Overlap a1 b1 a2 b2
+        a = [-1.0_real64, 666.123_real64]
+        b = [0.123_real64, 667.0_real64]
+        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 2. partial overlap a,b")
+        call assert_equal_real(overlap_rev, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 2. partial overlap b,a")
+
+        ! Inclusion, a1 b1 b2 a2
+        a = [-1.0_real64, 667.0_real64]
+        b = [0.123_real64, 666.123_real64]
+        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 3. inclusion a,b")
+        call assert_equal_real(overlap_rev, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 3. inclusion b,a")
+
+        ! Full Overlap, a1=b1 b2=a2
+        a = [-1.0_real64, 667.123_real64]
+        b = a
+        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 1.0_real64, TOL, "test_compute_relative_overlap: 4. inclusion a,b")
+        call assert_equal_real(overlap_rev, 1.0_real64, TOL, "test_compute_relative_overlap: 4. inclusion b,a")
+
+        ! No Overlap, a1 a2 b1 b2
+        a = [-1.0_real64, 667.123_real64]
+        b = [2 * a(2), 12 * a(2)]
+        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_relative_overlap: 5. inclusion a,b")
+        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_relative_overlap: 5. inclusion b,a")
+
+    end subroutine test_compute_relative_overlap
 
     subroutine test_estimate_bin_count()
         ! Inputs

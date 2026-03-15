@@ -130,14 +130,18 @@ contains
         call calc_pmf_helper(counts, pmf, included_n_reps, n_bins, n_points)
     end subroutine build_residual_histograms_helper
 
+    !> Helper for calculating the pmf for histogram counts (e.g. in [[tox_data_integration(module):build_residual_histograms_helper(interface)]])
     pure subroutine calc_pmf_helper(counts, pmf, included_n_reps, n_bins, n_points)
         integer(int32), intent(in) :: n_points
             !! Number of reference points in the studies
         integer(int32), intent(in) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
         real(real64), dimension(n_bins, n_points), intent(inout) :: pmf
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
         integer(int32), dimension(n_bins, n_points), intent(in) :: counts
+            !! Absolute counts of a residual per bin
         integer(int32), dimension(n_points), intent(in) :: included_n_reps
+            !! Stores the count of non-NaN replicates (included ones in `counts`)
 
         integer(int32) :: i_point, i_bin
 
@@ -150,7 +154,6 @@ contains
                 end if
             end do
         end do
-            
     end subroutine calc_pmf_helper
 
     !> Having the probabilities `pmf` from [[tox_data_integration(module):build_residual_histograms(interface)]], this subroutine computes the Jensen-Shannon divergence per reference point/neighbor

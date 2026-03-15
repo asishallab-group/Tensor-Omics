@@ -743,15 +743,27 @@ contains
     
     end function test_neighborhood_overlaps_helper
 
+    !> Calculates the fractional overlap between two intervals, the fraction of the overlap and the total range of both intervals, so in case `a_min < b_min`:
+    !| \[ \frac{\min(\texttt{a_max}, \texttt{b_max}) - \texttt{b_min})} {\texttt{b_max} - \texttt{a_min}} \]
     pure real(real64) function compute_relative_overlap_helper(a_min, a_max, b_min, b_max) result(overlap_percent)
         real(real64), intent(in) :: a_min
+            !! Lower bound of the first interval
         real(real64), intent(in) :: a_max
+            !! Upper bound of the first interval (assumed to be greater than `a_min`)
         real(real64), intent(in) :: b_min
+            !! Lower bound of the second interval
         real(real64), intent(in) :: b_max
-        if (a_min < b_min) then
-            overlap_percent = (min(a_max, b_max) - b_min) / (b_max - a_min)
-        else
-            overlap_percent = (min(b_max, b_max) - a_min) / (a_max - b_min)
-        end if
+            !! Upper bound of the second interval (assumed to be greater than `b_min`)
+
+        real(real64) :: left_max, right_max, left_min, right_min
+
+        right_max = max(a_max, b_max)
+        left_max = min(a_max, b_max)
+        right_min = max(a_min, b_min)
+        left_min = min(a_min, b_min)
+
+        ! Calculate overlap, is only negative if left_max < right_min -> a_min < a_max < b_min < b_max -> no overlap
+        ! Assuming correct intervals, right_max < left_min is not possible, as all other bounds are lower
+        overlap_percent = max(0.0_real64, (left_max - right_min) / (right_max - left_min))
     end function compute_relative_overlap_helper
 end module tox_data_integration_js_comp_test
