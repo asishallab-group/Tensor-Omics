@@ -1,9 +1,9 @@
 !> This module interfaces with the random number generation from the GNU Scientific Library.
-!| Thus, for selecting the RNG algorithm or seed, use the environment variables `GSL_RNG_TYPE` and `GSL_RNG_SEED` as defined [in the documentation](https://www.gnu.org/software/gsl/doc/html/rng.html#random-number-environment-variables):
+!| Thus, for selecting the RNG algorithm, use the environment variable `GSL_RNG_TYPE` as defined [in the documentation](https://www.gnu.org/software/gsl/doc/html/rng.html#random-number-environment-variables):
 module f42_random_gsl
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64, int64
-    use, intrinsic :: iso_c_binding, only: c_ptr, c_associated, c_double, c_int
+    use, intrinsic :: iso_c_binding, only: c_ptr, c_associated, c_double, c_int, c_long
     implicit none
 
     interface get_rng_type
@@ -33,6 +33,17 @@ module f42_random_gsl
                 !! RNG object, originally created by [[f42_random_gsl(module):alloc_rng(interface)]]
         end subroutine free_rng
     end interface free_rng
+
+    interface set_rng_seed
+        !> Sets the seed for a RNG structure to a specific one. Will reset the RNG stream if it is the same seed as already used.
+        subroutine set_rng_seed(rng, seed) bind(C, name="gsl_rng_set")
+            import
+            type(c_ptr), intent(in), value :: rng
+                !! RNG object, originally created by [[f42_random_gsl(module):alloc_rng(interface)]]
+            integer(c_long), intent(in) :: seed
+                !! Seed to initialize `rng` with
+        end subroutine set_rng_seed
+    end interface set_rng_seed
 
     interface random_uniform
         function random_uniform(rng) result(rand) bind(C, name="gsl_rng_uniform")
@@ -76,9 +87,28 @@ module f42_random_gsl
 contains
 
     !> Creates a random number generator to be used with RNG functions/subroutines
-    type(c_ptr) function create_rng() result(rng)
+    type(c_ptr) function create_rng(seed) result(rng)
+        integer(int32), intent(in), optional :: seed
+            !! Seed to initialize the `rng` with
+
         rng = alloc_rng(get_rng_type())
+        call reset_rng(rng, seed)
     end function create_rng
+
+    !> Creates a random number generator to be used with RNG functions/subroutines
+    subroutine reset_rng(rng, seed)
+        type(c_ptr), intent(in) :: rng
+            !! RNG object, originally created by [[f42_random_gsl(module):create_rng(function)]]
+        integer(int32), intent(in), optional :: seed
+            !! Seed to reset `rng` to
+
+        if (present(seed)) then
+            call set_rng_seed(rng, int(seed, kind=c_long))
+        else
+            call set_rng_seed(rng, 42_c_long)
+        end if
+    end subroutine reset_rng
+
 
     !> Returns a uniform random real number `min <= rand_num < max`. If `min > max`, it will be `max <= rand_num < min`. If `min == max`, it will be `min`.
     real(real64) function rand_range(rng, min, max) result(res)

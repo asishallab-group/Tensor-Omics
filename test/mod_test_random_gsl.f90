@@ -78,6 +78,7 @@ contains
         integer(int32) :: pop(n_pop), drawn(n_pop), drawn2(n_pop), expected_pop(n_pop)
         integer(int32) :: total_pop, n_to_draw, i, iter
         type(c_ptr) :: rng, rng1, rng2
+        real(real64) :: rand
 
         ! ============================================================
         ! BASIC TEST
@@ -88,6 +89,12 @@ contains
         n_to_draw = 15
 
         rng = create_rng()
+
+        rand = random_uniform(rng)
+        do i = 1, 1000
+            call reset_rng(rng)
+            call assert_equal_real(random_uniform(rng), rand, 0.0_real64, "test_multiv_hypergeom: resetting rng doesn't result in same values")
+        end do
         call random_multiv_hypergeom(rng, pop, n_pop, total_pop, n_to_draw, drawn)
 
         call assert_equal_int(sum(drawn), n_to_draw, "test_multiv_hypergeom: basic sum(drawn) == n_to_draw")

@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(20)
+        type(test_case) :: all_tests(21)
         ! jsd
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -41,6 +41,7 @@ contains
         all_tests(18) = test_case("test_estimate_bin_count", test_estimate_bin_count)
         all_tests(19) = test_case("test_compute_fractional_overlap", test_compute_fractional_overlap)
         all_tests(20) = test_case("test_test_neighborhood_overlaps", test_test_neighborhood_overlaps)
+        all_tests(21) = test_case("test_create_mean_pmf_helpers", test_create_mean_pmf_helpers)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -104,6 +105,79 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_create_mean_pmf_helpers()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2
+
+        ! Inputs
+        real(real64) :: pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: counts(n_bins, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+
+        ! Outputs
+        real(real64) :: mean_pmf(n_bins, n_points)
+        real(real64) :: mean_pmf_only(n_bins, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+
+        ! Expected values
+        real(real64) :: expected_mean_pmf(n_bins)
+        integer(int32) :: expected_counts(n_bins)
+        integer(int32) :: expected_included
+
+        ! ------------------------------------------------------------
+        ! Define tiny deterministic test data
+        ! ------------------------------------------------------------
+        !
+        ! Study 1 PMF: [0.2, 0.8]
+        ! Study 2 PMF: [0.4, 0.6]
+        !
+        ! Expected mean PMF = [0.3, 0.7]
+        !
+        pmfs(:,1,1) = [0.2_real64, 0.8_real64]
+        pmfs(:,1,2) = [0.4_real64, 0.6_real64]
+
+        counts(:,1,1) = [2, 8]
+        counts(:,1,2) = [4, 6]
+
+        included_n_reps(1,1) = 10
+        included_n_reps(1,2) = 12
+
+        expected_mean_pmf = [0.3_real64, 0.7_real64]
+        expected_counts   = [6, 14]
+        expected_included = 22
+
+        ! ------------------------------------------------------------
+        ! Test full helper
+        ! ------------------------------------------------------------
+        call create_mean_pmf_helper( pmfs, counts, n_bins, n_points, n_studies, &
+                                     included_n_reps, mean_pmf, &
+                                     mean_pmf_included_n_reps, mean_pmf_counts )
+
+        call assert_equal_array_real(mean_pmf(:,1), expected_mean_pmf, n_bins, TOL, &
+             "test_create_mean_pmf_helpers: mean_pmf mismatch")
+
+        call assert_equal_array_int(mean_pmf_counts(:,1), expected_counts, n_bins, &
+             "test_create_mean_pmf_helpers: mean_pmf_counts mismatch")
+
+        call assert_equal_int(mean_pmf_included_n_reps(1), expected_included, &
+             "test_create_mean_pmf_helpers: mean_pmf_included_n_reps mismatch")
+
+        ! ------------------------------------------------------------
+        ! Test PMF-only helper
+        ! ------------------------------------------------------------
+        call create_mean_pmf_only_helper(pmfs, n_bins, n_points, n_studies, mean_pmf_only)
+
+        call assert_equal_array_real(mean_pmf_only(:,1), expected_mean_pmf, n_bins, TOL, &
+             "test_create_mean_pmf_helpers: mean_pmf_only mismatch")
+
+        ! ------------------------------------------------------------
+        ! Cross-check: both helpers must produce identical mean_pmf
+        ! ------------------------------------------------------------
+        call assert_equal_array_real(mean_pmf_only(:,1), mean_pmf(:,1), n_bins, TOL, &
+             "test_create_mean_pmf_helpers: mean_pmf_only != mean_pmf")
+
+    end subroutine test_create_mean_pmf_helpers
 
     subroutine test_test_neighborhood_overlaps()
         integer(int32), parameter :: n_points = 5
@@ -1014,7 +1088,7 @@ contains
         call compute_gene_means(expr, n_genes, n_reps, means, n_genes, ierr)
         
         call assert_equal_int(ierr, ERR_OK, "test_compute_gene_means_basic: should succeed")
-        call assert_allclose_array_real(means, expected_means, n_genes, 0.0_real64, &
+        call assert_equal_array_real(means, expected_means, n_genes, &
                                         TOL, "test_compute_gene_means_basic: means")
     end subroutine test_compute_gene_means_basic
 
@@ -1101,9 +1175,9 @@ contains
         call compute_residuals(expr, n_genes, n_reps, means, n_genes, n_reps, resid, ierr)
         
         call assert_equal_int(ierr, ERR_OK, "test_compute_residuals_basic: should succeed")
-        call assert_allclose_array_real(resid, &
+        call assert_equal_array_real(resid, &
                                         expected_resid, &
-                                        n_reps*n_genes, 0.0_real64, TOL, &
+                                        n_reps*n_genes, TOL, &
                                         "test_compute_residuals_basic: residuals")
     end subroutine test_compute_residuals_basic
 

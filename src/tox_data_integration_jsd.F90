@@ -136,7 +136,7 @@ contains
             !! Number of reference points in the studies
         integer(int32), intent(in) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
-        real(real64), dimension(n_bins, n_points), intent(inout) :: pmf
+        real(real64), dimension(n_bins, n_points), intent(out) :: pmf
             !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
         integer(int32), dimension(n_bins, n_points), intent(in) :: counts
             !! Absolute counts of a residual per bin
