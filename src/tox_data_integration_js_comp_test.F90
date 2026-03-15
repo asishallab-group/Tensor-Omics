@@ -2,11 +2,11 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSCompTest
 !|
-!| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]].
+!| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(module)]].
 module tox_data_integration_js_comp_test
     use safeguard
-    use tox_data_integration
-    use tox_data_integration_jsd
+    use tox_data_integration_preprocessing, only: find_last_non_nan, pool_means_n_pool_input_helper, construct_neighborhoods_helper, pool_means_helper
+    use tox_data_integration_jsd, only: build_residual_histograms_helper, calc_pmf_helper, compute_weighted_global_divergence_helper, compute_divergence_per_reference_point_helper
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_positive_inf
     use, intrinsic :: iso_c_binding, only: c_ptr
@@ -103,7 +103,7 @@ contains
             !! Maximum number of genes across all studies
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
@@ -136,7 +136,7 @@ contains
             !! Maximum number of genes across all studies
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
@@ -238,7 +238,7 @@ contains
             !! Maximum number of genes across all studies
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
-        real(real64), dimension(max_n_reps_all_studies * max_n_genes_all_studies * n_studies), intent(in) :: residuals
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
@@ -380,7 +380,7 @@ contains
             !! Computed residual range (R)
         integer(int32), intent(in) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
-        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
             !! Per-study permutation vectors to sort the `gene_means`
@@ -453,7 +453,7 @@ contains
         integer(int32) :: n_gene_means, n_pool, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_neighbor_overlap
         type(c_ptr) :: rng
-        real(real64), dimension(:), pointer :: gene_means_flat, tmp_global_js_divergences
+        real(real64), dimension(:), pointer :: tmp_global_js_divergences
         integer(int32) :: actual_min_count_per_mean_bin, actual_n_permutations, actual_random_seed
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
 
@@ -466,8 +466,7 @@ contains
         rng = create_rng(random_seed)
 
         n_gene_means = size(gene_means, kind=int32)
-        gene_means_flat(1:n_gene_means) => gene_means
-        n_pool = find_last_non_nan(gene_means_flat, gene_means_perm_all, n_gene_means)
+        n_pool = find_last_non_nan(gene_means, gene_means_perm_all, n_gene_means)
 
         best_candidate_pair_confidence_interval = -1.0_real64
         best_params_CI_i_point_count = 1
@@ -477,7 +476,7 @@ contains
         do i_point_count = 1, n_point_counts
             n_points = n_points_candidates(i_point_count)
 
-            call pool_means_n_pool_input_helper(gene_means_flat, gene_means_perm_all, n_gene_means, n_points, n_pool, x_star)
+            call pool_means_n_pool_input_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, x_star)
 
             do i_neighbor_count = 1, n_neighbor_counts
                 n_neighbors = n_neighbors_candidates(i_neighbor_count)
@@ -516,7 +515,7 @@ contains
         n_neighbors = n_neighbors_candidates(best_params_CI_i_neighbor_count)
 
         ! 1. Run the pipeline to determine the global JSDs
-        call pool_means_helper(gene_means_flat, gene_means_perm_all, n_gene_means, n_points, n_pool, x_star)
+        call pool_means_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, x_star)
 
         do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors)
             call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)

@@ -2,10 +2,9 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) - JSD Calculation
 !|
-!| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]].
+!| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(module)]].
 module tox_data_integration_jsd
     use safeguard
-    use tox_data_integration
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_positive_inf
     use, intrinsic :: iso_c_binding, only: c_ptr

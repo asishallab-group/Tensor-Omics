@@ -5,8 +5,8 @@ module mod_test_data_integration
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use tox_data_integration
     use tox_data_integration_jsd
+    use tox_data_integration_preprocessing
     use tox_data_integration_js_comp_test
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
