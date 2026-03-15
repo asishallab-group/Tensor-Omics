@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(19)
+        type(test_case) :: all_tests(20)
         ! jsd
         ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -39,7 +39,8 @@ contains
         ! js_comp_test
         all_tests(15) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(18) = test_case("test_estimate_bin_count", test_estimate_bin_count)
-        all_tests(19) = test_case("test_compute_relative_overlap", test_compute_relative_overlap)
+        all_tests(19) = test_case("test_compute_fractional_overlap", test_compute_fractional_overlap)
+        all_tests(20) = test_case("test_test_neighborhood_overlaps", test_test_neighborhood_overlaps)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -104,50 +105,148 @@ contains
         end do
     end subroutine run_named_tests_tox_data_integration
 
-    subroutine test_compute_relative_overlap()
+    subroutine test_test_neighborhood_overlaps()
+        integer(int32), parameter :: n_points = 5
+        real(real64)   :: min_overlap
+        logical        :: ok
+        integer(int32) :: nr(2,n_points)
+
+        !===============================================================
+        ! 1) Simple valid case: all consecutive neighborhoods overlap
+        !===============================================================
+        nr(:,1) = [1, 5] ! 2/4
+        nr(:,2) = [3, 7] ! 1/4
+        nr(:,3) = [6, 9] ! 1/3
+        nr(:,4) = [8,12]
+        min_overlap = 1.0_real64 / 8.0_real64
+
+        ok = test_neighborhood_overlaps_helper(nr, 4_int32, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: simple valid case: all overlaps large enough")
+
+        !===============================================================
+        ! 2) Exact-boundary overlap (touching at one point)
+        !===============================================================
+        nr(:,1) = [1, 6]
+        nr(:,2) = [5,10]
+        min_overlap = 1.0_real64 / 5.0_real64
+        ok = test_neighborhood_overlaps_helper(nr, 2_int32, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: exact boundary overlap")
+
+        ok = test_neighborhood_overlaps_helper(nr, 2_int32, above(min_overlap))
+        call assert_false(ok, "test_test_neighborhood_overlaps: exact boundary overlap if min_overlap slightly to high")
+
+        !===============================================================
+        ! 3) Zero overlap
+        !===============================================================
+        nr(:,1) = [1, 4]
+        nr(:,2) = [6, 9]
+        min_overlap = above(0.0_real64)
+        ok = test_neighborhood_overlaps_helper(nr, 2_int32, min_overlap)
+        call assert_false(ok, "test_test_neighborhood_overlaps: zero overlap should fail")
+
+        !===============================================================
+        ! 7) Duplicate identical ranges → full overlap
+        !===============================================================
+        nr(:,1) = [2,8]
+        nr(:,2) = [2,8]
+        nr(:,3) = [2,8]
+        nr(:,4) = [2,8]
+        min_overlap = 1.0_real64
+        ok = test_neighborhood_overlaps_helper(nr, 4_int32, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: identical ranges satisfy overlap")
+
+        !===============================================================
+        ! 8) Single-point case (n_points = 1)
+        !    → trivially true (no consecutive pairs)
+        !===============================================================
+        min_overlap = 1.0_real64
+        ok = test_neighborhood_overlaps_helper(nr, 1_int32, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: single-point case should always pass")
+
+        !===============================================================
+        ! 9) Large ranges with partial overlaps
+        !===============================================================
+        nr(:,1) = [1,100] ! 50/99 = 0.5050505050505051
+        nr(:,2) = [50,150] ! 30/100 = 0.3
+        nr(:,3) = [120,200] ! 20/80 = 0.25
+        nr(:,4) = [180,250] ! 10/70 = 0.14285714285714285
+        nr(:,5) = [240,300]
+
+        min_overlap = 10.0_real64 / 70.0_real64
+        ok = test_neighborhood_overlaps_helper(nr, 5_int32, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: large ranges: all overlaps large enough")
+
+        min_overlap = above(min_overlap)
+        ok = test_neighborhood_overlaps_helper(nr, 5_int32, min_overlap)
+        call assert_false(ok, "test_test_neighborhood_overlaps: large ranges: insufficient overlap for 0.2")
+
+        !===============================================================
+        ! 11) min_overlap=0 succeeds
+        !===============================================================
+        nr(:,1) = [1,10]
+        nr(:,2) = [100,200]
+        min_overlap = 0.0_real64
+        ok = test_neighborhood_overlaps_helper(nr, 2, min_overlap)
+        call assert_true(ok, "test_test_neighborhood_overlaps: touching ranges satisfy min_overlap=0")
+
+        min_overlap = above(0.0_real64)
+        ok = test_neighborhood_overlaps_helper(nr, 2, min_overlap)
+        call assert_false(ok, "test_test_neighborhood_overlaps: touching ranges insufficient for min_overlap=1")
+
+        !===============================================================
+        ! 12) Very large min_overlap (impossible)
+        !===============================================================
+        nr(:,1) = [1,10]
+        nr(:,2) = [5,15]
+        min_overlap = M_POS_INF
+        ok = test_neighborhood_overlaps_helper(nr, 2, min_overlap)
+        call assert_false(ok, "test_test_neighborhood_overlaps: min_overlap too large → fail")
+    end subroutine test_test_neighborhood_overlaps
+
+    subroutine test_compute_fractional_overlap()
         real(real64) :: a(2), b(2), overlap, overlap_rev
 
         ! Touching intervals a1 a2=b1 b2
         a = [-1.0_real64, 666.123_real64]
         b = [a(2), huge(1.0_real64)]
-        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
-        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
-        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_relative_overlap: 1. touching intervals a,b")
-        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_relative_overlap: 1. touching intervals b,a")
+        overlap = compute_fractional_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_fractional_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_fractional_overlap: 1. touching intervals a,b")
+        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_fractional_overlap: 1. touching intervals b,a")
 
         ! Partial Overlap a1 b1 a2 b2
         a = [-1.0_real64, 666.123_real64]
         b = [0.123_real64, 667.0_real64]
-        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
-        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
-        call assert_equal_real(overlap, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 2. partial overlap a,b")
-        call assert_equal_real(overlap_rev, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 2. partial overlap b,a")
+        overlap = compute_fractional_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_fractional_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 666.0_real64 / 667.123_real64, TOL, "test_compute_fractional_overlap: 2. partial overlap a,b")
+        call assert_equal_real(overlap_rev, 666.0_real64 / 666.877_real64, TOL, "test_compute_fractional_overlap: 2. partial overlap b,a")
 
         ! Inclusion, a1 b1 b2 a2
         a = [-1.0_real64, 667.0_real64]
         b = [0.123_real64, 666.123_real64]
-        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
-        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
-        call assert_equal_real(overlap, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 3. inclusion a,b")
-        call assert_equal_real(overlap_rev, 666.0_real64 / 668.0_real64, TOL, "test_compute_relative_overlap: 3. inclusion b,a")
+        overlap = compute_fractional_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_fractional_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 666.0_real64 / 668.0_real64, TOL, "test_compute_fractional_overlap: 3. inclusion a,b")
+        call assert_equal_real(overlap_rev, 1.0_real64, TOL, "test_compute_fractional_overlap: 3. inclusion b,a")
 
         ! Full Overlap, a1=b1 b2=a2
         a = [-1.0_real64, 667.123_real64]
         b = a
-        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
-        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
-        call assert_equal_real(overlap, 1.0_real64, TOL, "test_compute_relative_overlap: 4. inclusion a,b")
-        call assert_equal_real(overlap_rev, 1.0_real64, TOL, "test_compute_relative_overlap: 4. inclusion b,a")
+        overlap = compute_fractional_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_fractional_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 1.0_real64, TOL, "test_compute_fractional_overlap: 4. inclusion a,b")
+        call assert_equal_real(overlap_rev, 1.0_real64, TOL, "test_compute_fractional_overlap: 4. inclusion b,a")
 
         ! No Overlap, a1 a2 b1 b2
         a = [-1.0_real64, 667.123_real64]
         b = [2 * a(2), 12 * a(2)]
-        overlap = compute_relative_overlap_helper(a(1), a(2), b(1), b(2))
-        overlap_rev = compute_relative_overlap_helper(b(1), b(2), a(1), a(2))
-        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_relative_overlap: 5. inclusion a,b")
-        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_relative_overlap: 5. inclusion b,a")
+        overlap = compute_fractional_overlap_helper(a(1), a(2), b(1), b(2))
+        overlap_rev = compute_fractional_overlap_helper(b(1), b(2), a(1), a(2))
+        call assert_equal_real(overlap, 0.0_real64, TOL, "test_compute_fractional_overlap: 5. inclusion a,b")
+        call assert_equal_real(overlap_rev, 0.0_real64, TOL, "test_compute_fractional_overlap: 5. inclusion b,a")
 
-    end subroutine test_compute_relative_overlap
+    end subroutine test_compute_fractional_overlap
 
     subroutine test_estimate_bin_count()
         ! Inputs

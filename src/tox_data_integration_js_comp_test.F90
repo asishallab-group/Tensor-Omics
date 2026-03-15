@@ -372,7 +372,7 @@ contains
             !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
             !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
             !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
-            !! If all mean values are NaN, the range is [1, 1]
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
         real(real64), dimension(max_n_points_candidate), intent(out) :: x_star
             !! Mean-expression reference points
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
@@ -401,6 +401,7 @@ contains
 
         integer(int32), parameter :: min_count_per_mean_bin = 5_int32
         integer(int32), parameter :: n_permutations = 1000_int32
+        real(real64), parameter :: min_overlap = 0.1_real64
 
         integer(int32) :: n_gene_means, n_pool, n_points, n_neighbors, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_overlap
@@ -431,7 +432,7 @@ contains
                 all_have_min_overlap = .true.
                 do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors, shared_residual_range, n_bins, counts, pmfs, included_n_reps)
                     call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)
-                    if (test_neighborhood_overlaps_helper(neighborhood_ranges(:, :, i_study), n_points)) then
+                    if (test_neighborhood_overlaps_helper(neighborhood_ranges(:, :, i_study), n_points, min_overlap)) then
                         call build_residual_histograms_helper(neighborhood_residuals, n_neighbors, n_points, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study))
                     else
                         all_have_min_overlap = .false.
@@ -501,7 +502,12 @@ contains
 
         exceeds_min_CI_overlap = 0_int32
         do concurrent (i_study = 1:n_studies) shared(confidence_interval, best_confidence_interval) reduce(+:exceeds_min_CI_overlap)
-            if (compute_relative_overlap_helper(&
+            ! Check overlap
+            ! IMPORTANT: best interval needs to be second argument, as the denominator will be the range of first interval
+            ! Why this?
+            !    If current interval is included in best interval, current is better -> 1.0
+            !    If best interval is included in current interval, current is worse (larger range) -> <1.0
+            if (compute_fractional_overlap_helper(&
                     confidence_interval(1, i_study), confidence_interval(2, i_study),&
                     best_confidence_interval(1, i_study), best_confidence_interval(2, i_study)&
                 ) > succeeding_overlap)&
@@ -717,7 +723,8 @@ contains
         end do
     end subroutine create_mean_pmf_only_helper
 
-    pure logical function test_neighborhood_overlaps_helper(neighborhood_range, n_points) result(all_have_min_overlap)
+    !> Helper function for [[tox_data_integration(module):js_comp_test(interface)]] to check if all neighborhoods for a certain n_points/n_neighbors pair have a consecutive min overlap
+    pure logical function test_neighborhood_overlaps_helper(neighborhood_range, n_points, min_overlap) result(all_have_min_overlap)
         integer(int32), intent(in) :: n_points
             !! Number of reference points in the studies
         integer(int32), dimension(2, n_points), intent(in) :: neighborhood_range
@@ -725,27 +732,28 @@ contains
             !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
             !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
             !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
-            !! If all mean values are NaN, the range is [1, 1]
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        real(real64), intent(in) :: min_overlap
+            !! Minimum overlap two consecutive neighborhoods (`i_point, i_point+1`) should have in their ranges
 
         integer(int32) :: i_point
         real(real64) :: overlap
 
         all_have_min_overlap = .true.
         do concurrent (i_point = 1:n_points - 1) local(overlap) shared(neighborhood_range, all_have_min_overlap)
-            overlap = compute_relative_overlap_helper(&
+            overlap = compute_fractional_overlap_helper(&
                 real(neighborhood_range(1, i_point), real64),&
                 real(neighborhood_range(2, i_point), real64),&
                 real(neighborhood_range(1, i_point + 1), real64),&
                 real(neighborhood_range(2, i_point + 1), real64)&
             )
-            if (overlap < 0.1_real64) all_have_min_overlap = .false.
+            if (overlap < min_overlap) all_have_min_overlap = .false.
         end do
-    
     end function test_neighborhood_overlaps_helper
 
     !> Calculates the fractional overlap between two intervals, the fraction of the overlap and the total range of both intervals, so in case `a_min < b_min`:
-    !| \[ \frac{\min(\texttt{a_max}, \texttt{b_max}) - \texttt{b_min})} {\texttt{b_max} - \texttt{a_min}} \]
-    pure real(real64) function compute_relative_overlap_helper(a_min, a_max, b_min, b_max) result(overlap_percent)
+    !| \[ \frac{\min(\texttt{a_max}, \texttt{b_max}) - \texttt{b_min})} {\texttt{a_max} - \texttt{a_min}} \]
+    pure real(real64) function compute_fractional_overlap_helper(a_min, a_max, b_min, b_max) result(overlap_percent)
         real(real64), intent(in) :: a_min
             !! Lower bound of the first interval
         real(real64), intent(in) :: a_max
@@ -755,15 +763,20 @@ contains
         real(real64), intent(in) :: b_max
             !! Upper bound of the second interval (assumed to be greater than `b_min`)
 
-        real(real64) :: left_max, right_max, left_min, right_min
+        real(real64) :: left_max, right_min
 
-        right_max = max(a_max, b_max)
-        left_max = min(a_max, b_max)
-        right_min = max(a_min, b_min)
-        left_min = min(a_min, b_min)
-
-        ! Calculate overlap, is only negative if left_max < right_min -> a_min < a_max < b_min < b_max -> no overlap
-        ! Assuming correct intervals, right_max < left_min is not possible, as all other bounds are lower
-        overlap_percent = max(0.0_real64, (left_max - right_min) / (right_max - left_min))
-    end function compute_relative_overlap_helper
+        if (a_max == a_min) then
+            ! If zero interval included in b interval, max overlap
+            if (b_min <= a_max .and. b_max >= a_max) then
+                overlap_percent = 1.0_real64
+            else
+                overlap_percent = 0.0_real64
+            end if
+        else
+            left_max = min(a_max, b_max)
+            right_min = max(a_min, b_min)
+            ! Calculate overlap, is only negative if left_max < right_min -> a_min < a_max < b_min < b_max -> no overlap
+            overlap_percent = max(0.0_real64, (left_max - right_min) / (a_max - a_min))
+        end if
+    end function compute_fractional_overlap_helper
 end module tox_data_integration_js_comp_test
