@@ -30,9 +30,9 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(21)
+        type(test_case) :: all_tests(22)
         ! jsd
-        ! all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
+        all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         all_tests(17) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
 
@@ -606,166 +606,174 @@ contains
 
     end subroutine test_determine_shared_residual_range
 
-    ! subroutine test_build_residual_histograms
-    !     integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
-    !     integer(int32), parameter :: n_bins = 4
-    !     real(real64), dimension(n_reps, n_neighbors, n_points) :: E
-    !     real(real64), dimension(n_points, n_bins) :: pmf, expected_pmf
-    !     integer(int32), dimension(n_points, n_bins) :: counts, expected_counts
-    !     integer(int32), dimension(n_points) :: included
-    !     real(real64) :: R
-    !     integer(int32) :: ierr
+    subroutine test_build_residual_histograms
+        integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
+        integer(int32), parameter :: n_bins = 4
+        integer(int32), dimension(n_neighbors, n_points) :: E
+        real(real64), dimension(n_reps, n_neighbors * n_points) :: residuals
+        real(real64), dimension(n_bins, n_points) :: pmf, expected_pmf
+        integer(int32), dimension(n_bins, n_points) :: counts, expected_counts
+        integer(int32), dimension(n_points) :: included
+        real(real64) :: R
+        integer(int32) :: ierr
 
-    !     ! ============================================================
-    !     ! Test 1 — Simple symmetric case, no NaNs
-    !     ! ============================================================
-    !     !
-    !     ! R = 2, M = 4 → bin width w = 1
-    !     ! Bins: [-2,-1), [-1,0), [0,1), [1,2]
-    !     !
-    !     R = 2.0_real64
+        ! ============================================================
+        ! Test 1 — Simple symmetric case, no NaNs
+        ! ============================================================
+        !
+        ! R = 2, M = 4 → bin width w = 1
+        ! Bins: [-2,-1), [-1,0), [0,1), [1,2]
+        !
+        R = 2.0_real64
 
-    !     E(:, 1,1) = [-2.0, -0.5, 0.2]
-    !     E(:, 2,1) = [1.7, 0.9, -1.2]
-    !     E(:, :,2) = 0.0_real64
-    !     E(:, 1,3) = [2.5, -3.0, 1.2] ! (clamping applies -> [2,-2,1.2])
-    !     E(:, 2,3) = [0.4, -0.1, 0.0]
+        residuals(:, 1) = [-2.0, -0.5, 0.2]
+        residuals(:, 2) = [1.7, 0.9, -1.2]
+        residuals(:, 3) = 0.0_real64
+        residuals(:, 4) = [2.5, -3.0, 1.2] ! (clamping applies -> [2,-2,1.2])
+        residuals(:, 5) = [0.4, -0.1, 0.0]
 
-    !     call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
-    !                                    counts, pmf, included, ierr)
+        E(1,1) = 1
+        E(2,1) = 2
+        E(:,2) = 3
+        E(1,3) = 4
+        E(2,3) = 5
 
-    !     call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 1: ierr should be OK")
+        call build_residual_histograms(E, n_neighbors, n_points, residuals, n_reps, 5_int32, R, n_bins, &
+                                       counts, pmf, included, ierr)
 
-    !     ! point 1
-    !     ! Values fall into bins:
-    !     ! [-2,-1): -2, -1.2 → 2
-    !     ! [-1,0): -0.5 → 1
-    !     ! [0,1): 0.2, 0.9 → 2
-    !     ! [1,2]: 1.7 → 1
-    !     ! 
-    !     ! point 2 — all zeros → all in bin [0,1)
-    !     ! 
-    !     ! point 3 — clamping:
-    !     ! 2.5 → 2
-    !     ! -3 → -2
-    !     ! bins:
-    !     ! [-2,-1): -2 → 1
-    !     ! [-1,0): -0.1 → 1
-    !     ! [0,1): 0.4, 0.0 → 2
-    !     ! [1,2]: 1.2, 2 → 2
-    !     expected_counts = reshape([&
-    !         2, 0, 1,&
-    !         1, 0, 1,&
-    !         2, 6, 2,&
-    !         1, 0, 2&
-    !     ], [n_points, n_bins])
-    !     expected_pmf = reshape([&
-    !         0.3333333333333333_real64,  0.0_real64, 0.16666666666666666_real64,&
-    !         0.16666666666666666_real64, 0.0_real64, 0.16666666666666666_real64,&
-    !         0.3333333333333333_real64,  1.0_real64, 0.3333333333333333_real64,&
-    !         0.16666666666666666_real64, 0.0_real64, 0.3333333333333333_real64&
-    !     ], [n_points, n_bins])
+        call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 1: ierr should be OK")
 
-    !     call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 1: counts don't match")
-    !     call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 1: pmf don't match")
-    !     call assert_equal_int(included(1), 6, "test_build_residual_histograms: Test 1: included row 1")
-    !     call assert_equal_int(included(2), 6, "test_build_residual_histograms: Test 1: included row 2")
-    !     call assert_equal_int(included(3), 6, "test_build_residual_histograms: Test 1: included row 3")
+        ! point 1
+        ! Values fall into bins:
+        ! [-2,-1): -2, -1.2 → 2
+        ! [-1,0): -0.5 → 1
+        ! [0,1): 0.2, 0.9 → 2
+        ! [1,2]: 1.7 → 1
+        ! 
+        ! point 2 — all zeros → all in bin [0,1)
+        ! 
+        ! point 3 — clamping:
+        ! 2.5 → 2
+        ! -3 → -2
+        ! bins:
+        ! [-2,-1): -2 → 1
+        ! [-1,0): -0.1 → 1
+        ! [0,1): 0.4, 0.0 → 2
+        ! [1,2]: 1.2, 2 → 2
+        expected_counts = reshape([&
+            2, 1, 2, 1,&
+            0, 0, 6, 0,&
+            1, 1, 2, 2&
+        ], [n_bins, n_points])
+        expected_pmf = reshape([&
+            0.3333333333333333_real64, 0.16666666666666666_real64, 0.3333333333333333_real64, 0.16666666666666666_real64,&
+            0.0_real64, 0.0_real64, 1.0_real64, 0.0_real64,&
+            0.16666666666666666_real64, 0.16666666666666666_real64, 0.3333333333333333_real64, 0.3333333333333333_real64&
+        ], [n_bins, n_points])
 
-    !     ! ============================================================
-    !     ! Test 2 — NaNs must be ignored
-    !     ! ============================================================
-    !     E = 0.0_real64
-    !     E(1,1,1) = ieee_value(1.0_real64, ieee_quiet_nan)
-    !     E(3,1,1) = ieee_value(1.0_real64, ieee_quiet_nan)
-    !     E(2,1,2) = ieee_value(1.0_real64, ieee_quiet_nan)
-    !     E(3,2,3) = ieee_value(1.0_real64, ieee_quiet_nan)
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 1: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 1: pmf don't match")
+        call assert_equal_int(included(1), 6, "test_build_residual_histograms: Test 1: included row 1")
+        call assert_equal_int(included(2), 6, "test_build_residual_histograms: Test 1: included row 2")
+        call assert_equal_int(included(3), 6, "test_build_residual_histograms: Test 1: included row 3")
 
-    !     call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
-    !                                    counts, pmf, included, ierr)
+        ! ============================================================
+        ! Test 2 — NaNs must be ignored
+        ! ============================================================
+        residuals(:, 1) = 0.0_real64
+        residuals(:, 2) = [M_NAN, 0.0_real64, M_NAN]
+        residuals(:, 3) = [0.0_real64, M_NAN, 0.0_real64]
+        residuals(:, 4) = [0.0_real64, 0.0_real64, M_NAN]
 
-    !     call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 2: ierr should be OK")
+        E = 1
+        E(1, 1) = 2
+        E(1, 2) = 3
+        E(2, 3) = 4
 
-    !     expected_counts = reshape([&
-    !         0, 0, 0,&
-    !         0, 0, 0,&
-    !         4, 5, 5,&
-    !         0, 0, 0&
-    !     ], [n_points, n_bins])
-    !     expected_pmf = reshape([&
-    !         0.0_real64,  0.0_real64, 0.0_real64,&
-    !         0.0_real64,  0.0_real64, 0.0_real64,&
-    !         1.0_real64,  1.0_real64, 1.0_real64,&
-    !         0.0_real64,  0.0_real64, 0.0_real64&
-    !     ], [n_points, n_bins])
+        call build_residual_histograms(E, n_neighbors, n_points, residuals, n_reps, n_neighbors * n_points, R, n_bins, &
+                                       counts, pmf, included, ierr)
 
-    !     call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 2: counts don't match")
-    !     call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 2: pmf don't match")
-    !     call assert_equal_int(included(1), 4, "test_build_residual_histograms: Test 2: included row 1")
-    !     call assert_equal_int(included(2), 5, "test_build_residual_histograms: Test 2: included row 2")
-    !     call assert_equal_int(included(3), 5, "test_build_residual_histograms: Test 2: included row 3")
+        call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 2: ierr should be OK")
 
-    !     ! ============================================================
-    !     ! Test 3 — All NaN → pmf = 0, counts = 0, included = 0
-    !     ! ============================================================
-    !     E = ieee_value(1.0_real64, ieee_quiet_nan)
+        expected_counts = reshape([&
+            0, 0, 4, 0,&
+            0, 0, 5, 0,&
+            0, 0, 5, 0&
+        ], [n_bins, n_points])
+        expected_pmf = reshape([&
+            0.0_real64,  0.0_real64, 1.0_real64, 0.0_real64,&
+            0.0_real64,  0.0_real64, 1.0_real64, 0.0_real64,&
+            0.0_real64,  0.0_real64, 1.0_real64, 0.0_real64&
+        ], [n_bins, n_points])
 
-    !     call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
-    !                                    counts, pmf, included, ierr)
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 2: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 2: pmf don't match")
+        call assert_equal_int(included(1), 4, "test_build_residual_histograms: Test 2: included row 1")
+        call assert_equal_int(included(2), 5, "test_build_residual_histograms: Test 2: included row 2")
+        call assert_equal_int(included(3), 5, "test_build_residual_histograms: Test 2: included row 3")
 
-    !     call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 3: ierr should be OK")
+        ! ============================================================
+        ! Test 3 — All NaN → pmf = 0, counts = 0, included = 0
+        ! ============================================================
+        residuals = M_NAN
+        E = 1
 
-    !     expected_counts = 0.0_real64
-    !     expected_pmf = 0.0_real64
-    !     call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 3: counts don't match")
-    !     call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 3: pmf don't match")
-    !     call assert_equal_int(included(1), 0, "test_build_residual_histograms: Test 2: included row 1")
-    !     call assert_equal_int(included(2), 0, "test_build_residual_histograms: Test 2: included row 2")
-    !     call assert_equal_int(included(3), 0, "test_build_residual_histograms: Test 2: included row 3")
+        call build_residual_histograms(E, n_neighbors, n_points, residuals, n_reps, n_neighbors * n_points, R, n_bins, &
+                                       counts, pmf, included, ierr)
 
-    !     ! ============================================================
-    !     ! Test 4 — Residuals exactly on boundaries
-    !     ! ============================================================
-    !     !
-    !     ! R = 2, bins = 4, width = 1
-    !     ! Values: -2, -1, 0, 1, 2
-    !     !
-    !     E = reshape([ -2.0, -1.0, 0.0, 1.0, 2.0, 0.0, &
-    !                   -2.0, -1.0, 0.0, 1.0, 2.0, 0.0, &
-    !                   -2.0, -1.0, 0.0, 1.0, 2.0, 0.0 ], shape(E))
+        call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 3: ierr should be OK")
 
-    !     call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
-    !                                    counts, pmf, included, ierr)
+        expected_counts = 0.0_real64
+        expected_pmf = 0.0_real64
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 3: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 3: pmf don't match")
+        call assert_equal_int(included(1), 0, "test_build_residual_histograms: Test 2: included row 1")
+        call assert_equal_int(included(2), 0, "test_build_residual_histograms: Test 2: included row 2")
+        call assert_equal_int(included(3), 0, "test_build_residual_histograms: Test 2: included row 3")
 
-    !     call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 4: ierr should be OK")
+        ! ============================================================
+        ! Test 4 — Residuals exactly on boundaries
+        ! ============================================================
+        !
+        ! R = 2, bins = 4, width = 1
+        ! Values: -2, -1, 0, 1, 2
+        !
+        residuals(:, 1) = [-2.0, -1.0, 0.0]
+        residuals(:, 2) = [1.0, 2.0, 0.0]
 
-    !     ! Expected binning:
-    !     ! -2 → bin 1
-    !     ! -1 → bin 2
-    !     !  0 → bin 3
-    !     !  1 → bin 4
-    !     !  2 → bin 4 (right boundary included)
-    !     !
-    !     expected_counts = reshape([&
-    !         1, 1, 1,&
-    !         1, 1, 1,&
-    !         2, 2, 2,&
-    !         2, 2, 2&
-    !     ], [n_points, n_bins])
-    !     expected_pmf = reshape([&
-    !         0.16666666666666666_real64, 0.16666666666666666_real64, 0.16666666666666666_real64,&
-    !         0.16666666666666666_real64, 0.16666666666666666_real64, 0.16666666666666666_real64,&
-    !         0.3333333333333333_real64, 0.3333333333333333_real64, 0.3333333333333333_real64,&
-    !         0.3333333333333333_real64, 0.3333333333333333_real64, 0.3333333333333333_real64&
-    !     ], [n_points, n_bins])
+        E(1, :) = 1
+        E(2, :) = 2
 
-    !     call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 3: counts don't match")
-    !     call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 3: pmf don't match")
-    !     call assert_equal_int(included(1), 6, "test_build_residual_histograms: Test 3: included row 1")
-    !     call assert_equal_int(included(2), 6, "test_build_residual_histograms: Test 3: included row 2")
-    !     call assert_equal_int(included(3), 6, "test_build_residual_histograms: Test 3: included row 3")
+        call build_residual_histograms(E, n_neighbors, n_points, residuals, n_reps, n_neighbors * n_points, R, n_bins, &
+                                       counts, pmf, included, ierr)
 
-    ! end subroutine test_build_residual_histograms
+        call assert_equal_int(ierr, ERR_OK, "test_build_residual_histograms: Test 4: ierr should be OK")
+
+        ! Expected binning:
+        ! -2 → bin 1
+        ! -1 → bin 2
+        !  0 → bin 3
+        !  1 → bin 4
+        !  2 → bin 4 (right boundary included)
+        !
+        expected_counts = reshape([&
+            1, 1, 2, 2,&
+            1, 1, 2, 2,&
+            1, 1, 2, 2&
+        ], [n_bins, n_points])
+        expected_pmf = reshape([&
+            0.16666666666666666_real64, 0.16666666666666666_real64, 0.3333333333333333_real64, 0.3333333333333333_real64,&
+            0.16666666666666666_real64, 0.16666666666666666_real64, 0.3333333333333333_real64, 0.3333333333333333_real64,&
+            0.16666666666666666_real64, 0.16666666666666666_real64, 0.3333333333333333_real64, 0.3333333333333333_real64&
+        ], [n_bins, n_points])
+
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), "test_build_residual_histograms: Test 3: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, "test_build_residual_histograms: Test 3: pmf don't match")
+        call assert_equal_int(included(1), 6, "test_build_residual_histograms: Test 3: included row 1")
+        call assert_equal_int(included(2), 6, "test_build_residual_histograms: Test 3: included row 2")
+        call assert_equal_int(included(3), 6, "test_build_residual_histograms: Test 3: included row 3")
+
+    end subroutine test_build_residual_histograms
 
     subroutine test_compute_divergence_per_reference_point
         integer(int32), parameter :: n_points = 3, n_bins = 4

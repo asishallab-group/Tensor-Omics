@@ -46,13 +46,13 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(max_n_reps_all_studies, ierr)
-        call validate_dimension_size(max_n_genes_all_studies, ierr)
-        call validate_dimension_size(n_neighbors, ierr)
-        call validate_dimension_size(n_points, ierr)
-        call validate_dimension_size(n_bins, ierr)
-        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64)
-        call validate_all_in_range_int(neighborhood_residuals, size(neighborhood_residuals, kind=int32), ierr, min=1_int32, max=max_n_genes_all_studies)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=5_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=6_int32)
+        call validate_in_range_real(shared_residual_range, ierr, min=0.0_real64, arg_pos=7_int32)
+        call validate_dimension_size(n_bins, ierr, arg_pos=8_int32)
+        call validate_all_in_range_int(neighborhood_residuals, size(neighborhood_residuals, kind=int32), ierr, min=1_int32, max=max_n_genes_all_studies, arg_pos=1_int32)
 
         if (is_err(ierr)) return
 
@@ -118,7 +118,7 @@ contains
 
                         ! assign bin to residual
                         bin_idx = min(n_bins, int( (clamped_residual + shared_residual_range) / bin_width ) + 1)
-                        counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1
+                        counts(bin_idx, i_point) = counts(bin_idx, i_point) + 1
 
                         included_reps = included_reps + 1
                     end if
