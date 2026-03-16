@@ -467,83 +467,87 @@ contains
 
         ! Process each reference point
         do concurrent (i_point = 1:n_points) local(last_gene, x_star_val, x_star_idx, left_gene, right_gene) shared(x_star, neighborhood_residuals, n_neighbors, mean_S, mean_S_perm)
+            associate (&
+                nhood_range_min => neighborhood_range(1, i_point),&
+                nhood_range_max => neighborhood_range(2, i_point)&
+            )
+                x_star_val = x_star(i_point)
 
-            x_star_val = x_star(i_point)
+                ! If x_star is NaN, all gene expressions/residuals are NaN -> first element
+                if (ieee_is_nan(x_star_val)) then
+                    x_star_idx = 1
+                else
+                    x_star_idx = binary_search_insertion(mean_S, mean_S_perm, x_star_val)
+                end if
 
-            ! If x_star is NaN, all gene expressions/residuals are NaN -> first element
-            if (ieee_is_nan(x_star_val)) then
-                x_star_idx = 1
-            else
-                x_star_idx = binary_search_insertion(mean_S, mean_S_perm, x_star_val)
-            end if
+                if (x_star_idx == 1) then
+                    nhood_range_min = 1_int32
+                    nhood_range_max = min(n_genes_S, n_neighbors)
 
-            if (x_star_idx == 1) then
-                neighborhood_range(1, i_point) = 1_int32
-                neighborhood_range(2, i_point) = min(n_genes_S, n_neighbors)
-
-                ! The first `n_neighbors` genes are the closest to `x_star_val`
-                do concurrent (i_neighbor = 1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_residuals, i_point)
-                    if (i_neighbor <= n_genes_S) then
-                        gene_idx = mean_S_perm(i_neighbor)
-                    else
-                        gene_idx = i_neighbor
-                    end if
-                    neighborhood_residuals(i_neighbor, i_point) = gene_idx
-                end do
-            else
-                ! Collect the closest values around x_star_val
-                left_gene = x_star_idx - 1
-                right_gene = x_star_idx
-                do i_neighbor = 1, n_neighbors
-                    ! if no values lower than x_star are left, fill with right side
-                    if (left_gene < 1) then
-                        ! In case both indices are out of range, fill up to `n_neighbors`
-                        if (right_gene > n_genes_S) then
-                            neighborhood_residuals(i_neighbor, i_point) = i_neighbor
+                    ! The first `n_neighbors` genes are the closest to `x_star_val`
+                    do concurrent (i_neighbor = 1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_residuals, i_point)
+                        if (i_neighbor <= n_genes_S) then
+                            gene_idx = mean_S_perm(i_neighbor)
                         else
-                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
-                            right_gene = right_gene + 1
+                            gene_idx = i_neighbor
                         end if
-                    ! if no values higher than x_star are left, fill with left side
-                    else if (right_gene > n_genes_S) then
-                        neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
-                        left_gene = left_gene - 1
-                    else
-                        ! if right side is closer than left side of x_star, take right side, else left side
-                        ! Note: In the sorted array, NaNs are always last -> right side
-                        ! -> if condition is false because of NaN it is because right value is NaN or both
-                        if (mean_S(mean_S_perm(right_gene)) - x_star_val < x_star_val - mean_S(mean_S_perm(left_gene))) then
-                            neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
-                            right_gene = right_gene + 1
-                        else
+                        neighborhood_residuals(i_neighbor, i_point) = gene_idx
+                    end do
+                else
+                    ! Collect the closest values around x_star_val
+                    left_gene = x_star_idx - 1
+                    right_gene = x_star_idx
+                    do i_neighbor = 1, n_neighbors
+                        ! if no values lower than x_star are left, fill with right side
+                        if (left_gene < 1) then
+                            ! In case both indices are out of range, fill up to `n_neighbors`
+                            if (right_gene > n_genes_S) then
+                                neighborhood_residuals(i_neighbor, i_point) = i_neighbor
+                            else
+                                neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
+                                right_gene = right_gene + 1
+                            end if
+                        ! if no values higher than x_star are left, fill with left side
+                        else if (right_gene > n_genes_S) then
                             neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
                             left_gene = left_gene - 1
+                        else
+                            ! if right side is closer than left side of x_star, take right side, else left side
+                            ! Note: In the sorted array, NaNs are always last -> right side
+                            ! -> if condition is false because of NaN it is because right value is NaN or both
+                            if (mean_S(mean_S_perm(right_gene)) - x_star_val < x_star_val - mean_S(mean_S_perm(left_gene))) then
+                                neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(right_gene)
+                                right_gene = right_gene + 1
+                            else
+                                neighborhood_residuals(i_neighbor, i_point) = mean_S_perm(left_gene)
+                                left_gene = left_gene - 1
+                            end if
                         end if
+                    end do
+                    nhood_range_min = left_gene + 1
+                    nhood_range_max = right_gene - 1
+                end if
+
+                last_gene = nhood_range_min
+                do i_neighbor = last_gene - 1, 1, -1
+                    if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                        last_gene = i_neighbor
+                    else
+                        exit
                     end if
                 end do
-                neighborhood_range(1, i_point) = left_gene + 1
-                neighborhood_range(2, i_point) = right_gene - 1
-            end if
+                nhood_range_min = last_gene
 
-            last_gene = neighborhood_range(1, i_point)
-            do i_neighbor = last_gene - 1, 1, -1
-                if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
-                    last_gene = i_neighbor
-                else
-                    exit
-                end if
-            end do
-            neighborhood_range(1, i_point) = last_gene
-
-            last_gene = neighborhood_range(2, i_point)
-            do i_neighbor = last_gene + 1, n_genes_S
-                if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
-                    last_gene = i_neighbor
-                else
-                    exit
-                end if
-            end do
-            neighborhood_range(2, i_point) = last_gene
+                last_gene = nhood_range_max
+                do i_neighbor = last_gene + 1, n_genes_S
+                    if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                        last_gene = i_neighbor
+                    else
+                        exit
+                    end if
+                end do
+                nhood_range_max = last_gene
+            end associate
         end do
     end subroutine construct_neighborhoods_helper
 end module tox_data_integration_preprocessing

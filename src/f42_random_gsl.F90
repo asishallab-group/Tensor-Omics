@@ -137,7 +137,7 @@ contains
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
 
-        integer(int32) :: remaining_population, i_population, remaining_draws, n_drawn
+        integer(int32) :: remaining_population, i_population, remaining_draws
         real(real64) :: p
 
         remaining_population = total_population
@@ -146,17 +146,24 @@ contains
 
         ! Draw for each population, last one gets rest
         do i_population = 1, n_populations - 1
-            if (remaining_population > 0) then
-                ! Draw elements of current population from pool with remaining elements
-                p = real(population_sizes(i_population), real64) / real(remaining_population, real64)
-                drawn(i_population) = min(remaining_draws, random_binomial(rng, p, remaining_draws))
+            associate (&
+                current_population => population_sizes(i_population),&
+                n_drawn => drawn(i_population)&
+            )
 
-                ! For further draws, the current subpopulation is not taken into account anymore
-                remaining_population = remaining_population - population_sizes(i_population)
-                remaining_draws = remaining_draws - drawn(i_population)
-            else
-                drawn(i_population) = 0_int32
-            end if
+                if (remaining_population > 0) then
+                    ! Draw elements of current population from pool with remaining elements
+                    p = real(current_population, real64) / real(remaining_population, real64)
+                    n_drawn = min(remaining_draws, random_binomial(rng, p, remaining_draws))
+
+                    ! For further draws, the current subpopulation is not taken into account anymore
+                    remaining_population = remaining_population - current_population
+                    remaining_draws = remaining_draws - n_drawn
+                else
+                    n_drawn = 0_int32
+                end if
+
+            end associate
         end do
 
         drawn(n_populations) = remaining_draws
@@ -177,7 +184,7 @@ contains
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
 
-        integer(int32) :: remaining_population, i_population, remaining_draws, current_population, n_drawn
+        integer(int32) :: remaining_population, i_population, remaining_draws
 
         remaining_population = total_population
         remaining_draws = min(total_population, n_to_draw)
@@ -185,20 +192,24 @@ contains
 
         ! Draw for each population, last one gets rest
         do i_population = 1, n_populations - 1
-            if (remaining_population > 0) then
-                ! Draw elements of current population from pool with remaining elements
-                current_population = population_sizes(i_population)
-                remaining_population = remaining_population - current_population
-                n_drawn = random_hypergeom(rng, current_population, remaining_population, remaining_draws)
+            associate (&
+                current_population => population_sizes(i_population),&
+                n_drawn => drawn(i_population)&
+            )
 
-                drawn(i_population) = n_drawn
+                if (remaining_population > 0) then
+                        ! Draw elements of current population from pool with remaining elements
+                        remaining_population = remaining_population - current_population
+                        n_drawn = random_hypergeom(rng, current_population, remaining_population, remaining_draws)
 
-                ! For further draws, the current subpopulation is not taken into account anymore
-                population_sizes(i_population) = population_sizes(i_population) - n_drawn
-                remaining_draws = remaining_draws - n_drawn
-            else
-                drawn(i_population) = 0_int32
-            end if
+                        ! For further draws, the current subpopulation is not taken into account anymore
+                        current_population = current_population - n_drawn
+                        remaining_draws = remaining_draws - n_drawn
+                else
+                    n_drawn = 0_int32
+                end if
+
+            end associate
         end do
 
         drawn(n_populations) = remaining_draws

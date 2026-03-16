@@ -80,13 +80,19 @@ contains
         right = n_pool
         do i_pool = lower_index, n_pool
             if (i_pool == n_pool) upper_val = shared_residual_range
-            if (abs(residuals(residuals_perm(left))) > abs(residuals(residuals_perm(right)))) then
-                shared_residual_range = abs(residuals(residuals_perm(left)))
-                left = left + 1
-            else
-                shared_residual_range = abs(residuals(residuals_perm(right)))
-                right = right - 1
-            end if
+
+            associate (&
+                left_residual => abs(residuals(residuals_perm(left))),&
+                right_residual => abs(residuals(residuals_perm(right)))&
+            )
+                if (left_residual > right_residual) then
+                    shared_residual_range = left_residual
+                    left = left + 1
+                else
+                    shared_residual_range = right_residual
+                    right = right - 1
+                end if
+            end associate
         end do
 
         ! Do interpolation only if there are higher values
@@ -499,8 +505,8 @@ contains
 
                     do concurrent (i_study = 1:n_studies) shared(pmfs, mean_pmf, n_points, n_bins, js_divergences, included_n_reps, mean_pmf_included_n_reps, weights)
                         call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmf, n_points, n_bins, js_divergences(:, i_study))
-                        call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, tmp_confidence_interval(1, i_study), weights(:, i_study))
-                        tmp_confidence_interval(2, i_study) = tmp_confidence_interval(1, i_study)
+                        call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, global_js_divergence(i_study), weights(:, i_study))
+                        tmp_confidence_interval(:, i_study) = global_js_divergence(i_study)
                     end do
 
                     call bootstrap_histogram_helper(n_bootstraps, included_n_reps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, tmp_confidence_interval, js_divergences, weights, global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_pmf_counts, pmfs, mean_pmf, rng)
@@ -576,18 +582,21 @@ contains
 
         exceeds_min_CI_overlap = 0_int32
         do concurrent (i_study = 1:n_studies) shared(confidence_interval, best_candidate_pair_confidence_interval) reduce(+:exceeds_min_CI_overlap)
-            ! Check overlap
-            ! IMPORTANT: best interval needs to be second argument, as the denominator will be the range of first interval
-            ! Why this?
-            !    If current interval is included in best interval, current is better -> 1.0
-            !    If best interval is included in current interval, current is worse (larger range) -> <1.0
-            if (compute_fractional_overlap_helper(&
-                    confidence_interval(1, i_study), confidence_interval(2, i_study),&
-                    best_candidate_pair_confidence_interval(1, i_study), best_candidate_pair_confidence_interval(2, i_study)&
-                ) >= succeeding_ci_overlap)&
-            then
-                exceeds_min_CI_overlap = exceeds_min_CI_overlap + 1
-            end if
+            associate (&
+                ci_min => confidence_interval(1, i_study),&
+                ci_max => confidence_interval(2, i_study),&
+                best_ci_min => best_candidate_pair_confidence_interval(1, i_study),&
+                best_ci_max => best_candidate_pair_confidence_interval(2, i_study)&
+            )
+                ! Check overlap
+                ! IMPORTANT: best interval needs to be second argument, as the denominator will be the range of first interval
+                ! Why this?
+                !    If current interval is included in best interval, current is better -> 1.0
+                !    If best interval is included in current interval, current is worse (larger range) -> <1.0
+                if (compute_fractional_overlap_helper(ci_min, ci_max, best_ci_min, best_ci_max) >= succeeding_ci_overlap) then
+                    exceeds_min_CI_overlap = exceeds_min_CI_overlap + 1
+                end if
+            end associate
         end do
 
         ! If the parameter set is not at least as good as the previous, exit and use previous pair as best
