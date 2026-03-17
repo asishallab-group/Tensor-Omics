@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(25)
+        type(test_case) :: all_tests(26)
         ! jsd
         all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -45,6 +45,7 @@ contains
         all_tests(23) = test_case("test_test_mean_pmf_min_counts_helper", test_test_mean_pmf_min_counts_helper)
         all_tests(24) = test_case("test_bootstrap_histogram_helper", test_bootstrap_histogram_helper)
         all_tests(25) = test_case("test_gjct_permutation_test_helper", test_gjct_permutation_test_helper)
+        all_tests(26) = test_case("test_check_plateau_condition_helper", test_check_plateau_condition_helper)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -108,6 +109,283 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_check_plateau_condition_helper()
+        integer(int32), parameter :: n_studies = 3
+        real(real64) :: confidence_interval(2, n_studies)
+        real(real64) :: best_ci(2, n_studies)
+        integer(int32) :: best_i_point, best_i_neighbor, best_exceeded
+        logical :: plateau_found
+        real(real64) :: succeeding_ci_overlap
+        integer(int32) :: join_method
+
+        succeeding_ci_overlap = 0.5_real64
+
+        ! ============================================================
+        ! JOIN_MIN: success case
+        ! All overlaps >= 0.5 → min(overlaps) >= 0.5 → plateau_found = .true.
+        !
+        ! best_ci (all studies): [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [0.2, 0.8]  → overlap = 0.6 / 0.6 = 1.0
+        !   study 2: [0.0, 0.5]  → overlap = 0.5 / 0.5 = 1.0
+        !   study 3: [0.5, 1.0]  → overlap = 0.5 / 0.5 = 1.0
+        ! min(overlaps) = 1.0 ≥ 0.5 → plateau condition met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            0.2, 0.8, 0.0, &   ! mins
+            0.5, 0.1, 0.2  &    ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 1
+        best_i_neighbor = 1
+        best_exceeded   = 0
+
+        join_method = JOIN_MIN
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=2, i_neighbor_count=3, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_true(plateau_found, "test_check_plateau_condition_helper: JOIN_MIN success: all overlaps >= threshold")
+        call assert_equal_int(best_i_point, 2, "test_check_plateau_condition_helper: JOIN_MIN success: best_i_point updated")
+        call assert_equal_int(best_i_neighbor, 3, "test_check_plateau_condition_helper: JOIN_MIN success: best_i_neighbor updated")
+        call assert_equal_int(best_exceeded, 3, "test_check_plateau_condition_helper: JOIN_MIN success: all 3 exceeded")
+
+        ! ============================================================
+        ! JOIN_MIN: failure case
+        ! Not all overlaps >= 0.5 → min(overlaps) < 0.5 → plateau_found = .false.
+        !
+        ! best_ci (all studies): [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [0.2, 0.8]  → overlap = 1.0
+        !   study 2: [0.0, 0.5]  → overlap = 1.0
+        !   study 3: [1.1, 1.2]  → overlap = 0.0
+        ! overlaps = [1.0, 1.0, 0.0], min = 0.0 < 0.5 → plateau condition NOT met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            0.2, 0.8, 0.0, &   ! mins
+            0.5, 1.1, 1.2  &    ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 10
+        best_i_neighbor = 20
+        best_exceeded   = 0
+
+        join_method = JOIN_MIN
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=4, i_neighbor_count=5, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_false(plateau_found, "test_check_plateau_condition_helper: JOIN_MIN failure: not all overlaps >= threshold")
+        call assert_equal_int(best_exceeded, 2, "test_check_plateau_condition_helper: JOIN_MIN failure: only 2 exceeded")
+
+        ! ============================================================
+        ! JOIN_MAX: success case
+        ! At least one overlap >= 0.5 → max(overlaps) >= 0.5 → plateau_found = .true.
+        !
+        ! best_ci: [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [1.1, 1.2] → overlap = 0.0
+        !   study 2: [1.3, 1.4] → overlap = 0.0
+        !   study 3: [0.2, 0.8] → overlap = 1.0
+        ! max(overlaps) = 1.0 ≥ 0.5 → plateau condition met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            1.1, 1.2, 1.3, &   ! mins
+            1.4, 0.2, 0.8   &   ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 1
+        best_i_neighbor = 1
+        best_exceeded   = 0
+
+        join_method = JOIN_MAX
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=6, i_neighbor_count=7, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_true(plateau_found, "test_check_plateau_condition_helper: JOIN_MAX success: at least one overlap >= threshold")
+        call assert_equal_int(best_exceeded, 1, "test_check_plateau_condition_helper: JOIN_MAX success: exactly 1 exceeded")
+
+        ! ============================================================
+        ! JOIN_MAX: failure case
+        ! No overlap >= 0.5 → max(overlaps) < 0.5 → plateau_found = .false.
+        !
+        ! best_ci: [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [1.1, 1.2] → overlap = 0.0
+        !   study 2: [1.3, 1.4] → overlap = 0.0
+        !   study 3: [1.5, 1.6] → overlap = 0.0
+        ! max(overlaps) = 0.0 < 0.5 → plateau condition NOT met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            1.1, 1.2, 1.3, &   ! mins
+            1.4, 1.4, 1.6  &    ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 1
+        best_i_neighbor = 1
+        best_exceeded   = 0
+
+        join_method = JOIN_MAX
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=8, i_neighbor_count=9, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_false(plateau_found, "test_check_plateau_condition_helper: JOIN_MAX failure: no overlap >= threshold")
+        call assert_equal_int(best_exceeded, 0, "test_check_plateau_condition_helper: JOIN_MAX failure: none exceeded")
+
+        ! ============================================================
+        ! JOIN_MEDIAN: success case
+        ! Majority (>= 2 of 3) overlaps >= 0.5 → median(overlaps) >= 0.5 → plateau_found = .true.
+        !
+        ! best_ci: [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [0.2, 0.8] → overlap = 1.0
+        !   study 2: [0.1, 0.9] → overlap = 1.0
+        !   study 3: [1.1, 1.2] → overlap = 0.0
+        ! overlaps = [1.0, 1.0, 0.0], median = 1.0 ≥ 0.5 → plateau condition met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            0.2, 0.8, 0.1, &   ! mins
+            0.9, 1.1, 1.2  &    ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 1
+        best_i_neighbor = 1
+        best_exceeded   = 0
+
+        join_method = JOIN_MEDIAN
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=11, i_neighbor_count=12, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_true(plateau_found, "test_check_plateau_condition_helper: JOIN_MEDIAN success: majority overlaps >= threshold")
+        call assert_equal_int(best_exceeded, 2, "test_check_plateau_condition_helper: JOIN_MEDIAN success: 2 exceeded")
+
+        ! ============================================================
+        ! JOIN_MEDIAN: failure case
+        ! Only 1 of 3 overlaps >= 0.5 → median(overlaps) < 0.5 → plateau_found = .false.
+        !
+        ! best_ci: [0.0, 1.0]
+        ! confidence_interval:
+        !   study 1: [0.2, 0.8] → overlap = 1.0
+        !   study 2: [1.1, 1.2] → overlap = 0.0
+        !   study 3: [1.3, 1.4] → overlap = 0.0
+        ! overlaps = [1.0, 0.0, 0.0], median = 0.0 < 0.5 → plateau condition NOT met
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            0.2, 0.8, 1.1, &   ! mins
+            1.2, 1.3, 1.4 &     ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point    = 1
+        best_i_neighbor = 1
+        best_exceeded   = 0
+
+        join_method = JOIN_MEDIAN
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=13, i_neighbor_count=14, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_false(plateau_found, "test_check_plateau_condition_helper: JOIN_MEDIAN failure: minority overlaps >= threshold")
+        call assert_equal_int(best_exceeded, 1, "test_check_plateau_condition_helper: JOIN_MEDIAN failure: only 1 exceeded")
+
+        ! ============================================================
+        ! Extra: worse candidate than previous best → early plateau
+        ! exceeds_min_CI_overlap < best_params_exceeded_CI_overlap
+        ! → plateau_found = .true., best_* NOT updated
+        ! JOIN_MIN condition alone would fail
+        ! ============================================================
+        best_ci = reshape([ &
+            0.0, 1.0, 0.0, &   ! mins
+            1.0, 0.0, 1.0&      ! maxs
+        ], shape(best_ci))
+
+        confidence_interval = reshape([ &
+            1.1, 1.2, 0.2, &   ! mins (only 2nd,3rd overlap)
+            0.3, 0.8, 0.9&      ! maxs
+        ], shape(confidence_interval))
+
+        best_i_point        = 99
+        best_i_neighbor     = 88
+        best_exceeded       = 3   ! previous best had all 3 exceeding
+        join_method         = JOIN_MIN
+
+        call check_plateau_condition_helper( &
+            confidence_interval, best_ci, n_studies, &
+            best_i_point, best_i_neighbor, best_exceeded, &
+            i_point_count=15, i_neighbor_count=16, &
+            join_method=join_method, &
+            succeeding_ci_overlap=succeeding_ci_overlap, &
+            plateau_found=plateau_found)
+
+        call assert_true(plateau_found, "test_check_plateau_condition_helper: Early plateau: new candidate worse than previous best")
+        call assert_equal_int(best_i_point, 99, "test_check_plateau_condition_helper: Early plateau: best_i_point unchanged")
+        call assert_equal_int(best_i_neighbor, 88, "test_check_plateau_condition_helper: Early plateau: best_i_neighbor unchanged")
+        call assert_equal_int(best_exceeded, 3, "test_check_plateau_condition_helper: Early plateau: best_exceeded unchanged")
+
+    end subroutine test_check_plateau_condition_helper
 
     subroutine test_gjct_permutation_test_helper()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 50

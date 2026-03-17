@@ -603,7 +603,8 @@ contains
         end do
     end subroutine js_comp_test_helper
 
-    pure subroutine check_plateau_condition_helper(confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, i_point_count, i_neighbor_count, join_method, succeeding_ci_overlap, plateau_found)
+    !> Helper for [[tox_data_integration(module):determine_js_comp_test_n_points_n_neighbors(interface)]] to test a candidate on the plateau condition
+    subroutine check_plateau_condition_helper(confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, i_point_count, i_neighbor_count, join_method, succeeding_ci_overlap, plateau_found)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         real(real64), dimension(2, n_studies), intent(in) :: confidence_interval
@@ -704,7 +705,7 @@ contains
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_counts
             !! Work array that holds the permutations' pmfs' absolute counts
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
-            !! Work array for proper resampling per permutation (keeps track of the residuals in the pool to pick from)
+            !! Work array for proper resampling per permutation (keeps track of the residuals in the pool to draw from)
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_js_divergences
             !! Work array that holds the permutations' per-point JSD values
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_weights
@@ -724,6 +725,8 @@ contains
 
         p_values = 0.0_real64
         do i_permutation = 1, actual_n_permutations
+            ! Resample histogram, each reference point becomes a pool without replacement -> draw from all studies' residuals
+            ! tmp_mean_pmf_counts will be updated in-place. It represents the pool to draw from
             tmp_mean_pmf_counts = mean_pmf_counts
             do i_study = 1, n_studies
                 do i_point = 1, n_points
@@ -737,20 +740,20 @@ contains
                 call compute_weighted_global_divergence_helper(tmp_js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
 
                 if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
-                    p_values(i_study) = anint(p_values(i_study) + 1.0_real64)
+                    p_values(i_study) = p_values(i_study) + 1.0_real64
                 end if
             end do
         end do
 
         if (n_permutations == 0) return
         do concurrent (i_study = 1:n_studies) shared(p_values, n_permutations)
-            p_values(i_study) = p_values(i_study) / real(n_permutations, real64)
+            p_values(i_study) = anint(p_values(i_study)) / real(n_permutations, real64)
         end do
 
         call destroy_rng(rng)
     end subroutine gjct_permutation_test_helper
 
-    !> 
+    !> (no input validation) Resample histograms with replacement and recompute the JSD to get a confidence interval for it.
     subroutine bootstrap_histogram_helper(n_bootstraps, included_n_reps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, confidence_interval, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts, tmp_pmfs, tmp_mean_pmf, random_seed)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -800,7 +803,7 @@ contains
         end do
 
         do i_bootstrap = 1, n_bootstraps
-            ! Resample histogram, each reference point becomes a pool with replacement -> pick from all studies' residuals
+            ! Resample histogram, each reference point becomes a pool with replacement -> draw from all studies' residuals
             do i_study = 1, n_studies
                 do i_point = 1, n_points
                     call random_multinomial(rng, mean_pmf_counts(:, i_point), n_bins, mean_pmf_included_n_reps(i_point), included_n_reps(i_point, i_study), tmp_counts(:, i_point))
