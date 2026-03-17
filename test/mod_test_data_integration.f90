@@ -4,7 +4,7 @@
 module mod_test_data_integration
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_negative_inf, ieee_positive_inf
     use tox_data_integration_jsd
     use tox_data_integration_preprocessing
     use tox_data_integration_js_comp_test
@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(22)
+        type(test_case) :: all_tests(25)
         ! jsd
         all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -42,6 +42,9 @@ contains
         all_tests(19) = test_case("test_compute_fractional_overlap", test_compute_fractional_overlap)
         all_tests(20) = test_case("test_test_neighborhood_overlaps", test_test_neighborhood_overlaps)
         all_tests(21) = test_case("test_create_mean_pmf_helpers", test_create_mean_pmf_helpers)
+        all_tests(23) = test_case("test_test_mean_pmf_min_counts_helper", test_test_mean_pmf_min_counts_helper)
+        all_tests(24) = test_case("test_bootstrap_histogram_helper", test_bootstrap_histogram_helper)
+        all_tests(25) = test_case("test_gjct_permutation_test_helper", test_gjct_permutation_test_helper)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -105,6 +108,193 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_gjct_permutation_test_helper()
+        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 50
+        integer(int32) :: i_permutation, i_study, max_possible_seen, n_counts, i_point, i_bin, i_jsd
+
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), tmp_mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+
+        integer(int32) :: tmp_counts(n_bins, n_points), expected_tmp_counts(n_bins, n_points)
+        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points)
+        real(real64) :: tmp_js_divergences(n_points, n_studies)
+        real(real64) :: tmp_weights(n_points, n_studies)
+        real(real64) :: tmp_global_js_divergence(n_studies)
+        real(real64) :: p_values(n_studies), global_jsd_observed(n_studies)
+
+        ! ------------------------------------------------------------
+        ! Setup deterministic small test data
+        ! ------------------------------------------------------------
+        mean_pmf_counts = reshape([ &
+            10, 10, &   ! point 1
+            10, 10, &   ! point 2
+            10, 10&      ! point 3
+        ], shape(mean_pmf_counts))
+
+        mean_pmf = real(mean_pmf_counts, real64) / real(n_studies, real64)
+
+        mean_pmf_included_n_reps = [30_int32, 30_int32]
+        included_n_reps = reshape([ &
+            15, 15, &   ! study 1
+            15, 15&      ! study 2
+        ], shape(included_n_reps))
+
+        do i_jsd = 0, 1
+            global_jsd_observed = real(i_jsd, real64)
+            do i_permutation = 1, n_permutations
+                call gjct_permutation_test_helper(&
+                    mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, n_points, n_bins,&
+                    included_n_reps, n_studies, global_jsd_observed, p_values,&
+                    tmp_pmfs, tmp_counts, tmp_mean_pmf_counts, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, i_permutation, random_seed=12345_int32&
+                )
+
+                do i_point = 1, n_points
+                    do i_bin = 1, n_bins
+                        associate (&
+                            pmf_count => tmp_counts(i_bin, i_point),&
+                            pmf_included_n_reps => included_n_reps(i_point, n_studies)&
+                        )
+                            call assert_true(pmf_count <= pmf_included_n_reps, "test_gjct_permutation_test_helper: resampled bins should never exceed the total count of the reference point (no replacement)")
+                        end associate
+                    end do
+                end do
+            end do
+
+            call assert_equal_int(count(p_values>abs(real(1 - i_jsd, real64)-TOL)), n_studies, "test_gjct_permutation_test_helper: p_values should be either 1 or 0 if determined correctly for jsd_obs=0 and jsd_obs=1")
+        end do
+    end subroutine test_gjct_permutation_test_helper
+
+    subroutine test_bootstrap_histogram_helper()
+        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_bootstraps = 50
+        integer(int32), parameter :: n_bootstrapping_top_k_jsds = n_bootstraps
+        integer(int32) :: i_bootstrap, i_study, max_possible_seen, n_counts, i_point, i_bin
+
+        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+
+        real(real64) :: confidence_interval(2, n_studies)
+        real(real64) :: bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies)
+
+        integer(int32) :: tmp_counts(n_bins, n_points), expected_tmp_counts(n_bins, n_points)
+        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        real(real64) :: tmp_mean_pmf(n_bins, n_points)
+        real(real64) :: tmp_js_divergences(n_points, n_studies)
+        real(real64) :: tmp_weights(n_points, n_studies)
+        real(real64) :: tmp_global_js_divergence(n_studies)
+
+        integer(int32) :: i_saw_greater, i_saw_lower
+        real(real64) :: p
+
+        ! ------------------------------------------------------------
+        ! Setup deterministic small test data
+        ! ------------------------------------------------------------
+        mean_pmf_counts = reshape([ &
+            10, 10, &   ! point 1
+            10, 10, &   ! point 2
+            10, 10&      ! point 3
+        ], shape(mean_pmf_counts))
+
+        mean_pmf_included_n_reps = [30_int32, 30_int32]
+        included_n_reps = reshape([ &
+            15, 15, &   ! study 1
+            15, 15&      ! study 2
+        ], shape(included_n_reps))
+
+        confidence_interval = 0.0_real64
+
+        i_saw_greater = 0
+        i_saw_lower   = 0
+        ! ------------------------------------------------------------
+        ! Test each bootstrap iteration independently
+        ! ------------------------------------------------------------
+
+        do i_bootstrap = 1, n_bootstraps
+            confidence_interval(1, :) = M_POS_INF
+            confidence_interval(2, :) = M_NEG_INF
+            bootstrapping_top_k_jsds = 0.0_real64
+
+            call bootstrap_histogram_helper( &
+                i_bootstrap, included_n_reps, n_bins, n_points, n_studies, &
+                mean_pmf_counts, mean_pmf_included_n_reps, confidence_interval, &
+                tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, &
+                tmp_counts, tmp_pmfs, tmp_mean_pmf, random_seed=12345_int32)
+
+            ! --------------------------------------------------------
+            ! 1. Confidence interval updated correctly
+            ! --------------------------------------------------------
+            do i_study = 1, n_studies
+                call assert_equal_int(count(ieee_is_finite(bootstrapping_top_k_jsds(:, 1, i_study))), i_bootstrap, "test_bootstrap_histogram_helper: should always push into the top k")
+                call assert_equal_int(count(ieee_is_finite(bootstrapping_top_k_jsds(:, 2, i_study))), i_bootstrap, "test_bootstrap_histogram_helper: should always push into the bottom k")
+                call assert_equal_real(maxval(bootstrapping_top_k_jsds(:, 1, i_study)), confidence_interval(1, i_study), 0.0_real64, "test_bootstrap_histogram_helper: confidence_interval should have minimum value")
+                call assert_equal_real(minval(bootstrapping_top_k_jsds(:, 2, i_study)), confidence_interval(2, i_study), 0.0_real64, "test_bootstrap_histogram_helper: confidence_interval should have maximum value")
+            end do
+
+            ! --------------------------------------------------------
+            ! 2. tmp_mean_pmf equals mean of tmp_pmfs across studies
+            ! --------------------------------------------------------
+            call assert_equal_array_real(tmp_mean_pmf, sum(tmp_pmfs, dim=3) / n_studies, size(tmp_mean_pmf, kind=int32), TOL, "test_bootstrap_histogram_helper: tmp_mean_pmf equals mean of tmp_pmfs")
+
+            do i_point = 1, n_points
+                do i_bin = 1, n_bins
+                    associate (&
+                        mean_pmf_count => real(mean_pmf_counts(i_bin, i_point), real64),&
+                        pmf_count => real(tmp_counts(i_bin, i_point), real64),&
+                        mpmf_included_n_reps => real(mean_pmf_included_n_reps(i_point), real64),&
+                        pmf_included_n_reps => real(included_n_reps(i_point, n_studies), real64)&
+                    )
+                        p = mean_pmf_count / mpmf_included_n_reps
+                        i_saw_lower = i_saw_lower + merge(1, 0, pmf_count < p * pmf_included_n_reps)
+                        i_saw_greater = i_saw_greater + merge(1, 0, pmf_count > p * pmf_included_n_reps)
+                    end associate
+                end do
+            end do
+        end do
+
+        expected_tmp_counts = reshape([ &
+            4, 4, &   ! point 1
+            7, 5, &   ! point 2
+            5, 5&      ! point 3
+        ], shape(expected_tmp_counts))
+        n_counts = size(expected_tmp_counts, kind=int32)
+
+        call assert_equal_array_int(tmp_counts, expected_tmp_counts, n_counts, "test_bootstrap_histogram_helper: reproducibility")
+        max_possible_seen = n_counts * n_bootstraps
+
+        ! All mean pmf counts are equal -> equal probability for greater/lower. Equality is less likely
+        call assert_true(i_saw_greater > max_possible_seen / (n_counts / 2), "test_bootstrap_histogram_helper: Multinomial sampling produced many greater counts")
+        call assert_true(i_saw_lower > max_possible_seen / (n_counts / 2), "test_bootstrap_histogram_helper: Multinomial sampling produced many lower counts")
+    end subroutine test_bootstrap_histogram_helper
+
+    subroutine test_test_mean_pmf_min_counts_helper()
+        integer(int32), parameter :: n_bins = 3, n_points = 2
+        integer(int32) :: min
+        integer(int32) :: counts_ok(n_bins, n_points)
+        integer(int32) :: counts_bad(n_bins, n_points)
+        logical :: result
+
+        ! Case 1: all bins meet the minimum
+        min = 5
+        counts_ok = reshape([ &
+            5, 6, 7, &   ! point 1
+            8, 5, 9&     ! point 2
+        ], shape(counts_ok))
+
+        result = test_mean_pmf_min_counts_helper(counts_ok, n_bins, n_points, min)
+        call assert_true(result, "test_test_mean_pmf_min_counts_helper: All bins should meet minimum count")
+
+        ! Case 2: at least one bin violates the minimum
+        counts_bad = counts_ok
+        counts_bad(2,1) = 3   ! violate minimum
+
+        result = test_mean_pmf_min_counts_helper(counts_bad, n_bins, n_points, min)
+        call assert_false(result, "test_test_mean_pmf_min_counts_helper: A bin below minimum should cause failure")
+
+    end subroutine test_test_mean_pmf_min_counts_helper
 
     subroutine test_create_mean_pmf_helpers()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2

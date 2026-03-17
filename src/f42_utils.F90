@@ -19,6 +19,7 @@ module f42_utils
 
   interface sort_array_heapsort
     module procedure sort_real_heapsort, sort_integer_heapsort, sort_character_heapsort
+    module procedure sort_real_heapsort_expl_size
   end interface sort_array_heapsort
 
   interface shuffle_vector
@@ -33,6 +34,22 @@ module f42_utils
   real(real64), parameter :: EPS = epsilon(1.0_real64)
   real(real64), parameter :: LOG_2 = log(2.0_real64)
 contains
+
+  !> Initializes a permutation vector with ascending indices
+  pure subroutine init_perm(perm)
+    integer(int32), dimension(:), intent(out) :: perm
+      !! Permutation vector to initialize with indices
+
+    integer(int32) :: i_perm
+
+    associate (&
+      n_perm => size(perm, kind=int32)&
+    )
+      do concurrent (i_perm = 1:n_perm) shared(perm)
+        perm(i_perm) = i_perm
+      end do
+    end associate
+  end subroutine init_perm
 
   !> Function to find the position to place a value in a sorted array using binary search
   pure integer(int32) function binary_search_insertion(arr, perm, value, lower_idx, upper_idx) result(idx)
@@ -413,7 +430,19 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_real(array, perm)
-  end subroutine sort_real_heapsort  
+  end subroutine sort_real_heapsort
+
+  !> Sort a real explicit-size array indirectly using heapsort.
+  !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
+  pure subroutine sort_real_heapsort_expl_size(array, perm, n)
+    !| Size of `array`
+    integer(int32), intent(in) :: n
+    !| Real input array to sort
+    real(real64), intent(in) :: array(n)
+    !| Permutation vector that will be sorted
+    integer(int32), intent(inout) :: perm(n)
+    call heapsort_real(array, perm)
+  end subroutine sort_real_heapsort_expl_size
 
   !> Sort an integer array indirectly using heapsort.  
   !| Similar to `sort_real_heapsort`, but for integer input.
@@ -423,7 +452,7 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_integer(array, perm)
-  end subroutine sort_integer_heapsort  
+  end subroutine sort_integer_heapsort
 
   !> Sort a character array indirectly using heapsort.  
   !| Uses lexicographic ordering and permutation vector sorting.  
@@ -433,7 +462,7 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_character(array, perm)
-  end subroutine sort_character_heapsort  
+  end subroutine sort_character_heapsort
 
   !> Internal quicksort implementation for real arrays.
   !| Sorts indirectly using the permutation vector `perm`. Manual stack replaces recursion.

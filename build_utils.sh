@@ -17,6 +17,8 @@ function utils_fpm() {
   if [[ "$1" == "test" ]]; then
     prefix="fpm test --target ${2:-run_tests}"
     libpath=build:"$libpath"
+  elif [[ "$1" == "list" ]]; then
+    prefix="fpm build --list"
   fi
   LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG" -- $ARGS
 }

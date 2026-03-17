@@ -1,6 +1,6 @@
 #include "macros.h"
 
-!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) - JSD Calculation
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) - JSD Calculation!!
 !|
 !| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(module)]].
 module tox_data_integration_jsd

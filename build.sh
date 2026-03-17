@@ -35,7 +35,7 @@ if [[ -z "$KEEP_FPM_TOML" ]]; then
 fi
 
 # Copy latest .so
-cp "$(find build/"${COMPILER}"_*/ \( -name "*.so" \) -printf "%T@ %p\n" | sort -n | tail -1 | sed "s/^[^ ]* //" )" build
+utils_fpm list 2>&1 | grep 'libtensor-omics\.so' | xargs -I{} cp {} build
 check_exit_code "No .so file found"
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
