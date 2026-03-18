@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(26)
+        type(test_case) :: all_tests(27)
         ! jsd
         all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -46,6 +46,7 @@ contains
         all_tests(24) = test_case("test_bootstrap_histogram_helper", test_bootstrap_histogram_helper)
         all_tests(25) = test_case("test_gjct_permutation_test_helper", test_gjct_permutation_test_helper)
         all_tests(26) = test_case("test_check_plateau_condition_helper", test_check_plateau_condition_helper)
+        all_tests(27) = test_case("test_js_comp_test_helper", test_js_comp_test_helper)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -109,6 +110,129 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_js_comp_test_helper()
+        ! ------------------------------------------------------------
+        ! Tiny synthetic test dimensions
+        ! ------------------------------------------------------------
+        integer(int32), parameter :: n_studies = 2
+        integer(int32), parameter :: max_n_genes = 4
+        integer(int32), parameter :: max_n_reps  = 3
+        integer(int32), parameter :: n_points    = 2
+        integer(int32), parameter :: n_neighbors = 2
+        integer(int32), parameter :: n_bins      = 3
+        integer(int32), parameter :: n_perms     = 5
+
+        ! ------------------------------------------------------------
+        ! Inputs
+        ! ------------------------------------------------------------
+        real(real64) :: gene_means(max_n_genes, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes, n_studies)
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        real(real64) :: x_star(n_points)
+        real(real64) :: shared_residual_range
+
+        ! ------------------------------------------------------------
+        ! Outputs (reference run)
+        ! ------------------------------------------------------------
+        integer(int32) :: neigh_ranges_ref(2, n_points, n_studies)
+        integer(int32) :: neigh_res_ref(n_neighbors, n_points, n_studies)
+        real(real64)   :: pmfs_ref(n_bins, n_points, n_studies)
+        integer(int32) :: counts_ref(n_bins, n_points, n_studies)
+        integer(int32) :: incl_reps_ref(n_points, n_studies)
+        real(real64)   :: mean_pmf_ref(n_bins, n_points)
+        integer(int32) :: mean_counts_ref(n_bins, n_points)
+        integer(int32) :: mean_incl_reps_ref(n_points)
+        real(real64)   :: js_ref(n_points, n_studies)
+        real(real64)   :: weights_ref(n_points, n_studies)
+        real(real64)   :: global_js_ref(n_studies)
+        real(real64)   :: p_values_ref(n_studies)
+
+        ! ------------------------------------------------------------
+        ! Outputs (test run)
+        ! ------------------------------------------------------------
+        integer(int32) :: neigh_ranges(2, n_points, n_studies)
+        integer(int32) :: neigh_res(n_neighbors, n_points, n_studies)
+        real(real64)   :: pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: counts(n_bins, n_points, n_studies)
+        integer(int32) :: incl_reps(n_points, n_studies)
+        real(real64)   :: mean_pmf(n_bins, n_points)
+        integer(int32) :: mean_counts(n_bins, n_points)
+        integer(int32) :: mean_incl_reps(n_points)
+        real(real64)   :: js(n_points, n_studies)
+        real(real64)   :: weights(n_points, n_studies)
+        real(real64)   :: global_js(n_studies)
+        real(real64)   :: p_values(n_studies)
+        integer(int32) :: tmp_mean_counts(n_bins, n_points)
+        integer(int32) :: tmp_pmf_counts(n_bins, n_points)
+        real(real64)   :: tmp_global_js(n_studies)
+
+        integer(int32) :: seed
+
+        ! ------------------------------------------------------------
+        ! Synthetic deterministic data
+        ! ------------------------------------------------------------
+        gene_means = reshape([ &
+            1.0, 2.0, 3.0, 4.0, &
+            1.5, 2.5, 3.5, 4.5  &
+        ], shape(gene_means))
+
+        gene_means_perms = reshape([ &
+            1,2,3,4, &
+            1,2,3,4  &
+        ], shape(gene_means_perms))
+
+        residuals = 0.1_real64
+        x_star = [1.5_real64, 3.5_real64]
+        shared_residual_range = 1.0_real64
+        seed = 314159256_int32
+
+        ! ------------------------------------------------------------
+        ! 1. Reference run: run the pipeline WITHOUT permutation test
+        ! ------------------------------------------------------------
+        call construct_neighborhoods_helper(n_points, x_star, max_n_genes, gene_means(:,1), gene_means_perms(:,1), neigh_res_ref(:,:,1), neigh_ranges_ref(:,:,1), n_neighbors)
+        call construct_neighborhoods_helper(n_points, x_star, max_n_genes, gene_means(:,2), gene_means_perms(:,2), neigh_res_ref(:,:,2), neigh_ranges_ref(:,:,2), n_neighbors)
+
+        call build_residual_histograms_helper(neigh_res_ref(:,:,1), n_neighbors, n_points, residuals(:,:,1), max_n_reps, max_n_genes, shared_residual_range, n_bins, counts_ref(:,:,1), pmfs_ref(:,:,1), incl_reps_ref(:,1))
+        call build_residual_histograms_helper(neigh_res_ref(:,:,2), n_neighbors, n_points, residuals(:,:,2), max_n_reps, max_n_genes, shared_residual_range, n_bins, counts_ref(:,:,2), pmfs_ref(:,:,2), incl_reps_ref(:,2))
+
+        call create_mean_pmf_helper(pmfs_ref, counts_ref, n_bins, n_points, n_studies, incl_reps_ref, mean_pmf_ref, mean_incl_reps_ref, mean_counts_ref)
+
+        call compute_divergence_per_reference_point_helper(pmfs_ref(:,:,1), mean_pmf_ref, n_points, n_bins, js_ref(:,1))
+        call compute_divergence_per_reference_point_helper(pmfs_ref(:,:,2), mean_pmf_ref, n_points, n_bins, js_ref(:,2))
+
+        call compute_weighted_global_divergence_helper(js_ref(:,1), n_points, incl_reps_ref(:,1), mean_incl_reps_ref, global_js_ref(1), weights_ref(:,1))
+        call compute_weighted_global_divergence_helper(js_ref(:,2), n_points, incl_reps_ref(:,2), mean_incl_reps_ref, global_js_ref(2), weights_ref(:,2))
+
+        p_values_ref = 1.0_real64   ! The residuals are all identical -> identical JSDs -> no JSD is worse -> p value is 1
+
+        ! ------------------------------------------------------------
+        ! 2. Test run: run js_comp_test_helper (WITH permutation test)
+        ! ------------------------------------------------------------
+        call js_comp_test_helper( &
+            gene_means, max_n_genes, n_studies, gene_means_perms, residuals, shared_residual_range, &
+            n_bins, max_n_reps, x_star, n_points, n_neighbors, neigh_ranges, neigh_res, &
+            pmfs, counts, incl_reps, mean_pmf, mean_counts, mean_incl_reps, &
+            js, weights, global_js, p_values, &
+            tmp_global_js, tmp_pmf_counts, tmp_mean_counts, &
+            n_permutations=n_perms, random_seed=seed)
+
+        ! ------------------------------------------------------------
+        ! 3. Assertions: final outputs must match reference
+        ! ------------------------------------------------------------
+        call assert_equal_array_int(counts, counts_ref, size(counts), "test_js_comp_test_helper: counts match reference")
+        call assert_equal_array_real(pmfs, pmfs_ref, size(pmfs), TOL, "test_js_comp_test_helper: pmfs match reference")
+        call assert_equal_array_int(incl_reps, incl_reps_ref, size(incl_reps), "test_js_comp_test_helper: included_n_reps match")
+        call assert_equal_array_real(mean_pmf, mean_pmf_ref, size(mean_pmf), TOL, "test_js_comp_test_helper: mean_pmf match")
+        call assert_equal_array_int(mean_counts, mean_counts_ref, size(mean_counts), "test_js_comp_test_helper: mean_pmf_counts match")
+        call assert_equal_array_int(mean_incl_reps, mean_incl_reps_ref, size(mean_incl_reps), "test_js_comp_test_helper: mean_pmf_included_n_reps match")
+        call assert_equal_array_real(js, js_ref, size(js), TOL, "test_js_comp_test_helper: js_divergences match")
+        call assert_equal_array_real(weights, weights_ref, size(weights), TOL, "test_js_comp_test_helper: weights match")
+        call assert_equal_array_real(global_js, global_js_ref, size(global_js), TOL, "test_js_comp_test_helper: global_js_divergence match")
+
+        call assert_equal_array_real(p_values, p_values_ref, size(p_values), TOL, "test_js_comp_test_helper: p_values match")
+
+    end subroutine test_js_comp_test_helper
 
     subroutine test_check_plateau_condition_helper()
         integer(int32), parameter :: n_studies = 3

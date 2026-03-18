@@ -59,7 +59,7 @@ contains
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+            !! Quantile for determining the residual range, default: `95.0`
 
         integer(int32) :: i_pool, n_pool, lower_index, left, right
         real(real64) :: actual_quantile, index, fraction, upper_val
@@ -160,7 +160,7 @@ contains
         if (is_err(ierr)) return
 
         call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
-        
+
         call map_err_arg_pos(ierr, 11_int32, 9_int32)
     end subroutine determine_bin_count_and_shared_residual_range_alloc
 
@@ -190,7 +190,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         logical, intent(in) :: determine_bin_count
-            !! # Should bin count be determined? If not, `n_bins` remains unchanged
+            !! Should bin count be determined? If not, `n_bins` remains unchanged
         logical, intent(in) :: determine_shared_residual_range
             !! Should shared residual range be determined? If not, `shared_residual_range` is taken as input
 
@@ -227,11 +227,17 @@ contains
 
     !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
     !| using the maximum value returned by the Sturges rule
-    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| \[
+    !|      \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil
+    !| \]
     !| and the Freedman-Diaconis rule
-    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| \[
+    !|      \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}}
+    !| \]
     !| so finally
-    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
+    !| \[
+    !|      \texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)
+    !| \]
     pure subroutine estimate_bin_count_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -259,11 +265,17 @@ contains
 
     !> Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
     !| using the maximum value returned by the Sturges rule
-    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| \[
+    !|      \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil
+    !| \]
     !| and the Freedman-Diaconis rule
-    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| \[
+    !|      \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}}
+    !| \]
     !| so finally
-    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
+    !| \[
+    !|      \texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)
+    !| \]
     pure subroutine estimate_bin_count(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, ierr)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -297,11 +309,17 @@ contains
 
     !> (no input validation) Estimates the number of histogram bins for [[tox_data_integration(module):build_residual_histograms(interface)]],
     !| using the maximum value returned by the Sturges rule
-    !| \[ \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil \]
+    !| \[
+    !|      \texttt{sturges_bins} = 1 + \lfloor \frac{\ln\left(\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}\right)}{\ln\left(2\right)} \rceil
+    !| \]
     !| and the Freedman-Diaconis rule
-    !| \[ \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}} \]
+    !| \[
+    !|      \texttt{freed_diac_bins} = 2 \cdot \frac{\operatorname{IQR}(\texttt{residuals})}{\sqrt[3]{\texttt{max_n_reps_all_studies} \cdot \texttt{n_neighbors}}}
+    !| \]
     !| so finally
-    !| \[\texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)\]
+    !| \[
+    !|      \texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)
+    !| \]
     pure subroutine estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
@@ -511,6 +529,13 @@ contains
         n_neighbors = candidates_n_neighbors(best_params_CI_i_neighbor_count)
     end subroutine determine_js_comp_test_n_points_n_neighbors_helper
 
+    !> (no input validation) Performs the pipeline:
+    !| 
+    !| 1. [[tox_data_integration(module):construct_neighborhoods(interface)]]
+    !| 2. [[tox_data_integration(module):build_residual_histograms(interface)]]
+    !| 3. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !| 4. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !|
     subroutine js_comp_test_helper(&
             gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, residuals, shared_residual_range,&
             n_bins, max_n_reps_all_studies, x_star, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
@@ -677,6 +702,7 @@ contains
         end if
     end subroutine check_plateau_condition_helper
 
+    !> (no input validation) Resample histograms without replacement and recompute the JSD to estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable.
     subroutine gjct_permutation_test_helper(&
             mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, n_points, n_bins,&
             included_n_reps, n_studies, global_jsd_observed, p_values,&
