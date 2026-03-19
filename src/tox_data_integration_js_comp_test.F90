@@ -428,11 +428,11 @@ contains
             !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_x_star
             !! Mean-expression reference points
-        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
             !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
-        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out), target :: tmp_counts
             !! Absolute counts of a residual per bin for `pmfs`
-        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
+        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out), target :: tmp_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
         real(real64), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf
             !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
@@ -440,13 +440,13 @@ contains
             !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
-        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out), target :: tmp_js_divergences
             !! The per-reference-point Jensen-Shannon-Divergence -> finally `js_divergences(1:n_points, :)`
-        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_weights
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out), target :: tmp_weights
             !! The per-reference-point weights for the Jensen-Shannon-Divergence -> finally `weights(1:n_points, :)`
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
             !! The global Jensen-Shannon-Divergence for the best candidate pair
-        real(real64), dimension(2, n_studies), intent(out), target :: tmp_confidence_interval
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
             !! Work array to hold the confidence intervals for a candidate pair. And also for permutation tests to hold the global jsd value per permutation.
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
             !! Work array for bootstrapping
@@ -461,9 +461,12 @@ contains
 
         integer(int32) :: n_gene_means, n_pool, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_neighbor_overlap
-        real(real64), dimension(:), pointer :: tmp_global_js_divergences
-        integer(int32) :: actual_min_count_per_mean_bin, actual_n_permutations, actual_random_seed
+        integer(int32) :: actual_min_count_per_mean_bin
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
+        real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
+        real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
+        integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view
+        integer(int32), dimension(:, :, :), pointer :: tmp_counts_view
 
         M_DEFAULT_VAL(min_count_per_mean_bin, actual_min_count_per_mean_bin, 5_int32)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
@@ -481,6 +484,11 @@ contains
         ! Test candidate pairs and find JSD plateau
         do i_point_count = 1, n_candidates_n_points
             n_points = candidates_n_points(i_point_count)
+            tmp_pmfs_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_pmfs
+            tmp_counts_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_counts
+            tmp_js_divergences_view(1:n_points, 1:n_studies) => tmp_js_divergences
+            tmp_weights_view(1:n_points, 1:n_studies) => tmp_weights
+            tmp_included_n_reps_view(1:n_points, 1:n_studies) => tmp_included_n_reps
 
             ! determine x_star
             call pool_means_n_pool_input_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, tmp_x_star)
@@ -493,7 +501,7 @@ contains
                 do i_study = 1, n_studies
                     call construct_neighborhoods_helper(n_points, tmp_x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), tmp_neighborhood_residuals, tmp_neighborhood_ranges, n_neighbors)
                     if (test_neighborhood_overlaps_helper(tmp_neighborhood_ranges, n_points, actual_min_neighbor_overlap)) then
-                        call build_residual_histograms_helper(tmp_neighborhood_residuals, n_neighbors, n_points, residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, tmp_counts(:, :, i_study), tmp_pmfs(:, :, i_study), tmp_included_n_reps(:, i_study))
+                        call build_residual_histograms_helper(tmp_neighborhood_residuals, n_neighbors, n_points, residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, tmp_counts_view(:, :, i_study), tmp_pmfs_view(:, :, i_study), tmp_included_n_reps_view(:, i_study))
                     else
                         all_have_min_neighbor_overlap = .false.
                         exit
@@ -502,21 +510,20 @@ contains
 
                 ! If min consecutive overlap is met, check plateau condition 
                 if (all_have_min_neighbor_overlap) then
-
                     ! 1. Compute mean pmf and ensure all bins have a minimum bin count
-                    call create_mean_pmf_helper(tmp_pmfs, tmp_counts, n_bins, n_points, n_studies, tmp_included_n_reps, tmp_mean_pmf, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts)
+                    call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts)
                     if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
 
                     ! 2. If min bin count is met, compute JSD observation
-                    do concurrent (i_study = 1:n_studies) shared(tmp_pmfs, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences, tmp_included_n_reps, tmp_mean_pmf_included_n_reps, tmp_weights)
-                        call compute_divergence_per_reference_point_helper(tmp_pmfs(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences(:, i_study))
-                        call compute_weighted_global_divergence_helper(tmp_js_divergences(:, i_study), n_points, tmp_included_n_reps(:, i_study), tmp_mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
+                    do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_weights_view)
+                        call compute_divergence_per_reference_point_helper(tmp_pmfs_view(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view(:, i_study))
+                        call compute_weighted_global_divergence_helper(tmp_js_divergences_view(:, i_study), n_points, tmp_included_n_reps_view(:, i_study), tmp_mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights_view(:, i_study))
                         tmp_confidence_interval(:, i_study) = tmp_global_js_divergence(i_study)
                     end do
 
                     ! 3. Compute a confidence interval for the JSD value by bootstrapping
                     ! Each candidate pair should have same conditions for comparability -> reset RNG
-                    call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps, n_bins, n_points, n_studies, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts, tmp_pmfs, tmp_mean_pmf, random_seed)
+                    call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf, random_seed)
                     call check_plateau_condition_helper(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, i_point_count, i_neighbor_count, join_method, actual_succeeding_ci_overlap, plateau_found)
                     if (plateau_found) exit
                 end if
@@ -525,8 +532,14 @@ contains
         end do
 
         ! assign final candidate pair, will be first pair if no candidate pair met the plateau condition
-        n_points = candidates_n_points(best_params_CI_i_point_count)
-        n_neighbors = candidates_n_neighbors(best_params_CI_i_neighbor_count)
+        if (plateau_found) then
+            n_points = candidates_n_points(best_params_CI_i_point_count)
+            n_neighbors = candidates_n_neighbors(best_params_CI_i_neighbor_count)
+        else
+            n_points = candidates_n_points(1)
+            n_neighbors = candidates_n_neighbors(1)
+            best_candidate_pair_confidence_interval = -1.0_real64
+        end if
     end subroutine determine_js_comp_test_n_points_n_neighbors_helper
 
     !> (no input validation) Performs the pipeline:
@@ -817,7 +830,7 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Random seed to use for random number generation, default: `42`
 
-        integer(int32) :: i_bootstrap, i_point, i_study, actual_n_bootstraps
+        integer(int32) :: i_bootstrap, i_point, i_study
         type(rng_t) :: rng
 
         rng = create_rng(random_seed)
@@ -871,7 +884,7 @@ contains
         integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
 
-        integer(int32) :: i_point, i_bin, x
+        integer(int32) :: i_point, i_bin
 
         all_bins_have_min_count = .true.
         do concurrent (i_point = 1:n_points, i_bin = 1:n_bins) shared(mean_pmf_counts, min, all_bins_have_min_count)

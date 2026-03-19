@@ -6,8 +6,12 @@ function init() {
   # FC if --fc=<compiler> specified
   handle_args "$@"
 
-  # --compiler beats --fc beats global $FC
+  # --compiler beats global $COMPILER beats --fc beats global $FC
   COMPILER=$(get_compiler)
+  if [[ -z $(which $COMPILER) ]]; then
+    stderr "$COMPILER not installed"
+    exit
+  fi
   FLAGS=$(get_flags)
 }
 
@@ -44,6 +48,7 @@ function get_alignment() {
 # falls back to gfortran if the set compiler is not known
 function get_compiler() {
   declare compiler=${COMPILER:-$FC}
+  declare default=gfortran
 
   # Detect compiler and choose appropriate profile:
   if [[ "$compiler" == "ifx" || "$compiler" == "ifort" ]]; then
@@ -51,7 +56,14 @@ function get_compiler() {
   elif [[ "$compiler" == "nvfortran" ]]; then
     echo nvfortran
   else
-    echo gfortran
+    if [[ $compiler ]]; then
+      if [[ $compiler != "$default" ]]; then
+        stderr "Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead"
+      fi
+    else
+      stderr "No compiler specified, using '$default'. To specify the compiler, use --compiler=<compiler> or the env variables \$FC, \$COMPILER"
+    fi
+    echo $default
   fi
 }
 

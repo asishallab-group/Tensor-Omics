@@ -30,7 +30,7 @@ contains
 
     !> Get array of all available tests.
     function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(27)
+        type(test_case) :: all_tests(28)
         ! jsd
         all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(16) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -47,6 +47,7 @@ contains
         all_tests(25) = test_case("test_gjct_permutation_test_helper", test_gjct_permutation_test_helper)
         all_tests(26) = test_case("test_check_plateau_condition_helper", test_check_plateau_condition_helper)
         all_tests(27) = test_case("test_js_comp_test_helper", test_js_comp_test_helper)
+        all_tests(28) = test_case("test_determine_js_comp_constant_residuals", test_determine_js_comp_constant_residuals)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -110,6 +111,257 @@ contains
             end if
         end do
     end subroutine run_named_tests_tox_data_integration
+
+    subroutine test_determine_js_comp_constant_residuals()
+        integer(int32), parameter :: n_studies = 3_int32
+        integer(int32), parameter :: max_n_genes_all_studies = 5_int32
+        integer(int32), parameter :: max_n_reps_all_studies  = 4_int32
+        integer(int32), parameter :: max_n_points_candidate  = 3_int32
+        integer(int32), parameter :: max_n_neighbors_candidate = 3_int32
+        integer(int32), parameter :: n_bootstraps = 10_int32
+        integer(int32), parameter :: n_bootstrapping_top_k_jsds = 2_int32
+
+        real(real64), parameter :: R = 3.0_real64, best_possible_jsd = 0.0_real64
+        integer(int32), parameter :: n_bins_1 = 1_int32
+        integer(int32), parameter :: n_bins_2 = 2_int32
+
+        ! candidate configurations
+        integer(int32), parameter :: n_cfg = 2_int32
+        integer(int32), dimension(n_cfg), parameter :: cfg_n_candidates_n_points    = [1_int32, 3_int32]
+        integer(int32), dimension(n_cfg), parameter :: cfg_n_candidates_n_neighbors = [3_int32, 1_int32]
+
+        integer(int32), dimension(3), parameter :: join_methods = [JOIN_MIN, JOIN_MAX, JOIN_MEDIAN]
+
+        ! data
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies) :: residuals
+        real(real64), dimension(max_n_genes_all_studies, n_studies) :: gene_means
+        integer(int32), dimension(max_n_genes_all_studies, n_studies) :: gene_means_perms
+        integer(int32), dimension(max_n_genes_all_studies * n_studies) :: gene_means_perm_all
+
+        integer(int32), dimension(max_n_points_candidate) :: candidates_n_points
+        integer(int32), dimension(max_n_neighbors_candidate) :: candidates_n_neighbors
+
+        real(real64), dimension(2, n_studies) :: best_candidate_pair_confidence_interval
+        integer(int32) :: n_points, n_neighbors
+
+        integer(int32), dimension(max_n_neighbors_candidate, max_n_points_candidate) :: tmp_neighborhood_residuals
+        integer(int32), dimension(2, max_n_points_candidate) :: tmp_neighborhood_ranges
+        real(real64), dimension(max_n_points_candidate) :: tmp_x_star
+        real(real64), dimension(n_bins_2, max_n_points_candidate, n_studies), target :: tmp_pmfs
+        integer(int32), dimension(n_bins_2, max_n_points_candidate, n_studies), target :: tmp_counts
+        integer(int32), dimension(max_n_points_candidate, n_studies), target :: tmp_included_n_reps
+        real(real64), dimension(n_bins_2, max_n_points_candidate) :: tmp_mean_pmf
+        integer(int32), dimension(n_bins_2, max_n_points_candidate), target :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_points_candidate) :: tmp_mean_pmf_included_n_reps
+        real(real64), dimension(max_n_points_candidate, n_studies), target :: tmp_js_divergences
+        real(real64), dimension(max_n_points_candidate, n_studies), target :: tmp_weights
+        real(real64), dimension(n_studies) :: tmp_global_js_divergence
+        real(real64), dimension(2, n_studies) :: tmp_confidence_interval
+        real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies) :: tmp_bootstrapping_top_k_jsds
+
+        integer(int32) :: i_cfg, i_join, expected_n_points, expected_n_neighbors
+        integer(int32) :: i, j, s
+        integer(int32) :: min_count_per_mean_bin
+        real(real64) :: succeeding_ci_overlap
+        integer(int32) :: n_bins
+        real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
+        real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
+        integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view, tmp_mean_pmf_counts_view
+        integer(int32), dimension(:, :, :), pointer :: tmp_counts_view
+        ! -------------------------
+        ! Setup constant data
+        ! -------------------------
+        residuals = R
+        gene_means = R
+
+        do s = 1, n_studies
+            do i = 1, max_n_genes_all_studies
+                gene_means_perms(i, s) = i
+            end do
+        end do
+
+        ! flattened permutation 1..(max_n_genes_all_studies*n_studies)
+        do i = 1, max_n_genes_all_studies * n_studies
+            gene_means_perm_all(i) = i
+        end do
+
+        ! candidates: 1,2,3 for both points and neighbors
+        do i = 1, max_n_points_candidate
+            candidates_n_points(i) = i
+        end do
+        do i = 1, max_n_neighbors_candidate
+            candidates_n_neighbors(i) = i
+        end do
+
+        ! -------------------------
+        ! Loop over configurations
+        ! -------------------------
+        do i_cfg = 1, n_cfg
+            do i_join = 1, size(join_methods)
+                associate( &
+                    n_cand_points    => cfg_n_candidates_n_points(i_cfg), &
+                    n_cand_neighbors => cfg_n_candidates_n_neighbors(i_cfg), &
+                    join_method      => join_methods(i_join) )
+
+                    if (n_cand_points == 3) then
+                        expected_n_points = 2
+                        expected_n_neighbors = 1
+                    else
+                        expected_n_points = 1
+                        expected_n_neighbors = 2
+                    end if
+
+                    ! --- Case 1: n_bins = 1, min_count ok, succeeding_ci_overlap = 0.9 (should pick 2nd pair) ---
+                    n_bins = n_bins_1
+                    min_count_per_mean_bin = 1_int32
+                    succeeding_ci_overlap = 0.9_real64
+
+                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                        candidates_n_points, n_cand_points, max_n_points_candidate, &
+                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+
+                    ! x_star should be 3.0
+                    do i = 1, n_points
+                        call assert_equal_real(tmp_x_star(i), R, TOL, "test_determine_js_comp_constant_residuals: Case 1: x_star must be 3.0")
+                    end do
+
+                    ! mean pmf invariants
+                    tmp_pmfs_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_pmfs
+                    call assert_equal_array_real( &
+                        tmp_mean_pmf, sum(tmp_pmfs_view, dim=n_studies) / real(n_studies,real64), &
+                        n_bins*n_points, TOL, "test_determine_js_comp_constant_residuals: Case 1: mean pmf must equal average of pmfs")
+
+                    tmp_counts_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_counts
+                    tmp_mean_pmf_counts_view(1:n_bins, 1:expected_n_points) => tmp_mean_pmf_counts
+                    call assert_equal_array_int( &
+                        tmp_mean_pmf_counts_view, sum(tmp_counts_view, dim=n_studies), &
+                        n_bins*n_points, "test_determine_js_comp_constant_residuals: Case 1: mean pmf counts must equal sum of counts")
+
+                    tmp_included_n_reps_view(1:expected_n_points, 1:n_studies) => tmp_included_n_reps
+                    call assert_equal_array_int( &
+                        tmp_mean_pmf_included_n_reps(1:expected_n_points), sum(tmp_included_n_reps_view, dim=2), &
+                        n_points, "test_determine_js_comp_constant_residuals: Case 1: mean pmf included_n_reps must equal sum of included_n_reps")
+
+                    ! all weights = 1, all jsd = 1, global jsd = 1, CI = [1,1], bootstrap top-k = 1
+                    tmp_js_divergences_view(1:expected_n_points, 1:n_studies) => tmp_js_divergences
+                    tmp_weights_view(1:expected_n_points, 1:n_studies) => tmp_weights
+                    do s = 1, n_studies
+                        do i = 1, n_points
+                            call assert_equal_real(tmp_weights_view(i,s), 1.0_real64 / real(expected_n_points), TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching weights")
+                            call assert_equal_real(tmp_js_divergences_view(i,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching jsd per point")
+                        end do
+                        call assert_equal_real(tmp_global_js_divergence(s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching global jsd")
+                        call assert_equal_real(tmp_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching CI lower")
+                        call assert_equal_real(tmp_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching CI upper")
+                    end do
+
+                    do s = 1, n_studies
+                        do j = 1, 2
+                            do i = 1, n_bootstrapping_top_k_jsds
+                                call assert_equal_real(tmp_bootstrapping_top_k_jsds(i,j,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching bootstrap top-k")
+                            end do
+                        end do
+                    end do
+
+                    do s = 1, n_studies
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching best CI lower")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: Case 1: mismatching best CI upper")
+                    end do
+
+                    ! --- Case 2: succeeding_ci_overlap > 1.0 -> fallback, best CI = fallback candidate pair = 0 ---
+                    succeeding_ci_overlap = above(1.0_real64)
+
+                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                        candidates_n_points, n_cand_points, max_n_points_candidate, &
+                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+
+                    do s = 1, n_studies
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 2: best CI lower must be -1.0 on min-ci-overlap fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 2: best CI upper must be -1.0 on min-ci-overlap fallback")
+                    end do
+
+                    ! --- Case 3: min_count_per_mean_bin > total count -> fallback ---
+                    n_bins = n_bins_1
+                    min_count_per_mean_bin = max_n_reps_all_studies * max_n_genes_all_studies * n_studies + 1_int32
+                    succeeding_ci_overlap = 0.9_real64
+
+                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                        candidates_n_points, n_cand_points, max_n_points_candidate, &
+                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+
+                    do s = 1, n_studies
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 3: best CI lower must be -1.0 on min-count fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 3: best CI upper must be -1.0 on min-count fallback")
+                    end do
+
+                    ! --- Case 4: n_bins = 2 -> one empty bin -> fallback ---
+                    n_bins = n_bins_2
+                    min_count_per_mean_bin = 1_int32
+                    succeeding_ci_overlap = 0.9_real64
+
+                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                        candidates_n_points, n_cand_points, max_n_points_candidate, &
+                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+
+                    do s = 1, n_studies
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 4: best CI upper must be -1.0 on n_bins=2 fallback")
+                    end do
+
+                    ! --- Case 5: min_neighbor_overlap > 1.0 -> impossible to succeed -> fallback ---
+                    n_bins = n_bins_2
+                    min_count_per_mean_bin = 1_int32
+                    succeeding_ci_overlap = 0.9_real64
+
+                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                        candidates_n_points, n_cand_points, max_n_points_candidate, &
+                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
+
+                    do s = 1, n_studies
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 5: best CI lower must be -1.0 on min_neighbor_overlap=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: Case 5: best CI upper must be -1.0 on min_neighbor_overlap=2 fallback")
+                    end do
+
+                end associate
+            end do
+        end do
+
+    end subroutine test_determine_js_comp_constant_residuals
 
     subroutine test_js_comp_test_helper()
         ! ------------------------------------------------------------

@@ -35,10 +35,10 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   echo "Compiling src/"
-  bash build.sh --clean-build --keep-fpm-toml "$@"
+  COMPILER=$COMPILER bash build.sh --clean-build --keep-fpm-toml "$@"
   check_exit_code "Build failed"
 else
-  bash build.sh --keep-fpm-toml "$@"
+  COMPILER=$COMPILER bash build.sh --keep-fpm-toml "$@"
   check_exit_code "Build failed"
 fi
 
