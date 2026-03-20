@@ -116,8 +116,9 @@ contains
         integer(int32), parameter :: n_studies = 3_int32
         integer(int32), parameter :: max_n_genes_all_studies = 5_int32
         integer(int32), parameter :: max_n_reps_all_studies  = 4_int32
-        integer(int32), parameter :: max_n_points_candidate  = 3_int32
-        integer(int32), parameter :: max_n_neighbors_candidate = 3_int32
+        integer(int32), parameter :: n_candidates = 3_int32
+        integer(int32), parameter :: max_n_points_candidate  = n_candidates
+        integer(int32), parameter :: max_n_neighbors_candidate = n_candidates
         integer(int32), parameter :: n_bootstraps = 10_int32
         integer(int32), parameter :: n_bootstrapping_top_k_jsds = 2_int32
 
@@ -127,8 +128,6 @@ contains
 
         ! candidate configurations
         integer(int32), parameter :: n_cfg = 2_int32
-        integer(int32), dimension(n_cfg), parameter :: cfg_n_candidates_n_points    = [1_int32, 3_int32]
-        integer(int32), dimension(n_cfg), parameter :: cfg_n_candidates_n_neighbors = [3_int32, 1_int32]
 
         integer(int32), dimension(3), parameter :: join_methods = [JOIN_MIN, JOIN_MAX, JOIN_MEDIAN]
 
@@ -138,8 +137,7 @@ contains
         integer(int32), dimension(max_n_genes_all_studies, n_studies) :: gene_means_perms
         integer(int32), dimension(max_n_genes_all_studies * n_studies) :: gene_means_perm_all
 
-        integer(int32), dimension(max_n_points_candidate) :: candidates_n_points
-        integer(int32), dimension(max_n_neighbors_candidate) :: candidates_n_neighbors
+        integer(int32), dimension(2, n_candidates) :: candidates_n_points_n_neighbors
 
         real(real64), dimension(2, n_studies) :: best_candidate_pair_confidence_interval
         integer(int32) :: n_points, n_neighbors
@@ -159,10 +157,10 @@ contains
         real(real64), dimension(2, n_studies) :: tmp_confidence_interval
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies) :: tmp_bootstrapping_top_k_jsds
 
-        integer(int32) :: i_cfg, i_join, expected_n_points, expected_n_neighbors
+        integer(int32) :: i_candidates, i_join, expected_n_points, expected_n_neighbors
         integer(int32) :: i, j, s
         integer(int32) :: min_count_per_mean_bin
-        real(real64) :: succeeding_ci_overlap
+        real(real64) :: succeeding_ci_overlap, expected_ci_value
         integer(int32) :: n_bins
         real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
         real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
@@ -187,29 +185,22 @@ contains
 
         ! candidates: 1,2,3 for both points and neighbors
         do i = 1, max_n_points_candidate
-            candidates_n_points(i) = i
+            candidates_n_points_n_neighbors(1, i) = i
         end do
-        do i = 1, max_n_neighbors_candidate
-            candidates_n_neighbors(i) = i
+        do i = max_n_neighbors_candidate, 1, -1
+            candidates_n_points_n_neighbors(2, i) = i
         end do
 
         ! -------------------------
         ! Loop over configurations
         ! -------------------------
-        do i_cfg = 1, n_cfg
+        do i_candidates = n_candidates, 1, -1
             do i_join = 1, size(join_methods)
                 associate( &
-                    n_cand_points    => cfg_n_candidates_n_points(i_cfg), &
-                    n_cand_neighbors => cfg_n_candidates_n_neighbors(i_cfg), &
-                    join_method      => join_methods(i_join) )
-
-                    if (n_cand_points == 3) then
-                        expected_n_points = candidates_n_points(2)
-                        expected_n_neighbors = candidates_n_neighbors(1)
-                    else
-                        expected_n_points = candidates_n_points(1)
-                        expected_n_neighbors = candidates_n_neighbors(2)
-                    end if
+                    join_method      => join_methods(i_join)&
+                )
+                    expected_n_points = candidates_n_points_n_neighbors(1, min(i_candidates, 2))
+                    expected_n_neighbors = candidates_n_points_n_neighbors(2, min(i_candidates, 2))
 
                     ! --- Case 1: n_bins = 1, min_count ok, succeeding_ci_overlap = 0.9 (should pick 2nd pair) ---
                     n_bins = n_bins_1
@@ -217,8 +208,8 @@ contains
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points, n_cand_points, max_n_points_candidate, &
-                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
                         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
@@ -227,63 +218,63 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, expected_n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: expected n_points")
-                    call assert_equal_int(n_neighbors, expected_n_neighbors, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: expected n_neighbors")
+                    call assert_equal_int(n_points, expected_n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_points")
+                    call assert_equal_int(n_neighbors, expected_n_neighbors, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_neighbors")
 
                     ! x_star should be 3.0
                     do i = 1, n_points
-                        call assert_equal_real(tmp_x_star(i), R, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: x_star must be 3.0")
+                        call assert_equal_real(tmp_x_star(i), R, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: x_star must be 3.0")
                     end do
 
                     ! mean pmf invariants
                     tmp_pmfs_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_pmfs
                     call assert_equal_array_real( &
                         tmp_mean_pmf, sum(tmp_pmfs_view, dim=n_studies) / real(n_studies,real64), &
-                        n_bins*n_points, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mean pmf must equal average of pmfs")
+                        n_bins*n_points, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf must equal average of pmfs")
 
                     tmp_counts_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_counts
                     tmp_mean_pmf_counts_view(1:n_bins, 1:expected_n_points) => tmp_mean_pmf_counts
                     call assert_equal_array_int( &
                         tmp_mean_pmf_counts_view, sum(tmp_counts_view, dim=n_studies), &
-                        n_bins*n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mean pmf counts must equal sum of counts")
+                        n_bins*n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf counts must equal sum of counts")
 
                     tmp_included_n_reps_view(1:expected_n_points, 1:n_studies) => tmp_included_n_reps
                     call assert_equal_array_int( &
                         tmp_mean_pmf_included_n_reps(1:expected_n_points), sum(tmp_included_n_reps_view, dim=2), &
-                        n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mean pmf included_n_reps must equal sum of included_n_reps")
+                        n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf included_n_reps must equal sum of included_n_reps")
 
                     ! all weights = 1, all jsd = 1, global jsd = 1, CI = [1,1], bootstrap top-k = 1
                     tmp_js_divergences_view(1:expected_n_points, 1:n_studies) => tmp_js_divergences
                     tmp_weights_view(1:expected_n_points, 1:n_studies) => tmp_weights
                     do s = 1, n_studies
                         do i = 1, n_points
-                            call assert_equal_real(tmp_weights_view(i,s), 1.0_real64 / real(expected_n_points), TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching weights")
-                            call assert_equal_real(tmp_js_divergences_view(i,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching jsd per point")
+                            call assert_equal_real(tmp_weights_view(i,s), 1.0_real64 / real(expected_n_points), TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching weights")
+                            call assert_equal_real(tmp_js_divergences_view(i,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching jsd per point")
                         end do
-                        call assert_equal_real(tmp_global_js_divergence(s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching global jsd")
-                        call assert_equal_real(tmp_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching CI lower")
-                        call assert_equal_real(tmp_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching CI upper")
+                        call assert_equal_real(tmp_global_js_divergence(s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching global jsd")
+                        call assert_equal_real(tmp_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching CI lower")
+                        call assert_equal_real(tmp_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching CI upper")
                     end do
 
                     do s = 1, n_studies
                         do j = 1, 2
                             do i = 1, n_bootstrapping_top_k_jsds
-                                call assert_equal_real(tmp_bootstrapping_top_k_jsds(i,j,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching bootstrap top-k")
+                                call assert_equal_real(tmp_bootstrapping_top_k_jsds(i,j,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching bootstrap top-k")
                             end do
                         end do
                     end do
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching best CI lower")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 1: mismatching best CI upper")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching best CI lower")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching best CI upper")
                     end do
 
                     ! --- Case 2: succeeding_ci_overlap > 1.0 -> fallback, best CI = fallback candidate pair = 0 ---
                     succeeding_ci_overlap = above(1.0_real64)
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points, n_cand_points, max_n_points_candidate, &
-                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
                         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
@@ -292,12 +283,13 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_neighbors(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_neighbors")
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
 
+                    expected_ci_value = merge(-1.0_real64, best_possible_jsd, i_candidates > 1)
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: best CI lower must be -1.0 on min-ci-overlap fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: best CI upper must be -1.0 on min-ci-overlap fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), expected_ci_value, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: best CI lower on min-ci-overlap fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), expected_ci_value, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: best CI upper on min-ci-overlap fallback")
                     end do
 
                     ! --- Case 3: min_count_per_mean_bin > total count -> fallback ---
@@ -306,8 +298,8 @@ contains
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points, n_cand_points, max_n_points_candidate, &
-                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
                         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
@@ -316,12 +308,12 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_neighbors(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_neighbors")
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 3: best CI lower must be -1.0 on min-count fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 3: best CI upper must be -1.0 on min-count fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 3: best CI lower must be -1.0 on min-count fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 3: best CI upper must be -1.0 on min-count fallback")
                     end do
 
                     ! --- Case 4: n_bins = 2 -> one empty bin -> fallback ---
@@ -330,8 +322,8 @@ contains
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points, n_cand_points, max_n_points_candidate, &
-                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
                         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
@@ -340,12 +332,12 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_neighbors(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_neighbors")
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 4: best CI upper must be -1.0 on n_bins=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 4: best CI upper must be -1.0 on n_bins=2 fallback")
                     end do
 
                     ! --- Case 5: min_neighbor_overlap > 1.0 -> impossible to succeed -> fallback ---
@@ -354,8 +346,8 @@ contains
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points, n_cand_points, max_n_points_candidate, &
-                        candidates_n_neighbors, n_cand_neighbors, max_n_neighbors_candidate, &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
                         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
@@ -364,12 +356,12 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_neighbors(1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 2: expected n_neighbors")
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 5: best CI lower must be -1.0 on min_neighbor_overlap=2 fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points=" // n_cand_points // ", n_candidates_n_neighbors="// n_cand_neighbors //") Case 5: best CI upper must be -1.0 on min_neighbor_overlap=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 5: best CI lower must be -1.0 on min_neighbor_overlap=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 5: best CI upper must be -1.0 on min_neighbor_overlap=2 fallback")
                     end do
 
                 end associate
@@ -505,7 +497,7 @@ contains
         integer(int32), parameter :: n_studies = 3
         real(real64) :: confidence_interval(2, n_studies)
         real(real64) :: best_ci(2, n_studies)
-        integer(int32) :: best_i_point, best_i_neighbor, best_exceeded
+        integer(int32) :: best_i_candidate, best_exceeded
         logical :: plateau_found
         real(real64) :: succeeding_ci_overlap
         integer(int32) :: join_method
@@ -533,23 +525,21 @@ contains
             0.5, 0.1, 0.2  &    ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 1
-        best_i_neighbor = 1
+        best_i_candidate    = 1
         best_exceeded   = 0
 
         join_method = JOIN_MIN
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=2, i_neighbor_count=3, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=2, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
 
         call assert_true(plateau_found, "test_check_plateau_condition_helper: JOIN_MIN success: all overlaps >= threshold")
-        call assert_equal_int(best_i_point, 2, "test_check_plateau_condition_helper: JOIN_MIN success: best_i_point updated")
-        call assert_equal_int(best_i_neighbor, 3, "test_check_plateau_condition_helper: JOIN_MIN success: best_i_neighbor updated")
+        call assert_equal_int(best_i_candidate, 2, "test_check_plateau_condition_helper: JOIN_MIN success: best_i_candidate updated")
         call assert_equal_int(best_exceeded, 3, "test_check_plateau_condition_helper: JOIN_MIN success: all 3 exceeded")
 
         ! ============================================================
@@ -573,16 +563,15 @@ contains
             0.5, 1.1, 1.2  &    ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 10
-        best_i_neighbor = 20
+        best_i_candidate    = 10
         best_exceeded   = 0
 
         join_method = JOIN_MIN
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=4, i_neighbor_count=5, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=4, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
@@ -611,16 +600,15 @@ contains
             1.4, 0.2, 0.8   &   ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 1
-        best_i_neighbor = 1
+        best_i_candidate    = 1
         best_exceeded   = 0
 
         join_method = JOIN_MAX
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=6, i_neighbor_count=7, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=6, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
@@ -649,16 +637,15 @@ contains
             1.4, 1.4, 1.6  &    ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 1
-        best_i_neighbor = 1
+        best_i_candidate    = 1
         best_exceeded   = 0
 
         join_method = JOIN_MAX
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=8, i_neighbor_count=9, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=8, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
@@ -687,16 +674,15 @@ contains
             0.9, 1.1, 1.2  &    ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 1
-        best_i_neighbor = 1
+        best_i_candidate    = 1
         best_exceeded   = 0
 
         join_method = JOIN_MEDIAN
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=11, i_neighbor_count=12, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=11, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
@@ -725,16 +711,15 @@ contains
             1.2, 1.3, 1.4 &     ! maxs
         ], shape(confidence_interval))
 
-        best_i_point    = 1
-        best_i_neighbor = 1
+        best_i_candidate    = 1
         best_exceeded   = 0
 
         join_method = JOIN_MEDIAN
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=13, i_neighbor_count=14, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=13, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
@@ -758,35 +743,33 @@ contains
             0.3, 0.8, 0.9&      ! maxs
         ], shape(confidence_interval))
 
-        best_i_point        = 99
-        best_i_neighbor     = 88
+        best_i_candidate        = 99
         best_exceeded       = 3   ! previous best had all 3 exceeding
         join_method         = JOIN_MIN
 
         call check_plateau_condition_helper( &
             confidence_interval, best_ci, n_studies, &
-            best_i_point, best_i_neighbor, best_exceeded, &
-            i_point_count=15, i_neighbor_count=16, &
+            best_i_candidate, best_exceeded, &
+            i_candidate_n_points_n_neighbors=15, &
             join_method=join_method, &
             succeeding_ci_overlap=succeeding_ci_overlap, &
             plateau_found=plateau_found)
 
         call assert_true(plateau_found, "test_check_plateau_condition_helper: Early plateau: new candidate worse than previous best")
-        call assert_equal_int(best_i_point, 99, "test_check_plateau_condition_helper: Early plateau: best_i_point unchanged")
-        call assert_equal_int(best_i_neighbor, 88, "test_check_plateau_condition_helper: Early plateau: best_i_neighbor unchanged")
+        call assert_equal_int(best_i_candidate, 99, "test_check_plateau_condition_helper: Early plateau: best_i_candidate unchanged")
         call assert_equal_int(best_exceeded, 3, "test_check_plateau_condition_helper: Early plateau: best_exceeded unchanged")
 
     end subroutine test_check_plateau_condition_helper
 
     subroutine test_gjct_permutation_test_helper()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 50
-        integer(int32) :: i_permutation, i_study, max_possible_seen, n_counts, i_point, i_bin, i_jsd
+        integer(int32) :: i_permutation, i_point, i_bin, i_jsd
 
         integer(int32) :: mean_pmf_counts(n_bins, n_points), tmp_mean_pmf_counts(n_bins, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
 
-        integer(int32) :: tmp_counts(n_bins, n_points), expected_tmp_counts(n_bins, n_points)
+        integer(int32) :: tmp_counts(n_bins, n_points)
         real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
         real(real64) :: mean_pmf(n_bins, n_points)
         real(real64) :: tmp_js_divergences(n_points, n_studies)

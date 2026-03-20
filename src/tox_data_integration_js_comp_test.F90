@@ -5,11 +5,10 @@
 !| This module implements the pipeline to perform the complete JSCompTest for all studies
 module tox_data_integration_js_comp_test
     use safeguard
-    use tox_data_integration_preprocessing, only: find_last_non_nan, pool_means_n_pool_input_helper, construct_neighborhoods_helper, pool_means_helper
+    use tox_data_integration_preprocessing, only: find_last_non_nan, pool_means_n_pool_input_helper, construct_neighborhoods_helper
     use tox_data_integration_jsd, only: build_residual_histograms_helper, calc_pmf_helper, compute_weighted_global_divergence_helper, compute_divergence_per_reference_point_helper
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_positive_inf
-    use f42_heaps, only: top_k_heap_push, bottom_k_heap_push, init_top_k_heap, init_bottom_k_heap
+    use f42_heaps, only: top_k_heap_push, bottom_k_heap_push
     use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom, reset_rng, rng_t, destroy_rng
     use f42_utils, only: calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2, init_perm
     use tox_errors, only: map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_int
@@ -362,8 +361,313 @@ contains
         end if
     end subroutine estimate_bin_count_helper
 
+    subroutine determine_js_comp_test_n_points_n_neighbors_alloc(&
+            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            gene_means, n_studies, n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr,&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, two_sided_bootstrapping_significance_level, random_seed&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstraps to perform for a candidate pair
+        integer(int32), intent(out) :: n_points
+            !! The finally chosen candidate from `candidates_n_points`
+        integer(int32), intent(out) :: n_neighbors
+            !! The finally chosen candidate from `candidates_n_neighbors`
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
+            !! The JSD Confidence Intervals from bootstrapping for the best candidate pair. `-1.0_real64` if no candidate pair succeeded and fallback to `n_points=candidates_n_points(1)` and `n_neighbors=candidates_n_neighbors(1)`
+        integer(int32), intent(in) :: join_method
+            !! The way to evaluate all studies' confidence intervals for candidate determination
+            !!
+            !! 1. JOIN_MIN: take min overlap of all studies' CI overlaps -> succeeds only if `all(ci_overlaps > min_neighbor_overlap)`
+            !! 2. JOIN_MAX: take max overlap of all studies' CI overlaps -> succeeds only if `any(ci_overlaps > min_neighbor_overlap)`
+            !! 3. JOIN_MEDIAN: take median overlap of all studies' CI overlaps -> succeeds only if `count(ci_overlaps > min_neighbor_overlap) >= (n_studies - 1) / 2 + 1`
+        integer(int32), intent(in), optional :: min_count_per_mean_bin
+            !! Number of minimum residuals a bin should have in the mean pmf to make a candidate pair eligible, default: `5`
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Minimum fractional overlap in genes a neighborhood have to its succeeding neighborhood to make a candidate pair eligible, default: `0.1`
+        real(real64), intent(in), optional :: succeeding_ci_overlap
+            !! Minimum fractional overlap the confidence intervals should have to the current best confidence intervals (respecting the `join_method`) to make a candidate pair eligible, default: `0.9`
+        integer(int32), intent(in), optional :: random_seed
+            !! Random seed to use for random number generation, default: `42`
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! The significance level used for obtained values in bootstrapping, default: `2.5` -> `best_candidate_pair_confidence_interval` caps `95%` from all obtained values
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: n_candidates_n_points_n_neighbors, n_point_candidates, i_candidate
+        integer(int32) :: max_n_points_candidate, min_n_points_candidate
+        integer(int32) :: max_n_neighbors_candidate, prev_point_candidate, prev_neighbor_candidate
+        integer(int32) :: n_bootstrapping_top_k_jsds, i_point_candidate, i_neighbor_candidate
+        real(real64) :: n_points_candidate_real
+        real(real64), parameter :: GAMMA = 0.8_real64
+        real(real64), parameter :: LOG_GAMMA = log(0.8_real64)
+
+        ! needs to be ascending, as it is part of the denominator, so first elements are larger than next
+        real(real64), dimension(2), parameter :: KX_FACTORS = [2.0_real64, 4.0_real64]
+
+        integer(int32), dimension(:, :), allocatable :: candidates_n_points_n_neighbors
+        integer(int32), dimension(:, :), allocatable :: gene_means_perms
+        integer(int32), dimension(:), allocatable :: gene_means_perm_all
+        integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_residuals
+        integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_ranges
+        real(real64), dimension(:), allocatable :: tmp_x_star
+        real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
+        integer(int32), dimension(:, :, :), allocatable :: tmp_counts
+        integer(int32), dimension(:, :), allocatable :: tmp_included_n_reps
+        real(real64), dimension(:, :), allocatable :: tmp_mean_pmf
+        integer(int32), dimension(:, :), allocatable :: tmp_mean_pmf_counts
+        integer(int32), dimension(:), allocatable :: tmp_mean_pmf_included_n_reps
+        real(real64), dimension(:, :), allocatable :: tmp_js_divergences
+        real(real64), dimension(:, :), allocatable :: tmp_weights
+        real(real64), dimension(:), allocatable :: tmp_global_js_divergence
+        real(real64), dimension(:, :), allocatable :: tmp_confidence_interval
+        real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_studies, ierr, arg_pos=9_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=5_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=4_int32)
+
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=10_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=7_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=14_int32)
+        CM_VALIDATE_JOIN_METHOD(arg_pos=12_int32)
+
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=16_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=17_int32, min=0.0_real64, max=100.0_real64)
+
+        if (is_err(ierr)) return
+
+        ! 1. Determine number of candidates
+        max_n_points_candidate = min(1500_int32, max_n_genes_all_studies)
+        n_points_candidate_real = real(max_n_points_candidate, real64)
+        min_n_points_candidate = min(200_int32, ceiling(0.2_real64 * n_points_candidate_real))
+
+        if (present(two_sided_bootstrapping_significance_level)) then
+            n_bootstrapping_top_k_jsds = floor(two_sided_bootstrapping_significance_level / 100.0_real64 * real(n_bootstraps, real64))
+        else
+            n_bootstrapping_top_k_jsds = floor(0.025_real64 * real(n_bootstraps, real64))
+        end if
+
+        ! computes the maximum possible number of candidates with the log-scaled approach (including duplicates)
+        ! Actually, with min_n_points_candidate=1 and max_n_points_candidate=huge(1_int32)
+        ! the max value is only 97, so it could be even hard coded
+        n_point_candidates = ceiling(&
+            log(real(min_n_points_candidate, real64)/n_points_candidate_real) / LOG_GAMMA&
+        )
+        n_candidates_n_points_n_neighbors = n_point_candidates * size(KX_FACTORS, kind=int32)
+
+        M_ALLOCATE(candidates_n_points_n_neighbors(2, n_candidates_n_points_n_neighbors))
+
+        ! 2. Determine candidates
+        prev_point_candidate = -1_int32
+        i_candidate = 1_int32
+        do i_point_candidate = 1, n_point_candidates
+            associate (&
+                point_candidate => nint(n_points_candidate_real)&
+            )
+                if (point_candidate < min_n_points_candidate) exit
+                if (point_candidate /= prev_point_candidate) then
+                    prev_point_candidate = point_candidate
+                    prev_neighbor_candidate = -1_int32
+
+                    do i_neighbor_candidate = 1, size(KX_FACTORS, kind=int32)
+                        candidates_n_points_n_neighbors(2, i_candidate) = &
+                            floor(real(max_n_genes_all_studies, real64) / (KX_FACTORS(i_neighbor_candidate) * n_points_candidate_real))
+
+                        if (candidates_n_points_n_neighbors(2, i_candidate) /= prev_neighbor_candidate) then
+                            prev_neighbor_candidate = candidates_n_points_n_neighbors(2, i_candidate)
+                            candidates_n_points_n_neighbors(1, i_candidate) = point_candidate
+                            i_candidate = i_candidate + 1
+                        end if
+                    end do
+                end if
+
+                n_points_candidate_real = n_points_candidate_real * GAMMA
+            end associate
+        end do
+        max_n_neighbors_candidate = candidates_n_points_n_neighbors(2, 1)
+
+        ! 3. Allocate rest
+        M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
+        M_ALLOCATE(gene_means_perm_all(max_n_genes_all_studies * n_studies))
+        M_ALLOCATE(tmp_neighborhood_residuals(max_n_neighbors_candidate, max_n_points_candidate))
+        M_ALLOCATE(tmp_neighborhood_ranges(2, max_n_points_candidate))
+        M_ALLOCATE(tmp_x_star(max_n_points_candidate))
+        M_ALLOCATE(tmp_pmfs(n_bins, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_counts(n_bins, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_included_n_reps(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_mean_pmf(n_bins, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf_counts(n_bins, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf_included_n_reps(max_n_points_candidate))
+        M_ALLOCATE(tmp_js_divergences(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_weights(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_global_js_divergence(n_studies))
+        M_ALLOCATE(tmp_confidence_interval(2, n_studies))
+        M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
+
+        call determine_js_comp_test_n_points_n_neighbors_helper(&
+            candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
+            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
+            n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
+            tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
+            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
+            tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+        )
+    end subroutine determine_js_comp_test_n_points_n_neighbors_alloc
+
+    subroutine determine_js_comp_test_n_points_n_neighbors(&
+            candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
+            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
+            n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
+            tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
+            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
+            tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, ierr,&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstraps to perform for a candidate pair
+        integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
+            !! Number of elements in the top/bottom ends of bootstrapped values, e.g. for 95% of the values as `max(1, floor(0.025 * n_bootstraps))`
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+            !! Number of candidate pairs for `n_points` and `n_neighbors` in `candidates_n_points_n_neighbors`
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_points_n_neighbors
+            !! Candidates for `[n_points, n_neighbors]` pairs to test
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Value of the largest `n_points` candidate
+        integer(int32), intent(in) :: max_n_neighbors_candidate
+            !! Value of the largest `n_neighbors` candidate
+        integer(int32), intent(out) :: n_points
+            !! The finally chosen candidate for `n_points` from `candidates_n_points_n_neighbors`
+        integer(int32), intent(out) :: n_neighbors
+            !! The finally chosen candidate for `n_neighbors` from `candidates_n_points_n_neighbors`
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
+            !! Per-study permutation vectors to sort the `gene_means`
+        integer(int32), dimension(max_n_genes_all_studies * n_studies), intent(in) :: gene_means_perm_all
+            !! Permutation vector to sort the flattened `gene_means`
+        real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
+            !! The JSD Confidence Intervals from bootstrapping for the best candidate pair. `-1.0_real64` if no candidate pair succeeded and fallback to `n_points=candidates_n_points(1)` and `n_neighbors=candidates_n_neighbors(1)`
+        integer(int32), intent(in) :: join_method
+            !! The way to evaluate all studies' confidence intervals for candidate determination
+            !!
+            !! 1. JOIN_MIN: take min overlap of all studies' CI overlaps -> succeeds only if `all(ci_overlaps > min_neighbor_overlap)`
+            !! 2. JOIN_MAX: take max overlap of all studies' CI overlaps -> succeeds only if `any(ci_overlaps > min_neighbor_overlap)`
+            !! 3. JOIN_MEDIAN: take median overlap of all studies' CI overlaps -> succeeds only if `count(ci_overlaps > min_neighbor_overlap) >= (n_studies - 1) / 2 + 1`
+        integer(int32), dimension(max_n_neighbors_candidate, max_n_points_candidate), intent(out) :: tmp_neighborhood_residuals
+            !! Indices of selected neighborhood genes per reference point from [[tox_data_integration(module):construct_neighborhoods(interface)]]
+        integer(int32), dimension(2, max_n_points_candidate), intent(out) :: tmp_neighborhood_ranges
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_x_star
+            !! Mean-expression reference points
+        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
+        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+            !! Absolute counts of a residual per bin for `pmfs`
+        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
+        real(real64), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+            !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
+        integer(int32), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+            !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
+        integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
+            !! The per-reference-point Jensen-Shannon-Divergence -> finally `js_divergences(1:n_points, :)`
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_weights
+            !! The per-reference-point weights for the Jensen-Shannon-Divergence -> finally `weights(1:n_points, :)`
+        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
+            !! The global Jensen-Shannon-Divergence for the best candidate pair
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
+            !! Work array to hold the confidence intervals for a candidate pair. And also for permutation tests to hold the global jsd value per permutation.
+        real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
+            !! Work array for bootstrapping
+        integer(int32), intent(in), optional :: min_count_per_mean_bin
+            !! Number of minimum residuals a bin should have in the mean pmf to make a candidate pair eligible, default: `5`
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Minimum fractional overlap in genes a neighborhood have to its succeeding neighborhood to make a candidate pair eligible, default: `0.1`
+        real(real64), intent(in), optional :: succeeding_ci_overlap
+            !! Minimum fractional overlap the confidence intervals should have to the current best confidence intervals (respecting the `join_method`) to make a candidate pair eligible, default: `0.9`
+        integer(int32), intent(in), optional :: random_seed
+            !! Random seed to use for random number generation, default: `42`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_studies, ierr, arg_pos=15_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=9_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=8_int32)
+        call validate_dimension_size(n_bootstrapping_top_k_jsds, ierr, arg_pos=17_int32)
+        call validate_dimension_size(n_candidates_n_points_n_neighbors, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_points_candidate, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_neighbors_candidate, ierr, arg_pos=4_int32)
+
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=16_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=11_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=35_int32)
+        CM_VALIDATE_JOIN_METHOD(arg_pos=19_int32)
+
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=36_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
+
+        call validate_all_in_range_int(candidates_n_points_n_neighbors, size(candidates_n_points_n_neighbors, kind=int32), ierr, arg_pos=1_int32, min=1_int32, max=max_n_points_candidate)
+        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=13_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+        call validate_all_in_range_int(gene_means_perm_all, size(gene_means_perm_all, kind=int32), ierr, arg_pos=14_int32, min=1_int32, max=size(gene_means_perm_all, kind=int32))
+
+        if (is_err(ierr)) return
+
+        call determine_js_comp_test_n_points_n_neighbors_helper(&
+            candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
+            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
+            n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
+            tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
+            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
+            tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+        )
+    end subroutine determine_js_comp_test_n_points_n_neighbors
+
     subroutine determine_js_comp_test_n_points_n_neighbors_helper(&
-            candidates_n_points, n_candidates_n_points, max_n_points_candidate, candidates_n_neighbors, n_candidates_n_neighbors, max_n_neighbors_candidate,&
+            candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
             n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
@@ -382,22 +686,18 @@ contains
             !! Number of bootstraps to perform for a candidate pair
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of elements in the top/bottom ends of bootstrapped values, e.g. for 95% of the values as `max(1, floor(0.025 * n_bootstraps))`
-        integer(int32), intent(in) :: n_candidates_n_points
-            !! Number of candidates for `n_points`
-        integer(int32), intent(in) :: n_candidates_n_neighbors
-            !! Number of candidates for `n_neighbors`
-        integer(int32), dimension(n_candidates_n_points), intent(in) :: candidates_n_points
-            !! Candidates for `n_points` to test
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+            !! Number of candidate pairs for `n_points` and `n_neighbors` in `candidates_n_points_n_neighbors`
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_points_n_neighbors
+            !! Candidates for `[n_points, n_neighbors]` pairs to test
         integer(int32), intent(in) :: max_n_points_candidate
-            !! Number of reference points in the studies
-        integer(int32), dimension(n_candidates_n_neighbors), intent(in) :: candidates_n_neighbors
-            !! Candidates for `n_neighbors` to test
+            !! Value of the largest `n_points` candidate
         integer(int32), intent(in) :: max_n_neighbors_candidate
-            !! Neighborhood size
+            !! Value of the largest `n_neighbors` candidate
         integer(int32), intent(out) :: n_points
-            !! The finally chosen candidate from `candidates_n_points`
+            !! The finally chosen candidate for `n_points` from `candidates_n_points_n_neighbors`
         integer(int32), intent(out) :: n_neighbors
-            !! The finally chosen candidate from `candidates_n_neighbors`
+            !! The finally chosen candidate for `n_neighbors` from `candidates_n_points_n_neighbors`
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(in) :: shared_residual_range
@@ -459,7 +759,7 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Random seed to use for random number generation, default: `42`
 
-        integer(int32) :: n_gene_means, n_pool, i_study, i_neighbor_count, i_point_count, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap
+        integer(int32) :: prev_n_points, n_gene_means, n_pool, i_study, i_candidate_n_points_n_neighbors, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_neighbor_overlap
         integer(int32) :: actual_min_count_per_mean_bin
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
@@ -476,68 +776,73 @@ contains
         n_pool = find_last_non_nan(gene_means, gene_means_perm_all, n_gene_means)
 
         best_candidate_pair_confidence_interval = -1.0_real64
-        best_params_CI_i_point_count = 1
-        best_params_CI_i_neighbor_count = 1
+        best_params_CI_i_candidate_n_points_n_neighbors = 1
+        best_params_CI_i_candidate_n_points_n_neighbors = 1
         best_params_exceeded_CI_overlap = 0
+
         plateau_found = .false.
 
+        prev_n_points = -1
+
         ! Test candidate pairs and find JSD plateau
-        do i_point_count = 1, n_candidates_n_points
-            n_points = candidates_n_points(i_point_count)
-            tmp_pmfs_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_pmfs
-            tmp_counts_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_counts
-            tmp_js_divergences_view(1:n_points, 1:n_studies) => tmp_js_divergences
-            tmp_weights_view(1:n_points, 1:n_studies) => tmp_weights
-            tmp_included_n_reps_view(1:n_points, 1:n_studies) => tmp_included_n_reps
+        do i_candidate_n_points_n_neighbors = 1, n_candidates_n_points_n_neighbors
+            n_points = candidates_n_points_n_neighbors(1, i_candidate_n_points_n_neighbors)
+            n_neighbors = candidates_n_points_n_neighbors(2, i_candidate_n_points_n_neighbors)
 
-            ! determine x_star
-            call pool_means_n_pool_input_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, tmp_x_star)
+            if (prev_n_points /= n_points) then
+                prev_n_points = n_points
 
-            do i_neighbor_count = 1, n_candidates_n_neighbors
-                n_neighbors = candidates_n_neighbors(i_neighbor_count)
+                tmp_pmfs_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_pmfs
+                tmp_counts_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_counts
+                tmp_js_divergences_view(1:n_points, 1:n_studies) => tmp_js_divergences
+                tmp_weights_view(1:n_points, 1:n_studies) => tmp_weights
+                tmp_included_n_reps_view(1:n_points, 1:n_studies) => tmp_included_n_reps
 
-                ! Calculate neighborhoods and check min overlap of consecutive neighbors
-                all_have_min_neighbor_overlap = .true.
-                do i_study = 1, n_studies
-                    call construct_neighborhoods_helper(n_points, tmp_x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), tmp_neighborhood_residuals, tmp_neighborhood_ranges, n_neighbors)
-                    if (test_neighborhood_overlaps_helper(tmp_neighborhood_ranges, n_points, actual_min_neighbor_overlap)) then
-                        call build_residual_histograms_helper(tmp_neighborhood_residuals, n_neighbors, n_points, residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, tmp_counts_view(:, :, i_study), tmp_pmfs_view(:, :, i_study), tmp_included_n_reps_view(:, i_study))
-                    else
-                        all_have_min_neighbor_overlap = .false.
-                        exit
-                    end if
-                end do
+                ! determine x_star
+                call pool_means_n_pool_input_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, tmp_x_star)
+            end if
 
-                ! If min consecutive overlap is met, check plateau condition 
-                if (all_have_min_neighbor_overlap) then
-                    ! 1. Compute mean pmf and ensure all bins have a minimum bin count
-                    call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts)
-                    if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
-
-                    ! 2. If min bin count is met, compute JSD observation
-                    do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_weights_view)
-                        call compute_divergence_per_reference_point_helper(tmp_pmfs_view(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view(:, i_study))
-                        call compute_weighted_global_divergence_helper(tmp_js_divergences_view(:, i_study), n_points, tmp_included_n_reps_view(:, i_study), tmp_mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights_view(:, i_study))
-                        tmp_confidence_interval(:, i_study) = tmp_global_js_divergence(i_study)
-                    end do
-
-                    ! 3. Compute a confidence interval for the JSD value by bootstrapping
-                    ! Each candidate pair should have same conditions for comparability -> reset RNG
-                    call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf, random_seed)
-                    call check_plateau_condition_helper(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, i_point_count, i_neighbor_count, join_method, actual_succeeding_ci_overlap, plateau_found)
-                    if (plateau_found) exit
+            ! Calculate neighborhoods and check min overlap of consecutive neighbors
+            all_have_min_neighbor_overlap = .true.
+            do i_study = 1, n_studies
+                call construct_neighborhoods_helper(n_points, tmp_x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), tmp_neighborhood_residuals, tmp_neighborhood_ranges, n_neighbors)
+                if (test_neighborhood_overlaps_helper(tmp_neighborhood_ranges, n_points, actual_min_neighbor_overlap)) then
+                    call build_residual_histograms_helper(tmp_neighborhood_residuals, n_neighbors, n_points, residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, tmp_counts_view(:, :, i_study), tmp_pmfs_view(:, :, i_study), tmp_included_n_reps_view(:, i_study))
+                else
+                    all_have_min_neighbor_overlap = .false.
+                    exit
                 end if
             end do
-            if (plateau_found) exit
+
+            ! If min consecutive overlap is met, check plateau condition 
+            if (all_have_min_neighbor_overlap) then
+                ! 1. Compute mean pmf and ensure all bins have a minimum bin count
+                call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts)
+                if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
+
+                ! 2. If min bin count is met, compute JSD observation
+                do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights_view, tmp_confidence_interval)
+                    call compute_divergence_per_reference_point_helper(tmp_pmfs_view(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view(:, i_study))
+                    call compute_weighted_global_divergence_helper(tmp_js_divergences_view(:, i_study), n_points, tmp_included_n_reps_view(:, i_study), tmp_mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights_view(:, i_study))
+                    tmp_confidence_interval(:, i_study) = tmp_global_js_divergence(i_study)
+                end do
+
+                ! 3. Compute a confidence interval for the JSD value by bootstrapping
+                ! Each candidate pair should have same conditions for comparability -> reset RNG
+                call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf, random_seed)
+                call check_plateau_condition_helper(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap, i_candidate_n_points_n_neighbors, join_method, actual_succeeding_ci_overlap, plateau_found)
+                if (plateau_found) exit
+            end if
         end do
 
         ! assign final candidate pair, will be first pair if no candidate pair met the plateau condition
-        if (plateau_found) then
-            n_points = candidates_n_points(best_params_CI_i_point_count)
-            n_neighbors = candidates_n_neighbors(best_params_CI_i_neighbor_count)
+        ! If there is only one candidate pair, this one is the plateau
+        if (plateau_found .or. n_candidates_n_points_n_neighbors < 2) then
+            n_points = candidates_n_points_n_neighbors(1, best_params_CI_i_candidate_n_points_n_neighbors)
+            n_neighbors = candidates_n_points_n_neighbors(2, best_params_CI_i_candidate_n_points_n_neighbors)
         else
-            n_points = candidates_n_points(1)
-            n_neighbors = candidates_n_neighbors(1)
+            n_points = candidates_n_points_n_neighbors(1, 1)
+            n_neighbors = candidates_n_points_n_neighbors(2, 1)
             best_candidate_pair_confidence_interval = -1.0_real64
         end if
     end subroutine determine_js_comp_test_n_points_n_neighbors_helper
@@ -619,7 +924,7 @@ contains
 
         integer(int32) :: i_study
 
-        do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors)
+        do concurrent (i_study = 1:n_studies) shared(n_points, x_star, max_n_genes_all_studies, gene_means, gene_means_perms, neighborhood_residuals, neighborhood_ranges, n_neighbors, residuals, max_n_reps_all_studies, shared_residual_range, n_bins, counts, pmfs, included_n_reps)
             call construct_neighborhoods_helper(n_points, x_star, max_n_genes_all_studies, gene_means(:, i_study), gene_means_perms(:, i_study), neighborhood_residuals(:, :, i_study), neighborhood_ranges(:, :, i_study), n_neighbors)
             call build_residual_histograms_helper(neighborhood_residuals(:, :, i_study), n_neighbors, n_points, residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins, counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study))
         end do
@@ -634,7 +939,7 @@ contains
         call gjct_permutation_test_helper(mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, n_points, n_bins, included_n_reps, n_studies, global_js_divergence, p_values, pmfs, tmp_pmf_counts, tmp_mean_pmf_counts, js_divergences, weights, tmp_global_js_divergence, n_permutations, random_seed)
 
         ! 3. Rerun the pipeline to recompute the values overwritten by permutation tests in `js_divergences`, `weights`, `pmfs`
-        do concurrent (i_study = 1:n_studies) shared(counts, pmfs, included_n_reps, n_bins, n_points)
+        do concurrent (i_study = 1:n_studies) shared(counts, pmfs, included_n_reps, n_bins, n_points, mean_pmf, js_divergences, mean_pmf_included_n_reps, global_js_divergence, weights)
             call calc_pmf_helper(counts(:, :, i_study), pmfs(:, :, i_study), included_n_reps(:, i_study), n_bins, n_points)
             call compute_divergence_per_reference_point_helper(pmfs(:, :, i_study), mean_pmf, n_points, n_bins, js_divergences(:, i_study))
             call compute_weighted_global_divergence_helper(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, global_js_divergence(i_study), weights(:, i_study))
@@ -642,23 +947,19 @@ contains
     end subroutine js_comp_test_helper
 
     !> Helper for [[tox_data_integration(module):determine_js_comp_test_n_points_n_neighbors(interface)]] to test a candidate on the plateau condition
-    subroutine check_plateau_condition_helper(confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_point_count, best_params_CI_i_neighbor_count, best_params_exceeded_CI_overlap, i_point_count, i_neighbor_count, join_method, succeeding_ci_overlap, plateau_found)
+    subroutine check_plateau_condition_helper(confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap, i_candidate_n_points_n_neighbors, join_method, succeeding_ci_overlap, plateau_found)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         real(real64), dimension(2, n_studies), intent(in) :: confidence_interval
             !! JSD confidence intervals from bootstrapping
         real(real64), dimension(2, n_studies), intent(inout) :: best_candidate_pair_confidence_interval
             !! JSD confidence intervals for the current best n_points/n_neighbors candidate pair, may be updated to `confidence_interval`
-        integer(int32), intent(inout) :: best_params_CI_i_point_count
-            !! Index for the `candidates_n_points` array for the current best n_points/n_neighbors candidate pair, may be updated to `i_point_count`
-        integer(int32), intent(inout) :: best_params_CI_i_neighbor_count
-            !! Index for the `candidates_n_neighbors` array for the current best n_points/n_neighbors candidate pair, may be updated to `i_point_count`
+        integer(int32), intent(inout) :: best_params_CI_i_candidate_n_points_n_neighbors
+            !! Index for the `candidates_n_points_n_neighbors` matrix for the current best n_points/n_neighbors candidate pair, may be updated to `i_candidate_n_points_n_neighbors`
         integer(int32), intent(inout) :: best_params_exceeded_CI_overlap
             !! Number of studies for the current best n_points/n_neighbors candidate pair whose overlap exceeded `succeeding_ci_overlap`
-        integer(int32), intent(in) :: i_point_count
-            !! Index for the `candidates_n_points` array for the current n_points/n_neighbors candidate pair that caused `confidence_interval`
-        integer(int32), intent(in) :: i_neighbor_count
-            !! Index for the `candidates_n_neighbors` array for the current n_points/n_neighbors candidate pair that caused `confidence_interval`
+        integer(int32), intent(in) :: i_candidate_n_points_n_neighbors
+            !! Index for the `candidates_n_points_n_neighbors` matrix for the current n_points/n_neighbors candidate pair that caused `confidence_interval`
         integer(int32), intent(in) :: join_method
             !! The way to evaluate all studies' confidence intervals for candidate determination
             !!
@@ -674,7 +975,7 @@ contains
         integer(int32) :: exceeds_min_CI_overlap, i_study
 
         exceeds_min_CI_overlap = 0_int32
-        do concurrent (i_study = 1:n_studies) shared(confidence_interval, best_candidate_pair_confidence_interval) reduce(+:exceeds_min_CI_overlap)
+        do concurrent (i_study = 1:n_studies) shared(confidence_interval, best_candidate_pair_confidence_interval, succeeding_ci_overlap) reduce(+:exceeds_min_CI_overlap)
             associate (&
                 ci_min => confidence_interval(1, i_study),&
                 ci_max => confidence_interval(2, i_study),&
@@ -696,8 +997,7 @@ contains
         if (exceeds_min_CI_overlap < best_params_exceeded_CI_overlap) then
             plateau_found = .true.
         else
-            best_params_CI_i_point_count = i_point_count
-            best_params_CI_i_neighbor_count = i_neighbor_count
+            best_params_CI_i_candidate_n_points_n_neighbors = i_candidate_n_points_n_neighbors
             best_params_exceeded_CI_overlap = exceeds_min_CI_overlap
             best_candidate_pair_confidence_interval = confidence_interval
 
@@ -774,7 +1074,7 @@ contains
                 call calc_pmf_helper(tmp_counts, tmp_pmfs(:, :, i_study), included_n_reps(:, i_study), n_bins, n_points)
             end do
 
-            do concurrent (i_study = 1:n_studies) shared(p_values, tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights, global_jsd_observed)
+            do concurrent (i_study = 1:n_studies) shared(tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights, global_jsd_observed, p_values)
                 call compute_divergence_per_reference_point_helper(tmp_pmfs(:, :, i_study), mean_pmf, n_points, n_bins, tmp_js_divergences(:, i_study))
                 call compute_weighted_global_divergence_helper(tmp_js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
 
@@ -854,7 +1154,7 @@ contains
             call create_mean_pmf_only_helper(tmp_pmfs, n_bins, n_points, n_studies, tmp_mean_pmf)
 
             ! For new pmfs from resampling, run the pipeline to determine the JSD
-            do concurrent (i_study = 1:n_studies)
+            do concurrent (i_study = 1:n_studies) shared(tmp_pmfs, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences, included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights, bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds)
                 call compute_divergence_per_reference_point_helper(tmp_pmfs(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences(:, i_study))
                 call compute_weighted_global_divergence_helper(tmp_js_divergences(:, i_study), n_points, included_n_reps(:, i_study), mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
 
@@ -969,7 +1269,7 @@ contains
             !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
             !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
             !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
-            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+            !! If all mean values are `NaN`, the range is `[1, min(n_genes_S, n_neighbors)]`
         real(real64), intent(in) :: min_neighbor_overlap
             !! Minimum overlap two consecutive neighborhoods (`i_point, i_point+1`) should have in their ranges
 
@@ -1012,7 +1312,7 @@ contains
         else
             left_max = min(a_max, b_max)
             right_min = max(a_min, b_min)
-            ! Calculate overlap, is only negative if left_max < right_min -> a_min < a_max < b_min < b_max -> no overlap
+            ! Calculate overlap, is only negative if `left_max < right_min` -> `a_min < a_max < b_min < b_max` -> no overlap
             overlap_percent = max(0.0_real64, (left_max - right_min) / (a_max - a_min))
         end if
     end function compute_fractional_overlap_helper

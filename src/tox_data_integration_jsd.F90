@@ -6,10 +6,9 @@
 module tox_data_integration_jsd
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_positive_inf
-    use, intrinsic :: iso_c_binding, only: c_ptr
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_utils, only: clamp, is_close, LOG_2
-    use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_all_in_range_int
+    use tox_errors, only: set_ok, is_err, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_all_in_range_int
     implicit none
 
 contains
