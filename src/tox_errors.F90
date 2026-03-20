@@ -367,11 +367,11 @@ contains
       call validate_all_in_range_real(distances, n * n, ierr, arg_pos, actual_min, max)
       if (is_err(ierr)) return
 
-      do concurrent (i_col = 1:n) shared(ierr, distances)
+      do concurrent (i_col = 1:n) shared(ierr, distances, arg_pos)
         if (distances(i_col, i_col) /= 0.0_real64) then
           call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos)
         else
-          do concurrent (i_row = 1:n) shared(ierr, i_col, distances)
+          do concurrent (i_row = 1:n) shared(ierr, i_col, distances, arg_pos)
             if (distances(i_row, i_col) /= distances(i_col, i_row)) then
               call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos)
             end if

@@ -14,4 +14,4 @@ link = ["xxhash", "zip", "gsl"]
 [[test]]
 name = "run_tests"
 source-dir = "test"
-main = "run_tests.f90"
+main = "run_tests.F90"

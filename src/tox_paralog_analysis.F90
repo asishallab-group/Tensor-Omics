@@ -810,12 +810,13 @@ contains
 
         integer(int32) :: i_mask_chunk
 
-        idx = size(bit_mask) * 32
+        idx = 1
         do i_mask_chunk = size(bit_mask), 1, -1
-            idx = idx - leadz(bit_mask(i_mask_chunk))
-            if (mod(idx, 32) /= 0) exit
+            if (bit_mask(i_mask_chunk) /= 0) then
+                idx = i_mask_chunk * 32 - leadz(bit_mask(i_mask_chunk)) + 1
+                exit
+            end if
         end do
-        idx = idx + 1
     end function mask_get_first_successor_idx
 
     !> Sets the state of a bit/gene in `bit_mask`
