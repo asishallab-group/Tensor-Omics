@@ -273,72 +273,233 @@ end module avmod
 
 \section{Fortran to other programming languages Interface}
 
-Ideally, we build our Tensor Omics and F42 code so that it can be included and
-called from any other programming language. This comprises R, of course, but
-also Python, Lua, Julia, Matlab, etc. We can easily achieve this by offering
-two interface functions for every Tensor Omics or F42 function that we
-implement. Importantly, we should implement such pure Fortran functions in
-Fortran \texttt{module}s. Then add another function of the same name with
-appended ``\texttt{\_R}'' to expose the module function to R and a
-\texttt{bind(C)} with \texttt{use\_iso\_c\_binding} and naming the function
-with appended ``\texttt{\_C}''. See the below example for clarification.
+The Tensor Omics project exposes Fortran functionality to Python and R through a unified architecture that relies exclusively on C bindings. This approach ensures efficiency, portability, and maintainability.
+
+\subsection{Architecture Overview}
+
+The interface follows a three-layer architecture:
+
+\begin{enumerate}
+  \item \textbf{Core Fortran modules:} Pure computational routines implementing the scientific algorithms
+  \item \textbf{C wrappers (\_C suffix):} Fortran subroutines with \texttt{bind(C)} that adapt the core functions to C calling conventions
+  \item \textbf{Language-specific layers:}
+  \begin{itemize}
+    \item \textbf{Python:} Functions in \texttt{tensoromics.py} that call C wrappers via \texttt{ctypes}
+    \item \textbf{R:} Functions in \texttt{tensoromics.rcpp} that call C wrappers via \texttt{Rcpp}
+  \end{itemize}
+\end{enumerate}
+
+\subsection{C Wrapper Implementation Pattern}
+
+All C wrappers follow a consistent pattern designed for safety, efficiency, and zero-copy interoperation:
 
 \begin{verbatim}
-! High-performance module code
-module tensor_omics
+! Core Fortran function in module
+module tox_relative_axis_plane_tools
 contains
-  subroutine project_vector_core(v, n)
-    real(real64), intent(inout) :: v(n)
-    integer, intent(in) :: n
-    ! core vector projection logic
+  pure subroutine relative_axes_changes_from_shift_vector(vec, n_axes, &
+                                                         contributions, ierr)
+    real(real64), dimension(n_axes), intent(in) :: vec
+    integer(int32), intent(in) :: n_axes
+    real(real64), dimension(n_axes), intent(out) :: contributions
+    integer(int32), intent(out) :: ierr
+    ! ... implementation ...
   end subroutine
 end module
 
-! R interface
-subroutine project_vector_R(v, n)
-  real(real64) :: v(*)
-  integer :: n
-  use tensor_omics
-  call project_vector_core(v, n)
-end subroutine
+! C wrapper with bind(C)
+pure subroutine relative_axes_changes_from_shift_vector_c(vec, n_axes, contributions, ierr) 
+    bind(C, name="relative_axes_changes_from_shift_vector_c")
+   use, intrinsic :: iso_c_binding, only: c_double, c_int
+   use tox_relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
+   M_USE_NULL_VALIDATION
+   implicit none
 
-! C / WASM / Python interface
-subroutine project_vector_C(v, n) bind(C, name="project_vector_C")
-  use iso_c_binding
-  real(c_double) :: v(*)
-  integer(c_int) :: n
-  use tensor_omics
-  call project_vector_core(v, n)
-end subroutine
+   real(c_double), dimension(n_axes), intent(in), target :: vec
+      !! RAP-projected and normalized shift vector
+   integer(c_int), intent(in), target :: n_axes
+      !! Number of axes
+   real(c_double), dimension(n_axes), intent(out), target :: contributions
+      !! Fractional contribution of each axis
+   integer(c_int), intent(out), target :: ierr
+      !! Error code
+
+   M_CHECK_IERR_NON_NULL
+   M_CHECK_NON_NULL(n_axes)
+   M_CHECK_NON_NULL(vec)
+   M_CHECK_NON_NULL(contributions)
+
+   call relative_axes_changes_from_shift_vector(vec(1:n_axes), n_axes, contributions(1:n_axes), ierr)
+end subroutine relative_axes_changes_from_shift_vector_c
+
 \end{verbatim}
 
-These distinctions are essential for both performance and correctness. Please document this behavior in all wrapper comments.
+\subsection{Key Principles for C Wrappers}
 
-\subsubsection{Important note on memory and array copies:}
+\subsubsection{Use \texttt{iso\_c\_binding} types exclusively}
 
+All C wrappers must use standard C-interoperable types:
 \begin{itemize}
-  \item \textbf{R wrappers:} When calling Fortran routines from R (using wrappers with the ``\texttt{\_R}'' suffix), the R interface will \emph{always} create a copy of the arrays passed as arguments. This is a fundamental property of the R--Fortran interface and ensures that the original R objects remain unchanged. Therefore, the following statement must be included in the documentation of every wrapper:
-  \textbf{When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs.}
-  \item \textbf{C wrappers:} When calling Fortran routines from C (using wrappers with the ``\texttt{\_C}'' suffix and \texttt{bind(C)}), the interface operates \emph{directly} on the memory provided by the caller. Therefore, the following statement must be included in the documentation of every wrapper:
-  \textbf{When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.}
+  \item \texttt{real(c\_double)} for \texttt{real(real64)}
+  \item \texttt{integer(c\_int)} for \texttt{integer(int32)}
+  \item \texttt{character(kind=c\_char)} for character data
 \end{itemize}
 
-You may add these legends manually, or for convenience, use the snippets \verb|tox:legend_r| and \verb|tox:legend_c| found in \verb|snippets/tox_snippets.json|.
 
+\subsubsection{Array arguments: explicit dimensions}
 
-\subsection{When to Write Wrappers for Fortran Functions}
+Arrays must be declared with explicit dimensions matching the C memory layout. Do not use assumed-shape arrays \texttt{(:)} in C wrappers:
+\begin{verbatim}
+! Correct - explicit dimensions
+real(c_double), dimension(n_samples, n_genes), intent(in) :: expression_vectors
 
-Only write wrappers for Fortran functions and subroutines that provide truly new or essential functionality to the API languages (C, R). For example, generic utilities such as sorting, which are already well-supported in most high-level languages, should not be wrapped unless there is a compelling reason. Focus on exposing the core scientific Tensor Omics or F42 functions.
+! Incorrect - assumed shape not allowed in bind(C)
+real(c_double), dimension(:,:), intent(in) :: expression_vectors
+\end{verbatim}
 
-\subsection{The \texttt{\_tox} API Layer: Safe Data Access and Usage}
+\subsubsection{Always include error code output}
 
-In addition to the standard wrappers, we will implement another layer of API functions, conventionally named with the suffix \texttt{\_tox}, that are designed to operate using a pointer to our \texttt{txdata} Fortran type. This approach allows for efficient and direct manipulation of complex data structures from API languages, while maintaining safety and clarity.
+All C wrappers should accept an \texttt{ierr} parameter:
+\begin{verbatim}
+integer(c_int), intent(out) :: ierr
+\end{verbatim}
 
-It is good practice to expose all relevant Fortran routines, but in the user manual and documentation, we will emphasize the use of the \texttt{\_tox} interface for most users. This interface is safer and more robust, as it manages the internal data structures and memory correctly. Direct access to lower-level routines is possible, but should be used with caution: the user must ensure that arrays or pointers passed to Fortran are not modified elsewhere (e.g., by libraries like matplotlib or numpy) while Fortran code is using them, to avoid undefined behavior or memory corruption.
+Initialize it with \texttt{call set\_ok(ierr)} at the beginning of the wrapper.
 
-\textbf{Documentation guideline:} In the manual, show usage examples of the \texttt{\_tox} interface as the recommended way, and only mention that direct calls are possible for advanced users who understand the risks and memory management requirements.
+\subsubsection{Type conversions for character data}
 
-\textbf{Example:} The \texttt{analyze\_tox} function takes a pointer to a \texttt{txdata} object and performs analysis, ensuring all memory and data integrity is managed by the Fortran backend. Direct calls to lower-level routines should be clearly marked as advanced usage.
+When Fortran string types are involved, perform explicit conversions:
+\begin{verbatim}
+! Convert C char array to Fortran string
+character(len=:), allocatable :: temp_str
+character(kind=c_char, len=1), intent(in) :: str_arr(str_len, n_strings)
+call c_char_1d_as_string(str_arr(:,i), temp_str, ierr)
+\end{verbatim}
+
+\subsection{Memory Management and Zero-Copy Operation}
+
+\textbf{Critical:} C wrappers operate \emph{directly} on the memory provided by the caller. No copies are made. This is essential for performance with large omics datasets.
+
+The caller (Python or R) must:
+\begin{itemize}
+  \item Allocate arrays with correct dimensions
+  \item Ensure Fortran column-major order (F-contiguous)
+  \item Maintain memory validity throughout the call
+\end{itemize}
+
+\subsection{Python Interface via ctypes}
+
+Python wrappers in \texttt{tensoromics\_functions.py} follow this pattern:
+
+\begin{verbatim}
+#> tox_relative_axis_plane_tools:relative_axes_expression_from_expression_vector_c: Compute relative axis contributions from an expression vector (RAP space)
+def relative_axes_expression_from_expression_vector(expression_vector):
+    """
+    Compute relative axis contributions from an expression vector (RAP space).
+
+    Args:
+        expression_vector: Input vector (1D).
+
+    Returns:
+        element1: Relative axis contributions (sum to 1).
+    """
+    # Input validation and conversion
+    vec = np.ascontiguousarray(expression_vector, dtype=np.float64)  # Expression vector
+    n_dims = len(vec)
+    # Convert scalar parameters
+    n_dims_c = ctypes.c_int(n_dims)
+
+    # Prepare output and error code
+    contrib = np.zeros(n_dims, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+    # Setup C wrapper
+    relative_axes_changes = lib.relative_axes_expression_from_expression_vector_c
+    relative_axes_changes.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # expression_vector
+        ctypes.POINTER(ctypes.c_int),  # n_dims
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # contrib
+        ctypes.POINTER(ctypes.c_int)  # ierr
+    ]
+    relative_axes_changes.restype = None
+    # Call Fortran routine
+    relative_axes_changes(vec, ctypes.byref(n_dims_c), contrib, ctypes.byref(ierr))
+    # Check for errors
+    check_err_code(ierr.value)
+    # Mark output as read-only
+    _readonly(contrib)
+    return contrib
+
+\end{verbatim}
+
+\subsection{R Interface via Rcpp}
+
+R wrappers in \texttt{tensoromics\_functions.cpp} follow this pattern:
+
+\begin{verbatim}
+extern "C" {
+    void relative_axes_expression_from_expression_vector_c(
+      const double* vec,
+      const int* n_axes,
+      double* contributions,
+      int* ierr
+    );
+
+}
+
+//' Calculate relative axis expression from an expression vector
+//'
+//' @param vec Numeric vector of expression values
+//' @return List with contributions
+// [[Rcpp::export]]
+List tox_relative_axes_expression_from_expression_vector_rcpp(NumericVector vec) {
+
+    int n_axes = vec.length();
+    NumericVector contributions(n_axes);
+    int ierr = 0;
+
+    relative_axes_expression_from_expression_vector_c(vec.begin(),
+                                                      &n_axes,
+                                                      contributions.begin(),
+                                                      &ierr);
+
+    return List::create(Named("contributions") = contributions,
+                        Named("ierr") = ierr);
+}
+
+\end{verbatim}
+
+Key points:
+\begin{itemize}
+  \item All functions must be documented with Roxygen comments for automatic documentation generation.
+  \item All data validation is in R side, not Rcpp 
+  \item In python all outputs must be converted to read-only to prevent accidental modification while Fortran is accessing them. 
+  \item Errors are handled by checking the \texttt{ierr} code by using the tox\_errors functions. 
+\end{itemize}
+
+\subsection{When to Write Wrappers}
+
+Only create C wrappers for functions that provide essential scientific functionality. Generic utilities (sorting, I/O helpers) should not be wrapped unless they are core to the Tensor Omics workflow.
+
+\subsection{Development Workflow: Mandatory Wrappers and Documentation}
+
+To maintain API parity across Python and R, the following steps are \textbf{mandatory} when implementing new functionality:
+
+\begin{enumerate}
+    \item \textbf{Core Implementation:} Write the pure Fortran function in the appropriate module
+    \item \textbf{C Wrapper:} Create a \texttt{\_C} wrapper with \texttt{bind(C)}
+    \item \textbf{Python Wrapper:} Add the function to \texttt{tensoromics\_functions.py} using ctypes
+    \item \textbf{R Wrapper:} Add the function to \texttt{tensoromics\_functions.cpp} using Rcpp and tensoromics\_functions.R
+    \item \textbf{Documentation:} Update user manual with:
+    \begin{itemize}
+        \item Description of functionality
+        \item Parameter explanations
+        \item Usage examples for Fortran, Python and R
+        \item Memory considerations (if arrays are modified in-place)
+    \end{itemize}
+    \item \textbf{Tests:} Write unit tests in Fortran, and test callings in Python/R
+\end{enumerate}
+
+\textbf{Memory Safety Warning:} When using direct array access from Python or R, users must ensure that arrays are not modified by other libraries (e.g., matplotlib, numpy, ggplot2) while Fortran code is accessing them. This can lead to undefined behavior or memory corruption.
 
 
 \subsection{Safe and Efficient Interface Design for \texttt{bind(C)} in Tensor Omics}
@@ -359,27 +520,10 @@ subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
 end subroutine
 \end{verbatim}
 
-\subsubsection{Use \texttt{iso\_c\_binding} types}
-
-Avoid compiler-specific kinds.
-
-\begin{verbatim}
-real(c_double) :: x(*)
-integer(c_int) :: n
-\end{verbatim}
-
-\subsubsection{Accept arguments as C-style pointers}
-
-Do not use assumed-shape or allocatable arrays.
-
-\begin{verbatim}
-real(c_double) :: x(*)      ! OK
-real(c_double), dimension(:) :: x  ! Not allowed
-\end{verbatim}
 
 \subsubsection{Avoid optional arguments}
 
-Optional arguments are not allowed in R and C wrappers because \texttt{bind(C)} and \texttt{.Fortran()} are not compatible with them. If optional arguments are needed, they should only be used in core subroutines that are called directly from Fortran. 
+Optional arguments are not allowed in R and C wrappers because \texttt{bind(C)} is not compatible with them. If optional arguments are needed, they should only be used in core subroutines that are called directly from Fortran. 
 
 \subsubsection{Pass all arguments by reference}
 
@@ -444,114 +588,216 @@ call project_vector_C(x, y, n)
 
 This structure ensures maximum compatibility and reproducibility across calling environments without compromising Fortran-native performance.
 
-\subsection{How to pass arguments back and forth to C, and thus Python, without memory copy.}
+\subsection{Argument Passing Conventions in C Wrappers}
 
-When passing arrays or strings between Fortran and C (or Python), you can achieve zero-copy interoperation using the ISO C binding module and pointer association. Below are canonical examples for both arrays and C strings:
+All arguments in C wrappers are passed \textbf{by reference}, including scalar values. This is the standard Fortran calling convention and ensures zero-copy operation.
 
-\subsubsection*{int, real, logical, complex Fortran assumed shape arrays}
-
-\begin{verbatim}
-module interop_example
-  use iso_c_binding
-  implicit none
-contains
-
-! Entry point called from C
-subroutine process_int_array(ptr, n, f_arr) bind(C)
-  use iso_c_binding
-  implicit none
-  type(c_ptr), value :: ptr         ! Raw C pointer passed from C
-  integer(c_int), value :: n        ! Number of elements
-
-  integer(c_int), pointer :: f_arr(:) ! Fortran pointer to wrap the C array
-
-  ! Convert raw C pointer into a Fortran assumed-shape pointer
-  call c_f_pointer(ptr, f_arr, [n])
-
-  ! f_arr can now be passed to any subroutine expecting an assumed-shape array
-  call do_work_on_array(f_arr)
-
-end subroutine process_int_array
-
-! This subroutine accepts an assumed-shape array and works with it
-subroutine do_work_on_array(arr)
-  implicit none
-  integer(c_int), intent(inout) :: arr(:)
-
-  integer :: i
-  do i = 1, size(arr)
-    arr(i) = arr(i) + 1
-  end do
-end subroutine do_work_on_array
-
-end module interop_example
-\end{verbatim}
-
-\subsubsection*{C Strings to Fortran Strings}
-
-This is for C Strings, but should be treated with caution, because the result \textbf{cannot be used as assumed length Fortran chars}.
+\subsubsection{Example of by-reference passing}
 
 \begin{verbatim}
-module charptr_demo
-  use iso_c_binding
-  implicit none
-contains
+! Even scalars are passed by reference
+integer(c_int), intent(in), value :: n_genes     ! INCORRECT
+integer(c_int), intent(in), target :: n_genes     ! CORRECT - by reference
 
-subroutine process_c_string(c_str_ptr, str_len) bind(C)
-  use iso_c_binding
-  implicit none
-
-  ! Arguments from C
-  type(c_ptr), value :: c_str_ptr
-  integer(c_int), value :: str_len
-
-  ! Fortran pointer to reshape the C char*
-  character(kind=c_char), pointer :: str(:)
-
-  ! Map the C pointer to a Fortran pointer
-  call c_f_pointer(c_str_ptr, str, [str_len])
-
-  ! NOTE:
-  ! The above Fortran pointer can be passed as an assumed shape Array
-  ! to any Fortran subroutine or function expecting an assumed shape
-  ! argument. Internally they are converted without (much) overhead. 
-
-  ! Print characters one by one (to show contents and no copy)
-  print *, 'Received C string (raw char*):'
-  print '(a)', str ! Note: prints whole array as string
-
-  ! Optionally: Loop through chars
-  ! do i = 1, str_len
-  !   write(*,'(a)', advance='no') str(i)
-  ! end do
-  ! write(*,*)
-end subroutine process_c_string
-
-end module charptr_demo
+! Arrays always by reference
+real(c_double), dimension(n_samples, n_genes), intent(in) :: expression_vectors
 \end{verbatim}
 
-\subsubsection*{Summary Table of Interoperable Array Patterns}
 
-\begin{center}
-\begin{tabular}{|l|l|l|l|}
-\hline
-\textbf{Direction} & \textbf{Method} & \textbf{Copy?} & \textbf{Safe?} \\
-\hline
-C $\rightarrow$ Fortran & \texttt{c\_f\_pointer} & No & Yes \\
-Fortran $\rightarrow$ C & \texttt{c\_loc + shape info} & No & Yes \\
-Fortran descriptor to C & Not possible & N/A & No \\
-Allocatable return & Not portable & Yes (implicit) & No \\
-\hline
-\end{tabular}
-\end{center}
+\subsection{Null Pointer Validation}
 
-This approach ensures efficient, copy-free interoperation between Fortran and C while preserving the expressiveness of assumed-shape arrays internally in Fortran.
+All C wrappers \textbf{must validate} that pointers are not null before use. This is done using preprocessor macros defined in \texttt{src/macros.h}.
 
-\noindent\textbf{Caller responsibility:}
-The external caller (e.g., from C, Python, Lua) must allocate a 1D array of size \texttt{nrow * ncol} and ensure it is stored in Fortran-style column-major order, or reshaped accordingly.
+\subsubsection{Required macros for null validation}
 
-\noindent This pattern allows Tensor Omics to retain full multidimensional structure internally while offering safe and portable interfaces to external consumers.
+\begin{verbatim}
+#include "macros.h"
 
+subroutine my_function_c(..., ierr) bind(C, name="my_function_c")
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
+  M_USE_NULL_VALIDATION
+  implicit none
+  
+  integer(c_int), intent(in), target :: n_genes
+  real(c_double), dimension(n_genes), intent(in), target :: data
+  integer(c_int), intent(out), target :: ierr
+  
+  ! ALWAYS check ierr first
+  M_CHECK_IERR_NON_NULL
+  
+  ! Then check all other arguments
+  M_CHECK_NON_NULL(n_genes)
+  M_CHECK_NON_NULL(data)
+  
+  ! Rest of wrapper code...
+end subroutine
+\end{verbatim}
+
+\textbf{Key macros:}
+\begin{itemize}
+  \item \texttt{M\_USE\_NULL\_VALIDATION}: Include at top of wrapper to import required modules
+  \item \texttt{M\_CHECK\_IERR\_NON\_NULL}: Always first check - validates \texttt{ierr} pointer
+  \item \texttt{M\_CHECK\_NON\_NULL(arg)}: Validates each argument pointer, sets \texttt{ierr = ERR\_POINTER\_NULL} if null
+\end{itemize}
+
+\textbf{Note:} All arguments in C wrappers must have the \texttt{target} attribute to allow pointer validation with \texttt{c\_loc()}.
+
+\subsection{Utility Macros for C Wrappers}
+
+The \texttt{src/macros.h} file provides several useful preprocessor macros to simplify common patterns in C wrappers.
+
+\subsubsection{Default value handling}
+
+Use \texttt{M\_DEFAULT\_VAL} to handle optional parameters with default values:
+
+\begin{verbatim}
+pure subroutine my_function_c(..., max_angle, gain_gamma, ierr) bind(C)
+  real(c_double), intent(in), target :: max_angle
+  real(c_double), intent(in), target :: gain_gamma
+  
+  real(real64) :: local_max_angle, local_gain
+  
+  ! Set default if value matches sentinel (e.g., NaN or -1)
+  M_DEFAULT_VAL(max_angle, local_max_angle, PI)
+  M_DEFAULT_VAL(gain_gamma, local_gain, 0.1_real64)
+  
+  ! Use local_max_angle and local_gain in computation
+end subroutine
+\end{verbatim}
+
+\subsubsection{Safe allocation with error checking}
+
+Use \texttt{M\_ALLOCATE} to allocate with automatic error handling:
+
+\begin{verbatim}
+logical, dimension(:,:), allocatable :: neofunc_f
+
+! This expands to:
+! allocate(neofunc_f(n_genes, n_axes), stat=ierr)
+! if (is_err(ierr)) then
+!   call set_err(ierr, ERR_ALLOC_FAIL)
+!   return
+! endif
+M_ALLOCATE(neofunc_f(n_genes, n_axes))
+\end{verbatim}
+
+\subsubsection{Special floating-point values}
+
+Macros for IEEE special values:
+
+\begin{verbatim}
+real(real64) :: nan_value, pos_inf, neg_inf
+
+nan_value = M_NAN          ! IEEE quiet NaN
+pos_inf = M_POS_INF        ! Positive infinity
+neg_inf = M_NEG_INF        ! Negative infinity
+\end{verbatim}
+
+\subsubsection{Complete macro reference}
+
+\begin{verbatim}
+! From src/macros.h:
+
+M_USE_NULL_VALIDATION          ! Import modules for null checking
+M_CHECK_IERR_NON_NULL          ! Validate ierr pointer
+M_CHECK_NON_NULL(ARG)          ! Validate argument pointer
+M_DEFAULT_VAL(OPT, VAR, DEF)   ! Set default value
+M_ALLOCATE(VAR_DECL)           ! Allocate with error check
+M_NAN                          ! IEEE quiet NaN
+M_POS_INF                      ! Positive infinity
+M_NEG_INF                      ! Negative infinity
+\end{verbatim}
+
+\subsection{Error Handling with tox\_errors}
+
+Tensor Omics uses a standardized error handling system defined in \texttt{src/tox\_errors.F90}. All functions must follow this convention.
+
+\subsubsection{Error codes}
+
+The \texttt{tox\_errors} module defines standard error codes:
+
+\begin{verbatim}
+! Success
+ERR_OK = 0
+
+! I/O errors (1xx)
+ERR_FILE_OPEN = 101
+ERR_READ_DATA = 107
+ERR_WRITE_DATA = 117
+
+! Validation errors (2xx)
+ERR_INVALID_INPUT = 201
+ERR_EMPTY_INPUT = 202
+ERR_DIM_MISMATCH = 203
+ERR_NAN_INF = 204
+ERR_SIZE_MISMATCH = 206
+
+! Memory errors (3xx)
+ERR_ALLOC_FAIL = 301
+ERR_POINTER_NULL = 302
+\end{verbatim}
+
+\subsubsection{Error handling pattern}
+
+\begin{verbatim}
+subroutine my_function(..., ierr)
+  use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT
+  
+  integer(int32), intent(out) :: ierr
+  
+  ! 1. Initialize error to OK
+  call set_ok(ierr)
+  
+  ! 2. Validate inputs
+  if (n < 1) then
+    call set_err(ierr, ERR_INVALID_INPUT)
+    return
+  end if
+  
+  ! 3. Check error before proceeding
+  if (is_err(ierr)) return
+  
+  ! 4. Core logic...
+  
+end subroutine
+\end{verbatim}
+
+\subsubsection{Validation helper functions}
+
+The \texttt{tox\_errors} module provides validation helpers:
+
+\begin{verbatim}
+! Validate dimension is positive and non-zero
+call validate_dimension_size(n_genes, ierr)
+
+! Validate value is in range
+call validate_in_range_int(value, ierr, min=0_int32, max=100_int32)
+call validate_in_range_real(angle, ierr, min=0.0_real64, max=PI)
+
+! Validate entire array
+call validate_all_in_range_real(expression_vectors, n_total, ierr, &
+                                min=-1.0_real64, max=1.0_real64)
+\end{verbatim}
+
+\subsubsection{Error propagation}
+
+Errors should propagate up the call stack without modification:
+
+\begin{verbatim}
+subroutine caller(ierr)
+  call worker_a(ierr)
+  if (is_err(ierr)) return  ! Propagate error immediately
+  
+  call worker_b(ierr)
+  if (is_err(ierr)) return  ! Propagate error immediately
+end subroutine
+\end{verbatim}
+
+Use \texttt{set\_err\_once()} to set error only if not already set:
+
+\begin{verbatim}
+call set_err_once(ierr, ERR_INVALID_INPUT)  ! Won't overwrite existing error
+\end{verbatim}
 
 \section{Fortran Array Notation Cheat-Sheet}
 
@@ -739,45 +985,8 @@ Understanding Fortran's passing conventions allows maximization of speed, minimi
 
 \section{Critical Practices in TOX Interfacing and Control Flow}
 
-This section consolidates three key implementation standards for TOX and F42 compliance: correct R–Fortran interfacing, prohibition of \texttt{GOTO}, and manual memory cleanup.
+This section consolidates key implementation standards for TOX and F42 compliance: prohibition of \texttt{GOTO} and manual memory cleanup.
 
-\subsection{Why \texttt{bind(C)} Is Dangerous for R Interfacing}
-
-Using \texttt{bind(C)} in Fortran changes the function's symbol name and calling convention to conform to the C ABI. This is incompatible with R's native \texttt{.Fortran()} interface, which relies on legacy Fortran symbol conventions (e.g., appending underscores, pass-by-address semantics).
-
-\subsubsection*{Problems Caused by \texttt{bind(C)} in R Packages}
-\begin{itemize}
-  \item \textbf{Breaks Symbol Lookup:} R expects mangled names like \texttt{mysub\_}, which \texttt{bind(C)} suppresses.
-  \item \textbf{Incorrect Argument Handling:} Changes to calling convention may result in wrong memory alignment or crashes.
-  \item \textbf{Unnecessary:} R handles native Fortran linking automatically during package build.
-\end{itemize}
-
-\subsubsection*{Correct Way to Interface R with Fortran}
-\begin{enumerate}
-  \item Write your subroutines in pure Fortran \emph{without} \texttt{bind(C)}.
-  \item Place Fortran files in \texttt{src/} directory of the package.
-  \item Register your compiled code using \texttt{useDynLib(pkgname)} in \texttt{NAMESPACE}.
-  \item Call Fortran code from R via \texttt{.Fortran()}:
-\begin{verbatim}
-  result <- .Fortran("mysub",
-    as.double(x), as.double(y), result = double(1))$result
-\end{verbatim}
-\end{enumerate}
-
-\subsubsection*{Minimal Example of Package Setup}
-\begin{itemize}
-  \item \texttt{DESCRIPTION}: no special flags needed.
-  \item \texttt{NAMESPACE}: \verb|useDynLib(mytoxpkg)|
-  \item \texttt{src/mysub.f90}:
-\begin{verbatim}
-subroutine mysub(x, y, result)
-  real(real64) :: x, y, result
-  result = x + y
-end subroutine
-\end{verbatim}
-\end{itemize}
-
-\vspace{1em}
 \subsection{Why \texttt{GOTO} Is Forbidden in F42 and TOX}
 
 \texttt{GOTO} is a low-level control structure that violates the principles of structured, readable, and verifiable code. While allowed by Fortran, its use is incompatible with both modern software engineering and WebAssembly (WASM) compilation.
@@ -853,11 +1062,12 @@ call deallocate_datatable(dt)
 
 \subsection*{Conclusion}
 
-All R–Fortran interfacing, control flow, and memory management in TOX must follow F42 principles:
+All control flow and memory management in TOX must follow F42 principles:
 \begin{itemize}
-  \item Never use \texttt{bind(C)} unless wrapping via \texttt{.Call()} (not \texttt{.Fortran()}).
   \item Never use \texttt{GOTO} — always use structured constructs.
   \item Always provide manual cleanup subroutines for types containing allocatables.
+  \item Use C wrappers with \texttt{bind(C)} for interfacing with Python and R.
+  \item Ensure proper error handling via \texttt{ierr} parameter in all API functions.
 \end{itemize}
 
 These principles ensure safety, readability, WASM compatibility, and long-term maintainability.

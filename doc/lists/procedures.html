@@ -468,6 +468,24 @@ This measures both magnitude and directionality of angular separation in RAP spa
                  <td><p>Performs k-means clustering on factor trajectories, so factor evolution over time</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_acceleration_from_velocity.html'>compute_acceleration_from_velocity</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute acceleration trajectories from velocity trajectories  API with validation</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_acceleration_from_velocity_helper.html'>compute_acceleration_from_velocity_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>This routine computes acceleration trajectories from velocity trajectories, no input validation</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_acceleration_from_velocity_trajectory.html'>compute_acceleration_from_velocity_trajectory</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute acceleration trajectory from a single velocity trajectory  with validation</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_all_contributions.html'>compute_all_contributions</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
@@ -562,6 +580,12 @@ The number of unique values is returned via n_unique output parameter.</p></td>
 Direct interface to compute_edf for users who have already sorted their data
 or have a custom permutation vector. This skips the internal sorting step
 for better performance when the caller has full control.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_factor_velocity_from_trajectories_helper.html'>compute_factor_velocity_from_trajectories_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>This routine computes velocity trajectory from the <code>trajectories(n_factors, n_samples, n_timepoints)</code> matrix</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_family_scaling.html'>compute_family_scaling</a></td>
@@ -732,6 +756,42 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
                  <td>Subroutine</td>
                  <td><p>R wrapper for compute_tissue_versatility.
 Calls compute_tissue_versatility with standard Fortran types for R interface.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_acceleration_contributions.html'>compute_velocity_acceleration_contributions</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute velocity and acceleration contributions for all variable pairs in the trajectories</p><a href="../proc/compute_velocity_acceleration_contributions.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_acceleration_contributions_alloc.html'>compute_velocity_acceleration_contributions_alloc</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_trajectories.html'>compute_velocity_trajectories</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute velocity trajectories  with validation</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_trajectories_helper.html'>compute_velocity_trajectories_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>This routine computes velocity trajectories from position trajectories, no input validation</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_trajectory.html'>compute_velocity_trajectory</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute velocity trajectory from a single position trajectory  with validation</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_velocity_trajectory_helper.html'>compute_velocity_trajectory_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>This routine computes velocity trajectory from a single position trajectory, no input validation</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/compute_weighted_global_divergence.html'>compute_weighted_global_divergence</a></td>
@@ -2656,6 +2716,42 @@ To achieve this, <code>subsets</code> has this structure: [...results, ...active
 This routine removes an active mask from the <code>subsets</code> array and returns it in <code>active_mask</code>.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/tox_compute_acceleration_from_velocity_c.html'>tox_compute_acceleration_from_velocity_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_acceleration_from_velocity</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_compute_acceleration_from_velocity_trajectory_c.html'>tox_compute_acceleration_from_velocity_trajectory_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_acceleration_from_velocity_trajectory</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_compute_velocity_acceleration_contributions_alloc_c.html'>tox_compute_velocity_acceleration_contributions_alloc_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_velocity_acceleration_contributions_alloc</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_compute_velocity_acceleration_contributions_c.html'>tox_compute_velocity_acceleration_contributions_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_velocity_and_acceleration_contributions</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_compute_velocity_trajectories_c.html'>tox_compute_velocity_trajectories_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_velocity_trajectories</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_compute_velocity_trajectory_c.html'>tox_compute_velocity_trajectory_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for compute_velocity_trajectory</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/validate_all_data.html'>validate_all_data</a></td>
                  <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
                  <td>Subroutine</td>
@@ -2942,7 +3038,7 @@ Converts integer mask to logical and calls which.</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-02-10 09:30 +0000"             </p>
+ on "2026-03-04 09:48 +0000"             </p>
           </div>
         </div>
         <br>

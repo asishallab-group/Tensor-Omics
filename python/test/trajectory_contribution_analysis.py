@@ -15,11 +15,183 @@ from tensoromics_functions import (
     tox_compute_all_contributions,
     tox_compute_baselines_factor_dependent,
     tox_perform_permutation_test,
-    tox_compute_p_values
+    tox_compute_p_values,
+    tox_compute_velocity_trajectory,
+    tox_compute_acceleration_from_velocity_trajectory,
+    tox_compute_velocity_trajectories,
+    tox_compute_acceleration_from_velocity,
+    tox_compute_velocity_acceleration_contributions,
+    tox_compute_velocity_acceleration_contributions_expert
 )
+
 
 # Constants
 TOL = 1e-12
+
+
+def _expected_velocity(trajectories: np.ndarray) -> np.ndarray:
+    trajectories = np.asarray(trajectories, dtype=np.float64)
+    if trajectories.ndim != 3:
+        raise ValueError("trajectories must be 3D (n_factors, n_samples, n_timepoints)")
+    velocity = np.zeros_like(trajectories)
+    if trajectories.shape[2] > 1:
+        velocity[:, :, 1:] = trajectories[:, :, 1:] - trajectories[:, :, :-1]
+    return velocity
+
+
+def _expected_acceleration(velocity: np.ndarray) -> np.ndarray:
+    velocity = np.asarray(velocity, dtype=np.float64)
+    if velocity.ndim != 3:
+        raise ValueError("velocity must be 3D (n_factors, n_samples, n_timepoints)")
+    acceleration = np.zeros_like(velocity)
+    if velocity.shape[2] > 2:
+        acceleration[:, :, 2:] = velocity[:, :, 2:] - velocity[:, :, 1:-1]
+    return acceleration
+
+
+def test_tox_compute_velocity_trajectories():
+    """Test velocity computation wrapper."""
+    # trajectories shape: (n_factors=1, n_samples=2, n_timepoints=4)
+    trajectories = np.array(
+        [[[1.0, 2.0, 4.0, 7.0],
+          [0.0, -1.0, -1.0,  0.0]]],
+        dtype=np.float64,
+    )
+
+    print("Trajectories shape:", trajectories.shape)
+    print("Trajectories:\n", trajectories)
+
+    velocity = tox_compute_velocity_trajectories(trajectories)
+    expected = _expected_velocity(trajectories)
+
+    print("Computed velocity:\n", velocity)
+    print("Expected velocity:\n", expected)
+    print("Difference:\n", velocity - expected)
+
+    assert velocity.shape == trajectories.shape
+    assert np.allclose(velocity, expected, atol=TOL), f"Velocity mismatch! Max diff: {np.max(np.abs(velocity - expected))}"
+
+    print("✅ tox_compute_velocity_trajectories passed.")
+
+
+def test_tox_compute_acceleration_from_velocity():
+    """Test acceleration computation wrapper."""
+    # velocity shape: (n_factors=1, n_samples=2, n_timepoints=4)
+    velocity = np.array(
+        [[[0.0, 1.0, 2.0, 3.0],
+          [0.0, -1.0, 0.0, 1.0]]],
+        dtype=np.float64,
+    )
+
+    acceleration = tox_compute_acceleration_from_velocity(velocity)
+    expected = _expected_acceleration(velocity)
+
+    assert acceleration.shape == velocity.shape
+    assert np.allclose(acceleration, expected, atol=TOL)
+
+    print("✅ tox_compute_acceleration_from_velocity passed.")
+
+
+def test_tox_compute_velocity_acceleration_contributions():
+    """Test velocity and acceleration contribution computation wrapper."""
+    # trajectories shape: (n_factors=2, n_samples=1, n_timepoints=4)
+    trajectories = np.array(
+        [[[1.0, 3.0, 6.0, 10.0]],   # Factor 1, Sample 1
+         [[1.0, 2.0, 2.0, 1.0]]],   # Factor 2, Sample 1
+        dtype=np.float64,
+    )
+    mode = "raw"
+
+    print(f"Input trajectories shape: {trajectories.shape}")
+    assert trajectories.shape == (2, 1, 4), f"Expected (2, 1, 4), got {trajectories.shape}"
+
+    result = tox_compute_velocity_acceleration_contributions(trajectories, mode)
+
+    C_vel = result["C_velocity"]
+    series_vel = result["velocity_contribution_series"]
+    C_acc = result["C_acceleration"]
+    series_acc = result["acceleration_contribution_series"]
+
+    # Output shapes: (n_samples, n_factors, n_factors, ...)
+    assert C_vel.shape == (1, 2, 2), f"Expected (1, 2, 2), got {C_vel.shape}"
+    assert series_vel.shape == (1, 2, 2, 4), f"Expected (1, 2, 2, 4), got {series_vel.shape}"
+    assert C_acc.shape == (1, 2, 2), f"Expected (1, 2, 2), got {C_acc.shape}"
+    assert series_acc.shape == (1, 2, 2, 4), f"Expected (1, 2, 2, 4), got {series_acc.shape}"
+
+    print("\n=== DEBUG OUTPUT ===")
+    print(f"C_vel:\n{C_vel}")
+    print(f"series_vel shape: {series_vel.shape}")
+    print(f"series_vel[0,0,1,:]:\n{series_vel[0,0,1,:]}")
+    print(f"C_acc:\n{C_acc}")
+    print(f"series_acc[0,0,1,:]:\n{series_acc[0,0,1,:]}")
+
+    expected_velocity = _expected_velocity(trajectories)
+    expected_acceleration = _expected_acceleration(expected_velocity)
+
+    print(f"\nExpected velocity:\n{expected_velocity}")
+    print(f"Expected acceleration:\n{expected_acceleration}")
+
+    # Extract velocities: factor 0 and factor 1 for sample 0
+    factor_velocity = expected_velocity[0, 0, 1:]      # Factor 0, timepoints 2-4
+    dependent_velocity = expected_velocity[1, 0, 1:]   # Factor 1, timepoints 2-4
+    factor_acceleration = expected_acceleration[0, 0, 2:]   # Factor 0, timepoints 3-4
+    dependent_acceleration = expected_acceleration[1, 0, 2:]  # Factor 1, timepoints 3-4
+
+    print(f"\nFactor velocity (t=2..4): {factor_velocity}")
+    print(f"Dependent velocity (t=2..4): {dependent_velocity}")
+    print(f"Factor acceleration (t=3..4): {factor_acceleration}")
+    print(f"Dependent acceleration (t=3..4): {dependent_acceleration}")
+
+    expected_series_vel = np.zeros(4)
+    if factor_velocity.size > 0:
+        vel_contribs = factor_velocity * dependent_velocity
+        expected_total_vel = vel_contribs.sum()
+        expected_series_vel[1:] = vel_contribs
+        print(f"\nVelocity contributions: {vel_contribs}")
+        print(f"Expected total velocity: {expected_total_vel}")
+    else:
+        expected_total_vel = 0.0
+
+    expected_series_acc = np.zeros(4)
+    if factor_acceleration.size > 0:
+        acc_contribs = factor_acceleration * dependent_acceleration
+        expected_total_acc = acc_contribs.sum()
+        expected_series_acc[2:] = acc_contribs
+        print(f"\nAcceleration contributions: {acc_contribs}")
+        print(f"Expected total acceleration: {expected_total_acc}")
+    else:
+        expected_total_acc = 0.0
+
+    print(f"\nAssertion check: C_vel[0, 0, 1] = {C_vel[0, 0, 1]} vs expected {expected_total_vel}")
+
+    # Check sample 0, factor 0 → factor 1 contributions
+    assert np.isclose(C_vel[0, 0, 1], expected_total_vel, atol=TOL), \
+        f"C_vel[0,0,1] = {C_vel[0, 0, 1]}, expected {expected_total_vel}"
+    assert np.allclose(series_vel[0, 0, 1, :], expected_series_vel, atol=TOL), \
+        f"series_vel mismatch"
+    assert np.isclose(C_acc[0, 0, 1], expected_total_acc, atol=TOL), \
+        f"C_acc[0,0,1] = {C_acc[0, 0, 1]}, expected {expected_total_acc}"
+    assert np.allclose(series_acc[0, 0, 1, :], expected_series_acc, atol=TOL), \
+        f"series_acc mismatch"
+
+    print("✅ tox_compute_velocity_acceleration_contributions passed.")
+
+
+def test_tox_compute_velocity_acceleration_contributions_expert():
+    trajectories = np.array([
+        [[1.0, 2.0, 3.0, 4.0],
+         [2.0, 4.0, 6.0, 8.0]]
+    ], dtype=np.float64)
+
+    result_base = tox_compute_velocity_acceleration_contributions(trajectories, "raw")
+    result_expert = tox_compute_velocity_acceleration_contributions_expert(trajectories, "raw")
+
+    for key in result_base:
+        assert key in result_expert, f"Missing key {key} in expert result"
+        assert result_base[key].shape == result_expert[key].shape
+        assert np.allclose(result_base[key], result_expert[key], atol=TOL)
+
+    print("✅ tox_compute_velocity_acceleration_contributions_expert passed.")
 
 
 def test_tox_compute_baselines_factor_dependent():
@@ -261,6 +433,46 @@ def test_compute_p_values():
     print("✅ Compute p values test passed.")
 
 
+def test_tox_compute_velocity_trajectory():
+    """Test single-trajectory velocity computation wrapper."""
+    trajectory = np.array([1.0, 2.0, 4.0, 7.0], dtype=np.float64)
+    velocity = tox_compute_velocity_trajectory(trajectory)
+
+    expected = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+
+    assert velocity.shape == trajectory.shape
+    assert np.allclose(velocity, expected, atol=TOL)
+
+    # Dimensionality check
+    try:
+        tox_compute_velocity_trajectory(trajectory.reshape(1, -1))
+        assert False, "Expected ValueError for 2D input"
+    except ValueError:
+        pass  # Expected
+
+    print("✅ tox_compute_velocity_trajectory passed.")
+
+
+def test_tox_compute_acceleration_from_velocity_trajectory():
+    """Test single-trajectory acceleration computation wrapper."""
+    velocity = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+    acceleration = tox_compute_acceleration_from_velocity_trajectory(velocity)
+
+    expected = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float64)
+
+    assert acceleration.shape == velocity.shape
+    assert np.allclose(acceleration, expected, atol=TOL)
+
+    # Dimensionality check
+    try:
+        tox_compute_acceleration_from_velocity_trajectory(velocity.reshape(1, -1))
+        assert False, "Expected ValueError for 2D input"
+    except ValueError:
+        pass  # Expected
+
+    print("✅ tox_compute_acceleration_from_velocity_trajectory passed.")
+
+
 def main():
     print("=================================================")
     print("    TRAJECTORY CONTRIBUTION ANALYSIS PYTHON INTERFACE TESTS")
@@ -272,6 +484,14 @@ def main():
     test_compute_all_contributions()
     test_perform_permutation_test()
     test_compute_p_values()
+    test_tox_compute_velocity_trajectories()
+    test_tox_compute_acceleration_from_velocity()
+    test_tox_compute_velocity_acceleration_contributions()
+    test_tox_compute_velocity_acceleration_contributions_expert()
+    test_tox_compute_velocity_trajectory()
+    test_tox_compute_acceleration_from_velocity_trajectory()
+
+    
 
 
 if __name__ == "__main__":

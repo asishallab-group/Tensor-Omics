@@ -1,23 +1,18 @@
 {
-  "Fortran Call of subroutine 'build_kd_index'": {
-    "prefix": "f42:build_kd_index",
-    "body": "call build_kd_index(${1:points}, ${2:num_dimensions}, ${3:num_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:workspace}, ${7:value_buffer}, ${8:permutation}, ${9:left_stack}, ${10:right_stack}, ${11:recursion_stack}, ${12:ierr})",
-    "description": "Call of Fortran subroutine 'build_kd_index' from module 'f42_kd_tree'"
+  "Fortran Call of subroutine 'build_bst_index'": {
+    "prefix": "f42:build_bst_index",
+    "body": "call build_bst_index(${1:values}, ${2:num_values}, ${3:sorted_indices}, ${4:left_stack}, ${5:right_stack}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'build_bst_index' from module 'f42_binary_search_tree'"
   },
-  "Fortran Call of subroutine 'partial_sort_by_dimension'": {
-    "prefix": "f42:partial_sort_by_dimension",
-    "body": "call partial_sort_by_dimension(${1:points}, ${2:n_points}, ${3:num_dimensions}, ${4:kd_indices}, ${5:left_idx}, ${6:right_idx}, ${7:dim}, ${8:mid_idx}, ${9:workspace}, ${10:value_buffer}, ${11:permutation}, ${12:left_stack}, ${13:right_stack}, ${14:ierr})",
-    "description": "Call of Fortran subroutine 'partial_sort_by_dimension' from module 'f42_kd_tree'"
+  "Fortran Call of function 'get_sorted_value'": {
+    "prefix": "f42:get_sorted_value",
+    "body": "${{1:result}} = get_sorted_value(${2:values}, ${3:sorted_indices}, ${4:position}, ${5:ierr})",
+    "description": "Call of Fortran function 'get_sorted_value' from module 'f42_binary_search_tree'"
   },
-  "Fortran Call of subroutine 'build_spherical_kd'": {
-    "prefix": "f42:build_spherical_kd",
-    "body": "call build_spherical_kd(${1:vectors}, ${2:num_dimensions}, ${3:num_vectors}, ${4:sphere_indices}, ${5:dimension_order}, ${6:workspace}, ${7:value_buffer}, ${8:permutation}, ${9:left_stack}, ${10:right_stack}, ${11:recursion_stack}, ${12:ierr})",
-    "description": "Call of Fortran subroutine 'build_spherical_kd' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'get_kd_point'": {
-    "prefix": "f42:get_kd_point",
-    "body": "call get_kd_point(${1:points}, ${2:kd_indices}, ${3:position}, ${4:point_values}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'get_kd_point' from module 'f42_kd_tree'"
+  "Fortran Call of subroutine 'bst_range_query'": {
+    "prefix": "f42:bst_range_query",
+    "body": "call bst_range_query(${1:values}, ${2:sorted_indices}, ${3:num_values}, ${4:lower_bound}, ${5:upper_bound}, ${6:output_indices}, ${7:num_matches}, ${8:ierr})",
+    "description": "Call of Fortran subroutine 'bst_range_query' from module 'f42_binary_search_tree'"
   },
   "Fortran Call of function 'clamp_real'": {
     "prefix": "f42:clamp_real",
@@ -229,110 +224,25 @@
     "body": "call calc_percentile_alloc(${1:array}, ${2:percentile}, ${3:value}, ${4:ierr})",
     "description": "Call of Fortran subroutine 'calc_percentile_alloc' from module 'f42_utils'"
   },
-  "Fortran Call of subroutine 'build_bst_index'": {
-    "prefix": "f42:build_bst_index",
-    "body": "call build_bst_index(${1:values}, ${2:num_values}, ${3:sorted_indices}, ${4:left_stack}, ${5:right_stack}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'build_bst_index' from module 'f42_binary_search_tree'"
+  "Fortran Call of subroutine 'build_kd_index'": {
+    "prefix": "f42:build_kd_index",
+    "body": "call build_kd_index(${1:points}, ${2:num_dimensions}, ${3:num_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:workspace}, ${7:value_buffer}, ${8:permutation}, ${9:left_stack}, ${10:right_stack}, ${11:recursion_stack}, ${12:ierr})",
+    "description": "Call of Fortran subroutine 'build_kd_index' from module 'f42_kd_tree'"
   },
-  "Fortran Call of function 'get_sorted_value'": {
-    "prefix": "f42:get_sorted_value",
-    "body": "${{1:result}} = get_sorted_value(${2:values}, ${3:sorted_indices}, ${4:position}, ${5:ierr})",
-    "description": "Call of Fortran function 'get_sorted_value' from module 'f42_binary_search_tree'"
+  "Fortran Call of subroutine 'partial_sort_by_dimension'": {
+    "prefix": "f42:partial_sort_by_dimension",
+    "body": "call partial_sort_by_dimension(${1:points}, ${2:n_points}, ${3:num_dimensions}, ${4:kd_indices}, ${5:left_idx}, ${6:right_idx}, ${7:dim}, ${8:mid_idx}, ${9:workspace}, ${10:value_buffer}, ${11:permutation}, ${12:left_stack}, ${13:right_stack}, ${14:ierr})",
+    "description": "Call of Fortran subroutine 'partial_sort_by_dimension' from module 'f42_kd_tree'"
   },
-  "Fortran Call of subroutine 'bst_range_query'": {
-    "prefix": "f42:bst_range_query",
-    "body": "call bst_range_query(${1:values}, ${2:sorted_indices}, ${3:num_values}, ${4:lower_bound}, ${5:upper_bound}, ${6:output_indices}, ${7:num_matches}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'bst_range_query' from module 'f42_binary_search_tree'"
+  "Fortran Call of subroutine 'build_spherical_kd'": {
+    "prefix": "f42:build_spherical_kd",
+    "body": "call build_spherical_kd(${1:vectors}, ${2:num_dimensions}, ${3:num_vectors}, ${4:sphere_indices}, ${5:dimension_order}, ${6:workspace}, ${7:value_buffer}, ${8:permutation}, ${9:left_stack}, ${10:right_stack}, ${11:recursion_stack}, ${12:ierr})",
+    "description": "Call of Fortran subroutine 'build_spherical_kd' from module 'f42_kd_tree'"
   },
-  "Fortran Call of subroutine 'serialize_logical_1d'": {
-    "prefix": "f42:serialize_logical_1d",
-    "body": "call serialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_1d' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_2d'": {
-    "prefix": "f42:serialize_logical_2d",
-    "body": "call serialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_2d' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_3d'": {
-    "prefix": "f42:serialize_logical_3d",
-    "body": "call serialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_3d' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_4d'": {
-    "prefix": "f42:serialize_logical_4d",
-    "body": "call serialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_4d' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_5d'": {
-    "prefix": "f42:serialize_logical_5d",
-    "body": "call serialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_5d' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_nd'": {
-    "prefix": "f42:serialize_logical_nd",
-    "body": "call serialize_logical_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_nd' from module 'f42_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_char_1d'": {
-    "prefix": "f42:serialize_char_1d",
-    "body": "call serialize_char_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_1d' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_char_2d'": {
-    "prefix": "f42:serialize_char_2d",
-    "body": "call serialize_char_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_2d' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_char_3d'": {
-    "prefix": "f42:serialize_char_3d",
-    "body": "call serialize_char_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_3d' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_char_4d'": {
-    "prefix": "f42:serialize_char_4d",
-    "body": "call serialize_char_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_4d' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_char_5d'": {
-    "prefix": "f42:serialize_char_5d",
-    "body": "call serialize_char_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_5d' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_char_nd'": {
-    "prefix": "f42:serialize_char_nd",
-    "body": "call serialize_char_nd(${1:flat}, ${2:dims}, ${3:ndim}, ${4:clen}, ${5:filename}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_nd' from module 'f42_serialize_char'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_1d'": {
-    "prefix": "f42:serialize_complex_1d",
-    "body": "call serialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_1d' from module 'f42_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_2d'": {
-    "prefix": "f42:serialize_complex_2d",
-    "body": "call serialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_2d' from module 'f42_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_3d'": {
-    "prefix": "f42:serialize_complex_3d",
-    "body": "call serialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_3d' from module 'f42_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_4d'": {
-    "prefix": "f42:serialize_complex_4d",
-    "body": "call serialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_4d' from module 'f42_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_5d'": {
-    "prefix": "f42:serialize_complex_5d",
-    "body": "call serialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_5d' from module 'f42_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_nd'": {
-    "prefix": "f42:serialize_complex_nd",
-    "body": "call serialize_complex_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_nd' from module 'f42_serialize_complex'"
+  "Fortran Call of subroutine 'get_kd_point'": {
+    "prefix": "f42:get_kd_point",
+    "body": "call get_kd_point(${1:points}, ${2:kd_indices}, ${3:position}, ${4:point_values}, ${5:ierr})",
+    "description": "Call of Fortran subroutine 'get_kd_point' from module 'f42_kd_tree'"
   },
   "Fortran Call of subroutine 'deserialize_real_flat'": {
     "prefix": "f42:deserialize_real_flat",
@@ -364,35 +274,35 @@
     "body": "call deserialize_real_5d(${1:arr}, ${2:filename}, ${3:ierr})",
     "description": "Call of Fortran subroutine 'deserialize_real_5d' from module 'f42_deserialize_real'"
   },
-  "Fortran Call of subroutine 'serialize_int_1d'": {
-    "prefix": "f42:serialize_int_1d",
-    "body": "call serialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_1d' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_flat'": {
+    "prefix": "f42:deserialize_int_flat",
+    "body": "call deserialize_int_flat(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_flat' from module 'f42_deserialize_int'"
   },
-  "Fortran Call of subroutine 'serialize_int_2d'": {
-    "prefix": "f42:serialize_int_2d",
-    "body": "call serialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_2d' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_1d'": {
+    "prefix": "f42:deserialize_int_1d",
+    "body": "call deserialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_1d' from module 'f42_deserialize_int'"
   },
-  "Fortran Call of subroutine 'serialize_int_3d'": {
-    "prefix": "f42:serialize_int_3d",
-    "body": "call serialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_3d' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_2d'": {
+    "prefix": "f42:deserialize_int_2d",
+    "body": "call deserialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_2d' from module 'f42_deserialize_int'"
   },
-  "Fortran Call of subroutine 'serialize_int_4d'": {
-    "prefix": "f42:serialize_int_4d",
-    "body": "call serialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_4d' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_3d'": {
+    "prefix": "f42:deserialize_int_3d",
+    "body": "call deserialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_3d' from module 'f42_deserialize_int'"
   },
-  "Fortran Call of subroutine 'serialize_int_5d'": {
-    "prefix": "f42:serialize_int_5d",
-    "body": "call serialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_5d' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_4d'": {
+    "prefix": "f42:deserialize_int_4d",
+    "body": "call deserialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_4d' from module 'f42_deserialize_int'"
   },
-  "Fortran Call of subroutine 'serialize_int_nd'": {
-    "prefix": "f42:serialize_int_nd",
-    "body": "call serialize_int_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_nd' from module 'f42_serialize_int'"
+  "Fortran Call of subroutine 'deserialize_int_5d'": {
+    "prefix": "f42:deserialize_int_5d",
+    "body": "call deserialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_int_5d' from module 'f42_deserialize_int'"
   },
   "Fortran Call of subroutine 'serialize_real_1d'": {
     "prefix": "f42:serialize_real_1d",
@@ -424,35 +334,125 @@
     "body": "call serialize_real_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
     "description": "Call of Fortran subroutine 'serialize_real_nd' from module 'f42_serialize_real'"
   },
-  "Fortran Call of subroutine 'deserialize_int_flat'": {
-    "prefix": "f42:deserialize_int_flat",
-    "body": "call deserialize_int_flat(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_flat' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_flat'": {
+    "prefix": "f42:deserialize_complex_flat",
+    "body": "call deserialize_complex_flat(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_flat' from module 'f42_deserialize_complex'"
   },
-  "Fortran Call of subroutine 'deserialize_int_1d'": {
-    "prefix": "f42:deserialize_int_1d",
-    "body": "call deserialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_1d' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_1d'": {
+    "prefix": "f42:deserialize_complex_1d",
+    "body": "call deserialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_1d' from module 'f42_deserialize_complex'"
   },
-  "Fortran Call of subroutine 'deserialize_int_2d'": {
-    "prefix": "f42:deserialize_int_2d",
-    "body": "call deserialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_2d' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_2d'": {
+    "prefix": "f42:deserialize_complex_2d",
+    "body": "call deserialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_2d' from module 'f42_deserialize_complex'"
   },
-  "Fortran Call of subroutine 'deserialize_int_3d'": {
-    "prefix": "f42:deserialize_int_3d",
-    "body": "call deserialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_3d' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_3d'": {
+    "prefix": "f42:deserialize_complex_3d",
+    "body": "call deserialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_3d' from module 'f42_deserialize_complex'"
   },
-  "Fortran Call of subroutine 'deserialize_int_4d'": {
-    "prefix": "f42:deserialize_int_4d",
-    "body": "call deserialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_4d' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_4d'": {
+    "prefix": "f42:deserialize_complex_4d",
+    "body": "call deserialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_4d' from module 'f42_deserialize_complex'"
   },
-  "Fortran Call of subroutine 'deserialize_int_5d'": {
-    "prefix": "f42:deserialize_int_5d",
-    "body": "call deserialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_5d' from module 'f42_deserialize_int'"
+  "Fortran Call of subroutine 'deserialize_complex_5d'": {
+    "prefix": "f42:deserialize_complex_5d",
+    "body": "call deserialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_complex_5d' from module 'f42_deserialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_1d'": {
+    "prefix": "f42:serialize_logical_1d",
+    "body": "call serialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_1d' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_2d'": {
+    "prefix": "f42:serialize_logical_2d",
+    "body": "call serialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_2d' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_3d'": {
+    "prefix": "f42:serialize_logical_3d",
+    "body": "call serialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_3d' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_4d'": {
+    "prefix": "f42:serialize_logical_4d",
+    "body": "call serialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_4d' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_5d'": {
+    "prefix": "f42:serialize_logical_5d",
+    "body": "call serialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_5d' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_logical_nd'": {
+    "prefix": "f42:serialize_logical_nd",
+    "body": "call serialize_logical_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_logical_nd' from module 'f42_serialize_logical'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_1d'": {
+    "prefix": "f42:serialize_complex_1d",
+    "body": "call serialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_1d' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_2d'": {
+    "prefix": "f42:serialize_complex_2d",
+    "body": "call serialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_2d' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_3d'": {
+    "prefix": "f42:serialize_complex_3d",
+    "body": "call serialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_3d' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_4d'": {
+    "prefix": "f42:serialize_complex_4d",
+    "body": "call serialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_4d' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_5d'": {
+    "prefix": "f42:serialize_complex_5d",
+    "body": "call serialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_5d' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_complex_nd'": {
+    "prefix": "f42:serialize_complex_nd",
+    "body": "call serialize_complex_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_complex_nd' from module 'f42_serialize_complex'"
+  },
+  "Fortran Call of subroutine 'serialize_char_1d'": {
+    "prefix": "f42:serialize_char_1d",
+    "body": "call serialize_char_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_1d' from module 'f42_serialize_char'"
+  },
+  "Fortran Call of subroutine 'serialize_char_2d'": {
+    "prefix": "f42:serialize_char_2d",
+    "body": "call serialize_char_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_2d' from module 'f42_serialize_char'"
+  },
+  "Fortran Call of subroutine 'serialize_char_3d'": {
+    "prefix": "f42:serialize_char_3d",
+    "body": "call serialize_char_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_3d' from module 'f42_serialize_char'"
+  },
+  "Fortran Call of subroutine 'serialize_char_4d'": {
+    "prefix": "f42:serialize_char_4d",
+    "body": "call serialize_char_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_4d' from module 'f42_serialize_char'"
+  },
+  "Fortran Call of subroutine 'serialize_char_5d'": {
+    "prefix": "f42:serialize_char_5d",
+    "body": "call serialize_char_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_5d' from module 'f42_serialize_char'"
+  },
+  "Fortran Call of subroutine 'serialize_char_nd'": {
+    "prefix": "f42:serialize_char_nd",
+    "body": "call serialize_char_nd(${1:flat}, ${2:dims}, ${3:ndim}, ${4:clen}, ${5:filename}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_char_nd' from module 'f42_serialize_char'"
   },
   "Fortran Call of subroutine 'check_okay_ioerror'": {
     "prefix": "f42:check_okay_ioerror",
@@ -478,6 +478,36 @@
     "prefix": "f42:get_array_metadata",
     "body": "call get_array_metadata(${1:filename}, ${2:dims_out}, ${3:dims_out_capacity}, ${4:ndims}, ${5:ierr}, ${6:clen})",
     "description": "Call of Fortran subroutine 'get_array_metadata' from module 'f42_array_utils'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_flat'": {
+    "prefix": "f42:deserialize_logical_flat",
+    "body": "call deserialize_logical_flat(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_flat' from module 'f42_deserialize_logical'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_1d'": {
+    "prefix": "f42:deserialize_logical_1d",
+    "body": "call deserialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_1d' from module 'f42_deserialize_logical'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_2d'": {
+    "prefix": "f42:deserialize_logical_2d",
+    "body": "call deserialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_2d' from module 'f42_deserialize_logical'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_3d'": {
+    "prefix": "f42:deserialize_logical_3d",
+    "body": "call deserialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_3d' from module 'f42_deserialize_logical'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_4d'": {
+    "prefix": "f42:deserialize_logical_4d",
+    "body": "call deserialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_4d' from module 'f42_deserialize_logical'"
+  },
+  "Fortran Call of subroutine 'deserialize_logical_5d'": {
+    "prefix": "f42:deserialize_logical_5d",
+    "body": "call deserialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'deserialize_logical_5d' from module 'f42_deserialize_logical'"
   },
   "Fortran Call of subroutine 'deserialize_char_flat'": {
     "prefix": "f42:deserialize_char_flat",
@@ -509,65 +539,35 @@
     "body": "call deserialize_char_5d(${1:arr}, ${2:filename}, ${3:ierr})",
     "description": "Call of Fortran subroutine 'deserialize_char_5d' from module 'f42_deserialize_char'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_flat'": {
-    "prefix": "f42:deserialize_complex_flat",
-    "body": "call deserialize_complex_flat(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_flat' from module 'f42_deserialize_complex'"
+  "Fortran Call of subroutine 'serialize_int_1d'": {
+    "prefix": "f42:serialize_int_1d",
+    "body": "call serialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_1d' from module 'f42_serialize_int'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_1d'": {
-    "prefix": "f42:deserialize_complex_1d",
-    "body": "call deserialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_1d' from module 'f42_deserialize_complex'"
+  "Fortran Call of subroutine 'serialize_int_2d'": {
+    "prefix": "f42:serialize_int_2d",
+    "body": "call serialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_2d' from module 'f42_serialize_int'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_2d'": {
-    "prefix": "f42:deserialize_complex_2d",
-    "body": "call deserialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_2d' from module 'f42_deserialize_complex'"
+  "Fortran Call of subroutine 'serialize_int_3d'": {
+    "prefix": "f42:serialize_int_3d",
+    "body": "call serialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_3d' from module 'f42_serialize_int'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_3d'": {
-    "prefix": "f42:deserialize_complex_3d",
-    "body": "call deserialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_3d' from module 'f42_deserialize_complex'"
+  "Fortran Call of subroutine 'serialize_int_4d'": {
+    "prefix": "f42:serialize_int_4d",
+    "body": "call serialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_4d' from module 'f42_serialize_int'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_4d'": {
-    "prefix": "f42:deserialize_complex_4d",
-    "body": "call deserialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_4d' from module 'f42_deserialize_complex'"
+  "Fortran Call of subroutine 'serialize_int_5d'": {
+    "prefix": "f42:serialize_int_5d",
+    "body": "call serialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_5d' from module 'f42_serialize_int'"
   },
-  "Fortran Call of subroutine 'deserialize_complex_5d'": {
-    "prefix": "f42:deserialize_complex_5d",
-    "body": "call deserialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_5d' from module 'f42_deserialize_complex'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_flat'": {
-    "prefix": "f42:deserialize_logical_flat",
-    "body": "call deserialize_logical_flat(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_flat' from module 'f42_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_1d'": {
-    "prefix": "f42:deserialize_logical_1d",
-    "body": "call deserialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_1d' from module 'f42_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_2d'": {
-    "prefix": "f42:deserialize_logical_2d",
-    "body": "call deserialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_2d' from module 'f42_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_3d'": {
-    "prefix": "f42:deserialize_logical_3d",
-    "body": "call deserialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_3d' from module 'f42_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_4d'": {
-    "prefix": "f42:deserialize_logical_4d",
-    "body": "call deserialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_4d' from module 'f42_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_5d'": {
-    "prefix": "f42:deserialize_logical_5d",
-    "body": "call deserialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_5d' from module 'f42_deserialize_logical'"
+  "Fortran Call of subroutine 'serialize_int_nd'": {
+    "prefix": "f42:serialize_int_nd",
+    "body": "call serialize_int_nd(${1:arr}, ${2:dims}, ${3:ndim}, ${4:filename}, ${5:ierr})",
+    "description": "Call of Fortran subroutine 'serialize_int_nd' from module 'f42_serialize_int'"
   },
   "Fortran Call of function 'xxh3_hash_c'": {
     "prefix": "f42:xxh3_hash_c",
