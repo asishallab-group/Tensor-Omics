@@ -5,12 +5,12 @@
 !| This module implements the pipeline to perform the complete JSCompTest for all studies
 module tox_data_integration_js_comp_test
     use safeguard
-    use tox_data_integration_preprocessing, only: find_last_non_nan, pool_means_n_pool_input_helper, construct_neighborhoods_helper
+    use tox_data_integration_preprocessing, only: find_last_non_nan, pool_means_n_pool_input_helper, construct_neighborhoods_helper, pool_means_alloc
     use tox_data_integration_jsd, only: build_residual_histograms_helper, calc_pmf_helper, compute_weighted_global_divergence_helper, compute_divergence_per_reference_point_helper
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_heaps, only: top_k_heap_push, bottom_k_heap_push
     use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom, reset_rng, rng_t, destroy_rng
-    use f42_utils, only: calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, LOG_2, init_perm
+    use f42_utils, only: calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, sort_real_heapsort_expl_size, LOG_2, init_perm
     use tox_errors, only: map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
 
@@ -127,45 +127,8 @@ contains
         call map_err_arg_pos(ierr, 11_int32, 5_int32)
     end subroutine determine_shared_residual_range_alloc
 
-    !> More efficient shorthand for the pipeline:
-    !|
-    !| 1. [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]] 
-    !| 2. [[tox_data_integration(module):estimate_bin_count_alloc(interface)]] 
-    !|
-    !| It is faster because it sorts the residuals only once, while the separate calls do it twice. 
-    pure subroutine determine_bin_count_and_shared_residual_range_alloc(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, ierr, residual_range_quantile)
-        integer(int32), intent(in) :: n_neighbors
-            !! Neighborhood size
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
-            !! Matrix of signed residuals per study
-        real(real64), intent(out) :: shared_residual_range
-            !! Computed residual range (R)
-        integer(int32), intent(out) :: n_bins
-            !! Appropriate number of bins to do the JSD Compatibility test for
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        call set_ok(ierr)
-        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_studies, ierr, arg_pos=4_int32)
-        if (is_err(ierr)) return
-
-        call determine_bin_count_and_shared_residual_range_alloc_helper(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, shared_residual_range, n_bins, determine_bin_count=.true., determine_shared_residual_range=.true., ierr=ierr, residual_range_quantile=residual_range_quantile)
-
-        call map_err_arg_pos(ierr, 11_int32, 9_int32)
-    end subroutine determine_bin_count_and_shared_residual_range_alloc
-
     !> (with input validation) Root helper for:
     !|
-    !| - [[tox_data_integration(module):determine_bin_count_and_shared_residual_range_alloc(interface)]]
     !| - [[tox_data_integration(module):estimate_bin_count_alloc(interface)]]
     !| - [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
     !|
@@ -340,7 +303,7 @@ contains
 
         n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
         if (n_pool == 0) then
-            n_bins = 0
+            n_bins = 1
         else
             n_reps_neighborhood = real(max_n_reps_all_studies * n_neighbors, kind=real64)
 
@@ -364,7 +327,7 @@ contains
     subroutine determine_js_comp_test_n_points_n_neighbors_alloc(&
             n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
             gene_means, n_studies, n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr,&
-            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, two_sided_bootstrapping_significance_level, random_seed&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, two_sided_bootstrapping_significance_level, random_seed, residual_range_quantile&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -380,10 +343,10 @@ contains
             !! The finally chosen candidate from `candidates_n_neighbors`
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
-        real(real64), intent(in) :: shared_residual_range
+        real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        integer(int32), intent(in) :: n_bins
-            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(out) :: n_bins
+            !! The number of bins used for the finally chosen candidate from `candidates_n_points_n_neighbors`
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
@@ -404,11 +367,13 @@ contains
             !! Random seed to use for random number generation, default: `42`
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! The significance level used for obtained values in bootstrapping, default: `2.5` -> `best_candidate_pair_confidence_interval` caps `95%` from all obtained values
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile for determining the residual range, default: `95.0`
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: n_candidates_n_points_n_neighbors, n_point_candidates, i_candidate
-        integer(int32) :: max_n_points_candidate, min_n_points_candidate
+        integer(int32) :: n_candidates_n_points_n_neighbors, n_point_candidates, i_candidate, i_study, n_residuals
+        integer(int32) :: max_n_points_candidate, min_n_points_candidate, max_n_bins_all_candidates
         integer(int32) :: max_n_neighbors_candidate, prev_point_candidate, prev_neighbor_candidate
         integer(int32) :: n_bootstrapping_top_k_jsds, i_point_candidate, i_neighbor_candidate
         real(real64) :: n_points_candidate_real
@@ -420,7 +385,7 @@ contains
 
         integer(int32), dimension(:, :), allocatable :: candidates_n_points_n_neighbors
         integer(int32), dimension(:, :), allocatable :: gene_means_perms
-        integer(int32), dimension(:), allocatable :: gene_means_perm_all
+        integer(int32), dimension(:), allocatable :: gene_means_perm_all, residuals_perm
         integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_residuals
         integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_ranges
         real(real64), dimension(:), allocatable :: tmp_x_star
@@ -429,7 +394,7 @@ contains
         integer(int32), dimension(:, :), allocatable :: tmp_included_n_reps
         real(real64), dimension(:, :), allocatable :: tmp_mean_pmf
         integer(int32), dimension(:, :), allocatable :: tmp_mean_pmf_counts
-        integer(int32), dimension(:), allocatable :: tmp_mean_pmf_included_n_reps
+        integer(int32), dimension(:), allocatable :: tmp_mean_pmf_included_n_reps, n_bins_candidates
         real(real64), dimension(:, :), allocatable :: tmp_js_divergences
         real(real64), dimension(:, :), allocatable :: tmp_weights
         real(real64), dimension(:), allocatable :: tmp_global_js_divergence
@@ -443,12 +408,9 @@ contains
         call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=4_int32)
 
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=10_int32)
-        call validate_in_range_int(n_bins, ierr, arg_pos=7_int32)
         call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=14_int32)
         CM_VALIDATE_JOIN_METHOD(arg_pos=12_int32)
 
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=16_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=17_int32, min=0.0_real64, max=100.0_real64)
 
@@ -474,10 +436,19 @@ contains
         n_candidates_n_points_n_neighbors = n_point_candidates * size(KX_FACTORS, kind=int32)
 
         M_ALLOCATE(candidates_n_points_n_neighbors(2, n_candidates_n_points_n_neighbors))
+        M_ALLOCATE(n_bins_candidates(n_candidates_n_points_n_neighbors))
 
-        ! 2. Determine candidates
+        ! 2. Determine shared residual range
+        n_residuals = size(residuals, kind=int32)
+        M_ALLOCATE(residuals_perm(n_residuals))
+        call init_perm(residuals_perm)
+        call sort_real_heapsort_expl_size(residuals, residuals_perm, n_residuals)
+        call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
+
+        ! 3. Determine candidates
         prev_point_candidate = -1_int32
         i_candidate = 1_int32
+        max_n_bins_all_candidates = 1_int32
         do i_point_candidate = 1, n_point_candidates
             associate (&
                 point_candidate => nint(n_points_candidate_real)&
@@ -494,6 +465,8 @@ contains
                         if (candidates_n_points_n_neighbors(2, i_candidate) /= prev_neighbor_candidate) then
                             prev_neighbor_candidate = candidates_n_points_n_neighbors(2, i_candidate)
                             candidates_n_points_n_neighbors(1, i_candidate) = point_candidate
+                            call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, candidates_n_points_n_neighbors(2, i_candidate), shared_residual_range, n_bins_candidates(i_candidate))
+                            max_n_bins_all_candidates = max(max_n_bins_all_candidates, n_bins_candidates(i_candidate))
                             i_candidate = i_candidate + 1
                         end if
                     end do
@@ -505,8 +478,15 @@ contains
         max_n_neighbors_candidate = candidates_n_points_n_neighbors(2, 1)
 
         ! 3. Allocate rest
-        M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
         M_ALLOCATE(gene_means_perm_all(max_n_genes_all_studies * n_studies))
+        call init_perm(gene_means_perm_all)
+        call sort_real_heapsort_expl_size(gene_means, gene_means_perm_all, size(gene_means, kind=int32))
+        M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
+        do concurrent (i_study = 1:n_studies) shared(gene_means, gene_means_perms)
+            call init_perm(gene_means_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
+        end do
+
         M_ALLOCATE(tmp_neighborhood_residuals(max_n_neighbors_candidate, max_n_points_candidate))
         M_ALLOCATE(tmp_neighborhood_ranges(2, max_n_points_candidate))
         M_ALLOCATE(tmp_x_star(max_n_points_candidate))
@@ -524,7 +504,7 @@ contains
 
         call determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
-            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins_candidates, max_n_bins_all_candidates,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
@@ -536,7 +516,7 @@ contains
 
     subroutine determine_js_comp_test_n_points_n_neighbors(&
             candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
-            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, candidates_n_bins, max_n_bins_all_candidates,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
@@ -566,12 +546,14 @@ contains
             !! The finally chosen candidate for `n_points` from `candidates_n_points_n_neighbors`
         integer(int32), intent(out) :: n_neighbors
             !! The finally chosen candidate for `n_neighbors` from `candidates_n_points_n_neighbors`
+        integer(int32), intent(out) :: n_bins
+            !! The number of bins used for the finally chosen candidate from `candidates_n_points_n_neighbors`
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
-        integer(int32), intent(in) :: n_bins
-            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), intent(in), dimension(n_candidates_n_points_n_neighbors) :: candidates_n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for, one for each candidate pair.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
@@ -596,15 +578,17 @@ contains
             !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_x_star
             !! Mean-expression reference points
-        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+        integer(int32), intent(in) :: max_n_bins_all_candidates
+            !! Maximum `n_bins` value in `candidates_n_bins`
+        real(real64), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
             !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
-        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
             !! Absolute counts of a residual per bin for `pmfs`
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
-        real(real64), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+        real(real64), dimension(max_n_bins_all_candidates, max_n_points_candidate), intent(out) :: tmp_mean_pmf
             !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
-        integer(int32), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
             !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
@@ -631,32 +615,33 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_studies, ierr, arg_pos=15_int32)
-        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=9_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=17_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=10_int32)
         call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=8_int32)
-        call validate_dimension_size(n_bootstrapping_top_k_jsds, ierr, arg_pos=17_int32)
+        call validate_dimension_size(n_bootstrapping_top_k_jsds, ierr, arg_pos=19_int32)
         call validate_dimension_size(n_candidates_n_points_n_neighbors, ierr, arg_pos=2_int32)
         call validate_dimension_size(max_n_points_candidate, ierr, arg_pos=3_int32)
         call validate_dimension_size(max_n_neighbors_candidate, ierr, arg_pos=4_int32)
+        call validate_dimension_size(max_n_bins_all_candidates, ierr, arg_pos=13_int32)
 
-        call validate_in_range_int(n_bootstraps, ierr, arg_pos=16_int32)
-        call validate_in_range_int(n_bins, ierr, arg_pos=11_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=35_int32)
-        CM_VALIDATE_JOIN_METHOD(arg_pos=19_int32)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=18_int32, min=1_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=37_int32)
+        CM_VALIDATE_JOIN_METHOD(arg_pos=21_int32)
 
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=36_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=38_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
 
+        call validate_all_in_range_int(candidates_n_bins, n_candidates_n_points_n_neighbors, ierr, arg_pos=12_int32, min=1_int32, max=max_n_bins_all_candidates)
         call validate_all_in_range_int(candidates_n_points_n_neighbors, size(candidates_n_points_n_neighbors, kind=int32), ierr, arg_pos=1_int32, min=1_int32, max=max_n_points_candidate)
-        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=13_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
-        call validate_all_in_range_int(gene_means_perm_all, size(gene_means_perm_all, kind=int32), ierr, arg_pos=14_int32, min=1_int32, max=size(gene_means_perm_all, kind=int32))
+        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=15_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+        call validate_all_in_range_int(gene_means_perm_all, size(gene_means_perm_all, kind=int32), ierr, arg_pos=16_int32, min=1_int32, max=size(gene_means_perm_all, kind=int32))
 
         if (is_err(ierr)) return
 
         call determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
-            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, candidates_n_bins, max_n_bins_all_candidates,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
@@ -668,7 +653,7 @@ contains
 
     subroutine determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
-            n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins,&
+            n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, candidates_n_bins, max_n_bins_all_candidates,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
@@ -698,12 +683,14 @@ contains
             !! The finally chosen candidate for `n_points` from `candidates_n_points_n_neighbors`
         integer(int32), intent(out) :: n_neighbors
             !! The finally chosen candidate for `n_neighbors` from `candidates_n_points_n_neighbors`
+        integer(int32), intent(out) :: n_bins
+            !! The number of bins used for the finally chosen candidate from `candidates_n_points_n_neighbors`
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
-        integer(int32), intent(in) :: n_bins
-            !! Appropriate number of bins to do the JSD Compatibility test for
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for, one for each candidate pair.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
@@ -728,15 +715,17 @@ contains
             !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_x_star
             !! Mean-expression reference points
-        real(real64), dimension(n_bins, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
+        integer(int32), intent(in) :: max_n_bins_all_candidates
+            !! Maximum `n_bins` value in `candidates_n_bins`
+        real(real64), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
             !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
-        integer(int32), dimension(n_bins, max_n_points_candidate, n_studies), intent(out), target :: tmp_counts
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_studies), intent(out), target :: tmp_counts
             !! Absolute counts of a residual per bin for `pmfs`
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out), target :: tmp_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
-        real(real64), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+        real(real64), dimension(max_n_bins_all_candidates, max_n_points_candidate), intent(out), target :: tmp_mean_pmf
             !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
-        integer(int32), dimension(n_bins, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate), intent(out), target :: tmp_mean_pmf_counts
             !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
@@ -764,8 +753,8 @@ contains
         integer(int32) :: actual_min_count_per_mean_bin
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
-        real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
-        integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view
+        real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view, tmp_mean_pmf_view
+        integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view, tmp_mean_pmf_counts_view
         integer(int32), dimension(:, :, :), pointer :: tmp_counts_view
 
         M_DEFAULT_VAL(min_count_per_mean_bin, actual_min_count_per_mean_bin, 5_int32)
@@ -788,12 +777,16 @@ contains
         do i_candidate_n_points_n_neighbors = 1, n_candidates_n_points_n_neighbors
             n_points = candidates_n_points_n_neighbors(1, i_candidate_n_points_n_neighbors)
             n_neighbors = candidates_n_points_n_neighbors(2, i_candidate_n_points_n_neighbors)
+            n_bins = candidates_n_bins(i_candidate_n_points_n_neighbors)
+
+            tmp_pmfs_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_pmfs
+            tmp_counts_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_counts
+            tmp_mean_pmf_view(1:n_bins, 1:n_points) => tmp_mean_pmf
+            tmp_mean_pmf_counts_view(1:n_bins, 1:n_points) => tmp_mean_pmf_counts
 
             if (prev_n_points /= n_points) then
                 prev_n_points = n_points
 
-                tmp_pmfs_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_pmfs
-                tmp_counts_view(1:n_bins, 1:n_points, 1:n_studies) => tmp_counts
                 tmp_js_divergences_view(1:n_points, 1:n_studies) => tmp_js_divergences
                 tmp_weights_view(1:n_points, 1:n_studies) => tmp_weights
                 tmp_included_n_reps_view(1:n_points, 1:n_studies) => tmp_included_n_reps
@@ -817,19 +810,19 @@ contains
             ! If min consecutive overlap is met, check plateau condition 
             if (all_have_min_neighbor_overlap) then
                 ! 1. Compute mean pmf and ensure all bins have a minimum bin count
-                call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts)
-                if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
+                call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf_view, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts_view)
+                if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts_view, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
 
                 ! 2. If min bin count is met, compute JSD observation
-                do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights_view, tmp_confidence_interval)
-                    call compute_divergence_per_reference_point_helper(tmp_pmfs_view(:, :, i_study), tmp_mean_pmf, n_points, n_bins, tmp_js_divergences_view(:, i_study))
+                do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf_view, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights_view, tmp_confidence_interval)
+                    call compute_divergence_per_reference_point_helper(tmp_pmfs_view(:, :, i_study), tmp_mean_pmf_view, n_points, n_bins, tmp_js_divergences_view(:, i_study))
                     call compute_weighted_global_divergence_helper(tmp_js_divergences_view(:, i_study), n_points, tmp_included_n_reps_view(:, i_study), tmp_mean_pmf_included_n_reps, tmp_global_js_divergence(i_study), tmp_weights_view(:, i_study))
                     tmp_confidence_interval(:, i_study) = tmp_global_js_divergence(i_study)
                 end do
 
                 ! 3. Compute a confidence interval for the JSD value by bootstrapping
                 ! Each candidate pair should have same conditions for comparability -> reset RNG
-                call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf, random_seed)
+                call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts_view, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf_view, random_seed)
                 call check_plateau_condition_helper(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap, i_candidate_n_points_n_neighbors, join_method, actual_succeeding_ci_overlap, plateau_found)
                 if (plateau_found) exit
             end if
@@ -840,12 +833,231 @@ contains
         if (plateau_found .or. n_candidates_n_points_n_neighbors < 2) then
             n_points = candidates_n_points_n_neighbors(1, best_params_CI_i_candidate_n_points_n_neighbors)
             n_neighbors = candidates_n_points_n_neighbors(2, best_params_CI_i_candidate_n_points_n_neighbors)
+            n_bins = candidates_n_bins(best_params_CI_i_candidate_n_points_n_neighbors)
         else
             n_points = candidates_n_points_n_neighbors(1, 1)
             n_neighbors = candidates_n_points_n_neighbors(2, 1)
+            n_bins = candidates_n_bins(1)
             best_candidate_pair_confidence_interval = -1.0_real64
         end if
     end subroutine determine_js_comp_test_n_points_n_neighbors_helper
+
+    !> Performs the pipeline:
+    !| 
+    !| 1. [[tox_data_integration(module):construct_neighborhoods(interface)]]
+    !| 2. [[tox_data_integration(module):build_residual_histograms(interface)]]
+    !| 3. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !| 4. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !|
+    subroutine js_comp_test_alloc(&
+            gene_means, max_n_genes_all_studies, n_studies, residuals, shared_residual_range,&
+            n_bins, max_n_reps_all_studies, x_star, n_pool, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
+            pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
+            js_divergences, weights, global_js_divergence, p_values, ierr, n_permutations, random_seed&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points for neighborhoods
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors in neighborhoods
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_ranges
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        real(real64), dimension(n_points), intent(out) :: x_star
+            !! Mean-expression reference points
+        integer(int32), intent(out) :: n_pool
+            !! Total number of included (non-NaN) pooled mean-expression values
+        integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_residuals
+            !! Indices of selected neighborhood genes per reference point from [[tox_data_integration(module):construct_neighborhoods(interface)]]
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+        integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! The per-reference-point Jensen-Shannon-Divergence -> finally `js_divergences(1:n_points, :)`
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! The per-reference-point weights for the Jensen-Shannon-Divergence -> finally `weights(1:n_points, :)`
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! The global Jensen-Shannon-Divergence
+        real(real64), dimension(n_studies), intent(out) :: p_values
+            !! The p-values from permutation test
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations to perform in the permutation test ([[tox_data_integration(module):gjct_permutation_test(interface)]]), default: `1000`
+        integer(int32), intent(in), optional :: random_seed
+            !! Random seed to use for random number generation, default: `42`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        real(real64), dimension(:), allocatable :: tmp_global_js_divergence
+        integer(int32), dimension(:, :), allocatable :: gene_means_perms, tmp_mean_pmf_counts, tmp_pmf_counts
+        integer(int32) :: i_study
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_studies, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=1_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=7_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=9_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=10_int32)
+
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+
+        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=26_int32)
+
+        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=3_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(tmp_global_js_divergence(n_studies))
+        M_ALLOCATE(tmp_mean_pmf_counts(n_bins, n_points))
+        M_ALLOCATE(tmp_pmf_counts(n_bins, n_points))
+        M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
+
+        call pool_means_alloc(gene_means, n_studies, max_n_genes_all_studies, n_points, n_pool, x_star, ierr)
+
+        if (is_err(ierr)) return
+
+        do concurrent (i_study = 1:n_studies) shared(gene_means, gene_means_perms)
+            call init_perm(gene_means_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
+        end do
+
+        call js_comp_test_helper(&
+            gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, residuals, shared_residual_range,&
+            n_bins, max_n_reps_all_studies, x_star, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
+            pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
+            js_divergences, weights, global_js_divergence, p_values,&
+            tmp_global_js_divergence, tmp_pmf_counts, tmp_mean_pmf_counts, n_permutations, random_seed&
+        )
+    end subroutine js_comp_test_alloc
+
+    !> Performs the pipeline:
+    !| 
+    !| 1. [[tox_data_integration(module):construct_neighborhoods(interface)]]
+    !| 2. [[tox_data_integration(module):build_residual_histograms(interface)]]
+    !| 3. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !| 4. [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+    !|
+    subroutine js_comp_test(&
+            gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, residuals, shared_residual_range,&
+            n_bins, max_n_reps_all_studies, x_star, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
+            pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
+            js_divergences, weights, global_js_divergence, p_values,&
+            tmp_global_js_divergence, tmp_pmf_counts, tmp_mean_pmf_counts, ierr, n_permutations, random_seed&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points for neighborhoods
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors in neighborhoods
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+        integer(int32), intent(in) :: n_bins
+            !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
+            !! Per-study permutation vectors to sort the `gene_means`
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+        integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_ranges
+            !! For each reference point it holds, the [min_idx, max_idx] of the included genes.
+            !! The index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))` would be the min value.
+            !! In case of duplicate means, `min_idx` points to the first appearance of the value and `max_idx` to the last,
+            !! so even though their related mean value is the min/max in the neighborhood, the actual gene might not be included.
+            !! If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        real(real64), dimension(n_points), intent(in) :: x_star
+            !! Mean-expression reference points
+        integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_residuals
+            !! Indices of selected neighborhood genes per reference point from [[tox_data_integration(module):construct_neighborhoods(interface)]]
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized to `0 <= counts(i, :) <= 1` and `sum(counts(i, :)) == 1`
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+        integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `pmfs`
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The mean pmf built from `pmfs` as `mean_pmf = sum(pmfs) / n_studies`
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts)`
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! The count of non-NaN replicates (included ones) per bin and point for `mean_pmf`
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! The per-reference-point Jensen-Shannon-Divergence -> finally `js_divergences(1:n_points, :)`
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! The per-reference-point weights for the Jensen-Shannon-Divergence -> finally `weights(1:n_points, :)`
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! The global Jensen-Shannon-Divergence
+        real(real64), dimension(n_studies), intent(out) :: p_values
+            !! The p-values from permutation test
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
+            !! Work array for proper resampling in permutation tests
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_pmf_counts
+            !! Work array for proper resampling in permutation tests
+        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
+            !! Work array for the permutations' global Jensen-Shannon-Divergences
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations to perform in the permutation test ([[tox_data_integration(module):gjct_permutation_test(interface)]]), default: `1000`
+        integer(int32), intent(in), optional :: random_seed
+            !! Random seed to use for random number generation, default: `42`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_studies, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=1_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=7_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=9_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=10_int32)
+
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+
+        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=26_int32)
+
+        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=3_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+
+        if (is_err(ierr)) return
+
+        call js_comp_test_helper(&
+            gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, residuals, shared_residual_range,&
+            n_bins, max_n_reps_all_studies, x_star, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
+            pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
+            js_divergences, weights, global_js_divergence, p_values,&
+            tmp_global_js_divergence, tmp_pmf_counts, tmp_mean_pmf_counts, n_permutations, random_seed&
+        )
+    end subroutine js_comp_test
 
     !> (no input validation) Performs the pipeline:
     !| 

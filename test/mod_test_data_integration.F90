@@ -138,6 +138,7 @@ contains
         integer(int32), dimension(max_n_genes_all_studies * n_studies) :: gene_means_perm_all
 
         integer(int32), dimension(2, n_candidates) :: candidates_n_points_n_neighbors
+        integer(int32), dimension(n_candidates) :: n_bins_candidates
 
         real(real64), dimension(2, n_studies) :: best_candidate_pair_confidence_interval
         integer(int32) :: n_points, n_neighbors
@@ -161,7 +162,7 @@ contains
         integer(int32) :: i, j, s
         integer(int32) :: min_count_per_mean_bin
         real(real64) :: succeeding_ci_overlap, expected_ci_value
-        integer(int32) :: n_bins
+        integer(int32) :: n_bins, max_n_bins_all_candidates
         real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
         real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
         integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view, tmp_mean_pmf_counts_view
@@ -203,14 +204,15 @@ contains
                     expected_n_neighbors = candidates_n_points_n_neighbors(2, min(i_candidates, 2))
 
                     ! --- Case 1: n_bins = 1, min_count ok, succeeding_ci_overlap = 0.9 (should pick 2nd pair) ---
-                    n_bins = n_bins_1
+                    n_bins_candidates = n_bins_1
+                    max_n_bins_all_candidates = n_bins_1
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
-                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
@@ -220,6 +222,7 @@ contains
 
                     call assert_equal_int(n_points, expected_n_points, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_points")
                     call assert_equal_int(n_neighbors, expected_n_neighbors, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_neighbors")
+                    call assert_equal_int(n_bins, 1_int32, "test_determine_js_comp_constant_residuals: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_neighbors")
 
                     ! x_star should be 3.0
                     do i = 1, n_points
@@ -275,7 +278,7 @@ contains
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
-                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
@@ -293,14 +296,15 @@ contains
                     end do
 
                     ! --- Case 3: min_count_per_mean_bin > total count -> fallback ---
-                    n_bins = n_bins_1
+                    n_bins_candidates = n_bins_1
+                    max_n_bins_all_candidates = n_bins_1
                     min_count_per_mean_bin = max_n_reps_all_studies * max_n_genes_all_studies * n_studies + 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
-                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
@@ -317,14 +321,15 @@ contains
                     end do
 
                     ! --- Case 4: n_bins = 2 -> one empty bin -> fallback ---
-                    n_bins = n_bins_2
+                    n_bins_candidates = n_bins_2
+                    max_n_bins_all_candidates = n_bins_2
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
-                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
@@ -341,14 +346,15 @@ contains
                     end do
 
                     ! --- Case 5: min_neighbor_overlap > 1.0 -> impossible to succeed -> fallback ---
-                    n_bins = n_bins_2
+                    n_bins_candidates = n_bins_2
+                    max_n_bins_all_candidates = n_bins_2
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
-                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
                         gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &

@@ -103,6 +103,7 @@ contains
   !> Creates the error code for an error and a specific argument position (if argument related)
   pure integer(int32) function create_err_code(error, arg_pos) result(ierr)
     integer(int32), intent(in)    :: error
+      !! `ERR_*` error code from module constants
     integer(int32), intent(in), optional :: arg_pos
       !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
@@ -155,6 +156,7 @@ contains
     integer(int32), intent(inout) :: ierr
       !! Error code
     integer(int32), intent(in)    :: error
+      !! `ERR_*` error code from module constants
     integer(int32), intent(in), optional :: arg_pos
       !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
@@ -166,6 +168,7 @@ contains
     integer(int32), intent(inout) :: ierr
       !! Error code
     integer(int32), intent(in)    :: error
+      !! `ERR_*` error code from module constants
     integer(int32), intent(in), optional :: arg_pos
       !! Position of the validated argument that triggered the error, default: 0 -> not argument related
     if (.not. is_err(ierr)) call set_err(ierr, error, arg_pos)

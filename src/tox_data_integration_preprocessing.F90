@@ -8,7 +8,7 @@ module tox_data_integration_preprocessing
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite, ieee_positive_inf
     use f42_utils, only: heapsort_real, calc_percentile_helper, clamp, binary_search_insertion
-    use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err, validate_all_in_range_int
+    use tox_errors, only: validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err, validate_all_in_range_int
     implicit none
 
 contains
