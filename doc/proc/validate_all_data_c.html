@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">41 statements</a>
+                 title=" 0.7% of total for procedures.">88 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,10 +156,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_data_validation.html'>tox_data_validation</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_validation.html'>tox_data_validation</a></li>
               </ul>
             </li>
         </ul>
@@ -183,12 +183,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~40"></span>
+              <span class="anchor" id="variable-n_genes~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_genes</strong></td>
@@ -198,12 +198,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~19"></span>
+              <span class="anchor" id="variable-n_families~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_families</strong></td>
@@ -213,12 +213,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~35"></span>
+              <span class="anchor" id="variable-n_samples~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_samples</strong></td>
@@ -228,12 +228,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_raw~11"></span>
+              <span class="anchor" id="variable-gene_ids_raw~2"></span>
               character(kind=c_char, len=1),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>gene_ids_raw</strong>(gene_len,n_genes)</td>
@@ -243,12 +243,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_len~2"></span>
+              <span class="anchor" id="variable-gene_len"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>gene_len</strong></td>
@@ -258,12 +258,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_family_ids_raw~4"></span>
+              <span class="anchor" id="variable-gene_family_ids_raw~2"></span>
               character(kind=c_char, len=1),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>gene_family_ids_raw</strong>(fam_len,n_families)</td>
@@ -273,12 +273,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fam_len~4"></span>
+              <span class="anchor" id="variable-fam_len~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>fam_len</strong></td>
@@ -288,12 +288,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~21"></span>
+              <span class="anchor" id="variable-gene_to_fam~8"></span>
               integer(kind=c_int),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>gene_to_fam</strong>(n_genes)</td>
@@ -303,12 +303,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~25"></span>
+              <span class="anchor" id="variable-expression_vectors~10"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>expression_vectors</strong>(n_samples,n_genes)</td>
@@ -318,12 +318,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~18"></span>
+              <span class="anchor" id="variable-family_centroids~8"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>family_centroids</strong>(n_samples,n_families)</td>
@@ -333,12 +333,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~15"></span>
+              <span class="anchor" id="variable-shift_vectors~6"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>shift_vectors</strong>(2*n_samples,n_genes)</td>
@@ -348,12 +348,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~144"></span>
+              <span class="anchor" id="variable-ierr~69"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
@@ -395,7 +395,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

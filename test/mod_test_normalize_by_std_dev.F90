@@ -4,27 +4,19 @@ module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
+  use test_suite, only: test_case
   implicit none
   public
 
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
 
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(13)
-    
+  function get_all_tests_normalize_by_std_dev() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(13))
+
     all_tests(1) = test_case("test_normalize_by_std_dev_basic", test_normalize_by_std_dev_basic)
     all_tests(2) = test_case("test_normalize_by_std_dev_constant_rows", test_normalize_by_std_dev_constant_rows)
     all_tests(3) = test_case("test_normalize_by_std_dev_large_numbers", test_normalize_by_std_dev_large_numbers)
@@ -38,46 +30,9 @@ contains
     all_tests(11) = test_case("test_single_row_col", test_single_row_col)
     all_tests(12) = test_case("test_empty_matrix", test_empty_matrix)
     all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
-  end function get_all_tests
+  end function get_all_tests_normalize_by_std_dev
 
-  !> Run all normalize_by_std_dev tests.
-  subroutine run_all_tests_normalize_by_std_dev()
-    type(test_case) :: all_tests(13)
-    integer(int32) :: i
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All normalize_by_std_dev tests passed successfully."
-  end subroutine run_all_tests_normalize_by_std_dev
-
-  !> Run specific normalize_by_std_dev tests by name.
-  subroutine run_named_tests_normalize_by_std_dev(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(13)
-    integer(int32) :: i, j
-    logical :: found
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_normalize_by_std_dev
+  
 
   !> Test that normalize_by_std_dev normalizes values correctly.
   subroutine test_normalize_by_std_dev_basic()

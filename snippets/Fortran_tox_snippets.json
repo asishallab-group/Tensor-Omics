@@ -1,4 +1,14 @@
 {
+  "Fortran Call of subroutine 'mean_vector'": {
+    "prefix": "tox:mean_vector",
+    "body": "call mean_vector(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid}, ${7:ierr})",
+    "description": "Call of Fortran subroutine 'mean_vector' from module 'tox_gene_centroids'"
+  },
+  "Fortran Call of subroutine 'group_centroid'": {
+    "prefix": "tox:group_centroid",
+    "body": "call group_centroid(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:selected_indices}, ${9:ierr}, ${10:ortholog_set})",
+    "description": "Call of Fortran subroutine 'group_centroid' from module 'tox_gene_centroids'"
+  },
   "Fortran Call of subroutine 'normalize_variable_timeseries'": {
     "prefix": "tox:normalize_variable_timeseries",
     "body": "call normalize_variable_timeseries(${1:v}, ${2:v_norm}, ${3:n_points}, ${4:ierr}, ${5:status})",
@@ -273,16 +283,6 @@
     "prefix": "tox:construct_neighborhoods_helper",
     "body": "call construct_neighborhoods_helper(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:tmp_distances}, ${8:tmp_distances_perm}, ${9:neighborhood_residuals}, ${10:neighborhood_indices}, ${11:n_neighbors})",
     "description": "Call of Fortran subroutine 'construct_neighborhoods_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'mean_vector'": {
-    "prefix": "tox:mean_vector",
-    "body": "call mean_vector(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'mean_vector' from module 'tox_gene_centroids'"
-  },
-  "Fortran Call of subroutine 'group_centroid'": {
-    "prefix": "tox:group_centroid",
-    "body": "call group_centroid(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:selected_indices}, ${9:ierr}, ${10:ortholog_set})",
-    "description": "Call of Fortran subroutine 'group_centroid' from module 'tox_gene_centroids'"
   },
   "Fortran Call of subroutine 'compute_tissue_versatility'": {
     "prefix": "tox:compute_tissue_versatility",

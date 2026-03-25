@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">11 statements</a>
+                 title=" 0.2% of total for procedures.">30 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine log2_transformation_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="log2_transformation_c")  
+    <h2>pure subroutine log2_transformation_c(n_genes, n_grps, input_matrix, output_matrix, ierr) bind(C, name="log2_transformation_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,8 +156,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
               </ul>
             </li>
         </ul>
@@ -165,10 +166,7 @@
     </div>
 
 
-    <p>C/Python wrapper for log2 transformation.
-Provides a C/Python-compatible interface to the log2 transformation routine.
-Expects flat arrays, matching C calling conventions. Suitable for use with ctypes.
-Applies log2(x+1) to each element of the input matrix.</p>
+    <p>C-compatible wrapper for log2_transformation</p>
 
 
     <h3>Arguments</h3>
@@ -184,37 +182,37 @@ Applies log2(x+1) to each element of the input matrix.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~11"></span>
+              <span class="anchor" id="variable-n_genes~58"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~9"></span>
+              <span class="anchor" id="variable-n_grps~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
-            <td><strong>n_tissues</strong></td>
+            <td><strong>n_grps</strong></td>
             <td>
-                <p>Number of tissues (columns)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~11"></span>
+              <span class="anchor" id="variable-input_matrix~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -222,14 +220,14 @@ Applies log2(x+1) to each element of the input matrix.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
+            <td><strong>input_matrix</strong>(n_genes*n_grps)</td>
             <td>
-                <p>Input matrix (flattened, n_genes * n_tissues)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~10"></span>
+              <span class="anchor" id="variable-output_matrix~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -237,24 +235,24 @@ Applies log2(x+1) to each element of the input matrix.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(n_genes*n_tissues)</td>
+            <td><strong>output_matrix</strong>(n_genes*n_grps)</td>
             <td>
-                <p>Output matrix (flattened, same shape as input)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~67"></span>
+              <span class="anchor" id="variable-ierr~232"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                
             </td>
         </tr>
     </tbody>
@@ -291,7 +289,7 @@ Applies log2(x+1) to each element of the input matrix.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

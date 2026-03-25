@@ -1,3 +1,4 @@
+! filepath: test/mod_test_tox_data.f90
 !> Unit test suite for expression readers and data processing routines.
 module mod_test_tox_data
   use asserts
@@ -17,18 +18,10 @@ module mod_test_tox_data
   use f42_serialize_char
   use f42_serialize_int
   use f42_serialize_real
+  use test_suite, only: test_case
   implicit none
   public
 
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
   ! Global test data
   integer(int32), allocatable :: gene_to_fam(:)
@@ -41,8 +34,9 @@ module mod_test_tox_data
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(23)
+  function get_all_tests_tox_data() result(all_tests)
+    type(test_case),allocatable:: all_tests(:)
+    allocate(all_tests(23))
     all_tests(1) = test_case("test_read_gene_ids", test_read_gene_ids)
     all_tests(2) = test_case("test_read_expression_data", test_read_expression_data)
     all_tests(3) = test_case("test_read_family_mapping", test_read_family_mapping)
@@ -66,7 +60,10 @@ contains
     all_tests(21) = test_case("test_validate_empty_strings", test_validate_empty_strings)
     all_tests(22) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
     all_tests(23) = test_case("test_manual_archive", test_manual_archive)
-  end function get_all_tests
+  end function get_all_tests_tox_data
+
+   
+  
 
   !> Setup global test data
   subroutine setup_global_data()
@@ -154,51 +151,13 @@ contains
     deallocate(ortholog_mask, selected_indices)
   end subroutine setup_global_data
 
-  !> Run all expression reader tests.
-  subroutine run_all_tests_tox_data()
-    type(test_case) :: all_tests(23)  ! Updated
-    integer(int32) :: i
-    
-    ! Setup global data first
-    call setup_global_data()
-    
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All tox data tests passed successfully."
-  end subroutine run_all_tests_tox_data
-
-  !> Run specific expression reader tests by name.
-  subroutine run_named_tests_tox_data(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(23)  ! Updated
-    integer(int32) :: i, j
-    logical :: found
-    
-    ! Setup global data first
-    call setup_global_data()
-    
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_tox_data
+ 
 
   !> Test reading gene IDs
   subroutine test_read_gene_ids()
+    if (.not. allocated(gene_ids)) then
+      call setup_global_data()
+    end if
     call assert_true(allocated(gene_ids), "Gene IDs should be allocated")
     call assert_equal_int(size(gene_ids), n_genes, "Number of gene IDs should match")
     call assert_true(len_trim(gene_ids(1)) > 0, "First gene ID should not be empty")

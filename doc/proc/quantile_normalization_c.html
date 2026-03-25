@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">17 statements</a>
+                 title=" 0.5% of total for procedures.">60 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,8 +156,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
               </ul>
             </li>
         </ul>
@@ -165,8 +166,7 @@
     </div>
 
 
-    <p>C/Python wrapper for quantile normalization.
-Provides a C/Python-compatible interface to the quantile normalization routine.</p>
+    <p>C-compatible wrapper for quantile_normalization</p>
 
 
     <h3>Arguments</h3>
@@ -182,37 +182,37 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~9"></span>
+              <span class="anchor" id="variable-n_genes~57"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~7"></span>
+              <span class="anchor" id="variable-n_tissues~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_tissues</strong></td>
             <td>
-                <p>Number of tissues (columns)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~9"></span>
+              <span class="anchor" id="variable-input_matrix~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -220,14 +220,14 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
               target
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_genes,n_tissues)</td>
+            <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                <p>Input matrix (n_genes x n_tissues)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~8"></span>
+              <span class="anchor" id="variable-output_matrix~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -235,9 +235,9 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
               target
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(n_genes,n_tissues)</td>
+            <td><strong>output_matrix</strong>(n_genes*n_tissues)</td>
             <td>
-                <p>Output normalized matrix (same shape as input)</p>
+                
             </td>
         </tr>
         <tr>
@@ -252,7 +252,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <td>::</td>
             <td><strong>temp_col</strong>(n_genes)</td>
             <td>
-                <p>Temporary vector for column sorting (size n_genes)</p>
+                
             </td>
         </tr>
         <tr>
@@ -267,7 +267,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <td>::</td>
             <td><strong>rank_means</strong>(n_genes)</td>
             <td>
-                <p>Preallocated vector to store rank means (size n_genes)</p>
+                
             </td>
         </tr>
         <tr>
@@ -282,7 +282,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <td>::</td>
             <td><strong>perm</strong>(n_genes)</td>
             <td>
-                <p>Permutation vector (size n_genes)</p>
+                
             </td>
         </tr>
         <tr>
@@ -297,7 +297,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <td>::</td>
             <td><strong>stack_left</strong>(max_stack)</td>
             <td>
-                <p>Manual quicksort stack (size max_stack)</p>
+                
             </td>
         </tr>
         <tr>
@@ -312,7 +312,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <td>::</td>
             <td><strong>stack_right</strong>(max_stack)</td>
             <td>
-                <p>Manual quicksort stack (size max_stack)</p>
+                
             </td>
         </tr>
         <tr>
@@ -322,27 +322,27 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>max_stack</strong></td>
             <td>
-                <p>Stack size for sorting</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~65"></span>
+              <span class="anchor" id="variable-ierr~231"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                
             </td>
         </tr>
     </tbody>
@@ -379,7 +379,7 @@ Provides a C/Python-compatible interface to the quantile normalization routine.<
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

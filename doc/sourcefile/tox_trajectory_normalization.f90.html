@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.5% of total for source files.">186 statements</a>
+                 title=" 1.4% of total for source files.">186 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -355,7 +355,7 @@
 <a id="ln-173" name="ln-173" href="#ln-173"></a>
 <a id="ln-174" name="ln-174" href="#ln-174"></a><span class="k">end subroutine </span><span class="n">normalize_variable_timeseries_C</span>
 <a id="ln-175" name="ln-175" href="#ln-175"></a>
-<a id="ln-176" name="ln-176" href="#ln-176"></a><span class="k">pure subroutine </span><span class="n">normalize_single_trajectory_C</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span><span class="w"> </span><span class="n">trajectory_norm</span><span class="p">,</span><span class="w"> </span><span class="n">n_factors</span><span class="p">,</span><span class="w"> </span><span class="n">n_timepoints</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;normalize_single_trajectory_C&quot;</span><span class="p">)</span>
+<a id="ln-176" name="ln-176" href="#ln-176"></a><span class="w"> </span><span class="k">pure subroutine </span><span class="n">normalize_single_trajectory_C</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span><span class="w"> </span><span class="n">trajectory_norm</span><span class="p">,</span><span class="w"> </span><span class="n">n_factors</span><span class="p">,</span><span class="w"> </span><span class="n">n_timepoints</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;normalize_single_trajectory_C&quot;</span><span class="p">)</span>
 <a id="ln-177" name="ln-177" href="#ln-177"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_double</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-178" name="ln-178" href="#ln-178"></a><span class="kt">    </span><span class="k">use </span><span class="n">tox_trajectory_normalization</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">normalize_single_trajectory</span>
 <a id="ln-179" name="ln-179" href="#ln-179"></a><span class="w">    </span><span class="n">M_USE_NULL_VALIDATION</span>
@@ -385,7 +385,7 @@
 <a id="ln-203" name="ln-203" href="#ln-203"></a>
 <a id="ln-204" name="ln-204" href="#ln-204"></a><span class="k">end subroutine </span><span class="n">normalize_single_trajectory_C</span>
 <a id="ln-205" name="ln-205" href="#ln-205"></a>
-<a id="ln-206" name="ln-206" href="#ln-206"></a><span class="k">pure subroutine </span><span class="n">normalize_all_trajectories_C</span><span class="p">(</span><span class="n">trajectories</span><span class="p">,</span><span class="w"> </span><span class="n">trajectories_norm</span><span class="p">,</span><span class="w"> </span><span class="n">n_factors</span><span class="p">,</span><span class="w"> </span><span class="n">n_samples</span><span class="p">,</span><span class="w"> </span><span class="n">n_timepoints</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;normalize_all_trajectories_C&quot;</span><span class="p">)</span>
+<a id="ln-206" name="ln-206" href="#ln-206"></a><span class="w"> </span><span class="k">pure subroutine </span><span class="n">normalize_all_trajectories_C</span><span class="p">(</span><span class="n">trajectories</span><span class="p">,</span><span class="w"> </span><span class="n">trajectories_norm</span><span class="p">,</span><span class="w"> </span><span class="n">n_factors</span><span class="p">,</span><span class="w"> </span><span class="n">n_samples</span><span class="p">,</span><span class="w"> </span><span class="n">n_timepoints</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;normalize_all_trajectories_C&quot;</span><span class="p">)</span>
 <a id="ln-207" name="ln-207" href="#ln-207"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_double</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-208" name="ln-208" href="#ln-208"></a><span class="kt">    </span><span class="k">use </span><span class="n">tox_trajectory_normalization</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">normalize_all_trajectories</span>
 <a id="ln-209" name="ln-209" href="#ln-209"></a><span class="w">    </span><span class="n">M_USE_NULL_VALIDATION</span>
@@ -438,7 +438,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

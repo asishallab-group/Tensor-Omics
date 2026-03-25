@@ -1,4 +1,7 @@
-!> Module for array utilities
+#include "../macros.h"
+
+!> Module for array utilities.
+
 module f42_array_utils
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -221,41 +224,8 @@ module f42_array_utils
   end subroutine
 end module f42_array_utils
 
-!> Subroutine to get the dimensions of an array file
-subroutine get_array_metadata_r(filename_raw, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen)
-  use iso_fortran_env, only: int32
-  use iso_c_binding, only: c_char
-  use f42_array_utils, only: get_array_metadata
-  use tox_conversions, only: c_char_1d_as_string
-  use tox_errors, only : set_ok, is_ok
-  implicit none
 
-  ! Input
-  integer(int32), intent(in) :: fn_len
-    !! Length of the filename array
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-    !! Array of ASCII characters representing the filename
-  integer(int32), intent(in) :: dims_out_capacity
-  ! Output
-  integer(int32), intent(out) :: dims_out(dims_out_capacity)  ! R provides storage
-    !! Output array for dimensions
-  integer(int32), intent(out) :: ndims        ! Number of dimensions
-    !! Output variable for the number of dimensions
-  integer(int32), intent(out), optional :: clen
-    !! Character length (only for character arrays)
 
-  integer(int32), intent(out) :: ierr
-  !! Error code
-  character(len=:), allocatable :: filename
-
-  call set_ok(ierr)
-
-  call c_char_1d_as_string(filename_raw, filename, ierr)
-  if( .not. is_ok(ierr)) return
-
-  call get_array_metadata(filename, dims_out, dims_out_capacity, ndims, ierr, clen)
-
-end subroutine get_array_metadata_r
 
 !> C binding for the subroutine to get the dimensions of an array file
 subroutine get_array_metadata_C(filename_raw, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_C")
@@ -264,28 +234,36 @@ subroutine get_array_metadata_C(filename_raw, fn_len, dims_out, dims_out_capacit
   use f42_array_utils, only : get_array_metadata
   use tox_conversions, only : c_char_1d_as_string
   use tox_errors, only : set_ok, is_ok
+  M_USE_NULL_VALIDATION
   implicit none
 
   ! Input
-  integer(c_int), value :: fn_len
+  integer(c_int), intent(in), target :: fn_len
     !! Length of the filename array
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
+  character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
-  integer(c_int), intent(in) :: dims_out_capacity
+  integer(c_int), intent(in), target :: dims_out_capacity
   
   ! Output
-  integer(c_int), intent(out) :: dims_out(dims_out_capacity)
+  integer(c_int), intent(out), target :: dims_out(dims_out_capacity)
     !! Output array for dimensions
-  integer(c_int), intent(out) :: ndims
+  integer(c_int), intent(out), target :: ndims
     !! Output variable for the number of dimensions
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
     !! Error code
-  integer(c_int), intent(out) :: clen
+  integer(c_int), intent(out), target :: clen
     !! Character length (only for character arrays)
 
   ! Local variables
   character(len=:), allocatable :: filename
    !! Filename as a string
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(fn_len)
+  M_CHECK_NON_NULL(filename_raw)
+  M_CHECK_NON_NULL(dims_out)
+  M_CHECK_NON_NULL(ndims)
+  M_CHECK_NON_NULL(clen)
   
 
   call c_char_1d_as_string(filename_raw, filename, ierr)

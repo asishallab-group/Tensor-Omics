@@ -1,29 +1,21 @@
+! filepath: test/mod_test_field_vector_RAP_projection.f90
+!> Unit test suite for RAP Projection routines.
 module mod_test_rap_tools_omics_field_RAP_projection
    use asserts
    use tox_relative_axis_plane_tools
    use, intrinsic :: iso_fortran_env, only: real64, int32
+   use test_suite, only: test_case
    implicit none
    public
-
-   ! Abstract interface for all test procedures
-   abstract interface
-      subroutine test_interface()
-      end subroutine test_interface
-   end interface
-
-   ! Type to hold test name and procedure pointer
-   type :: test_case
-      character(len=64) :: name
-      procedure(test_interface), pointer, nopass :: test_proc => null()
-   end type test_case
-
-   integer, parameter :: TEST_COUNT = 10
+   
 
 contains
 
    !> Get array of all available tests.
-   function get_all_tests() result(all_tests)
-      type(test_case) :: all_tests(TEST_COUNT)
+   function get_all_tests_rap_tools_omics_field_RAP_projection() result(all_tests)
+      type(test_case),allocatable :: all_tests(:)
+
+      allocate(all_tests(10))
 
       all_tests(1) = test_case("test_omics_field_RAP_projection_all_selected", test_all_selected)
       all_tests(2) = test_case("test_omics_field_RAP_projection_one_axis_selected", test_one_axis_selected)
@@ -35,8 +27,11 @@ contains
       all_tests(8) = test_case("test_omics_field_RAP_projection_mixed_selection", test_mixed_selection)
       all_tests(9) = test_case("test_omics_field_RAP_projection_non_square_vecs", test_non_square_vecs)
       all_tests(10) = test_case("test_omics_field_RAP_projection_concrete_example", test_concrete_example)
-   end function get_all_tests
+   end function get_all_tests_rap_tools_omics_field_RAP_projection
 
+ 
+   
+   
    !> Wrapper function for the actual call of `call_omics_field_RAP_projection`
    subroutine call_omics_field_RAP_projection(test_name, vecs, axes_mask, vecs_mask, result_projections)
       implicit none
@@ -323,43 +318,4 @@ contains
       )
    end subroutine test_concrete_example
 
-
-   !> Run all omics_field_RAP_projection tests.
-   subroutine run_all_tests()
-      type(test_case) :: all_tests(TEST_COUNT)
-      integer :: i
-
-      all_tests = get_all_tests()
-
-      do i = 1, size(all_tests)
-         call all_tests(i)%test_proc()
-         print *, trim(all_tests(i)%name), " passed."
-      end do
-      print *, "All rap_tools_omics_field_RAP_projection tests passed successfully."
-   end subroutine run_all_tests
-
-   !> Run specific omics_field_RAP_projection tests by name.
-   subroutine run_named_tests(test_names)
-      character(len=*), intent(in) :: test_names(:)
-      type(test_case) :: all_tests(TEST_COUNT)
-      integer :: i, j
-      logical :: found
-
-      all_tests = get_all_tests()
-
-      do i = 1, size(test_names)
-         found = .false.
-         do j = 1, size(all_tests)
-            if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-               call all_tests(j)%test_proc()
-               print *, trim(test_names(i)), " passed."
-               found = .true.
-               exit
-            end if
-         end do
-         if (.not. found) then
-            print *, "Unknown test: ", trim(test_names(i))
-         end if
-      end do
-   end subroutine run_named_tests
 end module mod_test_rap_tools_omics_field_RAP_projection

@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">15 statements</a>
+                 title=" 0.4% of total for procedures.">53 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")  
+    <h2>pure subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,7 +157,9 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -180,12 +182,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-origins~3"></span>
+              <span class="anchor" id="variable-origins~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dims, n_vecs)
+              dimension(n_dims, n_vecs), target
             </td>
             <td>::</td>
             <td><strong>origins</strong></td>
@@ -195,12 +197,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-targets~3"></span>
+              <span class="anchor" id="variable-targets~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dims, n_vecs)
+              dimension(n_dims, n_vecs), target
             </td>
             <td>::</td>
             <td><strong>targets</strong></td>
@@ -210,12 +212,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~17"></span>
+              <span class="anchor" id="variable-n_dims~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_dims</strong></td>
@@ -225,12 +227,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vecs~9"></span>
+              <span class="anchor" id="variable-n_vecs~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_vecs</strong></td>
@@ -240,12 +242,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs_selection_mask~9"></span>
+              <span class="anchor" id="variable-vecs_selection_mask~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_vecs)
+              dimension(n_vecs), target
             </td>
             <td>::</td>
             <td><strong>vecs_selection_mask</strong></td>
@@ -255,12 +257,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vecs~10"></span>
+              <span class="anchor" id="variable-n_selected_vecs~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_selected_vecs</strong></td>
@@ -270,12 +272,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~6"></span>
+              <span class="anchor" id="variable-selected_axes_for_signed~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(3)
+              dimension(3), target
             </td>
             <td>::</td>
             <td><strong>selected_axes_for_signed</strong></td>
@@ -285,12 +287,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angles~3"></span>
+              <span class="anchor" id="variable-signed_angles~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_selected_vecs)
+              dimension(n_selected_vecs), target
             </td>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
@@ -300,12 +302,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~270"></span>
+              <span class="anchor" id="variable-ierr~100"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
@@ -347,7 +349,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

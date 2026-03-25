@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 !> Module for deserializing logical arrays from files
 module f42_deserialize_logical
   use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -191,38 +193,6 @@ contains
 
 end module f42_deserialize_logical
 
-!> R interface for deserializing a logical array from a file
-!> Deserializes an array of any dimension into a flat buffer.
-!> @note The output array is handled and preallocated by R
-subroutine deserialize_logical_r(flat_arr, arr_size, filename_raw, fn_len, ierr)
-  use iso_fortran_env, only: int32
-  use iso_c_binding, only : c_char
-  use tox_conversions, only: c_char_1d_as_string
-  use f42_deserialize_logical, only : deserialize_logical_flat
-  use tox_errors, only : set_ok, is_ok
-  implicit none
-
-  integer(int32), intent(in)  :: arr_size
-  !! size of the array
-  logical, intent(out) :: flat_arr(arr_size)
-  !! array passed by R
-  integer(int32), intent(in)  :: fn_len
-  !! length of the filename
-  character(kind=c_char, len=1), intent(in)  :: filename_raw(fn_len)
-  !! filename to read from
-  integer(int32), intent(out) :: ierr
-  !! error code
-  
-  character(len=:), allocatable :: filename
-  !! filename in characters
-
-  call set_ok(ierr)
-
-  call c_char_1d_as_string(filename_raw, filename, ierr)
-  if (.not. is_ok(ierr)) return
-
-  call deserialize_logical_flat(flat_arr, filename, ierr)
-end subroutine
 
 
 !> C binding for the subroutine to deserialize a logical array from a file.
@@ -235,23 +205,30 @@ subroutine deserialize_logical_nd_C(arr, arr_size, filename_raw, fn_len, ierr) b
     use f42_deserialize_logical, only : deserialize_logical_flat
     use tox_errors, only : set_ok, is_ok
     use tox_conversions, only : c_char_1d_as_string
+    M_USE_NULL_VALIDATION
     implicit none
 
     ! Inputs / Outputs
-    integer(c_int), intent(in), value   :: arr_size           ! Buffer length
+    integer(c_int), intent(in), target :: arr_size           ! Buffer length
     !! Size of the array
-    integer(c_int), intent(out)         :: arr(arr_size)      ! Preallocated buffer from C/Python
+    integer(c_int), intent(out), target :: arr(arr_size)      ! Preallocated buffer from C/Python
     !! preallocated array
-    integer(c_int), intent(in), value   :: fn_len
+    integer(c_int), intent(in), target :: fn_len
     !! length of the filename
-    character(kind=c_char, len=1), intent(in)          :: filename_raw(fn_len)
+    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
     !! Filename in raw bytes
-    integer(c_int), intent(out)         :: ierr
+    integer(c_int), intent(out), target :: ierr
     !! Error code
 
     ! Locals
     character(len=:), allocatable :: filename
-    logical, allocatable          :: temp_arr(:)
+    logical, allocatable :: temp_arr(:)
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(arr_size)
+    M_CHECK_NON_NULL(fn_len)
+    M_CHECK_NON_NULL(arr)
+    M_CHECK_NON_NULL(filename_raw)
 
     call set_ok(ierr)
 

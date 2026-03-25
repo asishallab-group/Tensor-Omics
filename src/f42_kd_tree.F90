@@ -1,3 +1,5 @@
+#include "macros.h"
+
 module f42_kd_tree
     use safeguard
     use f42_utils, only: sort_array
@@ -254,100 +256,107 @@ contains
 
 end module f42_kd_tree
 
-!> R interface for building KD index
-subroutine build_kd_index_r(points, num_dimensions, num_points, kd_indices, dimension_order, &
-                          workspace, value_buffer, permutation, left_stack, right_stack, ierr)
-    use f42_kd_tree, only: build_kd_index
-    use, intrinsic :: iso_fortran_env, only: int32, real64
-    implicit none
-    integer(int32), intent(in) :: num_dimensions      
-    !! Number of dimensions
-    integer(int32), intent(in) :: num_points          
-    !! Number of points
-    real(real64), intent(in) :: points(num_dimensions, num_points)  
-    !! Input points
-    integer(int32), intent(in) :: dimension_order(num_dimensions)   
-    !! Dimension order
-    integer(int32), intent(out) :: kd_indices(num_points)           
-    !! Output indices
-    integer(int32), intent(out) :: workspace(num_points)          
-    !! Workspace
-    real(real64), intent(out) :: value_buffer(num_points)         
-    !! Value buffer
-    integer(int32), intent(out) :: permutation(num_points)        
-    !! Permutation array
-    integer(int32), intent(out) :: left_stack(num_points)         
-    !! Left stack
-    integer(int32), intent(out) :: right_stack(num_points)        
-    !! Right stack
-    integer(int32), intent(out) :: ierr                
-    !! Error code
 
-    integer(int32) :: recursion_stack(3, num_points)
-
-    call build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_order, &
-                      workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
-end subroutine build_kd_index_r
-
-!> R interface for building spherical KD index
-subroutine build_spherical_kd_r(vectors, num_dimensions, num_vectors, sphere_indices, &
-                              dimension_order, workspace, value_buffer, permutation, &
-                              left_stack, right_stack, ierr)
-    use f42_kd_tree, only: build_spherical_kd
-    use, intrinsic :: iso_fortran_env, only: int32, real64
-    implicit none
-    integer(int32), intent(in) :: num_dimensions      
-    !! Number of dimensions
-    integer(int32), intent(in) :: num_vectors         
-    !! Number of vectors
-    real(real64), intent(in) :: vectors(num_dimensions, num_vectors)  
-    !! Input vectors
-    integer(int32), intent(out) :: sphere_indices(num_vectors)  
-    !! Output indices
-    integer(int32), intent(out) :: dimension_order(num_dimensions)  
-    !! Dimension order
-    integer(int32), intent(out) :: workspace(num_vectors)     
-    !! Workspace
-    real(real64), intent(out) :: value_buffer(num_vectors)    
-    !! Value buffer
-    integer(int32), intent(out) :: permutation(num_vectors)   
-    !! Permutation array
-    integer(int32), intent(out) :: left_stack(num_vectors)    
-    !! Left stack
-    integer(int32), intent(out) :: right_stack(num_vectors)   
-    !! Right stack
-    integer(int32), intent(out) :: ierr                
-    !! Error code
-
-    integer(int32) :: recursion_stack(3, num_vectors)
-
-    call build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, dimension_order, &
-                          workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
-end subroutine build_spherical_kd_r
 
 !> C interface for building KD index
-subroutine build_kd_index_C(points, num_dimensions, num_points, kd_indices, dimension_order, &
+pure subroutine build_kd_index_C(points, num_dimensions, num_points, kd_indices, dimension_order, &
                           workspace, value_buffer, permutation, left_stack, right_stack, ierr) &
                           bind(C, name="build_kd_index_C")
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use, intrinsic :: iso_fortran_env, only : int32
     use f42_kd_tree, only: build_kd_index
+    M_USE_NULL_VALIDATION
     implicit none
-    integer(c_int), value :: num_dimensions
-    integer(c_int), value :: num_points
-    real(c_double), intent(in) :: points(num_dimensions,num_points)
-    integer(c_int), intent(in) :: dimension_order(num_dimensions)
-    integer(c_int), intent(out) :: kd_indices(num_points)
-    integer(c_int), intent(out) :: workspace(num_points)
-    real(c_double), intent(out) :: value_buffer(num_points)
-    integer(c_int), intent(out) :: permutation(num_points)
-    integer(c_int), intent(out) :: left_stack(num_points)
-    integer(c_int), intent(out) :: right_stack(num_points)
-    integer(c_int), intent(out) :: ierr
-
+    !| Input parameters
+    integer(c_int), intent(in), target :: num_dimensions
+    !| number of input points
+    integer(c_int), intent(in), target :: num_points
+    !| input points
+    real(c_double), intent(in), target :: points(num_dimensions,num_points)
+    !| output kd indices
+    integer(c_int), intent(in), target :: dimension_order(num_dimensions)
+    !| output dimension order
+    integer(c_int), intent(out), target :: kd_indices(num_points)
+    !| workspace
+    integer(c_int), intent(out), target :: workspace(num_points)
+    !| value buffer
+    real(c_double), intent(out), target :: value_buffer(num_points)
+    !| permutation array
+    integer(c_int), intent(out), target :: permutation(num_points)
+    !| left stack
+    integer(c_int), intent(out), target :: left_stack(num_points)
+    !| right stack
+    integer(c_int), intent(out), target :: right_stack(num_points)
+    !| error code
+    integer(c_int), intent(out), target :: ierr
+     
     integer(int32) :: recursion_stack(3, num_points)
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(num_dimensions)
+    M_CHECK_NON_NULL(num_points)
+    M_CHECK_NON_NULL(points)
+    M_CHECK_NON_NULL(dimension_order)
+    M_CHECK_NON_NULL(kd_indices)
+    M_CHECK_NON_NULL(workspace)
+    M_CHECK_NON_NULL(value_buffer)
+    M_CHECK_NON_NULL(permutation)
+    M_CHECK_NON_NULL(left_stack)
+    M_CHECK_NON_NULL(right_stack)
 
     ! Call the original implementation
     call build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_order, &
                       workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)
 end subroutine build_kd_index_C
+
+!> C interface for building spherical KD index
+pure subroutine build_spherical_kd_C(vectors, num_dimensions, num_vectors, sphere_indices, &
+                              dimension_order, workspace, value_buffer, permutation, &
+                              left_stack, right_stack, ierr) bind(C, name="build_spherical_kd_C")
+    use iso_c_binding, only: c_int, c_double
+    use iso_fortran_env, only : int32
+    use f42_kd_tree, only: build_spherical_kd
+    M_USE_NULL_VALIDATION
+    implicit none
+    !| number of input dimensions
+    integer(c_int), intent(in), target :: num_dimensions
+    !| number of input vectors
+    integer(c_int), intent(in), target :: num_vectors
+    !| input unit vectors
+    real(c_double), intent(in), target :: vectors(num_dimensions,num_vectors)
+    !| output sphere indices
+    integer(c_int), intent(out), target :: sphere_indices(num_vectors)
+    !| output dimension order
+    integer(c_int), intent(out), target :: dimension_order(num_dimensions)
+    !| workspace
+    integer(c_int), intent(out), target :: workspace(num_vectors)
+    !| value buffer
+    real(c_double), intent(out), target :: value_buffer(num_vectors)
+    !| permutation array
+    integer(c_int), intent(out), target :: permutation(num_vectors)
+    !| left stack
+    integer(c_int), intent(out), target :: left_stack(num_vectors)
+    !| right stack
+    integer(c_int), intent(out), target :: right_stack(num_vectors)
+    !| error code
+    integer(c_int), intent(out), target :: ierr
+
+    integer(int32) :: recursion_stack(3, num_vectors)
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(num_dimensions)
+    M_CHECK_NON_NULL(num_vectors)
+    M_CHECK_NON_NULL(vectors)
+    M_CHECK_NON_NULL(sphere_indices)
+    M_CHECK_NON_NULL(dimension_order)
+    M_CHECK_NON_NULL(workspace)
+    M_CHECK_NON_NULL(value_buffer)
+    M_CHECK_NON_NULL(permutation)
+    M_CHECK_NON_NULL(left_stack)
+    M_CHECK_NON_NULL(right_stack)
+
+    ! Call the original implementation
+    call build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, &
+                          dimension_order, workspace, value_buffer, permutation, &
+                          left_stack, right_stack, recursion_stack, ierr)
+end subroutine build_spherical_kd_C

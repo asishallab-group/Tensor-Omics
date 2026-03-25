@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">23 statements</a>
+                 title=" 0.7% of total for procedures.">90 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,6 +156,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
@@ -184,12 +185,12 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~15"></span>
+              <span class="anchor" id="variable-n_genes~55"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_genes</strong></td>
@@ -199,12 +200,12 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~11"></span>
+              <span class="anchor" id="variable-n_tissues~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_tissues</strong></td>
@@ -214,7 +215,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~15"></span>
+              <span class="anchor" id="variable-input_matrix~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -229,7 +230,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-buf_stddev~3"></span>
+              <span class="anchor" id="variable-buf_stddev~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -244,7 +245,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-buf_quant~3"></span>
+              <span class="anchor" id="variable-buf_quant~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -259,7 +260,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-buf_avg~3"></span>
+              <span class="anchor" id="variable-buf_avg~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -274,7 +275,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-buf_log~3"></span>
+              <span class="anchor" id="variable-buf_log~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -289,7 +290,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_col~6"></span>
+              <span class="anchor" id="variable-temp_col~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -304,7 +305,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rank_means~6"></span>
+              <span class="anchor" id="variable-rank_means~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -319,7 +320,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~7"></span>
+              <span class="anchor" id="variable-perm~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -334,7 +335,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~6"></span>
+              <span class="anchor" id="variable-stack_left~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -349,7 +350,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~6"></span>
+              <span class="anchor" id="variable-stack_right~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -364,12 +365,12 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_stack~6"></span>
+              <span class="anchor" id="variable-max_stack~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>max_stack</strong></td>
@@ -379,7 +380,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_s~6"></span>
+              <span class="anchor" id="variable-group_s~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -394,7 +395,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_c~6"></span>
+              <span class="anchor" id="variable-group_c~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -409,12 +410,12 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_grps~7"></span>
+              <span class="anchor" id="variable-n_grps~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_grps</strong></td>
@@ -424,12 +425,12 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~73"></span>
+              <span class="anchor" id="variable-ierr~229"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
@@ -471,7 +472,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

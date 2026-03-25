@@ -7,70 +7,21 @@ module mod_test_binary_search
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_utils
     use tox_errors
+    use test_suite, only: test_case
     implicit none
-
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(2)
+    function get_all_tests_binary_search() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
+        allocate(all_tests(2))
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
         all_tests(2) = test_case("test_binary_search", test_binary_search)
-    end function get_all_tests
-
-    !> Run all binary_search tests.
-    subroutine run_all_tests_binary_search
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print "(' ',A,' passed.')", trim(all_tests(i)%name)
-        end do
-        print *, "All binary_search tests passed successfully."
-    end subroutine run_all_tests_binary_search
-
-    !> Run specific binary_search tests by name.
-    subroutine run_named_tests_binary_search(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print "(' ',A,' passed.')", trim(test_names(i))
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_binary_search
+    end function get_all_tests_binary_search
 
     subroutine test_binary_search_insertion()
         real(real64), dimension(7) :: arr

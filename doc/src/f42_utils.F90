@@ -8,7 +8,7 @@ module f42_utils
   use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size
   use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
   implicit none
-
+  public :: init_random, rand_range
   public :: sort_real, sort_integer, sort_character
   public :: sort_array
   public :: compute_edf, compute_edf_alloc
@@ -1206,104 +1206,93 @@ contains
 
 end module f42_utils
 
-! === R WRAPPERS ===
 
-!> R wrapper for loess_smooth_2d.
-!| Direct wrapper - user must pre-filter indices in R before calling.
-subroutine loess_smooth_2d_r(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr)
-  use f42_utils, only: loess_smooth_2d
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-  !| Total number of reference points.
-  integer(int32), intent(in) :: n_total
-  !| Number of target points to smooth.
-  integer(int32), intent(in) :: n_target
-  !| Reference x-coordinates.
-  real(real64), intent(in) :: x_ref(n_total)
-  !| Reference y-coordinates (length n_total).
-  real(real64), intent(in) :: y_ref(n_total)
-  !| Indices of reference points used for smoothing (pre-filtered).
-  integer(int32), intent(in) :: indices_used(n_used)
-  !| Number of indices actually used for smoothing.
-  integer(int32), intent(in) :: n_used
-  !| Target x-coordinates to smooth.
-  real(real64), intent(in) :: x_query(n_target)
-  !| Bandwidth parameter for the kernel.
-  real(real64), intent(in) :: kernel_sigma
-  !| Cutoff for the kernel.
-  real(real64), intent(in) :: kernel_cutoff
-  !| Output smoothed values (length n_target).
-  real(real64), intent(out) :: y_out(n_target)
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(int32), intent(out) :: ierr
-  
-  call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr)
-end subroutine loess_smooth_2d_r
+
 
 ! === C WRAPPERS ===
 
 !> C wrapper for which.
 !| Converts integer mask to logical and calls which.
-subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
+pure subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
   use, intrinsic :: iso_c_binding, only: c_int
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: which
+  use tox_conversions, only: c_int_as_logical
+  M_USE_NULL_VALIDATION
   implicit none
   !| Size of the mask.
-  integer(c_int), intent(in), value :: n
+  integer(c_int), intent(in), target :: n
   !| Maximum size of idx_out.
-  integer(c_int), intent(in), value :: m_max
+  integer(c_int), intent(in), target :: m_max
   !| Integer mask array (0/1 values).
-  integer(c_int), intent(in) :: mask(n)
+  integer(c_int), intent(in), target :: mask(n)
   !| Output array for indices of true values.
-  integer(c_int), intent(out) :: idx_out(m_max)
+  integer(c_int), intent(out), target :: idx_out(m_max)
   !| Actual size of idx_out (number of true values found).
-  integer(c_int), intent(out) :: m_out
+  integer(c_int), intent(out), target :: m_out
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
   logical :: mask_f(n)
-  integer(int32) :: i, ierr_f
-  do i = 1, n
-    mask_f(i) = (mask(i) /= 0)
-  end do
+  integer(int32) :: ierr_f
+  
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n)
+  M_CHECK_NON_NULL(m_max)
+  M_CHECK_NON_NULL(mask)
+  M_CHECK_NON_NULL(idx_out)
+  
+  ! Use tox_conversions utility for c_int to logical conversion
+  call c_int_as_logical(mask, mask_f)
   call which(mask_f, n, idx_out, m_max, m_out, ierr_f)
   ierr = ierr_f
 end subroutine which_c
 
 !> C wrapper for loess_smooth_2d.
 !| Direct wrapper - user must pre-filter indices in C before calling.
-subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
+pure subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: loess_smooth_2d
+  M_USE_NULL_VALIDATION
   implicit none
   !| Total number of reference points.
-  integer(c_int), intent(in), value :: n_total
+  integer(c_int), intent(in), target :: n_total
   !| Number of target points to smooth.
-  integer(c_int), intent(in), value :: n_target
+  integer(c_int), intent(in), target :: n_target
   !| Reference x-coordinates.
-  real(c_double), intent(in) :: x_ref(n_total)
+  real(c_double), intent(in), target :: x_ref(n_total)
   !| Reference y-coordinates (length n_total).
-  real(c_double), intent(in) :: y_ref(n_total)
+  real(c_double), intent(in), target :: y_ref(n_total)
   !| Indices of reference points used for smoothing (pre-filtered).
-  integer(c_int), intent(in) :: indices_used(n_used)
+  integer(c_int), intent(in), target :: indices_used(n_used)
   !| Number of indices actually used for smoothing.
-  integer(c_int), intent(in), value :: n_used
+  integer(c_int), intent(in), target :: n_used
   !| Target x-coordinates to smooth.
-  real(c_double), intent(in) :: x_query(n_target)
+  real(c_double), intent(in), target :: x_query(n_target)
   !| Bandwidth parameter for the kernel.
-  real(c_double), intent(in), value :: kernel_sigma
+  real(c_double), intent(in), target :: kernel_sigma
   !| Cutoff for the kernel.
-  real(c_double), intent(in), value :: kernel_cutoff
+  real(c_double), intent(in), target :: kernel_cutoff
   !| Output smoothed values (length n_target).
-  real(c_double), intent(out) :: y_out(n_target)
+  real(c_double), intent(out), target :: y_out(n_target)
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
 
   integer(int32) :: ierr_f
+  
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_total)
+  M_CHECK_NON_NULL(n_target)
+  M_CHECK_NON_NULL(x_ref)
+  M_CHECK_NON_NULL(y_ref)
+  M_CHECK_NON_NULL(indices_used)
+  M_CHECK_NON_NULL(n_used)
+  M_CHECK_NON_NULL(x_query)
+  M_CHECK_NON_NULL(kernel_sigma)
+  M_CHECK_NON_NULL(kernel_cutoff)
+  M_CHECK_NON_NULL(y_out)
+  
   call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr_f)
   ierr = ierr_f
@@ -1321,19 +1310,26 @@ subroutine compute_edf_c(values, n_values, unique_values, cdf_values, n_unique, 
   use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf_alloc
+  M_USE_NULL_VALIDATION
   implicit none
   !| Number of values in the input array.
-  integer(c_int), intent(in), value :: n_values
+  integer(c_int), intent(in), target :: n_values
   !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in) :: values(n_values)
+  real(c_double), intent(in), target :: values(n_values)
   !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out) :: unique_values(n_values)
+  real(c_double), intent(out), target :: unique_values(n_values)
   !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out) :: cdf_values(n_values)
+  real(c_double), intent(out), target :: cdf_values(n_values)
   !| Number of unique values found.
-  integer(c_int), intent(out) :: n_unique
+  integer(c_int), intent(out), target :: n_unique
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_values)
+  M_CHECK_NON_NULL(values)
+  M_CHECK_NON_NULL(unique_values)
+  M_CHECK_NON_NULL(cdf_values)
 
   call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_c
@@ -1347,22 +1343,30 @@ subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_value
   use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf
+  M_USE_NULL_VALIDATION
   implicit none
   !| Number of values in the input array.
-  integer(c_int), intent(in), value :: n_values
+  integer(c_int), intent(in), target :: n_values
   !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in) :: values(n_values)
+  real(c_double), intent(in), target :: values(n_values)
   !| Pre-sorted permutation indices (must be sorted by values[perm]).
   !| Caller is responsible for sorting this array before calling.
-  integer(c_int), intent(in) :: perm(n_values)
+  integer(c_int), intent(in), target :: perm(n_values)
   !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out) :: unique_values(n_values)
+  real(c_double), intent(out), target :: unique_values(n_values)
   !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out) :: cdf_values(n_values)
+  real(c_double), intent(out), target :: cdf_values(n_values)
   !| Number of unique values found.
-  integer(c_int), intent(out) :: n_unique
+  integer(c_int), intent(out), target :: n_unique
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_values)
+  M_CHECK_NON_NULL(values)
+  M_CHECK_NON_NULL(perm)
+  M_CHECK_NON_NULL(unique_values)
+  M_CHECK_NON_NULL(cdf_values)
 
   call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_expert_c

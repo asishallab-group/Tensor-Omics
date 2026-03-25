@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">13 statements</a>
+                 title=" 0.3% of total for procedures.">40 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,8 +156,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
               </ul>
             </li>
         </ul>
@@ -165,9 +166,7 @@
     </div>
 
 
-    <p>C/Python wrapper for tissue average calculation.
-Provides a C/Python-compatible interface to the tissue average calculation routine.
-Suitable for use with ctypes. Computes average expression per gene for each group of tissue replicates.</p>
+    <p>C-compatible wrapper for calc_tiss_avg</p>
 
 
     <h3>Arguments</h3>
@@ -183,32 +182,32 @@ Suitable for use with ctypes. Computes average expression per gene for each grou
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene~3"></span>
+              <span class="anchor" id="variable-n_gene~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_gene</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_grps~5"></span>
+              <span class="anchor" id="variable-n_grps~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_grps</strong></td>
             <td>
-                <p>Number of tissue groups</p>
+                
             </td>
         </tr>
         <tr>
@@ -223,7 +222,7 @@ Suitable for use with ctypes. Computes average expression per gene for each grou
             <td>::</td>
             <td><strong>group_s</strong>(n_grps)</td>
             <td>
-                <p>Start column index for each group (length: n_grps)</p>
+                
             </td>
         </tr>
         <tr>
@@ -238,12 +237,12 @@ Suitable for use with ctypes. Computes average expression per gene for each grou
             <td>::</td>
             <td><strong>group_c</strong>(n_grps)</td>
             <td>
-                <p>Number of columns per group (length: n_grps)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix~13"></span>
+              <span class="anchor" id="variable-input_matrix~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -253,37 +252,37 @@ Suitable for use with ctypes. Computes average expression per gene for each grou
             <td>::</td>
             <td><strong>input_matrix</strong>(n_gene*sum(group_c))</td>
             <td>
-                <p>Input matrix (flattened, n_gene * sum(group_c))</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~12"></span>
+              <span class="anchor" id="variable-output_matrix~8"></span>
               real(kind=c_double),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>output_matrix</strong>(n_gene*n_grps)</td>
             <td>
-                <p>Output matrix (flattened, n_gene * n_grps)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~69"></span>
+              <span class="anchor" id="variable-ierr~233"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                
             </td>
         </tr>
     </tbody>
@@ -320,7 +319,7 @@ Suitable for use with ctypes. Computes average expression per gene for each grou
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

@@ -16,6 +16,7 @@ doc/
 # ignore test files
 test_*
 !test_runner.sh
+!test/test_suite.F90
 !python/test/test_*
 !python/test_helpers.py
 !r/test/test_*

@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !> Module with Euclidean distance computation routines for tensor omics.
 module tox_euclidean_distance
   use safeguard
@@ -57,82 +59,39 @@ contains
 end module tox_euclidean_distance
 
 
-!> R wrapper for euclidean_distance.
-!| Calls euclidean_distance with standard Fortran types for R interface.
-subroutine euclidean_distance_r(vec1, vec2, d, result)
-  use tox_euclidean_distance, only: euclidean_distance
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  implicit none
-
-  !| Dimension of both vectors
-  integer(int32), intent(in) :: d
-  !| First expression vector
-  real(real64), intent(in) :: vec1(d)
-  !| Second expression vector
-  real(real64), intent(in) :: vec2(d)
-  !| Output scalar distance
-  real(real64), intent(out) :: result
-  call euclidean_distance(vec1, vec2, d, result)
-end subroutine euclidean_distance_r
-
 !> C wrapper for euclidean_distance.
 !| Exposes euclidean_distance to C via iso_c_binding types.
-subroutine euclidean_distance_c(vec1, vec2, d, result) bind(C, name="euclidean_distance_c")
+pure subroutine euclidean_distance_c(vec1, vec2, d, result) bind(C, name="euclidean_distance_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_euclidean_distance, only: euclidean_distance
   implicit none
 
   !| Dimension of both vectors
-  integer(c_int), intent(in), value :: d
+  integer(c_int), intent(in), target :: d
   !| First expression vector
   real(c_double), intent(in), target :: vec1(d)
   !| Second expression vector
   real(c_double), intent(in), target :: vec2(d)
   !| Output scalar distance
-  real(c_double), intent(out) :: result
+  real(c_double), intent(out), target :: result
+
   call euclidean_distance(vec1, vec2, d, result)
 end subroutine euclidean_distance_c
 
-!> R wrapper for distance_to_centroid.
-!| Calls distance_to_centroid with standard Fortran types for R interface.
-subroutine distance_to_centroid_r(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d)
-  use tox_euclidean_distance, only: distance_to_centroid
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  implicit none
-
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of gene families
-  integer(int32), intent(in) :: n_families
-  !| Expression vector dimension
-  integer(int32), intent(in) :: d
-  !| Gene expression matrix (d × n_genes), column-major
-  real(real64), intent(in) :: genes(d, n_genes)
-  !| Family centroid matrix (d × n_families), column-major
-  real(real64), intent(in) :: centroids(d, n_families)
-  !| Gene-to-family mapping (1-based indexing)
-  integer(int32), intent(in) :: gene_to_fam(n_genes)
-  !| Output distances array
-  real(real64), intent(out) :: distances(n_genes)
-  call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d)
-end subroutine distance_to_centroid_r
-
 !> C wrapper for distance_to_centroid.
 !| Exposes distance_to_centroid to C via iso_c_binding types.
-subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, & 
+pure subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, & 
                                   gene_to_fam, distances, d) bind(C, name="distance_to_centroid_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_euclidean_distance, only: distance_to_centroid
   implicit none
 
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes
+  integer(c_int), intent(in), target :: n_genes
   !| Total number of gene families
-  integer(c_int), intent(in), value :: n_families
+  integer(c_int), intent(in), target :: n_families
   !| Expression vector dimension
-  integer(c_int), intent(in), value :: d
+  integer(c_int), intent(in), target :: d
   !| Gene expression matrix (d × n_genes), column-major
   real(c_double), intent(in), target :: genes(d, n_genes)
   !| Family centroid matrix (d × n_families), column-major

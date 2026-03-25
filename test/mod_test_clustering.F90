@@ -1,40 +1,38 @@
-!> Unit test suite for tox_clustering routine.
-module mod_test_tox_clustering
+! filepath: test/mod_test_clustering.f90
+!> Unit test suite for clustering routine.
+module mod_test_clustering
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
-    use tox_clustering
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf  
+    use tox_clustering  
     use tox_errors
+    use test_suite, only: test_case
     implicit none
-
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
+    public
+    
 
     real(real64), parameter :: TOL = 1d-12
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(6)
+    function get_all_tests_clustering() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
 
-        all_tests(1) = test_case("test_tox_clustering_k_means_assign_cluster_helper", test_k_means_assign_cluster_helper)
-        all_tests(2) = test_case("test_tox_clustering_k_means_recompute_cluster_centroids_helper", test_k_means_recompute_cluster_centroids_helper)
-        all_tests(3) = test_case("test_tox_clustering_k_means_clustering", test_k_means_clustering)
-        all_tests(4) = test_case("test_tox_clustering_linkage_helpers_xPGMA", test_linkage_helpers_xPGMA)
-        all_tests(5) = test_case("test_tox_clustering_linkage_helpers_ward", test_linkage_helpers_ward)
-        all_tests(6) = test_case("test_tox_clustering_linkage_methods", test_linkage_methods)
-    end function get_all_tests
+        allocate(all_tests(6))
 
+        all_tests(1) = test_case("test_clustering_k_means_assign_cluster_helper", test_k_means_assign_cluster_helper)
+        all_tests(2) = test_case("test_clustering_k_means_recompute_cluster_centroids_helper", test_k_means_recompute_cluster_centroids_helper)
+        all_tests(3) = test_case("test_clustering_k_means_clustering", test_k_means_clustering)
+        all_tests(4) = test_case("test_clustering_linkage_helpers_xPGMA", test_linkage_helpers_xPGMA)
+        all_tests(5) = test_case("test_clustering_linkage_helpers_ward", test_linkage_helpers_ward)
+        all_tests(6) = test_case("test_clustering_linkage_methods", test_linkage_methods)
+    end function get_all_tests_clustering
+
+    
+    
+
+    !> Test the Ward linkage helper functions with a known example.
     subroutine test_linkage_helpers_ward()
         integer(int32), parameter :: n_points = 5
         real(real64) :: dist(n_points, n_points)
@@ -122,6 +120,7 @@ contains
         call assert_equal_array_real(dist, expected_dist, n_points ** 2, TOL, "test_linkage_helpers_ward: last merge")
     end subroutine test_linkage_helpers_ward
 
+    !> Test the xPGMA linkage helper functions with a known example.
     subroutine test_linkage_helpers_xPGMA()
         integer(int32), parameter :: n_points = 5
         real(real64) :: dist(n_points, n_points)
@@ -204,6 +203,7 @@ contains
         call assert_equal_array_real(dist, expected_dist, n_points ** 2, TOL, "test_linkage_helpers_xPGMA: last merge")
     end subroutine test_linkage_helpers_xPGMA
 
+    !> Test the k-means assign_cluster_helper function with a simple example.
     subroutine test_linkage_methods
         integer(int32), parameter :: max_n_points = 5
         integer(int32) :: n_points
@@ -365,6 +365,7 @@ contains
         end do
     end subroutine test_linkage_methods
 
+    !> Test the k-means clustering function with a simple example.
     subroutine test_k_means_clustering()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 2
         real(real64) :: data_points(n_dims, n_points)
@@ -433,6 +434,7 @@ contains
         call assert_equal_int(label_counts(2), 3, "test_k_means_clustering: label_counts(2) mismatch")
     end subroutine test_k_means_clustering
 
+    !> Test the k-means recompute_cluster_centroids_helper function with a simple example.
     subroutine test_k_means_recompute_cluster_centroids_helper()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 3
         real(real64) :: data_points(n_dims, n_points)
@@ -475,6 +477,7 @@ contains
 
     end subroutine test_k_means_recompute_cluster_centroids_helper
 
+    !> Test the k-means assign_cluster_helper function with a simple example.
     subroutine test_k_means_assign_cluster_helper()
         integer(int32), parameter :: n_dims = 2, n_points = 3, n_clusters = 2
         real(real64) :: data_points(n_dims, n_points)
@@ -515,42 +518,5 @@ contains
 
     end subroutine test_k_means_assign_cluster_helper
 
-    !> Run all tox_clustering tests.
-    subroutine run_all_tests_tox_clustering
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests, kind=int32)
-            call all_tests(i)%test_proc()
-            print "(' ',A,' passed.')", trim(all_tests(i)%name)
-        end do
-        print *, "All tox_clustering tests passed successfully."
-    end subroutine run_all_tests_tox_clustering
-
-    !> Run specific tox_clustering tests by name.
-    subroutine run_named_tests_tox_clustering(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names, kind=int32)
-            found = .false.
-            do j = 1, size(all_tests, kind=int32)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print "(' ',A,' passed.')", trim(test_names(i))
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_tox_clustering
-end module mod_test_tox_clustering
+    
+end module mod_test_clustering

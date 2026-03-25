@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">20 statements</a>
+                 title=" 0.5% of total for procedures.">63 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")  
+    <h2>pure subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,8 +157,9 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
               </ul>
             </li>
         </ul>
@@ -183,12 +184,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_total~3"></span>
+              <span class="anchor" id="variable-n_total~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_total</strong></td>
@@ -198,12 +199,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_target~3"></span>
+              <span class="anchor" id="variable-n_target~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_target</strong></td>
@@ -213,12 +214,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_ref~3"></span>
+              <span class="anchor" id="variable-x_ref~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>x_ref</strong>(n_total)</td>
@@ -228,12 +229,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_ref~3"></span>
+              <span class="anchor" id="variable-y_ref~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>y_ref</strong>(n_total)</td>
@@ -243,12 +244,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~3"></span>
+              <span class="anchor" id="variable-indices_used~6"></span>
               integer(kind=c_int),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>indices_used</strong>(n_used)</td>
@@ -258,12 +259,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_used~3"></span>
+              <span class="anchor" id="variable-n_used~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>n_used</strong></td>
@@ -273,12 +274,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_query~3"></span>
+              <span class="anchor" id="variable-x_query~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>x_query</strong>(n_target)</td>
@@ -288,12 +289,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_sigma~3"></span>
+              <span class="anchor" id="variable-kernel_sigma~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>kernel_sigma</strong></td>
@@ -303,12 +304,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_cutoff~3"></span>
+              <span class="anchor" id="variable-kernel_cutoff~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              value
+              target
             </td>
             <td>::</td>
             <td><strong>kernel_cutoff</strong></td>
@@ -318,12 +319,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_out~3"></span>
+              <span class="anchor" id="variable-y_out~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>y_out</strong>(n_target)</td>
@@ -333,12 +334,12 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~205"></span>
+              <span class="anchor" id="variable-ierr~295"></span>
               integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
@@ -380,7 +381,7 @@ Direct wrapper - user must pre-filter indices in C before calling.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-04 09:48 +0000"             </p>
+ on "2026-03-24 12:03 +0000"             </p>
           </div>
         </div>
         <br>

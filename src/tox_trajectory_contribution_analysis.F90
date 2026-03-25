@@ -873,7 +873,7 @@ end subroutine compute_contributions_c
 !> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):compute_baselines_factor_dependent(subroutine)]]
 pure subroutine compute_baselines_factor_dependent_c(factor, dependent, n_timepoints, mode, &
                                                factor_baseline, dependent_baseline, ierr) &
-    bind(C, name="tox_compute_baselines_factor_dependent_c")
+    bind(C, name="compute_baselines_factor_dependent_c")
 
     use tox_trajectory_contribution_analysis, only: compute_baselines_factor_dependent, get_baseline_mode
     use, intrinsic :: iso_fortran_env, only: int32
@@ -1026,9 +1026,9 @@ end subroutine compute_p_values_c
 
 
 !> C wrapper for compute_velocity_trajectories
-pure subroutine tox_compute_velocity_trajectories_c(trajectories, n_factors, n_samples, n_timepoints, &
+pure subroutine compute_velocity_trajectories_c(trajectories, n_factors, n_samples, n_timepoints, &
                                                velocity, ierr) &
-    bind(C, name="tox_compute_velocity_trajectories_c")
+    bind(C, name="compute_velocity_trajectories_c")
     use tox_trajectory_contribution_analysis, only : compute_velocity_trajectories
     use, intrinsic :: iso_fortran_env, only: int32
     use, intrinsic :: iso_c_binding, only: c_double, c_int
@@ -1059,12 +1059,12 @@ pure subroutine tox_compute_velocity_trajectories_c(trajectories, n_factors, n_s
     M_CHECK_NON_NULL(velocity)
 
     call compute_velocity_trajectories(trajectories, velocity, n_factors, n_samples, n_timepoints, ierr)
-end subroutine tox_compute_velocity_trajectories_c
+end subroutine compute_velocity_trajectories_c
 
 !> C wrapper for compute_acceleration_from_velocity
-pure subroutine tox_compute_acceleration_from_velocity_c(velocity, n_factors, n_samples, n_timepoints, &
+pure subroutine compute_acceleration_from_velocity_c(velocity, n_factors, n_samples, n_timepoints, &
                                                     acceleration, ierr) &
-    bind(C, name="tox_compute_acceleration_from_velocity_c")
+    bind(C, name="compute_acceleration_from_velocity_c")
 
     use tox_trajectory_contribution_analysis, only : compute_acceleration_from_velocity
     use, intrinsic :: iso_fortran_env, only: int32
@@ -1097,14 +1097,14 @@ pure subroutine tox_compute_acceleration_from_velocity_c(velocity, n_factors, n_
     M_CHECK_NON_NULL(acceleration)
 
     call compute_acceleration_from_velocity(velocity, acceleration, n_factors, n_samples, n_timepoints, ierr)
-end subroutine tox_compute_acceleration_from_velocity_c
+end subroutine compute_acceleration_from_velocity_c
 
 !> C wrapper for compute_velocity_and_acceleration_contributions
-pure subroutine tox_compute_velocity_acceleration_contributions_c(trajectories, n_factors, n_samples, n_timepoints, mode, &
+pure subroutine compute_velocity_acceleration_contributions_c(trajectories, n_factors, n_samples, n_timepoints, mode, &
     factor_workspace, dependent_workspace, contributions_workspace, &
     contrib_velocity, velocity_contribution_series, &
     contrib_acceleration, acceleration_contribution_series, ierr) &
-    bind(C, name="tox_compute_velocity_acceleration_contributions_c")
+    bind(C, name="compute_velocity_acceleration_contributions_c")
 
     use tox_trajectory_contribution_analysis, only: compute_velocity_acceleration_contributions, get_baseline_mode
     use, intrinsic :: iso_c_binding, only : c_int, c_double, c_char
@@ -1171,13 +1171,13 @@ pure subroutine tox_compute_velocity_acceleration_contributions_c(trajectories, 
         contrib_velocity, velocity_contribution_series, &
         contrib_acceleration, acceleration_contribution_series, ierr)
 
-end subroutine tox_compute_velocity_acceleration_contributions_c
+end subroutine compute_velocity_acceleration_contributions_c
 
 !> C wrapper for compute_velocity_acceleration_contributions_alloc
-pure subroutine tox_compute_velocity_acceleration_contributions_alloc_c(trajectories, n_factors, n_samples, n_timepoints, mode, &
+pure subroutine compute_velocity_acceleration_contributions_alloc_c(trajectories, n_factors, n_samples, n_timepoints, mode, &
     contrib_velocity, velocity_contribution_series, &
     contrib_acceleration, acceleration_contribution_series, ierr) &
-    bind(C, name="tox_compute_velocity_acceleration_contributions_alloc_c")
+    bind(C, name="compute_velocity_acceleration_contributions_alloc_c")
 
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding,  only: c_int, c_double, c_char
@@ -1230,11 +1230,11 @@ pure subroutine tox_compute_velocity_acceleration_contributions_alloc_c(trajecto
         contrib_velocity, velocity_contribution_series, &
         contrib_acceleration, acceleration_contribution_series, ierr)
 
-end subroutine tox_compute_velocity_acceleration_contributions_alloc_c
+end subroutine compute_velocity_acceleration_contributions_alloc_c
 
 !> C wrapper for compute_velocity_trajectory
-pure subroutine tox_compute_velocity_trajectory_c(trajectory, n_timepoints, velocity, ierr) &
-    bind(C, name="tox_compute_velocity_trajectory_c")
+pure subroutine compute_velocity_trajectory_c(trajectory, n_timepoints, velocity, ierr) &
+    bind(C, name="compute_velocity_trajectory_c")
     use tox_trajectory_contribution_analysis, only : compute_velocity_trajectory
     use, intrinsic :: iso_fortran_env, only: int32
     use, intrinsic :: iso_c_binding,  only: c_int, c_double
@@ -1257,11 +1257,11 @@ pure subroutine tox_compute_velocity_trajectory_c(trajectory, n_timepoints, velo
     M_CHECK_NON_NULL(velocity)
 
     call compute_velocity_trajectory(trajectory, velocity, n_timepoints, ierr)
-end subroutine tox_compute_velocity_trajectory_c
+end subroutine compute_velocity_trajectory_c
 
 !> C wrapper for compute_acceleration_from_velocity_trajectory
-pure subroutine tox_compute_acceleration_from_velocity_trajectory_c(velocity, n_timepoints, acceleration, ierr) &
-    bind(C, name="tox_compute_acceleration_from_velocity_trajectory_c")
+pure subroutine compute_acceleration_from_velocity_trajectory_c(velocity, n_timepoints, acceleration, ierr) &
+    bind(C, name="compute_acceleration_from_velocity_trajectory_c")
     use tox_trajectory_contribution_analysis, only : compute_acceleration_from_velocity_trajectory
     use, intrinsic :: iso_fortran_env, only: int32
     use, intrinsic :: iso_c_binding,  only: c_int, c_double
@@ -1284,4 +1284,4 @@ pure subroutine tox_compute_acceleration_from_velocity_trajectory_c(velocity, n_
     M_CHECK_NON_NULL(acceleration)
 
     call compute_acceleration_from_velocity_trajectory(velocity, acceleration, n_timepoints, ierr)
-end subroutine tox_compute_acceleration_from_velocity_trajectory_c
+end subroutine compute_acceleration_from_velocity_trajectory_c
