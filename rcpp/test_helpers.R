@@ -27,7 +27,6 @@ run_all_tests <- function(env = parent.frame(), test_only = TRUE) {
         passed <- passed + 1
       },
       error = function(e) {
-        stop(e)
         msg <- conditionMessage(e)
 
         # Same skip logic as Python version
@@ -72,5 +71,17 @@ assert_equal_numeric <- function(x, y, tol = 1e-12, msg = "Real mismatch") {
   for (i in seq_len(length(x))) {
     if (!(is.finite(x[i]) && is.finite(y[i]) && abs(x[i] - y[i]) <= tol)) stop(msg, call. = FALSE)
   }
+  invisible(TRUE)
+}
+
+assert_fails <- function(func, msg = "Function should fail") {
+  failed <- FALSE
+  tryCatch(
+    {
+      func()
+    },
+    error = function(e) {failed <<- TRUE}
+  )
+  if (!failed) stop(msg, call. = FALSE)
   invisible(TRUE)
 }

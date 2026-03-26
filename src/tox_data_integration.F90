@@ -191,13 +191,13 @@ pure subroutine compute_residuals_c(expr, n_genes, n_reps, means, max_n_genes_al
 end subroutine compute_residuals_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):determine_js_comp_test_n_points_n_neighbors_alloc(interface)]]
-subroutine determine_js_comp_test_n_points_n_neighbors_alloc_c( &
+subroutine determine_js_comp_test_n_points_n_neighbors_c( &
         n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
         shared_residual_range, n_bins, gene_means, n_studies, n_bootstraps, &
         best_candidate_pair_confidence_interval, join_method, ierr, &
         min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, &
         two_sided_bootstrapping_significance_level, random_seed, residual_range_quantile) &
-    bind(C, name="determine_js_comp_test_n_points_n_neighbors_alloc_c")
+    bind(C, name="determine_js_comp_test_n_points_n_neighbors_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
     use, intrinsic :: iso_fortran_env, only: int32
@@ -274,16 +274,16 @@ subroutine determine_js_comp_test_n_points_n_neighbors_alloc_c( &
         best_candidate_pair_confidence_interval, join_method_f, ierr, &
         min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, &
         two_sided_bootstrapping_significance_level, random_seed, residual_range_quantile)
-end subroutine determine_js_comp_test_n_points_n_neighbors_alloc_c
+end subroutine determine_js_comp_test_n_points_n_neighbors_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):js_comp_test_alloc(interface)]]
-subroutine js_comp_test_alloc_c(&
+subroutine js_comp_test_c(&
         gene_means, max_n_genes_all_studies, n_studies, residuals, shared_residual_range,&
         n_bins, max_n_reps_all_studies, x_star, n_pool, n_points, n_neighbors, neighborhood_ranges, neighborhood_residuals,&
         pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
         js_divergences, weights, global_js_divergence, p_values, ierr, n_permutations, random_seed&
     ) &
-        bind(C, name="js_comp_test_alloc_c")
+        bind(C, name="js_comp_test_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: js_comp_test_alloc
@@ -377,4 +377,4 @@ subroutine js_comp_test_alloc_c(&
         pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps,&
         js_divergences, weights, global_js_divergence, p_values, ierr, n_permutations, random_seed&
     )
-end subroutine js_comp_test_alloc_c
+end subroutine js_comp_test_c

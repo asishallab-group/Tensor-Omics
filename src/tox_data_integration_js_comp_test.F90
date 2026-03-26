@@ -10,7 +10,7 @@ module tox_data_integration_js_comp_test
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_heaps, only: top_k_heap_push, bottom_k_heap_push
     use f42_random_gsl, only: random_multinomial, create_rng, random_multiv_hypergeom, reset_rng, rng_t, destroy_rng
-    use f42_utils, only: calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, sort_real_heapsort_expl_size, LOG_2, init_perm
+    use f42_utils, only: calc_percentile_helper, calc_percentile_rank, is_close, sort_array_heapsort, sort_real_heapsort_expl_size, LOG_2, init_perm, clamp
     use tox_errors, only: map_err_arg_pos, set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_int
     implicit none
 
@@ -372,16 +372,14 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: n_candidates_n_points_n_neighbors, n_point_candidates, i_candidate, i_study, n_residuals
-        integer(int32) :: max_n_points_candidate, min_n_points_candidate, max_n_bins_all_candidates
-        integer(int32) :: max_n_neighbors_candidate, prev_point_candidate, prev_neighbor_candidate
-        integer(int32) :: n_bootstrapping_top_k_jsds, i_point_candidate, i_neighbor_candidate
-        real(real64) :: n_points_candidate_real
-        real(real64), parameter :: GAMMA = 0.8_real64
-        real(real64), parameter :: LOG_GAMMA = log(0.8_real64)
-
         ! needs to be ascending, as it is part of the denominator, so first elements are larger than next
         real(real64), dimension(2), parameter :: KX_FACTORS = [2.0_real64, 4.0_real64]
+
+        integer(int32), parameter :: MAX_POINTS = 1500_int32
+        integer(int32), parameter :: MIN_POINTS = 200_int32
+        real(real64), parameter :: GAMMA = 0.8_real64
+        integer(int32), parameter :: MAX_POINT_CANDIDATES = 8_int32 ! How often can I multiply `MAX_POINTS` with `GAMMA`
+        integer(int32), parameter :: MAX_CANDIDATE_PAIRS = size(KX_FACTORS, kind=int32) * MAX_POINT_CANDIDATES
 
         integer(int32), dimension(:, :), allocatable :: candidates_n_points_n_neighbors
         integer(int32), dimension(:, :), allocatable :: gene_means_perms
@@ -401,6 +399,11 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_confidence_interval
         real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
 
+        integer(int32) :: n_bootstrapping_top_k_jsds, n_residuals, prev_point_candidate, n_candidates, max_n_bins_all_candidates
+        integer(int32) :: i_point_candidate, point_candidate, prev_neighbor_candidate, i_neighbor_candidate, neighbor_candidate, max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32) :: i_study
+        real(real64) :: n_points_high, n_points_low
+
         call set_ok(ierr)
 
         call validate_dimension_size(n_studies, ierr, arg_pos=9_int32)
@@ -416,65 +419,59 @@ contains
 
         if (is_err(ierr)) return
 
-        ! 1. Determine number of candidates
-        max_n_points_candidate = min(1500_int32, max_n_genes_all_studies)
-        n_points_candidate_real = real(max_n_points_candidate, real64)
-        min_n_points_candidate = min(200_int32, ceiling(0.2_real64 * n_points_candidate_real))
-
         if (present(two_sided_bootstrapping_significance_level)) then
             n_bootstrapping_top_k_jsds = floor(two_sided_bootstrapping_significance_level / 100.0_real64 * real(n_bootstraps, real64))
         else
             n_bootstrapping_top_k_jsds = floor(0.025_real64 * real(n_bootstraps, real64))
         end if
 
-        ! computes the maximum possible number of candidates with the log-scaled approach (including duplicates)
-        ! Actually, with min_n_points_candidate=1 and max_n_points_candidate=huge(1_int32)
-        ! the max value is only 97, so it could be even hard coded
-        n_point_candidates = ceiling(&
-            log(real(min_n_points_candidate, real64)/n_points_candidate_real) / LOG_GAMMA&
-        )
-        n_candidates_n_points_n_neighbors = n_point_candidates * size(KX_FACTORS, kind=int32)
 
-        M_ALLOCATE(candidates_n_points_n_neighbors(2, n_candidates_n_points_n_neighbors))
-        M_ALLOCATE(n_bins_candidates(n_candidates_n_points_n_neighbors))
-
-        ! 2. Determine shared residual range
+        ! 1. Determine shared residual range
         n_residuals = size(residuals, kind=int32)
         M_ALLOCATE(residuals_perm(n_residuals))
         call init_perm(residuals_perm)
         call sort_real_heapsort_expl_size(residuals, residuals_perm, n_residuals)
         call determine_shared_residual_range_helper(residuals, residuals_perm, n_residuals, shared_residual_range, residual_range_quantile)
 
-        ! 3. Determine candidates
+        ! 2. Determine candidates
+        M_ALLOCATE(candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(n_bins_candidates(MAX_CANDIDATE_PAIRS))
+        n_points_high = real(clamp(ceiling(4.0_real64 * sqrt(real(max_n_genes_all_studies, real64))), min_val=MIN_POINTS, max_val=MAX_POINTS), kind=real64)
+        n_points_low = real(max(MIN_POINTS, ceiling(0.2_real64 * n_points_high)), kind=real64)
+
         prev_point_candidate = -1_int32
-        i_candidate = 1_int32
-        max_n_bins_all_candidates = 1_int32
-        do i_point_candidate = 1, n_point_candidates
-            associate (&
-                point_candidate => nint(n_points_candidate_real)&
-            )
-                if (point_candidate < min_n_points_candidate) exit
-                if (point_candidate /= prev_point_candidate) then
-                    prev_point_candidate = point_candidate
-                    prev_neighbor_candidate = -1_int32
+        n_candidates = 0_int32
+        max_n_bins_all_candidates = 0_int32
 
-                    do i_neighbor_candidate = 1, size(KX_FACTORS, kind=int32)
-                        candidates_n_points_n_neighbors(2, i_candidate) = &
-                            floor(real(max_n_genes_all_studies, real64) / (KX_FACTORS(i_neighbor_candidate) * n_points_candidate_real))
+        do i_point_candidate = 1, MAX_POINT_CANDIDATES
+            if (n_points_high < n_points_low) exit
 
-                        if (candidates_n_points_n_neighbors(2, i_candidate) /= prev_neighbor_candidate) then
-                            prev_neighbor_candidate = candidates_n_points_n_neighbors(2, i_candidate)
-                            candidates_n_points_n_neighbors(1, i_candidate) = point_candidate
-                            call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, candidates_n_points_n_neighbors(2, i_candidate), shared_residual_range, n_bins_candidates(i_candidate))
-                            max_n_bins_all_candidates = max(max_n_bins_all_candidates, n_bins_candidates(i_candidate))
-                            i_candidate = i_candidate + 1
-                        end if
-                    end do
-                end if
+            point_candidate = nint(n_points_high)
+            if (point_candidate /= prev_point_candidate) then
+                prev_point_candidate = point_candidate
+                prev_neighbor_candidate = -1_int32
 
-                n_points_candidate_real = n_points_candidate_real * GAMMA
-            end associate
+                do i_neighbor_candidate = 1, size(KX_FACTORS, kind=int32)
+                    ! TO DISCUSS: 1 won't have any overlap
+                    ! TO DISCUSS: if `max_n_genes_all_studies` is very large, the neighborhood genes are too far away from eachother
+                    neighbor_candidate = max(1_int32, floor(real(max_n_genes_all_studies, real64) / (KX_FACTORS(i_neighbor_candidate) * n_points_high)))
+
+                    if (neighbor_candidate /= prev_neighbor_candidate) then
+                        prev_neighbor_candidate = neighbor_candidate
+
+                        n_candidates = n_candidates + 1
+                        candidates_n_points_n_neighbors(1, n_candidates) = point_candidate
+                        candidates_n_points_n_neighbors(2, n_candidates) = neighbor_candidate
+
+                        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, neighbor_candidate, shared_residual_range, n_bins_candidates(n_candidates))
+
+                        max_n_bins_all_candidates = max(max_n_bins_all_candidates, n_bins_candidates(n_candidates))
+                    end if
+                end do
+            end if
+            n_points_high = n_points_high * GAMMA
         end do
+        max_n_points_candidate = candidates_n_points_n_neighbors(1, 1)
         max_n_neighbors_candidate = candidates_n_points_n_neighbors(2, 1)
 
         ! 3. Allocate rest
@@ -490,11 +487,11 @@ contains
         M_ALLOCATE(tmp_neighborhood_residuals(max_n_neighbors_candidate, max_n_points_candidate))
         M_ALLOCATE(tmp_neighborhood_ranges(2, max_n_points_candidate))
         M_ALLOCATE(tmp_x_star(max_n_points_candidate))
-        M_ALLOCATE(tmp_pmfs(n_bins, max_n_points_candidate, n_studies))
-        M_ALLOCATE(tmp_counts(n_bins, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_pmfs(max_n_bins_all_candidates, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_counts(max_n_bins_all_candidates, max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_included_n_reps(max_n_points_candidate, n_studies))
-        M_ALLOCATE(tmp_mean_pmf(n_bins, max_n_points_candidate))
-        M_ALLOCATE(tmp_mean_pmf_counts(n_bins, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf(max_n_bins_all_candidates, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf_counts(max_n_bins_all_candidates, max_n_points_candidate))
         M_ALLOCATE(tmp_mean_pmf_included_n_reps(max_n_points_candidate))
         M_ALLOCATE(tmp_js_divergences(max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_weights(max_n_points_candidate, n_studies))
@@ -503,7 +500,7 @@ contains
         M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
 
         call determine_js_comp_test_n_points_n_neighbors_helper(&
-            candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, max_n_points_candidate, max_n_neighbors_candidate,&
+            candidates_n_points_n_neighbors, n_candidates, max_n_points_candidate, max_n_neighbors_candidate,&
             n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins_candidates, max_n_bins_all_candidates,&
             gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
             n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method,&
@@ -613,6 +610,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
+        integer(int32) :: i_candidate
+
         call set_ok(ierr)
 
         call validate_dimension_size(n_studies, ierr, arg_pos=17_int32)
@@ -633,9 +632,13 @@ contains
         call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
 
         call validate_all_in_range_int(candidates_n_bins, n_candidates_n_points_n_neighbors, ierr, arg_pos=12_int32, min=1_int32, max=max_n_bins_all_candidates)
-        call validate_all_in_range_int(candidates_n_points_n_neighbors, size(candidates_n_points_n_neighbors, kind=int32), ierr, arg_pos=1_int32, min=1_int32, max=max_n_points_candidate)
         call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=15_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
         call validate_all_in_range_int(gene_means_perm_all, size(gene_means_perm_all, kind=int32), ierr, arg_pos=16_int32, min=1_int32, max=size(gene_means_perm_all, kind=int32))
+
+        do i_candidate = 1, n_candidates_n_points_n_neighbors
+            call validate_in_range_int(candidates_n_points_n_neighbors(1, i_candidate), ierr, arg_pos=1_int32, min=1_int32, max=max_n_points_candidate)
+            call validate_in_range_int(candidates_n_points_n_neighbors(2, i_candidate), ierr, arg_pos=1_int32, min=1_int32, max=max_n_neighbors_candidate)
+        end do
 
         if (is_err(ierr)) return
 

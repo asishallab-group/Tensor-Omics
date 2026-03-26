@@ -1,868 +1,928 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-
- 
-
 // ===================================================================
 // FORTRAN FUNCTIONS
 // ===================================================================
 
 extern "C" {
-void compute_gene_means_c( double* expr, int* n_genes, int* n_reps, double* means, int* max_n_genes_all_studies, int* ierr);
-void compute_residuals_c( double* expr, int* n_genes, int* n_reps, double* means, int* max_n_genes_all_studies, int* max_n_reps_all_studies, double* resid, int* ierr);
-void determine_js_comp_test_n_points_n_neighbors_alloc_c(int* n_points, int* n_neighbors, double* residuals, int* max_n_reps_all_studies, int* max_n_genes_all_studies, double* shared_residual_range, int* n_bins, double* gene_means, int* n_studies, int* n_bootstraps, double* best_candidate_pair_confidence_interval, const char* join_method, int* min_count_per_mean_bin, double* min_neighbor_overlap, double* succeeding_ci_overlap, double* two_sided_bootstrapping_significance_level, int* random_seed, double* residual_range_quantile, int* ierr);
-void js_comp_test_alloc_c(double* gene_means, int* max_n_genes_all_studies, int* n_studies, double* residuals, double* shared_residual_range, int* n_bins, int* max_n_reps_all_studies, double* x_star, int* n_pool, int* n_points, int* n_neighbors, int* neighborhood_ranges, int* neighborhood_residuals, double* pmfs, int* counts, int* included_n_reps, double* mean_pmf, int* mean_pmf_counts, int* mean_pmf_included_n_reps, double* js_divergences, double* weights, double* global_js_divergence, double* p_values, int* ierr, int* n_permutations, int* random_seed);
-void compute_edf_c(
-  const double* values,
-  const int* n_values,
-  double* unique_values,
-  double* cdf_values,
-  int* n_unique,
-  int* ierr
-);
-void compute_edf_expert_c(
-  const double* values,
-  const int* n_values,
-  const int* perm,
-  double* unique_values,
-  double* cdf_values,
-  int* n_unique,
-  int* ierr
-);
-void compute_all_contributions_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const int* factor_indices,
-  const int* n_selected_factors,
-  const int* dependent_indices,
-  const int* n_selected_dependents,
-  const char* mode,
-  double* local_contributions,
-  double* total_contributions,
-  double* temp_factors,
-  double* temp_dependent,
-  int* ierr
-);
-void compute_baselines_factor_dependent_c(
-  const double* factor,
-  const double* dependent,
-  const int* n_timepoints,
-  const char* mode,
-  double* factor_baseline,
-  double* dependent_baseline,
-  int* ierr
-);
-void compute_contributions_c(
-  const double* factor,
-  const double* dependent,
-  const int* n_dims,
-  const char* mode,
-  double* local_contributions,
-  double* total_contribution,
-  int* ierr
-);
-void perform_permutation_test_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const int* factor_idx,
-  const int* dependent_idx,
-  const int* sample_idx,
-  const char* mode,
-  const int* n_permutations,
-  double* local_contributions,
-  double* total_contributions,
-  double* temp_factor,
-  double* temp_dependent,
-  int* ierr,
-  const int* random_seed
-);
-void compute_p_values_c(
-  const double* local_contributions_observed,
-  const double* total_contribution_observed,
-  const double* local_contributions_perm,
-  const double* total_contributions_perm,
-  const int* n_timepoints,
-  const int* n_permutations,
-  double* local_p_values,
-  double* total_p_value,
-  int* ierr
-);
-
-void compute_velocity_trajectories_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* velocity,
-  int* ierr
-);
-void compute_acceleration_from_velocity_c(
-  const double* velocity,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* acceleration,
-  int* ierr
-);
-void compute_velocity_trajectory_c(
-  const double* trajectory,
-  const int* n_timepoints,
-  double* velocity,
-  int* ierr
-);
-void compute_acceleration_from_velocity_trajectory_c(
-  const double* velocity,
-  const int* n_timepoints,
-  double* acceleration,
-  int* ierr
-);
-void compute_velocity_acceleration_contributions_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const char* mode,
-  double* factor_workspace,
-  double* dependent_workspace,
-  double* contributions_workspace,
-  double* contrib_velocity,
-  double* velocity_contribution_series,
-  double* contrib_acceleration,
-  double* acceleration_contribution_series,
-  int* ierr
-);
-void compute_velocity_acceleration_contributions_alloc_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const char* mode,
-  double* contrib_velocity,
-  double* velocity_contribution_series,
-  double* contrib_acceleration,
-  double* acceleration_contribution_series,
-  int* ierr
-);
-void cluster_factor_trajectories_k_means_c(
-  const int* n_clusters,
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* centroids,
-  int* labels,
-  int* label_counts,
-  const int* max_iterations,
-  int* ierr
-);
-
-void k_means_clustering_c(
-  const int* n_clusters,
-  const double* data_points,
-  const int* n_points,
-  const int* n_dims,
-  double* centroids,
-  int* labels,
-  int* label_counts,
-  const int* max_iterations,
-  int* ierr
-);
-
-void linkage_clustering_c(
-  double* distances,
-  const int* n_points,
-  int* merge_i,
-  int* merge_j,
-  double* heights,
-  int* cluster_sizes,
-  const char* method,
-  int* ierr
-);
-
-void relative_axes_changes_from_shift_vector_c(
-  const double* vec,
-  const int* n_axes,
-  double* contributions,
-  int* ierr
-);
-
-void relative_axes_expression_from_expression_vector_c(
-  const double* vec,
-  const int* n_axes,
-  double* contributions,
-  int* ierr
-);
-
-void clock_hand_angle_between_vectors_c(
-  const double* v1,
-  const double* v2,
-  const int* n_dims,
-  double* signed_angle,
-  const int* selected_axes_for_signed,
-  int* ierr
-);
-
-void clock_hand_angles_for_shift_vectors_c(
-  const double* origins,
-  const double* targets,
-  const int* n_dims,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* selected_axes_for_signed,
-  double* signed_angles,
-  int* ierr
-);
-
-void omics_vector_RAP_projection_c(
-  const double* vecs,
-  const int* n_axes,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* axes_selection_mask,
-  const int* n_selected_axes,
-  double* projections,
-  int* ierr
-);
-
-void omics_field_RAP_projection_c(
-  const double* vecs,
-  const int* n_axes,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* axes_selection_mask,
-  const int* n_selected_axes,
-  double* projections,
-  int* ierr
-);
-
-void normalize_by_std_dev_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void quantile_normalization_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  int* ierr
-);
-
-void log2_transformation_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void normalize_unit_length_c(
-  double* vector,
-  const int* n_dims,
-  int* ierr
-);
-
-void calc_tiss_avg_c(
-  const int* n_genes,
-  const int* n_grps,
-  const int* group_s,
-  const int* group_c,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void calc_fchange_c(
-  const int* n_genes,
-  const int* n_cols,
-  const int* n_pairs,
-  const int* control_cols,
-  const int* cond_cols,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void normalization_pipeline_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* buf_stddev,
-  double* buf_quant,
-  double* buf_avg,
-  double* buf_log,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  const int* group_s,
-  const int* group_c,
-  const int* n_grps,
-  int* ierr
-);
-
-void normalize_variable_timeseries_C(
-  const double* v,
-  double* v_norm,
-  const int* n_points,
-  int* ierr,
-  int* status
-);
-
-void normalize_single_trajectory_C(
-  const double* trajectory,
-  double* trajectory_norm,
-  const int* n_factors,
-  const int* n_timepoints,
-  int* ierr,
-  int* status
-);
-
-void normalize_all_trajectories_C(
-  const double* trajectories,
-  double* trajectories_norm,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  int* ierr,
-  int* status
-);
-
-void compute_family_scaling_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* ierr
-);
-
-void compute_family_scaling_expert_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* perm_tmp,
-  int* stack_left_tmp,
-  int* stack_right_tmp,
-  double* family_distances,
-  int* ierr
-);
-
-void compute_rdi_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  const double* dscale,
-  double* rdi,
-  double* sorted_rdi,
-  int* perm,
-  int* stack_left,
-  int* stack_right
-);
-
-void identify_outliers_c(
-  const int* n_genes,
-  const double* rdi,
-  const double* sorted_rdi,
-  int* is_outlier_int,
-  double* threshold,
-  const double* percentile
-);
-
-void detect_outliers_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* work_array,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  int* is_outlier_int,
-  double* loess_x,
-  double* loess_y,
-  int* loess_n,
-  const double* percentile,
-  int* ierr
-);
-
-void euclidean_distance_c(
-  const double* vec1,
-  const double* vec2,
-  const int* d,
-  double* result
-);
-
-void distance_to_centroid_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* genes,
-  const double* centroids,
-  const int* gene_to_fam,
-  double* distances,
-  const int* d
-);
-
-void compute_tissue_versatility_c(
-  const int* n_axes,
-  const int* n_vectors,
-  const double* expression_vectors,
-  const int* exp_vecs_selection_index,
-  const int* n_selected_vectors,
-  const int* axes_selection,
-  const int* n_selected_axes,
-  double* tissue_versatilities,
-  double* tissue_angles_deg,
-  int* ierr
-);
-
-void compute_shift_vector_field_c(
-  const int* d,
-  const int* n_genes,
-  const int* n_families,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const int* gene_to_centroid,
-  double* shift_vectors,
-  int* ierr
-);
-
-
-void detect_neofunctionalization_c(
-  const double* ancestors,
-  const int* n_families,
-  const double* genes,
-  const int* n_axes,
-  const int* gene_to_fam,
-  const int* n_genes,
-  const double* thresholds,
-  int* neofunc,
-  int* ierr
-);
-
-void mask_check_state_c(
-  const int* bit_mask,
-  const int* n_mask_chunks,
-  const int* i_gene,
-  int* state,
-  int* ierr
-);
-
-void mask_chunk_count_c(
-  const int* n_genes,
-  int* count,
-  int* ierr
-);
-
-void calc_work_arr_paralog_subsets_size(
-  const int* max_subset_size,
-  const int* n_genes,
-  int* work_array_size,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void filter_paralogs_by_pattern_dosage_effect(
-  const double* gene_angles,
-  const double* threshold,
-  const int* n_genes,
-  const int* n_families,
-  const int* gene_to_fam,
-  int* masks,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void filter_paralogs_by_pattern_subfunctionalization_c(
-  const double* gene_angles,
-  const double* threshold,
-  const int* n_genes,
-  const int* n_families,
-  const int* gene_to_fam,
-  int* masks,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void detect_subfunctionalization_c(
-  const double* ancestor,
-  const double* genes,
-  const int* n_genes,
-  const int* n_dims,
-  const double* rdi_threshold,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* n_results,
-  const int* max_subset_size,
-  int* work_arr_paralog_subsets,
-  const int* n_paralog_subsets,
-  int* active_mask,
-  double* temp_paralog_vector,
-  const double* paralog_norms,
-  const int* sorted_paralog_norms_perm,
-  double* temp_work_array,
-  int* ierr
-);
-
-void detect_dosage_effect_c(
-  const double* ancestor,
-  const double* genes,
-  const int* n_genes,
-  const int* n_dims,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* n_results,
-  const int* max_subset_size,
-  int* work_arr_paralog_subsets,
-  const int* n_paralog_subsets,
-  int* active_mask,
-  double* temp_paralog_vector,
-  const double* max_angle,
-  const double* gain_gamma,
-  int* ierr
-);
-
-void mean_vector_c(
-  const double* expression_vectors,
-  const int* n_axes,
-  const int* n_genes,
-  const int* gene_indices,
-  const int* n_selected_genes,
-  double* centroid_col,
-  int* ierr
-);
-
-void group_centroid_c(
-  const double* expression_vectors,
-  const int* n_axes,
-  const int* n_genes,
-  const int* gene_to_family,
-  const int* n_families,
-  double* centroid_matrix,
-  const char* mode,
-  const int* ortholog_set,
-  int* selected_indices,
-  const int* selected_indices_len,
-  int* ierr
-);
-
-void build_kd_index_C(
-  const double* points,
-  const int* num_dimensions,
-  const int* num_points,
-  int* kd_indices,
-  const int* dimension_order,
-  int* workspace,
-  double* value_buffer,
-  int* permutation,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void which_c(
-  const int* mask,
-  const int* n,
-  int* idx_out,
-  const int* m_max,
-  int* m_out,
-  int* ierr
-);
-
-void loess_smooth_2d_c(
-  const int* n_total,
-  const int* n_target,
-  const double* x_ref,
-  const double* y_ref,
-  const int* indices_used,
-  int* n_used,
-  const double* x_query,
-  const double* kernel_sigma,
-  const double* kernel_cutoff,
-  double* y_out,
-  int* ierr
-);
-
-void deserialize_int_nd_C(
-  int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_real_nd_C(
-  double* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_char_nd_C(
-  char* ascii_arr,
-  const int* clen,
-  const int* total_array_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_int_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_real_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_char_nd_C(
-  const char* ascii_arr,
-  const int* dims,
-  const int* ndim,
-  const int* clen,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_logical_nd_C(
-  int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_logical_nd_C(
-  const int* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_complex_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_complex_nd_C(
-  void* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void get_array_metadata_C(
-  const char* filename_ascii,
-  const int* fn_len,
-  int* dims_out,
-  const int* dims_out_capacity,
-  int* ndims,
-  int* ierr,
-  int* clen
-);
-
-void build_bst_index_C(
-  const double* values,
-  const int* num_values,
-  int* sorted_indices,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void bst_range_query_C(
-  const double* values,
-  const int* sorted_indices,
-  const int* num_values,
-  const double* lower_bound,
-  const double* upper_bound,
-  int* output_indices,
-  int* num_matches,
-  int* ierr
-);
-
-void build_spherical_kd_C(
-  const double* vectors,
-  const int* num_dimensions,
-  const int* num_vectors,
-  int* sphere_indices,
-  const int* dimension_order,
-  int* workspace,
-  double* value_buffer,
-  int* permutation,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void read_expression_vectors_tsv_C(
-  const char* file_list_raw,
-  const int* file_list_len,
-  const int* n_files,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  double* expression_vectors,
-  const int* n_samples,
-  const int* n_header_rows,
-  const int* gene_col,
-  const int* value_cols,
-  const int* n_value_cols,
-  const char* delimiter_raw,
-  int* ierr
-);
-
-void read_gene_ids_from_tsv_file_C(
-  const char* filename_raw,
-  const int* fn_len,
-  char* gene_ids_raw,
-  int* gene_ids_len,
-  int* n_genes,
-  const int* n_header_rows,
-  const int* gene_col,
-  int* ierr
-);
-
-void read_orthofinder_file_C(
-  const char* filename_raw,
-  const int* fn_len,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  char* family_ids_raw,
-  int* family_ids_len,
-  int* n_families,
-  int* gene_to_fam,
-  int* ierr
-);
-
-void filter_unassigned_genes_C(
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  const int* gene_to_fam,
-  int* mask,
-  int* n_genes_kept,
-  int* ierr
-);
-
-void validate_data_structure_C(
-  const int* n_genes,
-  const int* n_families,
-  const int* n_samples,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const char* gene_family_ids_raw,
-  const int* fam_len,
-  const int* gene_to_fam,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const double* shift_vectors,
-  int* ierr
-);
-
-void validate_gene_to_family_mapping_C(
-  const int* gene_to_fam,
-  const int* n_genes,
-  const int* n_families,
-  int* ierr
-);
-
-void validate_expression_data_C(
-  const double* expression_vectors,
-  const int* n_genes,
-  const int* n_samples,
-  const int* check_non_negative,
-  int* ierr
-);
-
-void validate_family_centroids_C(
-  const double* family_centroids,
-  const int* n_families,
-  const int* n_samples,
-  int* ierr
-);
-
-void validate_shift_vectors_C(
-  const double* shift_vectors,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const int* gene_to_fam,
-  const int* n_genes,
-  const int* n_samples,
-  const int* n_families,
-  int* ierr
-);
-
-void validate_string_array_uniqueness_C(
-  const char* str_arr,
-  const int* str_len,
-  const int* n_strings,
-  int* ierr
-);
-
-void validate_all_data_C(
-  const int* n_genes,
-  const int* n_families,
-  const int* n_samples,
-  const char* gene_ids_raw,
-  const int* gene_len,
-  const char* gene_family_ids_raw,
-  const int* fam_len,
-  const int* gene_to_fam,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const double* shift_vectors,
-  int* ierr
-);
+  void compute_gene_means_c(
+    const double* expr,
+    const int* n_genes,
+    const int* n_reps,
+    double* means,
+    const int* max_n_genes_all_studies,
+    int* ierr
+  );
+  void compute_residuals_c(
+    const double* expr,
+    const int* n_genes,
+    const int* n_reps,
+    const double* means,
+    const int* max_n_genes_all_studies,
+    const int* max_n_reps_all_studies,
+    double* resid,
+    int* ierr
+  );
+  void determine_js_comp_test_n_points_n_neighbors_c(
+    int* n_points,
+    int* n_neighbors,
+    double* residuals,
+    int* max_n_reps_all_studies,
+    int* max_n_genes_all_studies,
+    double* shared_residual_range,
+    int* n_bins,
+    double* gene_means,
+    int* n_studies,
+    int* n_bootstraps,
+    double* best_candidate_pair_confidence_interval,
+    const char* join_method,
+    int* ierr,
+    int* min_count_per_mean_bin,
+    double* min_neighbor_overlap,
+    double* succeeding_ci_overlap,
+    double* two_sided_bootstrapping_significance_level,
+    int* random_seed,
+    double* residual_range_quantile
+  );
+  void js_comp_test_c(
+    const double* gene_means,
+    const int* max_n_genes_all_studies,
+    const int* n_studies,
+    const double* residuals,
+    const double* shared_residual_range,
+    const int* n_bins,
+    const int* max_n_reps_all_studies,
+    double* x_star,
+    int* n_pool,
+    const int* n_points,
+    const int* n_neighbors,
+    int* neighborhood_ranges,
+    int* neighborhood_residuals,
+    double* pmfs,
+    int* counts,
+    int* included_n_reps,
+    double* mean_pmf,
+    int* mean_pmf_counts,
+    int* mean_pmf_included_n_reps,
+    double* js_divergences,
+    double* weights,
+    double* global_js_divergence,
+    double* p_values,
+    int* ierr,
+    const int* n_permutations,
+    const int* random_seed
+  );
+  void compute_edf_c(
+    const double* values,
+    const int* n_values,
+    double* unique_values,
+    double* cdf_values,
+    int* n_unique,
+    int* ierr
+  );
+  void compute_edf_expert_c(
+    const double* values,
+    const int* n_values,
+    const int* perm,
+    double* unique_values,
+    double* cdf_values,
+    int* n_unique,
+    int* ierr
+  );
+  void compute_all_contributions_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const int* factor_indices,
+    const int* n_selected_factors,
+    const int* dependent_indices,
+    const int* n_selected_dependents,
+    const char* mode,
+    double* local_contributions,
+    double* total_contributions,
+    double* temp_factors,
+    double* temp_dependent,
+    int* ierr
+  );
+  void compute_baselines_factor_dependent_c(
+    const double* factor,
+    const double* dependent,
+    const int* n_timepoints,
+    const char* mode,
+    double* factor_baseline,
+    double* dependent_baseline,
+    int* ierr
+  );
+  void compute_contributions_c(
+    const double* factor,
+    const double* dependent,
+    const int* n_dims,
+    const char* mode,
+    double* local_contributions,
+    double* total_contribution,
+    int* ierr
+  );
+  void perform_permutation_test_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const int* factor_idx,
+    const int* dependent_idx,
+    const int* sample_idx,
+    const char* mode,
+    const int* n_permutations,
+    double* local_contributions,
+    double* total_contributions,
+    double* temp_factor,
+    double* temp_dependent,
+    int* ierr,
+    const int* random_seed
+  );
+  void compute_p_values_c(
+    const double* local_contributions_observed,
+    const double* total_contribution_observed,
+    const double* local_contributions_perm,
+    const double* total_contributions_perm,
+    const int* n_timepoints,
+    const int* n_permutations,
+    double* local_p_values,
+    double* total_p_value,
+    int* ierr
+  );
+
+  void compute_velocity_trajectories_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* velocity,
+    int* ierr
+  );
+  void compute_acceleration_from_velocity_c(
+    const double* velocity,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* acceleration,
+    int* ierr
+  );
+  void compute_velocity_trajectory_c(
+    const double* trajectory,
+    const int* n_timepoints,
+    double* velocity,
+    int* ierr
+  );
+  void compute_acceleration_from_velocity_trajectory_c(
+    const double* velocity,
+    const int* n_timepoints,
+    double* acceleration,
+    int* ierr
+  );
+  void compute_velocity_acceleration_contributions_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const char* mode,
+    double* factor_workspace,
+    double* dependent_workspace,
+    double* contributions_workspace,
+    double* contrib_velocity,
+    double* velocity_contribution_series,
+    double* contrib_acceleration,
+    double* acceleration_contribution_series,
+    int* ierr
+  );
+  void compute_velocity_acceleration_contributions_alloc_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const char* mode,
+    double* contrib_velocity,
+    double* velocity_contribution_series,
+    double* contrib_acceleration,
+    double* acceleration_contribution_series,
+    int* ierr
+  );
+  void cluster_factor_trajectories_k_means_c(
+    const int* n_clusters,
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* centroids,
+    int* labels,
+    int* label_counts,
+    const int* max_iterations,
+    int* ierr
+  );
+
+  void k_means_clustering_c(
+    const int* n_clusters,
+    const double* data_points,
+    const int* n_points,
+    const int* n_dims,
+    double* centroids,
+    int* labels,
+    int* label_counts,
+    const int* max_iterations,
+    int* ierr
+  );
+
+  void linkage_clustering_c(
+    double* distances,
+    const int* n_points,
+    int* merge_i,
+    int* merge_j,
+    double* heights,
+    int* cluster_sizes,
+    const char* method,
+    int* ierr
+  );
+
+  void relative_axes_changes_from_shift_vector_c(
+    const double* vec,
+    const int* n_axes,
+    double* contributions,
+    int* ierr
+  );
+
+  void relative_axes_expression_from_expression_vector_c(
+    const double* vec,
+    const int* n_axes,
+    double* contributions,
+    int* ierr
+  );
+
+  void clock_hand_angle_between_vectors_c(
+    const double* v1,
+    const double* v2,
+    const int* n_dims,
+    double* signed_angle,
+    const int* selected_axes_for_signed,
+    int* ierr
+  );
+
+  void clock_hand_angles_for_shift_vectors_c(
+    const double* origins,
+    const double* targets,
+    const int* n_dims,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* selected_axes_for_signed,
+    double* signed_angles,
+    int* ierr
+  );
+
+  void omics_vector_RAP_projection_c(
+    const double* vecs,
+    const int* n_axes,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* axes_selection_mask,
+    const int* n_selected_axes,
+    double* projections,
+    int* ierr
+  );
+
+  void omics_field_RAP_projection_c(
+    const double* vecs,
+    const int* n_axes,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* axes_selection_mask,
+    const int* n_selected_axes,
+    double* projections,
+    int* ierr
+  );
+
+  void normalize_by_std_dev_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void quantile_normalization_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    double* temp_col,
+    double* rank_means,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    const int* max_stack,
+    int* ierr
+  );
+
+  void log2_transformation_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void normalize_unit_length_c(
+    double* vector,
+    const int* n_dims,
+    int* ierr
+  );
+
+  void calc_tiss_avg_c(
+    const int* n_genes,
+    const int* n_grps,
+    const int* group_s,
+    const int* group_c,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void calc_fchange_c(
+    const int* n_genes,
+    const int* n_cols,
+    const int* n_pairs,
+    const int* control_cols,
+    const int* cond_cols,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void normalization_pipeline_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* buf_stddev,
+    double* buf_quant,
+    double* buf_avg,
+    double* buf_log,
+    double* temp_col,
+    double* rank_means,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    const int* max_stack,
+    const int* group_s,
+    const int* group_c,
+    const int* n_grps,
+    int* ierr
+  );
+
+  void normalize_variable_timeseries_C(
+    const double* v,
+    double* v_norm,
+    const int* n_points,
+    int* ierr,
+    int* status
+  );
+
+  void normalize_single_trajectory_C(
+    const double* trajectory,
+    double* trajectory_norm,
+    const int* n_factors,
+    const int* n_timepoints,
+    int* ierr,
+    int* status
+  );
+
+  void normalize_all_trajectories_C(
+    const double* trajectories,
+    double* trajectories_norm,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    int* ierr,
+    int* status
+  );
+
+  void compute_family_scaling_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* dscale,
+    double* loess_x,
+    double* loess_y,
+    int* indices_used,
+    int* ierr
+  );
+
+  void compute_family_scaling_expert_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* dscale,
+    double* loess_x,
+    double* loess_y,
+    int* indices_used,
+    int* perm_tmp,
+    int* stack_left_tmp,
+    int* stack_right_tmp,
+    double* family_distances,
+    int* ierr
+  );
+
+  void compute_rdi_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    const double* dscale,
+    double* rdi,
+    double* sorted_rdi,
+    int* perm,
+    int* stack_left,
+    int* stack_right
+  );
+
+  void identify_outliers_c(
+    const int* n_genes,
+    const double* rdi,
+    const double* sorted_rdi,
+    int* is_outlier_int,
+    double* threshold,
+    const double* percentile
+  );
+
+  void detect_outliers_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* work_array,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    int* is_outlier_int,
+    double* loess_x,
+    double* loess_y,
+    int* loess_n,
+    const double* percentile,
+    int* ierr
+  );
+
+  void euclidean_distance_c(
+    const double* vec1,
+    const double* vec2,
+    const int* d,
+    double* result
+  );
+
+  void distance_to_centroid_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* genes,
+    const double* centroids,
+    const int* gene_to_fam,
+    double* distances,
+    const int* d
+  );
+
+  void compute_tissue_versatility_c(
+    const int* n_axes,
+    const int* n_vectors,
+    const double* expression_vectors,
+    const int* exp_vecs_selection_index,
+    const int* n_selected_vectors,
+    const int* axes_selection,
+    const int* n_selected_axes,
+    double* tissue_versatilities,
+    double* tissue_angles_deg,
+    int* ierr
+  );
+
+  void compute_shift_vector_field_c(
+    const int* d,
+    const int* n_genes,
+    const int* n_families,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const int* gene_to_centroid,
+    double* shift_vectors,
+    int* ierr
+  );
+
+
+  void detect_neofunctionalization_c(
+    const double* ancestors,
+    const int* n_families,
+    const double* genes,
+    const int* n_axes,
+    const int* gene_to_fam,
+    const int* n_genes,
+    const double* thresholds,
+    int* neofunc,
+    int* ierr
+  );
+
+  void mask_check_state_c(
+    const int* bit_mask,
+    const int* n_mask_chunks,
+    const int* i_gene,
+    int* state,
+    int* ierr
+  );
+
+  void mask_chunk_count_c(
+    const int* n_genes,
+    int* count,
+    int* ierr
+  );
+
+  void calc_work_arr_paralog_subsets_size(
+    const int* max_subset_size,
+    const int* n_genes,
+    int* work_array_size,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void filter_paralogs_by_pattern_dosage_effect(
+    const double* gene_angles,
+    const double* threshold,
+    const int* n_genes,
+    const int* n_families,
+    const int* gene_to_fam,
+    int* masks,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void filter_paralogs_by_pattern_subfunctionalization_c(
+    const double* gene_angles,
+    const double* threshold,
+    const int* n_genes,
+    const int* n_families,
+    const int* gene_to_fam,
+    int* masks,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void detect_subfunctionalization_c(
+    const double* ancestor,
+    const double* genes,
+    const int* n_genes,
+    const int* n_dims,
+    const double* rdi_threshold,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* n_results,
+    const int* max_subset_size,
+    int* work_arr_paralog_subsets,
+    const int* n_paralog_subsets,
+    int* active_mask,
+    double* temp_paralog_vector,
+    const double* paralog_norms,
+    const int* sorted_paralog_norms_perm,
+    double* temp_work_array,
+    int* ierr
+  );
+
+  void detect_dosage_effect_c(
+    const double* ancestor,
+    const double* genes,
+    const int* n_genes,
+    const int* n_dims,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* n_results,
+    const int* max_subset_size,
+    int* work_arr_paralog_subsets,
+    const int* n_paralog_subsets,
+    int* active_mask,
+    double* temp_paralog_vector,
+    const double* max_angle,
+    const double* gain_gamma,
+    int* ierr
+  );
+
+  void mean_vector_c(
+    const double* expression_vectors,
+    const int* n_axes,
+    const int* n_genes,
+    const int* gene_indices,
+    const int* n_selected_genes,
+    double* centroid_col,
+    int* ierr
+  );
+
+  void group_centroid_c(
+    const double* expression_vectors,
+    const int* n_axes,
+    const int* n_genes,
+    const int* gene_to_family,
+    const int* n_families,
+    double* centroid_matrix,
+    const char* mode,
+    const int* ortholog_set,
+    int* selected_indices,
+    const int* selected_indices_len,
+    int* ierr
+  );
+
+  void build_kd_index_C(
+    const double* points,
+    const int* num_dimensions,
+    const int* num_points,
+    int* kd_indices,
+    const int* dimension_order,
+    int* workspace,
+    double* value_buffer,
+    int* permutation,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void which_c(
+    const int* mask,
+    const int* n,
+    int* idx_out,
+    const int* m_max,
+    int* m_out,
+    int* ierr
+  );
+
+  void loess_smooth_2d_c(
+    const int* n_total,
+    const int* n_target,
+    const double* x_ref,
+    const double* y_ref,
+    const int* indices_used,
+    int* n_used,
+    const double* x_query,
+    const double* kernel_sigma,
+    const double* kernel_cutoff,
+    double* y_out,
+    int* ierr
+  );
+
+  void deserialize_int_nd_C(
+    int* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_real_nd_C(
+    double* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_char_nd_C(
+    char* ascii_arr,
+    const int* clen,
+    const int* total_array_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_int_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_real_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_char_nd_C(
+    const char* ascii_arr,
+    const int* dims,
+    const int* ndim,
+    const int* clen,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_logical_nd_C(
+    int* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_logical_nd_C(
+    const int* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_complex_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_complex_nd_C(
+    void* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void get_array_metadata_C(
+    const char* filename_ascii,
+    const int* fn_len,
+    int* dims_out,
+    const int* dims_out_capacity,
+    int* ndims,
+    int* ierr,
+    int* clen
+  );
+
+  void build_bst_index_C(
+    const double* values,
+    const int* num_values,
+    int* sorted_indices,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void bst_range_query_C(
+    const double* values,
+    const int* sorted_indices,
+    const int* num_values,
+    const double* lower_bound,
+    const double* upper_bound,
+    int* output_indices,
+    int* num_matches,
+    int* ierr
+  );
+
+  void build_spherical_kd_C(
+    const double* vectors,
+    const int* num_dimensions,
+    const int* num_vectors,
+    int* sphere_indices,
+    const int* dimension_order,
+    int* workspace,
+    double* value_buffer,
+    int* permutation,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void read_expression_vectors_tsv_C(
+    const char* file_list_raw,
+    const int* file_list_len,
+    const int* n_files,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    double* expression_vectors,
+    const int* n_samples,
+    const int* n_header_rows,
+    const int* gene_col,
+    const int* value_cols,
+    const int* n_value_cols,
+    const char* delimiter_raw,
+    int* ierr
+  );
+
+  void read_gene_ids_from_tsv_file_C(
+    const char* filename_raw,
+    const int* fn_len,
+    char* gene_ids_raw,
+    int* gene_ids_len,
+    int* n_genes,
+    const int* n_header_rows,
+    const int* gene_col,
+    int* ierr
+  );
+
+  void read_orthofinder_file_C(
+    const char* filename_raw,
+    const int* fn_len,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    char* family_ids_raw,
+    int* family_ids_len,
+    int* n_families,
+    int* gene_to_fam,
+    int* ierr
+  );
+
+  void filter_unassigned_genes_C(
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    const int* gene_to_fam,
+    int* mask,
+    int* n_genes_kept,
+    int* ierr
+  );
+
+  void validate_data_structure_C(
+    const int* n_genes,
+    const int* n_families,
+    const int* n_samples,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const char* gene_family_ids_raw,
+    const int* fam_len,
+    const int* gene_to_fam,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const double* shift_vectors,
+    int* ierr
+  );
+
+  void validate_gene_to_family_mapping_C(
+    const int* gene_to_fam,
+    const int* n_genes,
+    const int* n_families,
+    int* ierr
+  );
+
+  void validate_expression_data_C(
+    const double* expression_vectors,
+    const int* n_genes,
+    const int* n_samples,
+    const int* check_non_negative,
+    int* ierr
+  );
+
+  void validate_family_centroids_C(
+    const double* family_centroids,
+    const int* n_families,
+    const int* n_samples,
+    int* ierr
+  );
+
+  void validate_shift_vectors_C(
+    const double* shift_vectors,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const int* gene_to_fam,
+    const int* n_genes,
+    const int* n_samples,
+    const int* n_families,
+    int* ierr
+  );
+
+  void validate_string_array_uniqueness_C(
+    const char* str_arr,
+    const int* str_len,
+    const int* n_strings,
+    int* ierr
+  );
+
+  void validate_all_data_C(
+    const int* n_genes,
+    const int* n_families,
+    const int* n_samples,
+    const char* gene_ids_raw,
+    const int* gene_len,
+    const char* gene_family_ids_raw,
+    const int* fam_len,
+    const int* gene_to_fam,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const double* shift_vectors,
+    int* ierr
+  );
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -1135,34 +1195,10 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes,
     return distances;
 }
 
-//' Determine shared residual range for JSD calculation (expert method)
+//' Calculate means of expression vectors for multiple studies
 //'
-//'@param residual_pool Numeric vector of residuals from both sets
-//'@param residual_pool_perm Integer vector for permutation of residual pool
-//'@param residual_range_quantile Double quantile to determine shared residual range (e.g.,95.0 for 95th percentile)
-//'@return List with shared residual range
-// [[Rcpp::export]]
-List tox_determine_shared_residual_range_expert_rcpp(NumericVector residual_pool,
-                                                     IntegerVector residual_pool_perm,
-                                                     double residual_range_quantile = 95.0) {
-
-    NumericMatrix centroid_matrix(n_axes, n_families);
-    IntegerVector selected_indices(n_genes);
-    int selected_indices_len = n_genes;
-    int ierr = 0;
-
-    group_centroid_c(expression_vectors.begin(), n_axes, n_genes,
-                     gene_to_family.begin(), n_families,
-                     centroid_matrix.begin(), mode.get_cstring(),
-                     ortholog_set.begin(), selected_indices.begin(),
-                     selected_indices_len, &ierr);
-
-    return List::create(
-        Named("centroid_matrix") = centroid_matrix,
-        Named("ierr") = ierr
-    );
-}
-
+//' @param expr_list List of numeric matrices holding the per-gene expressions, one for each study
+//' @return List with matrix 'means', integers 'max_n_genes_all_studies' and 'max_n_reps_all_studies'
 // [[Rcpp::export]]
 Rcpp::List compute_gene_means_rcpp(Rcpp::List expr_list) {
 
@@ -1210,6 +1246,11 @@ Rcpp::List compute_gene_means_rcpp(Rcpp::List expr_list) {
     );
 }
 
+//' Calculate residuals of expression vectors for multiple studies, using the output from 'compute_gene_means_rcpp'
+//'
+//' @param expr_list List of numeric matrices holding the per-gene expressions, one for each study
+//' @param means Numeric Matrix of gene means: nrow=max_n_genes_all_studies, ncol=n_studies
+//' @return List with 3D Integer vector 'residuals' (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
 // [[Rcpp::export]]
 Rcpp::List compute_residuals_rcpp(
     Rcpp::List expr_list,
@@ -1265,14 +1306,24 @@ Rcpp::List compute_residuals_rcpp(
 
     return Rcpp::List::create(
         Rcpp::Named("residuals") = resid,
-        Rcpp::Named("max_n_genes_all_studies") = max_n_genes_all_studies,
-        Rcpp::Named("max_n_reps_all_studies") = max_n_reps_all_studies,
         Rcpp::Named("ierr") = ierr
     );
 }
 
+//' Determine a good parameter set for the JSCompTest (js_comp_test_alloc_rcpp)
+//'
+//' @param residuals 3D Numeric Vector of residuals (max_n_reps, max_n_genes, n_studies) from 'compute_residuals_rcpp'
+//' @param gene_means 3D Numeric Vector of residuals from 'compute_residuals_rcpp' (max_n_genes, n_studies)
+//' @param n_bootstraps Number of bootstrapping iterations to perform to determine the confidence interval for a candidate
+//' @param join_method "min", "max", "median" -> Either the min-overlap of all studies' confidence intervals to a prior parameter canidate succeeds 'min_neighbor_overlap', or the max or median overlap
+//' @param min_count_per_mean_bin When summing all studies' neighborhood residual histogram bin counts for a parameter candidate, this is the minimum count it should exceed
+//' @param min_neighbor_overlap In a created neighborhood of residuals, how much overlap should exist between one and its successor
+//' @param succeeding_ci_overlap After applying the 'join_method', this is the final condition to make a parameter candidate succeed
+//' @param random_seed Integer used as random seed for random number generation in bootstrapping
+//' @param two_sided_bootstrapping_significance_level When performing bootstrapping, this is the two-sided significance level of all obtained bootstrap-values
+//' @param residual_range_quantile The quantile used for determining the shared residual range
 // [[Rcpp::export]]
-Rcpp::List determine_js_comp_test_n_points_n_neighbors_alloc_rcpp(
+Rcpp::List determine_js_comp_test_n_points_n_neighbors_rcpp(
     Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
     Rcpp::NumericMatrix gene_means,  // [max_n_genes, n_studies]
     int n_bootstraps,
@@ -1290,7 +1341,7 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_alloc_rcpp(
     int max_n_genes_all_studies = dims[1];
     int n_studies               = dims[2];
 
-    int n_points  = 0;
+    int n_points  = 100;
     int n_neighbors = 0;
     double shared_residual_range = 0.0;
     int n_bins = 0;
@@ -1298,7 +1349,7 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_alloc_rcpp(
 
     Rcpp::NumericMatrix best_ci(2, n_studies);
 
-    determine_js_comp_test_n_points_n_neighbors_alloc_c(
+    determine_js_comp_test_n_points_n_neighbors_c(
         &n_points,
         &n_neighbors,
         residuals.begin(),
@@ -1311,13 +1362,13 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_alloc_rcpp(
         &n_bootstraps,
         best_ci.begin(),
         join_method.get_cstring(),
+        &ierr,
         &min_count_per_mean_bin,
         &min_neighbor_overlap,
         &succeeding_ci_overlap,
         &two_sided_bootstrapping_significance_level,
         &random_seed,
-        &residual_range_quantile,
-        &ierr
+        &residual_range_quantile
     );
 
     return Rcpp::List::create(
@@ -1331,7 +1382,7 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_alloc_rcpp(
 }
 
 // [[Rcpp::export]]
-Rcpp::List js_comp_test_alloc_rcpp(
+Rcpp::List js_comp_test_rcpp(
     Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
     Rcpp::NumericMatrix gene_means,  // [max_n_genes, n_studies]
     double shared_residual_range,
@@ -1414,7 +1465,7 @@ Rcpp::List js_comp_test_alloc_rcpp(
 
     int ierr = 0;
 
-    js_comp_test_alloc_c(
+    js_comp_test_c(
         gene_means.begin(),
         &max_n_genes_all_studies,
         &n_studies,

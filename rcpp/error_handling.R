@@ -83,6 +83,11 @@ validate_is_numeric <- function(x, name = deparse(substitute(x))) {
   invisible(TRUE)
 }
 
+validate_is_list <- function(x, name = deparse(substitute(x))) {
+  if (!is.list(x)) stop(sprintf("%s must be list", name))
+  invisible(TRUE)
+}
+
 validate_is_integer <- function(x, name = deparse(substitute(x))) {
   if (!is.integer(x)) stop(sprintf("%s must be an integer vector", name))
   invisible(TRUE)
