@@ -213,7 +213,7 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
   expected_n_neighbors <- 1L # minimum value for n_neighbors for such few genes
 
   for (join_method in join_methods) {
-    out <- determine_js_comp_test_n_points_n_neighbors_alloc(
+    out <- determine_js_comp_test_n_points_n_neighbors(
       residuals = residuals,
       gene_means = gene_means,
       n_bootstraps = 10,
@@ -238,7 +238,7 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
     assert_equal_numeric(ci[2,], rep(0, n_studies),
       msg = "Case 1: no fallback: CI upper mismatch")
 
-    out <- determine_js_comp_test_n_points_n_neighbors_alloc(
+    out <- determine_js_comp_test_n_points_n_neighbors(
       residuals = residuals,
       gene_means = gene_means,
       n_bootstraps = 10,
@@ -264,7 +264,7 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
 
     huge_min_count <- max_n_reps * max_n_genes * n_studies + 1
 
-    out <- determine_js_comp_test_n_points_n_neighbors_alloc(
+    out <- determine_js_comp_test_n_points_n_neighbors(
       residuals = residuals,
       gene_means = gene_means,
       n_bootstraps = 10,
@@ -289,7 +289,7 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
     assert_equal_numeric(ci[2,], rep(-1, n_studies),
       msg = "Case 3: high pmf min count: CI upper")
 
-    out <- determine_js_comp_test_n_points_n_neighbors_alloc(
+    out <- determine_js_comp_test_n_points_n_neighbors(
       residuals = residuals,
       gene_means = gene_means,
       n_bootstraps = 10,
@@ -313,6 +313,75 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
     assert_equal_numeric(ci[2,], rep(0, n_studies),
       msg = "Case 4: high neighbor overlap: CI upper")
   }
+}
+
+test_js_comp_test <- function() {
+
+  n_studies   <- 2L
+  max_n_genes <- 4L
+  max_n_reps  <- 3L
+  n_points    <- 2L
+  n_neighbors <- 2L
+  n_bins      <- 3L
+  n_perms     <- 5L
+
+  # ------------------------------------------------------------
+  # Synthetic deterministic data (same as Fortran)
+  # ------------------------------------------------------------
+  gene_means <- matrix(c(
+    1.0, 2.0, 3.0, 4.0,
+    1.5, 2.5, 3.5, 4.5
+  ), nrow = max_n_genes, ncol = n_studies, byrow = FALSE)
+
+  residuals <- array(0.1, dim = c(max_n_reps, max_n_genes, n_studies))
+
+  x_star <- c(1.5, 3.5)
+  shared_residual_range <- 1.0
+  seed <- 314159256L
+
+  # ------------------------------------------------------------
+  # Run the R wrapper
+  # ------------------------------------------------------------
+  out <- js_comp_test(
+    residuals = residuals,
+    gene_means = gene_means,
+    shared_residual_range = shared_residual_range,
+    n_bins = n_bins,
+    n_points = n_points,
+    n_neighbors = n_neighbors,
+    n_permutations = n_perms,
+    random_seed = seed
+  )
+
+  # ------------------------------------------------------------
+  # Assertions
+  # ------------------------------------------------------------
+
+  # 1. p-values must be exactly 1.0, as all residuals are same
+  assert_equal_numeric(
+    out$p_values,
+    rep(1.0, n_studies),
+    msg = "test_js_comp_test: p_values must be 1.0"
+  )
+
+  # 2. ierr must be zero
+  assert_equal_int(
+    out$ierr,
+    0L,
+    msg = "test_js_comp_test: ierr must be zero"
+  )
+
+  # 3. Optional: check shapes (not values)
+  assert_equal_int(length(out$x_star), n_points,
+    "test_js_comp_test: x_star length mismatch")
+
+  assert_equal_int(length(out$global_js_divergence), n_studies,
+    "test_js_comp_test: global_js_divergence length mismatch")
+
+  assert_equal_int(length(out$weights), n_points * n_studies,
+    "test_js_comp_test: weights length mismatch")
+
+  invisible(TRUE)
 }
 
 run_all_tests()

@@ -1322,6 +1322,7 @@ Rcpp::List compute_residuals_rcpp(
 //' @param random_seed Integer used as random seed for random number generation in bootstrapping
 //' @param two_sided_bootstrapping_significance_level When performing bootstrapping, this is the two-sided significance level of all obtained bootstrap-values
 //' @param residual_range_quantile The quantile used for determining the shared residual range
+//' @return List with 'best_candidate_pair_confidence_interval' as the resulting interval from bootstrapping ([-1, -1] on fallback) and the determined parameters for 'js_comp_test_rcpp' -> 'n_points', 'n_neighbors', 'n_bins', 'shared_residual_range'
 // [[Rcpp::export]]
 Rcpp::List determine_js_comp_test_n_points_n_neighbors_rcpp(
     Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
@@ -1381,6 +1382,32 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_rcpp(
     );
 }
 
+//' Determine a good parameter set for the JSCompTest (js_comp_test_alloc_rcpp)
+//'
+//' @param residuals 3D Numeric Vector of residuals (max_n_reps, max_n_genes, n_studies) from 'compute_residuals_rcpp'
+//' @param gene_means 3D Numeric Vector of residuals from 'compute_residuals_rcpp' (max_n_genes, n_studies)
+//' @param shared_residual_range Positive Number defining the interval [-R, R] the residuals will be clamped
+//' @param n_bins Number specifying the number of histogram bins used for 
+//' @param n_points Number of reference points used to create residual neighborhoods
+//' @param n_neighbors Number of neighbors per reference point used to create residual neighborhoods
+//' @param n_permutations Number of permutations the permutation test should execute
+//' @param random_seed Integer used as random seed for random number generation in bootstrapping
+//' @return List with
+//'            x_star: The per-point value the neighborhood residuals surround
+//'            n_pool: The number of residuals included in calculations (non-NaNs)
+//'            neighborhood_ranges: The range of genes a neighborhood spans. It may be larger than the neighborhood size, as genes with same mean expression will be included in this range.
+//'            neighborhood_residuals: Integer Matrix (n_neighbors, n_points) representing the neighborhoods by gene indices
+//'            counts: per-point Histogram counts of the neighborhoods
+//'            pmfs: per-point normalized histogram counts -> probabilities
+//'            included_n_reps: per-study, per-point number of included residuals in the histogram
+//'            mean_pmf_counts: Summed counts across all studies
+//'            mean_pmf: normalized mean pmf counts
+//'            mean_pmf_included_n_reps: Summed included_n_reps across studies
+//'            js_divergences: per-study, per-point Jensen-Shannon Divergences (JSD)
+//'            global_js_divergence: per-study global JSD
+//'            weights: per-study per-point fractional global JSD contribution
+//'            p_values: Result of the permutation test that means how much percent of reshuffles of the neighborhood residuals are worse, to get a confidence in how much the global JSD is explained by randomness.
+//'            ierr: Error code, zero if OK
 // [[Rcpp::export]]
 Rcpp::List js_comp_test_rcpp(
     Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
@@ -1389,8 +1416,8 @@ Rcpp::List js_comp_test_rcpp(
     int n_bins,
     int n_points,
     int n_neighbors,
-    int n_permutations,
-    int random_seed
+    int n_permutations = 1000,
+    int random_seed = 42
 ) {
     // dims(residuals) = [max_n_reps_all_studies, max_n_genes_all_studies, n_studies]
     Rcpp::IntegerVector dims = residuals.attr("dim");

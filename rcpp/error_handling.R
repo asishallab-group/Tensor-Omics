@@ -89,7 +89,7 @@ validate_is_list <- function(x, name = deparse(substitute(x))) {
 }
 
 validate_is_integer <- function(x, name = deparse(substitute(x))) {
-  if (!is.integer(x)) stop(sprintf("%s must be an integer vector", name))
+  if (!is.integer(x)) stop(sprintf("%s must be integer", name))
   invisible(TRUE)
 }
 validate_is_scalar <- function(x, name = deparse(substitute(x))) {
@@ -98,12 +98,12 @@ validate_is_scalar <- function(x, name = deparse(substitute(x))) {
 }
 
 validate_is_logical <- function(x, name = deparse(substitute(x))) {
-  if (!is.logical(x)) stop(sprintf("%s must be a logical vector", name))
+  if (!is.logical(x)) stop(sprintf("%s must be logical", name))
   invisible(TRUE)
 }
 
 validate_is_character <- function(x, name = deparse(substitute(x))) {
-  if (!is.character(x)) stop(sprintf("%s must be a character vector", name))
+  if (!is.character(x)) stop(sprintf("%s must be character", name))
   invisible(TRUE)
 }
 
@@ -235,6 +235,12 @@ validate_numeric_vector <- function(x, name = deparse(substitute(x))) {
 }
 validate_numeric_scalar <- function(x, name = deparse(substitute(x))) {
   validate_is_numeric(x, name)
+  validate_is_scalar(x, name)
+  invisible(TRUE)
+}
+
+validate_integer_scalar <- function(x, name = deparse(substitute(x))) {
+  validate_is_integer(x, name)
   validate_is_scalar(x, name)
   invisible(TRUE)
 }

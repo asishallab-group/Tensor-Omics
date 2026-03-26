@@ -3627,7 +3627,7 @@ compute_residuals <- function(expr_list, means, max_n_reps_all_studies) {
 #'   - ierr
 #'
 #' @export
-determine_js_comp_test_n_points_n_neighbors_alloc <- function(
+determine_js_comp_test_n_points_n_neighbors <- function(
     residuals,
     gene_means,
     n_bootstraps,
@@ -3666,3 +3666,77 @@ determine_js_comp_test_n_points_n_neighbors_alloc <- function(
 
   return(res)
 }
+
+#' JSCompTest wrapper (R interface to js_comp_test_rcpp)
+#'
+#' @param residuals 3D numeric array [max_n_reps, max_n_genes, n_studies]
+#' @param gene_means Numeric matrix [max_n_genes, n_studies]
+#' @param shared_residual_range Positive number defining the interval [-R, R]
+#' @param n_bins Number of histogram bins
+#' @param n_points Number of reference points
+#' @param n_neighbors Number of neighbors per reference point
+#' @param n_permutations Number of permutation-test iterations
+#' @param random_seed Random seed
+#'
+#' @return A list with:
+#'   - x_star
+#'   - n_pool
+#'   - neighborhood_ranges
+#'   - neighborhood_residuals
+#'   - pmfs
+#'   - counts
+#'   - included_n_reps
+#'   - mean_pmf
+#'   - mean_pmf_counts
+#'   - mean_pmf_included_n_reps
+#'   - js_divergences
+#'   - weights
+#'   - global_js_divergence
+#'   - p_values
+#'   - ierr
+#'
+#' @export
+js_comp_test <- function(
+    residuals,
+    gene_means,
+    shared_residual_range,
+    n_bins,
+    n_points,
+    n_neighbors,
+    n_permutations = 1000,
+    random_seed = 42
+) {
+
+    # --- Validate residuals ---
+  validate_numeric_array(residuals)
+  validate_length_equals_n(dim(residuals), 3)
+
+  dims <- dim(residuals)
+  max_n_reps  <- dims[1]
+  max_n_genes <- dims[2]
+  n_studies   <- dims[3]
+
+  # --- Validate gene_means ---
+  validate_numeric_matrix(gene_means)
+  validate_numeric_scalar(shared_residual_range)
+  validate_integer_scalar(n_bins)
+  validate_integer_scalar(n_points)
+  validate_integer_scalar(n_neighbors)
+
+  # --- Forward to Rcpp implementation ---
+  res <- js_comp_test_rcpp(
+      residuals = residuals,
+      gene_means = gene_means,
+      shared_residual_range = shared_residual_range,
+      n_bins = n_bins,
+      n_points = n_points,
+      n_neighbors = n_neighbors,
+      n_permutations = n_permutations,
+      random_seed = random_seed
+  )
+
+  check_err_code(res$ierr)
+
+  return(res)
+}
+
