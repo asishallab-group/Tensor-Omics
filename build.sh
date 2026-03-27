@@ -30,12 +30,11 @@ utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
-if [[ -z "$KEEP_FPM_TOML" ]]; then
-  rm fpm.toml
-fi
-
 # Copy latest .so
 utils_fpm list 2>&1 | grep 'libtensor-omics\.so' | xargs -I{} cp {} build
 check_exit_code "No .so file found"
+if [[ -z "$KEEP_FPM_TOML" ]]; then
+  rm fpm.toml
+fi
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"

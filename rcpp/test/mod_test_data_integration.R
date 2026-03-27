@@ -15,7 +15,7 @@ test_compute_gene_means_basic <- function() {
 
   expected_means <- c(2, 5, 20, 0)
 
-  out <- compute_gene_means(list(expr, expr))
+  out <- compute_gene_means(list(e1=expr, e2=expr))
 
   assert_equal_int(out$ierr, 0L,
                    "test_compute_gene_means_basic: should succeed")
