@@ -376,7 +376,7 @@ contains
         real(real64), dimension(2), parameter :: KX_FACTORS = [2.0_real64, 4.0_real64]
 
         integer(int32), parameter :: MAX_POINTS = 1500_int32
-        integer(int32), parameter :: MIN_POINTS = 200_int32
+        integer(int32), parameter :: MIN_POINTS = 300_int32
         real(real64), parameter :: GAMMA = 0.8_real64
         integer(int32), parameter :: MAX_POINT_CANDIDATES = 8_int32 ! How often can I multiply `MAX_POINTS` with `GAMMA`
         integer(int32), parameter :: MAX_CANDIDATE_PAIRS = size(KX_FACTORS, kind=int32) * MAX_POINT_CANDIDATES
@@ -416,13 +416,14 @@ contains
 
         call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=16_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=17_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=15_int32, min=0.0_real64, max=1.0_real64)
 
         if (is_err(ierr)) return
 
         if (present(two_sided_bootstrapping_significance_level)) then
-            n_bootstrapping_top_k_jsds = floor(two_sided_bootstrapping_significance_level / 100.0_real64 * real(n_bootstraps, real64))
+            n_bootstrapping_top_k_jsds = max(1_int32, floor(two_sided_bootstrapping_significance_level / 100.0_real64 * real(n_bootstraps, real64), kind=int32))
         else
-            n_bootstrapping_top_k_jsds = floor(0.025_real64 * real(n_bootstraps, real64))
+            n_bootstrapping_top_k_jsds = max(1_int32, floor(0.025_real64 * real(n_bootstraps, real64), kind=int32))
         end if
 
 
@@ -921,18 +922,16 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_studies, ierr, arg_pos=2_int32)
-        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=1_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=2_int32)
         call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=7_int32)
-        call validate_dimension_size(n_points, ierr, arg_pos=9_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=10_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=10_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=11_int32)
 
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
 
-        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=26_int32)
-
-        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=3_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=25_int32, min=0_int32)
 
         if (is_err(ierr)) return
 
@@ -1038,18 +1037,18 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_studies, ierr, arg_pos=2_int32)
-        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=1_int32)
-        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=7_int32)
-        call validate_dimension_size(n_points, ierr, arg_pos=9_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=10_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=8_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=10_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=11_int32)
 
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
 
-        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=26_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=7_int32, min=1_int32)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=28_int32, min=0_int32)
 
-        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=3_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
+        call validate_all_in_range_int(gene_means_perms, size(gene_means_perms, kind=int32), ierr, arg_pos=4_int32, min=1_int32, max=size(gene_means_perms, kind=int32))
 
         if (is_err(ierr)) return
 

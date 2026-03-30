@@ -37,7 +37,7 @@ contains
         all_tests(24) = test_case("test_bootstrap_histogram_helper", test_bootstrap_histogram_helper)
         all_tests(25) = test_case("test_gjct_permutation_test_helper", test_gjct_permutation_test_helper)
         all_tests(26) = test_case("test_check_plateau_condition_helper", test_check_plateau_condition_helper)
-        all_tests(27) = test_case("test_js_comp_test_helper", test_js_comp_test_helper)
+        all_tests(27) = test_case("test_js_comp_test", test_js_comp_test)
         all_tests(28) = test_case("test_determine_js_comp_test_n_points_n_neighbors", test_determine_js_comp_test_n_points_n_neighbors)
 
         ! preprocessing
@@ -74,7 +74,7 @@ contains
         integer(int32), parameter :: n_bootstraps = 10_int32
         integer(int32), parameter :: n_bootstrapping_top_k_jsds = 2_int32
 
-        real(real64), parameter :: R = 3.0_real64, best_possible_jsd = 0.0_real64
+        real(real64), parameter :: best_possible_jsd = 0.0_real64
         integer(int32), parameter :: n_bins_1 = 1_int32
         integer(int32), parameter :: n_bins_2 = 2_int32
 
@@ -111,19 +111,21 @@ contains
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies) :: tmp_bootstrapping_top_k_jsds
 
         integer(int32) :: i_candidates, i_join, expected_n_points, expected_n_neighbors
-        integer(int32) :: i, j, s
+        integer(int32) :: i, j, s, ierr
         integer(int32) :: min_count_per_mean_bin
-        real(real64) :: succeeding_ci_overlap, expected_ci_value
+        real(real64) :: succeeding_ci_overlap, expected_ci_value, R
         integer(int32) :: n_bins, max_n_bins_all_candidates
         real(real64), dimension(:, :, :), pointer :: tmp_pmfs_view
         real(real64), dimension(:, :), pointer :: tmp_js_divergences_view, tmp_weights_view
         integer(int32), dimension(:, :), pointer :: tmp_included_n_reps_view, tmp_mean_pmf_counts_view
         integer(int32), dimension(:, :, :), pointer :: tmp_counts_view
+        character(len=:), allocatable :: errmsg_prefix
         ! -------------------------
         ! Setup constant data
         ! -------------------------
-        residuals = R
-        gene_means = R
+        R = 3.0_real64
+        residuals = 2.0_real64 * R
+        gene_means = 2.0_real64 * R
 
         do s = 1, n_studies
             do i = 1, max_n_genes_all_studies
@@ -152,6 +154,8 @@ contains
                 associate( &
                     join_method      => join_methods(i_join)&
                 )
+                    R = 3.0_real64
+                    errmsg_prefix = "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") "
                     expected_n_points = candidates_n_points_n_neighbors(1, min(i_candidates, 2))
                     expected_n_neighbors = candidates_n_points_n_neighbors(2, min(i_candidates, 2))
 
@@ -161,7 +165,7 @@ contains
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
-                    call determine_js_comp_test_n_points_n_neighbors_helper( &
+                    call determine_js_comp_test_n_points_n_neighbors( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
                         max_n_neighbors_candidate, &
                         n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
@@ -169,63 +173,84 @@ contains
                         n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
                         tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, ierr, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, expected_n_points, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_points")
-                    call assert_equal_int(n_neighbors, expected_n_neighbors, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_neighbors")
-                    call assert_equal_int(n_bins, 1_int32, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: expected n_neighbors")
+                    call assert_equal_int(ierr, ERR_OK, errmsg_prefix // "Case 1: ierr")
+
+                    call assert_equal_int(n_points, expected_n_points, errmsg_prefix // "Case 1: expected n_points")
+                    call assert_equal_int(n_neighbors, expected_n_neighbors, errmsg_prefix // "Case 1: expected n_neighbors")
+                    call assert_equal_int(n_bins, 1_int32, errmsg_prefix // "Case 1: expected n_neighbors")
 
                     ! x_star should be 3.0
                     do i = 1, n_points
-                        call assert_equal_real(tmp_x_star(i), R, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: x_star must be 3.0")
+                        call assert_equal_real(tmp_x_star(i), 2.0_real64 * R, TOL, errmsg_prefix // "Case 1: x_star must be 3.0")
                     end do
 
                     ! mean pmf invariants
                     tmp_pmfs_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_pmfs
                     call assert_equal_array_real( &
                         tmp_mean_pmf, sum(tmp_pmfs_view, dim=n_studies) / real(n_studies,real64), &
-                        n_bins*n_points, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf must equal average of pmfs")
+                        n_bins*n_points, TOL, errmsg_prefix // "Case 1: mean pmf must equal average of pmfs")
 
                     tmp_counts_view(1:n_bins, 1:expected_n_points, 1:n_studies) => tmp_counts
                     tmp_mean_pmf_counts_view(1:n_bins, 1:expected_n_points) => tmp_mean_pmf_counts
                     call assert_equal_array_int( &
                         tmp_mean_pmf_counts_view, sum(tmp_counts_view, dim=n_studies), &
-                        n_bins*n_points, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf counts must equal sum of counts")
+                        n_bins*n_points, errmsg_prefix // "Case 1: mean pmf counts must equal sum of counts")
 
                     tmp_included_n_reps_view(1:expected_n_points, 1:n_studies) => tmp_included_n_reps
                     call assert_equal_array_int( &
                         tmp_mean_pmf_included_n_reps(1:expected_n_points), sum(tmp_included_n_reps_view, dim=2), &
-                        n_points, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mean pmf included_n_reps must equal sum of included_n_reps")
+                        n_points, errmsg_prefix // "Case 1: mean pmf included_n_reps must equal sum of included_n_reps")
 
                     ! all weights = 1, all jsd = 1, global jsd = 1, CI = [1,1], bootstrap top-k = 1
                     tmp_js_divergences_view(1:expected_n_points, 1:n_studies) => tmp_js_divergences
                     tmp_weights_view(1:expected_n_points, 1:n_studies) => tmp_weights
                     do s = 1, n_studies
                         do i = 1, n_points
-                            call assert_equal_real(tmp_weights_view(i,s), 1.0_real64 / real(expected_n_points), TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching weights")
-                            call assert_equal_real(tmp_js_divergences_view(i,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching jsd per point")
+                            call assert_equal_real(tmp_weights_view(i,s), 1.0_real64 / real(expected_n_points), TOL, errmsg_prefix // "Case 1: mismatching weights")
+                            call assert_equal_real(tmp_js_divergences_view(i,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching jsd per point")
                         end do
-                        call assert_equal_real(tmp_global_js_divergence(s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching global jsd")
-                        call assert_equal_real(tmp_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching CI lower")
-                        call assert_equal_real(tmp_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching CI upper")
+                        call assert_equal_real(tmp_global_js_divergence(s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching global jsd")
+                        call assert_equal_real(tmp_confidence_interval(1,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching CI lower")
+                        call assert_equal_real(tmp_confidence_interval(2,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching CI upper")
                     end do
 
                     do s = 1, n_studies
                         do j = 1, 2
                             do i = 1, n_bootstrapping_top_k_jsds
-                                call assert_equal_real(tmp_bootstrapping_top_k_jsds(i,j,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching bootstrap top-k")
+                                call assert_equal_real(tmp_bootstrapping_top_k_jsds(i,j,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching bootstrap top-k")
                             end do
                         end do
                     end do
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching best CI lower")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), best_possible_jsd, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 1: mismatching best CI upper")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching best CI lower")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), best_possible_jsd, TOL, errmsg_prefix // "Case 1: mismatching best CI upper")
                     end do
 
                     ! --- Case 2: succeeding_ci_overlap > 1.0 -> fallback, best CI = fallback candidate pair = 0 ---
                     succeeding_ci_overlap = above(1.0_real64)
+
+                    call determine_js_comp_test_n_points_n_neighbors_alloc( &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, n_studies, &
+                        n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+                    call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 16_int32), errmsg_prefix // "Case 2: ierr for alloc")
+
+                    call determine_js_comp_test_n_points_n_neighbors( &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, ierr, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+                    call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 39_int32), errmsg_prefix // "Case 2: ierr for non-alloc")
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
@@ -238,13 +263,13 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), errmsg_prefix // "Case 2: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), errmsg_prefix // "Case 2: expected n_neighbors")
 
                     expected_ci_value = merge(-1.0_real64, best_possible_jsd, i_candidates > 1)
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), expected_ci_value, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: best CI lower on min-ci-overlap fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), expected_ci_value, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: best CI upper on min-ci-overlap fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), expected_ci_value, TOL, errmsg_prefix // "Case 2: best CI lower on min-ci-overlap fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), expected_ci_value, TOL, errmsg_prefix // "Case 2: best CI upper on min-ci-overlap fallback")
                     end do
 
                     ! --- Case 3: min_count_per_mean_bin > total count -> fallback ---
@@ -253,23 +278,21 @@ contains
                     min_count_per_mean_bin = max_n_reps_all_studies * max_n_genes_all_studies * n_studies + 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
-                    call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
-                        max_n_neighbors_candidate, &
-                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
-                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
-                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
-                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
-                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                    call determine_js_comp_test_n_points_n_neighbors_alloc( &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, n_studies, &
+                        n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
+                    call assert_equal_int(ierr, ERR_OK, errmsg_prefix // "Case 3: ierr")
+
+                    ! Min grid values
+                    call assert_equal_int(n_points, 300_int32, errmsg_prefix // "Case 3: expected n_points")
+                    call assert_equal_int(n_neighbors, 1_int32, errmsg_prefix // "Case 3: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 3: best CI lower must be -1.0 on min-count fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 3: best CI upper must be -1.0 on min-count fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, errmsg_prefix // "Case 3: best CI lower must be -1.0 on min-count fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, errmsg_prefix // "Case 3: best CI upper must be -1.0 on min-count fallback")
                     end do
 
                     ! --- Case 4: n_bins = 2 -> one empty bin -> fallback ---
@@ -278,23 +301,20 @@ contains
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
 
-                    call determine_js_comp_test_n_points_n_neighbors_helper( &
-                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
-                        max_n_neighbors_candidate, &
-                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
-                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
-                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
-                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
-                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
+                    call determine_js_comp_test_n_points_n_neighbors_alloc( &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, n_studies, &
+                        n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
+                    call assert_equal_int(ierr, ERR_OK, errmsg_prefix // "Case 4: ierr")
+
+                    call assert_equal_int(n_points, 300_int32, errmsg_prefix // "Case 4: expected n_points")
+                    call assert_equal_int(n_neighbors, 1_int32, errmsg_prefix // "Case 4: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 4: best CI upper must be -1.0 on n_bins=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, errmsg_prefix // "Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, errmsg_prefix // "Case 4: best CI upper must be -1.0 on n_bins=2 fallback")
                     end do
 
                     ! --- Case 5: min_neighbor_overlap > 1.0 -> impossible to succeed -> fallback ---
@@ -302,6 +322,25 @@ contains
                     max_n_bins_all_candidates = n_bins_2
                     min_count_per_mean_bin = 1_int32
                     succeeding_ci_overlap = 0.9_real64
+
+                    call determine_js_comp_test_n_points_n_neighbors_alloc( &
+                        n_points, n_neighbors, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins, &
+                        gene_means, n_studies, &
+                        n_bootstraps, best_candidate_pair_confidence_interval, join_method, ierr, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
+                    call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 15_int32), errmsg_prefix // "Case 5: ierr for alloc")
+
+                    call determine_js_comp_test_n_points_n_neighbors( &
+                        candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
+                        max_n_neighbors_candidate, &
+                        n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, n_bins_candidates, max_n_bins_all_candidates, &
+                        gene_means, gene_means_perms, gene_means_perm_all, n_studies, &
+                        n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, join_method, &
+                        tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                        tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                        tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, ierr, &
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
+                    call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, 38_int32), errmsg_prefix // "Case 5: ierr for non-alloc")
 
                     call determine_js_comp_test_n_points_n_neighbors_helper( &
                         candidates_n_points_n_neighbors, i_candidates, max_n_points_candidate, &
@@ -314,12 +353,13 @@ contains
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
                         min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
 
-                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_points")
-                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 2: expected n_neighbors")
+
+                    call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), errmsg_prefix // "Case 5: expected n_points")
+                    call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), errmsg_prefix // "Case 5: expected n_neighbors")
 
                     do s = 1, n_studies
-                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 5: best CI lower must be -1.0 on min_neighbor_overlap=2 fallback")
-                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, "test_determine_js_comp_test_n_points_n_neighbors: (n_candidates_n_points_n_neighbors=" // i_candidates // ", join_method=" // join_method // ") Case 5: best CI upper must be -1.0 on min_neighbor_overlap=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, errmsg_prefix // "Case 5: best CI lower must be -1.0 on min_neighbor_overlap=2 fallback")
+                        call assert_equal_real(best_candidate_pair_confidence_interval(2,s), -1.0_real64, TOL, errmsg_prefix // "Case 5: best CI upper must be -1.0 on min_neighbor_overlap=2 fallback")
                     end do
 
                 end associate
@@ -328,7 +368,7 @@ contains
 
     end subroutine test_determine_js_comp_test_n_points_n_neighbors
 
-    subroutine test_js_comp_test_helper()
+    subroutine test_js_comp_test()
         ! ------------------------------------------------------------
         ! Tiny synthetic test dimensions
         ! ------------------------------------------------------------
@@ -384,7 +424,7 @@ contains
         integer(int32) :: tmp_pmf_counts(n_bins, n_points)
         real(real64)   :: tmp_global_js(n_studies)
 
-        integer(int32) :: seed
+        integer(int32) :: seed, ierr, n_pool
 
         ! ------------------------------------------------------------
         ! Synthetic deterministic data
@@ -426,30 +466,60 @@ contains
         ! ------------------------------------------------------------
         ! 2. Test run: run js_comp_test_helper (WITH permutation test)
         ! ------------------------------------------------------------
-        call js_comp_test_helper( &
+        call js_comp_test( &
             gene_means, max_n_genes, n_studies, gene_means_perms, residuals, shared_residual_range, &
             n_bins, max_n_reps, x_star, n_points, n_neighbors, neigh_ranges, neigh_res, &
             pmfs, counts, incl_reps, mean_pmf, mean_counts, mean_incl_reps, &
             js, weights, global_js, p_values, &
-            tmp_global_js, tmp_pmf_counts, tmp_mean_counts, &
+            tmp_global_js, tmp_pmf_counts, tmp_mean_counts, ierr, &
             n_permutations=n_perms, random_seed=seed)
+
+        call assert_equal_int(ierr, ERR_OK, "test_js_comp_test: ierr")
 
         ! ------------------------------------------------------------
         ! 3. Assertions: final outputs must match reference
         ! ------------------------------------------------------------
-        call assert_equal_array_int(counts, counts_ref, size(counts), "test_js_comp_test_helper: counts match reference")
-        call assert_equal_array_real(pmfs, pmfs_ref, size(pmfs), TOL, "test_js_comp_test_helper: pmfs match reference")
-        call assert_equal_array_int(incl_reps, incl_reps_ref, size(incl_reps), "test_js_comp_test_helper: included_n_reps match")
-        call assert_equal_array_real(mean_pmf, mean_pmf_ref, size(mean_pmf), TOL, "test_js_comp_test_helper: mean_pmf match")
-        call assert_equal_array_int(mean_counts, mean_counts_ref, size(mean_counts), "test_js_comp_test_helper: mean_pmf_counts match")
-        call assert_equal_array_int(mean_incl_reps, mean_incl_reps_ref, size(mean_incl_reps), "test_js_comp_test_helper: mean_pmf_included_n_reps match")
-        call assert_equal_array_real(js, js_ref, size(js), TOL, "test_js_comp_test_helper: js_divergences match")
-        call assert_equal_array_real(weights, weights_ref, size(weights), TOL, "test_js_comp_test_helper: weights match")
-        call assert_equal_array_real(global_js, global_js_ref, size(global_js), TOL, "test_js_comp_test_helper: global_js_divergence match")
+        call assert_equal_array_int(counts, counts_ref, size(counts), "test_js_comp_test: counts match reference")
+        call assert_equal_array_real(pmfs, pmfs_ref, size(pmfs), TOL, "test_js_comp_test: pmfs match reference")
+        call assert_equal_array_int(incl_reps, incl_reps_ref, size(incl_reps), "test_js_comp_test: included_n_reps match")
+        call assert_equal_array_real(mean_pmf, mean_pmf_ref, size(mean_pmf), TOL, "test_js_comp_test: mean_pmf match")
+        call assert_equal_array_int(mean_counts, mean_counts_ref, size(mean_counts), "test_js_comp_test: mean_pmf_counts match")
+        call assert_equal_array_int(mean_incl_reps, mean_incl_reps_ref, size(mean_incl_reps), "test_js_comp_test: mean_pmf_included_n_reps match")
+        call assert_equal_array_real(js, js_ref, size(js), TOL, "test_js_comp_test: js_divergences match")
+        call assert_equal_array_real(weights, weights_ref, size(weights), TOL, "test_js_comp_test: weights match")
+        call assert_equal_array_real(global_js, global_js_ref, size(global_js), TOL, "test_js_comp_test: global_js_divergence match")
 
-        call assert_equal_array_real(p_values, p_values_ref, size(p_values), TOL, "test_js_comp_test_helper: p_values match")
+        call assert_equal_array_real(p_values, p_values_ref, size(p_values), TOL, "test_js_comp_test: p_values match")
 
-    end subroutine test_js_comp_test_helper
+        ! ------------------------------------------------------------
+        ! 4. same as 2., 3. but with alloc routine
+        ! ------------------------------------------------------------
+        call js_comp_test_alloc( &
+            gene_means, max_n_genes, n_studies, residuals, shared_residual_range, &
+            n_bins, max_n_reps, x_star, n_pool, n_points, n_neighbors, neigh_ranges, neigh_res, &
+            pmfs, counts, incl_reps, mean_pmf, mean_counts, mean_incl_reps, &
+            js, weights, global_js, p_values, ierr, &
+            n_permutations=n_perms, random_seed=seed)
+
+        call assert_equal_int(ierr, ERR_OK, "test_js_comp_test: alloc: ierr")
+
+        ! ------------------------------------------------------------
+        ! 3. Assertions: final outputs must match reference
+        ! ------------------------------------------------------------
+        call assert_equal_int(n_pool, size(gene_means, kind=int32), "test_js_comp_test: alloc: n_pool should be same as number of residuals in pool")
+        call assert_equal_array_int(counts, counts_ref, size(counts), "test_js_comp_test: alloc: counts match reference")
+        call assert_equal_array_real(pmfs, pmfs_ref, size(pmfs), TOL, "test_js_comp_test: alloc: pmfs match reference")
+        call assert_equal_array_int(incl_reps, incl_reps_ref, size(incl_reps), "test_js_comp_test: alloc: included_n_reps match")
+        call assert_equal_array_real(mean_pmf, mean_pmf_ref, size(mean_pmf), TOL, "test_js_comp_test: alloc: mean_pmf match")
+        call assert_equal_array_int(mean_counts, mean_counts_ref, size(mean_counts), "test_js_comp_test: alloc: mean_pmf_counts match")
+        call assert_equal_array_int(mean_incl_reps, mean_incl_reps_ref, size(mean_incl_reps), "test_js_comp_test: alloc: mean_pmf_included_n_reps match")
+        call assert_equal_array_real(js, js_ref, size(js), TOL, "test_js_comp_test: alloc: js_divergences match")
+        call assert_equal_array_real(weights, weights_ref, size(weights), TOL, "test_js_comp_test: alloc: weights match")
+        call assert_equal_array_real(global_js, global_js_ref, size(global_js), TOL, "test_js_comp_test: alloc: global_js_divergence match")
+
+        call assert_equal_array_real(p_values, p_values_ref, size(p_values), TOL, "test_js_comp_test: alloc: p_values match")
+
+    end subroutine test_js_comp_test
 
     subroutine test_check_plateau_condition_helper()
         integer(int32), parameter :: n_studies = 3

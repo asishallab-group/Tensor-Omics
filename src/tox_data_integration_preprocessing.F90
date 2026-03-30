@@ -149,8 +149,8 @@ contains
 
         integer(int32) :: i_gene, i_rep, m_genes, m_reps
 
-        m_genes = max(n_genes, max_n_genes_all_studies)
-        m_reps = max(n_reps, max_n_reps_all_studies)
+        m_genes = min(n_genes, max_n_genes_all_studies)
+        m_reps = min(n_reps, max_n_reps_all_studies)
         resid = M_NAN
 
         do concurrent(i_gene=1:m_genes)

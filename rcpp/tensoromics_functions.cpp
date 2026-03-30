@@ -1342,7 +1342,7 @@ Rcpp::List determine_js_comp_test_n_points_n_neighbors_rcpp(
     int max_n_genes_all_studies = dims[1];
     int n_studies               = dims[2];
 
-    int n_points  = 100;
+    int n_points  = 0;
     int n_neighbors = 0;
     double shared_residual_range = 0.0;
     int n_bins = 0;
