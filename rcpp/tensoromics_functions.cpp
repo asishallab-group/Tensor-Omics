@@ -38,7 +38,7 @@ extern "C" {
     double* best_candidate_pair_confidence_interval,
     const char* join_method,
     int* ierr,
-    int* min_count_per_mean_bin,
+    const int* min_count_per_mean_bin,
     double* min_neighbor_overlap,
     double* succeeding_ci_overlap,
     double* two_sided_bootstrapping_significance_level,

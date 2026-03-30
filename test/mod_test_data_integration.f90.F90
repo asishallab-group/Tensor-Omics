@@ -66,7 +66,7 @@ contains
 
     subroutine test_determine_js_comp_test_n_points_n_neighbors()
         integer(int32), parameter :: n_studies = 3_int32
-        integer(int32), parameter :: max_n_genes_all_studies = 5_int32
+        integer(int32), parameter :: max_n_genes_all_studies = 10000_int32
         integer(int32), parameter :: max_n_reps_all_studies  = 4_int32
         integer(int32), parameter :: n_candidates = 3_int32
         integer(int32), parameter :: max_n_points_candidate  = n_candidates

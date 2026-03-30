@@ -28,7 +28,7 @@ test_compute_gene_means_basic <- function() {
 }
 
 test_compute_gene_means_with_nan <- function() {
-  n_genes <- 3
+  n_genes <- 30000
   n_reps  <- 4
 
   expr <- matrix(NA_real_, nrow = n_reps, ncol = n_genes)
@@ -37,8 +37,34 @@ test_compute_gene_means_with_nan <- function() {
   expr[,2] <- c(NaN, 5, 7, 9)      # mean = (5+7+9)/3 = 7
   expr[,3] <- c(10, 20, 30, 40)    # mean = 25
 
-  out <- compute_gene_means(list(expr, expr))
-
+  out <- compute_gene_means(list(expr, expr, expr, expr, expr))
+  out2 <- compute_residuals(
+    expr_list = list(expr, expr, expr, expr, expr),
+    means     = out$means,
+    max_n_reps_all_studies = out$max_n_reps_all_studies
+  )
+  out3 <- determine_js_comp_test_n_points_n_neighbors(
+    residuals = out2$residuals,
+    gene_means = out$means,
+    n_bootstraps = 10,
+    join_method = "median",
+    min_count_per_mean_bin = 10,
+    min_neighbor_overlap = 0.0,
+    succeeding_ci_overlap = 1.0,
+    random_seed = 42,
+    residual_range_quantile = 95
+  )
+  out4 <- js_comp_test(
+    residuals = out2$residuals,
+    gene_means = out$means,
+    shared_residual_range = out3$shared_residual_range,
+    n_bins = out3$n_bins,
+    n_points = out3$n_points,
+    n_neighbors = out3$n_neighbors,
+    n_permutations = 10,
+    random_seed = 42
+  )
+  invisible(out4)
   assert_equal_int(out$ierr, 0L,
                    "test_compute_gene_means_with_nan: should succeed")
   assert_equal_numeric(out$means[1,1], 2,
@@ -209,7 +235,7 @@ test_determine_js_comp_test_n_points_n_neighbors <- function() {
   residuals <- array(R, dim = c(max_n_reps, max_n_genes, n_studies))
   gene_means <- matrix(R, nrow = max_n_genes, ncol = n_studies)
 
-  expected_n_points    <- 200L # is minimum value for n_points for such few genes
+  expected_n_points    <- 300L # is minimum value for n_points for such few genes
   expected_n_neighbors <- 1L # minimum value for n_neighbors for such few genes
 
   for (join_method in join_methods) {

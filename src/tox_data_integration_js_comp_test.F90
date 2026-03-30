@@ -410,8 +410,8 @@ contains
         call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=5_int32)
         call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=4_int32)
 
-        call validate_in_range_int(n_bootstraps, ierr, arg_pos=10_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=14_int32)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=10_int32, min=1_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=14_int32, min=0_int32)
         CM_VALIDATE_JOIN_METHOD(arg_pos=12_int32)
 
         call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=16_int32, min=0.0_real64, max=1.0_real64)
@@ -443,6 +443,7 @@ contains
         prev_point_candidate = -1_int32
         n_candidates = 0_int32
         max_n_bins_all_candidates = 0_int32
+        max_n_neighbors_candidate = 0_int32
 
         do i_point_candidate = 1, MAX_POINT_CANDIDATES
             if (n_points_high < n_points_low) exit
@@ -467,13 +468,13 @@ contains
                         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, neighbor_candidate, shared_residual_range, n_bins_candidates(n_candidates))
 
                         max_n_bins_all_candidates = max(max_n_bins_all_candidates, n_bins_candidates(n_candidates))
+                        max_n_neighbors_candidate = max(max_n_neighbors_candidate, neighbor_candidate)
                     end if
                 end do
             end if
             n_points_high = n_points_high * GAMMA
         end do
         max_n_points_candidate = candidates_n_points_n_neighbors(1, 1)
-        max_n_neighbors_candidate = candidates_n_points_n_neighbors(2, 1)
 
         ! 3. Allocate rest
         M_ALLOCATE(gene_means_perm_all(max_n_genes_all_studies * n_studies))
@@ -625,7 +626,7 @@ contains
         call validate_dimension_size(max_n_bins_all_candidates, ierr, arg_pos=13_int32)
 
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=18_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=37_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=37_int32, min=0_int32)
         CM_VALIDATE_JOIN_METHOD(arg_pos=21_int32)
 
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=11_int32, min=0.0_real64)
