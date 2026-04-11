@@ -1177,7 +1177,7 @@ pure subroutine mask_chunk_count_c(n_genes, count, ierr) bind(C, name="mask_chun
     call mask_chunk_count(n_genes, count)
 end subroutine mask_chunk_count_c
 
-!> C-compatible wrapper for `mask_check_state`
+!> C-compatible wrapper for [[tox_paralog_analysis(module):mask_check_state(function)]]
 pure subroutine mask_check_state_c(bit_mask, n_mask_chunks, i_gene, state, ierr) bind(C, name="mask_check_state_c")
     use tox_paralog_analysis, only: mask_check_state
     use tox_conversions, only: logical_as_c_int

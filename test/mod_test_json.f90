@@ -5,19 +5,8 @@ module mod_test_json
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use f42_json
     use tox_errors
+    use test_suite
     implicit none
-
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
 
@@ -30,12 +19,13 @@ module mod_test_json
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(2)
+    function get_all_tests_json() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
+        allocate(all_tests(2))
 
         all_tests(1) = test_case("test_f42_json_serialization", test_serialization)
         all_tests(2) = test_case("test_f42_flyer_serialization", test_flyer_serialization)
-    end function get_all_tests
+    end function get_all_tests_json
 
     subroutine test_serialization
         ! Test idea:
@@ -261,43 +251,4 @@ contains
         call assert_string_equal(actual_fragment, expected_fragment, trim(test_case) // ": fragments differ")
         close(unit, status="delete")
     end subroutine helper_check_fragment
-
-    !> Run all f42_json tests.
-    subroutine run_all_tests_f42_json
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print "(' ',A,' passed.')", trim(all_tests(i)%name)
-        end do
-        print *, "All f42_json tests passed successfully."
-    end subroutine run_all_tests_f42_json
-
-    !> Run specific f42_json tests by name.
-    subroutine run_named_tests_f42_json(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print "(' ',A,' passed.')", trim(test_names(i))
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_f42_json
 end module mod_test_json

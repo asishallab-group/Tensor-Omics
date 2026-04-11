@@ -6,26 +6,16 @@ module mod_test_kd_tree
   use tox_errors, only: set_ok, is_ok
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use test_suite, only: test_case
   implicit none
   public
-
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
 
 contains
 
   !> Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(12)
+  function get_all_tests_kd_tree() result(all_tests)
+    type(test_case),allocatable :: all_tests(:)
+    allocate(all_tests(12))
     
     all_tests(1) = test_case("test_kd_2d_cartesian", test_kd_2d_cartesian)
     all_tests(2) = test_case("test_kd_3d_spherical", test_kd_3d_spherical)
@@ -39,46 +29,10 @@ contains
     all_tests(10) = test_case("test_kd_1d_minimal", test_kd_1d_minimal)
     all_tests(11) = test_case("test_kd_3d_large", test_kd_3d_large)
     all_tests(12) = test_case("test_kd_5d_medium", test_kd_5d_medium)
-  end function get_all_tests
+  end function get_all_tests_kd_tree
 
-  !> Run all KD-Tree tests.
-  subroutine run_all_tests_kd_tree()
-    type(test_case) :: all_tests(12)
-    integer(int32) :: i
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All KD-Tree tests passed successfully."
-  end subroutine run_all_tests_kd_tree
-
-  !> Run specific KD-Tree tests by name.
-  subroutine run_named_tests_kd_tree(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(12)
-    integer(int32) :: i, j
-    logical :: found
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_kd_tree
+  
+  
 
   !> Test 2D Cartesian KD-Tree.
   subroutine test_kd_2d_cartesian()

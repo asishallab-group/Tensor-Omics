@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 module tox_data_tools
     use safeguard
     use iso_fortran_env, only: real64, int32, iostat_end
@@ -515,214 +517,7 @@ end subroutine
 
 end module tox_data_tools
 
-!> R binding to read gene IDs from a file.
-subroutine read_gene_ids_from_tsv_file_R(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
-                                 n_header_rows, gene_col, ierr)
-    use iso_fortran_env, only: int32
-    use iso_c_binding, only: c_char
-    use tox_errors, only: set_ok, is_err
-    use tox_data_tools, only: read_gene_ids_from_tsv_file
-    use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
-    implicit none
-    integer(int32), intent(in) :: fn_len
-        !! Length of the filename
-    character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-        !! Filename
-    integer(int32), intent(in) :: gene_ids_len
-        !! Length of the gene ids
-    integer(int32), intent(in) :: n_genes
-        !! Number of genes
-    character(kind=c_char, len=1), intent(inout) :: gene_ids_raw(gene_ids_len, n_genes)
-        !! Gene ids array
-    integer(int32), intent(in) :: n_header_rows
-        !! number of headers to skip
-    integer(int32), intent(in) :: gene_col
-        !! Column index that contains the gene ids
-    integer(int32), intent(out) :: ierr
-        !! Error code
 
-    character(len=:), allocatable :: filename
-    character(len=gene_ids_len) :: gene_ids(n_genes)
-    character(len=:), allocatable :: temp_str
-    integer(int32) :: i
-
-    call set_ok(ierr)
-
-    ! Convert filename from raw bytes
-    call c_char_1d_as_string(filename_raw, filename, ierr)
-    if(is_err(ierr)) return
-
-    call read_gene_ids_from_tsv_file(filename, gene_ids, n_header_rows, gene_col, ierr)
-    if(is_err(ierr)) return
-
-    ! Convert gene IDs back to raw bytes for output
-    do i = 1, n_genes
-        call string_as_c_char_1d(trim(gene_ids(i)), gene_ids_raw(:, i))
-    end do
-end subroutine read_gene_ids_from_tsv_file_R
-
-!> R binding to read expression vectors from files.
-subroutine read_expression_vectors_tsv_R(file_list_raw, file_list_len, n_files, &
-                                 gene_ids_raw, gene_ids_len, n_genes, &
-                                 expression_vectors_flat, n_samples, &
-                                 n_header_rows, gene_col, value_cols, &
-                                 n_value_cols, ierr, delimiter_raw, dlen)
-    use iso_fortran_env, only: int32, real64
-    use iso_c_binding, only: c_char
-    use tox_errors, only: set_ok, is_err, check_io_stat 
-    use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
-    use tox_data_tools, only: read_expression_vectors_tsv
-    implicit none
-    integer(int32), intent(in) :: file_list_len
-        !! Length of the filenames
-    integer(int32), intent(in) :: n_files
-        !! Number of files
-    character(kind=c_char, len=1), intent(in) :: file_list_raw(file_list_len, n_files)
-        !! File list
-    integer(int32), intent(in) :: gene_ids_len
-        !! Length of the gene ids
-    integer(int32), intent(in) :: n_genes
-        !! Number of genes
-    character(kind=c_char, len=1), intent(inout) :: gene_ids_raw(gene_ids_len, n_genes)
-        !! Gene ids array
-    integer(int32), intent(in) :: n_samples
-        !! Number of samples    
-    real(real64), intent(inout) :: expression_vectors_flat(n_samples * n_genes)
-        !! Expression vectors array
-    integer(int32), intent(in) :: n_header_rows
-        !! Number of header rows
-    integer(int32), intent(in) :: gene_col
-        !! Index of the gene column
-    integer(int32), intent(in) :: n_value_cols
-        !! Number of value columns    
-    integer(int32), intent(in) :: value_cols(n_value_cols)
-        !! Indicies of columns with values
-    integer(int32), intent(out) :: ierr
-        !! Error code
-    integer(int32), intent(in) :: dlen  
-        !! Length of the delimiter
-    character(kind=c_char, len=1), intent(in) :: delimiter_raw(dlen)
-        !! delimiter
-
-    character(len=file_list_len), allocatable :: file_list(:)
-    character(len=gene_ids_len), allocatable :: gene_ids(:)
-    character(len=:), allocatable :: delimiter
-    character(len=:), allocatable :: tmp_str
-    real(real64), allocatable :: expression_vectors(:,:)
-    integer(int32) :: i, j, ios, start_row
-
-    call set_ok(ierr)
-    call set_ok(ios)
-
-    start_row = 1
-    allocate(file_list(n_files), stat = ios)
-    call check_io_stat(ios, ierr)
-    allocate(gene_ids(n_genes), stat = ios)
-    call check_io_stat(ios, ierr)
-    allocate(expression_vectors(n_samples, n_genes), stat = ios)
-    call check_io_stat(ios, ierr)
-    if(is_err(ierr)) return
-
-    ! Convert 2D raw arrays to string arrays
-    do i = 1, n_files
-      call c_char_1d_as_string(file_list_raw(:, i), tmp_str, ierr)
-      if(is_err(ierr)) return
-      file_list(i) = trim(tmp_str)
-    end do
-    
-    do i = 1, n_genes
-      call c_char_1d_as_string(gene_ids_raw(:, i), tmp_str, ierr)
-      if(is_err(ierr)) return
-      gene_ids(i) = trim(tmp_str)
-    end do
-
-    if (dlen > 0) then
-      call c_char_1d_as_string(delimiter_raw, delimiter, ierr)
-      if(is_err(ierr)) return
-    else
-      delimiter = char(9)
-    end if
-
-    call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
-                                n_header_rows, gene_col, value_cols, &
-                                start_row, ierr, delimiter)
-
-    if(is_err(ierr)) return
-
-    ! Flatten the 2D array back to 1D for R
-    do j = 1, n_genes
-      do i = 1, n_samples
-        expression_vectors_flat((j-1)*n_samples + i) = expression_vectors(i, j)
-      end do
-    end do
-
-    ! Convert gene IDs back to raw bytes for output
-    do i = 1, n_genes
-        call string_as_c_char_1d(trim(gene_ids(i)), gene_ids_raw(:, i))
-    end do
-end subroutine read_expression_vectors_tsv_R
-
-!> R Binding to read a family file
-subroutine read_orthofinder_file_R(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
-                             family_ids_raw, family_ids_len, n_families, gene_to_fam, ierr)
-    use iso_fortran_env, only: int32
-    use iso_c_binding, only: c_char
-    use tox_errors, only: set_ok, is_err
-    use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
-    use tox_data_tools, only: read_orthofinder_file
-    implicit none
-    
-    integer(int32), intent(in) :: fn_len
-        !! Length of the filename
-    character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-        !! Filename
-    integer(int32), intent(in) :: gene_ids_len
-        !! Length of the gene ids
-    integer(int32), intent(in) :: n_genes
-        !! Number of genes
-    character(kind=c_char, len=1), intent(in) :: gene_ids_raw(gene_ids_len, n_genes)
-        !! Gene ids array
-    integer(int32), intent(in) :: family_ids_len
-        !! Length of the family ids
-    integer(int32), intent(in) :: n_families
-        !! Number of families
-    character(kind=c_char, len=1), intent(out) :: family_ids_raw(family_ids_len, n_families)
-        !! Family ids
-    integer(int32), intent(out) :: gene_to_fam(n_genes)
-        !! Gene to family mapping
-    integer(int32), intent(out) :: ierr
-        !! Error code
-    
-    character(len=:), allocatable :: filename
-    character(len=gene_ids_len) :: gene_ids(n_genes)
-    character(len=family_ids_len) :: family_ids(n_families)
-    character(len=:), allocatable :: temp_str
-    integer(int32) :: i
-
-    call set_ok(ierr)
-    
-    ! Initialize family_ids with spaces
-    family_ids = ' '
-    
-    ! Convert filename from raw bytes
-    call c_char_1d_as_string(filename_raw, filename, ierr)
-    if(is_err(ierr)) return
-    
-    ! Convert gene IDs from raw bytes to strings
-    do i = 1, n_genes
-        call c_char_1d_as_string(gene_ids_raw(:, i), temp_str, ierr)
-        if(is_err(ierr)) return
-        gene_ids(i) = trim(adjustl(temp_str))
-    end do
-    
-    call read_orthofinder_file(filename, gene_ids, family_ids, gene_to_fam, ierr)
-    if(is_err(ierr)) return
-    
-    ! Convert family IDs to raw bytes
-    do i = 1, n_families
-        call string_as_c_char_1d(trim(adjustl(family_ids(i))), family_ids_raw(:, i))
-    end do
-end subroutine read_orthofinder_file_R
 
 !> C binding for reading gene IDs from a gene expression tsv file
 subroutine read_gene_ids_from_tsv_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
@@ -731,28 +526,38 @@ subroutine read_gene_ids_from_tsv_file_C(filename_raw, fn_len, gene_ids_raw, gen
     use tox_errors, only: set_ok, is_err
     use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
     use tox_data_tools, only: read_gene_ids_from_tsv_file
+    M_USE_NULL_VALIDATION
     implicit none
 
-    integer(c_int), intent(in), value :: fn_len       
+    integer(c_int), intent(in), target :: fn_len       
         !! Length of filename
-    character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
+    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
         !! Pointer to filename array
-    integer(c_int), intent(in), value :: gene_ids_len 
+    integer(c_int), intent(in), target :: gene_ids_len 
         !! Length of each gene ID string
-    integer(c_int), intent(in), value :: n_genes      
+    integer(c_int), intent(in), target :: n_genes      
         !! Number of genes    
-    character(kind=c_char, len=1), intent(out) :: gene_ids_raw(gene_ids_len, n_genes)
+    character(kind=c_char, len=1), intent(out), target :: gene_ids_raw(gene_ids_len, n_genes)
         !! Pointer to gene_ids array
-    integer(c_int), intent(in), value :: n_header_rows
+    integer(c_int), intent(in), target :: n_header_rows
         !! Number of header rows to skip
-    integer(c_int), intent(in), value :: gene_col
+    integer(c_int), intent(in), target :: gene_col
         !! Index of the gene column
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
         !! Error code
 
     character(len=:), allocatable :: filename
     character(len=gene_ids_len) :: gene_ids(n_genes)
     integer(c_int) :: i
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(fn_len)
+    M_CHECK_NON_NULL(gene_ids_len)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_header_rows)
+    M_CHECK_NON_NULL(gene_col)
+    M_CHECK_NON_NULL(filename_raw)
+    M_CHECK_NON_NULL(gene_ids_raw)
 
     call set_ok(ierr)
 
@@ -779,35 +584,36 @@ subroutine read_expression_vectors_tsv_C(file_list_raw, file_list_len, n_files, 
     use tox_data_tools, only: read_expression_vectors_tsv
     use tox_errors, only: set_ok, is_err, check_io_stat
     use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
+    M_USE_NULL_VALIDATION
     implicit none
 
-    integer(c_int), intent(in), value :: file_list_len     
+    integer(c_int), intent(in), target :: file_list_len     
         !! Length of each filename
-    integer(c_int), intent(in), value :: n_files           
+    integer(c_int), intent(in), target :: n_files           
         !! Number of files
-    character(kind=c_char, len=1), intent(in) :: file_list_raw(file_list_len, n_files)    
+    character(kind=c_char, len=1), intent(in), target :: file_list_raw(file_list_len, n_files)    
         !! Pointer to file_list array
-    integer(c_int), intent(in), value :: gene_ids_len      
+    integer(c_int), intent(in), target :: gene_ids_len      
         !! Length of each gene ID
-    integer(c_int), intent(in), value :: n_genes           
+    integer(c_int), intent(in), target :: n_genes           
         !! Number of genes
-    character(kind=c_char, len=1), intent(in) :: gene_ids_raw(gene_ids_len, n_genes)     
+    character(kind=c_char, len=1), intent(in), target :: gene_ids_raw(gene_ids_len, n_genes)     
         !! Pointer to gene_ids array
-    integer(c_int), intent(in), value :: n_samples
+    integer(c_int), intent(in), target :: n_samples
         !! Number of samples    
-    real(c_double), intent(out) :: expression_vectors(n_samples, n_genes)
+    real(c_double), intent(out), target :: expression_vectors(n_samples, n_genes)
         !! Pointer to expression vectors (flat array)
-    integer(c_int), intent(in), value :: n_header_rows
+    integer(c_int), intent(in), target :: n_header_rows
         !! Number of header rows
-    integer(c_int), intent(in), value :: gene_col
+    integer(c_int), intent(in), target :: gene_col
         !! Index of column containing gene ids
-    integer(c_int), intent(in), value :: n_value_cols
+    integer(c_int), intent(in), target :: n_value_cols
         !! Number of cols containing values    
-    integer(c_int), intent(in) :: value_cols (n_value_cols)          
+    integer(c_int), intent(in), target :: value_cols (n_value_cols)          
         !! Pointer to value_cols array
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
         !! Error code
-    character(kind=c_char, len=1), intent(in) :: delimiter_raw(1)
+    character(kind=c_char, len=1), intent(in), target :: delimiter_raw(1)
         !! Delimiter
     integer(c_int) :: start_row
     
@@ -816,6 +622,21 @@ subroutine read_expression_vectors_tsv_C(file_list_raw, file_list_len, n_files, 
     character(len=:), allocatable :: delimiter
     character(len=:), allocatable :: tmp_str
     integer(c_int) :: i, j, ios
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(file_list_len)
+    M_CHECK_NON_NULL(n_files)
+    M_CHECK_NON_NULL(gene_ids_len)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_samples)
+    M_CHECK_NON_NULL(n_header_rows)
+    M_CHECK_NON_NULL(gene_col)
+    M_CHECK_NON_NULL(n_value_cols)
+    M_CHECK_NON_NULL(file_list_raw)
+    M_CHECK_NON_NULL(gene_ids_raw)
+    M_CHECK_NON_NULL(expression_vectors)
+    M_CHECK_NON_NULL(value_cols)
+    M_CHECK_NON_NULL(delimiter_raw)
 
     start_row = 1
     call set_ok(ierr)
@@ -854,26 +675,27 @@ subroutine read_orthofinder_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_
     use tox_errors, only: set_ok, is_err
     use tox_data_tools, only: read_orthofinder_file
     use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
+    M_USE_NULL_VALIDATION
     implicit none
-    integer(c_int), intent(in), value :: fn_len            
+    integer(c_int), intent(in), target :: fn_len            
         !! Length of filename
-    character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)       
+    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)       
         !! Pointer to filename array
-    integer(c_int), intent(in), value :: gene_ids_len      
+    integer(c_int), intent(in), target :: gene_ids_len      
         !! Length of each gene ID
-    integer(c_int), intent(in), value :: n_genes           
+    integer(c_int), intent(in), target :: n_genes           
         !! Number of genes    
-    character(kind=c_char, len=1), intent(in) :: gene_ids_raw(gene_ids_len, n_genes)       
+    character(kind=c_char, len=1), intent(in), target :: gene_ids_raw(gene_ids_len, n_genes)       
         !! Pointer to gene_ids array
-    integer(c_int), intent(in), value :: family_ids_len    
+    integer(c_int), intent(in), target :: family_ids_len    
         !! Length of each family ID
-    integer(c_int), intent(in), value :: n_families        
+    integer(c_int), intent(in), target :: n_families        
         !! Number of families
-    character(kind=c_char, len=1), intent(out) :: family_ids_raw(family_ids_len, n_families)     
+    character(kind=c_char, len=1), intent(out), target :: family_ids_raw(family_ids_len, n_families)     
         !! Pointer to family_ids array
-    integer(c_int), intent(out) :: gene_to_fam(n_genes)          
+    integer(c_int), intent(out), target :: gene_to_fam(n_genes)          
         !! Pointer to gene_to_fam array
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
         !! error code
     
     character(len=:), allocatable :: filename
@@ -881,6 +703,17 @@ subroutine read_orthofinder_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_
     character(len=family_ids_len) :: family_ids(n_families)
     character(len=:), allocatable :: temp_str
     integer(c_int) :: i
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(fn_len)
+    M_CHECK_NON_NULL(gene_ids_len)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(family_ids_len)
+    M_CHECK_NON_NULL(n_families)
+    M_CHECK_NON_NULL(filename_raw)
+    M_CHECK_NON_NULL(gene_ids_raw)
+    M_CHECK_NON_NULL(family_ids_raw)
+    M_CHECK_NON_NULL(gene_to_fam)
 
     call set_ok(ierr)
 
@@ -915,25 +748,33 @@ subroutine filter_unassigned_genes_C(gene_ids_raw, gene_ids_len, n_genes, &
     use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT, is_err, check_io_stat
     use tox_conversions, only: c_int_as_logical, logical_as_c_int
     use tox_data_tools, only: get_unassigned_mask
+    M_USE_NULL_VALIDATION
     implicit none
 
-    integer(c_int), intent(in), value :: gene_ids_len      
+    integer(c_int), intent(in), target :: gene_ids_len      
         !! Length of each gene ID
-    integer(c_int), intent(in), value :: n_genes           
+    integer(c_int), intent(in), target :: n_genes           
         !! Number of genes
-    character(kind=c_char, len=1), intent(in) :: gene_ids_raw(gene_ids_len, n_genes)       
+    character(kind=c_char, len=1), intent(in), target :: gene_ids_raw(gene_ids_len, n_genes)       
         !! Pointer to gene_ids array
-    integer(c_int), intent(in):: gene_to_fam(n_genes)          
+    integer(c_int), intent(in), target :: gene_to_fam(n_genes)          
         !! Pointer to gene_to_fam array
-    integer(c_int), intent(out) :: mask(n_genes)                 
+    integer(c_int), intent(out), target :: mask(n_genes)                 
         !! Pointer to mask array
     integer(c_int), intent(out) :: n_genes_kept
         !! number of genes kept
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
         !! Error code
     
     integer(int32) :: i, ios
     logical, allocatable :: mask_logical(:)
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(gene_ids_len)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(gene_ids_raw)
+    M_CHECK_NON_NULL(gene_to_fam)
+    M_CHECK_NON_NULL(mask)
 
     call set_ok(ierr)
     call set_ok(ios)

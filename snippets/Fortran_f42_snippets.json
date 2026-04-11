@@ -14,6 +14,21 @@
     "body": "call bst_range_query(${1:values}, ${2:sorted_indices}, ${3:num_values}, ${4:lower_bound}, ${5:upper_bound}, ${6:output_indices}, ${7:num_matches}, ${8:ierr})",
     "description": "Call of Fortran subroutine 'bst_range_query' from module 'f42_binary_search_tree'"
   },
+  "Fortran Call of function 'clamp_real'": {
+    "prefix": "f42:clamp_real",
+    "body": "${{1:result}} = clamp_real(${2:val}, ${3:min_val}, ${4:max_val})",
+    "description": "Call of Fortran function 'clamp_real' from module 'f42_utils'"
+  },
+  "Fortran Call of function 'clamp_int'": {
+    "prefix": "f42:clamp_int",
+    "body": "${{1:result}} = clamp_int(${2:val}, ${3:min_val}, ${4:max_val})",
+    "description": "Call of Fortran function 'clamp_int' from module 'f42_utils'"
+  },
+  "Fortran Call of subroutine 'logx'": {
+    "prefix": "f42:logx",
+    "body": "call logx(${1:val}, ${2:base}, ${3:exponent}, ${4:ierr})",
+    "description": "Call of Fortran subroutine 'logx' from module 'f42_utils'"
+  },
   "Fortran Call of subroutine 'init_random'": {
     "prefix": "f42:init_random",
     "body": "call init_random(${1:seed})",
@@ -23,6 +38,16 @@
     "prefix": "f42:rand_range",
     "body": "${{1:result}} = rand_range(${2:min}, ${3:max})",
     "description": "Call of Fortran function 'rand_range' from module 'f42_utils'"
+  },
+  "Fortran Call of subroutine 'shuffle_vector_real'": {
+    "prefix": "f42:shuffle_vector_real",
+    "body": "call shuffle_vector_real(${1:vec})",
+    "description": "Call of Fortran subroutine 'shuffle_vector_real' from module 'f42_utils'"
+  },
+  "Fortran Call of subroutine 'shuffle_vector_int'": {
+    "prefix": "f42:shuffle_vector_int",
+    "body": "call shuffle_vector_int(${1:vec})",
+    "description": "Call of Fortran subroutine 'shuffle_vector_int' from module 'f42_utils'"
   },
   "Fortran Call of function 'below'": {
     "prefix": "f42:below",
@@ -149,6 +174,11 @@
     "body": "call swap_int(${1:a}, ${2:b})",
     "description": "Call of Fortran subroutine 'swap_int' from module 'f42_utils'"
   },
+  "Fortran Call of subroutine 'swap_real'": {
+    "prefix": "f42:swap_real",
+    "body": "call swap_real(${1:a}, ${2:b})",
+    "description": "Call of Fortran subroutine 'swap_real' from module 'f42_utils'"
+  },
   "Fortran Call of function 'real_less'": {
     "prefix": "f42:real_less",
     "body": "${{1:result}} = real_less(${2:a}, ${3:b})",
@@ -183,6 +213,11 @@
     "prefix": "f42:calc_percentile",
     "body": "call calc_percentile(${1:array}, ${2:permutation}, ${3:percentile}, ${4:value}, ${5:ierr})",
     "description": "Call of Fortran subroutine 'calc_percentile' from module 'f42_utils'"
+  },
+  "Fortran Call of subroutine 'calc_percentile_helper'": {
+    "prefix": "f42:calc_percentile_helper",
+    "body": "call calc_percentile_helper(${1:array}, ${2:permutation}, ${3:percentile}, ${4:value})",
+    "description": "Call of Fortran subroutine 'calc_percentile_helper' from module 'f42_utils'"
   },
   "Fortran Call of subroutine 'calc_percentile_alloc'": {
     "prefix": "f42:calc_percentile_alloc",

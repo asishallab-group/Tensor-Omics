@@ -205,7 +205,7 @@ contains
     integer(int32) :: i_element
     
     if (present(array)) then
-      do i_element = 1, n_elements
+      do concurrent (i_element = 1:n_elements) shared(ierr, min, max, array)
         call validate_in_range_int(array(i_element), ierr, min, max)
       end do
     end if
@@ -236,10 +236,7 @@ contains
     
       if (ieee_is_nan(val) .or. .not. ieee_is_finite(val)) then
         call set_err(ierr, ERR_NAN_INF)
-        return
-      end if
-
-      if ((val < actual_min) .or. (val > actual_max)) then
+      else if ((val < actual_min) .or. (val > actual_max)) then
         call set_err(ierr, ERR_INVALID_INPUT)
       end if
     end if
@@ -261,7 +258,7 @@ contains
     integer(int32) :: i_element
   
     if (present(array)) then
-      do i_element = 1, n_elements
+      do concurrent (i_element = 1:n_elements) shared(ierr, min, max, array)
         call validate_in_range_real(array(i_element), ierr, min, max)
       end do
     end if

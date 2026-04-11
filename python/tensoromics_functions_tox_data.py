@@ -49,12 +49,12 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
     # Example for read_gene_ids_from_tsv_file_C
     lib.read_gene_ids_from_tsv_file_C.argtypes = [
         ctypes.c_char_p,  # filename
-        ctypes.c_int,                  # fn_len
+        ctypes.POINTER(ctypes.c_int),                  # fn_len
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"),  # gene_ids_raw
-        ctypes.c_int,                  # gene_ids_len
-        ctypes.c_int,                  # n_genes
-        ctypes.c_int,                  # n_header_rows
-        ctypes.c_int,                  # gene_col
+        ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
+        ctypes.POINTER(ctypes.c_int),                  # n_genes
+        ctypes.POINTER(ctypes.c_int),                  # n_header_rows
+        ctypes.POINTER(ctypes.c_int),                  # gene_col
         ctypes.POINTER(ctypes.c_int)   # ierr
     ]
     lib.read_gene_ids_from_tsv_file_C.restype = None
@@ -62,12 +62,12 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
     # Call C function
     lib.read_gene_ids_from_tsv_file_C(
         filename.encode("utf-8"),
-        ctypes.c_int(len(filename)),
+        ctypes.byref(ctypes.c_int(len(filename))),
         gene_ids_array,
-        ctypes.c_int(gene_ids_len),
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_header_rows),
-        ctypes.c_int(gene_col),
+        ctypes.byref(ctypes.c_int(gene_ids_len)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_header_rows)),
+        ctypes.byref(ctypes.c_int(gene_col)),
         ctypes.byref(ierr)
     )
 
@@ -78,7 +78,7 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
 
 # Function for read_expression_vectors_tsv_C
 #> tox_data_read_write:read_expression_vectors_tsv_C: Read expression vectors from given tabular (csv/tsv) files
-def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows, 
+def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
                            gene_col, value_cols, delimiter='\t'):
     """
     Read expression vectors from given tabular (csv/tsv) files
@@ -109,17 +109,17 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
     # read_expression_vectors_tsv_C
     lib.read_expression_vectors_tsv_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"),  # file_list_raw
-        ctypes.c_int,                  # file_list_len
-        ctypes.c_int,                  # n_files
+        ctypes.POINTER(ctypes.c_int),                  # file_list_len
+        ctypes.POINTER(ctypes.c_int),                  # n_files
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"),  # gene_ids_raw
-        ctypes.c_int,                  # gene_ids_len
-        ctypes.c_int,                  # n_genes
+        ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
+        ctypes.POINTER(ctypes.c_int),                  # n_genes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors_flat
-        ctypes.c_int,                  # n_samples
-        ctypes.c_int,                  # n_header_rows
-        ctypes.c_int,                  # gene_col
+        ctypes.POINTER(ctypes.c_int),                  # n_samples
+        ctypes.POINTER(ctypes.c_int),                  # n_header_rows
+        ctypes.POINTER(ctypes.c_int),                  # gene_col
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # value_cols
-        ctypes.c_int,                  # n_value_cols
+        ctypes.POINTER(ctypes.c_int),                  # n_value_cols
         ctypes.POINTER(ctypes.c_int),  # ierr
         ctypes.c_char_p                # delimiter
     ]
@@ -128,17 +128,17 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
     # Call C function
     lib.read_expression_vectors_tsv_C(
         file_list_matrix,
-        ctypes.c_int(file_list_matrix.shape[0]),
-        ctypes.c_int(file_list_matrix.shape[1]),
+        ctypes.byref(ctypes.c_int(file_list_matrix.shape[0])),
+        ctypes.byref(ctypes.c_int(file_list_matrix.shape[1])),
         gene_ids_matrix,
-        ctypes.c_int(gene_ids_matrix.shape[0]),
-        ctypes.c_int(gene_ids_matrix.shape[1]),
+        ctypes.byref(ctypes.c_int(gene_ids_matrix.shape[0])),
+        ctypes.byref(ctypes.c_int(gene_ids_matrix.shape[1])),
         expression_vectors,
-        ctypes.c_int(n_samples),
-        ctypes.c_int(n_header_rows),
-        ctypes.c_int(gene_col),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_header_rows)),
+        ctypes.byref(ctypes.c_int(gene_col)),
         value_cols_ct,
-        ctypes.c_int(len(value_cols)),
+        ctypes.byref(ctypes.c_int(len(value_cols))),
         ctypes.byref(ierr),
         delimiter.encode("utf-8")
     )
@@ -170,14 +170,14 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
 
     # read_orthofinder_file_C
     lib.read_orthofinder_file_C.argtypes = [
-        ctypes.c_char_p,  # filename
-        ctypes.c_int,                  # fn_len
+        ctypes.POINTER(ctypes.c_char),  # filename_raw
+        ctypes.POINTER(ctypes.c_int),                  # fn_len
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"),  # gene_ids_raw
-        ctypes.c_int,                  # gene_ids_len
-        ctypes.c_int,                  # n_genes
+        ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
+        ctypes.POINTER(ctypes.c_int),                  # n_genes
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"),  # family_ids_raw
-        ctypes.c_int,                  # family_ids_len
-        ctypes.c_int,                  # n_families
+        ctypes.POINTER(ctypes.c_int),                  # family_ids_len
+        ctypes.POINTER(ctypes.c_int),                  # n_families
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # gene_to_fam
         ctypes.POINTER(ctypes.c_int)   # ierr
     ]
@@ -185,13 +185,13 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
     # Call C function
     lib.read_orthofinder_file_C(
         filename.encode("utf-8"),
-        ctypes.c_int(len(filename)),
+        ctypes.byref(ctypes.c_int(len(filename))),
         gene_ids_matrix,
-        ctypes.c_int(gene_ids_matrix.shape[0]),
-        ctypes.c_int(gene_ids_matrix.shape[1]),
+        ctypes.byref(ctypes.c_int(gene_ids_matrix.shape[0])),
+        ctypes.byref(ctypes.c_int(gene_ids_matrix.shape[1])),
         family_ids_matrix,
-        ctypes.c_int(family_ids_matrix.shape[0]),
-        ctypes.c_int(family_ids_matrix.shape[1]),
+        ctypes.byref(ctypes.c_int(family_ids_matrix.shape[0])),
+        ctypes.byref(ctypes.c_int(family_ids_matrix.shape[1])),
         gene_to_fam,
         ctypes.byref(ierr)
     )
@@ -247,16 +247,16 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
 
     lib.validate_gene_to_family_mapping_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"), # gene_to_fam
-        ctypes.c_int,                 # n_genes
-        ctypes.c_int,                 # n_families
+        ctypes.POINTER(ctypes.c_int),                 # n_genes
+        ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     lib.validate_gene_to_family_mapping_C.restype = None
 
     lib.validate_gene_to_family_mapping_C(
         gene_to_fam,
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_families),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -276,18 +276,18 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
 
     lib.validate_expression_data_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
-        ctypes.c_int,                    # n_genes
-        ctypes.c_int,                    # n_samples
-        ctypes.c_int,                    # check_non_negative
+        ctypes.POINTER(ctypes.c_int),                    # n_genes
+        ctypes.POINTER(ctypes.c_int),                    # n_samples
+        ctypes.POINTER(ctypes.c_int),                    # check_non_negative
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
     lib.validate_expression_data_C.restype = None
 
     lib.validate_expression_data_C(
         expression_vectors,
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_samples),
-        ctypes.c_int(1 if check_non_negative else 0),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(1 if check_non_negative else 0)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -306,16 +306,16 @@ def validate_family_centroids(family_centroids):
 
     lib.validate_family_centroids_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
-        ctypes.c_int,                    # n_families
-        ctypes.c_int,                    # n_samples
+        ctypes.POINTER(ctypes.c_int),                    # n_families
+        ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
     lib.validate_family_centroids_C.restype = None
 
     lib.validate_family_centroids_C(
         family_centroids,
-        ctypes.c_int(n_families),
-        ctypes.c_int(n_samples),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ctypes.c_int(n_samples)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -346,9 +346,9 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
-        ctypes.c_int,                    # n_genes
-        ctypes.c_int,                    # n_samples
-        ctypes.c_int,                    # n_families
+        ctypes.POINTER(ctypes.c_int),                    # n_genes
+        ctypes.POINTER(ctypes.c_int),                    # n_samples
+        ctypes.POINTER(ctypes.c_int),                    # n_families
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
     lib.validate_shift_vectors_C.restype = None
@@ -358,9 +358,9 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
         expression_vectors,
         family_centroids,
         gene_to_fam,
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_samples),
-        ctypes.c_int(n_families),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -378,16 +378,16 @@ def validate_string_array_uniqueness(strings):
 
     lib.validate_string_array_uniqueness_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"), # string_array_raw
-        ctypes.c_int,                 # string_len
-        ctypes.c_int,                 # n_strings
+        ctypes.POINTER(ctypes.c_int),                 # string_len
+        ctypes.POINTER(ctypes.c_int),                 # n_strings
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     lib.validate_string_array_uniqueness_C.restype = None
 
     lib.validate_string_array_uniqueness_C(
         gene_ids_raw,
-        ctypes.c_int(gene_ids_raw.shape[0]),
-        ctypes.c_int(gene_ids_raw.shape[1]),
+        ctypes.byref(ctypes.c_int(gene_ids_raw.shape[0])),
+        ctypes.byref(ctypes.c_int(gene_ids_raw.shape[1])),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -419,13 +419,13 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
     ierr = ctypes.c_int()
 
     lib.validate_data_structure_C.argtypes = [
-        ctypes.c_int,                 # n_genes
-        ctypes.c_int,                 # n_families
-        ctypes.c_int,                 # n_samples
+        ctypes.POINTER(ctypes.c_int),                 # n_genes
+        ctypes.POINTER(ctypes.c_int),                 # n_families
+        ctypes.POINTER(ctypes.c_int),                 # n_samples
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"), # gene_ids_raw
-        ctypes.c_int,                 # gene_ids_len
+        ctypes.POINTER(ctypes.c_int),                 # gene_ids_len
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"), # gene_family_ids_raw
-        ctypes.c_int,                 # fam_len
+        ctypes.POINTER(ctypes.c_int),                 # fam_len
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
@@ -435,13 +435,13 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
     lib.validate_data_structure_C.restype = None
 
     lib.validate_data_structure_C(
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_families),
-        ctypes.c_int(n_samples),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ctypes.c_int(n_samples)),
         gene_ids_raw,
-        ctypes.c_int(gene_ids_raw.shape[0]),
+        ctypes.byref(ctypes.c_int(gene_ids_raw.shape[0])),
         gene_family_ids_raw,
-        ctypes.c_int(gene_family_ids_raw.shape[0]),
+        ctypes.byref(ctypes.c_int(gene_family_ids_raw.shape[0])),
         gene_to_fam,
         expression_vectors,
         family_centroids,
@@ -477,13 +477,13 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
     ierr = ctypes.c_int()
 
     lib.validate_all_data_C.argtypes = [
-        ctypes.c_int,                 # n_genes
-        ctypes.c_int,                 # n_families
-        ctypes.c_int,                 # n_samples
+        ctypes.POINTER(ctypes.c_int),                 # n_genes
+        ctypes.POINTER(ctypes.c_int),                 # n_families
+        ctypes.POINTER(ctypes.c_int),                 # n_samples
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"), # gene_ids_raw
-        ctypes.c_int,                 # gene_len
+        ctypes.POINTER(ctypes.c_int),                 # gene_len
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags="F_CONTIGUOUS"), # gene_family_ids_raw
-        ctypes.c_int,                 # fam_len
+        ctypes.POINTER(ctypes.c_int),                 # fam_len
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
@@ -493,13 +493,13 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
     lib.validate_all_data_C.restype = None
 
     lib.validate_all_data_C(
-        ctypes.c_int(n_genes),
-        ctypes.c_int(n_families),
-        ctypes.c_int(n_samples),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ctypes.c_int(n_samples)),
         gene_ids_raw,
-        ctypes.c_int(gene_ids_raw.shape[0]),
+        ctypes.byref(ctypes.c_int(gene_ids_raw.shape[0])),
         gene_family_ids_raw,
-        ctypes.c_int(gene_family_ids_raw.shape[0]),
+        ctypes.byref(ctypes.c_int(gene_family_ids_raw.shape[0])),
         gene_to_fam,
         expression_vectors,
         family_centroids,
@@ -530,11 +530,11 @@ def create_zip_archive(zip_filename: str, keys, filenames) -> None:
 
     # Set up argument types to match Fortran subroutine
     lib.create_zip_archive_c.argtypes = [
-        ctypes.c_char_p, ctypes.c_int,                    # zip_filename, zip_len
+        ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),                    # zip_filename, zip_len
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags='F_CONTIGUOUS'),  # keys
-        ctypes.c_int, ctypes.c_int,                                     # keys_len, keys_count
+        ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),                                     # keys_len, keys_count
         np.ctypeslib.ndpointer(dtype=ctypes.c_char, flags='F_CONTIGUOUS'),  # filenames  
-        ctypes.c_int, ctypes.c_int,                                     # filenames_len, filenames_count
+        ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),                                     # filenames_len, filenames_count
         ctypes.POINTER(ctypes.c_int)                                    # ierr
     ]
 
@@ -543,13 +543,13 @@ def create_zip_archive(zip_filename: str, keys, filenames) -> None:
     # Call Fortran function - arrays are already in Fortran order
     lib.create_zip_archive_c(
         zip_filename.encode("utf-8"),
-        ctypes.c_int(len(zip_filename)),
+        ctypes.byref(ctypes.c_int(len(zip_filename))),
         keys_array,
-        ctypes.c_int(keys_array.shape[0]),
-        ctypes.c_int(keys_array.shape[1]),
+        ctypes.byref(ctypes.c_int(keys_array.shape[0])),
+        ctypes.byref(ctypes.c_int(keys_array.shape[1])),
         filenames_array,
-        ctypes.c_int(filenames_array.shape[0]),
-        ctypes.c_int(filenames_array.shape[1]),
+        ctypes.byref(ctypes.c_int(filenames_array.shape[0])),
+        ctypes.byref(ctypes.c_int(filenames_array.shape[1])),
         ctypes.byref(ierr)
     )
 
@@ -585,8 +585,8 @@ def extract_zip_archive(zip_filename):
         raise FileNotFoundError(f"Zip file not found: {zip_filename}")
 
     lib.extract_zip_archive_c.argtypes = [
-        ctypes.POINTER(ctypes.c_char), 
-        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_char),
+        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)
     ]
 
@@ -600,7 +600,7 @@ def extract_zip_archive(zip_filename):
         # Call the C extraction function
         lib.extract_zip_archive_c(
             ctypes.cast(zip_b, ctypes.POINTER(ctypes.c_char)),
-            ctypes.c_int(len(zip_filename)),
+            ctypes.byref(ctypes.c_int(len(zip_filename))),
             ctypes.byref(ierr)
         )
 

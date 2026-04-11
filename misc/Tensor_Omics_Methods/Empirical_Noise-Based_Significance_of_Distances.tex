@@ -45,7 +45,7 @@
         For gene $g$ on axis $a$:
 
         \begin{enumerate}
-            \item Find the $k$ nearest mean expression values $\bar{x}{g',a}$ to $\bar{x}{g,a}$ based on absolute difference in mean expression.
+            \item Find the $k$ nearest mean expression values $\bar{x}_{g',a}$ to $\bar{x}_{g,a}$ based on absolute difference in mean expression.
             \item Collect all biological replicate values $x_{g',a,i}$ belonging to those $k$ gene mean expression values.
             \item Convert these into \emph{signed} noise residuals:
                   \[
@@ -53,7 +53,7 @@
                   \]
         \end{enumerate}
 
-        The resulting set of $\epsilon$ values is the empirical noise distribution for expression level $\bar{x}_{g,a}$ on axis $a$.
+        The resulting set $\mathcal{E}_{g,a}$ of $\epsilon$ values is the empirical noise distribution for expression level $\bar{x}_{g,a}$ on axis $a$.
 
     \subsection{Noise-Only Distance for Two Genes}
 
@@ -208,3 +208,218 @@
             Each point summarizes one observed expression distance, either from a pair of genes or from a family centroid to gene: $D_{\mathrm{obs}}$ is the measured separation in semantic expression space, and $q$ indicates where this distance falls within the noise-only null distribution for that specific pair. Values near $q \approx 0.5$ indicate that the observed distance is typical under noise alone, while values near $q \approx 1$ indicate that the observed distance lies in the extreme upper tail of the null and is therefore unlikely to be explainable by replicate variability.
 
             The overall trend of this scatterplot provides a global calibration check. In well-calibrated settings, larger observed distances should increasingly concentrate at high percentiles. A substantial mass of large distances with only moderate percentiles suggests that replicate variability (biological or technical) is large relative to the measured separation, which may arise from low replication on some axes or high intrinsic inter-individual variability in the sampled conditions.
+
+\subsection{Adjustment for Log-Transformed Expression Coordinates}
+
+In many Tensor Omics analyses, expression coordinates are represented in log-compressed form
+
+\[
+\mu_{g,a} = \log(\bar{x}_{g,a} + 1),
+\]
+
+where $\bar{x}_{g,a}$ denotes the mean normalized expression of gene $g$ on axis $a$ prior to the log transformation.
+
+This representation is used both for raw TPM means
+
+\[
+\mu_{g,a} = \log(\mathrm{mean}(\mathrm{TPM}_{g,a,i}) + 1)
+\]
+
+and for fully normalized values such as
+
+\[
+\mu_{g,a} =
+\log\!\left(
+\mathrm{mean}\big(
+\mathrm{quantile\text{-}norm}(
+\mathrm{gene\text{-}wise\text{-}scaled}(\mathrm{TPM}_{g,a,i})
+)\big) + 1
+\right).
+\]
+
+Because the coordinate system is defined after the logarithmic compression, replicate noise must be propagated through the same transformation when constructing the Monte Carlo null distribution.
+
+\paragraph{Residual definition.}
+
+Residuals are computed in the \emph{pre-log expression space} exactly as in the standard procedure:
+
+\[
+\epsilon_{g,a,i} = x_{g,a,i} - \bar{x}_{g,a}.
+\]
+
+Local empirical residual pools $\mathcal{E}_{g,a}$ are constructed using the same kNN procedure described above.
+
+\paragraph{Noise propagation through the log transform.}
+
+For Monte Carlo iteration $b$, residual samples are drawn as
+
+\[
+\eta_{1,a}^{(b)} \sim \mathcal{E}_{g_1,a},
+\qquad
+\eta_{2,a}^{(b)} \sim \mathcal{E}_{g_2,a}.
+\]
+
+Perturbed expression values in the pre-log space are then formed as
+
+\[
+x_{1,a}^{(b)} = \bar{x}_{g_1,a} + \eta_{1,a}^{(b)},
+\qquad
+x_{2,a}^{(b)} = \bar{x}_{g_2,a} + \eta_{2,a}^{(b)}.
+\]
+
+To ensure the logarithm remains defined, values are truncated to the valid domain
+
+\[
+x_{k,a}^{(b)} \leftarrow \max(x_{k,a}^{(b)},\,0).
+\]
+
+The induced log-space perturbations are
+
+\[
+\delta_{k,a}^{(b)}
+=
+\log(x_{k,a}^{(b)} + 1) - \log(\bar{x}_{g_k,a} + 1),
+\qquad k \in \{1,2\}.
+\]
+
+The resulting noise-only difference on axis $a$ becomes
+
+\[
+d_a^{(b)} =
+\delta_{1,a}^{(b)} - \delta_{2,a}^{(b)}.
+\]
+
+These values replace the residual differences used in the linear-space formulation.
+
+\paragraph{Null distance generation.}
+
+The vector
+
+\[
+\vec{d}^{(b)} = (d_1^{(b)}, \ldots, d_A^{(b)})
+\]
+
+is assembled exactly as in the original algorithm, and the null distance is computed as
+
+\[
+D_{\mathrm{null}}^{(b)} = \|\vec{d}^{(b)}\|.
+\]
+
+Observed distances must then be computed in the same log-compressed coordinate system
+
+\[
+D_{\mathrm{obs}} =
+\left\|
+\log(\bar{\vec{x}}_1 + 1) -
+\log(\bar{\vec{x}}_2 + 1)
+\right\|.
+\]
+
+\paragraph{Interpretation.}
+
+This procedure preserves the original semantic coordinate system defined by $\log(\bar{x}+1)$ while correctly propagating replicate noise through the nonlinear transformation. The empirical null therefore reflects the amount of Euclidean distance that can arise purely from replicate variability under the same log-compressed geometry used in the Tensor Omics expression space.
+
+\subsection{Adjustment for Angular Statistics under Different Normalization Regimes}
+
+Tensor Omics uses angular statistics to quantify directional differences between expression vectors (e.g.\ tissue preference shifts and semantic orientation changes). The empirical noise null for angles must be constructed in the \emph{same coordinate system} in which angles are measured. Therefore, the exact form of the noise propagation depends on the chosen normalization regime (e.g.\ raw TPM means vs.\ log-compressed means).
+
+Let $\vec{\mu}_1, \vec{\mu}_2 \in \mathbb{R}^A$ denote two mean expression vectors after all preprocessing steps that define the expression space used for analysis. The observed angle is computed as
+
+\[
+\theta_{\mathrm{obs}} =
+\arccos
+\left(
+\frac{
+\vec{\mu}_1 \cdot \vec{\mu}_2
+}{
+\|\vec{\mu}_1\| \, \|\vec{\mu}_2\|
+}
+\right).
+\]
+
+As with Euclidean distances, replicate variability can induce apparent angular differences even under the null hypothesis of no true biological separation. We therefore construct an empirical null distribution of angles by Monte Carlo perturbation of replicate-level expression values.
+
+\paragraph{Monte Carlo noise sampling.}
+
+Residual samples are drawn independently for each axis from local kNN residual pools (as defined above):
+
+\[
+\eta_{1,a}^{(b)} \sim \mathcal{E}_{g_1,a},
+\qquad
+\eta_{2,a}^{(b)} \sim \mathcal{E}_{g_2,a}.
+\]
+
+Perturbed pre-transformation expression values are formed as
+
+\[
+x_{1,a}^{(b)} = \bar{x}_{g_1,a} + \eta_{1,a}^{(b)}, \quad
+x_{2,a}^{(b)} = \bar{x}_{g_2,a} + \eta_{2,a}^{(b)}.
+\]
+
+If the chosen normalization requires nonnegative values (e.g.\ log-compression), values are truncated to the valid domain:
+
+\[
+x_{k,a}^{(b)} \leftarrow \max(x_{k,a}^{(b)},\,0).
+\]
+
+\paragraph{Mapping into the analysis coordinate system.}
+
+Let $T(\cdot)$ denote the final coordinate transform defining the expression space. Typical examples are:
+
+\[
+T(x) = x
+\quad\text{(linear mean coordinates; e.g.\ mean TPM)},
+\qquad
+T(x) = \log(x+1)
+\quad\text{(log-compressed mean coordinates)}.
+\]
+
+The Monte Carlo perturbed vectors are then defined by applying the same transform used in the analysis:
+
+\[
+\mu_{k,a}^{(b)} = T\!\left(x_{k,a}^{(b)}\right),
+\qquad
+\vec{\mu}_k^{(b)} = (\mu_{k,1}^{(b)}, \ldots, \mu_{k,A}^{(b)}),
+\qquad k \in \{1,2\}.
+\]
+
+This yields perturbed vectors $\vec{\mu}_1^{(b)}$ and $\vec{\mu}_2^{(b)}$ in exactly the same coordinate system as $\vec{\mu}_1$ and $\vec{\mu}_2$.
+
+\paragraph{Null angle generation.}
+
+For each Monte Carlo sample, the noise-only angle is computed as
+
+\[
+\theta_{\mathrm{null}}^{(b)} =
+\arccos
+\left(
+\frac{
+\vec{\mu}_1^{(b)} \cdot \vec{\mu}_2^{(b)}
+}{
+\|\vec{\mu}_1^{(b)}\| \, \|\vec{\mu}_2^{(b)}\|
+}
+\right).
+\]
+
+Repeating this procedure $B$ times yields an empirical null distribution
+\[
+\{\theta_{\mathrm{null}}^{(b)}\}.
+\]
+
+\paragraph{Empirical angular p-value.}
+
+The one-sided empirical p-value for angular deviation is computed as
+
+\[
+p =
+\frac{
+1 + \sum_{b=1}^{B}
+I\!\left(\theta_{\mathrm{null}}^{(b)} \ge \theta_{\mathrm{obs}}\right)
+}{
+B + 1
+}.
+\]
+
+\paragraph{Interpretation.}
+
+This p-value estimates the probability that an angular separation at least as large as $\theta_{\mathrm{obs}}$ could arise from replicate variability alone under the same normalization regime used to define the Tensor Omics expression space. Small p-values therefore indicate robust directional differences that are unlikely to be explainable by replicate noise.

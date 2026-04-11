@@ -1,3 +1,5 @@
+! filepath: test/mod_test_arrays.f90
+!> Unit test suite for array utilities.
 module mod_test_arrays
     use asserts
     use f42_array_utils, only: get_array_metadata
@@ -14,23 +16,20 @@ module mod_test_arrays
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use iso_c_binding
     use tox_errors
+    use test_suite, only: test_case
     implicit none
-    PUBLIC
+    public
 
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    type :: test_case
-        character(len=64) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
 contains
 
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(28)
+
+  !> Get array of all available tests.
+  function get_all_tests_arrays() result(all_tests)
+
+    type(test_case),allocatable :: all_tests(:) 
+
+      allocate(all_tests(28))
     all_tests(1) = test_case("test_integer_array_1d", test_integer_array_1d)
     all_tests(2) = test_case("test_integer_array_2d", test_integer_array_2d)
     all_tests(3) = test_case("test_integer_array_3d", test_integer_array_3d)
@@ -59,42 +58,13 @@ contains
     all_tests(26) = test_case("test_complex_array_3d", test_complex_array_3d)
     all_tests(27) = test_case("test_complex_array_4d", test_complex_array_4d)
     all_tests(28) = test_case("test_complex_array_5d", test_complex_array_5d)
-  end function get_all_tests
-
-  subroutine run_all_tests_array()
-    type(test_case) :: all_tests(28)
-    integer :: i
-    all_tests = get_all_tests()
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All array tests passed successfully."
-  end subroutine run_all_tests_array
-
-  subroutine run_named_tests_array(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(28)
-    integer :: i, j
-    logical :: found
-    all_tests = get_all_tests()
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) print *, "Unknown test: ", trim(test_names(i))
-    end do
-  end subroutine run_named_tests_array
+  end function get_all_tests_arrays
 
   ! ================================================================
   ! Integer tests
   ! ================================================================
+
+  !> Test integer array for 1D
   subroutine test_integer_array_1d()
       integer(int32), allocatable :: iarr1d(:), iarr1d2(:)
       character(len=100) :: fname
@@ -119,6 +89,7 @@ contains
       call assert_equal_array_int(iarr1d, iarr1d2, size(iarr1d), "Mismatch")
   end subroutine test_integer_array_1d
 
+  !> Test integer array for 2D
   subroutine test_integer_array_2d()
     integer(int32), allocatable :: iarr(:,:), iarr2(:,:)
     character(len=100) :: fname
@@ -138,6 +109,7 @@ contains
     call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
   end subroutine test_integer_array_2d
 
+  !> Test integer array for 3D
   subroutine test_integer_array_3d()
     integer(int32), allocatable :: iarr(:,:,:), iarr2(:,:,:)
     character(len=100) :: fname
@@ -158,6 +130,7 @@ contains
     call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
   end subroutine test_integer_array_3d
 
+  !> Test integer array for 4D
   subroutine test_integer_array_4d()
     integer(int32), allocatable :: iarr(:,:,:,:), iarr2(:,:,:,:)
     character(len=100) :: fname
@@ -179,6 +152,7 @@ contains
     call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
   end subroutine test_integer_array_4d
 
+  !> Test integer array for 5D
   subroutine test_integer_array_5d()
     integer(int32), allocatable :: iarr(:,:,:,:,:), iarr2(:,:,:,:,:)
     character(len=100) :: fname
@@ -199,6 +173,7 @@ contains
     call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
   end subroutine test_integer_array_5d
 
+  !> Test integer array for 1x1 (edge case)
   subroutine test_integer_array_1x1()
     integer(int32), allocatable :: iarr(:,:), iarr2(:,:)
     character(len=100) :: fname
@@ -219,6 +194,7 @@ contains
     call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
   end subroutine test_integer_array_1x1
 
+  !> Test integer array for empty case
   subroutine test_integer_array_empty()
     integer(int32), allocatable :: iarr(:,:), iarr2(:,:)
     character(len=100) :: fname
@@ -240,6 +216,7 @@ contains
   ! ================================================================
   ! Real tests
   ! ================================================================
+  !> Test real array for 1D
   subroutine test_real_array_1d()
     real(real64), allocatable :: arr(:), arr2(:)
     character(len=100) :: fname
@@ -258,6 +235,7 @@ contains
     call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
   end subroutine test_real_array_1d
 
+  !> Test real array for 2D
   subroutine test_real_array_2d()
     real(real64), allocatable :: arr(:,:), arr2(:,:)
     character(len=100) :: fname
@@ -276,6 +254,7 @@ contains
     call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
   end subroutine test_real_array_2d
 
+  !> Test real array for 3D
   subroutine test_real_array_3d()
     real(real64), allocatable :: arr(:,:,:), arr2(:,:,:)
     character(len=100) :: fname
@@ -292,7 +271,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
   end subroutine test_real_array_3d
-
+  
+  !> Test real array for 4D
   subroutine test_real_array_4d()
     real(real64), allocatable :: arr(:,:,:,:), arr2(:,:,:,:)
     character(len=100) :: fname
@@ -310,7 +290,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
   end subroutine test_real_array_4d
-
+  
+  !> Test real array for 5D
   subroutine test_real_array_5d()
     real(real64), allocatable :: arr(:,:,:,:,:), arr2(:,:,:,:,:)
     character(len=100) :: fname
@@ -334,6 +315,7 @@ contains
   ! ================================================================
   ! Char tests
   ! ================================================================
+  !> Test char array for 1D  
   subroutine test_char_array_1d()
     character(len=:), allocatable :: arr(:), arr2(:)
     character(len=100) :: fname
@@ -354,6 +336,7 @@ contains
     call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
   end subroutine test_char_array_1d
 
+  !> Test char array for 2D
   subroutine test_char_array_2d()
     character(len=:), allocatable :: arr(:,:), arr2(:,:)
     character(len=100) :: fname
@@ -373,7 +356,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
   end subroutine test_char_array_2d
-
+ 
+    !> Test char array for 3D
   subroutine test_char_array_3d()
     character(len=:), allocatable :: arr(:,:,:), arr2(:,:,:)
     character(len=100) :: fname
@@ -394,7 +378,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
   end subroutine test_char_array_3d
-
+  
+    !> Test char array for 4D
   subroutine test_char_array_4d()
     character(len=:), allocatable :: arr(:,:,:,:), arr2(:,:,:,:)
     character(len=100) :: fname
@@ -415,7 +400,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
   end subroutine test_char_array_4d
-
+  
+    !> Test char array for 5D
   subroutine test_char_array_5d()
     character(len=:), allocatable :: arr(:,:,:,:,:), arr2(:,:,:,:,:)
     character(len=100) :: fname
@@ -435,7 +421,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
   end subroutine test_char_array_5d
-
+  
+    !> Test char array with protein names (longer strings)
   subroutine test_char_array_protein()
     character(len=:), allocatable :: protein(:,:,:,:,:), protein2(:,:,:,:,:)
     integer(int32) :: ierr, clen, ndims, dims(5)
@@ -455,7 +442,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_char(protein, protein2, clen, size(protein), "Mismatch")
   end subroutine test_char_array_protein
-
+  
+  !> Test logical array for 1D
   subroutine test_logical_array_1d()
     logical, allocatable :: larr1d(:), larr1d2(:)
     character(len=100) :: fname
@@ -478,7 +466,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_logical(larr1d, larr1d2, size(larr1d), "Logical 1D Mismatch")
   end subroutine test_logical_array_1d
-
+  
+  !> Test logical array for 2D
   subroutine test_logical_array_2d()
     logical, allocatable :: larr(:,:), larr2(:,:)
     character(len=100) :: fname
@@ -497,7 +486,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_logical(larr, larr2, size(larr), "Logical 2D Mismatch")
   end subroutine test_logical_array_2d
-
+  
+  !> Test logical array for 3D
   subroutine test_logical_array_3d()
     logical, allocatable :: larr(:,:,:), larr2(:,:,:)
     character(len=100) :: fname
@@ -517,7 +507,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_logical(larr, larr2, size(larr), "Logical 3D Mismatch")
   end subroutine test_logical_array_3d
-
+  
+  !> Test logical array for 4D
   subroutine test_logical_array_4d()
     logical, allocatable :: larr(:,:,:,:), larr2(:,:,:,:)
     character(len=100) :: fname
@@ -537,7 +528,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_logical(larr, larr2, size(larr), "Logical 4D Mismatch")
   end subroutine test_logical_array_4d
-
+  
+  !> Test logical array for 5D
   subroutine test_logical_array_5d()
     logical, allocatable :: larr(:,:,:,:,:), larr2(:,:,:,:,:)
     character(len=100) :: fname
@@ -560,6 +552,7 @@ contains
   ! ================================================================
   ! Complex tests
   ! ================================================================
+  !> Test complex array for 1D
   subroutine test_complex_array_1d()
     complex(real64), allocatable :: carr(:), carr2(:)
     character(len=100) :: fname
@@ -578,7 +571,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 1D Mismatch")
   end subroutine test_complex_array_1d
-
+  
+  !> Test complex array for 2D
   subroutine test_complex_array_2d()
     complex(real64), allocatable :: carr(:,:), carr2(:,:)
     character(len=100) :: fname
@@ -597,7 +591,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 2D Mismatch")
   end subroutine test_complex_array_2d
-
+  
+   !> Test complex array for 3D
   subroutine test_complex_array_3d()
     complex(real64), allocatable :: carr(:,:,:), carr2(:,:,:)
     character(len=100) :: fname
@@ -616,7 +611,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 3D Mismatch")
   end subroutine test_complex_array_3d
-
+  
+   !> Test complex array for 4D
   subroutine test_complex_array_4d()
     complex(real64), allocatable :: carr(:,:,:,:), carr2(:,:,:,:)
     character(len=100) :: fname
@@ -644,7 +640,8 @@ contains
     if (.not. is_ok(ierr)) error stop
     call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 4D Mismatch")
   end subroutine test_complex_array_4d
-
+  
+   !> Test complex array for 5D
   subroutine test_complex_array_5d()
     complex(real64), allocatable :: carr(:,:,:,:,:), carr2(:,:,:,:,:)
     character(len=100) :: fname

@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 !> Module for deserializing real (double precision) arrays from binary files
 module f42_deserialize_real
   use safeguard
@@ -200,39 +202,7 @@ contains
 
 end module f42_deserialize_real
 
-!> R binding for the subroutine to deserialize a flat real array from a file.
-!> Deserializes an array of any dimension into a flat buffer.
-!> @note It is assumed that the array is already allocated and passed together with its size
-subroutine deserialize_real_flat_r(flat_arr, arr_size, filename_raw, fn_len, ierr)
-  use iso_fortran_env, only: real64, int32
-  use iso_c_binding, only : c_char
-  use f42_deserialize_real, only : deserialize_real_flat
-  use tox_conversions, only : c_char_1d_as_string
-  use tox_errors, only : set_ok, is_ok
-  implicit none
 
-  integer(int32), intent(in) :: fn_len
-  !! length of the filename
-  integer(int32), intent(in) :: arr_size
-  !! size of the array
-  real(real64), intent(out) :: flat_arr(arr_size)
-  !! array provided by R
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-  !! filename in ascii
-  integer(int32), intent(out) :: ierr
-  !! error code
-
-  character(len=:), allocatable :: filename
-  !! filename
-
-  call set_ok(ierr)
-
-  call c_char_1d_as_string(filename_raw, filename, ierr)
-  if (.not. is_ok(ierr)) return
-
-  call deserialize_real_flat(flat_arr, filename, ierr)
-
-end subroutine
 
 
 !> C binding for the subroutine to deserialize a real array from a file.
@@ -244,23 +214,30 @@ subroutine deserialize_real_nd_C(arr, arr_size, filename_raw, fn_len, ierr) bind
     use f42_deserialize_real, only : deserialize_real_flat
     use tox_errors, only : set_ok, is_ok
     use tox_conversions, only : c_char_1d_as_string
+    M_USE_NULL_VALIDATION
     implicit none
 
     ! Inputs / Outputs
-    integer(c_int), intent(in), value  :: arr_size  
+    integer(c_int), intent(in), target :: arr_size  
     !! size of the output array
-    real(c_double), intent(out)        :: arr(arr_size)
+    real(c_double), intent(out), target :: arr(arr_size)
     !! output array
-    integer(c_int), intent(in), value  :: fn_len
+    integer(c_int), intent(in), target :: fn_len
     !! length of the filename
-    character(kind=c_char, len=1), intent(in)         :: filename_raw(fn_len)
+    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
     !! Filename in ascii
-    integer(c_int), intent(out)        :: ierr
+    integer(c_int), intent(out), target :: ierr
     !! error code
 
     ! Locals
     character(len=:), allocatable :: filename
     !! filename
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(arr_size)
+    M_CHECK_NON_NULL(fn_len)
+    M_CHECK_NON_NULL(arr)
+    M_CHECK_NON_NULL(filename_raw)
 
     call set_ok(ierr)
 

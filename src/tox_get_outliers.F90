@@ -1,3 +1,4 @@
+#include "macros.h"
 
 !> Module to identify gene outliers based on their distances to family centroids.
 module tox_get_outliers
@@ -345,172 +346,9 @@ contains
   end subroutine detect_outliers
 end module tox_get_outliers
 
-!> R wrapper for compute_family_scaling (expert version with pre-allocated arrays).
-!| Calls compute_family_scaling with standard Fortran types for R interface.
-!| This version requires pre-allocated work arrays for maximum performance and control.
-subroutine compute_family_scaling_expert_r(n_genes, n_families, distances, gene_to_fam, dscale, &
-      loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
-  use tox_get_outliers, only: compute_family_scaling
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
 
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of gene families
-  integer(int32), intent(in) :: n_families
-  !| Array of Euclidean distances for each gene
-  real(real64), intent(in) :: distances(n_genes)
-  !| Mapping of each gene to its family (1-based)
-  integer(int32), intent(in) :: gene_to_fam(n_genes)
-  !| Output: array of scaling factors per family
-  real(real64), intent(out) :: dscale(n_families)
-  !| Reference x-coordinates.
-  real(real64), intent(inout) :: loess_x(n_families)
-  !| Reference y-coordinates (length n_total).
-  real(real64), intent(inout) :: loess_y(n_families)
-  !| Indices of reference points used for smoothing.
-  integer(int32), intent(inout) :: indices_used(n_families)
-  !| Permutation array for sorting gene distances
-  integer(int32), intent(inout) :: perm_tmp(n_genes)
-  !| Stack array for left indices during sorting
-  integer(int32), intent(inout) :: stack_left_tmp(n_genes)
-  !| Stack array for right indices during sorting
-  integer(int32), intent(inout) :: stack_right_tmp(n_genes)
-  !| Pre-allocated work array for family distances (dimension n_genes)
-  real(real64), intent(out) :: family_distances(n_genes)
-  !| Error code: 0=ok, 201=invalid family indices
-  integer(int32), intent(out) :: ierr
-  call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
-      loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
-end subroutine compute_family_scaling_expert_r
 
-!> R wrapper for compute_family_scaling (main version with automatic allocation).
-!| Calls compute_family_scaling_alloc with standard Fortran types for R interface.
-!| This is the recommended version for most users as it handles memory allocation automatically.
-subroutine compute_family_scaling_r(n_genes, n_families, distances, gene_to_fam, dscale, &
-      loess_x, loess_y, indices_used, ierr)
-  use tox_get_outliers, only: compute_family_scaling_alloc
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
 
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of gene families
-  integer(int32), intent(in) :: n_families
-  !| Array of Euclidean distances for each gene
-  real(real64), intent(in) :: distances(n_genes)
-  !| Mapping of each gene to its family (1-based)
-  integer(int32), intent(in) :: gene_to_fam(n_genes)
-  !| Output: array of scaling factors per family
-  real(real64), intent(out) :: dscale(n_families)
-  !| Reference x-coordinates.
-  real(real64), intent(inout) :: loess_x(n_families)
-  !| Reference y-coordinates (length n_total).
-  real(real64), intent(inout) :: loess_y(n_families)
-  !| Indices of reference points used for smoothing.
-  integer(int32), intent(inout) :: indices_used(n_families)
-  !| Error code: 0=ok, 201=invalid family indices
-  integer(int32), intent(out) :: ierr
-  call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
-      loess_x, loess_y, indices_used, ierr)
-end subroutine compute_family_scaling_r
-
-!> R wrapper for compute_rdi.
-!| Calls compute_rdi with standard Fortran types for R interface.
-!| Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.
-subroutine compute_rdi_r(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
-  use tox_get_outliers, only: compute_rdi
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of families
-  integer(int32), intent(in) :: n_families
-  !| Array of Euclidean distances for each gene to its centroid
-  real(real64), intent(in) :: distances(n_genes)
-  !| Gene-to-family mapping (1-based indexing)
-  integer(int32), intent(in) :: gene_to_fam(n_genes)
-  !| Array of scaling factors for each family
-  real(real64), intent(in) :: dscale(n_families)
-  !| Output array of RDI values for each gene
-  real(real64), intent(out) :: rdi(n_genes)
-  !| Work array for sorting (dimension n_genes)
-  real(real64), intent(inout) :: sorted_rdi(n_genes)
-  !| Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
-  integer(int32), intent(inout) :: perm(n_genes)
-  !| Stack array for sorting (dimension n_genes)
-  integer(int32), intent(inout) :: stack_left(n_genes)
-  !| Stack array for sorting (dimension n_genes)
-  integer(int32), intent(inout) :: stack_right(n_genes)
-  call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
-end subroutine compute_rdi_r
-
-!> R wrapper for identify_outliers.
-!| Calls identify_outliers with standard Fortran types for R interface.
-subroutine identify_outliers_r(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
-  use tox_get_outliers, only: identify_outliers
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Array of RDI values for each gene
-  real(real64), intent(in) :: rdi(n_genes)
-  !| Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-  real(real64), intent(in) :: sorted_rdi(n_genes)
-  !| Output boolean array indicating outliers
-  logical, intent(out) :: is_outlier(n_genes)
-  !| Output threshold value used for detection
-  real(real64), intent(out) :: threshold
-  !| Percentile threshold (default: 95 for top 5%)
-  real(real64), intent(in) :: percentile
-  call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
-end subroutine identify_outliers_r
-
-!> R wrapper for detect_outliers.
-!| Calls detect_outliers with standard Fortran types for R interface.
-subroutine detect_outliers_r(n_genes, n_families, distances, gene_to_fam, &
-                            work_array, perm, stack_left, stack_right, &
-                            is_outlier, loess_x, loess_y, loess_n, ierr, &
-                            percentile)
-  use tox_get_outliers, only: detect_outliers
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of gene families
-  integer(int32), intent(in) :: n_families
-  !| Array of Euclidean distances for each gene to its centroid
-  real(real64), intent(in) :: distances(n_genes)
-  !| Gene-to-family mapping (1-based indexing)
-  integer(int32), intent(in) :: gene_to_fam(n_genes)
-  !| Work array for sorting (dimension n_genes)
-  real(real64), intent(inout) :: work_array(n_genes)
-  !| Permutation array for sorting (dimension n_genes)
-  integer(int32), intent(inout) :: perm(n_genes)
-  !| Stack array for left indices during sorting
-  integer(int32), intent(inout) :: stack_left(n_genes)
-  !| Stack array for right indices during sorting
-  integer(int32), intent(inout) :: stack_right(n_genes)
-  !| Output boolean array indicating outliers
-  logical, intent(out) :: is_outlier(n_genes)
-  !| Reference x-coordinates.
-  real(real64), intent(inout) :: loess_x(n_families)
-  !| Reference y-coordinates (length n_total).
-  real(real64), intent(inout) :: loess_y(n_families)
-  !| Indices of reference points used for smoothing.
-  integer(int32), intent(inout) :: loess_n(n_families)
-  !| Error code: 0=ok, 201=invalid family indices
-  integer(int32), intent(out) :: ierr
-  !| (optional) Percentile threshold for outlier detection (default: 95)
-  real(real64), intent(in), optional :: percentile
-  call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
-                      work_array, perm, stack_left, stack_right, &
-                      is_outlier, loess_x, loess_y, loess_n, ierr, &
-                      percentile)
-end subroutine detect_outliers_r
 
 ! C wrappers for RDI/outlier routines
 
@@ -522,10 +360,11 @@ end subroutine detect_outliers_r
     family_distances, ierr) bind(C, name="compute_family_scaling_expert_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: compute_family_scaling
+  M_USE_NULL_VALIDATION
   implicit none
 
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes, n_families
+  integer(c_int), intent(in), target :: n_genes, n_families
   !| Array of Euclidean distances for each gene
   real(c_double), intent(in), target :: distances(n_genes)
   !| Mapping of each gene to its family (1-based)
@@ -547,7 +386,22 @@ end subroutine detect_outliers_r
   !| Pre-allocated work array for family distances (dimension n_genes)
   real(c_double), intent(out), target :: family_distances(n_genes)
   !| Error code: 0=ok, 201=invalid family indices
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_genes)
+  M_CHECK_NON_NULL(n_families)
+  M_CHECK_NON_NULL(distances)
+  M_CHECK_NON_NULL(gene_to_fam)
+  M_CHECK_NON_NULL(dscale)
+  M_CHECK_NON_NULL(loess_x)
+  M_CHECK_NON_NULL(loess_y)
+  M_CHECK_NON_NULL(indices_used)
+  M_CHECK_NON_NULL(perm_tmp)
+  M_CHECK_NON_NULL(stack_left_tmp)
+  M_CHECK_NON_NULL(stack_right_tmp)
+  M_CHECK_NON_NULL(family_distances)
+
     call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
       loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)
 end subroutine compute_family_scaling_expert_c
@@ -559,9 +413,10 @@ subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam,
   loess_x, loess_y, indices_used, ierr) bind(C, name="compute_family_scaling_c")
 use, intrinsic :: iso_c_binding, only : c_int, c_double
 use tox_get_outliers, only: compute_family_scaling_alloc
+M_USE_NULL_VALIDATION
 implicit none
 !| Total number of genes
-integer(c_int), intent(in), value :: n_genes, n_families
+integer(c_int), intent(in), target :: n_genes, n_families
 !| Array of Euclidean distances for each gene
 real(c_double), intent(in), target :: distances(n_genes)
 !| Mapping of each gene to its family (1-based)
@@ -575,7 +430,18 @@ real(c_double), intent(inout), target :: loess_y(n_families)
 !| Indices of reference points used for smoothing
 integer(c_int), intent(inout), target :: indices_used(n_families)
 !| Error code: 0=ok, 201=invalid family indices
-integer(c_int), intent(out) :: ierr
+integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_genes)
+  M_CHECK_NON_NULL(n_families)
+  M_CHECK_NON_NULL(distances)
+  M_CHECK_NON_NULL(gene_to_fam)
+  M_CHECK_NON_NULL(dscale)
+  M_CHECK_NON_NULL(loess_x)
+  M_CHECK_NON_NULL(loess_y)
+  M_CHECK_NON_NULL(indices_used)
+
   call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
     loess_x, loess_y, indices_used, ierr)
 end subroutine compute_family_scaling_c
@@ -583,13 +449,13 @@ end subroutine compute_family_scaling_c
 !> C wrapper for compute_rdi.
 !| Calls compute_rdi with C-compatible types for external interface.
 !| Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.
-subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right) bind(C, name="compute_rdi_c")
+pure subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right) bind(C, name="compute_rdi_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: compute_rdi
   implicit none
 
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes, n_families
+  integer(c_int), intent(in), target :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid
   real(c_double), intent(in), target :: distances(n_genes)
   !| Gene-to-family mapping (1-based indexing)
@@ -606,6 +472,7 @@ subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rd
   integer(c_int), intent(out), target :: stack_left(n_genes)
   !| Output stack array for right indices during sorting
   integer(c_int), intent(out), target :: stack_right(n_genes)
+
   call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
 end subroutine compute_rdi_c
 
@@ -615,10 +482,11 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, thresho
                               bind(C, name="identify_outliers_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: identify_outliers
+  use tox_conversions, only: c_int_as_logical, logical_as_c_int
   implicit none
 
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes
+  integer(c_int), intent(in), target :: n_genes
   !| Array of RDI values for each gene
   real(c_double), intent(in), target :: rdi(n_genes)
   !| Sorted RDI array (must be sorted in ascending order before calling)
@@ -626,26 +494,18 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, thresho
   !| Output integer array indicating outliers (1=outlier, 0=not)
   integer(c_int), intent(out), target :: is_outlier_int(n_genes)
   !| Output threshold value used for detection
-  real(c_double), intent(out) :: threshold
+  real(c_double), intent(out), target :: threshold
   !| Percentile threshold for outlier detection
-  real(c_double), intent(in), value :: percentile
+  real(c_double), intent(in), target :: percentile
   logical :: is_outlier(n_genes)
-  integer :: i
 
-  ! Convert integer (0/1) to logical (.false./.true.) for is_outlier
-  do i = 1, n_genes
-    is_outlier(i) = (is_outlier_int(i) /= 0)
-  end do
+  ! Convert integer (0/1) to logical using tox_conversions utility
+  call c_int_as_logical(is_outlier_int, is_outlier)
 
   call identify_outliers(n_genes, rdi, sorted_rdi, is_outlier, threshold, percentile)
-  ! Convert logical (.true./.false.) to integer (1/0)
-  do i = 1, n_genes
-    if (is_outlier(i)) then
-      is_outlier_int(i) = 1
-    else
-      is_outlier_int(i) = 0
-    end if
-  end do
+  
+  ! Convert logical to integer (1/0) using tox_conversions utility
+  call logical_as_c_int(is_outlier, is_outlier_int)
 end subroutine identify_outliers_c
 
 
@@ -657,10 +517,12 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
                           percentile) bind(C, name="detect_outliers_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_get_outliers, only: detect_outliers
+  use tox_conversions, only: logical_as_c_int
+  M_USE_NULL_VALIDATION
   implicit none
 
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes, n_families
+  integer(c_int), intent(in), target :: n_genes, n_families
   !| Array of Euclidean distances for each gene to its centroid
   real(c_double), intent(in), target :: distances(n_genes)
   !| Gene-to-family mapping (1-based indexing)
@@ -682,22 +544,31 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
   !| Indices of reference points used for smoothing
   integer(c_int), intent(inout), target :: loess_n(n_families)
   !| Error code: 0=ok, 201=invalid family indices
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
   !| Percentile threshold for outlier detection
-  real(c_double), intent(in), value :: percentile
+  real(c_double), intent(in), target :: percentile
   logical :: is_outlier(n_genes)
-  integer :: i
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_genes)
+  M_CHECK_NON_NULL(n_families)
+  M_CHECK_NON_NULL(distances)
+  M_CHECK_NON_NULL(gene_to_fam)
+  M_CHECK_NON_NULL(work_array)
+  M_CHECK_NON_NULL(perm)
+  M_CHECK_NON_NULL(stack_left)
+  M_CHECK_NON_NULL(stack_right)
+  M_CHECK_NON_NULL(is_outlier_int)
+  M_CHECK_NON_NULL(loess_x)
+  M_CHECK_NON_NULL(loess_y)
+  M_CHECK_NON_NULL(loess_n)
+  M_CHECK_NON_NULL(percentile)
+
   call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
                     work_array, perm, stack_left, stack_right, &
                     is_outlier, loess_x, loess_y, loess_n, ierr, &
                     percentile)
 
-  ! Convert logical (.true./.false.) to integer (1/0) for is_outlier
-  do i = 1, n_genes
-    if (is_outlier(i)) then
-      is_outlier_int(i) = 1
-    else
-      is_outlier_int(i) = 0
-    end if
-  end do
+  ! Convert logical to integer (1/0) using tox_conversions utility
+  call logical_as_c_int(is_outlier, is_outlier_int)
 end subroutine detect_outliers_c

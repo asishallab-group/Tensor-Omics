@@ -120,7 +120,7 @@ run-tests:
 generate-snippets-and-docs:  # generate documentation after tests have passed
   stage: generate-snippets-and-docs
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_REF_NAME == "main"'
       changes:
         - src/**/*.[fF90]
         - ford.yml
@@ -139,7 +139,7 @@ generate-snippets-and-docs:  # generate documentation after tests have passed
     - *install-git
     - git-push "Update generated documentation and snippets" doc snippets
 
-done: # Final stage that will always be in a pipeline and succeeds when all other stages pass
+done: # Final stage that will be in a pipeline if all needed jobs exist or none of them -> at least one job always
   stage: done
   needs:
     - job: run-tests

@@ -1,4 +1,29 @@
 {
+  "Fortran Call of subroutine 'mean_vector'": {
+    "prefix": "tox:mean_vector",
+    "body": "call mean_vector(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid}, ${7:ierr})",
+    "description": "Call of Fortran subroutine 'mean_vector' from module 'tox_gene_centroids'"
+  },
+  "Fortran Call of subroutine 'group_centroid'": {
+    "prefix": "tox:group_centroid",
+    "body": "call group_centroid(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:selected_indices}, ${9:ierr}, ${10:ortholog_set})",
+    "description": "Call of Fortran subroutine 'group_centroid' from module 'tox_gene_centroids'"
+  },
+  "Fortran Call of subroutine 'normalize_variable_timeseries'": {
+    "prefix": "tox:normalize_variable_timeseries",
+    "body": "call normalize_variable_timeseries(${1:v}, ${2:v_norm}, ${3:n_points}, ${4:ierr}, ${5:status})",
+    "description": "Call of Fortran subroutine 'normalize_variable_timeseries' from module 'tox_trajectory_normalization'"
+  },
+  "Fortran Call of subroutine 'normalize_single_trajectory'": {
+    "prefix": "tox:normalize_single_trajectory",
+    "body": "call normalize_single_trajectory(${1:trajectory}, ${2:trajectory_norm}, ${3:n_factors}, ${4:n_timepoints}, ${5:ierr}, ${6:status})",
+    "description": "Call of Fortran subroutine 'normalize_single_trajectory' from module 'tox_trajectory_normalization'"
+  },
+  "Fortran Call of subroutine 'normalize_all_trajectories'": {
+    "prefix": "tox:normalize_all_trajectories",
+    "body": "call normalize_all_trajectories(${1:trajectories}, ${2:trajectories_norm}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr}, ${7:status})",
+    "description": "Call of Fortran subroutine 'normalize_all_trajectories' from module 'tox_trajectory_normalization'"
+  },
   "Fortran Call of subroutine 'omics_vector_rap_projection'": {
     "prefix": "tox:omics_vector_rap_projection",
     "body": "call omics_vector_rap_projection(${1:vecs}, ${2:n_axes}, ${3:n_vecs}, ${4:vecs_selection_mask}, ${5:n_selected_vecs}, ${6:axes_selection_mask}, ${7:n_selected_axes}, ${8:projections}, ${9:ierr})",
@@ -204,15 +229,60 @@
     "body": "call c_size_as_c_int64(${1:csize_val}, ${2:c64_val})",
     "description": "Call of Fortran subroutine 'c_size_as_c_int64' from module 'tox_conversions'"
   },
-  "Fortran Call of subroutine 'mean_vector'": {
-    "prefix": "tox:mean_vector",
-    "body": "call mean_vector(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'mean_vector' from module 'tox_gene_centroids'"
+  "Fortran Call of subroutine 'compute_gene_means'": {
+    "prefix": "tox:compute_gene_means",
+    "body": "call compute_gene_means(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:ierr})",
+    "description": "Call of Fortran subroutine 'compute_gene_means' from module 'tox_data_integration'"
   },
-  "Fortran Call of subroutine 'group_centroid'": {
-    "prefix": "tox:group_centroid",
-    "body": "call group_centroid(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:selected_indices}, ${9:ierr}, ${10:ortholog_set})",
-    "description": "Call of Fortran subroutine 'group_centroid' from module 'tox_gene_centroids'"
+  "Fortran Call of subroutine 'compute_gene_means_helper'": {
+    "prefix": "tox:compute_gene_means_helper",
+    "body": "call compute_gene_means_helper(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means})",
+    "description": "Call of Fortran subroutine 'compute_gene_means_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_residuals'": {
+    "prefix": "tox:compute_residuals",
+    "body": "call compute_residuals(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:resid}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'compute_residuals' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_residuals_helper'": {
+    "prefix": "tox:compute_residuals_helper",
+    "body": "call compute_residuals_helper(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:resid})",
+    "description": "Call of Fortran subroutine 'compute_residuals_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'pool_means_alloc'": {
+    "prefix": "tox:pool_means_alloc",
+    "body": "call pool_means_alloc(${1:n_genes_s1}, ${2:mean_s1}, ${3:n_genes_s2}, ${4:mean_s2}, ${5:n_points}, ${6:n_pool}, ${7:x_star}, ${8:ierr})",
+    "description": "Call of Fortran subroutine 'pool_means_alloc' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'pool_means'": {
+    "prefix": "tox:pool_means",
+    "body": "call pool_means(${1:pooled_means}, ${2:pooled_means_perm}, ${3:pool_size}, ${4:n_points}, ${5:n_pool}, ${6:x_star}, ${7:ierr})",
+    "description": "Call of Fortran subroutine 'pool_means' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'pool_means_helper'": {
+    "prefix": "tox:pool_means_helper",
+    "body": "call pool_means_helper(${1:pooled_means}, ${2:pooled_means_perm}, ${3:pool_size}, ${4:n_points}, ${5:n_pool}, ${6:x_star})",
+    "description": "Call of Fortran subroutine 'pool_means_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of function 'calc_neighborhood_size'": {
+    "prefix": "tox:calc_neighborhood_size",
+    "body": "${{1:result}} = calc_neighborhood_size(${2:n_pool}, ${3:n_points}, ${4:n_genes_s}, ${5:mean_s}, ${6:desired_size})",
+    "description": "Call of Fortran function 'calc_neighborhood_size' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'construct_neighborhoods_alloc'": {
+    "prefix": "tox:construct_neighborhoods_alloc",
+    "body": "call construct_neighborhoods_alloc(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:neighborhood_residuals}, ${8:neighborhood_indices}, ${9:n_neighbors}, ${10:ierr})",
+    "description": "Call of Fortran subroutine 'construct_neighborhoods_alloc' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'construct_neighborhoods'": {
+    "prefix": "tox:construct_neighborhoods",
+    "body": "call construct_neighborhoods(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:tmp_distances}, ${8:tmp_distances_perm}, ${9:neighborhood_residuals}, ${10:neighborhood_indices}, ${11:n_neighbors}, ${12:ierr})",
+    "description": "Call of Fortran subroutine 'construct_neighborhoods' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'construct_neighborhoods_helper'": {
+    "prefix": "tox:construct_neighborhoods_helper",
+    "body": "call construct_neighborhoods_helper(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:tmp_distances}, ${8:tmp_distances_perm}, ${9:neighborhood_residuals}, ${10:neighborhood_indices}, ${11:n_neighbors})",
+    "description": "Call of Fortran subroutine 'construct_neighborhoods_helper' from module 'tox_data_integration'"
   },
   "Fortran Call of subroutine 'compute_tissue_versatility'": {
     "prefix": "tox:compute_tissue_versatility",
@@ -241,7 +311,7 @@
   },
   "Fortran Call of subroutine 'log2_transformation'": {
     "prefix": "tox:log2_transformation",
-    "body": "call log2_transformation(${1:n_genes}, ${2:n_tissues}, ${3:input_matrix}, ${4:output_matrix}, ${5:ierr})",
+    "body": "call log2_transformation(${1:n_genes}, ${2:n_grps}, ${3:input_matrix}, ${4:output_matrix}, ${5:ierr})",
     "description": "Call of Fortran subroutine 'log2_transformation' from module 'tox_normalization'"
   },
   "Fortran Call of subroutine 'calc_tiss_avg'": {
@@ -293,6 +363,56 @@
     "prefix": "tox:get_baseline_mode",
     "body": "call get_baseline_mode(${1:c_mode_str}, ${2:mode}, ${3:ierr})",
     "description": "Call of Fortran subroutine 'get_baseline_mode' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_trajectory_helper'": {
+    "prefix": "tox:compute_velocity_trajectory_helper",
+    "body": "call compute_velocity_trajectory_helper(${1:trajectory}, ${2:velocity}, ${3:n_timepoints})",
+    "description": "Call of Fortran subroutine 'compute_velocity_trajectory_helper' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_factor_velocity_from_trajectories_helper'": {
+    "prefix": "tox:compute_factor_velocity_from_trajectories_helper",
+    "body": "call compute_factor_velocity_from_trajectories_helper(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:factor_idx}, ${6:sample_idx}, ${7:velocity})",
+    "description": "Call of Fortran subroutine 'compute_factor_velocity_from_trajectories_helper' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_trajectory'": {
+    "prefix": "tox:compute_velocity_trajectory",
+    "body": "call compute_velocity_trajectory(${1:trajectory}, ${2:velocity}, ${3:n_timepoints}, ${4:ierr})",
+    "description": "Call of Fortran subroutine 'compute_velocity_trajectory' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_acceleration_from_velocity_trajectory'": {
+    "prefix": "tox:compute_acceleration_from_velocity_trajectory",
+    "body": "call compute_acceleration_from_velocity_trajectory(${1:velocity}, ${2:acceleration}, ${3:n_timepoints}, ${4:ierr})",
+    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity_trajectory' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_trajectories_helper'": {
+    "prefix": "tox:compute_velocity_trajectories_helper",
+    "body": "call compute_velocity_trajectories_helper(${1:trajectories}, ${2:velocity}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints})",
+    "description": "Call of Fortran subroutine 'compute_velocity_trajectories_helper' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_trajectories'": {
+    "prefix": "tox:compute_velocity_trajectories",
+    "body": "call compute_velocity_trajectories(${1:trajectories}, ${2:velocity}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'compute_velocity_trajectories' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_acceleration_from_velocity_helper'": {
+    "prefix": "tox:compute_acceleration_from_velocity_helper",
+    "body": "call compute_acceleration_from_velocity_helper(${1:velocity}, ${2:acceleration}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints})",
+    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity_helper' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_acceleration_from_velocity'": {
+    "prefix": "tox:compute_acceleration_from_velocity",
+    "body": "call compute_acceleration_from_velocity(${1:velocity}, ${2:acceleration}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_acceleration_contributions'": {
+    "prefix": "tox:compute_velocity_acceleration_contributions",
+    "body": "call compute_velocity_acceleration_contributions(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:mode}, ${6:factor_workspace}, ${7:dependent_workspace}, ${8:contributions_workspace}, ${9:contrib_velocity}, ${10:velocity_contribution_series}, ${11:contrib_acceleration}, ${12:acceleration_contribution_series}, ${13:ierr})",
+    "description": "Call of Fortran subroutine 'compute_velocity_acceleration_contributions' from module 'tox_trajectory_contribution_analysis'"
+  },
+  "Fortran Call of subroutine 'compute_velocity_acceleration_contributions_alloc'": {
+    "prefix": "tox:compute_velocity_acceleration_contributions_alloc",
+    "body": "call compute_velocity_acceleration_contributions_alloc(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:mode}, ${6:contrib_velocity}, ${7:velocity_contribution_series}, ${8:contrib_acceleration}, ${9:acceleration_contribution_series}, ${10:ierr})",
+    "description": "Call of Fortran subroutine 'compute_velocity_acceleration_contributions_alloc' from module 'tox_trajectory_contribution_analysis'"
   },
   "Fortran Call of subroutine 'euclidean_distance'": {
     "prefix": "tox:euclidean_distance",
@@ -389,6 +509,26 @@
     "body": "call get_min_distance_indices_helper(${1:distances}, ${2:n}, ${3:row_idx}, ${4:col_idx}, ${5:min_dist})",
     "description": "Call of Fortran subroutine 'get_min_distance_indices_helper' from module 'tox_clustering'"
   },
+  "Fortran Call of subroutine 'fjct_compute_jsd_alloc'": {
+    "prefix": "tox:fjct_compute_jsd_alloc",
+    "body": "call fjct_compute_jsd_alloc(${1:family_idx}, ${2:gene_to_family_s1}, ${3:gene_to_family_s2}, ${4:n_genes_s1}, ${5:n_genes_s2}, ${6:neighborhood_residuals_s1}, ${7:neighborhood_residuals_s2}, ${8:neighborhood_genes_s1}, ${9:neighborhood_genes_s2}, ${10:n_reps_s1}, ${11:n_reps_s2}, ${12:n_neighbors}, ${13:n_points}, ${14:n_bins}, ${15:shared_residual_range}, ${16:js_divergences}, ${17:included_n_reps_s1}, ${18:included_n_reps_s2}, ${19:total_included_n_reps}, ${20:global_js_divergence}, ${21:weights}, ${22:ierr})",
+    "description": "Call of Fortran subroutine 'fjct_compute_jsd_alloc' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'fjct_compute_jsd'": {
+    "prefix": "tox:fjct_compute_jsd",
+    "body": "call fjct_compute_jsd(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:neighbor_mask_s1}, ${8:neighbor_mask_s2}, ${9:n_bins}, ${10:shared_residual_range}, ${11:js_divergences}, ${12:included_n_reps_s1}, ${13:included_n_reps_s2}, ${14:total_included_n_reps}, ${15:global_js_divergence}, ${16:weights}, ${17:pmf_s1}, ${18:pmf_s2}, ${19:tmp_counts}, ${20:ierr})",
+    "description": "Call of Fortran subroutine 'fjct_compute_jsd' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'fjct_compute_contribution_scores'": {
+    "prefix": "tox:fjct_compute_contribution_scores",
+    "body": "call fjct_compute_contribution_scores(${1:global_js_divergences}, ${2:total_included_n_reps_per_f}, ${3:k_families}, ${4:support_weights}, ${5:contribution_scores}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'fjct_compute_contribution_scores' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'fjct_compute_contribution_scores_helper'": {
+    "prefix": "tox:fjct_compute_contribution_scores_helper",
+    "body": "call fjct_compute_contribution_scores_helper(${1:global_js_divergences}, ${2:total_included_n_reps_per_f}, ${3:k_families}, ${4:support_weights}, ${5:contribution_scores})",
+    "description": "Call of Fortran subroutine 'fjct_compute_contribution_scores_helper' from module 'tox_data_integration'"
+  },
   "Fortran Call of subroutine 'set_ok'": {
     "prefix": "tox:set_ok",
     "body": "call set_ok(${1:ierr})",
@@ -453,6 +593,76 @@
     "prefix": "tox:validate_distance_matrix",
     "body": "call validate_distance_matrix(${1:distances}, ${2:n}, ${3:ierr}, ${4:min}, ${5:max})",
     "description": "Call of Fortran subroutine 'validate_distance_matrix' from module 'tox_errors'"
+  },
+  "Fortran Call of subroutine 'gjct_permutation_test_alloc'": {
+    "prefix": "tox:gjct_permutation_test_alloc",
+    "body": "call gjct_permutation_test_alloc(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:ierr}, ${14:random_seed}, ${15:neighbor_mask_s1}, ${16:neighbor_mask_s2})",
+    "description": "Call of Fortran subroutine 'gjct_permutation_test_alloc' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'gjct_permutation_test'": {
+    "prefix": "tox:gjct_permutation_test",
+    "body": "call gjct_permutation_test(${1:neighborhood_residuals_s1_copy}, ${2:neighborhood_residuals_s2_copy}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:tmp_pool}, ${14:tmp_pmf_s1}, ${15:tmp_pmf_s2}, ${16:tmp_counts}, ${17:tmp_included_n_reps_s1}, ${18:tmp_included_n_reps_s2}, ${19:tmp_js_divergences}, ${20:tmp_weights}, ${21:ierr}, ${22:random_seed}, ${23:neighbor_mask_s1}, ${24:neighbor_mask_s2})",
+    "description": "Call of Fortran subroutine 'gjct_permutation_test' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'gjct_permutation_test_helper'": {
+    "prefix": "tox:gjct_permutation_test_helper",
+    "body": "call gjct_permutation_test_helper(${1:neighborhood_residuals_s1_copy}, ${2:neighborhood_residuals_s2_copy}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:tmp_pool}, ${14:tmp_pmf_s1}, ${15:tmp_pmf_s2}, ${16:tmp_counts}, ${17:tmp_included_n_reps_s1}, ${18:tmp_included_n_reps_s2}, ${19:tmp_js_divergences}, ${20:tmp_weights}, ${21:random_seed}, ${22:neighbor_mask_s1}, ${23:neighbor_mask_s2})",
+    "description": "Call of Fortran subroutine 'gjct_permutation_test_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'shuffle_reference_point_helper'": {
+    "prefix": "tox:shuffle_reference_point_helper",
+    "body": "call shuffle_reference_point_helper(${1:reference_point_s1}, ${2:reference_point_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:pool_flat})",
+    "description": "Call of Fortran subroutine 'shuffle_reference_point_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'determine_shared_residual_range'": {
+    "prefix": "tox:determine_shared_residual_range",
+    "body": "call determine_shared_residual_range(${1:abs_residual_pool}, ${2:abs_residual_pool_perm}, ${3:pool_size}, ${4:shared_residual_range}, ${5:ierr}, ${6:residual_range_quantile})",
+    "description": "Call of Fortran subroutine 'determine_shared_residual_range' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'determine_shared_residual_range_helper'": {
+    "prefix": "tox:determine_shared_residual_range_helper",
+    "body": "call determine_shared_residual_range_helper(${1:abs_residual_pool}, ${2:abs_residual_pool_perm}, ${3:pool_size}, ${4:shared_residual_range}, ${5:residual_range_quantile})",
+    "description": "Call of Fortran subroutine 'determine_shared_residual_range_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'determine_shared_residual_range_alloc'": {
+    "prefix": "tox:determine_shared_residual_range_alloc",
+    "body": "call determine_shared_residual_range_alloc(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:shared_residual_range}, ${8:ierr}, ${9:residual_range_quantile})",
+    "description": "Call of Fortran subroutine 'determine_shared_residual_range_alloc' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'build_residual_histograms'": {
+    "prefix": "tox:build_residual_histograms",
+    "body": "call build_residual_histograms(${1:neighborhood_residuals}, ${2:n_reps}, ${3:n_neighbors}, ${4:n_points}, ${5:shared_residual_range}, ${6:n_bins}, ${7:counts}, ${8:pmf}, ${9:included_n_reps}, ${10:ierr}, ${11:neighbor_mask})",
+    "description": "Call of Fortran subroutine 'build_residual_histograms' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'build_residual_histograms_helper'": {
+    "prefix": "tox:build_residual_histograms_helper",
+    "body": "call build_residual_histograms_helper(${1:neighborhood_residuals}, ${2:n_reps}, ${3:n_neighbors}, ${4:n_points}, ${5:shared_residual_range}, ${6:n_bins}, ${7:counts}, ${8:pmf}, ${9:included_n_reps}, ${10:neighbor_mask})",
+    "description": "Call of Fortran subroutine 'build_residual_histograms_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_divergence_per_reference_point'": {
+    "prefix": "tox:compute_divergence_per_reference_point",
+    "body": "call compute_divergence_per_reference_point(${1:pmf_s1}, ${2:pmf_s2}, ${3:n_points}, ${4:n_bins}, ${5:js_divergences}, ${6:ierr})",
+    "description": "Call of Fortran subroutine 'compute_divergence_per_reference_point' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_divergence_per_reference_point_helper'": {
+    "prefix": "tox:compute_divergence_per_reference_point_helper",
+    "body": "call compute_divergence_per_reference_point_helper(${1:pmf_s1}, ${2:pmf_s2}, ${3:n_points}, ${4:n_bins}, ${5:js_divergences})",
+    "description": "Call of Fortran subroutine 'compute_divergence_per_reference_point_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_weighted_global_divergence'": {
+    "prefix": "tox:compute_weighted_global_divergence",
+    "body": "call compute_weighted_global_divergence(${1:js_divergences}, ${2:n_points}, ${3:included_n_reps_s1}, ${4:included_n_reps_s2}, ${5:global_js_divergence}, ${6:weights}, ${7:ierr})",
+    "description": "Call of Fortran subroutine 'compute_weighted_global_divergence' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'compute_weighted_global_divergence_helper'": {
+    "prefix": "tox:compute_weighted_global_divergence_helper",
+    "body": "call compute_weighted_global_divergence_helper(${1:js_divergences}, ${2:n_points}, ${3:included_n_reps_s1}, ${4:included_n_reps_s2}, ${5:global_js_divergence}, ${6:weights})",
+    "description": "Call of Fortran subroutine 'compute_weighted_global_divergence_helper' from module 'tox_data_integration'"
+  },
+  "Fortran Call of subroutine 'jct_compute_jsd_pipeline_helper'": {
+    "prefix": "tox:jct_compute_jsd_pipeline_helper",
+    "body": "call jct_compute_jsd_pipeline_helper(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:n_bins}, ${8:shared_residual_range}, ${9:js_divergences}, ${10:included_n_reps_s1}, ${11:included_n_reps_s2}, ${12:global_js_divergence}, ${13:weights}, ${14:pmf_s1}, ${15:pmf_s2}, ${16:tmp_counts}, ${17:neighbor_mask_s1}, ${18:neighbor_mask_s2})",
+    "description": "Call of Fortran subroutine 'jct_compute_jsd_pipeline_helper' from module 'tox_data_integration'"
   },
   "Fortran Call of subroutine 'validate_data_structure'": {
     "prefix": "tox:validate_data_structure",

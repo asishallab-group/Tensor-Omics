@@ -10,29 +10,33 @@ FLAGS=$(get_flags)
 ALIGN=$(get_alignment)
 handle_args "$@"
 
-# Clean build directory if it exists
-if [[ -d "build" && -z "$KEEP_OLD_BUILD_DIR" ]]; then
-  rm -rf build
+# trigger clean build on branch switch
+if [[ $(which git) ]]; then
+  git branch --show-current 2>/dev/null 1> build/.branch.tmp || true
+  touch build/.branch
+  if [[ $(diff build/.branch.tmp build/.branch) ]]; then
+    CLEAN_BUILD=1
+  fi
+  mv build/.branch.tmp build/.branch
+fi
+
+# # Clean build directory if it exists
+if [[ "$CLEAN_BUILD" ]]; then
+  rm -rf build/${COMPILER}_*
 fi
 
 # Build with FPM first
+generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
 fpm build --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG"
 
 check_exit_code "Build with fpm failed"
 
-# Move .mod, .o and .so files from FPM build directories to root
-for compiler_dir in build/${COMPILER}_*; do
-  if [ -d "$compiler_dir" ]; then
-    echo "Processing FPM directory: $compiler_dir"
-    # Move .so files if they exist
-    mv "$compiler_dir"/*.so build/ 2>/dev/null || true
-    # Move .mod files if they exist
-    find "$compiler_dir" -name "*.mod" -exec mv {} build/ \; 2>/dev/null || true
-    # Move .o files from subdirectories if they exist
-    find "$compiler_dir" -name "*.o" -exec mv {} build/ \; 2>/dev/null || true
-    # Remove the compiler-specific directory
-    rm -rf "$compiler_dir"
-  fi
-done
+rm fpm.toml
+
+# Copy .mod, .o and .so files from FPM build directories to build
+rm -f build/*.o build/*.mod
+
+# Copy .so, .mod, .o files if they exist
+find build/"${COMPILER}"_*/ \( -name "*.so" -o -name "*.mod" -o -name "*.o" \) -exec cp {} build/ \;
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"

@@ -78,14 +78,14 @@ def generate_fortran_snippets(file_pattern: str, ignored_files: List[str] = []) 
                     # Fortran is not case sensitive, so we neither
                     line: str = line.lower()
 
-                    if re.search(r"end module", line.lower()) is not None:
+                    if re.search(r"^end (sub)?module\b", line.lower()) is not None:
                         is_wrapper_section = True
 
                     # before doing anything, find the module definition
                     if module is None:
-                        module_def = re.search(r"^module\s+([a-z_0-9]+)", line)
+                        module_def = re.search(r"^(sub)?module\b\s*\(?(?P<module_name>[a-z_0-9]+)", line)
                         if module_def is not None:
-                            module, = module_def.groups()
+                            module = module_def.group("module_name")
                             fortran_modules.add(module.lower())
                             module_snippets = get_module_snippets(module, f42_snippets, tox_snippets)
                     else:
@@ -211,7 +211,7 @@ def generate_interfacing_snippets(file_pattern: str, lang: InterfacingLanguage, 
                         # check for a function definition
                         if re.search(r'(<-\s*function|^def)', line) is not None:
                             if defined_function:
-                                error_in_line("Declaring a new function without snippet header (or just missing indentation)", file_name, line_number)
+                                error_in_line("Declaring a new function without snippet header", file_name, line_number)
                             defined_function = True
 
                         # treat line as body (without line break)
