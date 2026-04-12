@@ -19,6 +19,7 @@ module f42_utils
 
   interface sort_array_heapsort
     module procedure sort_real_heapsort, sort_integer_heapsort, sort_character_heapsort
+    module procedure sort_real_heapsort_expl_size
   end interface sort_array_heapsort
 
   interface shuffle_vector
@@ -31,7 +32,99 @@ module f42_utils
 
   real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
   real(real64), parameter :: EPS = epsilon(1.0_real64)
+  real(real64), parameter :: LOG_2 = log(2.0_real64)
 contains
+
+  !> Initializes a permutation vector with ascending indices
+  pure subroutine init_perm(perm)
+    integer(int32), dimension(:), intent(out) :: perm
+      !! Permutation vector to initialize with indices
+
+    integer(int32) :: i_perm
+
+    associate (&
+      n_perm => size(perm, kind=int32)&
+    )
+      do concurrent (i_perm = 1:n_perm) shared(perm)
+        perm(i_perm) = i_perm
+      end do
+    end associate
+  end subroutine init_perm
+
+  !> Function to find the position to place a value in a sorted array using binary search
+  pure integer(int32) function binary_search_insertion(arr, perm, value, lower_idx, upper_idx) result(idx)
+    real(real64), dimension(:), contiguous, intent(in) :: arr
+      !! Array of values
+    integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
+      !! Sorting permutation of `arr`, NaNs sorted to the end
+    real(real64), intent(in) :: value
+      !! Value to find
+    integer(int32), intent(in), optional :: lower_idx
+      !! The lower index to start searching in the array, default `1` -> searching in `perm(lower_idx:upper_idx)`
+    integer(int32), intent(in), optional :: upper_idx
+      !! The upper index to stop searching in the array, default `size(arr)` -> searching in `perm(lower_idx:upper_idx)`
+
+    integer(int32) :: actual_lower_idx, actual_upper_idx, mid_idx, n
+
+    n = size(arr, kind=int32)
+
+    ! NaN is sorted to the end -> If value and last element is NaN, return n, else it is not found
+    if (ieee_is_nan(value)) then
+      if (ieee_is_nan(arr(perm(n)))) then
+        idx = n
+      else
+        idx = n+1
+      end if
+      return
+    end if
+
+    M_DEFAULT_VAL(lower_idx, actual_lower_idx, 1_int32)
+    actual_lower_idx = clamp(actual_lower_idx, min_val=1_int32, max_val=n)
+    M_DEFAULT_VAL(upper_idx, actual_upper_idx, n + 1)
+    actual_upper_idx = clamp(actual_upper_idx, min_val=actual_lower_idx-1, max_val=n) + 1
+
+    do while (actual_lower_idx < actual_upper_idx)
+      mid_idx = (actual_lower_idx + actual_upper_idx) / 2
+
+      ! Update bounds: Note that NaN is sorted to the end -> if condition fails because of NaN, the upper bound will be reduced
+      if (arr(perm(mid_idx)) < value) then
+        actual_lower_idx = mid_idx + 1
+      else
+        actual_upper_idx = mid_idx
+      end if
+    end do
+
+    idx = actual_lower_idx
+  end function binary_search_insertion
+
+  !> Function to find a value in a sorted array using binary search. Returns -1 if not found
+  pure integer(int32) function binary_search(arr, perm, value) result(idx)
+    real(real64), dimension(:), contiguous, intent(in) :: arr
+      !! Array of values
+    integer(int32), dimension(size(arr, kind=int32)), intent(in) :: perm
+      !! Sorting permutation of `arr`, NaNs sorted to the end
+    real(real64), intent(in) :: value
+      !! Value to find
+
+    integer(int32) :: n
+    real(real64) :: found
+
+    n = size(arr, kind=int32)
+
+    if (n <= 0) then
+      idx = -1
+    else
+      idx = binary_search_insertion(arr, perm, value)
+      if (idx == n + 1) then
+        idx = -1
+      else
+        found = arr(perm(idx))
+        if (found /= value .and. .not. (ieee_is_nan(found) .and. ieee_is_nan(value))) then
+          idx = -1
+        end if
+      end if
+    end if
+  end function binary_search
 
   !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
   pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
@@ -73,8 +166,12 @@ contains
       call validate_in_range_real(base, ierr, min=above(0.0_real64))
       if (is_close(base, 1.0_real64)) call set_err(ierr, ERR_DIVISION_BY_ZERO)
       if (is_err(ierr)) return
-      
-      exponent = log(val) / log(base)
+
+      if (base == 2.0_real64) then
+        exponent = log(val) / LOG_2
+      else
+        exponent = log(val) / log(base)
+      end if
   end subroutine logx
 
   !> Initialize Fortran's random number generator
@@ -108,7 +205,9 @@ contains
   !> Returns a random real number `min <= rand_num < max`. If `min > max`, it will be `max <= rand_num < min`. If `min == max`, it will be `min`.
   real(real64) function rand_range(min, max) result(rand_num)
     real(real64), intent(in) :: min
+      !! Lower bound
     real(real64), intent(in) :: max
+      !! Upper bound
 
     call random_number(rand_num)
     rand_num = min + rand_num * (max - min)
@@ -120,7 +219,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -137,7 +235,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -333,7 +430,19 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_real(array, perm)
-  end subroutine sort_real_heapsort  
+  end subroutine sort_real_heapsort
+
+  !> Sort a real explicit-size array indirectly using heapsort.
+  !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
+  pure subroutine sort_real_heapsort_expl_size(array, perm, n)
+    !| Size of `array`
+    integer(int32), intent(in) :: n
+    !| Real input array to sort
+    real(real64), intent(in) :: array(n)
+    !| Permutation vector that will be sorted
+    integer(int32), intent(inout) :: perm(n)
+    call heapsort_real(array, perm)
+  end subroutine sort_real_heapsort_expl_size
 
   !> Sort an integer array indirectly using heapsort.  
   !| Similar to `sort_real_heapsort`, but for integer input.
@@ -343,7 +452,7 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_integer(array, perm)
-  end subroutine sort_integer_heapsort  
+  end subroutine sort_integer_heapsort
 
   !> Sort a character array indirectly using heapsort.  
   !| Uses lexicographic ordering and permutation vector sorting.  
@@ -353,7 +462,7 @@ contains
     !| Permutation vector that will be sorted
     integer(int32), intent(inout) :: perm(:)
     call heapsort_character(array, perm)
-  end subroutine sort_character_heapsort  
+  end subroutine sort_character_heapsort
 
   !> Internal quicksort implementation for real arrays.
   !| Sorts indirectly using the permutation vector `perm`. Manual stack replaces recursion.
@@ -1116,6 +1225,16 @@ contains
     call calc_percentile_helper(array, permutation, percentile, value)
   end subroutine calc_percentile
 
+  !> Calculate the fractional index using linear interpolation method
+  pure real(real64) function calc_percentile_rank(percentile, n) result(rank)
+    integer(int32), intent(in) :: n
+      !! Sample size
+    real(real64), intent(in) :: percentile
+      !! desired percentile (0-100)
+
+    rank = (percentile / 100.0_real64) * real(n - 1, real64) + 1.0_real64
+  end function calc_percentile_rank
+
   !> (no input validation) Calculate the percentile of an array given a sorted permutation.
   !! Uses linear interpolation between adjacent values.
   pure subroutine calc_percentile_helper(array, permutation, percentile, value)
@@ -1131,18 +1250,15 @@ contains
     integer(int32) :: n, lower_index
     real(real64) :: index, fraction, lower_value, upper_value
     
-    n = size(array)
+    n = size(permutation, kind=int32)
 
     ! Handle single element case
-    if (n == 1) then
+    if (size(array, kind=int32) == 1) then
       value = array(1)
       return
     end if
     
-    ! Calculate the fractional index using linear interpolation method
-    ! This follows the method used in numpy.percentile with interpolation='linear'
-    index = (percentile / 100.0_real64) * real(n - 1, real64) + 1.0_real64
-    
+    index = calc_percentile_rank(percentile, n)
     lower_index = floor(index)
     fraction = index - real(lower_index, real64)
     

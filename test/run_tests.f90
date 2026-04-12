@@ -31,6 +31,7 @@ program main
   use mod_test_normalization_unit_length, only: get_all_tests_normalization_unit_length
   use mod_test_clustering, only: get_all_tests_clustering
   use mod_test_data_integration, only: get_all_tests_data_integration
+  use mod_test_binary_search, only: get_all_tests_binary_search
   implicit none
 
   integer :: nargs
@@ -67,6 +68,7 @@ program main
   call add_suite("normalization_unit_length", get_all_tests_normalization_unit_length)
   call add_suite("clustering", get_all_tests_clustering)
   call add_suite("data_integration", get_all_tests_data_integration)
+  call add_suite("binary_search", get_all_tests_binary_search)
 
   nargs = command_argument_count()
 

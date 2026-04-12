@@ -20,7 +20,7 @@ contains
         real(real64), intent(in) :: v(n_points)
         !! Original time series
         real(real64), intent(out) :: v_norm(n_points)
-        !! Normalized time series        
+        !! Normalized time series
         integer(int32), intent(out) :: ierr
         !! Error code
         integer(int32), intent(out) :: status

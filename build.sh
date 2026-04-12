@@ -5,10 +5,9 @@
 
 source build_utils.sh
 
-COMPILER=$(get_compiler)
-FLAGS=$(get_flags)
-ALIGN=$(get_alignment)
-handle_args "$@"
+init "$@"
+
+mkdir -p build
 
 # trigger clean build on branch switch
 if [[ $(which git) ]]; then
@@ -20,23 +19,29 @@ if [[ $(which git) ]]; then
   mv build/.branch.tmp build/.branch
 fi
 
-# # Clean build directory if it exists
+# Clean build directory if it exists
 if [[ "$CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 
 # Build with FPM first
 generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
-fpm build --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG"
+utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
-rm fpm.toml
+# Remove outdated .so file -> no accidental reuse
+rm -f build/libtensor-omics.so
 
-# Copy .mod, .o and .so files from FPM build directories to build
-rm -f build/*.o build/*.mod
+# Retrieve output path for .so from fpm and copy to build directory
+tensoromics_so="$(utils_fpm list 2>&1 | grep 'libtensor-omics\.so' | sed 's/^\s*//g')"
+cp "${tensoromics_so}" build 2>/dev/null
+check_exit_code "No .so file created"
 
-# Copy .so, .mod, .o files if they exist
-find build/"${COMPILER}"_*/ \( -name "*.so" -o -name "*.mod" -o -name "*.o" \) -exec cp {} build/ \;
+# Remove fpm.toml if not needed anymore
+# IMPORTANT: the toml file is needed for the prior `utils_fpm list`, otherwise fpm will return a wrong path
+if [[ -z "$KEEP_FPM_TOML" ]]; then
+  rm fpm.toml
+fi
 
 echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
