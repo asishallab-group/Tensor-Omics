@@ -50,11 +50,3 @@ To track the state of the graph, we maintain a list of visited edges and a list 
     \item \textbf{Stop Conditions:} Halt if all edges are visited, or all clusters have grown until the CC stop condition is met.
     \item \textbf{Experimental Exploration:} If nodes are not assigned to clusters yet, repeat the above process, starting with the upper quantile of labels from the nodes not yet assigned a cluster.
 \end{enumerate}
-
-\subsection{API Design Specifications}
-The API should utilize interfaces (in Fortran, they define functions, not Types/Classes):
-\begin{itemize}
-    \item \textbf{CC label for a set of vectors:} Returns a $\mathbb{R}^k$.
-    \item \textbf{Labeling Volume:} Can be configured as a sphere, a cone, etc.
-    \item \textbf{Normalization:} For example, calculating the mean of a cluster's CC labels (Input Matrix $\rightarrow$ Output Matrix).
-\end{itemize}
