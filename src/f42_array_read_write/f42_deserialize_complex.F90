@@ -2,237 +2,152 @@
 
 !> Module for deserializing complex arrays from files
 module f42_deserialize_complex
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  use iso_c_binding, only : c_loc, c_f_pointer
-  use f42_array_utils, only: read_file_header, check_okay_ndims
-  use tox_errors
-  implicit none
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_array_utils, only: check_file_header, COMPLEX_TYPE_CODE
+    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_READ_DATA, set_err
+    implicit none
 
-  private
-  public :: deserialize_complex_1d, deserialize_complex_2d, &
-           deserialize_complex_3d, deserialize_complex_4d, deserialize_complex_5d, deserialize_complex_flat
+    private
+    public :: deserialize_complex_1d, deserialize_complex_2d, &
+              deserialize_complex_3d, deserialize_complex_4d, deserialize_complex_5d, deserialize_complex_helper
 
 contains
 
-  !> Deserializes any array inot a flat array
-  subroutine deserialize_complex_flat(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+    !> AUTHOR_AARON_SCHROEDER
+    !| Deserialize a flat complex array from a file
+    subroutine deserialize_complex_helper(arr, n_elements, orig_shape, filename, ierr)
+        integer(int32), intent(in) :: n_elements
+            !! Size of `arr`
+        complex(real64), dimension(n_elements), intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        integer(int32), dimension(:), intent(in) :: orig_shape
+            !! Original shape of the flattened array `arr`
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+        integer(int32) :: unit
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+        call set_ok(ierr)
 
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        call validate_dimension_size(n_elements, ierr, arg_pos=2_int32)
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_flat
-  !> Deserialize a flat complex array from a file
-  !> Directly deserialize a 1D complex array from a file
-  subroutine deserialize_complex_1d(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+        if (is_err(ierr)) return
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+        call check_file_header(filename, COMPLEX_TYPE_CODE, orig_shape, unit, ierr)
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+        ! Read the entire array as a contiguous block
+        read (unit, iostat=ierr) arr
+        if (is_err(ierr)) call set_err(ierr, ERR_READ_DATA)
 
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        close (unit)
+    end subroutine deserialize_complex_helper
 
-    call check_okay_ndims(ndims, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 1D complex array from a file
+    subroutine deserialize_complex_1d(arr, filename, ierr)
+        complex(real64), dimension(:), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_1d
+        call deserialize_complex_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_complex_1d
 
-  !> Directly deserialize a 2D complex array from a file
-  subroutine deserialize_complex_2d(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 2D complex array from a file
+    subroutine deserialize_complex_2d(arr, filename, ierr)
+        complex(real64), dimension(:, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+        call deserialize_complex_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_complex_2d
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 3D complex array from a file
+    subroutine deserialize_complex_3d(arr, filename, ierr)
+        complex(real64), dimension(:, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        call deserialize_complex_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_complex_3d
 
-    call check_okay_ndims(ndims, 2, unit, ierr)
-    if(.not. is_ok(ierr)) return
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 4D complex array from a file
+    subroutine deserialize_complex_4d(arr, filename, ierr)
+        complex(real64), dimension(:, :, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_2d
+        call deserialize_complex_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_complex_4d
 
-  !> Directly deserialize a 3D complex array from a file
-  subroutine deserialize_complex_3d(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 5D complex array from a file
+    subroutine deserialize_complex_5d(arr, filename, ierr)
+        complex(real64), dimension(:, :, :, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 3, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_3d
-
-  !> Directly deserialize a 4D complex array from a file
-  subroutine deserialize_complex_4d(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:,:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the File
-    integer(int32), intent(out) :: ierr
-    !! Error code
-
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 4, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_4d
-
-  !> Directly deserialize a 5D complex array from a file
-  subroutine deserialize_complex_5d(arr, filename, ierr)
-    complex(real64), intent(out) :: arr(:,:,:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
-
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 5, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_complex_5d
+        call deserialize_complex_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_complex_5d
 
 end module f42_deserialize_complex
 
-
-
 !> C binding for the subroutine to deserialize a complex array from a file.
-!> The array is read into a flat buffer and reshaped in the calling language.
-!>@note It is assumed that the array is already allocated and passed together with its size
-subroutine deserialize_complex_nd_C(arr, arr_size, filename_raw, fn_len, ierr) bind(C, name="deserialize_complex_nd_C")
-    use iso_c_binding, only: c_int, c_char
-    use iso_fortran_env, only: int32, real64
-    use f42_deserialize_complex, only : deserialize_complex_flat
-    use tox_errors, only : set_ok, is_ok
-    use tox_conversions, only : c_char_1d_as_string
+subroutine deserialize_complex_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr) bind(C, name="deserialize_complex_nd_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_char, c_double_complex
+    use f42_deserialize_complex, only: deserialize_complex_helper
+    use tox_errors, only: is_err, map_err_arg_pos
+    use tox_conversions, only: c_char_1d_as_string
     M_USE_NULL_VALIDATION
     implicit none
 
     ! Inputs / Outputs
-    integer(c_int), intent(in), target :: arr_size           ! Buffer length
-    !! Size of the array
-    complex(real64), intent(out), target :: arr(arr_size)      ! Preallocated buffer from C/Python
-    !! preallocated array
+    integer(c_int), intent(in), target :: n_dims
+        !! Number of dimensions of the expected array (`size(orig_shape)`)
+    integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
+        !! Original shape of the flattened array `arr` -> for a 2D array it would be `[n_elements, n_contained_arrays]`
+    complex(c_double_complex), dimension(product(orig_shape)), intent(out), target :: arr
+        !! Preallocated output array
     integer(c_int), intent(in), target :: fn_len
-    !! length of the filename
-    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
-    !! Filename in raw bytes
+        !! Length of the filename
+    character(kind=c_char, len=1), dimension(fn_len), intent(in), target :: filename
+        !! Filename in raw bytes
     integer(c_int), intent(out), target :: ierr
-    !! Error code
+        !! Error code
 
     ! Locals
-    character(len=:), allocatable :: filename
+    character(len=:), allocatable :: filename_f
 
     M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(arr_size)
     M_CHECK_NON_NULL(fn_len)
     M_CHECK_NON_NULL(arr)
-    M_CHECK_NON_NULL(filename_raw)
-
-    call set_ok(ierr)
+    M_CHECK_NON_NULL(filename)
+    M_CHECK_NON_NULL(n_dims)
+    M_CHECK_NON_NULL(orig_shape)
 
     ! raw to String
-    call c_char_1d_as_string(filename_raw, filename, ierr)
-    if (.not. is_ok(ierr)) return
+    call c_char_1d_as_string(filename, filename_f, ierr)
+    if (is_err(ierr)) return
 
-    call deserialize_complex_flat(arr, filename, ierr)
-end subroutine deserialize_complex_nd_C
+    call deserialize_complex_helper(arr, size(arr, kind=c_int), orig_shape, filename_f, ierr)
+    call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
+end subroutine deserialize_complex_nd_c

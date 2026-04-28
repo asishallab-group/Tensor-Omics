@@ -2,240 +2,152 @@
 
 !> Module for deserializing integer arrays from files
 module f42_deserialize_int
-  use safeguard
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  use iso_c_binding, only : c_loc, c_f_pointer
-  use f42_array_utils, only: read_file_header, check_okay_ndims
-  use tox_errors
-  implicit none
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_array_utils, only: check_file_header, INTEGER_TYPE_CODE
+    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_READ_DATA, set_err
+    implicit none
 
-  private
-  public :: deserialize_int_1d, deserialize_int_2d, &
-           deserialize_int_3d, deserialize_int_4d, deserialize_int_5d, deserialize_int_flat
+    private
+    public :: deserialize_int_1d, deserialize_int_2d, &
+              deserialize_int_3d, deserialize_int_4d, deserialize_int_5d, deserialize_int_helper
 
 contains
 
-  !> Deserializes any array inot a flat array
-  subroutine deserialize_int_flat(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+    !> AUTHOR_AARON_SCHROEDER
+    !| Deserialize a flat integer array from a file
+    subroutine deserialize_int_helper(arr, n_elements, orig_shape, filename, ierr)
+        integer(int32), intent(in) :: n_elements
+            !! Size of `arr`
+        integer(int32), dimension(n_elements), intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        integer(int32), dimension(:), intent(in) :: orig_shape
+            !! Original shape of the flattened array `arr`
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+        integer(int32) :: unit
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+        call set_ok(ierr)
 
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        call validate_dimension_size(n_elements, ierr, arg_pos=2_int32)
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_flat
+        if (is_err(ierr)) return
 
-  !> Deserialize a flat integer array from a file
-  !> Directly deserialize a 1D integer array from a file
-  subroutine deserialize_int_1d(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+        call check_file_header(filename, INTEGER_TYPE_CODE, orig_shape, unit, ierr)
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+        ! Read the entire array as a contiguous block
+        read (unit, iostat=ierr) arr
+        if (is_err(ierr)) call set_err(ierr, ERR_READ_DATA)
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+        close (unit)
+    end subroutine deserialize_int_helper
 
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 1D integer array from a file
+    subroutine deserialize_int_1d(arr, filename, ierr)
+        integer(int32), dimension(:), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    call check_okay_ndims(ndims, 1_int32, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        call deserialize_int_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_int_1d
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_1d
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 2D integer array from a file
+    subroutine deserialize_int_2d(arr, filename, ierr)
+        integer(int32), dimension(:, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-  !> Directly deserialize a 2D integer array from a file
-  subroutine deserialize_int_2d(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
+        call deserialize_int_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_int_2d
 
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 3D integer array from a file
+    subroutine deserialize_int_3d(arr, filename, ierr)
+        integer(int32), dimension(:, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
+        call deserialize_int_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_int_3d
 
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 4D integer array from a file
+    subroutine deserialize_int_4d(arr, filename, ierr)
+        integer(int32), dimension(:, :, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    call check_okay_ndims(ndims, 2_int32, unit, ierr)
-    if(.not. is_ok(ierr)) return
+        call deserialize_int_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_int_4d
 
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_2d
+    !> AUTHOR_AARON_SCHROEDER
+    !| Directly deserialize a 5D integer array from a file
+    subroutine deserialize_int_5d(arr, filename, ierr)
+        integer(int32), dimension(:, :, :, :, :), contiguous, intent(out) :: arr
+            !! Pre-allocated array to read the data into
+        character(len=*), intent(in) :: filename
+            !! Name of the file
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-  !> Directly deserialize a 3D integer array from a file
-  subroutine deserialize_int_3d(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
-
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 3_int32, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_3d
-
-  !> Directly deserialize a 4D integer array from a file
-  subroutine deserialize_int_4d(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:,:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the File
-    integer(int32), intent(out) :: ierr
-    !! Error code
-
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 4_int32, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_4d
-
-  !> Directly deserialize a 5D integer array from a file
-  subroutine deserialize_int_5d(arr, filename, ierr)
-    integer(int32), intent(out) :: arr(:,:,:,:,:)
-    !! Pre-allocated array to read the data into
-    character(len=*), intent(in) :: filename
-    !! Name of the file
-    integer(int32), intent(out) :: ierr
-    !! Error code
-
-    integer(int32) :: unit, type_code, ndims, clen, ioerror
-    integer(int32), allocatable :: dims(:)
-
-    call set_ok(ierr)
-    call read_file_header(filename, unit, type_code, ndims, dims, clen, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call validate_type_code(type_code, 1, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    call check_okay_ndims(ndims, 5_int32, unit, ierr)
-    if(.not. is_ok(ierr)) return
-
-    read(unit, iostat=ioerror) arr
-    close(unit)
-    if (.not. is_ok(ioerror)) then
-      call set_err_once(ierr, ERR_READ_DATA)
-      return
-    end if
-  end subroutine deserialize_int_5d
+        call deserialize_int_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+    end subroutine deserialize_int_5d
 
 end module f42_deserialize_int
 
-
-
-
-!> C binding for the subroutine to deserialize an integer array from a file
-!> Deserializes an array of any dimension into a flat buffer.
-!>@note It is assumed that the array is already allocated and passed together with its size
-subroutine deserialize_int_nd_C(arr, arr_size, filename_raw, fn_len, ierr) bind(C, name="deserialize_int_nd_C")
-    use iso_c_binding, only: c_int, c_char
-    use iso_fortran_env, only: int32
-    use f42_deserialize_int, only : deserialize_int_flat
-    use tox_errors, only : set_ok, is_ok
-    use tox_conversions, only : c_char_1d_as_string
+!> C binding for the subroutine to deserialize a integer array from a file.
+subroutine deserialize_int_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr) bind(C, name="deserialize_int_nd_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_char
+    use f42_deserialize_int, only: deserialize_int_helper
+    use tox_errors, only: is_err, map_err_arg_pos
+    use tox_conversions, only: c_char_1d_as_string
     M_USE_NULL_VALIDATION
     implicit none
 
     ! Inputs / Outputs
-    integer(c_int), intent(in), target :: arr_size           ! Buffer length
-    !! Size of the array
-    integer(c_int), intent(out), target :: arr(arr_size)      ! Preallocated buffer from C/Python
-    !! preallocated array
+    integer(c_int), intent(in), target :: n_dims
+        !! Number of dimensions of the expected array (`size(orig_shape)`)
+    integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
+        !! Original shape of the flattened array `arr` -> for a 2D array it would be `[n_elements, n_contained_arrays]`
+    integer(c_int), dimension(product(orig_shape)), intent(out), target :: arr
+        !! Preallocated output array
     integer(c_int), intent(in), target :: fn_len
-    !! length of the filename
-    character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
-    !! Filename in ascii
+        !! Length of the filename
+    character(kind=c_char, len=1), dimension(fn_len), intent(in), target :: filename
+        !! Filename in raw bytes
     integer(c_int), intent(out), target :: ierr
-    !! Error code
+        !! Error code
 
     ! Locals
-    character(len=:), allocatable :: filename
+    character(len=:), allocatable :: filename_f
 
     M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(arr_size)
     M_CHECK_NON_NULL(fn_len)
     M_CHECK_NON_NULL(arr)
-    M_CHECK_NON_NULL(filename_raw)
+    M_CHECK_NON_NULL(filename)
+    M_CHECK_NON_NULL(n_dims)
+    M_CHECK_NON_NULL(orig_shape)
 
-    call set_ok(ierr)
+    ! raw to String
+    call c_char_1d_as_string(filename, filename_f, ierr)
+    if (is_err(ierr)) return
 
-    ! raw → String
-    call c_char_1d_as_string(filename_raw, filename, ierr)
-    if (.not. is_ok(ierr)) return
-
-    call deserialize_int_flat(arr, filename, ierr)
-end subroutine deserialize_int_nd_C
+    call deserialize_int_helper(arr, size(arr, kind=c_int), orig_shape, filename_f, ierr)
+    call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
+end subroutine deserialize_int_nd_c

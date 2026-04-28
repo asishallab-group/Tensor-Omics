@@ -3,7 +3,7 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
 !| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]].
-submodule (tox_data_integration) tox_data_integration_jsd
+submodule(tox_data_integration) tox_data_integration_jsd
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
@@ -116,16 +116,16 @@ contains
         pool_size = size(abs_residual_pool, kind=int32)
 
         ! Collect the absolute residual values and compute the percentile value
-        do concurrent (i_point = 1:n_points)
-            do concurrent (i_neighbor = 1:n_neighbors) local(n_predecessors) shared(i_point, n_reps_S1, n_reps_S2)
-                n_predecessors = ((i_point - 1) * n_neighbors + (i_neighbor - 1)) * (n_reps_S1 + n_reps_S2)
-                do concurrent (i_rep = 1:n_reps_S1) shared(n_predecessors, perm, neighborhood_residuals_S1, abs_residual_pool, i_point, i_neighbor)
+        do concurrent(i_point=1:n_points)
+            do concurrent(i_neighbor=1:n_neighbors) local(n_predecessors) shared(i_point, n_reps_S1, n_reps_S2)
+                n_predecessors = ((i_point - 1)*n_neighbors + (i_neighbor - 1))*(n_reps_S1 + n_reps_S2)
+                do concurrent(i_rep=1:n_reps_S1) shared(n_predecessors, perm, neighborhood_residuals_S1, abs_residual_pool, i_point, i_neighbor)
                     abs_residual_pool(i_rep, i_neighbor, i_point) = abs(neighborhood_residuals_S1(i_rep, i_neighbor, i_point))
 
                     perm(i_rep, i_neighbor, i_point) = n_predecessors + i_rep
                 end do
 
-                do concurrent (i_rep = 1:n_reps_S2) local(pool_idx) shared(n_predecessors, perm, neighborhood_residuals_S2, abs_residual_pool, i_point, i_neighbor)
+                do concurrent(i_rep=1:n_reps_S2) local(pool_idx) shared(n_predecessors, perm, neighborhood_residuals_S2, abs_residual_pool, i_point, i_neighbor)
                     pool_idx = i_rep + n_reps_S1
 
                     abs_residual_pool(pool_idx, i_neighbor, i_point) = abs(neighborhood_residuals_S2(i_rep, i_neighbor, i_point))
@@ -208,7 +208,7 @@ contains
         integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
         logical :: filter_neighbors
 
-        bin_width = 2.0_real64 * shared_residual_range / real(n_bins, real64)
+        bin_width = 2.0_real64*shared_residual_range/real(n_bins, real64)
         counts = 0_int32
         pmf = 0.0_real64
 
@@ -216,12 +216,12 @@ contains
 
         ! 1. assign the bins to the residuals (increase the respective count)
         ! outer loop cannot be concurrent, as counts of same residuals and bins but different neighbors might be changed at the same time
-        do concurrent (i_point = 1:n_points) local(included_reps) shared(included_n_reps)
+        do concurrent(i_point=1:n_points) local(included_reps) shared(included_n_reps)
             included_reps = 0_int32
-            do concurrent (i_neighbor = 1:n_neighbors) &
-                    local(i_rep, clamped_residual, bin_idx) &
-                    shared(filter_neighbors, n_reps, counts, neighborhood_residuals, shared_residual_range, bin_width) &
-                    reduce(+:included_reps)
+            do concurrent(i_neighbor=1:n_neighbors) &
+                local(i_rep, clamped_residual, bin_idx) &
+                shared(filter_neighbors, n_reps, counts, neighborhood_residuals, shared_residual_range, bin_width) &
+                reduce(+:included_reps)
                 ! Exclude neighbor if desired
                 if (filter_neighbors) then
                     if (.not. neighbor_mask(i_neighbor, i_point)) cycle
@@ -234,7 +234,7 @@ contains
                         clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), min_val=-shared_residual_range, max_val=shared_residual_range)
 
                         ! assign bin to residual
-                        bin_idx = min(n_bins, int( (clamped_residual + shared_residual_range) / bin_width ) + 1)
+                        bin_idx = min(n_bins, int((clamped_residual + shared_residual_range)/bin_width) + 1)
                         counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1
 
                         included_reps = included_reps + 1
@@ -245,12 +245,12 @@ contains
         end do
 
         ! 2. calculate pmf
-        do concurrent (i_bin = 1:n_bins)
-            do concurrent (i_point = 1:n_points) shared(pmf, i_bin, included_n_reps, counts)
+        do concurrent(i_bin=1:n_bins)
+            do concurrent(i_point=1:n_points) shared(pmf, i_bin, included_n_reps, counts)
                 if (included_n_reps(i_point) == 0) then
                     pmf(i_point, i_bin) = 0.0_real64
                 else
-                    pmf(i_point, i_bin) = real(counts(i_point, i_bin), real64) / real(included_n_reps(i_point), real64)
+                    pmf(i_point, i_bin) = real(counts(i_point, i_bin), real64)/real(included_n_reps(i_point), real64)
                 end if
             end do
         end do
@@ -307,26 +307,26 @@ contains
         ! Another thing, switching the loops would enable both to run concurrently and the 0.5*js_divergences step could be done in one go,
         ! but cache locality still beats that, except for the case of thousands of neighbors, which might not be the common case.
         do i_bin = 1, n_bins
-            do concurrent (i_point = 1:n_points) local(s1_val, s2_val, S_mean) shared(i_bin, pmf_S1, pmf_S2, js_divergences)
+            do concurrent(i_point=1:n_points) local(s1_val, s2_val, S_mean) shared(i_bin, pmf_S1, pmf_S2, js_divergences)
                 s1_val = pmf_S1(i_point, i_bin)
                 s2_val = pmf_S2(i_point, i_bin)
-                S_mean = 0.5_real64 * (s1_val + s2_val)
+                S_mean = 0.5_real64*(s1_val + s2_val)
 
                 if (.not. is_close(S_mean, 0.0_real64)) then
                     if (s1_val > 0.0_real64) then
-                        js_divergences(i_point) = js_divergences(i_point) + s1_val * log(s1_val / S_mean)
+                        js_divergences(i_point) = js_divergences(i_point) + s1_val*log(s1_val/S_mean)
                     end if
 
                     if (s2_val > 0.0_real64) then
-                        js_divergences(i_point) = js_divergences(i_point) + s2_val * log(s2_val / S_mean)
+                        js_divergences(i_point) = js_divergences(i_point) + s2_val*log(s2_val/S_mean)
                     end if
                 end if
             end do
         end do
 
         ! 2. Compute the js_divergences
-        do concurrent (i_point = 1:n_points) shared(js_divergences)
-            js_divergences(i_point) = 0.5_real64 * js_divergences(i_point)
+        do concurrent(i_point=1:n_points) shared(js_divergences)
+            js_divergences(i_point) = 0.5_real64*js_divergences(i_point)
         end do
     end subroutine compute_divergence_per_reference_point_helper
 
@@ -385,12 +385,12 @@ contains
             weights = 0.0_real64
         else
             ! Calculate the global Jensen-Shannon divergence
-            do concurrent (i_point = 1:n_points) local(included_reps) shared(weights, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
+            do concurrent(i_point=1:n_points) local(included_reps) shared(weights, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
                 included_reps = included_n_reps_S1(i_point) + included_n_reps_S2(i_point)
 
-                weights(i_point) = real(included_reps, real64) / total_sample_count
+                weights(i_point) = real(included_reps, real64)/total_sample_count
 
-                global_js_divergence = global_js_divergence + weights(i_point) * js_divergences(i_point)
+                global_js_divergence = global_js_divergence + weights(i_point)*js_divergences(i_point)
             end do
         end if
     end subroutine compute_weighted_global_divergence_helper
@@ -474,7 +474,7 @@ pure subroutine determine_shared_residual_range_expert_c( &
 
     call determine_shared_residual_range( &
         abs_residual_pool, abs_residual_pool_perm, pool_size, &
-        shared_residual_range, ierr, residual_range_quantile )
+        shared_residual_range, ierr, residual_range_quantile)
 
 end subroutine determine_shared_residual_range_expert_c
 
@@ -483,7 +483,7 @@ pure subroutine determine_shared_residual_range_c( &
     neighborhood_residuals_S1, neighborhood_residuals_S2, &
     n_reps_S1, n_reps_S2, n_neighbors, n_points, &
     residual_range_quantile, &
-    shared_residual_range, ierr ) &
+    shared_residual_range, ierr) &
     bind(C, name="determine_shared_residual_range_c")
 
     use tox_data_integration, only: determine_shared_residual_range_alloc
@@ -523,7 +523,7 @@ pure subroutine determine_shared_residual_range_c( &
     call determine_shared_residual_range_alloc( &
         neighborhood_residuals_S1, neighborhood_residuals_S2, &
         n_reps_S1, n_reps_S2, n_neighbors, n_points, &
-        shared_residual_range, ierr, residual_range_quantile )
+        shared_residual_range, ierr, residual_range_quantile)
 
 end subroutine determine_shared_residual_range_c
 
@@ -534,7 +534,7 @@ pure subroutine build_residual_histograms_c( &
     shared_residual_range, &
     n_bins, &
     counts, pmf, included_n_reps, &
-    ierr ) &
+    ierr) &
     bind(C, name="build_residual_histograms_c")
 
     use tox_data_integration, only: build_residual_histograms
@@ -580,7 +580,7 @@ pure subroutine build_residual_histograms_c( &
         shared_residual_range, &
         n_bins, &
         counts, pmf, included_n_reps, &
-        ierr )
+        ierr)
 
 end subroutine build_residual_histograms_c
 
@@ -591,7 +591,7 @@ pure subroutine build_residual_histograms_filtered_c( &
     shared_residual_range, &
     n_bins, &
     counts, pmf, included_n_reps, &
-    ierr, neighbor_mask ) &
+    ierr, neighbor_mask) &
     bind(C, name="build_residual_histograms_filtered_c")
 
     use tox_data_integration, only: build_residual_histograms
@@ -655,7 +655,7 @@ pure subroutine build_residual_histograms_filtered_c( &
         shared_residual_range, &
         n_bins, &
         counts, pmf, included_n_reps, &
-        ierr, f_neighbor_mask )
+        ierr, f_neighbor_mask)
 
 end subroutine build_residual_histograms_filtered_c
 
@@ -663,7 +663,7 @@ end subroutine build_residual_histograms_filtered_c
 pure subroutine compute_divergence_per_reference_point_c( &
     pmf_S1, pmf_S2, &
     n_points, n_bins, &
-    js_divergences, ierr ) &
+    js_divergences, ierr) &
     bind(C, name="compute_divergence_per_reference_point_c")
 
     use tox_data_integration, only: compute_divergence_per_reference_point
@@ -694,7 +694,7 @@ pure subroutine compute_divergence_per_reference_point_c( &
     call compute_divergence_per_reference_point( &
         pmf_S1, pmf_S2, &
         n_points, n_bins, &
-        js_divergences, ierr )
+        js_divergences, ierr)
 
 end subroutine compute_divergence_per_reference_point_c
 
@@ -704,7 +704,7 @@ pure subroutine compute_weighted_global_divergence_c( &
     n_points, &
     included_n_reps_S1, included_n_reps_S2, &
     global_js_divergence, weights, &
-    ierr ) &
+    ierr) &
     bind(C, name="compute_weighted_global_divergence_c")
 
     use tox_data_integration, only: compute_weighted_global_divergence
@@ -738,6 +738,6 @@ pure subroutine compute_weighted_global_divergence_c( &
     call compute_weighted_global_divergence( &
         js_divergences, n_points, &
         included_n_reps_S1, included_n_reps_S2, &
-        global_js_divergence, weights, ierr )
+        global_js_divergence, weights, ierr)
 
 end subroutine compute_weighted_global_divergence_c

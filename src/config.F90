@@ -1,10 +1,13 @@
 module config
-  implicit none
+    implicit none
 #ifdef DEFAULT_ALIGNMENT
-  integer, parameter :: alignment = DEFAULT_ALIGNMENT
+    integer, parameter :: alignment = DEFAULT_ALIGNMENT
 #else
-  integer, parameter :: alignment = 32  ! fallback
+    integer, parameter :: alignment = 32  ! fallback
 #endif
-  logical :: DEBUG = .false.
-  logical :: debug_hashing = .false.
+        !! Selected alignment
+    logical :: DEBUG = .false.
+        !! Toggles debug messages for e.g. [[tox_archive(module)]]
+    logical :: debug_hashing = .false.
+        !! Toggles debug messages for [[f42_xxh3_hashmap(module)]]
 end module config

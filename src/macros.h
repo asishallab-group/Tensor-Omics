@@ -1,3 +1,5 @@
+#include "../authors.h"
+
 #define M_CHECK_IERR_NON_NULL if (.not. c_associated(c_loc(ierr))) return
 
 #define M_CHECK_NON_NULL(ARG) if (.not. c_associated(c_loc(ARG))) then; call set_err(ierr, ERR_POINTER_NULL); return; endif
@@ -11,3 +13,8 @@
 #define M_NAN ieee_value(1.0_real64, ieee_quiet_nan)
 #define M_NEG_INF ieee_value(1.0_real64, ieee_negative_inf)
 #define M_POS_INF ieee_value(1.0_real64, ieee_positive_inf)
+
+#define M_GENE_TO_FAM_SENTINEL 0_int32
+#define M_GENE_TO_FAM_DOC(GENES_TARGET_ARG) Index mapping -> each index `i` holds the family index for the corresponding gene in `GENES_TARGET_ARG`, using `M_GENE_TO_FAM_SENTINEL` for unassigned genes
+
+#define M_CHECK_IO_ERR(ERR_CODE) if (is_err(ierr)) then; call set_err(ierr, ERR_CODE); close(unit); return; end if

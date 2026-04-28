@@ -3,7 +3,7 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
 !|
 !| This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.
-submodule (tox_data_integration) tox_data_integration_preprocessing
+submodule(tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
@@ -267,7 +267,7 @@ contains
         if (max_neighbors < min_neighbors) then
             n_neighbors = max_neighbors
 
-        ! Take at least `min_neighbors` neighbors. It could be lower if there are too many reference points -> low steps across x_star.
+            ! Take at least `min_neighbors` neighbors. It could be lower if there are too many reference points -> low steps across x_star.
         else
             n_neighbors = int(clamp(n_pool/(2*n_points), min_val=min_neighbors, max_val=max_neighbors))
         end if
@@ -287,7 +287,7 @@ contains
 
     !> Construct neighborhood-based residual sets (kNN)
     pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
-                                                  neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
+                                                         neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -359,7 +359,7 @@ contains
         call validate_dimension_size(n_neighbors, ierr)
 
         n_possible_neighbors = 0_int32
-        do concurrent (i_gene = 1:n_genes_S) shared(mean_S) reduce(+:n_possible_neighbors)
+        do concurrent(i_gene=1:n_genes_S) shared(mean_S) reduce(+:n_possible_neighbors)
             if (.not. ieee_is_nan(mean_S(i_gene))) then
                 n_possible_neighbors = n_possible_neighbors + 1
             end if
@@ -375,7 +375,7 @@ contains
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
     pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, tmp_distances, tmp_distances_perm, &
-                                                   neighborhood_residuals, neighborhood_indices, n_neighbors)
+                                                          neighborhood_residuals, neighborhood_indices, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -491,7 +491,7 @@ end subroutine compute_residuals_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):pool_means_alloc(interface)]]
 pure subroutine pool_means_c(n_genes_S1, mean_S1, n_genes_S2, mean_S2, &
-    n_points, n_pool, x_star, ierr) bind(C, name="pool_means_c")
+                             n_points, n_pool, x_star, ierr) bind(C, name="pool_means_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: pool_means_alloc
@@ -529,7 +529,7 @@ end subroutine pool_means_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):pool_means(interface)]]
 pure subroutine pool_means_expert_c(pooled_means, pooled_means_perm, &
-    pool_size, n_points, n_pool, x_star, ierr) &
+                                    pool_size, n_points, n_pool, x_star, ierr) &
     bind(C, name="pool_means_expert_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
@@ -565,7 +565,7 @@ end subroutine pool_means_expert_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):calc_neighborhood_size(interface)]]
 pure subroutine calc_neighborhood_size_c(n_pool, n_points, n_genes_S, mean_S, &
-    desired_size, n_neighbors, ierr) bind(C, name="calc_neighborhood_size_c")
+                                         desired_size, n_neighbors, ierr) bind(C, name="calc_neighborhood_size_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: calc_neighborhood_size
@@ -606,7 +606,7 @@ end subroutine calc_neighborhood_size_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):construct_neighborhoods_alloc(interface)]]
 pure subroutine construct_neighborhoods_c(n_points, x_star, n_genes_S, mean_S, &
-    n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr) &
+                                          n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr) &
     bind(C, name="construct_neighborhoods_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
