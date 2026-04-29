@@ -113,7 +113,7 @@ contains
         ! -------------------------------
         ancestors = 10*ancestors
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_neofunctionalization_input_validation: case ancestors out of range")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=1_int32), "test_detect_neofunctionalization_input_validation: case ancestors out of range")
         ancestors(:, 1) = [0.5_real64, -0.3_real64, 0.8_real64]
 
         ! -------------------------------
@@ -121,7 +121,7 @@ contains
         ! -------------------------------
         paralogs = paralogs*10
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_neofunctionalization_input_validation: case paralogs out of range")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=3_int32), "test_detect_neofunctionalization_input_validation: case paralogs out of range")
         paralogs(:, 1) = [0.6_real64, -0.2_real64, 0.7_real64]
         paralogs(:, 2) = [-0.4_real64, 0.1_real64, 1.0_real64]
 
@@ -130,7 +130,7 @@ contains
         ! -------------------------------
         ancestors(:, 1) = [0.5_real64, ieee_value(1.0_real64, ieee_quiet_nan), 0.8_real64]
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_detect_neofunctionalization_input_validation: case NaN in ancestors")
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_detect_neofunctionalization_input_validation: case NaN in ancestors")
 
         ancestors(:, 1) = [0.5_real64, -0.3_real64, 0.8_real64]  ! reset
 
@@ -139,7 +139,7 @@ contains
         ! -------------------------------
         paralogs(:, 1) = [0.6_real64, ieee_value(1.0_real64, ieee_positive_inf), 0.7_real64]
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_detect_neofunctionalization_input_validation: case Infinity in paralogs")
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=3_int32), "test_detect_neofunctionalization_input_validation: case Infinity in paralogs")
 
         paralogs(:, 1) = [0.6_real64, -0.2_real64, 0.7_real64]  ! reset
 
@@ -148,11 +148,11 @@ contains
         ! -------------------------------
         thresholds = 1.5_real64
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_neofunctionalization_input_validation: case thresholds > 1.0")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "test_detect_neofunctionalization_input_validation: case thresholds > 1.0")
 
         thresholds = -1.5_real64
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_neofunctionalization_input_validation: case thresholds < -1.0")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "test_detect_neofunctionalization_input_validation: case thresholds < -1.0")
     end subroutine test_detect_neofunctionalization_input_validation
 
     !> Test the input validation for the detect_patterns function.
@@ -224,7 +224,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_detect_patterns_input_validation: case NaN in ancestor")
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_detect_patterns_input_validation: case NaN in ancestor")
 
         ancestor = [1.0_real64, 2.0_real64, 3.0_real64]  ! reset
 
@@ -236,7 +236,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_detect_patterns_input_validation: case Infinity in paralogs")
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=2_int32), "test_detect_patterns_input_validation: case Infinity in paralogs")
 
         paralogs(:, 1) = [1.0_real64, 0.0_real64, 0.0_real64]  ! reset
 
@@ -248,13 +248,13 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_patterns_input_validation: case dosage_gain_gamma == 0")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=15_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma == 0")
         dosage_gain_gamma = -1.0_real64
         call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_patterns_input_validation: case dosage_gain_gamma < 0")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=15_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma < 0")
 
         dosage_gain_gamma = 0.1_real64  ! reset
 
@@ -266,7 +266,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_patterns_input_validation: case dosage_max_angle > PI")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=14_int32), "test_detect_patterns_input_validation: case dosage_max_angle > PI")
 
         dosage_max_angle = PI  ! reset
 
@@ -278,7 +278,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_detect_patterns_input_validation: case NaN in subfunc_paralog_norms")
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=17_int32), "test_detect_patterns_input_validation: case NaN in subfunc_paralog_norms")
 
         subfunc_paralog_norms(1:n_paralogs) = [1.0_real64, 2.0_real64]  ! reset
 
@@ -290,7 +290,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_patterns_input_validation: case subfunc_sorted_paralog_norms_perm < 1")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=18_int32), "test_detect_patterns_input_validation: case subfunc_sorted_paralog_norms_perm < 1")
 
         subfunc_sorted_paralog_norms_perm(1:n_paralogs) = [1, 2]  ! reset
 
@@ -302,7 +302,7 @@ contains
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
                              tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
                              subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_detect_patterns_input_validation: case subfunc_rdi_threshold < 0")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=16_int32), "test_detect_patterns_input_validation: case subfunc_rdi_threshold < 0")
     end subroutine test_detect_patterns_input_validation
 
     !> Test the detect_patterns function with floating-point epsilon considerations.

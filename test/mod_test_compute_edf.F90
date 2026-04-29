@@ -127,7 +127,7 @@ contains
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
         call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "test_compute_edf_empty_input: should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), "test_compute_edf_empty_input: should return ERR_EMPTY_INPUT")
     end subroutine
 
     !> Test EDF with a larger dataset (100 values).

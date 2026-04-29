@@ -3,7 +3,7 @@
 module mod_test_gene_centroids
     use asserts
     use tox_gene_centroids
-    use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT
+    use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
     implicit none
@@ -25,7 +25,7 @@ contains
         all_tests(8) = test_case("test_gene_order_invariance", test_gene_order_invariance)
         all_tests(9) = test_case("test_invalid_input_arguments", test_invalid_input_arguments)
         all_tests(10) = test_case("test_invalid_family_mapping", test_invalid_family_mapping)
-        all_tests(11) = test_case("test_invalid_mode_string", test_invalid_mode_string)
+        all_tests(11) = test_case("test_invalid_mode", test_invalid_mode)
         all_tests(12) = test_case("test_missing_ortholog_set", test_missing_ortholog_set)
         all_tests(13) = test_case("test_present_ortholog_set_in_all_mode", test_present_ortholog_set_in_all_mode)
     end function get_all_tests_gene_centroids
@@ -65,6 +65,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr, ortholog_set)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_ortho_mode")
     end subroutine test_basic_ortho_mode
 
@@ -100,6 +101,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr, ortholog_set)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_no_matching_orthologs")
     end subroutine test_no_matching_orthologs
 
@@ -114,6 +116,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, vectors, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_single_gene_family")
     end subroutine test_single_gene_family
 
@@ -133,6 +136,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_extreme_values")
     end subroutine test_extreme_values
 
@@ -154,6 +158,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids(:, 1), expected(:, 1), n_axes, 0.0_real64, 1e-9_real64, "test_higher_dimensions")
     end subroutine test_higher_dimensions
 
@@ -180,8 +185,10 @@ contains
 
         call group_centroid(vectors1, n_axes, n_genes, gene_to_family1, n_families, &
                             centroids1, MODE_GROUP_ORTHOLOGS, selected_indices1, ierr, ortholog_set1)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call group_centroid(vectors2, n_axes, n_genes, gene_to_family2, n_families, &
                             centroids2, MODE_GROUP_ORTHOLOGS, selected_indices2, ierr, ortholog_set2)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call assert_allclose_array_real(centroids1, centroids2, n_axes*n_families, &
                                         0.0_real64, 1e-9_real64, "test_gene_order_invariance")
@@ -189,7 +196,7 @@ contains
 
     ! Test case 9: Test for invalid input arguments.
     subroutine test_invalid_input_arguments()
-        integer, parameter :: n_axes = 0, n_genes = 5, n_families = 2, n_axes_invalid = 0, n_genes_invalid = 0, n_families_invalid = 0
+        integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2, n_axes_invalid = 0, n_genes_invalid = 0, n_families_invalid = 0
         real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
         integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
 
@@ -198,13 +205,15 @@ contains
 
         call group_centroid(vectors, n_axes_invalid, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "Invalid 0 n_axes should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), "Invalid 0 n_axes should return ERR_EMPTY_INPUT")
+
         call group_centroid(vectors, n_axes, n_genes_invalid, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "Invalid 0 n_genes should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=3_int32), "Invalid 0 n_genes should return ERR_EMPTY_INPUT")
+
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families_invalid, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "Invalid 0 n_families should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=5_int32), "Invalid 0 n_families should return ERR_EMPTY_INPUT")
     end subroutine test_invalid_input_arguments
 
     ! Test case 10: Test for invalid family mapping.
@@ -218,11 +227,11 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Invalid family mapping should return ERR_INVALID_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=4_int32), "Invalid family mapping should return ERR_INVALID_INPUT")
     end subroutine test_invalid_family_mapping
 
     ! Test case 11: Test for invalid mode string.
-    subroutine test_invalid_mode_string()
+    subroutine test_invalid_mode()
         integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
         real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
         integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
@@ -233,12 +242,12 @@ contains
         ! Check with empty mode string
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, 2, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Invalid mode constant should return ERR_INVALID_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "Invalid mode constant should return ERR_INVALID_INPUT")
         ! Check with invalid mode string
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, -1, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Invalid mode constant should return ERR_INVALID_INPUT")
-    end subroutine test_invalid_mode_string
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "Invalid mode constant should return ERR_INVALID_INPUT")
+    end subroutine test_invalid_mode
 
     ! Test case 12: Test for missing ortholog_set in 'orthologs' mode.
     subroutine test_missing_ortholog_set()
@@ -251,7 +260,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Missing ortholog_set in 'orthologs' mode should return ERR_INVALID_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=10_int32), "Missing ortholog_set in 'orthologs' mode should return ERR_INVALID_INPUT")
     end subroutine test_missing_ortholog_set
 
     ! Test case 13: Test for present ortholog_set in 'all' mode. In this case, the function should ignore the ortholog_set and proceed without error.
@@ -269,6 +278,7 @@ contains
 
         call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, MODE_GROUP_ALL, selected_indices, ierr, ortholog_set)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_all_mode")
     end subroutine test_present_ortholog_set_in_all_mode
 end module mod_test_gene_centroids

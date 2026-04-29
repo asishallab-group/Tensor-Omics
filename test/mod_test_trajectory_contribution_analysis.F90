@@ -1,9 +1,10 @@
-! filepath: test/mod_test_trajectory_contribution_analysis.f90
+#include "macros.h"
+
 !> Unit test suite for trajectory_contribution_analysis routine.
 module mod_test_trajectory_contribution_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_trajectory_contribution_analysis
     use tox_errors
     use tox_trajectory_normalization
@@ -720,7 +721,7 @@ contains
         ! Case 5: invalid mode
         call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), 99_int32, &
                                                 factor_baseline, dependent_baseline, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_compute_baselines_factor_dependent: invalid mode")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=4_int32), "test_compute_baselines_factor_dependent: invalid mode")
     end subroutine test_compute_baselines_factor_dependent
 
     !> Test the normalization of variable timeseries
@@ -899,28 +900,23 @@ contains
 
         ! Test 1: Empty array (n_points = 0)
         call normalize_variable_timeseries(v, v_norm, 0, ierr, status)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "test_normalize_invalid_inputs: empty array should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=3_int32), "test_normalize_invalid_inputs: empty array should return ERR_EMPTY_INPUT")
 
         ! Test 2: Negative n_points
         call normalize_variable_timeseries(v, v_norm, -1, ierr, status)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_normalize_invalid_inputs: negative n_points should return ERR_INVALID_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=3_int32), "test_normalize_invalid_inputs: negative n_points should return ERR_INVALID_INPUT")
 
         ! Test 3: NaN in input
-        v3 = [1.0_real64, ieee_value(0.0_real64, ieee_quiet_nan), 3.0_real64]
+        v3 = [1.0_real64, M_NAN, 3.0_real64]
         call normalize_variable_timeseries(v3, v3_norm, 3, ierr, status)
         ! Note: NaN handling depends on minval/maxval behavior - check if error is set
-        if (ierr /= ERR_OK) then
-            ! If error is set, it should be ERR_NAN_INF
-            call assert_equal_int(ierr, ERR_NAN_INF, "test_normalize_invalid_inputs: NaN should return ERR_NAN_INF")
-        end if
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_normalize_invalid_inputs: NaN should return ERR_NAN_INF")
 
         ! Test 4: Infinity in input
-        v3 = [1.0_real64, 2.0_real64, huge(1.0_real64)]
+        v3 = [1.0_real64, 2.0_real64, M_POS_INF]
         call normalize_variable_timeseries(v3, v3_norm, 3, ierr, status)
         ! Similar to NaN case
-        if (ierr /= ERR_OK) then
-            call assert_equal_int(ierr, ERR_NAN_INF, "test_normalize_invalid_inputs: Infinity should return ERR_NAN_INF")
-        end if
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_normalize_invalid_inputs: Infinity should return ERR_NAN_INF")
     end subroutine test_normalize_invalid_inputs
 
 end module mod_test_trajectory_contribution_analysis

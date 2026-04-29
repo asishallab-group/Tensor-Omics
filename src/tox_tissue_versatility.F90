@@ -7,7 +7,7 @@ module tox_tissue_versatility
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once, validate_dimension_size, validate_all_in_range_real, is_err
-    use f42_utils, only: operator(.isclose.), clamp
+    use f42_utils, only: operator(.isclose.), clamp, degrees
     implicit none
 contains
 
@@ -85,7 +85,6 @@ contains
         ! Local variables
         integer(int32) :: i_vec, i_axis, out_idx
         real(real64) :: norm_diag, dot_prod, norm_v, cos_phi, angle_rad, norm_factor
-        real(real64), parameter :: rad2deg = 180.0_real64/acos(-1.0_real64)
 
         ! Handle edge case: when only one axis is selected, tissue versatility is always 0
         if (n_selected_axes == 1) then
@@ -129,8 +128,7 @@ contains
             cos_phi = clamp(cos_phi, min_val=-1.0_real64, max_val=1.0_real64)
             angle_rad = acos(cos_phi)
             tissue_versatilities(out_idx) = (1.0_real64 - cos_phi)/norm_factor
-            tissue_angles_deg(out_idx) = angle_rad*rad2deg
-            if (tissue_angles_deg(out_idx) .isclose. 0.0_real64) tissue_angles_deg(out_idx) = 0.0_real64
+            tissue_angles_deg(out_idx) = degrees(angle_rad)
         end do
 
     end subroutine compute_tissue_versatility_helper

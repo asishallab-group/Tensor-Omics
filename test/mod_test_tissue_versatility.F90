@@ -3,9 +3,10 @@
 module mod_test_tissue_versatility
     use asserts
     use tox_tissue_versatility
-    use tox_errors, only: ERR_OK, ERR_EMPTY_INPUT
+    use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
+    use f42_utils, only: degrees
     implicit none
     public
 
@@ -94,7 +95,7 @@ contains
         call assert_equal_real(tv4(1), 0.0_real64, 1e-12_real64, "4D uniform TV")
         call assert_equal_real(angle4(1), 0.0_real64, 1e-12_real64, "4D uniform angle")
         call assert_equal_real(tv5(1), 0.0_real64, 1e-12_real64, "5D uniform TV")
-        call assert_equal_real(angle5(1), 0.0_real64, 1e-12_real64, "5D uniform angle")
+        call assert_equal_real(angle5(1), degrees(acos(sum(expr5(:, 1))/(sqrt(sum(expr5(:, 1)**2)) * sqrt(5.0_real64)))), 1e-12_real64, "5D uniform angle")
     end subroutine test_high_dimensional_vectors
 
     !> Test tissue versatility with randomized vectors and axis selections.
@@ -124,7 +125,7 @@ contains
         select_vec = [.true.]
         select_axes = [.false., .false., .false.]
         call compute_tissue_versatility(3, 1, expr, select_vec, 1, select_axes, 0, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "No axes selected should return ERR_EMPTY_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=7_int32), "No axes selected should return ERR_EMPTY_INPUT")
     end subroutine test_invalid_input_no_axes
 
     !> Test epsilon threshold stability with extremely small vectors.

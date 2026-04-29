@@ -35,8 +35,8 @@ contains
         call set_ok(ierr)
         call set_ok(status)
 
-        call validate_all_in_range_real(v, n_points, ierr)
-        call validate_dimension_size(n_points, ierr)
+        call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(v, n_points, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 
         min_val = minval(v)
@@ -83,7 +83,7 @@ contains
         call set_ok(status)
         call set_ok(tmp_status)
 
-        call validate_dimension_size(n_factors, ierr)
+        call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 
         ! Normalize each factor independently across time
@@ -128,7 +128,7 @@ contains
         call set_ok(status)
         call set_ok(tmp_status)
 
-        call validate_dimension_size(n_samples, ierr)
+        call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_series(n_timepoints))
@@ -137,7 +137,7 @@ contains
         ! Normalize each sample/entity independently
         do i_sample = 1, n_samples
             do i_factor = 1, n_factors
-                do i_timepoint = 1, n_timepoints
+                do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_series, trajectories, i_sample, i_factor)
                     tmp_series(i_timepoint) = trajectories(i_factor, i_sample, i_timepoint)
                 end do
 

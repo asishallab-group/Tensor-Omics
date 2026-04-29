@@ -133,7 +133,7 @@ contains
 
         select case (mode)
             case (MODE_GROUP_ORTHOLOGS)
-                if (.not. present(ortholog_set)) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+                if (.not. present(ortholog_set)) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=10_int32)
             case (MODE_GROUP_ALL)
             case default
                 call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)

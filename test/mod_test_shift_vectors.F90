@@ -32,6 +32,7 @@ contains
         gene_to_centroid = [2, 3, 1, 3, 1]
 
         call compute_shift_vector_field(3, 5, 3, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
         expected_shift_vectors = reshape([2.0_real64, 1.0_real64, 0.0_real64, -1.0_real64, 1.0_real64, 3.0_real64, &
                                           -1.0_real64, -2.0_real64, -3.0_real64, 5.0_real64, 7.0_real64, 9.0_real64, &
                                           5.0_real64, 4.0_real64, 3.0_real64, 2.0_real64, 4.0_real64, 6.0_real64, &
@@ -57,7 +58,7 @@ contains
         call compute_shift_vector_field(3, 2, 3, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
 
         ! Check for expected ERR_INVALID_INPUT error
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Invalid centroid id mapping should return ERR_INVALID_INPUT")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=6_int32), "Invalid centroid id mapping should return ERR_INVALID_INPUT")
     end subroutine test_invalid_family_mapping
 
     !> Test for zero distance between paralog and centroid
@@ -72,6 +73,7 @@ contains
 
         ! Call the function with zero distance values
         call compute_shift_vector_field(3, 2, 2, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
 
         ! Check for expected 0 values in shift_vectors
         expected_shift_vectors = reshape([1.0_real64, 2.0_real64, 3.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, &
@@ -97,6 +99,7 @@ contains
 
         ! Call the function with multiple genes per family
         call compute_shift_vector_field(2, 4, 2, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
 
         call assert_equal_array_real(shift_vectors, expected_shift_vectors, 4, 1e-12_real64, &
                                      "Shift vectors should match expected values")
@@ -120,6 +123,7 @@ contains
 
         ! Call the function with single genes per family centroid
         call compute_shift_vector_field(2, 4, 4, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
+        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
 
         call assert_equal_array_real(shift_vectors, expected_shift_vectors, 4, 1e-12_real64, &
                                      "Shift vectors should match expected values")
@@ -128,17 +132,13 @@ contains
 
     !> Test for dimension edge cases (0 genes with dimension 1 and 1 family)
     subroutine test_dimension_edge_cases()
-        real(real64) :: expression_vectors(0, 0), family_centroids(0, 1), shift_vectors(0, 0)
-        integer(int32) :: gene_to_centroid(0), ierr
+        real(real64) :: expression_vectors(1, 1), family_centroids(1, 1), shift_vectors(1, 1)
+        integer(int32) :: gene_to_centroid(1), ierr
 
         ! Call the function with edge case arrays
         call compute_shift_vector_field(1, 0, 1, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
-
         ! Check for expected error code 202 (ERR_EMPTY_INPUT)
-        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "Expected error code 202 for empty input")
-
-        ! Check for expected 0 length of shift_vectors array
-        call assert_equal_int(size(shift_vectors), 0, "Shift vectors array length should be 0")
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), "Expected error code 202 for empty input")
 
     end subroutine test_dimension_edge_cases
 

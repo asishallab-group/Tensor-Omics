@@ -5,7 +5,7 @@ module f42_serialize_real
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_array_utils, only: write_file_header, REAL_TYPE_CODE
-    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_WRITE_DATA, set_err
+    use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
     implicit none
 
     private
@@ -31,7 +31,7 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_elements, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_elements, ierr, min=0_int32, arg_pos=1_int32)
 
         if (is_err(ierr)) return
 

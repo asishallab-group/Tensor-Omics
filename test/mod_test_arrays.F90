@@ -73,17 +73,17 @@ contains
         fname = "test_iarr1d.bin"
         call serialize_int_1d(iarr1d, fname, ierr)
         print *, "Serialized integer 1D array to ", trim(fname)
-        if (.not. is_ok(ierr)) error stop ierr
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         ! Metadata auslesen
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop ierr
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         ! Array basierend auf Metadaten allokieren
         allocate (iarr1d2(dims(1)))
 
         call deserialize_int_1d(iarr1d2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop ierr
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr1d, iarr1d2, size(iarr1d), "Mismatch")
     end subroutine test_integer_array_1d
 
@@ -97,13 +97,13 @@ contains
 
         fname = "test_iarr2d.bin"
         call serialize_int_2d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (iarr2(dims(1), dims(2)))
         call deserialize_int_2d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_2d
 
@@ -117,14 +117,14 @@ contains
 
         fname = "test_iarr3d.bin"
         call serialize_int_3d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (iarr2(dims(1), dims(2), dims(3)))
         call deserialize_int_3d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_3d
 
@@ -139,14 +139,14 @@ contains
         fname = "test_iarr4d.bin"
 
         call serialize_int_4d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (iarr2(dims(1), dims(2), dims(3), dims(4)))
 
         call deserialize_int_4d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_4d
 
@@ -160,14 +160,14 @@ contains
         allocate (iarr(2, 1, 2, 1, 2)); iarr = reshape([(i, i=1, 8)], [2, 1, 2, 1, 2])
         fname = "test_iarr5d.bin"
         call serialize_int_5d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (iarr2(dims(1), dims(2), dims(3), dims(4), dims(5)))
 
         call deserialize_int_5d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_5d
 
@@ -181,14 +181,14 @@ contains
         fname = "test_iarr_1x1.bin"
 
         call serialize_int_2d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (iarr2(dims(1), dims(2)))
         call deserialize_int_2d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_1x1
 
@@ -201,13 +201,13 @@ contains
         allocate (iarr(0, 3))
         fname = "test_iarr_empty.bin"
         call serialize_int_2d(iarr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (iarr2(dims(1), dims(2)))
         call deserialize_int_2d(iarr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_empty
 
@@ -223,13 +223,13 @@ contains
         allocate (arr(4)); arr = [1.1d0, 2.2d0, 3.3d0, 4.4d0]
         fname = "test_rarr1d.bin"
         call serialize_real_1d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (arr2(dims(1)))
         call deserialize_real_1d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
     end subroutine test_real_array_1d
 
@@ -242,13 +242,13 @@ contains
         allocate (arr(2, 2)); arr = reshape([1.5d0, 2.5d0, 3.5d0, 4.5d0], [2, 2])
         fname = "test_rarr2d.bin"
         call serialize_real_2d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (arr2(dims(1), dims(2)))
         call deserialize_real_2d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
     end subroutine test_real_array_2d
 
@@ -261,12 +261,12 @@ contains
         allocate (arr(2, 2, 2)); arr = reshape([1d0, 2d0, 3d0, 4d0, 5d0, 6d0, 7d0, 8d0], [2, 2, 2])
         fname = "test_rarr3d.bin"
         call serialize_real_3d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (arr2(dims(1), dims(2), dims(3)))
         call deserialize_real_3d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
     end subroutine test_real_array_3d
 
@@ -280,12 +280,12 @@ contains
         allocate (arr(2, 2, 1, 2)); arr = reshape([(real(i, real64), i=1, 8)], [2, 2, 1, 2])
         fname = "test_rarr4d.bin"
         call serialize_real_4d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (arr2(dims(1), dims(2), dims(3), dims(4)))
         call deserialize_real_4d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
     end subroutine test_real_array_4d
 
@@ -300,13 +300,13 @@ contains
         allocate (arr(2, 1, 2, 1, 2)); arr = reshape([(real(i, real64), i=1, 8)], [2, 1, 2, 1, 2])
         fname = "test_rarr5d.bin"
         call serialize_real_5d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (arr2(dims(1), dims(2), dims(3), dims(4), dims(5)))
         call deserialize_real_5d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_real(arr, arr2, size(arr), 1d-12, "Mismatch")
     end subroutine test_real_array_5d
 
@@ -324,13 +324,13 @@ contains
         arr = ['foo', 'bar', 'baz']
         fname = "test_carr1d.bin"
         call serialize_char_1d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (character(len=clen) :: arr2(dims(1)))
         call deserialize_char_1d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
     end subroutine test_char_array_1d
 
@@ -345,13 +345,13 @@ contains
         arr = reshape(['foo  ', 'bar  ', 'baz  ', 'quxxx'], [2, 2])
         fname = "test_carr2d.bin"
         call serialize_char_2d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (character(len=clen) :: arr2(dims(1), dims(2)))
         call deserialize_char_2d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
     end subroutine test_char_array_2d
 
@@ -366,14 +366,14 @@ contains
         arr = reshape(['foo  ', 'bar  ', 'baz  ', 'qux  '], [2, 2, 1])
         fname = "test_carr3d.bin"
         call serialize_char_3d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (character(len=clen) :: arr2(dims(1), dims(2), dims(3)))
         call deserialize_char_3d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
     end subroutine test_char_array_3d
 
@@ -388,14 +388,14 @@ contains
         arr = reshape(['foo  ', 'bar  ', 'baz  ', 'qux  '], [2, 1, 1, 2])
         fname = "test_carr4d.bin"
         call serialize_char_4d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (character(len=clen) :: arr2(dims(1), dims(2), dims(3), dims(4)))
         call deserialize_char_4d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
     end subroutine test_char_array_4d
 
@@ -410,13 +410,13 @@ contains
         arr = reshape(['foo  ', 'bar  ', 'baz  ', 'qux  ', 'aaa  ', 'bbb  ', 'ccc  ', 'ddd  '], [2, 1, 2, 1, 2])
         fname = "test_carr5d.bin"
         call serialize_char_5d(arr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (character(len=clen) :: arr2(dims(1), dims(2), dims(3), dims(4), dims(5)))
         call deserialize_char_5d(arr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(arr, arr2, clen, size(arr), "Mismatch")
     end subroutine test_char_array_5d
 
@@ -431,13 +431,13 @@ contains
         protein = reshape(['METHIONINE', 'GLYCINE   ', 'SERINE    ', 'LYSINE    ', &
                            'VALINE    ', 'HISTIDINE ', 'PROLINE   ', 'LEUCINE   '], [2, 1, 2, 1, 2])
         call serialize_char_5d(protein, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr, clen)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (character(len=clen) :: protein2(dims(1), dims(2), dims(3), dims(4), dims(5)))
         call deserialize_char_5d(protein2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_char(protein, protein2, clen, size(protein), "Mismatch")
     end subroutine test_char_array_protein
 
@@ -451,17 +451,17 @@ contains
 
         fname = "test_larr1d.bin"
         call serialize_logical_1d(larr1d, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         ! Metadata auslesen
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         ! Array basierend auf Metadaten allokieren
         allocate (larr1d2(dims(1)))
 
         call deserialize_logical_1d(larr1d2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_logical(larr1d, larr1d2, size(larr1d), "Logical 1D Mismatch")
     end subroutine test_logical_array_1d
 
@@ -475,13 +475,13 @@ contains
 
         fname = "test_larr2d.bin"
         call serialize_logical_2d(larr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (larr2(dims(1), dims(2)))
         call deserialize_logical_2d(larr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_logical(larr, larr2, size(larr), "Logical 2D Mismatch")
     end subroutine test_logical_array_2d
 
@@ -495,14 +495,14 @@ contains
 
         fname = "test_larr3d.bin"
         call serialize_logical_3d(larr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         allocate (larr2(dims(1), dims(2), dims(3)))
         call deserialize_logical_3d(larr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_logical(larr, larr2, size(larr), "Logical 3D Mismatch")
     end subroutine test_logical_array_3d
 
@@ -516,14 +516,14 @@ contains
         fname = "test_larr4d.bin"
 
         call serialize_logical_4d(larr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (larr2(dims(1), dims(2), dims(3), dims(4)))
 
         call deserialize_logical_4d(larr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_logical(larr, larr2, size(larr), "Logical 4D Mismatch")
     end subroutine test_logical_array_4d
 
@@ -536,14 +536,14 @@ contains
         allocate (larr(2, 1, 2, 1, 2)); larr = reshape([.true., .false., .true., .false., .true., .false., .true., .false.], [2, 1, 2, 1, 2])
         fname = "test_larr5d.bin"
         call serialize_logical_5d(larr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (larr2(dims(1), dims(2), dims(3), dims(4), dims(5)))
 
         call deserialize_logical_5d(larr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_logical(larr, larr2, size(larr), "Logical 5D Mismatch")
     end subroutine test_logical_array_5d
 
@@ -560,13 +560,13 @@ contains
         carr = [(1.0d0, 2.0d0), (3.0d0, 4.0d0), (5.0d0, 6.0d0)]
         fname = "test_carr1d.bin"
         call serialize_complex_1d(carr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (carr2(dims(1)))
         call deserialize_complex_1d(carr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 1D Mismatch")
     end subroutine test_complex_array_1d
 
@@ -580,13 +580,13 @@ contains
         carr = reshape([(1.5d0, 0.5d0), (2.5d0, 1.5d0), (3.5d0, 2.5d0), (4.5d0, 3.5d0)], [2, 2])
         fname = "test_carr2d.bin"
         call serialize_complex_2d(carr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (carr2(dims(1), dims(2)))
         call deserialize_complex_2d(carr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 2D Mismatch")
     end subroutine test_complex_array_2d
 
@@ -601,12 +601,12 @@ contains
                         (2.0d0, 0.0d0), (0.0d0, 2.0d0), (2.0d0, 2.0d0), (0.0d0, 0.0d0)], [2, 2, 2])
         fname = "test_carr3d.bin"
         call serialize_complex_3d(carr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (carr2(dims(1), dims(2), dims(3)))
         call deserialize_complex_3d(carr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 3D Mismatch")
     end subroutine test_complex_array_3d
 
@@ -630,12 +630,12 @@ contains
 
         fname = "test_carr4d.bin"
         call serialize_complex_4d(carr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (carr2(dims(1), dims(2), dims(3), dims(4)))
         call deserialize_complex_4d(carr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 4D Mismatch")
     end subroutine test_complex_array_4d
 
@@ -660,13 +660,13 @@ contains
 
         fname = "test_carr5d.bin"
         call serialize_complex_5d(carr, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
 
         call get_array_metadata(fname, dims, 5, ndims, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         allocate (carr2(dims(1), dims(2), dims(3), dims(4), dims(5)))
         call deserialize_complex_5d(carr2, fname, ierr)
-        if (.not. is_ok(ierr)) error stop
+        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
         call assert_equal_array_complex(carr, carr2, size(carr), 1d-12, "Complex 5D Mismatch")
     end subroutine test_complex_array_5d
 

@@ -378,8 +378,17 @@ contains
         real(real64), intent(in) :: degrees
             !! degrees to be converted
 
-        radians = modulo(degrees, 360.0_real64) * PI/180
+        radians = modulo(degrees, 360.0_real64) * PI / 180
     end function radians
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns the given radians in positive degree value \( -\frac{\pi}{2} \Rightarrow 270^{\circ}, \text{not} -90^{\circ} \)
+    pure real(real64) function degrees(radians)
+        real(real64), intent(in) :: radians
+            !! radians to be converted
+
+        degrees = modulo(radians, 2 * PI) * 180 / PI
+    end function degrees
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculates the euclidean norm of a vector

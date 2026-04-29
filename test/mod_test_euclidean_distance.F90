@@ -268,7 +268,13 @@ contains
         centroids(:, 2) = [1.0_real64, 1.0_real64]
 
         ! Invalid family indices
-        gene_to_fam = [1, 3, 0]  ! family 3 doesn't exist, family 0 invalid
+        gene_to_fam = [1, 3, 0]  ! family 3 out of bounds
+
+        call distance_to_centroid(n_genes, n_families, genes, centroids, &
+                                  gene_to_fam, distances, d, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "Expected invalid input error")
+
+        gene_to_fam = [1, 0, 0]
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
