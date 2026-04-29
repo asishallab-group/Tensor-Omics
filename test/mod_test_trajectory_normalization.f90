@@ -8,21 +8,18 @@ module mod_test_trajectory_normalization
     use test_suite, only: test_case
     implicit none
 
-
     real(real64), parameter :: TOL = 1.0e-10_real64
 
 contains
 
     function get_all_tests_trajectory_normalization() result(all_tests)
-        type(test_case),allocatable :: all_tests(:)
+        type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(3))
+        allocate (all_tests(3))
         all_tests(1) = test_case("test_normalize_variable_timeseries", test_normalize_variable_timeseries)
         all_tests(2) = test_case("test_normalize_single_trajectory", test_normalize_single_trajectory)
         all_tests(3) = test_case("test_normalize_all_trajectories", test_normalize_all_trajectories)
     end function get_all_tests_trajectory_normalization
-
-   
 
     !> Test the normalization of variable timeseries.
     subroutine test_normalize_variable_timeseries()

@@ -10,16 +10,15 @@ module mod_test_conversions
     implicit none
     public
 
-
     real(real64), parameter :: TOL = 0
 
 contains
 
     !> Get array of all available tests.
     function get_all_tests_conversions() result(all_tests)
-        type(test_case),allocatable :: all_tests(:)
+        type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(8))
+        allocate (all_tests(8))
 
         all_tests(1) = test_case("test_tox_conversions_c_char_as_char", test_c_char_as_char)
         all_tests(2) = test_case("test_tox_conversions_c_char_1d_as_string", test_c_char_1d_as_string)
@@ -30,9 +29,6 @@ contains
         all_tests(7) = test_case("test_tox_conversions_string_as_c_char_2d", test_string_as_c_char_2d)
         all_tests(8) = test_case("test_tox_conversions_logical_as_c_int", test_logical_as_c_int)
     end function get_all_tests_conversions
-
-    
-    
 
     !> Test C int to logical conversion for scalar and array cases.
     subroutine test_c_int_as_logical
@@ -57,7 +53,7 @@ contains
         call c_int_as_logical(c_val_array, casted_array)
         call assert_false(casted_array(1), "test_conversions_c_int_as_logical: value mismatch")
     end subroutine test_c_int_as_logical
-    
+
     !> Test C char to Fortran char conversion for scalar and array cases.
     subroutine test_c_char_as_char
         character(c_char) :: c_val
@@ -99,7 +95,7 @@ contains
         call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
         call assert_true(f_char == "", "test_conversions_c_char_1d_as_string: value mismatch")
     end subroutine test_c_char_1d_as_string
-    
+
     !> Test string to C char array conversion for 2D case.
     subroutine test_c_char_2d_as_string
         character(c_char) :: c_char_array(5, 2)
@@ -116,7 +112,7 @@ contains
         call assert_equal_int(size(f_char, 1), 2, "test_conversions_c_char_2d_as_string: Did not get two strings")
         call assert_true(f_char(1) == "Hello" .and. f_char(2) == "", "test_conversions_c_char_2d_as_string: value mismatch")
     end subroutine test_c_char_2d_as_string
-    
+
     !> Test logical to C int conversion for scalar and array cases.
     subroutine test_logical_as_c_int
         logical :: f_val
@@ -136,7 +132,7 @@ contains
         call logical_as_c_int(f_val_array, casted_array)
         call assert_true(casted_array(1) == 0_c_int, "test_tox_conversions_logical_as_c_int: array value mismatch")
     end subroutine test_logical_as_c_int
-    
+
     !> Test Fortran char to C char conversion for scalar and array cases.
     subroutine test_char_as_c_char
         character(len=1) :: f_val
@@ -156,29 +152,29 @@ contains
         call char_as_c_char(f_val, casted_c)
         call assert_true(casted_c == c_null_char, "test_tox_conversions_char_as_c_char: null char mismatch")
     end subroutine test_char_as_c_char
-    
+
     !> Test Fortran string to C char array conversion for 1D case.
     subroutine test_string_as_c_char_1d
         character(len=5) :: f_str
         character(c_char), allocatable :: c_array(:)
 
         f_str = "Hello"
-        allocate(c_array(6))
+        allocate (c_array(6))
         call string_as_c_char_1d(f_str, c_array)
         call assert_true(all(c_array == ["H", "e", "l", "l", "o", c_null_char]), &
-            "test_tox_conversions_string_as_c_char_1d: value mismatch")
+                         "test_tox_conversions_string_as_c_char_1d: value mismatch")
 
         call string_as_c_char_1d(f_str, c_array(1:5))
         call assert_true(all(c_array(1:5) == ["H", "e", "l", "l", c_null_char]), &
-            "test_tox_conversions_string_as_c_char_1d: value mismatch")
+                         "test_tox_conversions_string_as_c_char_1d: value mismatch")
 
         f_str = ""
         call string_as_c_char_1d(f_str, c_array)
         call assert_true(c_array(1) == c_null_char, "test_tox_conversions_string_as_c_char_1d: empty string mismatch")
 
         ! just check empty array output
-        deallocate(c_array)
-        allocate(c_array(0))
+        deallocate (c_array)
+        allocate (c_array(0))
         call string_as_c_char_1d(f_str, c_array)
     end subroutine test_string_as_c_char_1d
 
@@ -194,4 +190,3 @@ contains
         call assert_true(c_array(1, 2) == c_null_char, "test_tox_conversions_string_as_c_char_2d: mismatch in second string")
     end subroutine test_string_as_c_char_2d
 end module mod_test_conversions
-   

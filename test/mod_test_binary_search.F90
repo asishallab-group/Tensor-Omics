@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_binary_search() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate(all_tests(2))
+        allocate (all_tests(2))
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
         all_tests(2) = test_case("test_binary_search", test_binary_search)
@@ -29,8 +29,8 @@ contains
         integer(int32) :: idx
 
         ! Sorted values with a duplicate and a NaN at the end
-        arr  = [1.0_real64, 3.0_real64, 3.0_real64, 5.0_real64, 7.0_real64, 9.0_real64, M_NAN]
-        perm = [1,2,3,4,5,6,7]   ! already sorted, NaN last
+        arr = [1.0_real64, 3.0_real64, 3.0_real64, 5.0_real64, 7.0_real64, 9.0_real64, M_NAN]
+        perm = [1, 2, 3, 4, 5, 6, 7]   ! already sorted, NaN last
 
         ! Insert before first element
         idx = binary_search_insertion(arr, perm, 0.5_real64)
@@ -71,8 +71,8 @@ contains
         integer(int32) :: idx
 
         ! Unsorted array with duplicates and NaN
-        arr  = [10.0_real64, 5.0_real64, 20.0_real64, 15.0_real64, 5.0_real64, 30.0_real64, M_NAN]
-        perm = [2,5,1,4,3,6,7]
+        arr = [10.0_real64, 5.0_real64, 20.0_real64, 15.0_real64, 5.0_real64, 30.0_real64, M_NAN]
+        perm = [2, 5, 1, 4, 3, 6, 7]
         ! arr(perm) = [5,5,10,15,20,30,NaN]
 
         ! Find first duplicate value
@@ -104,7 +104,7 @@ contains
         call assert_equal_int(idx, -1_int32, "test_binary_search: Value between duplicates but not present")
 
         ! Search in array with only NaN
-        arr  = M_NAN
+        arr = M_NAN
         idx = binary_search(arr, perm, 1.0_real64)
         call assert_equal_int(idx, -1_int32, "test_binary_search: Search non-NaN in all-NaN array")
         idx = binary_search(arr, perm, M_NAN)
