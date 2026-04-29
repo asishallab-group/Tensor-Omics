@@ -302,81 +302,72 @@ contains
     end subroutine clock_hand_angle_between_vectors_helper
 
     !> AUTHOR_VIVIAN_BASS
-    !| Compute signed rotation angles between RAP-projected and normalized vector pairs.
-    !| Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-    !| This measures both magnitude and directionality of angular separation in RAP space.
-    pure subroutine clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, &
-                                                        vecs_selection_mask, &
-                                                        n_selected_vecs, selected_axes_for_signed, &
+    !| Compute signed rotation angles between for shift vectors, so between their origin and target
+    pure subroutine clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, &
+                                                        fields_selection_mask, &
+                                                        n_selected_fields, selected_axes_for_signed, &
                                                         signed_angles, ierr)
         integer(int32), intent(in) :: n_dims
             !! Dimension of each vector in RAP space
-        integer(int32), intent(in) :: n_vecs
-            !! Number of vector pairs
-        real(real64), dimension(n_dims, n_vecs), intent(in) :: origins
-            !! First set of RAP-projected, normalized vectors (e.g. expression centroids)
-        real(real64), dimension(n_dims, n_vecs), intent(in) :: targets
-            !! Second set of RAP-projected, normalized vectors (e.g. paralogs)
-        logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+        integer(int32), intent(in) :: n_fields
+            !! Number of vector fields
+        real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
+            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+        logical, dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
-        integer(int32), intent(in) :: n_selected_vecs
-            !! Count of .true. values in vecs_selection_mask
+        integer(int32), intent(in) :: n_selected_fields
+            !! Count of .true. values in fields_selection_mask
         integer(int32), dimension(3), intent(in) :: selected_axes_for_signed
             !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-        real(real64), dimension(n_selected_vecs), intent(out) :: signed_angles
+        real(real64), dimension(n_selected_fields), intent(out) :: signed_angles
             !! Signed rotation angles between vector pairs in radians [-π, π]
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_vecs, ierr, arg_pos=4_int32)
-        call validate_dimension_size(n_selected_vecs, ierr, arg_pos=6_int32)
-        call validate_all_in_range_real(origins, size(origins, kind=int32), ierr, arg_pos=1_int32)
-        call validate_all_in_range_real(targets, size(targets, kind=int32), ierr, arg_pos=2_int32)
-        if (count(vecs_selection_mask, kind=int32) > n_selected_vecs) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        call validate_selected_axes_for_signed_helper(selected_axes_for_signed, ierr, n_dims, arg_pos=5_int32)
+        call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(fields, size(fields, kind=int32), ierr, arg_pos=1_int32)
+        if (count(fields_selection_mask, kind=int32) > n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
+        call validate_selected_axes_for_signed_helper(selected_axes_for_signed, ierr, n_dims, arg_pos=6_int32)
 
         if (is_err(ierr)) return
 
-        call clock_hand_angles_for_shift_vectors_helper(origins, targets, n_dims, n_vecs, &
-                                                        vecs_selection_mask, &
-                                                        n_selected_vecs, selected_axes_for_signed, &
+        call clock_hand_angles_for_shift_vectors_helper(fields, n_dims, n_fields, &
+                                                        fields_selection_mask, &
+                                                        n_selected_fields, selected_axes_for_signed, &
                                                         signed_angles)
     end subroutine clock_hand_angles_for_shift_vectors
 
     !> AUTHOR_VIVIAN_BASS
-    !| (no input validation) Compute signed rotation angles between RAP-projected and normalized vector pairs.
-    !| Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-    !| This measures both magnitude and directionality of angular separation in RAP space.
-    pure subroutine clock_hand_angles_for_shift_vectors_helper(origins, targets, n_dims, n_vecs, &
-                                                        vecs_selection_mask, &
-                                                        n_selected_vecs, selected_axes_for_signed, &
+    !| (no input validation) Compute signed rotation angles between for shift vectors, so between their origin and target
+    pure subroutine clock_hand_angles_for_shift_vectors_helper(fields, n_dims, n_fields, &
+                                                        fields_selection_mask, &
+                                                        n_selected_fields, selected_axes_for_signed, &
                                                         signed_angles)
-        real(real64), dimension(n_dims, n_vecs), intent(in) :: origins
-            !! First set of RAP-projected, normalized vectors (e.g. expression centroids)
-        real(real64), dimension(n_dims, n_vecs), intent(in) :: targets
-            !! Second set of RAP-projected, normalized vectors (e.g. paralogs)
+        real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
+            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
         integer(int32), intent(in) :: n_dims
             !! Dimension of each vector in RAP space
-        integer(int32), intent(in) :: n_vecs
+        integer(int32), intent(in) :: n_fields
             !! Number of vector pairs
-        logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+        logical, dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
-        integer(int32), intent(in) :: n_selected_vecs
-            !! Count of .true. values in vecs_selection_mask
+        integer(int32), intent(in) :: n_selected_fields
+            !! Count of .true. values in fields_selection_mask
         integer(int32), dimension(3), intent(in) :: selected_axes_for_signed
             !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-        real(real64), dimension(n_selected_vecs), intent(out) :: signed_angles
+        real(real64), dimension(n_selected_fields), intent(out) :: signed_angles
             !! Signed rotation angles between vector pairs in radians [-π, π]
 
-        integer(int32) :: i_vec, result_idx
+        integer(int32) :: i_field, result_idx
 
         result_idx = 1
-        do i_vec = 1, n_vecs
-            if (vecs_selection_mask(i_vec)) then
-                call clock_hand_angle_between_vectors_helper(origins(:, i_vec), targets(:, i_vec), n_dims, &
+        do i_field = 1, n_fields
+            if (fields_selection_mask(i_field)) then
+                call clock_hand_angle_between_vectors_helper(fields(:, 1, i_field), fields(:, 2, i_field), n_dims, &
                                                       signed_angles(result_idx), selected_axes_for_signed)
                 result_idx = result_idx + 1
             end if
@@ -522,7 +513,7 @@ pure subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle,
     call clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)
 end subroutine clock_hand_angle_between_vectors_c
 
-pure subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")
+pure subroutine clock_hand_angles_for_shift_vectors_c(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
     use tox_conversions, only: c_int_as_logical
@@ -532,40 +523,37 @@ pure subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, 
 
     integer(c_int), intent(in), target :: n_dims
         !! Dimension of each vector in RAP space
-    integer(c_int), intent(in), target :: n_vecs
+    integer(c_int), intent(in), target :: n_fields
         !! Number of vector pairs
-    real(c_double), dimension(n_dims, n_vecs), intent(in), target :: origins
-        !! First set of RAP-projected, normalized vectors (e.g. expression centroids)
-    real(c_double), dimension(n_dims, n_vecs), intent(in), target :: targets
-        !! Second set of RAP-projected, normalized vectors (e.g. paralogs)
-    integer(c_int), dimension(n_vecs), intent(in), target :: vecs_selection_mask
+    real(c_double), dimension(n_dims, 2, n_fields), intent(in), target :: fields
+        !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+    integer(c_int), dimension(n_fields), intent(in), target :: fields_selection_mask
         !! .true. for vector pairs where angle should be computed
-    integer(c_int), intent(in), target :: n_selected_vecs
-        !! Count of .true. values in vecs_selection_mask
+    integer(c_int), intent(in), target :: n_selected_fields
+        !! Count of .true. values in fields_selection_mask
     integer(c_int), dimension(3), intent(in), target :: selected_axes_for_signed
         !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-    real(c_double), dimension(n_selected_vecs), intent(out), target :: signed_angles
+    real(c_double), dimension(n_selected_fields), intent(out), target :: signed_angles
         !! Signed rotation angles between vector pairs in radians [-π, π]
     integer(c_int), intent(out), target :: ierr
         !! Error code
 
-    logical, dimension(:), allocatable :: vecs_selection_mask_f(:)
+    logical, dimension(:), allocatable :: fields_selection_mask_f(:)
 
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(n_vecs)
-    M_CHECK_NON_NULL(n_selected_vecs)
-    M_CHECK_NON_NULL(origins)
-    M_CHECK_NON_NULL(targets)
-    M_CHECK_NON_NULL(vecs_selection_mask)
+    M_CHECK_NON_NULL(n_fields)
+    M_CHECK_NON_NULL(n_selected_fields)
+    M_CHECK_NON_NULL(fields)
+    M_CHECK_NON_NULL(fields_selection_mask)
     M_CHECK_NON_NULL(selected_axes_for_signed)
     M_CHECK_NON_NULL(signed_angles)
 
     ! Convert c_int mask to logical using tox_conversions utility
-    M_ALLOCATE(vecs_selection_mask_f(n_vecs))
-    call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
+    M_ALLOCATE(fields_selection_mask_f(n_fields))
+    call c_int_as_logical(fields_selection_mask, fields_selection_mask_f)
 
-    call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, vecs_selection_mask_f, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr)
+    call clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, fields_selection_mask_f, n_selected_fields, selected_axes_for_signed, signed_angles, ierr)
 end subroutine clock_hand_angles_for_shift_vectors_c
 
 !> C/Python wrapper for omics_vector_RAP_projection

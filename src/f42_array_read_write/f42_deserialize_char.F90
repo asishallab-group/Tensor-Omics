@@ -5,7 +5,7 @@ module f42_deserialize_char
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_array_utils, only: check_file_header, CHAR_TYPE_CODE
-    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_READ_DATA
+    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_READ_DATA, set_err
     implicit none
 
     private

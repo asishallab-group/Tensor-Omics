@@ -283,14 +283,14 @@ contains
 
   !> Test single pair of shift vectors.
   subroutine test_single_pair_shift_vectors()
-    real(real64) :: origins(2, 1), targets(2, 1), signed_angles(1)
+    real(real64) :: fields(2, 2, 1), signed_angles(1)
     logical :: vecs_selection_mask(1)
     integer :: selected_axes(3), ierr
-    origins(:, 1) = [1.0_real64, 0.0_real64]
-    targets(:, 1) = [0.0_real64, 1.0_real64]
+    fields(:, 1, 1) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 1) = [0.0_real64, 1.0_real64]
     vecs_selection_mask = [.true.]
     selected_axes = [1, 2, 1]
-    call clock_hand_angles_for_shift_vectors(origins, targets, 2, 1, vecs_selection_mask, 1, &
+    call clock_hand_angles_for_shift_vectors(fields, 2, 1, vecs_selection_mask, 1, &
                                            selected_axes, signed_angles, ierr)
     call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: single pair shift vectors")
     call assert_equal_real(abs(signed_angles(1)), PI/2.0_real64, TOL, "Single pair shift vectors")
@@ -298,18 +298,18 @@ contains
 
   !> Test multiple pairs of shift vectors.
   subroutine test_multiple_pairs_shift_vectors()
-    real(real64) :: origins(2, 3), targets(2, 3), signed_angles(3)
+    real(real64) :: fields(2, 2, 3), signed_angles(3)
     logical :: vecs_selection_mask(3)
     integer :: selected_axes(3), ierr
-    origins(:, 1) = [1.0_real64, 0.0_real64]
-    targets(:, 1) = [0.0_real64, 1.0_real64]
-    origins(:, 2) = [1.0_real64, 0.0_real64]
-    targets(:, 2) = [-1.0_real64, 0.0_real64]
-    origins(:, 3) = [1.0_real64, 0.0_real64]
-    targets(:, 3) = [0.0_real64, -1.0_real64]
+    fields(:, 1, 1) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 1) = [0.0_real64, 1.0_real64]
+    fields(:, 1, 2) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 2) = [-1.0_real64, 0.0_real64]
+    fields(:, 1, 3) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 3) = [0.0_real64, -1.0_real64]
     vecs_selection_mask = [.true., .true., .true.]
     selected_axes = [1, 2, 1]
-    call clock_hand_angles_for_shift_vectors(origins, targets, 2, 3, vecs_selection_mask, 3, selected_axes, signed_angles, ierr)
+    call clock_hand_angles_for_shift_vectors(fields, 2, 3, vecs_selection_mask, 3, selected_axes, signed_angles, ierr)
     call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: multiple pairs shift vectors")
     call assert_equal_real(signed_angles(1), PI/2.0_real64, TOL, "First rotation (90° CCW)")
     call assert_equal_real(abs(signed_angles(2)), PI, TOL, "Second rotation (180°)")
@@ -318,20 +318,20 @@ contains
 
   !> Test shift vectors with selection mask.
   subroutine test_shift_vectors_with_selection_mask()
-    real(real64) :: origins(2, 4), targets(2, 4), signed_angles(2)
+    real(real64) :: fields(2, 2, 4), signed_angles(2)
     logical :: vecs_selection_mask(4)
     integer :: selected_axes(3), ierr
-    origins(:, 1) = [1.0_real64, 0.0_real64]
-    targets(:, 1) = [0.0_real64, 1.0_real64]
-    origins(:, 2) = [1.0_real64, 0.0_real64]
-    targets(:, 2) = [-1.0_real64, 0.0_real64]
-    origins(:, 3) = [1.0_real64, 0.0_real64]
-    targets(:, 3) = [0.0_real64, -1.0_real64]
-    origins(:, 4) = [1.0_real64, 0.0_real64]
-    targets(:, 4) = [sqrt(2.0_real64)/2.0_real64, sqrt(2.0_real64)/2.0_real64]
+    fields(:, 1, 1) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 1) = [0.0_real64, 1.0_real64]
+    fields(:, 1, 2) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 2) = [-1.0_real64, 0.0_real64]
+    fields(:, 1, 3) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 3) = [0.0_real64, -1.0_real64]
+    fields(:, 1, 4) = [1.0_real64, 0.0_real64]
+    fields(:, 2, 4) = [sqrt(2.0_real64)/2.0_real64, sqrt(2.0_real64)/2.0_real64]
     vecs_selection_mask = [.false., .true., .false., .true.]
     selected_axes = [1, 2, 1]
-    call clock_hand_angles_for_shift_vectors(origins, targets, 2, 4, vecs_selection_mask, 2, selected_axes, signed_angles, ierr)
+    call clock_hand_angles_for_shift_vectors(fields, 2, 4, vecs_selection_mask, 2, selected_axes, signed_angles, ierr)
     call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: shift vectors with selection mask")
     call assert_equal_real(abs(signed_angles(1)), PI, TOL, "Second vector (180°)")
     call assert_equal_real(signed_angles(2), PI/4.0_real64, TOL, "Fourth vector (45°)")
@@ -368,16 +368,16 @@ contains
   !> Test performance with large-scale data.
   subroutine test_performance_large_scale()
     integer, parameter :: n_dims = 100, n_vecs = 1000
-    real(real64) :: origins(n_dims, n_vecs), targets(n_dims, n_vecs), signed_angles(n_vecs)
+    real(real64) :: fields(n_dims, 2, n_vecs), signed_angles(n_vecs)
     logical :: vecs_selection_mask(n_vecs)
     integer :: selected_axes(3), i, ierr
     do i = 1, n_vecs
-      origins(:, i) = real(i, real64) / real(n_vecs, real64)
-      targets(:, i) = real(n_vecs - i + 1, real64) / real(n_vecs, real64)
+      fields(:, 1, i) = real(i, real64) / real(n_vecs, real64)
+      fields(:, 2, i) = real(n_vecs - i + 1, real64) / real(n_vecs, real64)
     end do
     vecs_selection_mask = .true.
     selected_axes = [1, 2, 3]
-    call clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_vecs, selected_axes, signed_angles, ierr)
+    call clock_hand_angles_for_shift_vectors(fields, n_dims, n_vecs, vecs_selection_mask, n_vecs, selected_axes, signed_angles, ierr)
     call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: performance large scale")
     do i = 1, n_vecs
       call assert_true(abs(signed_angles(i)) <= PI, "Large-scale angles in valid range")
@@ -389,7 +389,7 @@ contains
   !> Test consistency between single and batch functions.
   subroutine test_consistency_between_functions()
     real(real64) :: v1(3), v2(3), single_angle
-    real(real64) :: origins(3, 1), targets(3, 1), batch_angles(1)
+    real(real64) :: fields(3, 2, 1), batch_angles(1)
     logical :: vecs_selection_mask(1)
     integer :: selected_axes(3), ierr_single, ierr_batch
     v1 = [1.0_real64, 2.0_real64, 3.0_real64]
@@ -398,10 +398,10 @@ contains
     v1 = v1 / sqrt(sum(v1**2))
     v2 = v2 / sqrt(sum(v2**2))
     call clock_hand_angle_between_vectors(v1, v2, 3, single_angle, selected_axes, ierr_single)
-    origins(:, 1) = v1
-    targets(:, 1) = v2
+    fields(:, 1, 1) = v1
+    fields(:, 2, 1) = v2
     vecs_selection_mask = [.true.]
-    call clock_hand_angles_for_shift_vectors(origins, targets, 3, 1, vecs_selection_mask, 1, selected_axes, batch_angles, ierr_batch)
+    call clock_hand_angles_for_shift_vectors(fields, 3, 1, vecs_selection_mask, 1, selected_axes, batch_angles, ierr_batch)
     call assert_equal_int(ierr_single, 0, "ierr should be 0 for valid input: single function")
     call assert_equal_int(ierr_batch, 0, "ierr should be 0 for valid input: batch function")
     call assert_equal_real(single_angle, batch_angles(1), TOL, "Single vs batch consistency")

@@ -116,7 +116,7 @@ subroutine deserialize_logical_nd_c(arr, orig_shape, n_dims, filename, fn_len, i
     use, intrinsic :: iso_c_binding, only: c_int, c_char
     use f42_deserialize_logical, only: deserialize_logical_helper
     use tox_errors, only: is_err, map_err_arg_pos, ERR_ALLOC_FAIL, set_err
-    use tox_conversions, only: c_char_1d_as_string, c_int_as_logical
+    use tox_conversions, only: c_char_1d_as_string, logical_as_c_int
     M_USE_NULL_VALIDATION
     implicit none
 

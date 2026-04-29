@@ -22,7 +22,7 @@ contains
         all_tests(1) = test_case("test_compute_baselines_factor_dependent", test_compute_baselines_factor_dependent)
         all_tests(2) = test_case("test_compute_contributions", test_compute_contributions)
         all_tests(3) = test_case("test_compute_all_contributions", test_compute_all_contributions)
-        all_tests(4) = test_case("test_select_random_sample_helper", test_select_random_sample_helper)
+        all_tests(4) = test_case("test_select_random_sample", test_select_random_sample)
         all_tests(5) = test_case("test_perform_permutation_test", test_perform_permutation_test)
         all_tests(6) = test_case("test_compute_p_values", test_compute_p_values)
         all_tests(7) = test_case("test_normalize_variable_timeseries", test_normalize_variable_timeseries)
@@ -421,8 +421,8 @@ contains
         call assert_true(all(local_contributions == expected_local), "test_perform_permutation_test: Case 3 should be reproducible")
     end subroutine test_perform_permutation_test
 
-    !> Test the select_random_sample_helper function with various cases.
-    subroutine test_select_random_sample_helper
+    !> Test the select_random_sample function with various cases.
+    subroutine test_select_random_sample
         use f42_utils, only: rand_range
         integer(int32), parameter :: n_samples = 10, current_sample = 5
         integer(int32) :: ierr, random_sample, i
@@ -433,35 +433,35 @@ contains
         ! Case 1: Basic selection test -> current_sample never selected
         sample_counts = 0
         do i = 1, 1000
-            call select_random_sample_helper(n_samples, current_sample, random_sample, ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_select_random_sample_helper: Case 1: Unexpected error when selecting sample")
+            call select_random_sample(n_samples, current_sample, random_sample, ierr)
+            call assert_equal_int(ierr, ERR_OK, "test_select_random_sample: Case 1: Unexpected error when selecting sample")
             
             sample_counts(random_sample) = sample_counts(random_sample) + 1
         end do
 
-        call assert_equal_int(sample_counts(current_sample), 0_int32, "test_select_random_sample_helper: Case 1: current_sample selected")
-        call assert_equal_int(count(sample_counts /= 0), n_samples - 1, "test_select_random_sample_helper: Case 1: for 1000 iterations all other 9 samples should definitely be selected once")
+        call assert_equal_int(sample_counts(current_sample), 0_int32, "test_select_random_sample: Case 1: current_sample selected")
+        call assert_equal_int(count(sample_counts /= 0), n_samples - 1, "test_select_random_sample: Case 1: for 1000 iterations all other 9 samples should definitely be selected once")
     
         ! Case 2: only two samples -> forced selection
-        call select_random_sample_helper(2_int32, 1_int32, random_sample, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_select_random_sample_helper: Case 2: Unexpected error when selecting sample")
-        call assert_equal_int(random_sample, 2_int32, "test_select_random_sample_helper: Case 2: selected wrong sample")
+        call select_random_sample(2_int32, 1_int32, random_sample, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_select_random_sample: Case 2: Unexpected error when selecting sample")
+        call assert_equal_int(random_sample, 2_int32, "test_select_random_sample: Case 2: selected wrong sample")
 
-        call select_random_sample_helper(2_int32, 2_int32, random_sample, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_select_random_sample_helper: Case 2: Unexpected error when selecting sample")
-        call assert_equal_int(random_sample, 1_int32, "test_select_random_sample_helper: Case 2: selected wrong sample")
+        call select_random_sample(2_int32, 2_int32, random_sample, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_select_random_sample: Case 2: Unexpected error when selecting sample")
+        call assert_equal_int(random_sample, 1_int32, "test_select_random_sample: Case 2: selected wrong sample")
 
         ! Case 3: Error case: n_samples=current_sample=1
-        call select_random_sample_helper(1_int32, 1_int32, random_sample, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample_helper: Case 3: Expected error for samples=1")
+        call select_random_sample(1_int32, 1_int32, random_sample, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample: Case 3: Expected error for samples=1")
 
         ! Case 4: Error case: current_sample out of range
-        call select_random_sample_helper(n_samples, 0_int32, random_sample, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample_helper: Case 4: Expected error for current_sample=0")
+        call select_random_sample(n_samples, 0_int32, random_sample, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample: Case 4: Expected error for current_sample=0")
 
-        call select_random_sample_helper(n_samples, n_samples + 1, random_sample, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample_helper: Case 4: Expected error for current_sample>n_samples")
-    end subroutine test_select_random_sample_helper
+        call select_random_sample(n_samples, n_samples + 1, random_sample, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_select_random_sample: Case 4: Expected error for current_sample>n_samples")
+    end subroutine test_select_random_sample
     
     !> Test the compute_all_contributions function with various cases.
     subroutine test_compute_all_contributions()
@@ -827,7 +827,7 @@ contains
             end do
         end do
         
-        call normalize_all_trajectories(trajectories, trajectories_norm, &
+        call normalize_all_trajectories_alloc(trajectories, trajectories_norm, &
                                       n_factors, n_samples, n_timepoints, ierr, status)
         call assert_equal_int(ierr, ERR_OK, "test_normalize_all_trajectories: should succeed")
         

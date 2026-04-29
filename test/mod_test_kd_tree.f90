@@ -31,22 +31,19 @@ contains
     all_tests(12) = test_case("test_kd_5d_medium", test_kd_5d_medium)
   end function get_all_tests_kd_tree
 
-  
-  
-
   !> Test 2D Cartesian KD-Tree.
   subroutine test_kd_2d_cartesian()
     integer(int32), parameter :: d = 2, n = 6
     real(real64) :: X(d,n) = reshape([1.0d0, 2.0d0, 2.0d0, 3.0d0, 3.0d0, 1.0d0, &
                                     4.0d0, 0.0d0, 0.0d0, 4.0d0, 5.0d0, 2.0d0], [d, n])
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for 2D cartesian tree: ', ierr
       error stop
@@ -60,14 +57,14 @@ contains
     integer(int32), parameter :: d = 3, n = 8
     real(real64) :: V(d,n)
     integer(int32) :: sphere_ix(n), dim_order(d) = [1, 2, 3]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
     call random_unit_vectors(V, d, n)
-    call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build spherical kd failed for 3D spherical tree: ', ierr
       error stop
@@ -80,14 +77,14 @@ contains
     integer(int32), parameter :: d = 2, n = 0
     real(real64) :: X(d,n)
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
     ! This should return ERR_EMPTY_INPUT
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for empty input - should return ERR_EMPTY_INPUT but got ERR_OK'
       error stop
@@ -101,13 +98,13 @@ contains
     integer(int32), parameter :: d = 2, n = 1
     real(real64) :: X(d,n) = reshape([1.0d0, 2.0d0], [d, n])
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for single point input: ', ierr
       error stop
@@ -121,13 +118,13 @@ contains
     integer(int32), parameter :: d = 3, n = 5
     real(real64) :: X(d,n) = 1.0d0
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2, 3]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for identical points: ', ierr
       error stop
@@ -141,7 +138,7 @@ contains
     integer(int32), parameter :: d = 4, n = 4
     real(real64) :: V(d,n) = 0.0d0
     integer(int32) :: sphere_ix(n), dim_order(d) = [1, 2, 3, 4]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n)
+    integer(int32) :: work(n), perm(n)
     real(real64) :: subarray(n)
     integer(int32) :: i, ierr
     integer(int32) :: recursion_stack(3, n)
@@ -152,7 +149,7 @@ contains
       V(i,i) = 1.0d0
     end do
     
-    call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build shperical kd failed for unit vectors: ', ierr
       error stop ierr
@@ -167,13 +164,13 @@ contains
     real(real64) :: X(d,n)
     integer :: i
     integer(int32) :: kd_ix(n), dim_order(d) = [(i, i = 1, d)]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3, n)
     call set_ok(ierr)
     
     call random_matrix(X, d, n)
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for high dimensioninality: ', ierr
       error stop 
@@ -186,7 +183,7 @@ contains
     integer(int32), parameter :: d = 1, n = 10
     real(real64) :: X(d,n)
     integer(int32) :: kd_ix(n), dim_order(d) = [1]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n)
+    integer(int32) :: work(n), perm(n)
     real(real64) :: subarray(n)
     integer(int32) :: i, ierr
     integer(int32) :: recursion_stack(3, n)
@@ -197,7 +194,7 @@ contains
       X(1,i) = i
     end do
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for sorted 1D array: ', ierr
       error stop
@@ -211,13 +208,13 @@ contains
     integer(int32), parameter :: d = 2, n = 2
     real(real64) :: X(d,n) = reshape([1.0d0, 2.0d0, 2.0d0, 1.0d0], [d, n])
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3,n)
 
     call set_ok(ierr)
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for 2D minimal test: ', ierr
       error stop 
@@ -231,13 +228,13 @@ contains
     integer(int32), parameter :: d = 1, n = 2
     real(real64) :: X(d,n) = reshape([1.0d0, 2.0d0], [d, n])
     integer(int32) :: kd_ix(n), dim_order(d) = [1]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3, n)
 
     call set_ok(ierr)
     
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for 1D minimal test: ', ierr
       error stop
@@ -251,7 +248,7 @@ contains
     integer(int32), parameter :: d = 3, n = 100
     real(real64) :: X(d,n)
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2, 3]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     real(real64) :: val(d)
     integer(int32) :: recursion_stack(3, n)
@@ -259,7 +256,7 @@ contains
     call set_ok(ierr)
     
     call random_matrix(X, d, n)
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for 3D large input: ', ierr
       error stop
@@ -278,14 +275,14 @@ contains
     integer(int32), parameter :: d = 5, n = 10
     real(real64) :: X(d,n)
     integer(int32) :: kd_ix(n), dim_order(d) = [1, 2, 3, 4, 5]
-    integer(int32) :: work(n), perm(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: work(n), perm(n), ierr
     real(real64) :: subarray(n)
     integer(int32) :: recursion_stack(3, n)
 
     call set_ok(ierr)
     
     call random_matrix(X, d, n)
-    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, stack_left, stack_right, recursion_stack, ierr)
+    call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build kd index failed for 5D tree: ', ierr
       error stop

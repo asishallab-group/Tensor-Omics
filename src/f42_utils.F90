@@ -388,12 +388,13 @@ contains
             !! Input vector the norm will be calcuated for
 
         integer(int32) :: i_dim
+        real(real64) :: norm_val
 
-        norm = 0.0_real64
-        do concurrent (i_dim = 1:size(vector)) shared(vector) reduce(+:norm)
-            norm = norm + vector(i_dim)**2
+        norm_val = 0.0_real64
+        do concurrent (i_dim = 1:size(vector)) shared(vector) reduce(+:norm_val)
+            norm_val = norm_val + vector(i_dim)**2
         end do
-        norm = sqrt(norm)
+        norm = sqrt(norm_val)
     end function norm
 
     !> AUTHOR_FRANZ_ERIC_SILL

@@ -32,14 +32,14 @@ contains
   subroutine test_bst_index_construction()
     integer(int32), parameter :: n = 100
     real(real64) :: x(n)
-    integer(int32) :: ix(n), stack_left(n), stack_right(n)
+    integer(int32) :: ix(n)
     integer(int32) :: i, ierr
     logical :: is_sorted
 
     call set_ok(ierr)
     
     call random_array(x, n)
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) error stop
     ! Check monotonicity of x(ix)
     is_sorted = .true.
@@ -57,13 +57,13 @@ contains
   subroutine test_bst_sorted_values()
     integer(int32), parameter :: n = 10
     real(real64) :: x(n) = [3.0d0, 1.0d0, 4.0d0, 2.0d0, 5.0d0, 7.0d0, 6.0d0, 9.0d0, 8.0d0, 10.0d0]
-    integer(int32) :: ix(n), stack_left(n), stack_right(n)
+    integer(int32) :: ix(n)
     real(real64) :: val
     integer(int32) :: ierr
 
     call set_ok(ierr)
     
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) then
       write(*,*) 'Build bst index failed for sorted values: ', ierr
       error stop 
@@ -81,12 +81,12 @@ contains
   subroutine test_bst_range_query()
     integer(int32), parameter :: n = 10
     real(real64) :: x(n) = [3.0d0, 1.0d0, 4.0d0, 2.0d0, 5.0d0, 7.0d0, 6.0d0, 9.0d0, 8.0d0, 10.0d0]
-    integer(int32) :: ix(n), stack_left(n), stack_right(n)
+    integer(int32) :: ix(n)
     integer(int32) :: res_ix(n), res_n, ierr
 
     call set_ok(ierr)
     
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build bst index failed: ', ierr
       error stop
@@ -104,11 +104,11 @@ contains
   subroutine test_bst_empty_array()
     integer(int32), parameter :: n = 0
     real(real64) :: x(n)
-    integer(int32) :: ix(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: ix(n), ierr
 
     call set_ok(ierr)
 
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(is_ok(ierr)) then 
       write(*,*) 'Build bst index failed for empty array: Expected ERR_EMPTY_INPUT but got ERR_OK '
       error stop
@@ -120,9 +120,9 @@ contains
   subroutine test_bst_single_element()
     integer(int32), parameter :: n = 1
     real(real64) :: x(n) = [42.0d0]
-    integer(int32) :: ix(n), stack_left(n), stack_right(n), ierr
+    integer(int32) :: ix(n), ierr
     
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) then
       write(*,*) 'Build bst index failed for single element: ', ierr
       error stop
@@ -135,12 +135,12 @@ contains
   subroutine test_bst_identical_values()
     integer(int32), parameter :: n = 5
     real(real64) :: x(n) = 7.0d0
-    integer(int32) :: ix(n), stack_left(n), stack_right(n)
+    integer(int32) :: ix(n)
     integer(int32) :: i, ierr
 
     call set_ok(ierr)
     
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build bst index failed for identical values: ', ierr
       error stop
@@ -155,13 +155,13 @@ contains
   subroutine test_bst_large_random()
     integer(int32), parameter :: n = 1000
     real(real64) :: x(n)
-    integer(int32) :: ix(n), stack_left(n), stack_right(n)
+    integer(int32) :: ix(n)
     integer(int32) :: i, ierr
     logical :: is_sorted
     
     call set_ok(ierr)
     call random_array(x, n)
-    call build_bst_index(x, n, ix, stack_left, stack_right, ierr)
+    call build_bst_index(x, n, ix, ierr)
     if(.not. is_ok(ierr)) then 
       write(*,*) 'Build bst index failed for large random values: ', ierr
       error stop    ! Should still be a valid permutation
