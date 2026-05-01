@@ -491,7 +491,7 @@ def main():
     test_tox_compute_velocity_trajectory()
     test_tox_compute_acceleration_from_velocity_trajectory()
 
-    
+
 
 
 if __name__ == "__main__":

@@ -18,10 +18,10 @@ def test_tox_which_example_1():
     print("="*50)
     print("TOX_WHICH EXAMPLE 1: Simple mask")
     print("="*50)
-    
+
     mask = np.array([1, 0, 1, 0, 0], dtype=np.int32)
     print(f"Input mask: {mask}")
-    
+
     idx_out = tox_which(mask)
     # Only valid indices are the first nonzero elements
     valid_indices = idx_out[idx_out != 0]
@@ -44,10 +44,10 @@ def test_tox_which_example_2():
     print("="*50)
     print("TOX_WHICH EXAMPLE 2: All FALSE")
     print("="*50)
-    
+
     mask = np.zeros(5, dtype=np.int32)
     print(f"Input mask: {mask}")
-    
+
     idx_out = tox_which(mask)
     valid_indices = idx_out[idx_out != 0]
     m_out = len(valid_indices)
@@ -62,10 +62,10 @@ def test_tox_which_example_3():
     print("="*50)
     print("TOX_WHICH EXAMPLE 3: All TRUE")
     print("="*50)
-    
+
     mask = np.ones(5, dtype=np.int32)
     print(f"Input mask: {mask}")
-    
+
     idx_out = tox_which(mask)
     valid_indices = idx_out[idx_out != 0]
     m_out = len(valid_indices)
@@ -84,13 +84,13 @@ def test_tox_which_example_3():
 if __name__ == "__main__":
     print("TENSOR-OMICS PYTHON TOX_ FUNCTIONS TEST SUITE")
     print("Testing wrapper functions with tox_ prefix...")
-    
+
     try:
 
         test_tox_which_example_1()
         test_tox_which_example_2()
         test_tox_which_example_3()
-        
+
         print("\n" + "="*50)
         print("ALL TOX_ FUNCTION TESTS COMPLETED SUCCESSFULLY!")
         print("All utility functions working correctly with tox_ prefix.")

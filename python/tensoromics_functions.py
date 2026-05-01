@@ -1101,29 +1101,25 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
 
 
 #> tox_relative_axis_plane_tools:clock_hand_angles_for_shift_vectors_c: Calculate clock hand angles for shift vectors
-def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mask, selected_axes_for_signed):
+def tox_clock_hand_angles_for_shift_vectors(fields, fields_selection_mask, selected_axes_for_signed):
     """
     Calculate clock hand angles for shift vectors
 
     Args:
-        origins: Origin vectors (n_dims x n_vecs).
-        targets: Target vectors (n_dims x n_vecs).
-        vecs_selection_mask: Boolean array indicating which vectors to process.
+        fields: Shift vector fields.
+        fields_selection_mask: Boolean array indicating which vectors to process.
         selected_axes_for_signed: Integer array of axes to use for signed angle (length n_dims).
 
     Returns:
         np.ndarray: Signed angles for selected vectors in degrees.
     """
     # Input validation and conversion
-    origins = np.asfortranarray(origins, dtype=np.float64)  # Origin vectors
-    targets = np.asfortranarray(targets, dtype=np.float64)  # Target vectors
-    vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.int32)  # Selection mask
+    fields = np.asfortranarray(fields, dtype=np.float64)
+    fields_selection_mask = np.ascontiguousarray(fields_selection_mask, dtype=np.int32)  # Selection mask
     selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)  # Axes for signed angle
-    n_dims, n_vecs = origins.shape
-    if targets.shape != (n_dims, n_vecs):
-        raise ValueError("origins and targets must have same shape")
-    if len(vecs_selection_mask) != n_vecs:
-        raise ValueError("vecs_selection_mask must match number of vectors")
+    n_dims, _, n_fields = fields.shape
+    if len(fields_selection_mask) != n_fields:
+        raise ValueError("fields_selection_mask must match number of vectors")
     if n_dims <= 3:
         selected_axes_for_signed = np.array([1, 2, 1], dtype=np.int32)
     else:
@@ -1132,22 +1128,21 @@ def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mas
             raise ValueError("selected_axes_for_signed must have length 3 for n_dims > 3")
         if np.any(selected_axes_for_signed < 1) or np.any(selected_axes_for_signed > n_dims):
             raise ValueError("selected_axes_for_signed indices must be in [1, n_dims] for n_dims > 3")
-    n_selected_vecs = int(np.sum(vecs_selection_mask))
+    n_selected_fields = int(np.sum(fields_selection_mask))
     # Prepare output and error code
-    signed_angles = np.zeros(n_selected_vecs, dtype=np.float64)
+    signed_angles = np.empty(n_selected_fields, dtype=np.float64)
     ierr = ctypes.c_int(0)
     n_dims_c = ctypes.c_int(n_dims)
-    n_vecs_c = ctypes.c_int(n_vecs)
-    n_selected_vecs_c = ctypes.c_int(n_selected_vecs)
+    n_fields_c = ctypes.c_int(n_fields)
+    n_selected_fields_c = ctypes.c_int(n_selected_fields)
     # Setup C wrapper
     clock_hand_angles = lib.clock_hand_angles_for_shift_vectors_c
     clock_hand_angles.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # origins
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # targets
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # fields
         ctypes.POINTER(ctypes.c_int),  # n_dims
-        ctypes.POINTER(ctypes.c_int),  # n_vecs
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # vecs_selection_mask
-        ctypes.POINTER(ctypes.c_int),  # n_selected_vecs
+        ctypes.POINTER(ctypes.c_int),  # n_fields
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # fields_selection_mask
+        ctypes.POINTER(ctypes.c_int),  # n_selected_fields
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # selected_axes_for_signed
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # signed_angles
         ctypes.POINTER(ctypes.c_int)  # ierr
@@ -1155,12 +1150,11 @@ def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mas
     clock_hand_angles.restype = None
     # Call Fortran routine
     clock_hand_angles(
-        origins,
-        targets,
+        fields,
         ctypes.byref(n_dims_c),
-        ctypes.byref(n_vecs_c),
-        vecs_selection_mask,
-        ctypes.byref(n_selected_vecs_c),
+        ctypes.byref(n_fields_c),
+        fields_selection_mask,
+        ctypes.byref(n_selected_fields_c),
         selected_axes_for_signed,
         signed_angles,
         ctypes.byref(ierr),

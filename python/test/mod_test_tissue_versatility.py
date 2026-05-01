@@ -132,7 +132,7 @@ def main():
     print("=================================================")
     print("    TISSUE VERSATILITY FULL PYTHON INTERFACE TESTS")
     print("=================================================\n")
-    
+
     test_uniform_expression()
     test_single_axis_expression()
     test_null_vector()
@@ -145,7 +145,7 @@ def main():
     test_numerical_stability()
     test_invalid_input_no_axes()
     test_multiple_selection_partial_axes()
-    
+
     print("=================================================")
     print("             ALL TESTS COMPLETED")
     print("=================================================")
