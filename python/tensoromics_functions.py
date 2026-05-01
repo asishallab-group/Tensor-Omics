@@ -237,7 +237,7 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     dims_out_capacity = ctypes.c_int(max_dims)
 
     # shared function
-    lib.get_array_metadata_C.argtypes = [
+    lib.get_array_metadata_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"), # filename_c
         ctypes.POINTER(ctypes.c_int),                                                         # fn_len
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"), # dims_out
@@ -246,10 +246,10 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
         ctypes.POINTER(ctypes.c_int),                                         # ierr
         ctypes.POINTER(ctypes.c_int)                                          # clen
     ]
-    lib.get_array_metadata_C.restype = None
+    lib.get_array_metadata_c.restype = None
 
     # call
-    lib.get_array_metadata_C(
+    lib.get_array_metadata_c(
         filename_c,
         ctypes.byref(ctypes.c_int(fn_len)),
         dims_out,
@@ -297,7 +297,7 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     filename_c = _string_to_c_char_array(filename, len(filename) + 1)
     fn_len = len(filename_c)
 
-    lib.serialize_int_nd_C.argtypes = [
+    lib.serialize_int_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
         ctypes.POINTER(ctypes.c_int),  # ndim
@@ -305,10 +305,10 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
         ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)
     ]
-    lib.serialize_int_nd_C.restype = None
+    lib.serialize_int_nd_c.restype = None
 
     # call function
-    lib.serialize_int_nd_C(
+    lib.serialize_int_nd_c(
         flat,
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
@@ -341,16 +341,16 @@ def tox_deserialize_int_nd(filename):
     fn_len = len(filename_c)
     ierr = ctypes.c_int()
 
-    lib.deserialize_int_nd_C.argtypes = [
+    lib.deserialize_int_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="F_CONTIGUOUS"),  # arr
         ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
         ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
-    lib.deserialize_int_nd_C.restype = None
+    lib.deserialize_int_nd_c.restype = None
 
-    lib.deserialize_int_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
+    lib.deserialize_int_nd_c(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape to original dimensions
 
@@ -386,7 +386,7 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     fn_len = len(filename_c)
 
     # declare args
-    lib.serialize_real_nd_C.argtypes = [
+    lib.serialize_real_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"), # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
         ctypes.POINTER(ctypes.c_int),  # ndim
@@ -394,10 +394,10 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
         ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
-    lib.serialize_real_nd_C.restype = None
+    lib.serialize_real_nd_c.restype = None
 
     # call function
-    lib.serialize_real_nd_C(
+    lib.serialize_real_nd_c(
         flat,
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
@@ -429,16 +429,16 @@ def tox_deserialize_real_nd(filename):
     fn_len = len(filename_c)
     ierr = ctypes.c_int()
 
-    lib.deserialize_real_nd_C.argtypes = [
+    lib.deserialize_real_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="F_CONTIGUOUS"),  # arr
         ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
         ctypes.POINTER(ctypes.c_int),                                                           # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
-    lib.deserialize_real_nd_C.restype = None
+    lib.deserialize_real_nd_c.restype = None
 
-    lib.deserialize_real_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
+    lib.deserialize_real_nd_c(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape
 
@@ -474,7 +474,7 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     fn_len = len(filename_c)
 
     # Update argument types
-    lib.serialize_char_nd_C.argtypes = [
+    lib.serialize_char_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags='F_CONTIGUOUS'),  # raw_chars
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # dims
         ctypes.POINTER(ctypes.c_int),                                                          # ndim
@@ -483,9 +483,9 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
         ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
-    lib.serialize_char_nd_C.restype = None
+    lib.serialize_char_nd_c.restype = None
 
-    lib.serialize_char_nd_C(
+    lib.serialize_char_nd_c(
         raw_chars,
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
@@ -523,7 +523,7 @@ def tox_deserialize_char_nd(filename):
 
     ierr = ctypes.c_int()
 
-    lib.deserialize_char_nd_C.argtypes = [
+    lib.deserialize_char_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=2, flags="F_CONTIGUOUS"),  # raw_chars (2D!)
         ctypes.POINTER(ctypes.c_int),                                                         # clen
         ctypes.POINTER(ctypes.c_int),                                                         # total_array_size
@@ -531,9 +531,9 @@ def tox_deserialize_char_nd(filename):
         ctypes.POINTER(ctypes.c_int),                                                         # fn_len
         ctypes.POINTER(ctypes.c_int)                                          # ierr
     ]
-    lib.deserialize_char_nd_C.restype = None
+    lib.deserialize_char_nd_c.restype = None
 
-    lib.deserialize_char_nd_C(
+    lib.deserialize_char_nd_c(
         raw_chars,
         ctypes.byref(ctypes.c_int(clen)),
         ctypes.byref(ctypes.c_int(total_size)),
@@ -581,7 +581,7 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     filename_c = _string_to_c_char_array(filename, len(filename) + 1)
     fn_len = len(filename_c)
 
-    lib.serialize_logical_nd_C.argtypes = [
+    lib.serialize_logical_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr (as int32)
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
         ctypes.POINTER(ctypes.c_int),  # ndim
@@ -589,10 +589,10 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
         ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)
     ]
-    lib.serialize_logical_nd_C.restype = None
+    lib.serialize_logical_nd_c.restype = None
 
     # call function
-    lib.serialize_logical_nd_C(
+    lib.serialize_logical_nd_c(
         flat_int,
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
@@ -625,16 +625,16 @@ def tox_deserialize_logical_nd(filename):
     fn_len = len(filename_c)
     ierr = ctypes.c_int()
 
-    lib.deserialize_logical_nd_C.argtypes = [
+    lib.deserialize_logical_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr (as int32)
         ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
         ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
-    lib.deserialize_logical_nd_C.restype = None
+    lib.deserialize_logical_nd_c.restype = None
 
-    lib.deserialize_logical_nd_C(arr_int, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
+    lib.deserialize_logical_nd_c(arr_int, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
 
     # Convert integer array back to boolean array (non-zero = True)
@@ -673,7 +673,7 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     fn_len = len(filename_c)
 
     # declare args
-    lib.serialize_complex_nd_C.argtypes = [
+    lib.serialize_complex_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.complex128, ndim=1, flags="C_CONTIGUOUS"), # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
         ctypes.POINTER(ctypes.c_int),  # ndim
@@ -681,10 +681,10 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
         ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
-    lib.serialize_complex_nd_C.restype = None
+    lib.serialize_complex_nd_c.restype = None
 
     # call function
-    lib.serialize_complex_nd_C(
+    lib.serialize_complex_nd_c(
         flat,
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
@@ -716,21 +716,21 @@ def tox_deserialize_complex_nd(filename):
     fn_len = len(filename_c)
     ierr = ctypes.c_int()
 
-    lib.deserialize_complex_nd_C.argtypes = [
+    lib.deserialize_complex_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.complex128, ndim=1, flags="C_CONTIGUOUS"),  # arr
         ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
         ctypes.POINTER(ctypes.c_int),                                                           # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
-    lib.deserialize_complex_nd_C.restype = None
+    lib.deserialize_complex_nd_c.restype = None
 
-    lib.deserialize_complex_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
+    lib.deserialize_complex_nd_c(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape
 
 
-#> f42_kd_tree:build_bst_index_C: Build a BST index for the given values
+#> f42_binary_search_tree:build_bst_index_C: Build a BST index for the given values
 def build_bst_index(values):
     """
     Build a BST index for the given values.
@@ -744,23 +744,19 @@ def build_bst_index(values):
     values = np.ascontiguousarray(values, dtype=np.float64)
     n = len(values)
     indices = np.empty(n, dtype=np.int32)
-    stack_left = np.empty(n, dtype=np.int32)
-    stack_right = np.empty(n, dtype=np.int32)
     n_c = ctypes.c_int(n)
     ierr = ctypes.c_int()
 
     # Configure BST argument types
-    lib.build_bst_index_C.argtypes = [
+    lib.build_bst_index_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # values
         ctypes.POINTER(ctypes.c_int),                                    # num_values
         np.ctypeslib.ndpointer(dtype=np.int32),                          # sorted_indices (out)
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_left
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_right
         ctypes.POINTER(ctypes.c_int)                                     # ierr
     ]
 
     # Build BST index
-    lib.build_bst_index_C(values, ctypes.byref(n_c), indices, stack_left, stack_right, ctypes.byref(ierr))
+    lib.build_bst_index_c(values, ctypes.byref(n_c), indices, ctypes.byref(ierr))
     check_err_code(ierr.value)
 
     return indices
@@ -789,25 +785,15 @@ def build_spherical_kd(vectors, dimension_order=None):
             raise ValueError("dimension_order must be a 1D array of length d")
 
     sphere_ix = np.empty(n, dtype=np.int32)
-    work = np.empty(n, dtype=np.int32)
-    value_buffer = np.empty(n, dtype=np.float64)
-    perm = np.empty(n, dtype=np.int32)
-    stack_left = np.empty(n, dtype=np.int32)
-    stack_right = np.empty(n, dtype=np.int32)
     ierr = ctypes.c_int(0)
 
-    build_spherical_kd_c = lib.build_spherical_kd_C
+    build_spherical_kd_c = lib.build_spherical_kd_c
     build_spherical_kd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # vectors
         ctypes.POINTER(ctypes.c_int),                                      # num_dimensions
         ctypes.POINTER(ctypes.c_int),                                      # num_vectors
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # sphere_indices
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # dimension_order
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # workspace
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),   # value_buffer
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # permutation
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # left_stack
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # right_stack
         ctypes.POINTER(ctypes.c_int)                                       # ierr
     ]
     build_spherical_kd_c.restype = None
@@ -818,11 +804,6 @@ def build_spherical_kd(vectors, dimension_order=None):
         ctypes.byref(ctypes.c_int(n)),
         sphere_ix,
         dimension_order,
-        work,
-        value_buffer,
-        perm,
-        stack_left,
-        stack_right,
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -831,7 +812,7 @@ def build_spherical_kd(vectors, dimension_order=None):
     return sphere_ix
 
 
-#> f42_kd_tree:bst_range_query_C: Perform a range query on BST-indexed values
+#> f42_binary_search_tree:bst_range_query_C: Perform a range query on BST-indexed values
 def bst_range_query(values, indices, lower_bound, upper_bound):
     """
     Perform a range query on BST-indexed values.
@@ -856,7 +837,7 @@ def bst_range_query(values, indices, lower_bound, upper_bound):
     match_count = ctypes.c_int(0)
     ierr = ctypes.c_int()
 
-    lib.bst_range_query_C.argtypes = [
+    lib.bst_range_query_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # values
         np.ctypeslib.ndpointer(dtype=np.int32, flags='C_CONTIGUOUS'),    # sorted_indices
         ctypes.POINTER(ctypes.c_int),                                    # num_values
@@ -868,7 +849,7 @@ def bst_range_query(values, indices, lower_bound, upper_bound):
     ]
 
     # Perform range query
-    lib.bst_range_query_C(values, indices, ctypes.byref(n_c), ctypes.byref(ctypes.c_double(lower_bound)), ctypes.byref(ctypes.c_double(upper_bound)),
+    lib.bst_range_query_c(values, indices, ctypes.byref(n_c), ctypes.byref(ctypes.c_double(lower_bound)), ctypes.byref(ctypes.c_double(upper_bound)),
                          output_indices, ctypes.byref(match_count), ctypes.byref(ierr))
     check_err_code(ierr.value)
 
@@ -901,40 +882,24 @@ def build_kd_index(points, dimension_order=None):
     if dimension_order is None:
         dimension_order = np.arange(1, d + 1, dtype=np.int32)  # 1-based dimensions
 
-    # Ensure Fortran order (column-major)
-    if not points.flags.f_contiguous:
-        points = np.asfortranarray(points)
-
-
     # Initialize arrays
     kd_indices = np.empty(n, dtype=np.int32)
-    workspace = np.empty(n, dtype=np.int32)
-    value_buffer = np.empty(n, dtype=np.float64)
-    permutation = np.empty(n, dtype=np.int32)
-    stack_left = np.empty(n, dtype=np.int32)
-    stack_right = np.empty(n, dtype=np.int32)
     d_c = ctypes.c_int(d)
     n_c = ctypes.c_int(n)
     ierr = ctypes.c_int()
 
     # Configure KD-Tree argument types
-    lib.build_kd_index_C.argtypes = [
+    lib.build_kd_index_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),  # X_flat (col-major)
         ctypes.POINTER(ctypes.c_int),                                            # d
         ctypes.POINTER(ctypes.c_int),                                            # n
         np.ctypeslib.ndpointer(dtype=np.int32),                                  # kd_ix (out)
         np.ctypeslib.ndpointer(dtype=np.int32),                                  # dim_order
-        np.ctypeslib.ndpointer(dtype=np.int32),                                  # work
-        np.ctypeslib.ndpointer(dtype=np.float64),                                # subarray
-        np.ctypeslib.ndpointer(dtype=np.int32),                                  # perm
-        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_left
-        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_right
         ctypes.POINTER(ctypes.c_int)
     ]
 
     # Build KD-Tree index using the flat array
-    lib.build_kd_index_C(points, ctypes.byref(d_c), ctypes.byref(n_c), kd_indices, dimension_order, workspace,
-                        value_buffer, permutation, stack_left, stack_right, ctypes.byref(ierr))
+    lib.build_kd_index_c(points, ctypes.byref(d_c), ctypes.byref(n_c), kd_indices, dimension_order, ctypes.byref(ierr))
     check_err_code(ierr.value)
 
     return kd_indices

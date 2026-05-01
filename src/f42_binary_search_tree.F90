@@ -100,8 +100,8 @@ contains
 end module f42_binary_search_tree
 
 !> Wrapper using C for getting range query usable by python
-pure subroutine bst_range_query_C(values, sorted_indices, n_values, lower_bound, upper_bound, &
-                                  output_indices, n_matches, ierr) bind(C, name='bst_range_query_C')
+pure subroutine bst_range_query_c(values, sorted_indices, n_values, lower_bound, upper_bound, &
+                                  output_indices, n_matches, ierr) bind(C, name='bst_range_query_c')
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use f42_binary_search_tree, only: bst_range_query
     M_USE_NULL_VALIDATION
@@ -134,11 +134,11 @@ pure subroutine bst_range_query_C(values, sorted_indices, n_values, lower_bound,
 
     call bst_range_query(values, sorted_indices, n_values, lower_bound, upper_bound, &
                          output_indices, n_matches, ierr)
-end subroutine bst_range_query_C
+end subroutine bst_range_query_c
 
 !> Wrapper using C for building BST index usable by python
-pure subroutine build_bst_index_C(values, n_values, sorted_indices, ierr) &
-    bind(C, name='build_bst_index_C')
+pure subroutine build_bst_index_c(values, n_values, sorted_indices, ierr) &
+    bind(C, name='build_bst_index_c')
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use f42_binary_search_tree
     M_USE_NULL_VALIDATION
@@ -158,4 +158,4 @@ pure subroutine build_bst_index_C(values, n_values, sorted_indices, ierr) &
     M_CHECK_NON_NULL(sorted_indices)
 
     call build_bst_index(values, n_values, sorted_indices, ierr)
-end subroutine build_bst_index_C
+end subroutine build_bst_index_c

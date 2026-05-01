@@ -1,4 +1,5 @@
 from sys import argv as args
+import numpy as np
 
 
 def run_all_tests(functions, script_file_name=args[0], test_only=True):

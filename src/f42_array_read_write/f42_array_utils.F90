@@ -242,7 +242,7 @@ contains
 end module f42_array_utils
 
 !> C binding for the subroutine to get the dimensions of an array file
-subroutine get_array_metadata_C(filename, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_C")
+subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_c")
     use iso_c_binding, only: c_int, c_char
     use f42_array_utils, only: get_array_metadata
     use tox_conversions, only: c_char_1d_as_string
@@ -282,4 +282,4 @@ subroutine get_array_metadata_C(filename, fn_len, dims_out, dims_out_capacity, n
     if (is_err(ierr)) return
 
     call get_array_metadata(filename_f, dims_out, dims_out_capacity, ndims, ierr, clen)
-end subroutine get_array_metadata_C
+end subroutine get_array_metadata_c
