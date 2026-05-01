@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 
 
 # --- Test Cases ---
@@ -77,12 +77,8 @@ def test_spherical_kdtree_specific_cases():
 
 def test_bst_edge_cases():
     # Empty array
-    try:
-        x = np.array([], dtype=np.float64, order="F")
-        ix = build_bst_index(x)
-        assert False, "Expected error for empty bst index input"
-    except Exception as e:
-        pass
+    x = np.array([], dtype=np.float64, order="F")
+    assert_error(lambda: build_bst_index(x), "Expected error for empty bst index input")
 
     # Single element
     x = np.array([42.0], dtype=np.float64)
@@ -91,12 +87,8 @@ def test_bst_edge_cases():
 
 def test_kdtree_edge_cases():
     # Empty matrix
-    try:
-        X = np.empty((2, 0), dtype=np.float64, order='F')
-        kd_ix = build_kd_index(X)
-        assert False, "Expected error for empty kd tree input"
-    except Exception as e:
-        pass
+    X = np.empty((2, 0), dtype=np.float64, order='F')
+    assert_error(lambda: build_kd_index(X), "Expected error for empty kd tree input")
 
     # Single point
     X = np.array([[1.0, 2.0]], dtype=np.float64).T.copy(order='F')
@@ -105,12 +97,8 @@ def test_kdtree_edge_cases():
 
 def test_spherical_kdtree_edge_cases():
     # Empty spherical data
-    try:
-        empty_vectors = np.empty((3, 0), dtype=np.float64, order='F')
-        sphere_ix = build_spherical_kd(empty_vectors) - 1
-        assert False, "Expected error for empty spherical kd tree input"
-    except Exception as e:
-        pass
+    empty_vectors = np.empty((3, 0), dtype=np.float64, order='F')
+    assert_error(lambda: build_spherical_kd(empty_vectors) - 1, "Expected error for empty spherical kd tree input")
 
     # Single vector on sphere
     single_vector = np.array([[0.0, 0.0, 1.0]], dtype=np.float64).T.copy(order='F')  # North pole

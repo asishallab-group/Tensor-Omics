@@ -1013,7 +1013,7 @@ def tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
 
 
 #> tox_relative_axis_plane_tools:clock_hand_angle_between_vectors_c: Calculate clock hand angle between two vectors
-def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
+def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed=[1, 2, 3]):
     """
     Calculate clock hand angle between two vectors
 
@@ -1032,15 +1032,7 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
     n_dims = len(v1)
     if len(v2) != n_dims:
         raise ValueError("v1 and v2 must have same length")
-    # Para 2D y 3D, Fortran ignora selected_axes_for_signed, pero requiere longitud 3
-    if n_dims <= 3:
-        selected_axes_for_signed = np.array([1, 2, 1], dtype=np.int32)
-    else:
-        selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)
-        if len(selected_axes_for_signed) != 3:
-            raise ValueError("selected_axes_for_signed must have length 3 for n_dims > 3")
-        if np.any(selected_axes_for_signed < 1) or np.any(selected_axes_for_signed > n_dims):
-            raise ValueError("selected_axes_for_signed indices must be in [1, n_dims] for n_dims > 3")
+
     # Prepare output and error code
     signed_angle = ctypes.c_double(0.0)
     ierr = ctypes.c_int(0)
@@ -1066,7 +1058,7 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
 
 
 #> tox_relative_axis_plane_tools:clock_hand_angles_for_shift_vectors_c: Calculate clock hand angles for shift vectors
-def tox_clock_hand_angles_for_shift_vectors(fields, fields_selection_mask, selected_axes_for_signed):
+def tox_clock_hand_angles_for_shift_vectors(fields, fields_selection_mask, selected_axes_for_signed=[1, 2, 3]):
     """
     Calculate clock hand angles for shift vectors
 
@@ -1085,14 +1077,6 @@ def tox_clock_hand_angles_for_shift_vectors(fields, fields_selection_mask, selec
     n_dims, _, n_fields = fields.shape
     if len(fields_selection_mask) != n_fields:
         raise ValueError("fields_selection_mask must match number of vectors")
-    if n_dims <= 3:
-        selected_axes_for_signed = np.array([1, 2, 1], dtype=np.int32)
-    else:
-        selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)
-        if len(selected_axes_for_signed) != 3:
-            raise ValueError("selected_axes_for_signed must have length 3 for n_dims > 3")
-        if np.any(selected_axes_for_signed < 1) or np.any(selected_axes_for_signed > n_dims):
-            raise ValueError("selected_axes_for_signed indices must be in [1, n_dims] for n_dims > 3")
     n_selected_fields = int(np.sum(fields_selection_mask))
     # Prepare output and error code
     signed_angles = np.empty(n_selected_fields, dtype=np.float64)
@@ -1663,24 +1647,11 @@ def tox_euclidean_distance(vec1, vec2):
         float: Euclidean distance between the vectors.
     """
     # Input validation
-    if not isinstance(vec1, np.ndarray):
-        vec1 = np.asarray(vec1, dtype=np.float64)
-    if not isinstance(vec2, np.ndarray):
-        vec2 = np.asarray(vec2, dtype=np.float64)
-
-    vec1 = np.asarray(vec1, dtype=np.float64)
-    vec2 = np.asarray(vec2, dtype=np.float64)
+    vec1 = np.ascontiguousarray(vec1, dtype=np.float64)
+    vec2 = np.ascontiguousarray(vec2, dtype=np.float64)
 
     if len(vec1) != len(vec2):
         raise ValueError("Vectors must have the same length")
-    if len(vec1) == 0:
-        raise ValueError("Vectors cannot be empty")
-    if not np.issubdtype(vec1.dtype, np.number) or not np.issubdtype(vec2.dtype, np.number):
-        raise ValueError("Vectors must be numeric")
-
-    # Ensure contiguous arrays
-    vec1 = np.ascontiguousarray(vec1, dtype=np.float64)
-    vec2 = np.ascontiguousarray(vec2, dtype=np.float64)
 
     # Convert scalar parameters
     n_dims_c = ctypes.c_int(len(vec1))
@@ -1688,30 +1659,35 @@ def tox_euclidean_distance(vec1, vec2):
     # Prepare output
     result = ctypes.c_double(0.0)
 
+    ierr = ctypes.c_int(0)
+
     # Setup C wrapper
     euclidean_distance_c = lib.euclidean_distance_c
     euclidean_distance_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
         ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double)
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int)
     ]
     euclidean_distance_c.restype = None
 
     # Call Fortran routine
-    euclidean_distance_c(vec1, vec2, ctypes.byref(n_dims_c), ctypes.byref(result))
+    euclidean_distance_c(vec1, vec2, ctypes.byref(n_dims_c), ctypes.byref(result), ctypes.byref(ierr))
+
+    check_err_code(ierr.value)
 
     return result.value
 
 
 #> tox_euclidean_distance:distance_to_centroid_c: Calculate distance from each gene to its family centroid
-def tox_distance_to_centroid(genes, centroids, gene_to_fam, d):
+def tox_distance_to_centroid(genes, centroids, gene_to_fam):
     """
     Calculate distance from each gene to its family centroid
 
     Args:
-        genes: Gene expression data as flat array (n_genes * d elements).
-        centroids: Family centroids as flat array (n_families * d elements).
+        genes: Gene expression data (n_elements, n_genes).
+        centroids: Family centroids (n_elements, n_families).
         gene_to_fam: Gene-to-family mapping (0 = no family, >0 = family index).
         d: Number of dimensions.
 
@@ -1719,63 +1695,46 @@ def tox_distance_to_centroid(genes, centroids, gene_to_fam, d):
         np.ndarray: Distances from each gene to its centroid (-1 for invalid families).
     """
     # Input validation
-    if not isinstance(genes, np.ndarray):
-        genes = np.asarray(genes, dtype=np.float64)
-    if not isinstance(centroids, np.ndarray):
-        centroids = np.asarray(centroids, dtype=np.float64)
-    if not isinstance(gene_to_fam, np.ndarray):
-        gene_to_fam = np.asarray(gene_to_fam, dtype=np.int32)
 
-    genes = np.asarray(genes, dtype=np.float64)
-    centroids = np.asarray(centroids, dtype=np.float64)
-    gene_to_fam = np.asarray(gene_to_fam, dtype=np.int32)
-    d = int(d)
-
-    # Calculate dimensions
-    n_genes = len(genes) // d
-    n_families = len(centroids) // d
-
-    # Validate dimensions
-    if len(genes) % d != 0:
-        raise ValueError("Length of genes must be divisible by d")
-    if len(centroids) % d != 0:
-        raise ValueError("Length of centroids must be divisible by d")
-    if len(gene_to_fam) != n_genes:
-        raise ValueError("Length of gene_to_fam must equal number of genes")
-    if np.any(gene_to_fam < 0):
-        raise ValueError("gene_to_fam indices must be between 0 and n_families (0 = no family assignment)")
-
-    # Ensure contiguous arrays
-    genes = np.ascontiguousarray(genes, dtype=np.float64)
-    centroids = np.ascontiguousarray(centroids, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_elements, n_genes = genes.shape
+    _, n_families = centroids.shape
 
     # Convert scalar parameters
     n_genes_c = ctypes.c_int(n_genes)
     n_families_c = ctypes.c_int(n_families)
-    d_c = ctypes.c_int(d)
+    n_elements_c = ctypes.c_int(n_elements)
 
     # Prepare output array
-    distances = np.zeros(n_genes, dtype=np.float64)
+    distances = np.empty(n_genes, dtype=np.float64)
+
+    ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     distance_to_centroid_c = lib.distance_to_centroid_c
     distance_to_centroid_c.argtypes = [
         ctypes.POINTER(ctypes.c_int),  # n_genes
         ctypes.POINTER(ctypes.c_int),  # n_families
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # genes
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # centroids
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # genes
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # centroids
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
-        ctypes.POINTER(ctypes.c_int)   # d
+        ctypes.POINTER(ctypes.c_int), # n_elements
+        ctypes.POINTER(ctypes.c_int)
     ]
     distance_to_centroid_c.restype = None
 
     # Call Fortran routine
-    distance_to_centroid_c(ctypes.byref(n_genes_c), ctypes.byref(n_families_c), genes, centroids, gene_to_fam, distances, ctypes.byref(d_c))
+    distance_to_centroid_c(ctypes.byref(n_genes_c), ctypes.byref(n_families_c), genes, centroids, gene_to_fam, distances, ctypes.byref(n_elements_c), ctypes.byref(ierr))
+
+    check_err_code(ierr.value)
 
     # Mark output as read-only
     _readonly(distances)
+
     return distances
 
 

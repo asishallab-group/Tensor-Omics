@@ -39,3 +39,13 @@ def run_all_tests(functions, script_file_name=args[0], test_only=True):
     assert failed == 0, f"{failed} tests in '{script_file_name}' failed."
 
     print(f"All tests in '{script_file_name}' passed successfully.")
+
+
+def assert_error(func, msg):
+    try:
+        func()
+        assert False, msg
+    except AssertionError as e:
+        raise e
+    except (RuntimeError, ValueError) as e:
+        pass

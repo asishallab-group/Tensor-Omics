@@ -13,7 +13,7 @@ import math
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import tox_clock_hand_angle_between_vectors, tox_clock_hand_angles_for_shift_vectors
-from test_helpers import run_all_tests
+from test_helpers import *
 
 
 # Constants
@@ -26,9 +26,8 @@ def test_identical_vectors_2d():
 
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([1.0, 0.0], dtype=np.float64)
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     expected = 0.0
     assert np.isclose(result, expected), "expected zero angle"
@@ -39,9 +38,8 @@ def test_perpendicular_vectors_2d():
 
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 1.0], dtype=np.float64)
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     expected_magnitude = PI/2
     assert np.isclose(result, expected_magnitude), "expected PI/2 angle"
@@ -52,9 +50,8 @@ def test_opposite_vectors_2d():
 
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([-1.0, 0.0], dtype=np.float64)
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     expected_magnitude = PI
     assert np.isclose(result, expected_magnitude), "expected PI angle"
@@ -65,9 +62,8 @@ def test_45_degree_rotation_2d():
 
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([math.sqrt(2)/2, math.sqrt(2)/2], dtype=np.float64)  # 45 degrees
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     expected = PI/4
     assert np.isclose(result, expected), "expected PI/4 angle"
@@ -79,10 +75,9 @@ def test_clockwise_vs_counterclockwise_2d():
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2_ccw = np.array([0.0, 1.0], dtype=np.float64)   # 90° counterclockwise
     v2_cw = np.array([0.0, -1.0], dtype=np.float64)   # 90° clockwise
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    result_ccw = tox_clock_hand_angle_between_vectors(v1, v2_ccw, selected_axes)
-    result_cw = tox_clock_hand_angle_between_vectors(v1, v2_cw, selected_axes)
+    result_ccw = tox_clock_hand_angle_between_vectors(v1, v2_ccw)
+    result_cw = tox_clock_hand_angle_between_vectors(v1, v2_cw)
 
     assert np.isclose(result_ccw, PI/2), "ccw expected PI/2 angle"
     assert np.isclose(result_cw, -PI/2), "cw expected PI/2 angle"
@@ -141,9 +136,8 @@ def test_shift_vectors_single_pair():
         [0.0, 1.0]  # target
     ]], dtype=np.float64, order="F").transpose()
     vecs_selection_mask = np.array([1], dtype=np.int32)  # Select the single pair
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask, selected_axes)
+    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask)
 
     expected = PI/2
     assert np.isclose(signed_angles, expected), "expected PI/2 angle"
@@ -171,9 +165,8 @@ def test_shift_vectors_multiple_pairs():
         ]
     ], dtype=np.float64, order="F").transpose()
     vecs_selection_mask = np.array([1, 1, 1], dtype=np.int32)  # Select all pairs
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask, selected_axes)
+    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask)
 
     # Expected mathematically correct results
     expected = [PI/2, PI, -PI/2]  # 90° CCW, 180°, 90° CW
@@ -207,9 +200,8 @@ def test_shift_vectors_with_selection_mask():
     ], dtype=np.float64, order="F").transpose()
 
     vecs_selection_mask = np.array([0, 1, 0, 1], dtype=np.int32)  # Select 2nd and 4th (FALSE, TRUE, FALSE, TRUE)
-    selected_axes = np.array([1, 1], dtype=np.int32)  # Ignored for 2D
 
-    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask, selected_axes)
+    signed_angles = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask)
 
     # Expected results based on R test: 2nd pair→180°, 4th pair→45°
     expected = [PI, PI/4]  # 180° and 45°
@@ -223,9 +215,8 @@ def test_edge_cases():
     epsilon = 1e-15
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([1.0, epsilon], dtype=np.float64)
-    selected_axes = np.array([1, 1], dtype=np.int32)
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     assert np.isclose(result, 0), "expected zero angle for nearly identical vectors"
 
@@ -233,7 +224,7 @@ def test_edge_cases():
     v1 = np.array([100.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 50.0], dtype=np.float64)
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     expected = PI/2
     assert np.isclose(result, expected), "expected PI/2 angle"
@@ -243,7 +234,7 @@ def test_edge_cases():
     v1 = np.array([tiny, 0.0], dtype=np.float64)
     v2 = np.array([0.0, tiny], dtype=np.float64)
 
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     assert np.isclose(result, expected), "expected PI/2 angle even for short vectors"
 
 
@@ -253,10 +244,9 @@ def test_consistency_between_functions():
     # Test same calculation with both functions
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 1.0], dtype=np.float64)
-    selected_axes = np.array([1, 1], dtype=np.int32)
 
     # Single function
-    single_result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    single_result = tox_clock_hand_angle_between_vectors(v1, v2)
 
     # Batch function with single pair - create like R
     fields = np.array([[
@@ -264,7 +254,7 @@ def test_consistency_between_functions():
         [0.0, 1.0]  # target
     ]], dtype=np.float64, order="F").transpose()
     vecs_selection_mask = np.array([1], dtype=np.int32)
-    batch_results = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask, selected_axes)
+    batch_results = tox_clock_hand_angles_for_shift_vectors(fields, vecs_selection_mask)
 
     assert np.isclose(single_result, batch_results[0]), "single result should match batch result"
 
@@ -280,10 +270,9 @@ def test_mathematical_properties():
     v1 = v1 / np.sqrt(np.sum(v1**2))
     v2 = v2 / np.sqrt(np.sum(v2**2))
 
-    selected_axes = np.array([1, 1], dtype=np.int32)
 
-    result_12 = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
-    result_21 = tox_clock_hand_angle_between_vectors(v2, v1, selected_axes)
+    result_12 = tox_clock_hand_angle_between_vectors(v1, v2)
+    result_21 = tox_clock_hand_angle_between_vectors(v2, v1)
 
     assert np.isclose(result_12, -result_21), "anti commutativity failed"
 
@@ -331,11 +320,7 @@ def test_invalid_selected_axes():
     v1 = np.array([1.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
     selected_axes = np.array([1, 1, 1, 0, 0], dtype=np.int32)
-    try:
-        result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
-        assert False, "Expected Exception"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception")
 
 
 def test_out_of_bounds_selected_axes():
@@ -343,11 +328,7 @@ def test_out_of_bounds_selected_axes():
     v1 = np.array([1.0, 0.0, 0.0, 2.3], dtype=np.float64)
     v2 = np.array([0.0, 1.0, 0.0, 2.3], dtype=np.float64)
     selected_axes = np.array([1, 2, 5, 6], dtype=np.int32)
-    try:
-        result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
-        assert False, "Expected Exception"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception")
 
 
 def test_zero_vectors():
@@ -365,8 +346,7 @@ def test_denormalized_vectors():
     """Test denormalized vectors (large magnitude)"""
     v1 = np.array([100.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 50.0], dtype=np.float64)
-    selected_axes = np.array([1, 2], dtype=np.int32)
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     expected = PI/2
     assert np.isclose(result, expected), "Expected PI/2 angle"
 
@@ -376,8 +356,7 @@ def test_tiny_vectors_precision():
     tiny = 1e-14
     v1 = np.array([tiny, 0.0], dtype=np.float64)
     v2 = np.array([0.0, tiny], dtype=np.float64)
-    selected_axes = np.array([1, 2], dtype=np.int32)
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     expected = PI/2
     assert np.isclose(result, expected), "expected PI/2 angle"
 
@@ -387,8 +366,7 @@ def test_huge_vectors_precision():
     huge_val = 1e14
     v1 = np.array([huge_val, 0.0], dtype=np.float64)
     v2 = np.array([0.0, huge_val], dtype=np.float64)
-    selected_axes = np.array([1, 2], dtype=np.int32)
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     expected = PI/2
     assert np.isclose(result, expected), "expected PI/2 angle"
 
@@ -398,8 +376,7 @@ def test_nearly_identical_vectors():
     epsilon = 1e-15
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([1.0, epsilon], dtype=np.float64)
-    selected_axes = np.array([1, 2], dtype=np.int32)
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     assert np.isclose(result, 0), "expected zero angle"
 
 
@@ -408,8 +385,7 @@ def test_nearly_opposite_vectors():
     epsilon = 1e-15
     v1 = np.array([1.0, 0.0], dtype=np.float64)
     v2 = np.array([-1.0, epsilon], dtype=np.float64)
-    selected_axes = np.array([1, 2], dtype=np.int32)
-    result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
+    result = tox_clock_hand_angle_between_vectors(v1, v2)
     assert np.isclose(result, PI), "expected close PI angle"
 
 

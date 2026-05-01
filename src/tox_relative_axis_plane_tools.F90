@@ -208,10 +208,9 @@ contains
         integer(int32), intent(in), optional :: arg_pos
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
-        call validate_all_in_range_int(selected_axes_for_signed, size(selected_axes_for_signed, kind=int32), ierr, min=1_int32, max=n_dims, arg_pos=5_int32)
-
-        ! Validate that indices are unique if n_dims > 3
+        ! the argument is being ignored for lower 4
         if (n_dims > 3) then
+            call validate_all_in_range_int(selected_axes_for_signed, size(selected_axes_for_signed, kind=int32), ierr, min=1_int32, max=n_dims, arg_pos=5_int32)
             if (selected_axes_for_signed(1) == selected_axes_for_signed(2) .or. &
                 selected_axes_for_signed(1) == selected_axes_for_signed(3) .or. &
                 selected_axes_for_signed(2) == selected_axes_for_signed(3)) then
