@@ -98,14 +98,14 @@ contains
 
         integer(int32) :: i_str, str_len
 
-        ! determine string length to be converted, +1 because of the null char in c
-        str_len = min(len_trim(str) + 1, size(c_char_array, 1)) - 1
+        ! determine string length to be converted
+        str_len = min(len_trim(str), size(c_char_array, 1))
 
         do concurrent (i_str = 1:str_len) shared(str, c_char_array)
             call c_char_as_char(str(i_str:i_str), c_char_array(i_str))
         end do
 
-        if (size(c_char_array, 1) > 0) then
+        if (size(c_char_array, 1) > str_len) then
             c_char_array(str_len + 1) = c_null_char
         end if
     end subroutine string_as_c_char_1d

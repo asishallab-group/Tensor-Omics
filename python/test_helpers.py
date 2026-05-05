@@ -23,17 +23,18 @@ def run_all_tests(functions, script_file_name=args[0], test_only=True):
         except AssertionError as e:
             print(f"✗ {test_name} FAILED: {e}")
             failed += 1
-        except Exception as e:
-            # Some tests are expected to raise exceptions in certain cases
-            if "Note:" in str(e) or "acceptable" in str(e).lower():
-                print(f"~ {test_name} skipped (expected behavior): {e}")
-                skipped += 1
-            else:
-                tb = e.__traceback__.tb_next
-                filename = tb.tb_frame.f_code.co_filename
-                line = tb.tb_lineno
-                print(f"✗ {test_name} FAILED with unexpected error: {e}, line {line}, file '{filename}'")
-                failed += 1
+        # except Exception as e:
+        #     # Some tests are expected to raise exceptions in certain cases
+        #     if "Note:" in str(e) or "acceptable" in str(e).lower():
+        #         print(f"~ {test_name} skipped (expected behavior): {e}")
+        #         skipped += 1
+        #     else:
+        #         raise e
+        #         tb = e.__traceback__.tb_next
+        #         filename = tb.tb_frame.f_code.co_filename
+        #         line = tb.tb_lineno
+        #         print(f"✗ {test_name} FAILED with unexpected error: {e}, line {line}, file '{filename}'")
+        #         failed += 1
 
     print(f"\nSummary: {passed} passed, {failed} failed, {skipped} skipped")
     assert failed == 0, f"{failed} tests in '{script_file_name}' failed."

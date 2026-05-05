@@ -165,7 +165,7 @@ contains
                          "test_tox_conversions_string_as_c_char_1d: value mismatch")
 
         call string_as_c_char_1d(f_str, c_array(1:5))
-        call assert_true(all(c_array(1:5) == ["H", "e", "l", "l", c_null_char]), &
+        call assert_true(all(c_array == ["H", "e", "l", "l", "o", c_null_char]), &
                          "test_tox_conversions_string_as_c_char_1d: value mismatch")
 
         f_str = ""
