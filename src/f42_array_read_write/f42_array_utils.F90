@@ -12,18 +12,16 @@ module f42_array_utils
     integer(int32), parameter :: ARRAY_FILE_MAGIC = int(z'46413230', int32) ! 'FA20' in hex
         !! Magic number for array files
 
-#define CM_INTEGER_TYPE_CODE 1_int32
-#define CM_REAL_TYPE_CODE 2_int32
-#define CM_CHAR_TYPE_CODE 3_int32
-#define CM_LOGICAL_TYPE_CODE 4_int32
-#define CM_COMPLEX_TYPE_CODE 5_int32
+! IMPORTANT: character type is represented as any positive value `x>=0` with `x` meaning the string length
+#define CM_INTEGER_TYPE_CODE -1_int32
+#define CM_REAL_TYPE_CODE -2_int32
+#define CM_LOGICAL_TYPE_CODE -3_int32
+#define CM_COMPLEX_TYPE_CODE -4_int32
 
     integer(int32), parameter :: INTEGER_TYPE_CODE = CM_INTEGER_TYPE_CODE
         !! Type code for integer type
     integer(int32), parameter :: REAL_TYPE_CODE = CM_REAL_TYPE_CODE
         !! Type code for real type
-    integer(int32), parameter :: CHAR_TYPE_CODE = CM_CHAR_TYPE_CODE
-        !! Type code for character type
     integer(int32), parameter :: LOGICAL_TYPE_CODE = CM_LOGICAL_TYPE_CODE
         !! Type code for logical type
     integer(int32), parameter :: COMPLEX_TYPE_CODE = CM_COMPLEX_TYPE_CODE
@@ -53,7 +51,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Opens unit and writes fileheader with all metadata to the given filename
-    subroutine write_file_header(filename, unit, type_code, ndim, dims, ierr, clen)
+    subroutine write_file_header(filename, unit, type_code, ndim, dims, ierr)
         character(len=*), intent(in) :: filename
             !! filename to write to
         integer(int32), intent(in) :: type_code
@@ -71,8 +69,6 @@ contains
             !! number of dimensions
         integer(int32), intent(in) :: dims(ndim)
             !! dimensions of the array
-        integer(int32), intent(in), optional :: clen
-            !! character length (only for character arrays)
         integer(int32), intent(inout) :: ierr
             !! error code
         integer(int32), intent(out) :: unit
@@ -94,38 +90,35 @@ contains
 
         write (unit, iostat=ierr) dims
         M_CHECK_IO_ERR(ERR_WRITE_DIMS)
-
-        if (type_code == CHAR_TYPE_CODE) then
-            if (.not. present(clen)) then
-                call set_err(ierr, ERR_INVALID_INPUT)
-                return
-            end if
-
-            write (unit, iostat=ierr) clen
-            M_CHECK_IO_ERR(ERR_WRITE_CHARLEN)
-        end if
     end subroutine write_file_header
 
-    subroutine check_file_header(filename, expected_type_code, expected_shape, unit, ierr, expected_clen)
+    subroutine check_file_header(filename, expected_type_code, expected_shape, unit, ierr)
         character(len=*), intent(in) :: filename
             !! filename to read from
         integer(int32), intent(in) :: expected_type_code
             !! Expected type code in header
+            !!
+            !! |    Type   |           Code          |
+            !! |-----------|-------------------------|
+            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
+            !! |    real   |   CM_REAL_TYPE_CODE     |
+            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! | character |  expected string length |
+            !!
         integer(int32), dimension(:), intent(in) :: expected_shape
             !! Expected shape in header
         integer(int32), intent(out) :: unit
             !! Fortran unit number for the file
         integer(int32), intent(out) :: ierr
             !! Error code
-        integer(int32), intent(in), optional :: expected_clen
-            !! For string headers, the expected character length in header
 
-        integer(int32) :: type_code, ndim, clen
+        integer(int32) :: type_code, ndim
         integer(int32), dimension(:), allocatable :: dims
 
         call set_ok(ierr)
         ! open file and read header
-        call read_file_header_helper(filename, unit, type_code, ndim, dims, clen, ierr)
+        call read_file_header_helper(filename, unit, type_code, ndim, dims, ierr)
         if (is_err(ierr)) return
 
         call validate_type_code(type_code, expected_type_code, unit, ierr)
@@ -134,9 +127,6 @@ contains
         else if (any(expected_shape /= dims)) then
             call set_err(ierr, ERR_DIM_MISMATCH)
         end if
-        if (present(expected_clen)) then
-            if (clen /= expected_clen) call set_err(ierr, ERR_DIM_MISMATCH)
-        end if
         if (is_err(ierr)) then
             close(unit)
         end if
@@ -144,7 +134,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Opens unit and reads file header with all metadata from given file
-    subroutine read_file_header_helper(filename, unit, type_code, ndims, dims, clen, ierr)
+    subroutine read_file_header_helper(filename, unit, type_code, ndims, dims, ierr)
         character(len=*), intent(in) :: filename
             !! filename to read from
         integer(int32), intent(out) :: unit
@@ -162,8 +152,6 @@ contains
             !!
         integer(int32), intent(out) :: ndims
             !! number of dimensions
-        integer(int32), intent(out) :: clen
-            !! character length (only for character arrays)
         integer(int32), intent(out) :: ierr
             !! error code
         integer(int32), allocatable :: dims(:)
@@ -192,19 +180,11 @@ contains
         M_ALLOCATE(dims(ndims))
         read (unit, iostat=ierr) dims
         M_CHECK_IO_ERR(ERR_READ_DIMS)
-
-        if (type_code == CHAR_TYPE_CODE) then
-            read (unit, iostat=ierr) clen
-            M_CHECK_IO_ERR(ERR_READ_CHARLEN)
-        else
-            clen = 0 ! Not applicable for non-character types
-        end if
-
     end subroutine read_file_header_helper
 
     !> AUTHOR_AARON_SCHROEDER
     !| Get the metadata of an array file
-    subroutine get_array_metadata(filename, dims_out, dims_out_capacity, ndims, ierr, clen)
+    subroutine get_array_metadata(filename, dims_out, dims_out_capacity, ndims, type_code, ierr)
 
         character(len=*), intent(in) :: filename
             !! Name of the file
@@ -214,17 +194,15 @@ contains
             !! Capacity of the dims_out array
         integer(int32), intent(out) :: dims_out(dims_out_capacity)
             !! Array to store output dimensions
+        integer(int32), intent(out) :: type_code
+            !! Type code of the serialized array
         integer(int32), intent(out) :: ierr
             !! Error code
-        integer(int32), intent(out), optional :: clen
-            !! length of each string (needed for char arrays)
 
         integer(int32) :: unit
         integer(int32), allocatable :: dims(:)
-        integer(int32) :: type_code
-        integer(int32) :: local_clen
 
-        call read_file_header_helper(filename, unit, type_code, ndims, dims, local_clen, ierr)
+        call read_file_header_helper(filename, unit, type_code, ndims, dims, ierr)
         close (unit)
         if (is_err(ierr)) return
 
@@ -233,16 +211,13 @@ contains
             return
         end if
 
+        dims_out = 1
         dims_out(1:ndims) = dims
-
-        if (present(clen)) then
-            clen = local_clen
-        end if
     end subroutine get_array_metadata
 end module f42_array_utils
 
 !> C binding for the subroutine to get the dimensions of an array file
-subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, ierr, clen) bind(C, name="get_array_metadata_c")
+subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, type_code, ierr) bind(C, name="get_array_metadata_c")
     use iso_c_binding, only: c_int, c_char
     use f42_array_utils, only: get_array_metadata
     use tox_conversions, only: c_char_1d_as_string
@@ -264,8 +239,8 @@ subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, n
         !! Output variable for the number of dimensions
     integer(c_int), intent(out), target :: ierr
         !! Error code
-    integer(c_int), intent(out), target :: clen
-        !! Character length (only for character arrays)
+    integer(c_int), intent(out), target :: type_code
+        !! Type code of the serialized array
 
     ! Local variables
     character(len=:), allocatable :: filename_f
@@ -275,11 +250,11 @@ subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, n
     M_CHECK_NON_NULL(filename)
     M_CHECK_NON_NULL(dims_out)
     M_CHECK_NON_NULL(ndims)
-    M_CHECK_NON_NULL(clen)
+    M_CHECK_NON_NULL(type_code)
     M_CHECK_NON_NULL(dims_out_capacity)
 
     call c_char_1d_as_string(filename, filename_f, ierr)
     if (is_err(ierr)) return
 
-    call get_array_metadata(filename_f, dims_out, dims_out_capacity, ndims, ierr, clen)
+    call get_array_metadata(filename_f, dims_out, dims_out_capacity, ndims, type_code, ierr)
 end subroutine get_array_metadata_c

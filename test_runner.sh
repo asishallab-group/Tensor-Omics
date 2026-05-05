@@ -44,8 +44,7 @@ fi
 
 echo "Using compiler: $COMPILER"
 
-rm -f test_*.bin
-rm -f test_*.zip
+rm -f *.test.*
 rm -f manifest.txt
 
 echo "Running tests..."
@@ -62,13 +61,15 @@ check_exit_code "Tests failed"
 
 rm fpm.toml
 
-if [[ -z "$KEEP_BIN" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.bin
-fi
-if [[ -z "$KEEP_ZIP" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.zip
-fi
-if [[ -z "$KEEP_TXT" && -z "$KEEP_FILES" ]]; then
-  rm -f test_*.txt
-  rm -f manifest.txt
+if [[ -z "$KEEP_FILES" ]]; then
+  for type in zip txt bin; do
+    keep=KEEP_${type^^}
+    if [[ -z "${!keep}" ]]; then
+      rm -f *.test.$type
+    fi
+  done
+
+  if [[ -z "$KEEP_TXT" ]]; then
+    rm -f manifest.txt
+  fi
 fi

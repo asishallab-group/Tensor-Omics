@@ -5,6 +5,7 @@ module mod_test_clock_hand_angles
     use tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64
     use test_suite, only: test_case
+    use tox_errors
     implicit none
     public
 
@@ -343,19 +344,20 @@ contains
         v2 = [0.0_real64, 1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
         selected_axes = [1, 1, 1]
         call clock_hand_angle_between_vectors(v1, v2, 5, signed_angle, selected_axes, ierr)
-        call assert_true(ierr /= 0, "ierr should be nonzero for invalid selected axes")
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "ierr should be nonzero for invalid selected axes")
         call assert_true(.not. (signed_angle /= signed_angle), "Invalid axes should not produce NaN")
     end subroutine test_invalid_selected_axes
 
     !> Test out-of-bounds selected axes.
     subroutine test_out_of_bounds_selected_axes()
-        real(real64) :: v1(3), v2(3), signed_angle
+        real(real64) :: v1(4), v2(4), signed_angle
         integer :: selected_axes(3), ierr
-        v1 = [1.0_real64, 0.0_real64, 0.0_real64]
-        v2 = [0.0_real64, 1.0_real64, 0.0_real64]
+        v1 = [1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
+        v2 = [0.0_real64, 1.0_real64, 0.0_real64, 0.0_real64]
         selected_axes = [1, 2, 5]
-        call clock_hand_angle_between_vectors(v1, v2, 3, signed_angle, selected_axes, ierr)
-        call assert_true(ierr /= 0, "ierr should be nonzero for out-of-bounds selected axes")
+        call clock_hand_angle_between_vectors(v1, v2, 4, signed_angle, selected_axes, ierr)
+
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "ierr should be nonzero for out-of-bounds selected axes")
         call assert_true(.not. (signed_angle /= signed_angle), "Out-of-bounds axes should not produce NaN")
     end subroutine test_out_of_bounds_selected_axes
 

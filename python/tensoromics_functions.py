@@ -211,7 +211,7 @@ def _string_to_c_char_array(s, length):
     return arr
 
 
-#> f42_array_utils:get_array_metadata_C: Helper function to read dimensions of integer/real array
+#> f42_array_utils:get_array_metadata_c: Helper function to read dimensions of integer/real array
 def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     """
     Read dimensions (and optionally character length) of a serialized array file.
@@ -227,9 +227,6 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
             "clen" (int, optional): Character length metadata (if with_clen is True)
         }
     """
-    filename_c = _string_to_c_char_array(filename, len(filename) + 1)
-    fn_len = len(filename_c)
-
     dims_out = np.zeros(max_dims, dtype=np.int32)
     ndims = ctypes.c_int()
     ierr = ctypes.c_int()
@@ -238,7 +235,7 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
 
     # shared function
     lib.get_array_metadata_c.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"), # filename_c
+        ctypes.c_char_p,  # filename
         ctypes.POINTER(ctypes.c_int),                                                         # fn_len
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"), # dims_out
         ctypes.POINTER(ctypes.c_int),                                         # dims_out_capacity
@@ -247,11 +244,10 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
         ctypes.POINTER(ctypes.c_int)                                          # clen
     ]
     lib.get_array_metadata_c.restype = None
-
     # call
     lib.get_array_metadata_c(
-        filename_c,
-        ctypes.byref(ctypes.c_int(fn_len)),
+        filename.encode("utf-8"),
+        ctypes.byref(ctypes.c_int(len(filename))),
         dims_out,
         ctypes.byref(dims_out_capacity),
         ctypes.byref(ndims),
@@ -267,7 +263,7 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
         return dims_out[:ndims.value]
 
 
-#> f42_serialize_int:serialize_int_nd_C: Serialize an n-dimensional array of type 'int'
+#> f42_serialize_int:serialize_int_nd_c: Serialize an n-dimensional array of type 'int'
 def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional int32 array to a binary file.
@@ -279,48 +275,40 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     Returns:
         None: Writes array data to disk.
     """
-    if not isinstance(arr, np.ndarray) or arr.dtype != np.int32:
-        raise ValueError("arr must be a numpy array of int32")
-
-    # Make sure layout is fortran compatible
-    arr_f = np.asfortranarray(arr)
+    arr = np.asfortranarray(arr)
 
     # dimensions
-    dims = np.array(arr.shape, dtype=np.int32)
     ndim = arr.ndim
     ierr = ctypes.c_int()
-
-    # flat array to pass to fortran
-    flat = arr_f.ravel(order='F')
 
     # prepare filename
     filename_c = _string_to_c_char_array(filename, len(filename) + 1)
     fn_len = len(filename_c)
 
     lib.serialize_int_nd_c.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr
-        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # arr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # shape
         ctypes.POINTER(ctypes.c_int),  # ndim
-        np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
+        ctypes.c_char_p,  # filename
         ctypes.POINTER(ctypes.c_int),  # fn_len
-        ctypes.POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int) # ierr
     ]
     lib.serialize_int_nd_c.restype = None
 
     # call function
     lib.serialize_int_nd_c(
-        flat,
-        dims,
+        arr,
+        arr.shape,
         ctypes.byref(ctypes.c_int(ndim)),
-        filename_c,
-        ctypes.byref(ctypes.c_int(fn_len)),
+        filename.encode("utf-8"),
+        ctypes.byref(ctypes.c_int(len(filename))),
         ctypes.byref(ierr)
     )
 
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_int:deserialize_int_nd_C: Deserialize an n-dimensional array of type 'int'
+#> f42_deserialize_int:deserialize_int_nd_c: Deserialize an n-dimensional array of type 'int'
 def tox_deserialize_int_nd(filename):
     """
     Deserialize an n-dimensional int32 array from a binary file.
@@ -333,29 +321,34 @@ def tox_deserialize_int_nd(filename):
     """
     # read size of the array
     dims = tox_get_array_metadata(filename)
-    print(f"Deserializing array with dimensions: {dims}")
-    # create array with the proper size
-    total_size = np.prod(dims)
-    arr = np.zeros(total_size, dtype=np.int32, order='F')  # gets a 1D array
-    filename_c = _string_to_c_char_array(filename, len(filename) + 1)
-    fn_len = len(filename_c)
+    arr = np.empty(dims, dtype=np.int32, order="F")
     ierr = ctypes.c_int()
 
     lib.deserialize_int_nd_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="F_CONTIGUOUS"),  # arr
         ctypes.POINTER(ctypes.c_int),                                                          # total size
-        np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
+        ctypes.c_char_p,  # filename
         ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.deserialize_int_nd_c.restype = None
 
-    lib.deserialize_int_nd_c(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
+    lib.deserialize_int_nd_c(
+        arr,
+        dims,
+        ctypes.byref(ctypes.c_int(ndim)),
+        filename.encode("utf-8"),
+        ctypes.byref(ctypes.c_int(len(filename))),
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
-    return arr.reshape(dims, order='F')  # Reshape to original dimensions
+
+    _readonly(arr)
+
+    return arr
 
 
-#> f42_serialize_real:serialize_real_nd_C: Serialize an n-dimensional array of type 'float'
+#> f42_serialize_real:serialize_real_nd_c: Serialize an n-dimensional array of type 'float'
 def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional float64 array to a binary file.
@@ -408,7 +401,7 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_real:deserialize_real_nd_C: Deserialize an n-dimensional array of type 'float'
+#> f42_deserialize_real:deserialize_real_nd_c: Deserialize an n-dimensional array of type 'float'
 def tox_deserialize_real_nd(filename):
     """
     Deserialize an n-dimensional float64 array from a binary file.
@@ -443,7 +436,7 @@ def tox_deserialize_real_nd(filename):
     return arr.reshape(dims, order='F')  # Reshape
 
 
-#> f42_serialize_char:serialize_char_nd_C: Serialize an n-dimensional array of type 'str'
+#> f42_serialize_char:serialize_char_nd_c: Serialize an n-dimensional array of type 'str'
 def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional Unicode character array to a binary file.
@@ -497,7 +490,7 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_char:deserialize_char_nd_C: Deserialize an n-dimensional array of type 'str'
+#> f42_deserialize_char:deserialize_char_nd_c: Deserialize an n-dimensional array of type 'str'
 def tox_deserialize_char_nd(filename):
     """
     Deserialize an n-dimensional Unicode array from a binary file.
@@ -550,7 +543,7 @@ def tox_deserialize_char_nd(filename):
     return np.array(strings, dtype=f'U{clen}').reshape(dims, order='F')
 
 
-#> f42_serialize_logical:serialize_logical_nd_C: Serialize an n-dimensional array of type 'bool'
+#> f42_serialize_logical:serialize_logical_nd_c: Serialize an n-dimensional array of type 'bool'
 def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional boolean array to a binary file.
@@ -604,7 +597,7 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_logical:deserialize_logical_nd_C: Deserialize an n-dimensional array of type 'bool'
+#> f42_deserialize_logical:deserialize_logical_nd_c: Deserialize an n-dimensional array of type 'bool'
 def tox_deserialize_logical_nd(filename):
     """
     Deserialize an n-dimensional boolean array from a binary file.
@@ -642,7 +635,7 @@ def tox_deserialize_logical_nd(filename):
     return arr_bool.reshape(dims, order='F')  # Reshape to original dimensions
 
 
-#> f42_serialize_complex:serialize_complex_nd_C: Serialize an n-dimensional array of type 'complex'
+#> f42_serialize_complex:serialize_complex_nd_c: Serialize an n-dimensional array of type 'complex'
 def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional complex128 array to a binary file.
@@ -695,7 +688,7 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_complex:deserialize_complex_nd_C: Deserialize an n-dimensional array of type 'complex'
+#> f42_deserialize_complex:deserialize_complex_nd_c: Deserialize an n-dimensional array of type 'complex'
 def tox_deserialize_complex_nd(filename):
     """
     Deserialize an n-dimensional complex128 array from a binary file.
@@ -730,7 +723,7 @@ def tox_deserialize_complex_nd(filename):
     return arr.reshape(dims, order='F')  # Reshape
 
 
-#> f42_binary_search_tree:build_bst_index_C: Build a BST index for the given values
+#> f42_binary_search_tree:build_bst_index_c: Build a BST index for the given values
 def build_bst_index(values):
     """
     Build a BST index for the given values.
@@ -812,7 +805,7 @@ def build_spherical_kd(vectors, dimension_order=None):
     return sphere_ix
 
 
-#> f42_binary_search_tree:bst_range_query_C: Perform a range query on BST-indexed values
+#> f42_binary_search_tree:bst_range_query_c: Perform a range query on BST-indexed values
 def bst_range_query(values, indices, lower_bound, upper_bound):
     """
     Perform a range query on BST-indexed values.
@@ -863,7 +856,7 @@ def bst_range_query(values, indices, lower_bound, upper_bound):
     return result
 
 
-#> f42_kd_tree:build_kd_index_C: Build a KD-Tree index for the given points
+#> f42_kd_tree:build_kd_index_c: Build a KD-Tree index for the given points
 def build_kd_index(points, dimension_order=None):
     """
     Build a KD-Tree index for the given points.
@@ -3348,7 +3341,7 @@ def tox_detect_dosage_effect(ancestor, genes,
     }
 
 
-#> tox_trajectory_normalization:normalize_variable_timeseries_C: Normalize a single variable across time using min-max scaling.
+#> tox_trajectory_normalization:normalize_variable_timeseries_c: Normalize a single variable across time using min-max scaling.
 def tox_normalize_variable_timeseries(v):
     """
     Normalize a single variable across time using min-max scaling.
@@ -3368,7 +3361,7 @@ def tox_normalize_variable_timeseries(v):
     ierr = ctypes.c_int(0)
     status = ctypes.c_int(0)
 
-    normalize_c = lib.normalize_variable_timeseries_C
+    normalize_c = lib.normalize_variable_timeseries_c
     normalize_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # v
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # v_norm
@@ -3389,7 +3382,7 @@ def tox_normalize_variable_timeseries(v):
     return result
 
 
-#> tox_trajectory_normalization:normalize_single_trajectory_C: Normalize all factors in a single trajectory independently across time.
+#> tox_trajectory_normalization:normalize_single_trajectory_c: Normalize all factors in a single trajectory independently across time.
 def tox_normalize_single_trajectory(trajectory):
     """
     Normalize all factors in a single trajectory independently across time.
@@ -3412,7 +3405,7 @@ def tox_normalize_single_trajectory(trajectory):
     ierr = ctypes.c_int(0)
     status = ctypes.c_int(0)
 
-    normalize_c = lib.normalize_single_trajectory_C
+    normalize_c = lib.normalize_single_trajectory_c
     normalize_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectory
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectory_norm
@@ -3435,7 +3428,7 @@ def tox_normalize_single_trajectory(trajectory):
     return result
 
 
-#> tox_trajectory_normalization:normalize_all_trajectories_C: Normalize all trajectories across multiple entities.
+#> tox_trajectory_normalization:normalize_all_trajectories_c: Normalize all trajectories across multiple entities.
 def tox_normalize_all_trajectories(trajectories):
     """
     Normalize all trajectories across multiple entities.
@@ -3459,7 +3452,7 @@ def tox_normalize_all_trajectories(trajectories):
     ierr = ctypes.c_int(0)
     status = ctypes.c_int(0)
 
-    normalize_c = lib.normalize_all_trajectories_C
+    normalize_c = lib.normalize_all_trajectories_c
     normalize_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectories
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectories_norm

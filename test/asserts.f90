@@ -9,7 +9,7 @@ module asserts
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
     public :: assert_equal_real, assert_not_equal_real, assert_equal_array_int
     public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
-    public :: assert_in_range_real, assert_contains_int, assert_sorted_int
+    public :: assert_in_range_real, assert_in_range_int, assert_contains_int, assert_sorted_int
     public :: assert_sorted_real, assert_same_shape, assert_string_equal
     public :: assert_string_contains, assert_allclose_array_real
     public :: assert_sum_equal, assert_unique_int, assert_permutation
@@ -191,6 +191,16 @@ contains
     !> Assert that a real value is within a given range [minval, maxval].
     subroutine assert_in_range_real(a, minval, maxval, msg)
         real(real64), intent(in) :: a, minval, maxval
+        character(*), intent(in) :: msg
+        if (a < minval .or. a > maxval) then
+            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value ", a, " not in [", minval, ",", maxval, "])"
+            stop 1
+        end if
+    end subroutine
+
+    !> Assert that an integer value is within a given range [minval, maxval].
+    subroutine assert_in_range_int(a, minval, maxval, msg)
+        integer(int32), intent(in) :: a, minval, maxval
         character(*), intent(in) :: msg
         if (a < minval .or. a > maxval) then
             write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value ", a, " not in [", minval, ",", maxval, "])"

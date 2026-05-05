@@ -4,7 +4,7 @@
 module f42_serialize_char
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_array_utils, only: write_file_header, CHAR_TYPE_CODE
+    use f42_array_utils, only: write_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
     implicit none
 
@@ -35,7 +35,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call write_file_header(filename, unit, CHAR_TYPE_CODE, size(orig_shape, kind=int32), orig_shape, ierr, len(arr, kind=int32))
+        call write_file_header(filename, unit, len(arr, kind=int32), size(orig_shape, kind=int32), orig_shape, ierr)
 
         ! Read the entire array as a contiguous block
         write (unit, iostat=ierr) arr

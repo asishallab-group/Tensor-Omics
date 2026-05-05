@@ -56,10 +56,10 @@ contains
 
     !> Test C char to Fortran char conversion for scalar and array cases.
     subroutine test_c_char_as_char
-        character(c_char) :: c_val
+        character(kind=c_char, len=1) :: c_val
         character(len=1) :: casted_fortran
         character(len=1) :: casted_array(1)
-        character(c_char) :: c_val_array(1)
+        character(kind=c_char, len=1) :: c_val_array(1)
         character(len=1) :: expected_fortran
 
         expected_fortran = "H"
@@ -78,7 +78,7 @@ contains
 
     !> Test string to C char array conversion for 1D case.
     subroutine test_c_char_1d_as_string
-        character(c_char) :: c_char_array(5)
+        character(kind=c_char, len=1) :: c_char_array(5)
         character(len=:), allocatable :: f_char
         integer(int32) :: ierr
 
@@ -98,7 +98,7 @@ contains
 
     !> Test string to C char array conversion for 2D case.
     subroutine test_c_char_2d_as_string
-        character(c_char) :: c_char_array(5, 2)
+        character(kind=c_char, len=1) :: c_char_array(5, 2)
         character(len=:), allocatable :: f_char(:)
         integer(int32) :: ierr
 
@@ -136,9 +136,9 @@ contains
     !> Test Fortran char to C char conversion for scalar and array cases.
     subroutine test_char_as_c_char
         character(len=1) :: f_val
-        character(c_char) :: casted_c
+        character(kind=c_char, len=1) :: casted_c
         character(len=1) :: f_val_array(1)
-        character(c_char) :: casted_array(1)
+        character(kind=c_char, len=1) :: casted_array(1)
 
         f_val = "H"
         call char_as_c_char(f_val, casted_c)
@@ -156,7 +156,7 @@ contains
     !> Test Fortran string to C char array conversion for 1D case.
     subroutine test_string_as_c_char_1d
         character(len=5) :: f_str
-        character(c_char), allocatable :: c_array(:)
+        character(kind=c_char, len=1), allocatable :: c_array(:)
 
         f_str = "Hello"
         allocate (c_array(6))
@@ -181,7 +181,7 @@ contains
     !> Test Fortran string to C char array conversion for 2D case.
     subroutine test_string_as_c_char_2d
         character(len=5) :: f_str(2)
-        character(c_char) :: c_array(6, 2)
+        character(kind=c_char, len=1) :: c_array(6, 2)
 
         f_str(1) = "Hello"
         f_str(2) = ""

@@ -14,15 +14,9 @@ rcpp/rcpp_cache
 doc/
 
 # ignore test files
-test_*
-!test_runner.sh
-!python/test/test_*
-!python/test_helpers.py
-!r/test/test_*
-!rcpp/test/test_*
-!rcpp/test_helpers.R
-
+*.test.*
 manifest.txt
+fort.*
 
 *.zip
 *.bin

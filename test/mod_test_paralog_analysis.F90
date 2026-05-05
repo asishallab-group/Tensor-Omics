@@ -968,6 +968,7 @@ contains
 
         do i_gene = 1, n_genes
             max_subset_size_all_active = i_gene
+
             call calc_work_arr_paralog_subsets_size(max_subset_size_all_active, n_genes, work_array_size, mask_all_active, size(mask_all_active), ierr)
             call assert_equal_int(ierr, ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when calculating work array size")
 

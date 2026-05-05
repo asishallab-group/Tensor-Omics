@@ -15,7 +15,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Wrapper for serialize_char_1D function
     subroutine save_gene_ids(gene_ids, filename, ierr)
-        character(len=*), intent(in) :: gene_ids(:)
+        character(len=*), intent(in), contiguous :: gene_ids(:)
             !! Gene IDs to write
         character(len=*), intent(in) :: filename
             !! Filename to write to
@@ -30,7 +30,7 @@ contains
     subroutine save_expression_vectors(expression_vectors, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to write to
-        real(real64), intent(in) :: expression_vectors(:, :)
+        real(real64), intent(in), contiguous :: expression_vectors(:, :)
             !! Expression vectors to write
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -43,7 +43,7 @@ contains
     subroutine save_gene_to_family(gene_to_fam, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to write to
-        integer(int32), intent(in) :: gene_to_fam(:)
+        integer(int32), intent(in), contiguous :: gene_to_fam(:)
             !! Gene to family mapping to write
         integer(int32), intent(out) :: ierr
 
@@ -55,7 +55,7 @@ contains
     subroutine save_family_ids(family_ids, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to write to
-        character(len=*), intent(in) :: family_ids(:)
+        character(len=*), intent(in), contiguous :: family_ids(:)
             !! Family IDs to write
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -68,7 +68,7 @@ contains
     subroutine save_family_centroids(family_centroids, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to write to
-        real(real64), intent(in) :: family_centroids(:, :)
+        real(real64), intent(in), contiguous :: family_centroids(:, :)
             !! Family centroids to write
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -81,7 +81,7 @@ contains
     subroutine save_shift_vectors(shift_vectors, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to write to
-        real(real64), intent(in) :: shift_vectors(:, :)
+        real(real64), intent(in), contiguous :: shift_vectors(:, :)
             !! Shift vectors to write
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -94,7 +94,7 @@ contains
     subroutine load_gene_ids(gene_ids, filename, ierr)
         character(len=*), intent(in)  :: filename
             !! Filename to read from
-        character(len=*), intent(out) :: gene_ids(:)
+        character(len=*), intent(out), contiguous :: gene_ids(:)
             !! Gene IDs to read
         integer(int32), intent(out)   :: ierr
             !! Error code (0 if successful)
@@ -107,7 +107,7 @@ contains
     subroutine load_expression_vectors(expression_vectors, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to read from
-        real(real64), intent(out)    :: expression_vectors(:, :)
+        real(real64), intent(out), contiguous    :: expression_vectors(:, :)
             !! Expression vectors to read
         integer(int32), intent(out)  :: ierr
             !! Error code (0 if successful)
@@ -120,7 +120,7 @@ contains
     subroutine load_gene_to_family(gene_to_fam, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to read from
-        integer(int32), intent(out) :: gene_to_fam(:)
+        integer(int32), intent(out), contiguous :: gene_to_fam(:)
             !! Gene to family mapping to read
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -133,7 +133,7 @@ contains
     subroutine load_family_ids(family_ids, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to read from
-        CHARACTER(len=*), intent(out) :: family_ids(:)
+        CHARACTER(len=*), intent(out), contiguous :: family_ids(:)
             !! Family IDs to read
         integer(int32), intent(out) :: ierr
             !! Error code (0 if successful)
@@ -146,7 +146,7 @@ contains
     subroutine load_family_centroids(family_centroids, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to read from
-        real(real64), intent(out)    :: family_centroids(:, :)
+        real(real64), intent(out), contiguous    :: family_centroids(:, :)
             !! Family centroids to read
         integer(int32), intent(out)  :: ierr
             !! Error code
@@ -159,7 +159,7 @@ contains
     subroutine load_shift_vectors(shift_vectors, filename, ierr)
         character(len=*), intent(in) :: filename
             !! Filename to read from
-        real(real64), intent(out)    :: shift_vectors(:, :)
+        real(real64), intent(out), contiguous    :: shift_vectors(:, :)
             !! Shift vectors to read
         integer(int32), intent(out)  :: ierr
             !! Error code

@@ -4,7 +4,7 @@ module tox_archive
     use safeguard
     use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr
     use tox_data_read_write
-    use tox_errors, only: set_ok, set_err_once, is_err, ERR_FILE_OPEN, ERR_ALLOC_FAIL, ERR_FILE_ADD
+    use tox_errors, only: set_ok, set_err_once, is_err, ERR_FILE_OPEN, ERR_ALLOC_FAIL, ERR_FILE_ADD, set_err
     use tox_errors, only: ERR_FILE_CLOSE, ERR_FILE_EXTRACT, ERR_INVALID_INPUT
     use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA, ERR_MISSING_MANIFEST
     use iso_fortran_env, only: real64, int32, iostat_end
@@ -226,7 +226,8 @@ contains
         integer(c_int64_t) :: i_c
 
         ! Initialize outputs
-        allocate (character(len=256) :: keys(0), filenames(0))
+        M_ALLOCATE(character(len=256) :: keys(0))
+        M_ALLOCATE(character(len=256) :: filenames(0))
 
         call set_ok(ierr)
         call set_ok(error)
@@ -361,7 +362,7 @@ contains
         end if
 
         ! Read and write in chunks
-        allocate (buffer(CHUNK_SIZE), stat=iostat)
+        M_ALLOCATE(buffer(CHUNK_SIZE))
         if (is_err(iostat)) then
             call set_err_once(ierr, ERR_ALLOC_FAIL)
             if (DEBUG) print *, "Error allocating buffer for: ", trim(filename)
@@ -581,8 +582,8 @@ contains
         call set_ok(ierr)
 
         ! Initialize temporary arrays with proper length
-        allocate (character(len=256) :: temp_keys(MAX_LINES))
-        allocate (character(len=256) :: temp_values(MAX_LINES))
+        M_ALLOCATE(character(len=256) :: temp_keys(MAX_LINES))
+        M_ALLOCATE(character(len=256) :: temp_values(MAX_LINES))
         line_count = 0
 
         ! Open the manifest file for reading
@@ -626,13 +627,15 @@ contains
 
         ! Allocate output arrays with correct size
         if (line_count > 0) then
-            allocate (character(len=256) :: keys(line_count), values(line_count))
+            M_ALLOCATE(character(len=256) :: keys(line_count))
+            M_ALLOCATE(character(len=256) :: values(line_count))
             do i = 1, line_count
                 keys(i) = trim(temp_keys(i))
                 values(i) = trim(temp_values(i))
             end do
         else
-            allocate (character(len=256) :: keys(0), values(0))
+            M_ALLOCATE(character(len=256) :: keys(0))
+            M_ALLOCATE(character(len=256) :: values(0))
             call set_err_once(ierr, ERR_INVALID_INPUT)
             if (DEBUG) print *, "No valid key-value pairs found in manifest"
         end if
@@ -677,7 +680,7 @@ contains
             end if
 
             ! Read and write in chunks
-            allocate (buffer(CHUNK_SIZE), stat=iostat)
+            M_ALLOCATE(buffer(CHUNK_SIZE))
             if (is_ok(iostat)) then
                 call int32_as_c_size(CHUNK_SIZE, chunk_size_c)
                 do
@@ -786,8 +789,8 @@ contains
         if (shift_vectors_present) count = count + 1
 
         ! Allocate keys and filenames arrays
-        allocate (character(len=32) :: keys(count))
-        allocate (character(len=256) :: filenames(count))
+        M_ALLOCATE(character(len=32) :: keys(count))
+        M_ALLOCATE(character(len=256) :: filenames(count))
 
         ! Save data files and populate keys and filenames
         i = 1
@@ -909,7 +912,7 @@ contains
     subroutine read_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, expression_file, &
                              gene_to_family, gene_to_family_file, family_ids, family_ids_file, &
                              family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
-        use f42_array_utils, only: get_array_metadata
+        use f42_array_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
         use tox_data_read_write
         use iso_fortran_env, only: real64, int32
         implicit none
@@ -944,10 +947,10 @@ contains
         !! Name of the shift vectors file in the zip archive
 
         character(len=:), allocatable :: keys(:), filenames(:)
-        integer(int32) :: i
+        integer(int32) :: i_key, type_code
         logical :: gene_ids_requested, expression_requested, gene_to_family_requested, &
                    family_ids_requested, family_centroids_requested, shift_vectors_requested
-        integer(int32) :: max_dims, ndims, dims(5), char_len
+        integer(int32) :: max_dims, ndims, dims(5)
         character(len=:), allocatable :: extracted_gene_ids_file, extracted_expression_file, &
                                          extracted_gene_to_family_file, extracted_family_ids_file, &
                                          extracted_family_centroids_file, extracted_shift_vectors_file
@@ -968,22 +971,22 @@ contains
         extracted_family_centroids_file = ""
         extracted_shift_vectors_file = ""
 
-        do i = 1, size(keys)
-            select case (trim(keys(i)))
+        do i_key = 1, size(keys)
+            select case (trim(keys(i_key)))
             case ('gene_ids')
-                extracted_gene_ids_file = trim(filenames(i))
+                extracted_gene_ids_file = trim(filenames(i_key))
             case ('expression')
-                extracted_expression_file = trim(filenames(i))
+                extracted_expression_file = trim(filenames(i_key))
             case ('gene_to_family')
-                extracted_gene_to_family_file = trim(filenames(i))
+                extracted_gene_to_family_file = trim(filenames(i_key))
             case ('family_ids')
-                extracted_family_ids_file = trim(filenames(i))
+                extracted_family_ids_file = trim(filenames(i_key))
             case ('family_centroids')
-                extracted_family_centroids_file = trim(filenames(i))
+                extracted_family_centroids_file = trim(filenames(i_key))
             case ('shift_vectors')
-                extracted_shift_vectors_file = trim(filenames(i))
+                extracted_shift_vectors_file = trim(filenames(i_key))
             case default
-                print *, "Found non-standard key in archive: ", trim(keys(i)), " in file: ", trim(filenames(i))
+                print *, "Found non-standard key in archive: ", trim(keys(i_key)), " in file: ", trim(filenames(i_key))
             end select
         end do
 
@@ -999,10 +1002,10 @@ contains
         gene_ids_requested = present(gene_ids) .and. len_trim(extracted_gene_ids_file) > 0
         if (gene_ids_requested) then
             ! Get array metadata to determine size and character length
-            call get_array_metadata(extracted_gene_ids_file, dims, max_dims, ndims, ierr, char_len)
-            if (is_ok(ierr) .and. ndims == 1) then
+            call get_array_metadata(extracted_gene_ids_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0) then
                 ! Allocate array based on metadata with proper character length
-                allocate (character(len=char_len) :: gene_ids(dims(1)))
+                M_ALLOCATE(character(len=type_code) :: gene_ids(dims(1)))
                 call load_gene_ids(gene_ids, extracted_gene_ids_file, ierr)
                 if (is_err(ierr)) return
             else
@@ -1014,10 +1017,10 @@ contains
         expression_requested = present(expression) .and. len_trim(extracted_expression_file) > 0
         if (expression_requested) then
             ! Get array metadata to determine size
-            call get_array_metadata(extracted_expression_file, dims, max_dims, ndims, ierr)
-            if (is_ok(ierr) .and. ndims == 2) then
+            call get_array_metadata(extracted_expression_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
                 ! Allocate array based on metadata
-                allocate (expression(dims(1), dims(2)))
+                M_ALLOCATE(expression(dims(1), dims(2)))
                 call load_expression_vectors(expression, extracted_expression_file, ierr)
                 if (is_err(ierr)) return
             else
@@ -1029,10 +1032,10 @@ contains
         gene_to_family_requested = present(gene_to_family) .and. len_trim(extracted_gene_to_family_file) > 0
         if (gene_to_family_requested) then
             ! Get array metadata to determine size
-            call get_array_metadata(extracted_gene_to_family_file, dims, max_dims, ndims, ierr)
-            if (is_ok(ierr) .and. ndims == 1) then
+            call get_array_metadata(extracted_gene_to_family_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code == INTEGER_TYPE_CODE) then
                 ! Allocate array based on metadata
-                allocate (gene_to_family(dims(1)))
+                M_ALLOCATE(gene_to_family(dims(1)))
                 call load_gene_to_family(gene_to_family, extracted_gene_to_family_file, ierr)
                 if (is_err(ierr)) return
             else
@@ -1044,10 +1047,10 @@ contains
         family_ids_requested = present(family_ids) .and. len_trim(extracted_family_ids_file) > 0
         if (family_ids_requested) then
             ! Get array metadata to determine size and character length
-            call get_array_metadata(extracted_family_ids_file, dims, max_dims, ndims, ierr, char_len)
-            if (is_ok(ierr) .and. ndims == 1) then
+            call get_array_metadata(extracted_family_ids_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0) then
                 ! Allocate array based on metadata with proper character length
-                allocate (character(len=char_len) :: family_ids(dims(1)))
+                M_ALLOCATE(character(len=type_code) :: family_ids(dims(1)))
                 call load_family_ids(family_ids, extracted_family_ids_file, ierr)
             else
                 print *, "Error getting metadata for family_ids file"
@@ -1058,10 +1061,10 @@ contains
         family_centroids_requested = present(family_centroids) .and. len_trim(extracted_family_centroids_file) > 0
         if (family_centroids_requested) then
             ! Get array metadata to determine size
-            call get_array_metadata(extracted_family_centroids_file, dims, max_dims, ndims, ierr)
-            if (is_ok(ierr) .and. ndims == 2) then
+            call get_array_metadata(extracted_family_centroids_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
                 ! Allocate array based on metadata
-                allocate (family_centroids(dims(1), dims(2)))
+                M_ALLOCATE(family_centroids(dims(1), dims(2)))
                 call load_family_centroids(family_centroids, extracted_family_centroids_file, ierr)
                 if (is_err(ierr)) return
             else
@@ -1073,10 +1076,10 @@ contains
         shift_vectors_requested = present(shift_vectors) .and. len_trim(extracted_shift_vectors_file) > 0
         if (shift_vectors_requested) then
             ! Get array metadata to determine size
-            call get_array_metadata(extracted_shift_vectors_file, dims, max_dims, ndims, ierr)
-            if (is_ok(ierr) .and. ndims == 2) then
+            call get_array_metadata(extracted_shift_vectors_file, dims, max_dims, ndims, type_code, ierr)
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
                 ! Allocate array based on metadata
-                allocate (shift_vectors(dims(1), dims(2)))
+                M_ALLOCATE(shift_vectors(dims(1), dims(2)))
                 call load_shift_vectors(shift_vectors, extracted_shift_vectors_file, ierr)
                 if (is_err(ierr)) return
             else

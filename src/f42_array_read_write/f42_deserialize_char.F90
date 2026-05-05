@@ -4,7 +4,7 @@
 module f42_deserialize_char
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_array_utils, only: check_file_header, CHAR_TYPE_CODE
+    use f42_array_utils, only: check_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_READ_DATA, set_err
     implicit none
 
@@ -35,7 +35,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call check_file_header(filename, CHAR_TYPE_CODE, orig_shape, unit, ierr, len(arr, kind=int32))
+        call check_file_header(filename, len(arr, kind=int32), orig_shape, unit, ierr)
 
         ! Read the entire array as a contiguous block
         read (unit, iostat=ierr) arr
@@ -112,7 +112,7 @@ contains
 end module f42_deserialize_char
 
 !> C binding for the subroutine to deserialize a flat character array from a file.
-subroutine deserialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
+subroutine deserialize_char_nd_c(strings, string_len, orig_shape, n_dims, &
                                  filename, fn_len, ierr) bind(C, name="deserialize_char_nd_c")
     use, intrinsic :: iso_c_binding, only: c_char, c_int
     use f42_deserialize_char, only: deserialize_char_helper
@@ -122,14 +122,14 @@ subroutine deserialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
     implicit none
 
     ! Arguments
-    integer(c_int), intent(in), target :: clen
+    integer(c_int), intent(in), target :: string_len
         !! Length of each character string
     integer(c_int), intent(in), target :: n_dims
         !! Number of dimensions of the expected array (`size(orig_shape)`)
     integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
-        !! Original shape of the flattened array `raw_chars` -> for a 1D array of 7 strings it would be `[7]` with `n_dims=1`
-    character(kind=c_char, len=1), dimension(clen, product(orig_shape)), intent(out), target :: raw_chars
-        !! Output array of c_chars (2D: clen x n_strings)
+        !! Original shape of the flattened array `strings` -> for a 1D array of 7 strings it would be `[7]` with `n_dims=1`
+    character(kind=c_char, len=1), dimension(string_len, product(orig_shape)), intent(out), target :: strings
+        !! Output array of c_chars (2D: string_len x n_strings)
     integer(c_int), intent(in), target :: fn_len
         !! Length of the filename
     character(kind=c_char, len=1), dimension(fn_len), intent(in), target  :: filename
@@ -138,29 +138,29 @@ subroutine deserialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
         !! Error code
 
     character(len=:), allocatable :: filename_f
-    character(len=:), dimension(:), allocatable :: raw_chars_f
+    character(len=:), dimension(:), allocatable :: strings_f
     integer(c_int) :: n_strings
 
 
     M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(clen)
+    M_CHECK_NON_NULL(string_len)
     M_CHECK_NON_NULL(fn_len)
-    M_CHECK_NON_NULL(raw_chars)
+    M_CHECK_NON_NULL(strings)
     M_CHECK_NON_NULL(filename)
     M_CHECK_NON_NULL(n_dims)
     M_CHECK_NON_NULL(orig_shape)
 
-    n_strings = size(raw_chars, dim=2, kind=c_int)
+    n_strings = size(strings, dim=2, kind=c_int)
 
     ! Convert filename from c_char array to Fortran string
     call c_char_1d_as_string(filename, filename_f, ierr)
     if (is_err(ierr)) return
 
     ! Deserialize
-    M_ALLOCATE(character(len=clen) :: raw_chars_f(n_strings))
-    call deserialize_char_helper(raw_chars_f, n_strings, orig_shape, filename_f, ierr)
+    M_ALLOCATE(character(len=string_len) :: strings_f(n_strings))
+    call deserialize_char_helper(strings_f, n_strings, orig_shape, filename_f, ierr)
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
     if (is_err(ierr)) return
 
-    call string_as_c_char_2d(raw_chars_f, raw_chars)
+    call string_as_c_char_2d(strings_f, strings)
 end subroutine deserialize_char_nd_c

@@ -73,7 +73,7 @@ function get_flags() {
 
   # Detect compiler and choose appropriate profile:
   if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
-    echo "-O2 -fopenmp-target-do-concurrent -warn all -diag-enable=all -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    echo "-O2 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
