@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 !> Module for deserializing character arrays from files
 module f42_serde_arrays_serialize_char

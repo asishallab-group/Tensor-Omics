@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 module f42_kd_tree
     use safeguard

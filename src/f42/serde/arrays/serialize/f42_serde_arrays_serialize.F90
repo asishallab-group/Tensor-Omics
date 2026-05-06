@@ -1,4 +1,4 @@
-#include "authors.h"
+#include <authors.h>
 
 !> AUTHOR_FRANZ_ERIC_SILL
 !| Main array serialization module, re-exporting all serialization routines

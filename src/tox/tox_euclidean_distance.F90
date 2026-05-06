@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 !> Module with Euclidean distance computation routines for tensor omics.
 module tox_euclidean_distance

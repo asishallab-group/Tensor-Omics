@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 !> error handling module for tensor-omics
 module tox_errors

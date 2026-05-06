@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 module tox_clustering
     use safeguard

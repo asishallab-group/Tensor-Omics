@@ -1,4 +1,4 @@
-#include "../authors.h"
+#include <authors.h>
 
 #define M_CHECK_IERR_NON_NULL if (.not. c_associated(c_loc(ierr))) return
 

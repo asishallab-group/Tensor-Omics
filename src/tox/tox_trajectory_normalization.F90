@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 module tox_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32

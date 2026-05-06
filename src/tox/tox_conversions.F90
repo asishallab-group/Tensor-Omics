@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 module tox_conversions
     use, intrinsic :: iso_fortran_env, only: int32, real64

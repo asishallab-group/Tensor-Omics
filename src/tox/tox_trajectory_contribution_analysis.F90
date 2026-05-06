@@ -1,4 +1,4 @@
-#include "src/macros.h"
+#include <src/macros.h>
 
 module tox_trajectory_contribution_analysis
     use safeguard

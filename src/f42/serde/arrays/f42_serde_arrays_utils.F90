@@ -1,5 +1,5 @@
-#include "src/macros.h"
-#include "src/f42/serde/macros.h"
+#include <src/macros.h>
+#include <src/f42/serde/macros.h>
 
 !> Module for array utilities.
 module f42_serde_arrays_utils

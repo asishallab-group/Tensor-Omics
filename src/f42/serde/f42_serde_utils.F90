@@ -1,5 +1,5 @@
-#include "authors.h"
-#include "src/f42/serde/macros.h"
+#include <authors.h>
+#include <src/f42/serde/macros.h>
 
 !> AUTHOR_FRANZ_ERIC_SILL
 !| Module for de-/serialization utilities.
