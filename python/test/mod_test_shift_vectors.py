@@ -11,6 +11,8 @@ import sys
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 from tensoromics_functions import tox_compute_shift_vector_field
+from test_helpers import run_all_tests, assert_error
+
 
 # 1. Test correct mapping between families and genes
 def test_correct_family_mapping():
@@ -37,7 +39,7 @@ def test_correct_family_mapping():
     ])
     assert shift_vectors.shape == (6, 3)
     np.testing.assert_allclose(shift_vectors, expected_centroids, atol=1e-12)
-    print("test_correct_family_mapping passed")
+
 
 # 2. Test for invalid family id mapping raising error
 def test_invalid_family_mapping():
@@ -53,15 +55,9 @@ def test_invalid_family_mapping():
     ], dtype=np.float64)
     # gene_to_centroid contains invalid mapping (3)
     gene_to_centroid = np.array([1, 3], dtype=np.int32)
-    error_raised = False
     # Check that error is raised
-    try:
-        tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    except ValueError as e:
-        error_raised = True
-        assert "gene_to_centroid contains invalid family IDs" in str(e)
-    assert error_raised, "Expected RuntimeError was not raised"
-    print("test_invalid_family_mapping passed")
+    assert_error(lambda: tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
+
 
 # 3. Test for zero distance between paralog and centroid
 def test_zero_distance():
@@ -86,7 +82,7 @@ def test_zero_distance():
         [0.0, 0.0]
     ], dtype=np.float64)
     np.testing.assert_allclose(shift_vectors, expected_shift_vectors, atol=1e-12)
-    print("test_zero_distance passed")
+
 
 # 4. Test for multiple genes per family centroid
 def test_multiple_genes_per_family():
@@ -107,7 +103,7 @@ def test_multiple_genes_per_family():
         [-18.0, -36.0, -14.0, -32.0]
     ], dtype=np.float64)
     np.testing.assert_allclose(shift_vectors, expected_shift_vectors, atol=1e-12)
-    print("test_multiple_genes_per_family passed")
+
 
 # 5. Test for single gene per family centroid
 def test_single_gene_per_family():
@@ -128,7 +124,7 @@ def test_single_gene_per_family():
         [-18.0, -36.0, -54.0, -72.0]
     ], dtype=np.float64)
     np.testing.assert_allclose(shift_vectors, expected_shift_vectors, atol=1e-12)
-    print("test_single_gene_per_family passed")
+
 
 # 6. Test for dimension edge cases (0 genes with dimension 1 and 1 family)
 def test_dimension_edge_cases():
@@ -136,28 +132,8 @@ def test_dimension_edge_cases():
     family_centroids = np.empty((1, 1), dtype=np.float64)
     gene_to_centroid = np.empty((0,), dtype=np.int32)
     # Check that error is raised
-    try:
-        tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-    except RuntimeError as e:
-        error_raised = True
-        assert "Empty input arrays provided." in str(e)
-    assert error_raised, "Expected RuntimeError was not raised"
-    print("test_dimension_edge_cases passed")
+    assert_error(lambda: tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
 
-def main():
-    print("=================================================")
-    print("    SHIFT VECTOR FIELD FULL PYTHON INTERFACE TESTS")
-    print("=================================================\n")
-    test_correct_family_mapping()
-    test_invalid_family_mapping()
-    test_zero_distance()
-    test_multiple_genes_per_family()
-    test_single_gene_per_family()
-    test_dimension_edge_cases()
-    print("=================================================")
-    print("             ALL TESTS COMPLETED")
-    print("=================================================")
-    print("If you see this message, all shift vector Python interface tests passed! ✓")
 
 if __name__ == "__main__":
-    main()
+    run_all_tests(globals().values())

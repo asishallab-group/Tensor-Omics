@@ -8,7 +8,7 @@ import ctypes
 import time
 import sys
 import os
-import math 
+import math
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))

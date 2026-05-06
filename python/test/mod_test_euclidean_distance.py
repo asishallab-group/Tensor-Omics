@@ -94,7 +94,7 @@ def test_distance_to_centroid_basic():
 
     # Gene expression data (genes as columns, dimensions as rows)
     # Gene 1: [1, 0, 0] - Family 1
-    # Gene 2: [0, 1, 0] - Family 1  
+    # Gene 2: [0, 1, 0] - Family 1
     # Gene 3: [3, 0, 0] - Family 2
     # Gene 4: [0, 3, 0] - Family 2
     genes = np.array([

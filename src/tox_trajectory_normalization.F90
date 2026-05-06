@@ -153,7 +153,7 @@ contains
 
 end module tox_trajectory_normalization
 
-pure subroutine normalize_variable_timeseries_C(v, v_norm, n_points, ierr, status) bind(C, name="normalize_variable_timeseries_C")
+pure subroutine normalize_variable_timeseries_c(v, v_norm, n_points, ierr, status) bind(C, name="normalize_variable_timeseries_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_variable_timeseries
     M_USE_NULL_VALIDATION
@@ -178,9 +178,9 @@ pure subroutine normalize_variable_timeseries_C(v, v_norm, n_points, ierr, statu
 
     call normalize_variable_timeseries(v, v_norm, n_points, ierr, status)
 
-end subroutine normalize_variable_timeseries_C
+end subroutine normalize_variable_timeseries_c
 
-pure subroutine normalize_single_trajectory_C(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status) bind(C, name="normalize_single_trajectory_C")
+pure subroutine normalize_single_trajectory_c(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status) bind(C, name="normalize_single_trajectory_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_single_trajectory
     M_USE_NULL_VALIDATION
@@ -208,9 +208,9 @@ pure subroutine normalize_single_trajectory_C(trajectory, trajectory_norm, n_fac
 
     call normalize_single_trajectory(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status)
 
-end subroutine normalize_single_trajectory_C
+end subroutine normalize_single_trajectory_c
 
-pure subroutine normalize_all_trajectories_C(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status) bind(C, name="normalize_all_trajectories_C")
+pure subroutine normalize_all_trajectories_c(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status) bind(C, name="normalize_all_trajectories_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_all_trajectories_alloc
     M_USE_NULL_VALIDATION
@@ -241,4 +241,4 @@ pure subroutine normalize_all_trajectories_C(trajectories, trajectories_norm, n_
 
     call normalize_all_trajectories_alloc(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status)
 
-end subroutine normalize_all_trajectories_C
+end subroutine normalize_all_trajectories_c

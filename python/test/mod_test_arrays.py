@@ -135,7 +135,7 @@ def test_complex():
     assert np.array_equal(res_2d, array_2d), "Deserialized 2D complex array does not match original"
 
     # 3D complex array with various values
-    array_3d = np.array([[[1+0j, 0+1j], [1+1j, 0+0j]], 
+    array_3d = np.array([[[1+0j, 0+1j], [1+1j, 0+0j]],
                          [[2+0j, 0+2j], [2+2j, 0+0j]]], dtype=np.complex128, order='F')
     filename_3d = "complex_3d.test.bin"
     tox_serialize_complex_nd(array_3d, filename_3d)

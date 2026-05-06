@@ -105,7 +105,7 @@ def test_spherical_kdtree_edge_cases():
     sphere_ix = build_spherical_kd(single_vector, np.array([1, 2, 3], dtype=np.int32)) - 1
 
     # 2D case (not truly spherical but should work)
-    circle_vectors = np.array([[1.0, 0.0, -1.0, 0.0], 
+    circle_vectors = np.array([[1.0, 0.0, -1.0, 0.0],
                              [0.0, 1.0, 0.0, -1.0]], dtype=np.float64, order='F')
     circle_vectors = circle_vectors / np.linalg.norm(circle_vectors, axis=0)  # Normalize
     circle_ix = build_spherical_kd(circle_vectors, np.array([1, 2], dtype=np.int32))

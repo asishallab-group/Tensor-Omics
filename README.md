@@ -46,7 +46,7 @@ This repository contains the source code, methods, snippets and tests for the **
   └── ...       # R scripts that execute pipeline logic and invoke subroutines
 
 /snippets
-└── ...         #Code templates or reusable short logic blocks 
+└── ...         #Code templates or reusable short logic blocks
 
 /src
   └── ...       # Fortran backend
@@ -72,7 +72,7 @@ test_runner.sh  # Compile and generate unit test
 
 * **`/python`** includes python scripts that coordinate analysis workflows
 * **`/r`** includes R scripts that coordinate analysis workflows
-* **`/snippets/`** includes frequently used or testable units of logic reused across development stages. 
+* **`/snippets/`** includes frequently used or testable units of logic reused across development stages.
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
     {
@@ -93,7 +93,7 @@ test_runner.sh  # Compile and generate unit test
 
   * The file `asserts.f90` must exist and can be modified if additional assert functions are needed.
   * There must be a central program called `run_tests.f90` which contains all the test calls defined in the modules.
-  * Each subroutine's tests should be placed in independent modules (one file per tested subroutine). 
+  * Each subroutine's tests should be placed in independent modules (one file per tested subroutine).
   * All test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Otherwise, compilation errors may occur.
   * Check details in `test/readme.md`
 

@@ -88,8 +88,8 @@ contains
 
         ! Handle edge case: when only one axis is selected, tissue versatility is always 0
         if (n_selected_axes == 1) then
-            tissue_versatilities(out_idx) = 0.0_real64
-            tissue_angles_deg(out_idx) = 0.0_real64
+            tissue_versatilities = 0.0_real64
+            tissue_angles_deg = 0.0_real64
             return
         end if
 

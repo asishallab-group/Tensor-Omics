@@ -10,6 +10,7 @@ import os
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import tox_k_means_clustering, tox_linkage_clustering
+from test_helpers import run_all_tests, assert_error
 
 
 def test_tox_k_means_clustering():
@@ -52,8 +53,6 @@ def test_tox_k_means_clustering():
 
     # Validate label counts
     assert np.array_equal(label_counts, expected_counts), "tox_k_means_clustering: label_counts mismatch"
-
-    print("✅ tox_k_means_clustering passed all tests.")
 
 
 def test_linkage_methods():
@@ -139,26 +138,10 @@ def test_linkage_methods():
                 [1.0, 0.0, 1.0],
                 [np.nan, 1.0, 0.0]
             ])
-            try:
-                tox_linkage_clustering(dist.copy(), method)
-                raise AssertionError(f"{label}: NaN case should raise an error")
-            except RuntimeError:
-                pass  # Expected
+            assert_error(lambda: tox_linkage_clustering(dist.copy(), method), f"{label}: NaN case should raise an error")
         except RuntimeError:
             raise AssertionError(f"{label}: Unexpected Error")
 
-    print("✅ tox_linkage_clustering passed all tests.")
-
-
-def main():
-    print("=================================================")
-    print("    CLUSTERING PYTHON INTERFACE TESTS")
-    print("=================================================")
-    print()
-
-    test_tox_k_means_clustering()
-    test_linkage_methods()
-
 
 if __name__ == "__main__":
-    main()
+    run_all_tests(globals().values())

@@ -11,6 +11,8 @@ import sys
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 from tensoromics_functions import tox_group_centroid
+from test_helpers import run_all_tests, assert_error
+
 
 def test_basic_all_mode():
     n_families = 2
@@ -22,7 +24,7 @@ def test_basic_all_mode():
                          [3, 15]], dtype=np.float64)
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_basic_all_mode passed")
+
 
 def test_basic_orthologs_mode():
     n_families = 2
@@ -35,7 +37,7 @@ def test_basic_orthologs_mode():
                          [3, 15]], dtype=np.float64)
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode, ortholog_set)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_basic_orthologs_mode passed")
+
 
 def test_empty_family():
     n_axes, n_genes, n_families = 3, 4, 2
@@ -46,7 +48,7 @@ def test_empty_family():
     expected[:, 0] = 1.0
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_empty_family passed")
+
 
 def test_no_matching_orthologs():
     n_axes, n_genes, n_families = 2, 3, 1
@@ -58,7 +60,7 @@ def test_no_matching_orthologs():
     expected = np.zeros((n_axes, n_families), dtype=np.float64)
     centroids = tox_group_centroid(vectors, gene_to_family, n_families,  mode, ortholog_set)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_no_matching_orthologs passed")
+
 
 def test_single_gene_family():
     n_families = 1
@@ -67,7 +69,7 @@ def test_single_gene_family():
     mode = 'all'
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode)
     np.testing.assert_allclose(centroids, vectors, atol=1e-12)
-    print("test_single_gene_family passed")
+
 
 def test_extreme_values():
     n_axes, n_genes, n_families = 2, 4, 1
@@ -81,7 +83,7 @@ def test_extreme_values():
     expected = np.zeros((n_axes, n_families), dtype=np.float64)
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_extreme_values passed")
+
 
 def test_higher_dimensions():
     n_axes, n_genes, n_families = 10, 100, 5
@@ -95,7 +97,7 @@ def test_higher_dimensions():
     idxs = np.where(gene_to_family == 1)[0]
     expected = np.mean(vectors[:, idxs], axis=1)
     np.testing.assert_allclose(centroids[:, 0], expected, atol=1e-12)
-    print("test_higher_dimensions passed")
+
 
 def test_gene_order_invariance():
     n_families = 2
@@ -111,7 +113,7 @@ def test_gene_order_invariance():
     centroids1 = tox_group_centroid(vectors1, gene_to_family1, n_families, mode, ortholog_set1)
     centroids2 = tox_group_centroid(vectors2, gene_to_family2, n_families, mode, ortholog_set2)
     np.testing.assert_allclose(centroids1, centroids2, atol=1e-12)
-    print("test_gene_order_invariance passed")
+
 
 def test_invalid_input_arguments():
     n_axes, n_genes, n_families = 2, 5, 2
@@ -120,24 +122,12 @@ def test_invalid_input_arguments():
     gene_to_family = np.array([1, 1, 2, 2, 1], dtype=np.int32)
     mode = 'all'
     # Invalid n_axes (empty vectors)
-    try:
-        tox_group_centroid(np.empty((0, n_genes)), gene_to_family, n_families, mode)
-        assert False, "Expected ValueError for n_axes=0"
-    except Exception:
-        pass
+    assert_error(lambda: tox_group_centroid(np.empty((0, n_genes)), gene_to_family, n_families, mode), "Expected ValueError for n_axes=0")
     # Invalid n_genes (empty gene set)
-    try:
-        tox_group_centroid(np.empty((n_axes, 0)), np.array([], dtype=np.int32), n_families, mode)
-        assert False, "Expected ValueError for n_genes=0"
-    except Exception:
-        pass
+    assert_error(lambda: tox_group_centroid(np.empty((n_axes, 0)), np.array([], dtype=np.int32), n_families, mode), "Expected ValueError for n_genes=0")
     # Invalid n_families (0 families)
-    try:
-        tox_group_centroid(vectors, gene_to_family, 0, mode)
-        assert False, "Expected ValueError for n_families=0"
-    except Exception:
-        pass
-    print("test_invalid_input_arguments passed")
+    assert_error(lambda: tox_group_centroid(vectors, gene_to_family, 0, mode), "Expected ValueError for n_families=0")
+
 
 def test_invalid_family_mapping():
     n_families = 2
@@ -145,12 +135,8 @@ def test_invalid_family_mapping():
                         [1, 3, 10, 20, 5]], dtype=np.float64)
     gene_to_family = np.array([1, 1, 2, 3, 1], dtype=np.int32)  # 3 is invalid
     mode = 'all'
-    try:
-        tox_group_centroid(vectors, gene_to_family, n_families, mode)
-        assert False, "Expected ValueError for invalid family mapping"
-    except Exception:
-        pass
-    print("test_invalid_family_mapping passed")
+    assert_error(lambda: tox_group_centroid(vectors, gene_to_family, n_families, mode), "Expected ValueError for invalid family mapping")
+
 
 def test_invalid_mode_string():
     n_families = 2
@@ -158,19 +144,11 @@ def test_invalid_mode_string():
                         [1, 3, 10, 20, 5]], dtype=np.float64)
     gene_to_family = np.array([1, 1, 2, 2, 1], dtype=np.int32)
     mode = ''
-    try:
-        tox_group_centroid(vectors, gene_to_family, n_families, mode)
-        assert False, "Expected ValueError for invalid family mapping"
-    except Exception:
-        pass
+    assert_error(lambda: tox_group_centroid(vectors, gene_to_family, n_families, mode), "Expected ValueError for invalid family mapping")
 
     mode = 'invalid_mode'
-    try:
-        tox_group_centroid(vectors, gene_to_family, n_families, mode)
-        assert False, "Expected ValueError for mode string"
-    except Exception:
-        pass
-    print("test_invalid_mode_string passed")
+    assert_error(lambda: tox_group_centroid(vectors, gene_to_family, n_families, mode), "Expected ValueError for mode string")
+
 
 def test_missing_ortholog_set():
     n_families = 2
@@ -178,12 +156,8 @@ def test_missing_ortholog_set():
                         [1, 3, 10, 20, 5]], dtype=np.float64)
     gene_to_family = np.array([1, 1, 2, 2, 1], dtype=np.int32)
     mode = 'orthologs'
-    try:
-        tox_group_centroid(vectors, gene_to_family, n_families, mode)
-        assert False, "Expected ValueError for missing ortholog set"
-    except Exception:
-        pass
-    print("test_missing_ortholog_set passed")
+    assert_error(lambda: tox_group_centroid(vectors, gene_to_family, n_families, mode), "Expected ValueError for missing ortholog set")
+
 
 def test_present_ortholog_set_in_all_mode():
     n_families = 2
@@ -196,29 +170,7 @@ def test_present_ortholog_set_in_all_mode():
                          [3, 15]], dtype=np.float64)
     centroids = tox_group_centroid(vectors, gene_to_family, n_families, mode, ortholog_set)
     np.testing.assert_allclose(centroids, expected, atol=1e-12)
-    print("test_present_ortholog_set_in_all_mode passed")
 
-def main():
-    print("=================================================")
-    print("    GENE CENTROIDS FULL PYTHON INTERFACE TESTS")
-    print("=================================================\n")
-    test_basic_all_mode()
-    test_basic_orthologs_mode()
-    test_empty_family()
-    test_no_matching_orthologs()
-    test_single_gene_family()
-    test_extreme_values()
-    test_higher_dimensions()
-    test_gene_order_invariance()
-    test_invalid_input_arguments()
-    test_invalid_family_mapping()
-    test_invalid_mode_string()
-    test_missing_ortholog_set()
-    test_present_ortholog_set_in_all_mode()
-    print("=================================================")
-    print("             ALL TESTS COMPLETED")
-    print("=================================================")
-    print("If you see this message, all gene centroids Python interface tests passed! ✓")
 
 if __name__ == "__main__":
-    main()
+    run_all_tests(globals().values())

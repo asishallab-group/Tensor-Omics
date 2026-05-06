@@ -1261,7 +1261,7 @@ def tox_normalization_pipeline(input_matrix, group_starts, group_counts):
     max_stack = max(2 * n_genes, 2)
     stack_left = np.zeros(max_stack, dtype=np.int32)
     stack_right = np.zeros(max_stack, dtype=np.int32)
-    
+
     # Convert scalar parameters
     n_genes_c = ctypes.c_int(n_genes)
     n_tissues_c = ctypes.c_int(n_tissues)
@@ -1389,27 +1389,22 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
         raise ValueError("expression_vectors must be a 2D array")
 
     # Convert inputs to numpy arrays
-    expression_vectors = np.asarray(expression_vectors, dtype=np.float64)
-    vector_selection = np.asarray(vector_selection, dtype=bool)
-    axis_selection = np.asarray(axis_selection, dtype=bool)
+    expr_f = np.asfortranarray(expression_vectors, dtype=np.float64)
+    select_vec = np.ascontiguousarray(vector_selection, dtype=bool).astype(np.int32)
+    select_axes = np.ascontiguousarray(axis_selection, dtype=bool).astype(np.int32)
 
     # Get dimensions
-    n_axes, n_vectors = expression_vectors.shape
+    n_axes, n_vectors = expr_f.shape
 
     # Validate dimensions
-    if len(vector_selection) != n_vectors:
+    if len(select_vec) != n_vectors:
         raise ValueError("vector_selection length must match number of columns in expression_vectors")
-    if len(axis_selection) != n_axes:
+    if len(select_axes) != n_axes:
         raise ValueError("axis_selection length must match number of rows in expression_vectors")
 
     # Calculate counts
-    n_selected_vectors = int(np.sum(vector_selection))
-    n_selected_axes = int(np.sum(axis_selection))
-
-    # Ensure arrays have correct dtype and memory layout
-    expr_f = np.asfortranarray(expression_vectors, dtype=np.float64)
-    select_vec = np.ascontiguousarray(vector_selection.astype(np.int32))
-    select_axes = np.ascontiguousarray(axis_selection.astype(np.int32))
+    n_selected_vectors = np.sum(vector_selection)
+    n_selected_axes = np.sum(axis_selection)
 
     # Convert scalar parameters
     n_axes_c = ctypes.c_int(n_axes)
@@ -2220,13 +2215,12 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
         raise ValueError("`ortholog_set` must be a 1D NumPy array of size n_genes.")
 
     # 2) Prepare output buffers and mode flag
-    centroids_out = np.zeros((n_axes, n_families), dtype=np.float64, order="F")
-    selected_indices = np.zeros(n_genes, dtype=np.int32, order="F")
+    centroids_out = np.empty((n_axes, n_families), dtype=np.float64, order="F")
+    selected_indices = np.empty(n_genes, dtype=np.int32, order="F")
     ierr = ctypes.c_int(0)
     n_axes_c = ctypes.c_int(n_axes)
     n_genes_c = ctypes.c_int(n_genes)
     n_families_c = ctypes.c_int(n_families)
-    selected_indices_len_c = ctypes.c_int(n_genes)
 
     # 3) Setup C-interface signature
     group_centroid_c = lib.group_centroid_c
@@ -2237,16 +2231,14 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # gene_to_family
         ctypes.POINTER(ctypes.c_int),                                                   # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # centroid_matrix (out)
-        ctypes.c_char * 10,                                             # mode (character array)
+        ctypes.c_char_p,                                             # mode (character array)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # ortholog_set (as int array)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # selected_indices
-        ctypes.POINTER(ctypes.c_int),                                                   # selected_indices_len
         ctypes.POINTER(ctypes.c_int)                                    # ierr
     ]
     group_centroid_c.restype = None
 
     # 4) Call the Fortran routine
-    mode_buffer = ctypes.create_string_buffer(mode.encode('utf-8'), size=10)
     group_centroid_c(
         vecs_f,
         ctypes.byref(n_axes_c),
@@ -2254,10 +2246,9 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
         g2f_map_f,
         ctypes.byref(n_families_c),
         centroids_out,
-        mode_buffer,
+        mode.encode("utf-8"),
         ortho_set_int_f,
         selected_indices,
-        ctypes.byref(selected_indices_len_c),
         ctypes.byref(ierr)
     )
 
@@ -4768,10 +4759,10 @@ def fjct_compute_contribution_scores(
 def tox_compute_velocity_trajectories(trajectories):
     """
     Compute velocity (first differences) for each trajectory time series.
-    
+
     Args:
         trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
-    
+
     Returns:
         np.ndarray: Velocity trajectories of shape (n_factors, n_samples, n_timepoints)
     """
@@ -4829,10 +4820,10 @@ def tox_compute_velocity_trajectories(trajectories):
 def tox_compute_acceleration_from_velocity(velocity):
     """
     Compute acceleration (second differences) from velocity trajectories.
-    
+
     Args:
         velocity (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
-    
+
     Returns:
         np.ndarray: Acceleration trajectories of shape (n_factors, n_samples, n_timepoints)
 
@@ -4887,11 +4878,11 @@ def tox_compute_acceleration_from_velocity(velocity):
 def tox_compute_velocity_acceleration_contributions(trajectories, mode):
     """
     Compute velocity and acceleration contributions for all variable pairs.
-    
+
     Args:
         trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
         mode (str): Baseline mode ("raw", "min", "mean")
-    
+
     Returns:
         dict: {
             "C_velocity": np.ndarray of shape (n_samples, n_factors, n_factors),
@@ -4899,7 +4890,7 @@ def tox_compute_velocity_acceleration_contributions(trajectories, mode):
             "C_acceleration": np.ndarray of shape (n_samples, n_factors, n_factors),
             "acceleration_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints)
         }
-            
+
     """
     trajectories = np.asarray(trajectories, dtype=np.float64)
 
@@ -4957,31 +4948,24 @@ def tox_compute_velocity_acceleration_contributions(trajectories, mode):
 
     check_err_code(ierr.value)
 
-    # Public Python API stays sample-first for backwards compatibility:
-    # (n_samples, n_factors, n_factors) and (n_samples, n_factors, n_factors, n_timepoints)
-    C_velocity = np.transpose(C_velocity_f, (2, 0, 1))
-    velocity_series = np.transpose(velocity_series_f, (3, 1, 2, 0))
-    C_acceleration = np.transpose(C_acceleration_f, (2, 0, 1))
-    acceleration_series = np.transpose(acceleration_series_f, (3, 1, 2, 0))
-
-    _readonly(C_velocity, velocity_series, C_acceleration, acceleration_series)
+    _readonly(C_velocity_f, velocity_series_f, C_acceleration_f, acceleration_series_f)
 
     return {
-        "C_velocity": C_velocity,
-        "velocity_contribution_series": velocity_series,
-        "C_acceleration": C_acceleration,
-        "acceleration_contribution_series": acceleration_series,
+        "C_velocity": C_velocity_f,
+        "velocity_contribution_series": velocity_series_f,
+        "C_acceleration": C_acceleration_f,
+        "acceleration_contribution_series": acceleration_series_f,
     }
 
 #> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_c: Compute velocity and acceleration contributions for all variable pairs
 def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
     """
     Compute velocity and acceleration contributions using the expert (non-allocating) Fortran routine.
-    
+
     Args:
         trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
         mode (str): Baseline mode ("raw", "min", "mean")
-    
+
     Returns:
         dict: {
             "C_velocity": np.ndarray of shape (n_samples, n_factors, n_factors),
@@ -5056,19 +5040,14 @@ def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
 
     check_err_code(ierr.value)
 
-    C_velocity = np.transpose(C_velocity_f, (2, 0, 1))
-    velocity_series = np.transpose(velocity_series_f, (3, 1, 2, 0))
-    C_acceleration = np.transpose(C_acceleration_f, (2, 0, 1))
-    acceleration_series = np.transpose(acceleration_series_f, (3, 1, 2, 0))
-
     # Mark outputs as read-only
-    _readonly(C_velocity, velocity_series, C_acceleration, acceleration_series)
+    _readonly(C_velocity_f, velocity_series_f, C_acceleration_f, acceleration_series_f)
 
     return {
-        "C_velocity": C_velocity,
-        "velocity_contribution_series": velocity_series,
-        "C_acceleration": C_acceleration,
-        "acceleration_contribution_series": acceleration_series,
+        "C_velocity": C_velocity_f,
+        "velocity_contribution_series": velocity_series_f,
+        "C_acceleration": C_acceleration_f,
+        "acceleration_contribution_series": acceleration_series_f,
     }
 
 #> tox_trajectory_contribution_analysis:compute_velocity_trajectory_c: Compute velocity for a single trajectory (1D array)
