@@ -1,4 +1,4 @@
-#include "macros.h"
+#include "src/macros.h"
 
 !> Unit test suite for trajectory_contribution_analysis routine.
 module mod_test_trajectory_contribution_analysis

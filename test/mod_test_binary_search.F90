@@ -1,4 +1,4 @@
-#include "macros.h"
+#include "src/macros.h"
 
 !> Unit test suite for binary_search routine.
 module mod_test_binary_search

@@ -11,6 +11,12 @@ ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
 lib = ctypes.CDLL(dll_path)
 
 
+#> f42_helper: Create empty c_char matrix to be filled by Fortran
+def _create_empty_c_char_matrix(shape, str_len):
+    # needs to be zeros (not np.empty) to ensure characters being in range
+    return np.zeros(shape, dtype=f"S{str_len}", order="F")
+
+
 #> f42_helper: Convert list of strings to c_char matrix
 def _strings_to_c_char_matrix(strings):
     """Convert list of strings to flat c_char matrix"""
@@ -311,7 +317,7 @@ def tox_deserialize_char_nd(filename):
     dims, clen = tox_get_array_metadata(filename).values()
 
     # Create 2D array for c_chars: (clen, total_size)
-    raw_chars = np.zeros(dims, dtype=f"S{clen}", order='F')
+    raw_chars = _create_empty_c_char_matrix(dims, clen)
 
     ierr = ctypes.c_int()
 

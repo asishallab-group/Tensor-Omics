@@ -14,7 +14,8 @@ from tensoromics_functions import (
     tox_serialize_real_nd,
     tox_deserialize_real_nd,
     _strings_to_c_char_matrix,
-    _c_char_matrix_to_strings
+    _c_char_matrix_to_strings,
+    _create_empty_c_char_matrix
 )
 
 # Load library
@@ -43,7 +44,7 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
         else:
             raise ValueError("filename cannot be an empty list for read_gene_ids_from_tsv_file")
 
-    gene_ids = np.zeros(n_genes, dtype=f"S{gene_ids_len}", order="F")
+    gene_ids = _create_empty_c_char_matrix(n_genes, gene_ids_len)
     ierr = ctypes.c_int()
 
     # Example for read_gene_ids_from_tsv_file_C
@@ -170,7 +171,7 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
     gene_ids_matrix, max_gene_len = _strings_to_c_char_matrix(gene_ids)
 
     # Prepare output arrays
-    family_ids = np.zeros(n_families, dtype=f"S{family_ids_len}", order="F")
+    family_ids = _create_empty_c_char_matrix(n_families, family_ids_len)
     gene_to_fam = np.empty(len(gene_ids), dtype=np.int32, order='F')
     ierr = ctypes.c_int()
 
