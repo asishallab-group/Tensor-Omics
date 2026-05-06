@@ -11,17 +11,12 @@ ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
 lib = ctypes.CDLL(dll_path)
 
 
-#> f42_helper: Create empty c_char matrix to be filled by Fortran
-def _create_empty_c_char_matrix(n_strings, str_len):
-    return np.zeros((str_len, n_strings), dtype=ctypes.c_char, order="F")
-
-
 #> f42_helper: Convert list of strings to c_char matrix
 def _strings_to_c_char_matrix(strings):
     """Convert list of strings to flat c_char matrix"""
     strings = np.array(strings)
     str_len = strings.dtype.itemsize // strings.dtype.alignment
-    return strings.astype(f"S{str_len}", order="F")
+    return strings.astype(f"S{str_len}", order="F"), str_len
 
 
 #> f42_helper: Convert 2D c_char matrix from `_strings_to_c_char_matrix` to numpy unicode string array
@@ -46,68 +41,6 @@ def _readonly(*arrays: np.ndarray) -> None:
             a.flags.writeable = False
             # NOTE: Returned NumPy arrays are read-only for safety.
             # If you need to modify them (e.g., for plotting), use `.copy()`.
-
-
-#> f42_helper: Convert numpy string array to c_char matrix
-def _string_array_to_c_char_matrix(string_array, max_length):
-    """
-    Convert a NumPy string array to a C-compatible char matrix.
-
-    Args:
-        string_array (np.ndarray): Input NumPy string array.
-        max_length (int): Fixed length per string.
-
-    Returns:
-        np.ndarray: Byte matrix of encoded strings.
-    """
-    import numpy as np
-
-    # Flatten the array and convert to list of strings
-    flat_strings = string_array.ravel(order='F').tolist()
-    n_strings = len(flat_strings)
-
-    # Create numpy array with byte dtype for c_chars
-    matrix = np.zeros((n_strings, max_length), dtype=np.byte)
-
-    for i, s in enumerate(flat_strings):
-        encoded = s.encode('ascii')
-        for j in range(min(max_length, len(encoded))):
-            matrix[i, j] = encoded[j]
-        # Add null terminator if there's space
-        if len(encoded) < max_length:
-            matrix[i, len(encoded)] = 0
-
-    return matrix
-
-
-#> f42_helper: Convert string to c_char array with null termination
-def _string_to_c_char_array(s, length):
-    """
-    Convert a Python string to a null-terminated C char array.
-
-    Args:
-        s (str): Input string.
-        length (int): Output array length.
-
-    Returns:
-        np.ndarray: Byte array with null termination when possible.
-    """
-    if s is None:
-        s = ""
-
-    # Create numpy array of bytes
-    arr = np.zeros(length, dtype=np.byte)
-    encoded = s.encode('ascii')
-
-    # Copy characters
-    for i in range(min(length, len(encoded))):
-        arr[i] = encoded[i]
-
-    # Ensure null termination if there's space
-    if len(encoded) < length:
-        arr[len(encoded)] = 0
-
-    return arr
 
 
 #> f42_array_utils:get_array_metadata_c: Helper function to read dimensions of integer/real array
@@ -337,7 +270,7 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     ierr = ctypes.c_int()
 
     # Use c_char matrix instead of ASCII matrix
-    c_char_matrix = _strings_to_c_char_matrix(arr)
+    c_char_matrix, str_len = _strings_to_c_char_matrix(arr)
 
     # Update argument types
     lib.serialize_char_nd_c.argtypes = [
@@ -353,7 +286,7 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
 
     lib.serialize_char_nd_c(
         c_char_matrix,
-        ctypes.byref(ctypes.c_int(c_char_matrix.dtype.itemsize // c_char_matrix.dtype.alignment)),
+        ctypes.byref(ctypes.c_int(str_len)),
         dims,
         ctypes.byref(ctypes.c_int(ndim)),
         filename.encode("utf-8"),
@@ -378,7 +311,7 @@ def tox_deserialize_char_nd(filename):
     dims, clen = tox_get_array_metadata(filename).values()
 
     # Create 2D array for c_chars: (clen, total_size)
-    raw_chars = np.empty(dims, dtype=f"S{clen}", order='F')
+    raw_chars = np.zeros(dims, dtype=f"S{clen}", order='F')
 
     ierr = ctypes.c_int()
 

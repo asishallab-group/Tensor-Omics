@@ -13,136 +13,14 @@ from tensoromics_functions import (
     tox_deserialize_int_nd,
     tox_serialize_real_nd,
     tox_deserialize_real_nd,
+    _strings_to_c_char_matrix,
+    _c_char_matrix_to_strings
 )
 
 # Load library
 dll_path = os.path.abspath("build/libtensor-omics.so")
 ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
 lib = ctypes.CDLL(dll_path)
-
-
-#> f42_helper: Convert string to c_char array with null termination
-def string_to_c_char_array(s, length):
-    """Convert string to c_char array with null termination"""
-    if s is None:
-        s = ""
-    # Create array of c_char with specified length
-    arr = (ctypes.c_char * length)()
-    # Encode string and copy to array
-    encoded = s.encode('ascii')
-    for i in range(min(length, len(encoded))):
-        arr[i] = encoded[i]
-    # Ensure null termination if there's space
-    if len(encoded) < length:
-        arr[len(encoded)] = b'\x00'
-    return arr
-
-
-#> f42_helper: Convert list of strings to flat c_char array (Fortran-compatible, NumPy-wrapped)
-def strings_to_c_char_matrix(strings, max_length):
-    """Convert list of strings to flat c_char array (Fortran-compatible, NumPy-wrapped)"""
-    import numpy as np
-    n_strings = len(strings)
-    total_size = n_strings * max_length
-
-    # create flat c-types array
-    matrix_type = ctypes.c_char * total_size
-    matrix = matrix_type()
-
-    # Initialize with all null bytes
-    for i in range(total_size):
-        matrix[i] = b'\x00'
-
-    for i, s in enumerate(strings):
-        encoded = s.encode('ascii')
-        for j in range(min(max_length, len(encoded))):
-            index = j + i * max_length
-            matrix[index] = encoded[j:j+1]
-        if len(encoded) < max_length:
-            matrix[len(encoded) + i * max_length] = b'\x00'
-
-    arr = np.ctypeslib.as_array(matrix)
-    arr = arr.reshape((n_strings, max_length), order='F')
-
-    return arr
-
-
-#> f42_helper: Convert 2D c_char matrix or NumPy array back to list of strings (Fortran order)
-def c_char_matrix_to_strings(matrix, max_length, n_strings):
-    """Convert 2D c_char matrix or NumPy array back to list of strings (Fortran order)"""
-    import numpy as np
-
-    if isinstance(matrix, np.ndarray):
-        flat = matrix.ravel(order='F')
-    else:
-        flat = matrix
-
-    strings = []
-    for i in range(n_strings):
-        chars = []
-        for j in range(max_length):
-            index = j + i * max_length
-            if index >= len(flat):
-                break
-
-            char = flat[index]
-
-            if isinstance(char, np.ndarray):
-                char = char.item()
-
-            if isinstance(char, (np.integer, int)):
-                char = bytes([char])
-            elif isinstance(char, (bytes, bytearray)):
-                pass
-            elif isinstance(char, str):
-                char = char.encode('ascii')
-            else:
-                char = bytes([int(char)])
-
-            if char == b'\x00':
-                break
-
-            chars.append(char)
-
-        s = b''.join(chars).decode('ascii')
-        strings.append(s)
-
-    return strings
-
-
-#> f42_helper: Prepare string for C interface (bytes + length)
-def _prepare_string(s) -> tuple:
-    """Prepare string for C interface (bytes + length)"""
-    if s is None or s == "":
-        # Return empty string with null terminator
-        return b'\x00', 1
-    # Include null terminator
-    b = s.encode('utf-8') + b'\x00'
-    return b, len(b)
-
-
-#> f42_helper: Ensure input is a numpy array of strings
-def _ensure_string_array(arr):
-    """Ensure input is a numpy array of strings"""
-    if not isinstance(arr, np.ndarray):
-        arr = np.array(arr, dtype=object)
-    return arr
-
-
-#> f42_helper: Ensure input is a numpy array of floats
-def _ensure_float_array(arr):
-    """Ensure input is a numpy array of floats"""
-    if not isinstance(arr, np.ndarray):
-        arr = np.array(arr, dtype=np.float64)
-    return arr
-
-
-#> f42_helper: Ensure input is a numpy array of ints
-def _ensure_int_array(arr):
-    """Ensure input is a numpy array of ints"""
-    if not isinstance(arr, np.ndarray):
-        arr = np.array(arr, dtype=np.int32)
-    return arr
 
 
 #' Function for read_gene_ids_from_tsv_file_C
@@ -165,22 +43,14 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
         else:
             raise ValueError("filename cannot be an empty list for read_gene_ids_from_tsv_file")
 
-    # Convert filename to c_char array
-    fn_array = string_to_c_char_array(filename, len(filename))
-
-    # Create output array for gene IDs - proper 2D array
-    matrix_size = gene_ids_len * n_genes
-    gene_ids_array = (ctypes.c_char * matrix_size)()
-
+    gene_ids = np.zeros(n_genes, dtype=f"S{gene_ids_len}", order="F")
     ierr = ctypes.c_int()
-
-    print(f"Debug: Creating gene_ids_array with size {matrix_size} = {gene_ids_len} * {n_genes}")
 
     # Example for read_gene_ids_from_tsv_file_C
     lib.read_gene_ids_from_tsv_file_C.argtypes = [
-        ctypes.POINTER(ctypes.c_char),  # filename_raw
+        ctypes.c_char_p,  # filename_raw
         ctypes.POINTER(ctypes.c_int),                  # fn_len
-        ctypes.POINTER(ctypes.c_char),  # gene_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # gene_ids_raw
         ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
         ctypes.POINTER(ctypes.c_int),                  # n_genes
         ctypes.POINTER(ctypes.c_int),                  # n_header_rows
@@ -191,9 +61,9 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
 
     # Call C function
     lib.read_gene_ids_from_tsv_file_C(
-        ctypes.cast(ctypes.byref(fn_array), ctypes.POINTER(ctypes.c_char)),
+        filename.encode("utf-8"),
         ctypes.byref(ctypes.c_int(len(filename))),
-        ctypes.cast(ctypes.byref(gene_ids_array), ctypes.POINTER(ctypes.c_char)),
+        gene_ids,
         ctypes.byref(ctypes.c_int(gene_ids_len)),
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_header_rows)),
@@ -203,10 +73,7 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
 
     check_err_code(ierr.value)
 
-    # Convert result back to strings
-    gene_ids = c_char_matrix_to_strings(gene_ids_array, gene_ids_len, n_genes)
-
-    return np.array(gene_ids, dtype='U')
+    return _c_char_matrix_to_strings(gene_ids, gene_ids_len)
 
 # Function for read_expression_vectors_tsv_C
 #> tox_data_read_write:read_expression_vectors_tsv_C: Read expression vectors from given tabular (csv/tsv) files
@@ -228,58 +95,52 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
         file_list = [file_list]  # Convert single file to list
 
     # Ensure inputs are numpy arrays
-    gene_ids = _ensure_string_array(gene_ids)
 
     # Convert inputs to c_char matrices
-    max_file_len = max(len(f) for f in file_list)
-    file_list_matrix = strings_to_c_char_matrix(file_list, max_file_len)
-
-    max_gene_len = max(len(g) for g in gene_ids)
-    gene_ids_matrix = strings_to_c_char_matrix(gene_ids, max_gene_len)
+    file_list_matrix, max_file_len = _strings_to_c_char_matrix(file_list)
+    gene_ids_matrix, max_gene_len = _strings_to_c_char_matrix(gene_ids)
 
     # Prepare output arrays
-    expression_vectors = np.zeros((n_samples, len(gene_ids)), dtype=np.float64, order='F')
+    expression_vectors = np.empty((n_samples, len(gene_ids)), dtype=np.float64, order='F')
     ierr = ctypes.c_int()
-    delimiter_array = string_to_c_char_array(delimiter, len(delimiter))
 
-    # Convert value_cols to ctypes array
-    value_cols_ct = (ctypes.c_int * len(value_cols))(*value_cols)
+    value_cols_ct = np.ascontiguousarray(value_cols, dtype=np.int32)
 
     # read_expression_vectors_tsv_C
     lib.read_expression_vectors_tsv_C.argtypes = [
-        ctypes.POINTER(ctypes.c_char),  # file_list_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # file_list_raw
         ctypes.POINTER(ctypes.c_int),                  # file_list_len
         ctypes.POINTER(ctypes.c_int),                  # n_files
-        ctypes.POINTER(ctypes.c_char),  # gene_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # gene_ids_raw
         ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
         ctypes.POINTER(ctypes.c_int),                  # n_genes
-        ctypes.POINTER(ctypes.c_double), # expression_vectors_flat
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors_flat
         ctypes.POINTER(ctypes.c_int),                  # n_samples
         ctypes.POINTER(ctypes.c_int),                  # n_header_rows
         ctypes.POINTER(ctypes.c_int),                  # gene_col
-        ctypes.POINTER(ctypes.c_int),  # value_cols
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # value_cols
         ctypes.POINTER(ctypes.c_int),                  # n_value_cols
         ctypes.POINTER(ctypes.c_int),  # ierr
-        ctypes.POINTER(ctypes.c_char)  # delimiter_raw
+        ctypes.c_char_p  # delimiter_raw
     ]
     lib.read_expression_vectors_tsv_C.restype = None
 
     # Call C function
     lib.read_expression_vectors_tsv_C(
-        file_list_matrix.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        file_list_matrix,
         ctypes.byref(ctypes.c_int(max_file_len)),
         ctypes.byref(ctypes.c_int(len(file_list))),
-        gene_ids_matrix.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_ids_matrix,
         ctypes.byref(ctypes.c_int(max_gene_len)),
         ctypes.byref(ctypes.c_int(len(gene_ids))),
-        expression_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        expression_vectors,
         ctypes.byref(ctypes.c_int(n_samples)),
         ctypes.byref(ctypes.c_int(n_header_rows)),
         ctypes.byref(ctypes.c_int(gene_col)),
         value_cols_ct,
         ctypes.byref(ctypes.c_int(len(value_cols))),
         ctypes.byref(ierr),
-        ctypes.cast(ctypes.byref(delimiter_array), ctypes.POINTER(ctypes.c_char))
+        delimiter.encode("utf-8")
     )
 
     check_err_code(ierr.value)
@@ -305,55 +166,46 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
             raise ValueError("filename cannot be an empty list for read_orthofinder_file")
 
     # Ensure inputs are numpy arrays
-    gene_ids = _ensure_string_array(gene_ids)
 
-    # Convert inputs to c_char arrays
-    fn_array = string_to_c_char_array(filename, len(filename))
-
-    max_gene_len = max(len(g) for g in gene_ids)
-    gene_ids_matrix = strings_to_c_char_matrix(gene_ids, max_gene_len)
+    gene_ids_matrix, max_gene_len = _strings_to_c_char_matrix(gene_ids)
 
     # Prepare output arrays
-    family_ids_matrix = strings_to_c_char_matrix([""] * n_families, family_ids_len)
-    gene_to_fam = np.zeros(len(gene_ids), dtype=np.int32, order='F')
+    family_ids = np.zeros(n_families, dtype=f"S{family_ids_len}", order="F")
+    gene_to_fam = np.empty(len(gene_ids), dtype=np.int32, order='F')
     ierr = ctypes.c_int()
 
     # read_orthofinder_file_C
     lib.read_orthofinder_file_C.argtypes = [
-        ctypes.POINTER(ctypes.c_char),  # filename_raw
+        ctypes.c_char_p,  # filename_raw
         ctypes.POINTER(ctypes.c_int),                  # fn_len
-        ctypes.POINTER(ctypes.c_char),  # gene_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # gene_ids_raw
         ctypes.POINTER(ctypes.c_int),                  # gene_ids_len
         ctypes.POINTER(ctypes.c_int),                  # n_genes
-        ctypes.POINTER(ctypes.c_char),  # family_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # family_ids_raw
         ctypes.POINTER(ctypes.c_int),                  # family_ids_len
         ctypes.POINTER(ctypes.c_int),                  # n_families
-        ctypes.POINTER(ctypes.c_int),  # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # gene_to_fam
         ctypes.POINTER(ctypes.c_int)   # ierr
     ]
     lib.read_orthofinder_file_C.restype = None
     # Call C function
     lib.read_orthofinder_file_C(
-        ctypes.cast(ctypes.byref(fn_array), ctypes.POINTER(ctypes.c_char)),
+        filename.encode("utf-8"),
         ctypes.byref(ctypes.c_int(len(filename))),
-        gene_ids_matrix.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_ids_matrix,
         ctypes.byref(ctypes.c_int(max_gene_len)),
         ctypes.byref(ctypes.c_int(len(gene_ids))),
-        family_ids_matrix.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        family_ids,
         ctypes.byref(ctypes.c_int(family_ids_len)),
         ctypes.byref(ctypes.c_int(n_families)),
-        gene_to_fam.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        gene_to_fam,
         ctypes.byref(ierr)
     )
 
-
     check_err_code(ierr.value)
 
-    # Convert result back to strings as numpy array
-    family_ids = c_char_matrix_to_strings(family_ids_matrix, family_ids_len, n_families)
-
     return {
-        'family_ids': np.array(family_ids, dtype='U'),
+        'family_ids': _c_char_matrix_to_strings(family_ids, family_ids_len),
         'gene_to_fam': gene_to_fam
     }
 
@@ -392,12 +244,11 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
         gene_to_fam: Array mapping each gene to a family index (0 if unassigned)
         n_families: Total number of families
     """
-    gene_to_fam = _ensure_int_array(gene_to_fam)
     n_genes = gene_to_fam.size
     ierr = ctypes.c_int()
 
     lib.validate_gene_to_family_mapping_C.argtypes = [
-        ctypes.POINTER(ctypes.c_int), # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int)  # ierr
@@ -405,7 +256,7 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
     lib.validate_gene_to_family_mapping_C.restype = None
 
     lib.validate_gene_to_family_mapping_C(
-        gene_to_fam.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        gene_to_fam,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ierr)
@@ -420,13 +271,12 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
         expression_vectors: 2D array of expression data (samples x genes)
         check_non_negative: Whether to check for non-negative values
     """
-    arr = _ensure_float_array(expression_vectors)
-    arr = np.asfortranarray(arr, dtype=np.float64)
-    n_samples, n_genes = arr.shape
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
+    n_samples, n_genes = expression_vectors.shape
     ierr = ctypes.c_int()
 
     lib.validate_expression_data_C.argtypes = [
-        ctypes.POINTER(ctypes.c_double), # expression_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         ctypes.POINTER(ctypes.c_int),                    # n_genes
         ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int),                    # check_non_negative
@@ -435,7 +285,7 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
     lib.validate_expression_data_C.restype = None
 
     lib.validate_expression_data_C(
-        arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        expression_vectors,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_samples)),
         ctypes.byref(ctypes.c_int(1 if check_non_negative else 0)),
@@ -450,13 +300,12 @@ def validate_family_centroids(family_centroids):
     Args:
         family_centroids: 2D array of family centroids (samples x families)
     """
-    arr = _ensure_float_array(family_centroids)
-    arr = np.asfortranarray(arr, dtype=np.float64)
-    n_samples, n_families = arr.shape
+    family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
+    n_samples, n_families = family_centroids.shape
     ierr = ctypes.c_int()
 
     lib.validate_family_centroids_C.argtypes = [
-        ctypes.POINTER(ctypes.c_double), # family_centroids
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
         ctypes.POINTER(ctypes.c_int),                    # n_families
         ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int)     # ierr
@@ -464,7 +313,7 @@ def validate_family_centroids(family_centroids):
     lib.validate_family_centroids_C.restype = None
 
     lib.validate_family_centroids_C(
-        arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        family_centroids,
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
         ctypes.byref(ierr)
@@ -484,10 +333,6 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
         n_samples: Number of samples
         n_families: Number of families
     """
-    shift_vectors = _ensure_float_array(shift_vectors)
-    expression_vectors = _ensure_float_array(expression_vectors)
-    family_centroids = _ensure_float_array(family_centroids)
-    gene_to_fam = _ensure_int_array(gene_to_fam)
 
     shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
     expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
@@ -496,10 +341,10 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
     ierr = ctypes.c_int()
 
     lib.validate_shift_vectors_C.argtypes = [
-        ctypes.POINTER(ctypes.c_double), # shift_vectors
-        ctypes.POINTER(ctypes.c_double), # expression_vectors
-        ctypes.POINTER(ctypes.c_double), # family_centroids
-        ctypes.POINTER(ctypes.c_int),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),    # gene_to_fam
         ctypes.POINTER(ctypes.c_int),                    # n_genes
         ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int),                    # n_families
@@ -508,10 +353,10 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
     lib.validate_shift_vectors_C.restype = None
 
     lib.validate_shift_vectors_C(
-        shift_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        expression_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        family_centroids.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        gene_to_fam.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        shift_vectors,
+        expression_vectors,
+        family_centroids,
+        gene_to_fam,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_samples)),
         ctypes.byref(ctypes.c_int(n_families)),
@@ -526,14 +371,12 @@ def validate_string_array_uniqueness(strings):
     Args:
         strings: List of strings
     """
-    strings = _ensure_string_array(strings)
-    string_len = max(len(g) for g in strings)
     n_strings = len(strings)
-    gene_ids_raw = strings_to_c_char_matrix(strings, string_len)
+    gene_ids_raw, gene_ids_len = _strings_to_c_char_matrix(strings)
     ierr = ctypes.c_int()
 
     lib.validate_string_array_uniqueness_C.argtypes = [
-        ctypes.POINTER(ctypes.c_char), # string_array_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # string_array_raw
         ctypes.POINTER(ctypes.c_int),                 # string_len
         ctypes.POINTER(ctypes.c_int),                 # n_strings
         ctypes.POINTER(ctypes.c_int)  # ierr
@@ -541,8 +384,8 @@ def validate_string_array_uniqueness(strings):
     lib.validate_string_array_uniqueness_C.restype = None
 
     lib.validate_string_array_uniqueness_C(
-        gene_ids_raw.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
-        ctypes.byref(ctypes.c_int(string_len)),
+        gene_ids_raw,
+        ctypes.byref(ctypes.c_int(gene_ids_len)),
         ctypes.byref(ctypes.c_int(n_strings)),
         ctypes.byref(ierr)
     )
@@ -563,17 +406,9 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
         family_centroids: 2D array of family centroids (samples x families)
         shift_vectors: 2D array of shift vectors (2*samples x genes)
     """
-    gene_ids = _ensure_string_array(gene_ids)
-    gene_family_ids = _ensure_string_array(gene_family_ids)
-    expression_vectors = _ensure_float_array(expression_vectors)
-    family_centroids = _ensure_float_array(family_centroids)
-    shift_vectors = _ensure_float_array(shift_vectors)
-    gene_to_fam = _ensure_int_array(gene_to_fam)
 
-    gene_ids_len = max(len(g) for g in gene_ids)
-    fam_len = max(len(f) for f in gene_family_ids)
-    gene_ids_raw = strings_to_c_char_matrix(gene_ids, gene_ids_len)
-    gene_family_ids_raw = strings_to_c_char_matrix(gene_family_ids, fam_len)
+    gene_ids_raw, gene_ids_len = _strings_to_c_char_matrix(gene_ids)
+    gene_family_ids_raw, fam_len = _strings_to_c_char_matrix(gene_family_ids)
 
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
     expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
@@ -585,14 +420,14 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int),                 # n_samples
-        ctypes.POINTER(ctypes.c_char), # gene_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # gene_ids_raw
         ctypes.POINTER(ctypes.c_int),                 # gene_ids_len
-        ctypes.POINTER(ctypes.c_char), # gene_family_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # gene_family_ids_raw
         ctypes.POINTER(ctypes.c_int),                 # fam_len
-        ctypes.POINTER(ctypes.c_int), # gene_to_fam
-        ctypes.POINTER(ctypes.c_double), # expression_vectors
-        ctypes.POINTER(ctypes.c_double), # family_centroids
-        ctypes.POINTER(ctypes.c_double), # shift_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
     lib.validate_data_structure_C.restype = None
@@ -601,14 +436,14 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
-        gene_ids_raw.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_ids_raw,
         ctypes.byref(ctypes.c_int(gene_ids_len)),
-        gene_family_ids_raw.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_family_ids_raw,
         ctypes.byref(ctypes.c_int(fam_len)),
-        gene_to_fam.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        expression_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        family_centroids.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        shift_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gene_to_fam,
+        expression_vectors,
+        family_centroids,
+        shift_vectors,
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -628,17 +463,9 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
         family_centroids: 2D array of family centroids (samples x families)
         shift_vectors: 2D array of shift vectors (genes x samples)
     """
-    gene_ids = _ensure_string_array(gene_ids)
-    gene_family_ids = _ensure_string_array(gene_family_ids)
-    expression_vectors = _ensure_float_array(expression_vectors)
-    family_centroids = _ensure_float_array(family_centroids)
-    shift_vectors = _ensure_float_array(shift_vectors)
-    gene_to_fam = _ensure_int_array(gene_to_fam)
 
-    gene_ids_len = max(len(g) for g in gene_ids)
-    fam_len = max(len(f) for f in gene_family_ids)
-    gene_ids_raw = strings_to_c_char_matrix(gene_ids, gene_ids_len)
-    gene_family_ids_raw = strings_to_c_char_matrix(gene_family_ids, fam_len)
+    gene_ids_raw, gene_ids_len = _strings_to_c_char_matrix(gene_ids)
+    gene_family_ids_raw, fam_len = _strings_to_c_char_matrix(gene_family_ids)
 
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
     expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
@@ -650,14 +477,14 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int),                 # n_samples
-        ctypes.POINTER(ctypes.c_char), # gene_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # gene_ids_raw
         ctypes.POINTER(ctypes.c_int),                 # gene_len
-        ctypes.POINTER(ctypes.c_char), # gene_family_ids_raw
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # gene_family_ids_raw
         ctypes.POINTER(ctypes.c_int),                 # fam_len
-        ctypes.POINTER(ctypes.c_int), # gene_to_fam
-        ctypes.POINTER(ctypes.c_double), # expression_vectors
-        ctypes.POINTER(ctypes.c_double), # family_centroids
-        ctypes.POINTER(ctypes.c_double), # shift_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
     lib.validate_all_data_C.restype = None
@@ -666,14 +493,14 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
-        gene_ids_raw.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_ids_raw,
         ctypes.byref(ctypes.c_int(gene_ids_len)),
-        gene_family_ids_raw.ctypes.data_as(ctypes.POINTER(ctypes.c_char)),
+        gene_family_ids_raw,
         ctypes.byref(ctypes.c_int(fam_len)),
-        gene_to_fam.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        expression_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        family_centroids.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        shift_vectors.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gene_to_fam,
+        expression_vectors,
+        family_centroids,
+        shift_vectors,
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -693,48 +520,20 @@ def create_zip_archive(zip_filename: str, keys, filenames) -> None:
     if len(keys) != len(filenames):
         raise ValueError("Keys and filenames must have the same length")
 
-    # Prepare arrays for C interface
-    zip_b, zip_len = _prepare_string(zip_filename)
-
     # Convert keys and filenames to 2D numpy arrays with Fortran order
-    max_key_len = max(len(key) for key in keys) + 1  # +1 for null terminator
-    max_filename_len = max(len(fname) for fname in filenames) + 1  # +1 for null terminator
-    count = len(keys)
+    n_keys = len(keys)
 
     # Create numpy arrays with Fortran order (column-major)
     # Shape: (string_length, string_count) - matching Fortran expectation
-    keys_array = np.zeros((max_key_len, count), dtype=np.byte, order='F')
-    filenames_array = np.zeros((max_filename_len, count), dtype=np.byte, order='F')
-
-    # Fill arrays in column-major order
-    for i, (key, fname) in enumerate(zip(keys, filenames)):
-        key_bytes = key.encode('utf-8')
-        fname_bytes = fname.encode('utf-8')
-
-        # Fill keys array - each column is one string
-        for j in range(min(len(key_bytes), max_key_len - 1)):
-            keys_array[j, i] = key_bytes[j]
-        # Add null terminator
-        if len(key_bytes) < max_key_len:
-            keys_array[len(key_bytes), i] = 0  # null terminator
-        else:
-            keys_array[max_key_len - 1, i] = 0  # null terminator at last position
-
-        # Fill filenames array - each column is one string
-        for j in range(min(len(fname_bytes), max_filename_len - 1)):
-            filenames_array[j, i] = fname_bytes[j]
-        # Add null terminator
-        if len(fname_bytes) < max_filename_len:
-            filenames_array[len(fname_bytes), i] = 0  # null terminator
-        else:
-            filenames_array[max_filename_len - 1, i] = 0  # null terminator at last position
+    keys_c, max_key_len = _strings_to_c_char_matrix(keys)
+    filenames_c, max_filename_len = _strings_to_c_char_matrix(filenames)
 
     # Set up argument types to match Fortran subroutine
     lib.create_zip_archive_c.argtypes = [
-        ctypes.POINTER(ctypes.c_char), ctypes.POINTER(ctypes.c_int),    # zip_filename, zip_len
-        np.ctypeslib.ndpointer(dtype=np.byte, ndim=2, flags='F_CONTIGUOUS'),  # keys
+        ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),    # zip_filename, zip_len
+        np.ctypeslib.ndpointer(flags='F_CONTIGUOUS'),  # keys
         ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),     # keys_len, keys_count
-        np.ctypeslib.ndpointer(dtype=np.byte, ndim=2, flags='F_CONTIGUOUS'),  # filenames
+        np.ctypeslib.ndpointer(flags='F_CONTIGUOUS'),  # filenames
         ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),     # filenames_len, filenames_count
         ctypes.POINTER(ctypes.c_int)                                    # ierr
     ]
@@ -743,14 +542,14 @@ def create_zip_archive(zip_filename: str, keys, filenames) -> None:
 
     # Call Fortran function - arrays are already in Fortran order
     lib.create_zip_archive_c(
-        zip_b,
-        ctypes.byref(ctypes.c_int(zip_len)),
-        keys_array,
+        zip_filename.encode("utf-8"),
+        ctypes.byref(ctypes.c_int(len(zip_filename))),
+        keys_c,
         ctypes.byref(ctypes.c_int(max_key_len)),
-        ctypes.byref(ctypes.c_int(count)),
-        filenames_array,
+        ctypes.byref(ctypes.c_int(n_keys)),
+        filenames_c,
         ctypes.byref(ctypes.c_int(max_filename_len)),
-        ctypes.byref(ctypes.c_int(count)),
+        ctypes.byref(ctypes.c_int(n_keys)),
         ctypes.byref(ierr)
     )
 
@@ -786,7 +585,7 @@ def extract_zip_archive(zip_filename):
         raise FileNotFoundError(f"Zip file not found: {zip_filename}")
 
     lib.extract_zip_archive_c.argtypes = [
-        ctypes.POINTER(ctypes.c_char),
+        ctypes.c_char_p,
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)
     ]
@@ -795,19 +594,14 @@ def extract_zip_archive(zip_filename):
         # Initialize error code
         ierr = ctypes.c_int()
 
-        # Prepare filename for C function
-        zip_b = (ctypes.c_char * len(zip_filename))(*zip_filename.encode('utf-8'))
-
         # Call the C extraction function
         lib.extract_zip_archive_c(
-            ctypes.cast(zip_b, ctypes.POINTER(ctypes.c_char)),
+            zip_filename.encode("utf-8"),
             ctypes.byref(ctypes.c_int(len(zip_filename))),
             ctypes.byref(ierr)
         )
 
-        # Check for errors
-        if ierr.value != 0:
-            raise RuntimeError(f"Failed to extract zip archive. Error code: {ierr.value}")
+        check_err_code(ierr.value)
 
         # Read manifest file to get file mapping
         manifest_path = "manifest.txt"
