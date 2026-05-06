@@ -1,9 +1,11 @@
 #include "src/macros.h"
+#include "src/f42/serde/macros.h"
 
 !> Module for array utilities.
-module f42_arrays_utils
+module f42_serde_arrays_utils
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_serde_utils
     use tox_errors
     implicit none
 
@@ -11,43 +13,7 @@ module f42_arrays_utils
 
     integer(int32), parameter :: ARRAY_FILE_MAGIC = int(z'46413230', int32) ! 'FA20' in hex
         !! Magic number for array files
-
-! IMPORTANT: character type is represented as any positive value `x>=0` with `x` meaning the string length
-#define CM_INTEGER_TYPE_CODE -1_int32
-#define CM_REAL_TYPE_CODE -2_int32
-#define CM_LOGICAL_TYPE_CODE -3_int32
-#define CM_COMPLEX_TYPE_CODE -4_int32
-
-    integer(int32), parameter :: INTEGER_TYPE_CODE = CM_INTEGER_TYPE_CODE
-        !! Type code for integer type
-    integer(int32), parameter :: REAL_TYPE_CODE = CM_REAL_TYPE_CODE
-        !! Type code for real type
-    integer(int32), parameter :: LOGICAL_TYPE_CODE = CM_LOGICAL_TYPE_CODE
-        !! Type code for logical type
-    integer(int32), parameter :: COMPLEX_TYPE_CODE = CM_COMPLEX_TYPE_CODE
-        !! Type code for complex type
-
 contains
-
-    !> AUTHOR_AARON_SCHROEDER
-    !| Check I/O error and set ierr accordingly
-    subroutine check_okay_ioerror(ioerror, ierr, msg, unit)
-        integer(int32), intent(in) :: ioerror
-            !! IO error set by fortran
-        integer(int32), intent(out) :: ierr
-            !! Error code
-        integer(int32), intent(in) :: msg
-            !! Error code readable version used for setting
-        integer(int32), intent(in), optional :: unit
-            !! pass unit allowing it to be closed
-
-        if (is_err(ioerror)) then
-            call set_err(ierr, msg)
-            if (present(unit)) close(unit)
-            return
-        end if
-
-    end subroutine
 
     !> AUTHOR_AARON_SCHROEDER
     !| Opens unit and writes fileheader with all metadata to the given filename
@@ -57,13 +23,13 @@ contains
         integer(int32), intent(in) :: type_code
             !! type code of the array
             !!
-            !! |       Type        |         Code         |
-            !! |-------------------|----------------------|
-            !! | INTEGER_TYPE_CODE | CM_INTEGER_TYPE_CODE |
-            !! |  REAL_TYPE_CODE   |  CM_REAL_TYPE_CODE   |
-            !! |  CHAR_TYPE_CODE   |  CM_CHAR_TYPE_CODE   |
-            !! | LOGICAL_TYPE_CODE | CM_LOGICAL_TYPE_CODE |
-            !! | COMPLEX_TYPE_CODE | CM_COMPLEX_TYPE_CODE |
+            !! |    Type   |           Code          |
+            !! |-----------|-------------------------|
+            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
+            !! |    real   |   CM_REAL_TYPE_CODE     |
+            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! | character |      string length      |
             !!
         integer(int32), intent(in) :: ndim
             !! number of dimensions
@@ -142,13 +108,13 @@ contains
         integer(int32), intent(out) :: type_code
             !! type code of the array
             !!
-            !! |       Type        |         Code         |
-            !! |-------------------|----------------------|
-            !! | INTEGER_TYPE_CODE | CM_INTEGER_TYPE_CODE |
-            !! |  REAL_TYPE_CODE   |  CM_REAL_TYPE_CODE   |
-            !! |  CHAR_TYPE_CODE   |  CM_CHAR_TYPE_CODE   |
-            !! | LOGICAL_TYPE_CODE | CM_LOGICAL_TYPE_CODE |
-            !! | COMPLEX_TYPE_CODE | CM_COMPLEX_TYPE_CODE |
+            !! |    Type   |           Code          |
+            !! |-----------|-------------------------|
+            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
+            !! |    real   |   CM_REAL_TYPE_CODE     |
+            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! | character |      string length      |
             !!
         integer(int32), intent(out) :: ndims
             !! number of dimensions
@@ -196,6 +162,16 @@ contains
             !! Array to store output dimensions
         integer(int32), intent(out) :: type_code
             !! Type code of the serialized array
+            !!
+            !!
+            !! |    Type   |           Code          |
+            !! |-----------|-------------------------|
+            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
+            !! |    real   |   CM_REAL_TYPE_CODE     |
+            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! | character |      string length      |
+            !!
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -214,12 +190,12 @@ contains
         dims_out = 1
         dims_out(1:ndims) = dims
     end subroutine get_array_metadata
-end module f42_arrays_utils
+end module f42_serde_arrays_utils
 
 !> C binding for the subroutine to get the dimensions of an array file
 subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, type_code, ierr) bind(C, name="get_array_metadata_c")
     use iso_c_binding, only: c_int, c_char
-    use f42_arrays_utils, only: get_array_metadata
+    use f42_serde_arrays_utils, only: get_array_metadata
     use tox_conversions, only: c_char_1d_as_string
     use tox_errors, only: is_err
     M_USE_NULL_VALIDATION
@@ -241,6 +217,16 @@ subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, n
         !! Error code
     integer(c_int), intent(out), target :: type_code
         !! Type code of the serialized array
+        !!
+        !!
+        !! |    Type   |           Code          |
+        !! |-----------|-------------------------|
+        !! |  integer  |   CM_INTEGER_TYPE_CODE  |
+        !! |    real   |   CM_REAL_TYPE_CODE     |
+        !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
+        !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+        !! | character |      string length      |
+        !!
 
     ! Local variables
     character(len=:), allocatable :: filename_f

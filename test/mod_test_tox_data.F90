@@ -7,13 +7,13 @@ module mod_test_tox_data
     use tox_data_validation
     use tox_data_accessors
     use tox_data_read_write
-    use f42_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
+    use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
     use tox_gene_centroids
     use tox_shift_vectors
     use tox_errors
     use tox_data_archive, only: save_tox_data, read_tox_data, create_zip_archive, extract_zip_archive, delete_file
-    use f42_arrays_deserialize
-    use f42_arrays_serialize
+    use f42_serde_arrays_deserialize
+    use f42_serde_arrays_serialize
     use test_suite, only: test_case
     implicit none
     public

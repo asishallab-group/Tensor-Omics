@@ -2,9 +2,9 @@
 !> Unit test suite for array utilities.
 module mod_test_arrays
     use asserts
-    use f42_arrays_utils
-    use f42_arrays_deserialize
-    use f42_arrays_serialize
+    use f42_serde_arrays_utils
+    use f42_serde_arrays_deserialize
+    use f42_serde_arrays_serialize
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use iso_c_binding
     use tox_errors

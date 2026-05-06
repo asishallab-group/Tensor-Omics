@@ -1,10 +1,10 @@
 #include "src/macros.h"
 
 !> Module for deserializing character arrays from files
-module f42_arrays_serialize_char
+module f42_serde_arrays_serialize_char
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_arrays_utils, only: write_file_header
+    use f42_serde_arrays_utils, only: write_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
     implicit none
 
@@ -109,13 +109,13 @@ contains
         call serialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine serialize_char_5d
 
-end module f42_arrays_serialize_char
+end module f42_serde_arrays_serialize_char
 
 !> C binding for the subroutine to serialize a flat character array into a file.
 subroutine serialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
                                  filename, fn_len, ierr) bind(C, name="serialize_char_nd_c")
     use, intrinsic :: iso_c_binding, only: c_char, c_int
-    use f42_arrays_serialize_char, only: serialize_char_helper
+    use f42_serde_arrays_serialize_char, only: serialize_char_helper
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
     use tox_errors, only: is_err, map_err_arg_pos
     M_USE_NULL_VALIDATION

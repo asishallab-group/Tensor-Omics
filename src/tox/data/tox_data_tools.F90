@@ -3,9 +3,8 @@
 module tox_data_tools
     use safeguard
     use iso_fortran_env, only: real64, int32, iostat_end
-    use tox_errors, only: set_ok, set_err_once, is_err, check_io_stat
-    use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA
-    use f42_arrays_utils, only: check_okay_ioerror, ERR_SIZE_MISMATCH
+    use tox_errors, only: set_ok, set_err_once, set_err, is_err, check_io_stat
+    use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH
     use config, only: DEBUG
     implicit none
     private
@@ -19,6 +18,26 @@ module tox_data_tools
     character(len=*), parameter :: DELIMS = ', '//char(9)
 
 contains
+
+    !> AUTHOR_AARON_SCHROEDER
+    !| Check I/O error and set ierr accordingly
+    subroutine check_okay_ioerror(ioerror, ierr, msg, unit)
+        integer(int32), intent(in) :: ioerror
+            !! IO error set by fortran
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        integer(int32), intent(in) :: msg
+            !! Error code readable version used for setting
+        integer(int32), intent(in), optional :: unit
+            !! pass unit allowing it to be closed
+
+        if (is_err(ioerror)) then
+            call set_err(ierr, msg)
+            if (present(unit)) close(unit)
+            return
+        end if
+
+    end subroutine
 
     !> AUTHOR_AARON_SCHROEDER
     !| Read expression vectors from csv/tsv files

@@ -1,9 +1,9 @@
 #include "src/macros.h"
 
 !> Module for deserializing logical arrays from files
-module f42_arrays_deserialize_logical
+module f42_serde_arrays_deserialize_logical
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_arrays_utils, only: check_file_header, LOGICAL_TYPE_CODE
+    use f42_serde_arrays_utils, only: check_file_header, LOGICAL_TYPE_CODE
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_READ_DATA, set_err
     implicit none
 
@@ -109,12 +109,12 @@ contains
         call deserialize_logical_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_logical_5d
 
-end module f42_arrays_deserialize_logical
+end module f42_serde_arrays_deserialize_logical
 
 !> C binding for the subroutine to deserialize a logical array from a file.
 subroutine deserialize_logical_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr) bind(C, name="deserialize_logical_nd_c")
     use, intrinsic :: iso_c_binding, only: c_int, c_char
-    use f42_arrays_deserialize_logical, only: deserialize_logical_helper
+    use f42_serde_arrays_deserialize_logical, only: deserialize_logical_helper
     use tox_errors, only: is_err, map_err_arg_pos, ERR_ALLOC_FAIL, set_err
     use tox_conversions, only: c_char_1d_as_string, logical_as_c_int
     M_USE_NULL_VALIDATION

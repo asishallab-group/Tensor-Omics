@@ -1,9 +1,9 @@
 #include "src/macros.h"
 
 !> Module for deserializing real arrays from files
-module f42_arrays_deserialize_real
+module f42_serde_arrays_deserialize_real
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_arrays_utils, only: check_file_header, REAL_TYPE_CODE
+    use f42_serde_arrays_utils, only: check_file_header, REAL_TYPE_CODE
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_READ_DATA, set_err
     implicit none
 
@@ -109,12 +109,12 @@ contains
         call deserialize_real_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_real_5d
 
-end module f42_arrays_deserialize_real
+end module f42_serde_arrays_deserialize_real
 
 !> C binding for the subroutine to deserialize a real array from a file.
 subroutine deserialize_real_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr) bind(C, name="deserialize_real_nd_c")
     use, intrinsic :: iso_c_binding, only: c_int, c_char, c_double
-    use f42_arrays_deserialize_real, only: deserialize_real_helper
+    use f42_serde_arrays_deserialize_real, only: deserialize_real_helper
     use tox_errors, only: is_err, map_err_arg_pos
     use tox_conversions, only: c_char_1d_as_string
     M_USE_NULL_VALIDATION
