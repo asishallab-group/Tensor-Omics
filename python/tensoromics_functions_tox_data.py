@@ -24,8 +24,8 @@ ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
 lib = ctypes.CDLL(dll_path)
 
 
-#' Function for read_gene_ids_from_tsv_file_C
-#> tox_data_read_write:read_gene_ids_from_tsv_file_C: Read gene ids from a tsv file
+#> tox_data_read_write:read_gene_ids_from_tsv_file_c: Read gene ids from a tsv file
+#' Function for read_gene_ids_from_tsv_file_c
 def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, gene_col):
     """
     Read gene ids from a tsv file
@@ -47,8 +47,8 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
     gene_ids = _create_empty_c_char_matrix(n_genes, gene_ids_len)
     ierr = ctypes.c_int()
 
-    # Example for read_gene_ids_from_tsv_file_C
-    lib.read_gene_ids_from_tsv_file_C.argtypes = [
+    # Example for read_gene_ids_from_tsv_file_c
+    lib.read_gene_ids_from_tsv_file_c.argtypes = [
         ctypes.c_char_p,  # filename_raw
         ctypes.POINTER(ctypes.c_int),                  # fn_len
         np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # gene_ids_raw
@@ -58,10 +58,10 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
         ctypes.POINTER(ctypes.c_int),                  # gene_col
         ctypes.POINTER(ctypes.c_int)   # ierr
     ]
-    lib.read_gene_ids_from_tsv_file_C.restype = None
+    lib.read_gene_ids_from_tsv_file_c.restype = None
 
     # Call C function
-    lib.read_gene_ids_from_tsv_file_C(
+    lib.read_gene_ids_from_tsv_file_c(
         filename.encode("utf-8"),
         ctypes.byref(ctypes.c_int(len(filename))),
         gene_ids,
@@ -76,8 +76,8 @@ def read_gene_ids_from_tsv_file(filename,n_genes, gene_ids_len, n_header_rows, g
 
     return _c_char_matrix_to_strings(gene_ids, gene_ids_len)
 
-# Function for read_expression_vectors_tsv_C
-#> tox_data_read_write:read_expression_vectors_tsv_C: Read expression vectors from given tabular (csv/tsv) files
+#> tox_data_read_write:read_expression_vectors_tsv_c: Read expression vectors from given tabular (csv/tsv) files
+# Function for read_expression_vectors_tsv_c
 def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
                            gene_col, value_cols, delimiter='\t'):
     """
@@ -107,8 +107,8 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
 
     value_cols_ct = np.ascontiguousarray(value_cols, dtype=np.int32)
 
-    # read_expression_vectors_tsv_C
-    lib.read_expression_vectors_tsv_C.argtypes = [
+    # read_expression_vectors_tsv_c
+    lib.read_expression_vectors_tsv_c.argtypes = [
         np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # file_list_raw
         ctypes.POINTER(ctypes.c_int),                  # file_list_len
         ctypes.POINTER(ctypes.c_int),                  # n_files
@@ -124,10 +124,10 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
         ctypes.POINTER(ctypes.c_int),  # ierr
         ctypes.c_char_p  # delimiter_raw
     ]
-    lib.read_expression_vectors_tsv_C.restype = None
+    lib.read_expression_vectors_tsv_c.restype = None
 
     # Call C function
-    lib.read_expression_vectors_tsv_C(
+    lib.read_expression_vectors_tsv_c(
         file_list_matrix,
         ctypes.byref(ctypes.c_int(max_file_len)),
         ctypes.byref(ctypes.c_int(len(file_list))),
@@ -148,8 +148,8 @@ def read_expression_vectors_tsv(file_list, gene_ids, n_samples, n_header_rows,
 
     return expression_vectors
 
-# Function for read_orthofinder_file_C
-#> tox_data_read_write:read_orthofinder_file_C: Read an orthofinder family file and map genes to families
+#> tox_data_read_write:read_orthofinder_file_c: Read an orthofinder family file and map genes to families
+# Function for read_orthofinder_file_c
 def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
     """
     Read an orthofinder family file and map genes to families
@@ -175,8 +175,8 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
     gene_to_fam = np.empty(len(gene_ids), dtype=np.int32, order='F')
     ierr = ctypes.c_int()
 
-    # read_orthofinder_file_C
-    lib.read_orthofinder_file_C.argtypes = [
+    # read_orthofinder_file_c
+    lib.read_orthofinder_file_c.argtypes = [
         ctypes.c_char_p,  # filename_raw
         ctypes.POINTER(ctypes.c_int),                  # fn_len
         np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),  # gene_ids_raw
@@ -188,9 +188,9 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # gene_to_fam
         ctypes.POINTER(ctypes.c_int)   # ierr
     ]
-    lib.read_orthofinder_file_C.restype = None
+    lib.read_orthofinder_file_c.restype = None
     # Call C function
-    lib.read_orthofinder_file_C(
+    lib.read_orthofinder_file_c(
         filename.encode("utf-8"),
         ctypes.byref(ctypes.c_int(len(filename))),
         gene_ids_matrix,
@@ -210,7 +210,7 @@ def read_orthofinder_file(filename, gene_ids, family_ids_len, n_families):
         'gene_to_fam': gene_to_fam
     }
 
-#> tox_data_tools:filter_unassigned_genes_C: Filter out genes that are not assigned to any family (where gene_to_fam == 0).
+#> tox_data_tools:filter_unassigned_genes_c: Filter out genes that are not assigned to any family (where gene_to_fam == 0).
 def filter_unassigned_genes(gene_to_fam):
     """
     Filter out genes that are not assigned to any family (where gene_to_fam == 0).
@@ -237,7 +237,7 @@ def filter_unassigned_genes(gene_to_fam):
 
 # --- Python wrappers for validation ---
 
-#> tox_data_validation:validate_gene_to_family_mapping_C: Validate gene to family mapping
+#> tox_data_validation:validate_gene_to_family_mapping_c: Validate gene to family mapping
 def validate_gene_to_family_mapping(gene_to_fam, n_families):
     """
     Validate gene to family mapping
@@ -248,15 +248,15 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
     n_genes = gene_to_fam.size
     ierr = ctypes.c_int()
 
-    lib.validate_gene_to_family_mapping_C.argtypes = [
+    lib.validate_gene_to_family_mapping_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"), # gene_to_fam
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
-    lib.validate_gene_to_family_mapping_C.restype = None
+    lib.validate_gene_to_family_mapping_c.restype = None
 
-    lib.validate_gene_to_family_mapping_C(
+    lib.validate_gene_to_family_mapping_c(
         gene_to_fam,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
@@ -264,7 +264,7 @@ def validate_gene_to_family_mapping(gene_to_fam, n_families):
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_expression_data_C: Validate expression data
+#> tox_data_validation:validate_expression_data_c: Validate expression data
 def validate_expression_data(expression_vectors, check_non_negative=True):
     """
     Validate expression data
@@ -276,16 +276,16 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
     n_samples, n_genes = expression_vectors.shape
     ierr = ctypes.c_int()
 
-    lib.validate_expression_data_C.argtypes = [
+    lib.validate_expression_data_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         ctypes.POINTER(ctypes.c_int),                    # n_genes
         ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int),                    # check_non_negative
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
-    lib.validate_expression_data_C.restype = None
+    lib.validate_expression_data_c.restype = None
 
-    lib.validate_expression_data_C(
+    lib.validate_expression_data_c(
         expression_vectors,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -294,7 +294,7 @@ def validate_expression_data(expression_vectors, check_non_negative=True):
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_family_centroids_C: Validate family centroids, checks for NaN/Inf
+#> tox_data_validation:validate_family_centroids_c: Validate family centroids, checks for NaN/Inf
 def validate_family_centroids(family_centroids):
     """
     Validate family centroids, checks for NaN/Inf
@@ -305,15 +305,15 @@ def validate_family_centroids(family_centroids):
     n_samples, n_families = family_centroids.shape
     ierr = ctypes.c_int()
 
-    lib.validate_family_centroids_C.argtypes = [
+    lib.validate_family_centroids_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
         ctypes.POINTER(ctypes.c_int),                    # n_families
         ctypes.POINTER(ctypes.c_int),                    # n_samples
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
-    lib.validate_family_centroids_C.restype = None
+    lib.validate_family_centroids_c.restype = None
 
-    lib.validate_family_centroids_C(
+    lib.validate_family_centroids_c(
         family_centroids,
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -321,7 +321,7 @@ def validate_family_centroids(family_centroids):
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_shift_vectors_C: Validate shift vectors, checks if datatypes are correct and if the general structure matches
+#> tox_data_validation:validate_shift_vectors_c: Validate shift vectors, checks if datatypes are correct and if the general structure matches
 def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_genes, n_samples, n_families):
     """
     Validate shift vectors, checks if datatypes are correct and if the general structure matches (first d rows = centroids, d+1 to 2d rows = shift)
@@ -341,7 +341,7 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
     ierr = ctypes.c_int()
 
-    lib.validate_shift_vectors_C.argtypes = [
+    lib.validate_shift_vectors_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # family_centroids
@@ -351,9 +351,9 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
         ctypes.POINTER(ctypes.c_int),                    # n_families
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
-    lib.validate_shift_vectors_C.restype = None
+    lib.validate_shift_vectors_c.restype = None
 
-    lib.validate_shift_vectors_C(
+    lib.validate_shift_vectors_c(
         shift_vectors,
         expression_vectors,
         family_centroids,
@@ -365,7 +365,7 @@ def validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, 
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_string_array_uniqueness_C: Validate uniqueness of strings
+#> tox_data_validation:validate_string_array_uniqueness_c: Validate uniqueness of strings
 def validate_string_array_uniqueness(strings):
     """
     Validate uniqueness of strings - Note: Uses hashset internally which may increase memory usage temporarily for large datasets
@@ -376,15 +376,15 @@ def validate_string_array_uniqueness(strings):
     gene_ids_raw, gene_ids_len = _strings_to_c_char_matrix(strings)
     ierr = ctypes.c_int()
 
-    lib.validate_string_array_uniqueness_C.argtypes = [
+    lib.validate_string_array_uniqueness_c.argtypes = [
         np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"), # string_array_raw
         ctypes.POINTER(ctypes.c_int),                 # string_len
         ctypes.POINTER(ctypes.c_int),                 # n_strings
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
-    lib.validate_string_array_uniqueness_C.restype = None
+    lib.validate_string_array_uniqueness_c.restype = None
 
-    lib.validate_string_array_uniqueness_C(
+    lib.validate_string_array_uniqueness_c(
         gene_ids_raw,
         ctypes.byref(ctypes.c_int(gene_ids_len)),
         ctypes.byref(ctypes.c_int(n_strings)),
@@ -392,7 +392,7 @@ def validate_string_array_uniqueness(strings):
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_data_structure_C: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
+#> tox_data_validation:validate_data_structure_c: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
 def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
     """
     Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
@@ -417,7 +417,7 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
     shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
     ierr = ctypes.c_int()
 
-    lib.validate_data_structure_C.argtypes = [
+    lib.validate_data_structure_c.argtypes = [
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int),                 # n_samples
@@ -431,9 +431,9 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
-    lib.validate_data_structure_C.restype = None
+    lib.validate_data_structure_c.restype = None
 
-    lib.validate_data_structure_C(
+    lib.validate_data_structure_c(
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -449,7 +449,7 @@ def validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_famil
     )
     check_err_code(ierr.value)
 
-#> tox_data_validation:validate_all_data_C: Comprehensive validation of all data components. This function performs all individual validations in one go.
+#> tox_data_validation:validate_all_data_c: Comprehensive validation of all data components. This function performs all individual validations in one go.
 def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors):
     """
     Comprehensive validation of all data components. This function performs all individual validations in one go.
@@ -474,7 +474,7 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
     shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
     ierr = ctypes.c_int()
 
-    lib.validate_all_data_C.argtypes = [
+    lib.validate_all_data_c.argtypes = [
         ctypes.POINTER(ctypes.c_int),                 # n_genes
         ctypes.POINTER(ctypes.c_int),                 # n_families
         ctypes.POINTER(ctypes.c_int),                 # n_samples
@@ -488,9 +488,9 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # shift_vectors
         ctypes.POINTER(ctypes.c_int)     # ierr
     ]
-    lib.validate_all_data_C.restype = None
+    lib.validate_all_data_c.restype = None
 
-    lib.validate_all_data_C(
+    lib.validate_all_data_c(
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -507,7 +507,7 @@ def validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids,
     check_err_code(ierr.value)
 
 
-#> tox_archive:create_zip_archive_c: Low-level function to create zip archive from keys and filenames.
+#> tox_data_archive:create_zip_archive_c: Low-level function to create zip archive from keys and filenames.
 def create_zip_archive(zip_filename: str, keys, filenames) -> None:
     """
     Low-level function to create zip archive from keys and filenames.
@@ -558,7 +558,7 @@ def create_zip_archive(zip_filename: str, keys, filenames) -> None:
     print(f"Successfully created archive: {zip_filename}")
 
 
-#> tox_archive:extract_zip_archive_c: Extract a zip archive created by create_zip_archive
+#> tox_data_archive:extract_zip_archive_c: Extract a zip archive created by create_zip_archive
 def extract_zip_archive(zip_filename):
     """
     Extract a zip archive created by create_zip_archive

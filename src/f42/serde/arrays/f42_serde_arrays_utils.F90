@@ -25,10 +25,10 @@ contains
             !!
             !! |    Type   |           Code          |
             !! |-----------|-------------------------|
-            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
-            !! |    real   |   CM_REAL_TYPE_CODE     |
-            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
-            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! |  integer  |   M_INTEGER_TYPE_CODE  |
+            !! |    real   |   M_REAL_TYPE_CODE     |
+            !! |  complex  |   M_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   M_LOGICAL_TYPE_CODE  |
             !! | character |      string length      |
             !!
         integer(int32), intent(in) :: ndim
@@ -66,10 +66,10 @@ contains
             !!
             !! |    Type   |           Code          |
             !! |-----------|-------------------------|
-            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
-            !! |    real   |   CM_REAL_TYPE_CODE     |
-            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
-            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! |  integer  |   M_INTEGER_TYPE_CODE  |
+            !! |    real   |   M_REAL_TYPE_CODE     |
+            !! |  complex  |   M_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   M_LOGICAL_TYPE_CODE  |
             !! | character |  expected string length |
             !!
         integer(int32), dimension(:), intent(in) :: expected_shape
@@ -110,10 +110,10 @@ contains
             !!
             !! |    Type   |           Code          |
             !! |-----------|-------------------------|
-            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
-            !! |    real   |   CM_REAL_TYPE_CODE     |
-            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
-            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! |  integer  |   M_INTEGER_TYPE_CODE  |
+            !! |    real   |   M_REAL_TYPE_CODE     |
+            !! |  complex  |   M_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   M_LOGICAL_TYPE_CODE  |
             !! | character |      string length      |
             !!
         integer(int32), intent(out) :: ndims
@@ -166,10 +166,10 @@ contains
             !!
             !! |    Type   |           Code          |
             !! |-----------|-------------------------|
-            !! |  integer  |   CM_INTEGER_TYPE_CODE  |
-            !! |    real   |   CM_REAL_TYPE_CODE     |
-            !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
-            !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+            !! |  integer  |   M_INTEGER_TYPE_CODE  |
+            !! |    real   |   M_REAL_TYPE_CODE     |
+            !! |  complex  |   M_COMPLEX_TYPE_CODE  |
+            !! |  logical  |   M_LOGICAL_TYPE_CODE  |
             !! | character |      string length      |
             !!
         integer(int32), intent(out) :: ierr
@@ -221,10 +221,10 @@ subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, n
         !!
         !! |    Type   |           Code          |
         !! |-----------|-------------------------|
-        !! |  integer  |   CM_INTEGER_TYPE_CODE  |
-        !! |    real   |   CM_REAL_TYPE_CODE     |
-        !! |  complex  |   CM_COMPLEX_TYPE_CODE  |
-        !! |  logical  |   CM_LOGICAL_TYPE_CODE  |
+        !! |  integer  |   M_INTEGER_TYPE_CODE  |
+        !! |    real   |   M_REAL_TYPE_CODE     |
+        !! |  complex  |   M_COMPLEX_TYPE_CODE  |
+        !! |  logical  |   M_LOGICAL_TYPE_CODE  |
         !! | character |      string length      |
         !!
 

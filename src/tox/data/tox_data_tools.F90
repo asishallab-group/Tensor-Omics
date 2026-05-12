@@ -541,8 +541,8 @@ contains
 end module tox_data_tools
 
 !> C binding for reading gene IDs from a gene expression tsv file
-subroutine read_gene_ids_from_tsv_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
-                                         n_header_rows, gene_col, ierr) bind(C, name="read_gene_ids_from_tsv_file_C")
+subroutine read_gene_ids_from_tsv_file_c(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
+                                         n_header_rows, gene_col, ierr) bind(C, name="read_gene_ids_from_tsv_file_c")
     use iso_c_binding, only: c_int, c_char
     use tox_errors, only: set_ok, is_err
     use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
@@ -593,14 +593,14 @@ subroutine read_gene_ids_from_tsv_file_C(filename_raw, fn_len, gene_ids_raw, gen
     do i = 1, n_genes
         call string_as_c_char_1d(trim(gene_ids(i)), gene_ids_raw(:, i))
     end do
-end subroutine read_gene_ids_from_tsv_file_C
+end subroutine read_gene_ids_from_tsv_file_c
 
 !> C binding for reading expression vectors from files
-subroutine read_expression_vectors_tsv_C(file_list_raw, file_list_len, n_files, &
+subroutine read_expression_vectors_tsv_c(file_list_raw, file_list_len, n_files, &
                                          gene_ids_raw, gene_ids_len, n_genes, &
                                          expression_vectors, n_samples, &
                                          n_header_rows, gene_col, value_cols, &
-                                         n_value_cols, ierr, delimiter_raw) bind(C, name="read_expression_vectors_tsv_C")
+                                         n_value_cols, ierr, delimiter_raw) bind(C, name="read_expression_vectors_tsv_c")
     use iso_c_binding, only: c_int, c_double, c_char
     use tox_data_tools, only: read_expression_vectors_tsv
     use tox_errors, only: set_ok, is_err, check_io_stat
@@ -687,11 +687,11 @@ subroutine read_expression_vectors_tsv_C(file_list_raw, file_list_len, n_files, 
 
     if (is_err(ierr)) return
 
-end subroutine read_expression_vectors_tsv_C
+end subroutine read_expression_vectors_tsv_c
 
 !> C binding for reading family file
-subroutine read_orthofinder_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
-                                   family_ids_raw, family_ids_len, n_families, gene_to_fam, ierr) bind(C, name="read_orthofinder_file_C")
+subroutine read_orthofinder_file_c(filename_raw, fn_len, gene_ids_raw, gene_ids_len, n_genes, &
+                                   family_ids_raw, family_ids_len, n_families, gene_to_fam, ierr) bind(C, name="read_orthofinder_file_c")
     use iso_c_binding, only: c_int, c_char
     use tox_errors, only: set_ok, is_err
     use tox_data_tools, only: read_orthofinder_file
@@ -759,11 +759,11 @@ subroutine read_orthofinder_file_C(filename_raw, fn_len, gene_ids_raw, gene_ids_
     do i = 1, n_families
         call string_as_c_char_1d(trim(adjustl(family_ids(i))), family_ids_raw(:, i))
     end do
-end subroutine read_orthofinder_file_C
+end subroutine read_orthofinder_file_c
 
 !> C binding for filtering unassigned genes
-subroutine filter_unassigned_genes_C(gene_ids_raw, gene_ids_len, n_genes, &
-                                     gene_to_fam, mask, n_genes_kept, ierr) bind(C, name="filter_unassigned_genes_C")
+subroutine filter_unassigned_genes_c(gene_ids_raw, gene_ids_len, n_genes, &
+                                     gene_to_fam, mask, n_genes_kept, ierr) bind(C, name="filter_unassigned_genes_c")
     use iso_c_binding, only: c_int, c_char
     use iso_fortran_env, only: int32
     use tox_errors, only: set_ok, set_err_once, ERR_INVALID_INPUT, is_err, check_io_stat
@@ -814,4 +814,4 @@ subroutine filter_unassigned_genes_C(gene_ids_raw, gene_ids_len, n_genes, &
     do i = 1, n_genes
         call logical_as_c_int(mask_logical(i), mask(i))
     end do
-end subroutine filter_unassigned_genes_C
+end subroutine filter_unassigned_genes_c

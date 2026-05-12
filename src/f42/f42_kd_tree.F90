@@ -347,7 +347,7 @@ pure subroutine build_kd_index_c(points, n_dimensions, n_points, kd_indices, dim
 
     ! Call the original implementation
     call build_kd_index_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
-end subroutine build_kd_index_C
+end subroutine build_kd_index_c
 
 !> C interface for building spherical KD index
 pure subroutine build_spherical_kd_c(points, n_dimensions, n_points, kd_indices, dimension_order, ierr) bind(C, name="build_spherical_kd_c")
@@ -378,4 +378,4 @@ pure subroutine build_spherical_kd_c(points, n_dimensions, n_points, kd_indices,
 
     ! Call the original implementation
     call build_spherical_kd_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
-end subroutine build_spherical_kd_C
+end subroutine build_spherical_kd_c

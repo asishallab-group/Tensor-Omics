@@ -49,7 +49,7 @@ def _readonly(*arrays: np.ndarray) -> None:
             # If you need to modify them (e.g., for plotting), use `.copy()`.
 
 
-#> f42_array_utils:get_array_metadata_c: Helper function to read dimensions of integer/real array
+#> f42_serde_arrays_utils:get_array_metadata_c: Helper function to read dimensions of integer/real array
 def tox_get_array_metadata(filename, max_dims=5):
     """
     Read dimensions (and optionally character length) of a serialized array file.
@@ -101,7 +101,7 @@ def tox_get_array_metadata(filename, max_dims=5):
     }
 
 
-#> f42_serialize_int:serialize_int_nd_c: Serialize an n-dimensional array of type 'int'
+#> f42_serde_arrays_serialize_int:serialize_int_nd_c: Serialize an n-dimensional array of type 'int'
 def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional int32 array to a binary file.
@@ -142,7 +142,7 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_int:deserialize_int_nd_c: Deserialize an n-dimensional array of type 'int'
+#> f42_serde_arrays_deserialize_int:deserialize_int_nd_c: Deserialize an n-dimensional array of type 'int'
 def tox_deserialize_int_nd(filename):
     """
     Deserialize an n-dimensional int32 array from a binary file.
@@ -183,7 +183,7 @@ def tox_deserialize_int_nd(filename):
     return arr
 
 
-#> f42_serialize_real:serialize_real_nd_c: Serialize an n-dimensional array of type 'float'
+#> f42_serde_arrays_serialize_real:serialize_real_nd_c: Serialize an n-dimensional array of type 'float'
 def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional float64 array to a binary file.
@@ -226,7 +226,7 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_real:deserialize_real_nd_c: Deserialize an n-dimensional array of type 'float'
+#> f42_serde_arrays_deserialize_real:deserialize_real_nd_c: Deserialize an n-dimensional array of type 'float'
 def tox_deserialize_real_nd(filename):
     """
     Deserialize an n-dimensional float64 array from a binary file.
@@ -258,7 +258,7 @@ def tox_deserialize_real_nd(filename):
     return arr
 
 
-#> f42_serialize_char:serialize_char_nd_c: Serialize an n-dimensional array of type 'str'
+#> f42_serde_arrays_serialize_char:serialize_char_nd_c: Serialize an n-dimensional array of type 'str'
 def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional Unicode character array to a binary file.
@@ -302,7 +302,7 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_char:deserialize_char_nd_c: Deserialize an n-dimensional array of type 'str'
+#> f42_serde_arrays_deserialize_char:deserialize_char_nd_c: Deserialize an n-dimensional array of type 'str'
 def tox_deserialize_char_nd(filename):
     """
     Deserialize an n-dimensional Unicode array from a binary file.
@@ -347,7 +347,7 @@ def tox_deserialize_char_nd(filename):
     return _c_char_matrix_to_strings(raw_chars, clen)
 
 
-#> f42_serialize_logical:serialize_logical_nd_c: Serialize an n-dimensional array of type 'bool'
+#> f42_serde_arrays_serialize_logical:serialize_logical_nd_c: Serialize an n-dimensional array of type 'bool'
 def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional boolean array to a binary file.
@@ -393,7 +393,7 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_logical:deserialize_logical_nd_c: Deserialize an n-dimensional array of type 'bool'
+#> f42_serde_arrays_deserialize_logical:deserialize_logical_nd_c: Deserialize an n-dimensional array of type 'bool'
 def tox_deserialize_logical_nd(filename):
     """
     Deserialize an n-dimensional boolean array from a binary file.
@@ -426,7 +426,7 @@ def tox_deserialize_logical_nd(filename):
     return arr_int.astype(bool)
 
 
-#> f42_serialize_complex:serialize_complex_nd_c: Serialize an n-dimensional array of type 'complex'
+#> f42_serde_arrays_serialize_complex:serialize_complex_nd_c: Serialize an n-dimensional array of type 'complex'
 def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     """
     Serialize an n-dimensional complex128 array to a binary file.
@@ -468,7 +468,7 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     check_err_code(ierr.value)
 
 
-#> f42_deserialize_complex:deserialize_complex_nd_c: Deserialize an n-dimensional array of type 'complex'
+#> f42_serde_arrays_deserialize_complex:deserialize_complex_nd_c: Deserialize an n-dimensional array of type 'complex'
 def tox_deserialize_complex_nd(filename):
     """
     Deserialize an n-dimensional complex128 array from a binary file.

@@ -123,13 +123,10 @@ run_real_data_example <- function() {
   centroids_matrix <- as.matrix(mapping_data$centroids[, -1])  # Exclude Orthogroup column
   centroids_matrix <- t(centroids_matrix)  # Transpose for Fortran column-major format
   
-  # Convert matrices to vectors (column-major format for Fortran)
-  genes_vector <- as.vector(gene_expr_matrix)
-  centroids_vector <- as.vector(centroids_matrix)
   d <- nrow(gene_expr_matrix)
   
   # Call distance_to_centroid wrapper function directly from tensoromics_functions.R
-  distances <- tox_distance_to_centroid(genes_vector, centroids_vector, mapping_data$gene_to_family, d)
+  distances <- tox_distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family)
   
   # Create results dataframe
   results_df <- data.frame(

@@ -75,6 +75,7 @@ string_to_raw <- function(s, len) {
   raw_bytes[1:len]  # Ensure exact length
 }
 
+#> tox_data_read_write:read_gene_ids_from_tsv_file_c: Read gene ids from a tsv file
 #' Read gene IDs from a TSV file (R wrapper)
 #' @param filename Path to TSV file
 #' @param n_genes Number of genes (rows)
@@ -90,6 +91,7 @@ read_gene_ids_from_tsv_file <- function(filename, n_genes, gene_ids_len, n_heade
   list(gene_ids = gene_ids, ierr = res$ierr)
 }
 
+#> tox_data_read_write:read_expression_vectors_tsv_c: Read expression vectors from given tabular (csv/tsv) files
 #' Read expression vectors from TSV file(s) (R wrapper)
 #' @param file_list Character vector of file paths (length 1 for single file)
 #' @param gene_ids Character vector of gene IDs (order to match)
@@ -117,6 +119,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, n_samples, n_header
   list(expression_vectors = res$expression_vectors, ierr = res$ierr)
 }
 
+#> tox_data_read_write:read_orthofinder_file_c: Read an orthofinder family file and map genes to families
 #' Read gene family assignments from a file
 #' @param filename Character string of the filename
 #' @param gene_ids Character vector of gene IDs to match
@@ -142,6 +145,7 @@ read_orthofinder_file <- function(filename, gene_ids, n_families, family_len) {
   )
 }
 
+#> tox_data_tools:filter_unassigned_genes_c: Filter out genes that are not assigned to any family (where gene_to_fam == 0).
 #' Filter out genes without family assignments
 #' @param gene_ids Character vector of gene IDs
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
@@ -169,6 +173,7 @@ filter_unassigned_genes <- function(gene_ids, expression_vectors, gene_to_fam) {
 # R wrappers for validation routines (via C bindings)
 # Uses raw conversion helpers: strings_to_raw_matrix, raw_matrix_to_strings
 
+#> tox_data_validation:validate_data_structure_c: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
 #' Validate overall data structure
 #' @param n_genes Number of genes
 #' @param n_families Number of gene families
@@ -203,6 +208,7 @@ validate_data_structure <- function(n_genes, n_families, n_samples, d,
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_gene_to_family_mapping_c: Validate gene to family mapping
 #' Validate gene to family mapping
 #' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)
 #' @param n_genes Number of genes
@@ -213,6 +219,7 @@ validate_gene_to_family_mapping <- function(gene_to_fam, n_genes, n_families) {
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_expression_data_c: Validate expression data
 #' Validate expression data
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
 #' @param n_genes Number of genes
@@ -228,6 +235,7 @@ validate_expression_data <- function(expression_vectors, n_genes, n_samples, che
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_family_centroids_c: Validate family centroids, checks for NaN/Inf
 #' Validate family centroids
 #' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)
 #' @param n_families Number of gene families
@@ -243,6 +251,7 @@ validate_family_centroids <- function(family_centroids, n_families, n_samples) {
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_shift_vectors_c: Validate shift vectors, checks if datatypes are correct and if the general structure matches
 #' Validate shift vectors
 #' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
@@ -263,6 +272,7 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_string_array_uniqueness_c: Validate uniqueness of strings
 #' Validate uniqueness of string array
 #' @param string_arr Character vector of gene IDs
 #' @param n_strings Number of genes
@@ -275,6 +285,7 @@ validate_string_array_uniqueness <- function(string_arr, n_strings) {
   list(ierr = ierr)
 }
 
+#> tox_data_validation:validate_all_data_c: Comprehensive validation of all data components. This function performs all individual validations in one go.
 #' Validate all data components together
 #' @param n_genes Number of genes
 #' @param n_families Number of gene families
@@ -307,10 +318,12 @@ validate_all_data <- function(n_genes, n_families, n_samples,
 }
 
 
+#> tox_data_archive:create_zip_archive_c: Low-level function to create zip archive from keys and filenames.
 create_zip_archive <- function(zip_filename, keys, filenames) {
   stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
 
+#> f42_helper: Save tox data to zip archive
 #' Save standard conform tox data directly to zip archive
 #' @param zip_filename Name of the zip file to create
 #' @param gene_ids Character vector of gene IDs
@@ -413,6 +426,7 @@ save_tox_data <- function(zip_filename,
 
 
 
+#> f42_helper: Read tox data from zip archive
 #' Load standard conform tox data directly from zip archive
 #' @param zip_filename Name of the zip file to read from
 #' @param gene_ids If not NULL, will attempt to read gene IDs from archive
@@ -431,6 +445,7 @@ read_tox_data <- function(zip_filename,
   stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
 
+#> tox_data_archive:extract_zip_archive_c: Extract a zip archive created by create_zip_archive
 extract_zip_archive <- function(zip_filename) {
   stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
