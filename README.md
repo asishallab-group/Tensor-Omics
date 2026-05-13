@@ -71,7 +71,7 @@ test_runner.sh  # Compile and generate unit test
 * **`/misc`** contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
 
 * **`/python`** includes python scripts that coordinate analysis workflows
-* **`/r`** includes R scripts that coordinate analysis workflows
+* **`/rcpp`** includes R scripts that coordinate analysis workflows
 * **`/snippets/`** includes frequently used or testable units of logic reused across development stages.
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
@@ -107,7 +107,7 @@ test_runner.sh  # Compile and generate unit test
 
 * Designed specifically for Fortran (unlike Doxygen which is general-purpose).
 * Supports documentation of modules, subroutines, functions, derived types, and more.
-* Uses `!!!` or `!>` comment syntax to annotate code.
+* Uses `!!` or `!>` comment syntax to annotate code.
 * Ideal for scientific and engineering projects using modern Fortran.
 * Easy to integrate into Git-based workflows.
 
@@ -159,10 +159,18 @@ Usage:
 → Uses the `ifx` compiler with maximum performance flags.
 
 ```bash
-./build.sh --max-performance FC=ifx
+FC=ifx ./build.sh --max-performance
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+#### Further Options
+
+- `--keep-fpm-toml`: Different compilers need different libraries sometimes, thus the actual `fpm.toml` is being temporarily generated from `.fpm.toml` and removed after compilation. For keeping the file, use this option.
+- `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then.
+- `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
+- `--fc=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`. *Note that `--compiler` beats `--fc` if both specified*
+- `-D<directive>`: Define a preprocessor directive
+
+*Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores, e.g. `--keep-fpm-toml` or `--keep_fpm.toml` becoming `KEEP_FPM_TOML` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $COMPILER > --fc > $FC`.*
 
 ---
 
@@ -193,6 +201,16 @@ The test suite framework provides a robust and scalable system for organizing an
 Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
 
 See `test/readme.md` for details.
+
+#### Command Line Options
+
+Additionally to the options from `build.sh` specified above, the `test_runner.sh` has some extra options:
+
+- `--skip-kinds-test`: The framework has a compile-time safeguard to ensure that C types match our Fortran kinds. As this is usually the case, the test script enforces mismatches and checks correct behavior. This option can skip that, which might be handy, because it will always pass on the same platform, while triggering a `--clean-build` afterwards, which takes its time.
+- `--reuse-mod-files`: By default, all module files for test modules created by `fpm` will be removed to enforce recompilation of the tests. This is because `fpm` doesn't recognize tiny but critical changes in `src`. As it usually works fine and saves time for test compilation, feel free to use this option when debugging tests.
+- `--test-target=<target>`: Inspect `.fpm.toml` to see which test targets exist. Currently there is only `run_tests`, which is the default here.
+- `--keep-files`: All temporary files created by the runner here in the root of the repo will be removed by default. To keep them for debugging, add this option.
+- `--keep-<ext>`: The more fine-grained variant to `--keep-files`, so e.g. `--keep-zip` or `--keep-txt` will keep the temporary `*.txt` and `*.zip` files created during tests.
 
 ---
 

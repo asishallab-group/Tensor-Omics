@@ -24,7 +24,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "-I." --flag "$MAX_PERF_FLAG" -- $ARGS
+  LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "-I." -- $ARGS
 }
 
 function get_alignment() {
@@ -71,6 +71,10 @@ function get_flags() {
   # Libraries: greps the libraries from .fpm.toml and translates them from '"<lib>"' to '-l<lib>'
   printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
 
+  if [[ $MAX_PERFORMANCE ]]; then
+    echo -en "-DMAX_PERFORMANCE "
+  fi
+
   # Detect compiler and choose appropriate profile:
   if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
     echo "-O2 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
@@ -82,14 +86,11 @@ function get_flags() {
 }
 
 function handle_args() {
-  MAX_PERF_FLAG=""
   ARGS=""
   DIRECTIVES=""
   
   for arg in "$@"; do
-    if [[ "$arg" == "--max-performance" ]]; then
-      MAX_PERF_FLAG="-DMAX_PERFORMANCE"
-    elif [[ "$arg" == -D* ]]; then
+    if [[ "$arg" == -D* ]]; then
       DIRECTIVES="$DIRECTIVES $arg"
     # genericly handle optional flags
     elif [[ "$arg" == --* ]]; then
