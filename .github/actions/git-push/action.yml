@@ -1,0 +1,49 @@
+name: 'Push certain files/directories to GitHub'
+description: 'Installs git, sets config, adds files and pushes the new commit to GitHub (only if actor is not the CI bot)'
+
+inputs:
+  message:
+    description: 'The message of the new commit'
+    required: true
+  files:
+    description: 'The files/dirs whitespace-separated to be added to the commit'
+    default: '* .*'
+  bot_name:
+    description: 'name of the bot to appear as git user'
+    required: true
+  token:
+    description: 'GitHub token to use for push'
+    required: true
+  repository:
+    description: 'Name of the repository'
+    default: 'asishallab-group/Tensor-Omics'
+  branch:
+    description: 'Name of the branch to push to'
+    required: true
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install git
+      shell: bash
+      run: |
+        pacman -Sy --needed --noconfirm git
+        pacman -Scc --noconfirm
+        git --version
+
+    - name: Set up git and push
+      shell: bash
+      run: |
+        git init
+        git config --global --add safe.directory '*'
+        git config user.name "${{ inputs.bot_name }}"
+        git config user.email "${{ inputs.bot_name }}@users.noreply.github.com"
+
+        git remote add origin https://github.com/${{ inputs.repository }}.git
+        git fetch origin
+        git reset --mixed origin/${{ inputs.branch }}
+
+        git add -f ${{ inputs.files }}
+        git commit -m "${{ inputs.message }}" || echo "No changes to commit"
+        git push https://x-access-token:${{ inputs.token }}@github.com/${{ inputs.repository }}.git HEAD:${{ inputs.branch }}

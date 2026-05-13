@@ -1,0 +1,24 @@
+name: 'Install R'
+description: 'Installs R and necessary dependencies'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install R and the dependencies needed for Rcpp
+      shell: bash
+      run: |
+        pacman -Sy --needed --noconfirm r make gcc
+        pacman -Scc --noconfirm
+
+    - name: Show R version for reproducibility
+      shell: bash
+      run: R --version
+
+    - name: Install needed R packages
+      shell: bash
+      run: |
+        Rscript -e 'install.packages("Rcpp", repos="https://cloud.r-project.org")'
+
+    - name: Show R packages' versions for reproducibility
+      shell: bash
+      run: Rscript -e 'installed.packages()[, c("Package", "Version")]'

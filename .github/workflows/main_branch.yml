@@ -1,0 +1,68 @@
+name: 'Workflow related to main branch events'
+description: 'Triggers all workflows needed when updating main branch'
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/main_branch.yml
+      - .github/workflows/run_tests.yml
+      - .github/actions/install-Python/*
+      - .github/actions/git-push/*
+      - helper/generate_snippets.py
+      - rcpp/**
+      - python/**
+      - src/**
+      - test/**
+      - test_runner.sh
+      - build.sh
+      - build_utils.sh
+      - ford.yml
+      - .fpm.toml
+jobs:
+  run_tests:
+    if: ${{ github.actor != vars.CI_BOT_NAME }}
+    strategy:
+      matrix:
+        compiler: [ifx, gfortran]
+    uses: ./.github/workflows/run_tests.yml
+    with:
+      compiler: ${{ matrix.compiler }}
+
+      ref: main
+
+  generate_snippets_and_docs:
+    needs: run_tests
+    if: ${{ success() && (github.actor != vars.CI_BOT_NAME ) }}
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Python
+        uses: ./.github/actions/install-Python
+        with:
+          packages: ford
+
+      - name: Generate snippets
+        run: python helper/generate_snippets.py
+
+      - name: Generate docs
+        run: ford ford.yml
+
+      - name: Commit
+        uses: ./.github/actions/git-push
+        with:
+          message: Generated Snippets and Docs for ${{ github.sha }}
+          files: doc snippets
+          bot_name: ${{ vars.CI_BOT_NAME }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
