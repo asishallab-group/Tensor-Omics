@@ -10,7 +10,7 @@ function init() {
   COMPILER=$(get_compiler)
   if [[ -z $(which $COMPILER) ]]; then
     stderr "$COMPILER not installed"
-    exit
+    exit 1
   fi
   FLAGS=$(get_flags)
 }
