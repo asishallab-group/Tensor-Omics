@@ -2921,6 +2921,10 @@ List tox_compute_rdi_rcpp(NumericVector distances,
     NumericVector rdi(n_genes);
     NumericVector sorted_rdi(n_genes);
     IntegerVector perm(n_genes);
+    for (int i = 0; i < n_genes; ++i)
+    {
+      perm[i] = i + 1;
+    }
     IntegerVector stack_left(n_genes);
     IntegerVector stack_right(n_genes);
 
