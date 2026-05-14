@@ -20,7 +20,7 @@ runs:
         bash install_ifx.sh -a -s --eula accept
         rm install_ifx.sh
         source /opt/intel/oneapi/setvars.sh
-        env | grep oneapi >> $GITHUB_ENV
+        env >> $GITHUB_ENV
 
     - name: Install GNU compiler gfortran
       if: ${{ inputs.compiler == 'gfortran' }}

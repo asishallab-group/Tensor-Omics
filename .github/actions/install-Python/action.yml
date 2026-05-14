@@ -21,7 +21,7 @@ runs:
       run: |
         python -m venv .venv
         source .venv/bin/activate
-        env | grep '\.venv' >> $GITHUB_ENV
+        env >> $GITHUB_ENV
 
     - name: Install needed Python packages
       shell: bash
