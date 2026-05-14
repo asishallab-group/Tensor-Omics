@@ -20,15 +20,12 @@ runs:
       shell: bash
       run: |
         python -m venv .venv
-        echo source .venv/bin/activate >> ~/tox_init.sh
-        echo python --version >> ~/tox_init.sh
-        echo pip --version >> ~/tox_init.sh
-        echo pip list >> ~/tox_init.sh
+        source .venv/bin/activate
+        env | grep '\.venv' >> $GITHUB_ENV
 
     - name: Install needed Python packages
       shell: bash
       run: |
-        source ~/tox_init.sh
         pip install --upgrade pip
         pip install ${{ inputs.packages }}
 
