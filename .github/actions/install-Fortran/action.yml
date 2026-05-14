@@ -16,7 +16,7 @@ runs:
       run: |
         pacman -Sy --needed --noconfirm gcc  # ifx needs some libs from gcc
         pacman -Scc --noconfirm
-        curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/724303ca-6927-4327-a560-e0aabb55b010/intel-fortran-compiler-2025.3.1.16_offline.sh -o install_ifx.sh
+        curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/176ca159-bee8-44f2-9164-db26f95de382/intel-fortran-compiler-2026.0.0.573_offline.sh -o install_ifx.sh
         bash install_ifx.sh -a -s --eula accept
         rm install_ifx.sh
         source /opt/intel/oneapi/setvars.sh
