@@ -2,7 +2,7 @@
 !> Unit test suite for binary_search_tree module.
 module mod_test_bst
     use f42_binary_search_tree
-    use tox_errors, only: is_ok, set_ok
+    use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
@@ -37,8 +37,8 @@ contains
 
         call random_array(x, n)
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) error stop
-        ! Check monotonicity of x(ix)
+        call assert_equal_int(ierr, ERR_OK, "bst construction failed")
+        ! Check monotonicity of x
         is_sorted = .true.
         do i = 2, n
             if (x(ix(i)) < x(ix(i - 1))) then
@@ -47,6 +47,9 @@ contains
             end if
         end do
 
+        if (.not. is_sorted) then
+            print "(G0)", x
+        end if
         call assert_true(is_sorted, "BST index test FAILED: x(ix) is not monotonic.")
     end subroutine test_bst_index_construction
 
@@ -61,15 +64,9 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Build bst index failed for sorted values: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for sorted values')
         val = get_sorted_value(x, ix, 3, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Get sorted value failed: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Get sorted value failed')
 
         call assert_equal_real(val, 3.0d0, 1d-12, "get_sorted_value returned incorrect value")
     end subroutine test_bst_sorted_values
@@ -84,15 +81,9 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Build bst index failed: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed')
         call bst_range_query(x, ix, n, 2.5d0, 7.5d0, res_ix, res_n, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Bst range query failed: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Bst range query failed')
 
         call assert_true(res_n == 5, "BST range query returned incorrect count")
     end subroutine test_bst_range_query
@@ -120,10 +111,7 @@ contains
         integer(int32) :: ix(n), ierr
 
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Build bst index failed for single element: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for single element')
         call assert_equal_int(ix(1), 1, "BST single element index incorrect")
         call assert_equal_real(x(ix(1)), 42.0d0, 1d-12, "BST single element value incorrect")
     end subroutine test_bst_single_element
@@ -138,10 +126,7 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Build bst index failed for identical values: ', ierr
-            error stop
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for identical values')
         ! Should still be a valid permutation
         do i = 1, n
             call assert_true(ix(i) >= 1 .and. ix(i) <= n, "BST identical values index out of bounds")
@@ -159,10 +144,7 @@ contains
         call set_ok(ierr)
         call random_array(x, n)
         call build_bst_index(x, n, ix, ierr)
-        if (.not. is_ok(ierr)) then
-            write (*, *) 'Build bst index failed for large random values: ', ierr
-            error stop    ! Should still be a valid permutation
-        end if
+        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for large random values')
         ! Check monotonicity of x(ix)
         is_sorted = .true.
         do i = 2, n

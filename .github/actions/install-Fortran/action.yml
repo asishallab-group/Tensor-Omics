@@ -18,6 +18,7 @@ runs:
         pacman -Scc --noconfirm
         curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/724303ca-6927-4327-a560-e0aabb55b010/intel-fortran-compiler-2025.3.1.16_offline.sh -o install_ifx.sh
         bash install_ifx.sh -a -s --eula accept
+        rm install_ifx.sh
         source /opt/intel/oneapi/setvars.sh
         env | grep oneapi >> $GITHUB_ENV
 

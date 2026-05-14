@@ -57,13 +57,9 @@ contains
 
         integer(int32) :: i_perm
 
-        associate ( &
-            n_perm => size(perm, kind=int32) &
-            )
-            do concurrent(i_perm=1:n_perm) shared(perm)
-                perm(i_perm) = i_perm
-            end do
-        end associate
+        do concurrent(i_perm=1:size(perm, kind=int32)) shared(perm)
+            perm(i_perm) = i_perm
+        end do
     end subroutine init_perm
 
     !> AUTHOR_FRANZ_ERIC_SILL
