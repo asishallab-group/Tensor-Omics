@@ -43,12 +43,12 @@ contains
     integer(int32), intent(out) :: ierr
 
     integer(int32) :: i, family_idx, n_in_family, n_orth_in_fam
-    real(real64) :: median_dist, stddev_dist, mean_dist, sumsq
+    real(real64) :: stddev_dist, mean_dist, sumsq
     real(real64), parameter :: default_sigma = 0.5_real64, default_cutoff = 3.0_real64
     real(real64) :: sigma, cutoff
     integer(int32) :: j, m
     integer(int32) :: n_valid
-    real(real64) :: loess_pred(1,1)
+    real(real64) :: loess_pred(1,1), median_dist(1)
 
     dscale = 0.0_real64
     call set_ok(ierr)
@@ -95,7 +95,7 @@ contains
       mean_dist = sum(family_distances(1:n_in_family)) / n_in_family
       sumsq = sum((family_distances(1:n_in_family) - mean_dist)**2)
       stddev_dist = sqrt(sumsq / (n_in_family-1))
-      loess_x(family_idx) = median_dist
+      loess_x(family_idx) = median_dist(1)
       loess_y(family_idx) = stddev_dist
       n_valid = n_valid + 1
       indices_used(n_valid) = family_idx
@@ -130,7 +130,7 @@ contains
           median_dist = family_distances(perm_tmp((n_in_family+1)/2))
         end if
         ! Only pass first n_valid elements of LOESS arrays
-        call loess_smooth_2d(n_families, 1_int32, loess_x, loess_y, indices_used(1:n_valid), n_valid, [median_dist], &
+        call loess_smooth_2d(n_families, 1_int32, loess_x, loess_y, indices_used(1:n_valid), n_valid, median_dist, &
                 sigma, cutoff, loess_pred, ierr)
         dscale(family_idx) = loess_pred(1,1)
       else

@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensoromics_functions import (
     tox_compute_family_scaling, tox_compute_family_scaling_expert, tox_compute_rdi, tox_identify_outliers, tox_detect_outliers
 )
+from test_helpers import run_all_tests
 
 print("=== Testing outlier detection Python wrapper functions ===")
 print("Based on Fortran test suite with comprehensive test coverage")
@@ -379,37 +380,37 @@ def test_detect_outliers_edge_cases():
 # Run all tests
 # =====================
 
-def main():
-    print("\n=================================================")
-    print("    OUTLIER DETECTION FULL PYTHON INTERFACE TESTS")
-    print("=================================================\n")
+# def main():
+#     print("\n=================================================")
+#     print("    OUTLIER DETECTION FULL PYTHON INTERFACE TESTS")
+#     print("=================================================\n")
 
-    # compute_family_scaling tests
-    test_compute_family_scaling_basic()
-    test_compute_family_scaling_single_family()
-    test_compute_family_scaling_edge_cases()
-    test_tox_compute_family_scaling_expert()
-    test_compute_family_scaling_expert_input_validation()
+#     # compute_family_scaling tests
+#     test_compute_family_scaling_basic()
+#     test_compute_family_scaling_single_family()
+#     test_compute_family_scaling_edge_cases()
+#     test_tox_compute_family_scaling_expert()
+#     test_compute_family_scaling_expert_input_validation()
 
-    # compute_rdi tests
-    test_compute_rdi_basic()
-    test_compute_rdi_outlier_detection()
+#     # compute_rdi tests
+#     test_compute_rdi_basic()
+#     test_compute_rdi_outlier_detection()
 
-    # identify_outliers tests
-    test_identify_outliers_basic()
-    test_identify_outliers_no_outliers()
-    test_identify_outliers_all_outliers()
+#     # identify_outliers tests
+#     test_identify_outliers_basic()
+#     test_identify_outliers_no_outliers()
+#     test_identify_outliers_all_outliers()
 
-    # detect_outliers (complete pipeline) tests
-    test_detect_outliers_pipeline()
-    test_detect_outliers_performance()
-    test_detect_outliers_edge_cases()
+#     # detect_outliers (complete pipeline) tests
+#     test_detect_outliers_pipeline()
+#     test_detect_outliers_performance()
+#     test_detect_outliers_edge_cases()
 
-    print("=================================================")
-    print("             ALL TESTS COMPLETED")
-    print("=================================================")
-    print("If you see this message, all outlier detection Python interface tests passed! ✓")
+#     print("=================================================")
+#     print("             ALL TESTS COMPLETED")
+#     print("=================================================")
+#     print("If you see this message, all outlier detection Python interface tests passed! ✓")
 
 
 if __name__ == "__main__":
-    main()
+    run_all_tests(globals().values())

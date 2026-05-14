@@ -287,8 +287,11 @@ contains
             ! For 2D: use determinant directly
             orientation_sign = sign(1.0_real64, v1(1)*v2(2) - v1(2)*v2(1))
         case (3)
-            ! For 3D, use [1,2,3] directly
-            orientation_sign = cross_product_orientation_sign(v1, v2, n_dims, [1_int32, 2_int32, 3_int32])
+            block
+                integer(int32), dimension(3), parameter :: default_selected_axes = [1_int32, 2_int32, 3_int32]
+                ! For 3D, use [1,2,3] directly
+                orientation_sign = cross_product_orientation_sign(v1, v2, n_dims, default_selected_axes)
+            end block
         case (4:)
             ! For >3D, use selected_axes_for_signed
             orientation_sign = cross_product_orientation_sign(v1, v2, n_dims, selected_axes_for_signed)

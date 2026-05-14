@@ -1,6 +1,6 @@
 from error_handling import check_err_code
 
-#> f42_helper-import_libs: Import necessary packages
+#> f42_helper-import_libs: Import necessary packagesclock_hand_angle_between_vectors_c
 import numpy as np
 import ctypes
 import os
@@ -798,8 +798,8 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed=[1, 2,
     # Input validation and conversion
     v1 = np.ascontiguousarray(v1, dtype=np.float64)  # First vector
     v2 = np.ascontiguousarray(v2, dtype=np.float64)  # Second vector
-    selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)  # Axes for signed angle
     n_dims = len(v1)
+    selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)  # Axes for signed angle
     if len(v2) != n_dims:
         raise ValueError("v1 and v2 must have same length")
 

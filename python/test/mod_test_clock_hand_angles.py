@@ -397,7 +397,11 @@ def test_mixed_positive_negative():
     v1 = v1 / np.sqrt(np.sum(v1**2))
     v2 = v2 / np.sqrt(np.sum(v2**2))
     result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
-    assert np.isclose(result, -np.acos(v1 @ v2)), "Angle mismatch"
+    c1=v2[0]*v1[1]-v2[1]*v1[0]
+    c2=v2[1]*v1[2]-v2[2]*v1[1]
+    c3=v2[2]*v1[0]-v2[0]*v1[2]
+    sign = np.sign(c1*v1[0] + c2*v1[1] + c3*v1[2])
+    assert np.isclose(result, sign * np.acos(v1 @ v2)), "Angle mismatch"
 
 
 if __name__ == "__main__":
