@@ -51,7 +51,7 @@ echo "Running tests..."
 
 # By default same behavior as compiling manually, as fpm has some struggles sometimes with correct linking, e.g. some routine changes in src, but the tests use the old implementation.
 if [[ -z $REUSE_MOD_FILES ]]; then
-  rm build/$COMPILER_*/**/*mod_test*
+  rm -f build/$COMPILER_*/**/*mod_test*
 fi
 
 # Run the executable
