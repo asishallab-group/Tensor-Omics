@@ -15,7 +15,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Build the BST index by sorting indices using values in x.
-    pure subroutine build_bst_index(values, n_values, sorted_indices, ierr)
+    subroutine build_bst_index(values, n_values, sorted_indices, ierr)
         integer(int32), intent(in) :: n_values
             !! Number of elements in values array
         real(real64), intent(in) :: values(n_values)
@@ -31,7 +31,14 @@ contains
         if (is_err(ierr)) return
 
         call init_perm(sorted_indices)
+        print "(*(G0, :, ', '))", sorted_indices
+        print *
         call sort_array_heapsort(values, sorted_indices)
+        print "(*(G0, :, ', '))", sorted_indices
+        print *
+        call sort_array_heapsort(values, sorted_indices, n_values)
+        print "(*(G0, :, ', '))", sorted_indices
+        print *
     end subroutine build_bst_index
 
     !> AUTHOR_AARON_SCHROEDER
@@ -137,7 +144,7 @@ pure subroutine bst_range_query_c(values, sorted_indices, n_values, lower_bound,
 end subroutine bst_range_query_c
 
 !> Wrapper using C for building BST index usable by python
-pure subroutine build_bst_index_c(values, n_values, sorted_indices, ierr) &
+subroutine build_bst_index_c(values, n_values, sorted_indices, ierr) &
     bind(C, name='build_bst_index_c')
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use f42_binary_search_tree
