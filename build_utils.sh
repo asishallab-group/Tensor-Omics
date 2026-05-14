@@ -81,7 +81,7 @@ function get_flags() {
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
-    echo "-O2 -fopenmp -funroll-loops -ftree-vectorize -fPIC"
+    echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   fi
 }
 

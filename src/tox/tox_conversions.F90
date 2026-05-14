@@ -131,7 +131,8 @@ contains
         M_ALLOCATE(character(len=n_rows) :: str_out(n_strings))
 
         ! create strings
-        do concurrent (i_str = 1:n_strings) local(tmp_ierr) shared(c_char_array, string, ierr, str_out)
+        ! GFORTRAN BUG: do concurrent (i_str = 1:n_strings) local(tmp_ierr) shared(c_char_array, string, ierr, str_out)
+        do i_str = 1, n_strings
             call c_char_1d_as_string(c_char_array(:, i_str), string, tmp_ierr)
             if (is_err(tmp_ierr)) ierr = tmp_ierr
 
@@ -149,7 +150,8 @@ contains
 
         integer(int32) :: i_str
 
-        do concurrent (i_str = 1:size(strings, 1)) shared(strings, c_char_array)
+        ! GFORTRAN BUG: do concurrent (i_str = 1:size(strings, 1)) shared(strings, c_char_array)
+        do i_str = 1, size(strings, 1)
             call string_as_c_char_1d(strings(i_str), c_char_array(:, i_str))
         end do
     end subroutine string_as_c_char_2d

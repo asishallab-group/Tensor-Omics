@@ -54,7 +54,8 @@ contains
         real(real64) :: sum_squared_diff
 
         sum_squared_diff = 0.0_real64
-        do concurrent (i_element = 1:n_elements) shared(vec1, vec2) reduce(+:sum_squared_diff)
+        ! GFORTRAN BUG: do concurrent (i_element = 1:n_elements) shared(vec1, vec2) reduce(+:sum_squared_diff)
+        do i_element = 1, n_elements
             sum_squared_diff = sum_squared_diff + (vec1(i_element) - vec2(i_element))**2
         end do
         result = sqrt(sum_squared_diff)

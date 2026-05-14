@@ -136,11 +136,11 @@ See `snippets/readme.md` for details.
 
 The `build.sh` script will compile all the files located in the `src/` directory.
 
-It creates a directory for the compiled objects under `/build/<compiler>/`, and the resulting shared library will be named `libtensor-omics.so`.
+It creates a directory for the compiled objects under `/build/<compiler>_<hash>/`, and the resulting shared library will be `build/libtensor-omics.so`.
 
 This `.so` file is the one that must be loaded from R or Python.
 
-Every time the code is compiled, a new `/build/<compiler>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
+Every time the code is compiled, a new `/build/<compiler>_<hash>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
 
 Usage:
 
@@ -159,7 +159,7 @@ Usage:
 → Uses the `ifx` compiler with maximum performance flags.
 
 ```bash
-FC=ifx ./build.sh --max-performance
+./build.sh --max-performance --compiler=ifx
 ```
 
 #### Further Options

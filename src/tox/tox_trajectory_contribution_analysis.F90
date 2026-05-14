@@ -792,7 +792,8 @@ contains
 
         do i_sample = 1, n_samples
             ! ---- Step 1: velocity contributions ----
-            do concurrent (i_factor = 1:n_factors) shared(trajectories, n_samples, n_timepoints, i_sample, tmp_factors)
+            ! GFORTRAN BUG: do concurrent (i_factor = 1:n_factors) shared(trajectories, n_samples, n_timepoints, i_sample, tmp_factors)
+            do i_factor = 1, n_factors
                 call compute_factor_velocity_from_trajectories_helper(trajectories, n_factors, n_samples, n_timepoints, i_factor, i_sample, tmp_factors(:, i_factor))
             end do
 
