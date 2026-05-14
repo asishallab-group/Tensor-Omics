@@ -77,11 +77,12 @@ function get_flags() {
 
   # Detect compiler and choose appropriate profile:
   if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
-    echo "-O2 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    # echo "-O2 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
-    echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
+    echo "-O0 -g -fbacktrace -fcheck=all -fPIC"
   fi
 }
 

@@ -71,7 +71,7 @@ contains
             return
         end if
 
-        call calc_percentile_helper(abs_residual_pool(:last_non_nan), abs_residual_pool_perm(:last_non_nan), actual_quantile, shared_residual_range)
+        call calc_percentile_helper(abs_residual_pool, abs_residual_pool_perm(:last_non_nan), actual_quantile, shared_residual_range)
     end subroutine determine_shared_residual_range_helper
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2

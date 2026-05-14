@@ -28,44 +28,6 @@ contains
         all_tests(10) = test_case("test_omics_field_RAP_projection_concrete_example", test_concrete_example)
     end function get_all_tests_rap_tools_omics_field_RAP_projection
 
-    !> Wrapper function for the actual call of `call_omics_field_RAP_projection`
-    subroutine call_omics_field_RAP_projection(test_name, vecs, axes_mask, vecs_mask, result_projections)
-        implicit none
-
-        character(len=*), intent(in) :: test_name
-        real(real64), dimension(:, :), intent(in) :: vecs
-        logical, dimension(:), intent(in) :: axes_mask, vecs_mask
-        real(real64), dimension(:, :), intent(out), optional :: result_projections
-
-        integer(int32) :: n_axes, n_vecs, n_selected_axes, n_selected_vecs, ierr
-        integer :: i_vec
-        real(real64), allocatable :: projections(:, :)
-
-        n_axes = size(axes_mask)
-        n_vecs = size(vecs_mask)
-        n_selected_axes = count(axes_mask)
-        n_selected_vecs = count(vecs_mask)
-
-        allocate (projections(n_selected_axes, n_selected_vecs))
-        projections = 1
-
-        call omics_field_RAP_projection(vecs, n_axes, n_vecs, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: "//trim(test_name))
-
-        do i_vec = 1, n_selected_vecs
-            call assert_equal_real( &
-                sum(projections(:, i_vec))/real(n_selected_axes, real64), &
-                0.0_real64, &
-                1d-12, &
-                "test_omics_field_RAP_projection: Case '"//trim(test_name)//"' failed" &
-                )
-        end do
-
-        if (present(result_projections)) then
-            result_projections = projections
-        end if
-    end subroutine call_omics_field_RAP_projection
-
     !> Test all axes and vectors are selected
     subroutine test_all_selected()
         implicit none
@@ -84,7 +46,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: all selected")
 
         do i_vec = 1, n_selected_vecs
@@ -115,7 +77,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: one axis selected")
     end subroutine test_one_axis_selected
 
@@ -137,7 +99,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: one vector selected")
     end subroutine test_one_vector_selected
 
@@ -160,7 +122,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: constant vector")
 
         call assert_equal_array_real( &
@@ -191,7 +153,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: orthogonal vector")
     end subroutine test_orthogonal_vector
 
@@ -213,7 +175,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_true(ierr /= 0, "ierr should be nonzero for no axes selected")
     end subroutine test_no_axes
 
@@ -235,7 +197,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_true(ierr /= 0, "ierr should be nonzero for no vectors selected")
     end subroutine test_no_vectors
 
@@ -257,19 +219,56 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: mixed selection")
     end subroutine test_mixed_selection
 
+    subroutine omics_field_RAP_projection2(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr)
+        integer(int32), intent(in) :: n_axes
+            !! number of axes
+        integer(int32), intent(in) :: n_fields
+            !! number of vectors per axis
+        real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
+            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+            !! `.true.` for vectors where projection is to be computed
+        integer(int32), intent(in) :: n_selected_fields
+            !! count of `.true.` values in `fields_selection_mask`
+        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+            !! `.true.` for axes to be included in RAP
+        integer(int32), intent(in) :: n_selected_axes
+            !! count of `.true.` values in `axes_selection_mask`
+        real(real64), dimension(n_selected_axes, n_selected_fields), intent(out) :: projections
+            !! projected vectors
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        print *, fields
+
+        call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_selected_axes, ierr, arg_pos=7_int32)
+        call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(fields, size(fields, kind=int32), ierr, arg_pos=1_int32)
+        if (count(fields_selection_mask, kind=int32) > n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(axes_selection_mask, kind=int32) > n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+
+        if (is_err(ierr)) return
+
+        call omics_field_RAP_projection_helper(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
+    end subroutine omics_field_RAP_projection2
+
     !> Test non-square vecs
     subroutine test_non_square_vecs()
-        real(real64), dimension(8, 2) :: vecs
+        real(real64), dimension(4, 2) :: vecs
         logical :: axes_mask(4), vecs_mask(2)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
-        vecs(1:4, 1) = [1.0, 2.0, 3.0, 4.0]
-        vecs(1:4, 2) = [4.0, 3.0, 2.0, 1.0]
+        vecs(:, 1) = [1.0, 2.0, 3.0, 4.0]
+        vecs(:, 2) = [4.0, 3.0, 2.0, 1.0]
         axes_mask = [.true., .true., .true., .true.]
         vecs_mask = [.true., .true.]
         n_selected_axes = count(axes_mask)
@@ -278,7 +277,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 4, 2, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 4, 2, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: non-square vecs")
     end subroutine test_non_square_vecs
 
@@ -302,7 +301,7 @@ contains
         allocate (projections(n_selected_axes, n_selected_vecs))
         projections = 1
 
-        call omics_field_RAP_projection(vecs, 3, 1, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
+        call omics_field_RAP_projection2(vecs, 3, 1, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(ierr, 0, "ierr should be 0 for valid input: concrete example")
 
         call assert_equal_array_real( &
