@@ -30,7 +30,9 @@ jobs:
           compiler: ${{ inputs.compiler }}
 
       - name: Run Fortran Tests
-        run: FC="${{ inputs.compiler }}" bash test_runner.sh
+        run: |
+          source ~/tox_init.sh
+          bash test_runner.sh --compiler="${{ inputs.compiler }}"
 
       - name: Install R
         uses: ./.github/actions/install-R
@@ -44,7 +46,9 @@ jobs:
           packages: numpy pandas
 
       - name: Run Python Tests
-        run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
+        run: |
+          source ~/tox_init.sh
+          for i in python/test/*.py; do echo ; echo $i ; python $i ; done
 
       - name: Run Snippet Generator
         run: python helper/generate_snippets.py

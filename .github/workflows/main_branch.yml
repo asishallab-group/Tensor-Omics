@@ -53,7 +53,9 @@ jobs:
           packages: ford
 
       - name: Generate snippets
-        run: python helper/generate_snippets.py
+        run: |
+          source ~/tox_init.sh
+          python helper/generate_snippets.py
 
       - name: Generate docs
         run: ford ford.yml

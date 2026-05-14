@@ -19,8 +19,9 @@ runs:
         curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/176ca159-bee8-44f2-9164-db26f95de382/intel-fortran-compiler-2026.0.0.573_offline.sh -o install_ifx.sh
         bash install_ifx.sh -a -s --eula accept
         rm install_ifx.sh
-        source /opt/intel/oneapi/setvars.sh
-        env >> $GITHUB_ENV
+        echo source /opt/intel/oneapi/setvars.sh >> ~/tox_init.sh
+        echo ifx --version >> ~/tox_init.sh
+        ifx --version
 
     - name: Install GNU compiler gfortran
       if: ${{ inputs.compiler == 'gfortran' }}
@@ -28,6 +29,8 @@ runs:
       run: |
         pacman -Sy --needed --noconfirm gcc-fortran
         pacman -Scc --noconfirm
+        echo gfortran --version >> ~/tox_init.sh
+        gfortran --version
 
     - name: Install needed libraries and dependencies used in TensorOmics
       shell: bash
@@ -41,7 +44,3 @@ runs:
       run: |
         curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
         chmod a+x /usr/local/bin/fpm
-
-    - name: Show version for reproducibility
-      shell: bash
-      run: ${{ inputs.compiler }} --version
