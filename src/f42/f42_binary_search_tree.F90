@@ -6,7 +6,7 @@
 !! and perform efficient range queries over a real-valued array.
 module f42_binary_search_tree
     use safeguard
-    use f42_utils, only: sort_array_heapsort, init_perm
+    use f42_utils, only: sort_array, init_perm
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int, validate_in_range_real
     implicit none
@@ -25,13 +25,15 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
+        integer(int32), dimension(n_values) :: left, right
+
         call set_ok(ierr)
 
         call validate_dimension_size(n_values, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
 
         call init_perm(sorted_indices)
-        call sort_array_heapsort(values, sorted_indices)
+        call sort_array(values, sorted_indices, left, right)
     end subroutine build_bst_index
 
     !> AUTHOR_AARON_SCHROEDER
