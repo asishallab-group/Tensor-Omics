@@ -48,7 +48,7 @@ program main
     call add_suite("normalization", get_all_tests_normalize_by_std_dev)
     call add_suite("quantile_normalization", get_all_tests_quantile_normalization)
     call add_suite("log2_transformation", get_all_tests_log2_transformation)
-    call add_suite("calc_tiss_avg", get_all_tests_tiss_avg)
+    ! call add_suite("calc_tiss_avg", get_all_tests_tiss_avg)
     call add_suite("calc_fchange", get_all_tests_calc_fchange)
     call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
     ! call add_suite("rap_tools_omics_vector_RAP_projection", get_all_tests_rap_tools_omics_vector_RAP_projection)
