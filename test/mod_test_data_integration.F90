@@ -1,4 +1,3 @@
-! filepath: test/mod_test_data_integration.f90
 !> Unit test suite for data_integration routine.
 module mod_test_data_integration
     use asserts

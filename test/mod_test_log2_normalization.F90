@@ -1,4 +1,3 @@
-! filepath: test/mod_test_log2_transformation.f90
 !> Unit test suite for log2_transformation routine.
 module mod_test_log2_transformation
     use asserts

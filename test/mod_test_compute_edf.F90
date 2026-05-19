@@ -1,4 +1,3 @@
-! filepath: test/mod_test_compute_edf.f90
 !> Unit test suite for EDF (Empirical Distribution Function)
 module mod_test_compute_edf
     use asserts

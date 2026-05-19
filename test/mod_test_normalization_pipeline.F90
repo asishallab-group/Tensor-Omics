@@ -1,4 +1,3 @@
-! filepath: test/mod_test_normalization_pipeline.f90
 !> Unit test suite for normalization_pipeline routine.
 module mod_test_normalization_pipeline
     use asserts

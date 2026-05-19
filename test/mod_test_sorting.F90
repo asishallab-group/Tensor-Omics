@@ -1,4 +1,3 @@
-! filepath: test/mod_test_sorting.f90
 !> Unit test suite for f42_utils module.
 module mod_test_sorting
     use f42_utils

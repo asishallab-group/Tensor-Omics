@@ -1,4 +1,3 @@
-! filepath: test/mod_test_tox_data.f90
 !> Unit test suite for expression readers and data processing routines.
 module mod_test_tox_data
     use asserts

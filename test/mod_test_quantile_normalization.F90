@@ -1,4 +1,3 @@
-! filepath: test/mod_test_quantile_normalization.f90
 !> Unit test suite for quantile_normalization routine.
 module mod_test_quantile_normalization
     use asserts

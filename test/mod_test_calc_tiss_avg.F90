@@ -1,4 +1,3 @@
-! filepath: test/mod_test_calc_tiss_avg.f90
 !> Unit test suite for calc_tiss_avg routine.
 module mod_test_calc_tiss_avg
     use asserts
@@ -28,7 +27,6 @@ contains
         all_tests(11) = test_case("test_calc_tiss_avg_empty_matrix", test_calc_tiss_avg_empty_matrix)
     end function get_all_tests_tiss_avg
 
-! filepath: test/mod_test_calc_tiss_avg.f90
     !> Test tissue averaging with 3 tissues and 2 replicates each (from R test).
     subroutine test_calc_tiss_avg_three_tissues()
         integer(int32) :: n_gene, n_grps, ierr

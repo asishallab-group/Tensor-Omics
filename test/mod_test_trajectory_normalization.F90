@@ -1,4 +1,3 @@
-! filepath: test/mod_test_trajectory_normalization.f90
 !> Unit test suite for trajectory_normalization routines.
 module mod_test_trajectory_normalization
     use asserts

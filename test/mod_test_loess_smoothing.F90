@@ -1,4 +1,3 @@
-!> filepath:mod_test_loess_smoothing.f90
 !> Unit test suite for LOESS smoothing from f42_utils
 module mod_test_loess_smoothing
     use asserts

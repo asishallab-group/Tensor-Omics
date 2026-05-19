@@ -1,4 +1,3 @@
-! filepath: test/mod_test_tissue_versatility.f90
 !> Unit test suite for tissue versatility routines.
 module mod_test_tissue_versatility
     use asserts

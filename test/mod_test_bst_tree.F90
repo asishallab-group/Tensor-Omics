@@ -1,4 +1,3 @@
-! filepath: test/mod_test_bst.f90
 !> Unit test suite for binary_search_tree module.
 module mod_test_bst
     use f42_binary_search_tree
@@ -151,12 +150,6 @@ contains
             end if
         end do
 
-        ! if (.not. is_sorted) then
-            do i = 1, n
-                print "(G0, ' -- ', G0)", ix(i), expected_ix(i)
-            end do
-            ! print "(*(G0, :, ', '))", ix
-        ! end if
         call assert_permutation(ix, n, "ix not permutation")
         call assert_true(is_sorted, "BST index test FAILED: x(ix) is not monotonic.")
     end subroutine test_bst_index_construction
@@ -205,10 +198,7 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        if (is_ok(ierr)) then
-            write (*, *) 'Build bst index failed for empty array: Expected ERR_EMPTY_INPUT but got ERR_OK '
-            error stop
-        end if
+        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), 'Expected error for emtpy input')
         call assert_true(.true., "BST empty array handling")
     end subroutine test_bst_empty_array
 

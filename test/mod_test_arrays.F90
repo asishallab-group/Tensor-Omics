@@ -1,4 +1,3 @@
-! filepath: test/mod_test_arrays.f90
 !> Unit test suite for array utilities.
 module mod_test_arrays
     use asserts

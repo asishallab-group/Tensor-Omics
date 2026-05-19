@@ -1,4 +1,3 @@
-! filepath: test/mod_test_tox_paralog_analysis.f90
 !> Unit test suite for paralog_analysis routine.
 module mod_test_paralog_analysis
     use asserts

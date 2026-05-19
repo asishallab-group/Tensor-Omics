@@ -1,4 +1,3 @@
-! filepath: test/mod_test_clock_hand_angles.f90
 !> Unit test suite for clock_hand_angles routine.
 module mod_test_clock_hand_angles
     use asserts

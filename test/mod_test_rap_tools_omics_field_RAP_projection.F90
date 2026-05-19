@@ -1,4 +1,3 @@
-! filepath: test/mod_test_field_vector_RAP_projection.f90
 !> Unit test suite for RAP Projection routines.
 module mod_test_rap_tools_omics_field_RAP_projection
     use asserts

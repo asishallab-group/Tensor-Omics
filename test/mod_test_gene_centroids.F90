@@ -1,4 +1,3 @@
-! filepath: test/mod_test_gene_centroids.f90
 !> Unit test suite for compute gene centroids routines.
 module mod_test_gene_centroids
     use asserts

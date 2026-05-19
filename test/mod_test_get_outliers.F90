@@ -1,4 +1,3 @@
-! filepath: test/mod_test_get_outliers.f90
 !> Unit test suite for get_outliers routines.
 module mod_test_get_outliers
     use asserts

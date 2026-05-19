@@ -1,4 +1,3 @@
-! filepath: test/mod_test_clustering.f90
 !> Unit test suite for clustering routine.
 module mod_test_clustering
     use asserts

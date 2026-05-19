@@ -1,4 +1,3 @@
-! filepath: test/mod_test_normalize_by_std_dev.f90
 !> Unit test suite for normalize_by_std_dev routine.
 module mod_test_normalize_by_std_dev
     use asserts

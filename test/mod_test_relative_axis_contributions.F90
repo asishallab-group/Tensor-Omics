@@ -1,4 +1,3 @@
-! filepath: test/mod_test_relative_axis_contributions.f90
 !> Unit tests for compute_relative_axis_contributions and wrappers
 module mod_test_relative_axis_contributions
     use tox_relative_axis_plane_tools

@@ -1,4 +1,3 @@
-! filepath: test/mod_test_shift_vectors.f90
 !> Unit test suite for compute shift vectors routines.
 module mod_test_shift_vectors
     use asserts

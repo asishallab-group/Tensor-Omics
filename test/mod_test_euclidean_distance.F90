@@ -1,4 +1,3 @@
-! filepath: test/mod_test_euclidean_distance.f90
 !> Unit test suite for euclidean distance routines.
 module mod_test_euclidean_distance
     use asserts

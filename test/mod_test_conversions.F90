@@ -1,4 +1,3 @@
-! filepath: test/mod_test_conversions.f90
 !> Unit test for conversion routines.
 module mod_test_conversions
     use asserts
