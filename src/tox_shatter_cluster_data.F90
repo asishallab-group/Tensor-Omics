@@ -7,27 +7,35 @@ module tox_shatter_cluster_data
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, &
 						  ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT
+	use tox_gene_centroids, only: mean_vector
+	use tox_euclidean_distance, only: euclidean_distance
+    use f42_utils, only: sort_real_heapsort, calc_percentile
+	use f42_kd_tree, only: build_kd_index
+	use alignment_utils, only: padded_size
     implicit none
     private
-    public :: allocate_vectors, deallocate_vectors
-    public :: allocate_labels,  deallocate_labels
-    public :: calc_label_sphere_radius
+    public :: vectors_alloc, vectors_dealloc
+    public :: label_1d_alloc, labels_2d_alloc, label_1d_dealloc, labels_2d_dealloc
+    public :: calculate_label_sphere_radius
     public :: build_label_kd_tree
 	public :: calculate_labels_as_density
 
 contains
 
-    !> Allocates a vector array with error checking.
-    subroutine allocate_vectors( vectors, n_dimensions, n_vectors, ierr )
-        !| Allocatable array to be initialized 
+	!> Allocates a vector array( vectors( dimensions, vectors ) ).
+    subroutine vectors_alloc( vectors, n_dimensions, n_vectors, ierr )
+	
+        !| Allocatable array to be initialized. 
         real( real64 ), allocatable, intent( inout ) :: vectors( :, : )
-        !| Number of rows (dimensions) 
+        !| Number of rows (dimensions). 
         integer( int32 ), intent( in ) :: n_dimensions
-        !| Number of columns (vectors) 
+        !| Number of columns (vectors). 
         integer( int32 ), intent( in ) :: n_vectors
-        !| Error code output 
+        !| Error code output. 
         integer( int32 ), intent( out ) :: ierr
-
+		!| Local variables to compute padded sizes.
+		integer( int32 ) :: pad_dim, pad_vec
+		
         call set_ok( ierr )
 
         call validate_dimension_size( n_dimensions, ierr )
@@ -38,21 +46,41 @@ contains
 
         if ( allocated( vectors ) ) deallocate( vectors )
 
-        M_ALLOCATE( vectors( n_dimensions, n_vectors ) )
+        pad_dim = padded_size( n_dimensions )
+        pad_vec = padded_size( n_vectors )
 
-    end subroutine allocate_vectors
+        M_ALLOCATE( vectors( pad_dim, pad_vec ) )
+		
+    end subroutine vectors_alloc
 
-    !> Safely deallocates a vector array if it is currently allocated. 
-    subroutine deallocate_vectors( vectors )
-        !| The 2D array to deallocate 
-        real( real64 ), allocatable, intent( inout ) :: vectors( :, : )
+	!> Allocates a 1D scalar label array.
+    subroutine label_1d_alloc( label_values, n_vectors, ierr )
+	
+		!| Allocatable label array 
+        real( real64 ), allocatable, intent( inout ) :: label_values( : ) 
+		!| Number of vectors 
+        integer( int32 ), intent( in ) :: n_vectors
+		!| Error code output 
+        integer( int32 ), intent( out ) :: ierr
+		!| Local variable to compute padded sizes.
+		integer( int32 ) :: pad_vec
+		
+		
+        call set_ok( ierr )
 
-        if ( allocated( vectors ) ) deallocate( vectors )
+        call validate_dimension_size( n_vectors, ierr )
+        if ( is_err( ierr ) ) return
 
-    end subroutine deallocate_vectors
+        if ( allocated( label_values ) ) deallocate( label_values )
 
-    !> Allocates a label array for analysis.
-    subroutine allocate_labels( label_values, label_dimension, n_vectors, ierr )
+		pad_vec = padded_size( n_vectors )
+		
+        M_ALLOCATE( label_values( pad_vec ) )
+
+    end subroutine label_1d_alloc
+	
+    !> Allocates a 2D label array for analysis.
+    subroutine labels_2d_alloc( label_values, label_dimension, n_vectors, ierr )
         !| Allocatable label array 
         real( real64 ), allocatable, intent( inout ) :: label_values( :, : )
         !| Dimensions of the labels 
@@ -61,7 +89,9 @@ contains
         integer( int32 ), intent( in ) :: n_vectors
         !| Error code output 
         integer( int32 ), intent( out ) :: ierr
-
+		!| Local variables to compute padded sizes.
+		integer( int32 ) :: pad_dim, pad_vec
+		
         call set_ok( ierr )
 
         call validate_dimension_size( label_dimension, ierr )
@@ -71,36 +101,26 @@ contains
         if ( is_err( ierr ) ) return
 
         if ( allocated( label_values ) ) deallocate( label_values )
+		
+		pad_dim = padded_size( label_dimension )
+        pad_vec = padded_size( n_vectors )
+		
+        M_ALLOCATE( label_values( pad_dim, pad_vec ) )
 
-        M_ALLOCATE( label_values( label_dimension, n_vectors ) )
-
-    end subroutine allocate_labels
-
-    !> Safely deallocates a label array. 
-    subroutine deallocate_labels( label_values )
-        !| The label array to deallocate 
-        real( real64 ), allocatable, intent( inout ) :: label_values( :, : )
-
-        if ( allocated( label_values ) ) deallocate( label_values )
-
-    end subroutine deallocate_labels
-
+    end subroutine label_2d_alloc
+	
     !> Calculates the radius of a label-sphere based on distance quantiles. 
     !! The radius is determined by finding the percentile of distances 
     !! from the mean vector to all other vectors in the set. 
-    pure subroutine calc_label_sphere_radius( vectors, n_dimensions, n_vectors, &
+    pure subroutine calculate_label_sphere_radius( vectors, n_dimensions, n_vectors, &
                                               mean_vec, distances, perm, ierr, &
                                               radius, mean_to_other_vecs_dist_quant )
 
-        use tox_gene_centroids, only: mean_vector
-        use tox_euclidean_distance, only: euclidean_distance
-        use f42_utils, only: sort_real_heapsort, calc_percentile
-
         !| Input data matrix (n_dimensions x n_vectors) 
         real( real64 ), intent( in ) :: vectors( :, : )
-        !| Number of dimensions [cite: 139]
+        !| Number of dimensions 
         integer( int32 ), intent( in ) :: n_dimensions
-        !| Number of vectors [cite: 139]
+        !| Number of vectors 
         integer( int32 ), intent( in ) :: n_vectors
         !| Preallocated workspace for the mean vector 
         real( real64 ), intent( out ) :: mean_vec( : )
@@ -108,7 +128,7 @@ contains
         real( real64 ), intent( out ) :: distances( : )
         !| Preallocated workspace for permutation indices 
         integer( int32 ), intent( out ) :: perm( : )
-        !| Error code output [cite: 139]
+        !| Error code output 
         integer( int32 ), intent( out ) :: ierr
         !| Optional quantile fraction (0.0 to 1.0), defaults to 0.15 
         real( real64 ), intent( in ), optional :: mean_to_other_vecs_dist_quant
@@ -155,15 +175,13 @@ contains
 
         call calc_percentile( distances, perm, percentile, radius, ierr )
 
-    end subroutine calc_label_sphere_radius
+    end subroutine calculate_label_sphere_radius
 
     !> Constructs KD-tree indices for the provided input vectors. 
     !! This routine acts as a wrapper for the core KD-tree indexing algorithm. 
     pure subroutine build_label_kd_tree( vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
                                          workspace, value_buffer, permutation, left_stack, right_stack, &
                                          recursion_stack, ierr )
-
-        use f42_kd_tree, only: build_kd_index
 
         !| Input data matrix 
         real( real64 ), intent( in ) :: vectors( :, : )
@@ -205,8 +223,6 @@ contains
 	!> Density labels: count of vectors within radius r of each vector.
     !! Uses kd_indices ordering for traversal (no pruning yet).
     pure subroutine calculate_labels_as_density( vectors, n_dimensions, n_vectors, r, kd_indices, label_values, ierr )
-
-        use tox_euclidean_distance, only: euclidean_distance
 
         !| Input vectors (n_dimensions x n_vectors), columns are vectors
         real( real64 ), intent( in ) :: vectors( :, : )
