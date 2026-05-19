@@ -165,7 +165,7 @@ Usage:
 #### Further Options
 
 - `--keep-fpm-toml`: Different compilers need different libraries sometimes, thus the actual `fpm.toml` is being temporarily generated from `.fpm.toml` and removed after compilation. For keeping the file, use this option.
-- `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then.
+- `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then (but also in other unusual changes, like switching WSL distro, so completely new environment).
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--fc=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`. *Note that `--compiler` beats `--fc` if both specified*
 - `-D<directive>`: Define a preprocessor directive

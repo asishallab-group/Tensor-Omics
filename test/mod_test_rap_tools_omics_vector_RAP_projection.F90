@@ -28,7 +28,6 @@ contains
 
     !> Wrapper function for the actual call of `call_omics_vector_RAP_projection`
     subroutine call_omics_vector_RAP_projection(test_name, vecs, axes_mask, vecs_mask, result_projections)
-        implicit none
 
         character(len=*), intent(in) :: test_name
         real(real64), dimension(:, :), intent(in) :: vecs
@@ -67,7 +66,6 @@ contains
 
     !> Test all axes and vectors are selected
     subroutine test_all_selected()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -98,7 +96,6 @@ contains
 
     !> Test one axis and all vectors are selected
     subroutine test_one_axis_selected()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -119,7 +116,6 @@ contains
 
     !> Test all axes and one vector are selected
     subroutine test_one_vector_selected()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -140,7 +136,6 @@ contains
 
     !> Test constant vector
     subroutine test_constant_vector()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         real(real64), allocatable :: projections(:, :)
         logical :: axes_mask(3), vecs_mask(3)
@@ -169,7 +164,6 @@ contains
 
     !> Test orthogonal vector
     subroutine test_orthogonal_vector()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -191,7 +185,6 @@ contains
 
     !> Test no axes
     subroutine test_no_axes()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -212,7 +205,6 @@ contains
 
     !> Test no vectors
     subroutine test_no_vectors()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
@@ -233,7 +225,6 @@ contains
 
     !> Test mixed selection
     subroutine test_mixed_selection()
-        implicit none
         real(real64), dimension(3, 3) :: vecs
         logical :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)

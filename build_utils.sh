@@ -51,7 +51,7 @@ function get_compiler() {
   declare default=gfortran
 
   # Detect compiler and choose appropriate profile:
-  if [[ "$compiler" == "ifx" || "$compiler" == "ifort" ]]; then
+  if [[ "$compiler" == "ifx" ]]; then
     echo ifx
   elif [[ "$compiler" == "nvfortran" ]]; then
     echo nvfortran
@@ -76,9 +76,9 @@ function get_flags() {
   fi
 
   # Detect compiler and choose appropriate profile:
-  if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
-    # echo "-O2 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-    echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
+  if [[ "$COMPILER" == "ifx" ]]; then
+    # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
+    echo "-O0 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
