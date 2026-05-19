@@ -7,7 +7,7 @@ submodule(tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
-    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp
+    use f42_utils, only: sort_array_heapsort, calc_percentile_helper, clamp
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err
     implicit none
 
@@ -165,7 +165,7 @@ contains
             perm(pool_idx) = pool_idx
         end do
 
-        call heapsort_real(pooled_means, perm)
+        call sort_array_heapsort(pooled_means, perm)
 
         call pool_means(pooled_means, perm, pool_size, n_points, n_pool, x_star, ierr)
 
@@ -413,9 +413,9 @@ contains
             end do
 
             ! Sort distances using heapsort
-            ! heapsort_real will reorder tmp_distances_perm so that tmp_distances(tmp_distances_perm(1:n_genes_S)) is sorted
+            ! sort_array_heapsort will reorder tmp_distances_perm so that tmp_distances(tmp_distances_perm(1:n_genes_S)) is sorted
             ! `calc_neighborhood_size` guarantees that the NaN `mean_S` indices are not included after sorting (they come after tmp_distances_perm(:n_neighbors))
-            call heapsort_real(tmp_distances, tmp_distances_perm)
+            call sort_array_heapsort(tmp_distances, tmp_distances_perm)
 
             ! Store the n_neighbors nearest neighbor indices
             ! tmp_distances_perm(1:n_neighbors) now contain indices of genes with smallest distances

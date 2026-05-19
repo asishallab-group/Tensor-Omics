@@ -481,11 +481,11 @@ contains
     !| Sort a real array indirectly using heapsort.
     !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
     pure subroutine sort_real_heapsort(array, perm)
-        real(real64), intent(in) :: array(:)
+        real(real64), intent(in), contiguous :: array(:)
             !! Real input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout), contiguous :: perm(:)
             !! Permutation vector that will be sorted
-        call heapsort_real(array, perm)
+        call heapsort_real(array, perm, size(array, kind=int32), size(perm, kind=int32))
     end subroutine sort_real_heapsort
 
     !> AUTHOR_FRANZ_ERIC_SILL
@@ -498,29 +498,29 @@ contains
             !! Real input array to sort
         integer(int32), intent(inout) :: perm(n)
             !! Permutation vector that will be sorted
-        call heapsort_real(array, perm)
+        call heapsort_real(array, perm, size(array, kind=int32), size(perm, kind=int32))
     end subroutine sort_real_heapsort_expl_size
 
     !> AUTHOR_MOHAMED_AKDI
     !| Sort an integer array indirectly using heapsort.
     !| Similar to `sort_real_heapsort`, but for integer input.
     pure subroutine sort_integer_heapsort(array, perm)
-        integer(int32), intent(in) :: array(:)
+        integer(int32), intent(in), contiguous :: array(:)
             !! Integer input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout), contiguous :: perm(:)
             !! Permutation vector that will be sorted
-        call heapsort_integer(array, perm)
+        call heapsort_integer(array, perm, size(array, kind=int32), size(perm, kind=int32))
     end subroutine sort_integer_heapsort
 
     !> AUTHOR_MOHAMED_AKDI
     !| Sort a character array indirectly using heapsort.
     !| Uses lexicographic ordering and permutation vector sorting.
     pure subroutine sort_character_heapsort(array, perm)
-        character(len=*), intent(in) :: array(:)
+        character(len=*), intent(in), contiguous :: array(:)
             !! Character input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout), contiguous :: perm(:)
             !! Permutation vector that will be sorted
-        call heapsort_character(array, perm)
+        call heapsort_character(array, perm, size(array, kind=int32), size(perm, kind=int32))
     end subroutine sort_character_heapsort
 
     !> AUTHOR_VIVIAN_BASS
@@ -722,13 +722,15 @@ contains
     !Internal heapsort implementations for real arrays.
     !> AUTHOR_MOHAMED_AKDI
     !| Sorts indirectly using the permutation vector `perm`. Uses `heapify_real` to maintain heap property.
-    pure subroutine heapsort_real(array, perm)
-        real(real64), intent(in) :: array(:)
+    pure subroutine heapsort_real(array, perm, n_arr, n_perm)
+        integer(int32), intent(in) :: n_arr
+        integer(int32), intent(in) :: n_perm
+        real(real64), intent(in) :: array(n_arr)
             !! Real input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout) :: perm(n_perm)
             !! Permutation vector that will be sorted
         integer(int32) :: n, i
-        n = size(perm)
+        n = n_perm
 
         ! Build max heap
         do i = n/2, 1, -1
@@ -739,67 +741,67 @@ contains
             call swap_int(perm(1), perm(i))
             call heapify_real(array, perm, i - 1, 1)
         end do
-
-    contains
-
-        !> AUTHOR_MOHAMED_AKDI
-        !| Iterative heapify (non-recursive, pure)
-        !| Restore the max-heap property for the subtree rooted at `root`.
-        !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
-        !| We reorder the permutation vector `perm` (indices) rather than moving
-        !| array values. Guard accesses by checking child indices before indexing.
-        pure subroutine heapify_real(array, perm, heap_size, root)
-            real(real64), intent(in) :: array(:)
-                !! Real input array to sort
-            integer(int32), intent(inout) :: perm(:)
-                !! Permutation vector that will be sorted
-            integer(int32), intent(in) :: heap_size
-                !! Size of the heap
-            integer(int32), intent(in) :: root
-                !! Root index
-
-            integer(int32) :: current, next_idx, largest_idx
-
-            current = root
-
-            do
-                ! Use `largest_idx` directly as the left-child index: left = 2*current
-                largest_idx = 2*current
-                ! If there is no left child the subtree is a leaf; we're done
-                if (largest_idx > heap_size) exit
-
-                next_idx = largest_idx + 1
-
-                ! Only compare the right child (next_idx) when it actually exists
-                if (next_idx <= heap_size) then
-                    if (array(perm(next_idx)) .greaterthan. array(perm(largest_idx))) then
-                        largest_idx = next_idx
-                    end if
-                end if
-
-                ! If the larger child is greater than current, swap permutation entries
-                if (array(perm(largest_idx)) .greaterthan. array(perm(current))) then
-                    call swap_int(perm(current), perm(largest_idx))
-                    current = largest_idx
-                else
-                    exit
-                end if
-            end do
-        end subroutine heapify_real
     end subroutine heapsort_real
+
+    !> AUTHOR_MOHAMED_AKDI
+    !| Iterative heapify (non-recursive, pure)
+    !| Restore the max-heap property for the subtree rooted at `root`.
+    !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
+    !| We reorder the permutation vector `perm` (indices) rather than moving
+    !| array values. Guard accesses by checking child indices before indexing.
+    pure subroutine heapify_real(array, perm, heap_size, root)
+        real(real64), intent(in), contiguous :: array(:)
+            !! Real input array to sort
+        integer(int32), intent(inout), contiguous :: perm(:)
+            !! Permutation vector that will be sorted
+        integer(int32), intent(in) :: heap_size
+            !! Size of the heap
+        integer(int32), intent(in) :: root
+            !! Root index
+
+        integer(int32) :: current, next_idx, largest_idx
+
+        current = root
+
+        do
+            ! Use `largest_idx` directly as the left-child index: left = 2*current
+            largest_idx = 2*current
+            ! If there is no left child the subtree is a leaf; we're done
+            if (largest_idx > heap_size) exit
+
+            next_idx = largest_idx + 1
+
+            ! Only compare the right child (next_idx) when it actually exists
+            if (next_idx <= heap_size) then
+                if (array(perm(next_idx)) .greaterthan. array(perm(largest_idx))) then
+                    largest_idx = next_idx
+                end if
+            end if
+
+            ! If the larger child is greater than current, swap permutation entries
+            if (array(perm(largest_idx)) .greaterthan. array(perm(current))) then
+                call swap_int(perm(current), perm(largest_idx))
+                current = largest_idx
+            else
+                exit
+            end if
+        end do
+    end subroutine heapify_real
 
     !> AUTHOR_MOHAMED_AKDI
     !| Internal heapsort implementation for integer arrays.
     !| Indirectly sorts `array` using `perm`, same algorithm as `heapsort_real`.
-    pure subroutine heapsort_integer(array, perm)
-        integer(int32), intent(in) :: array(:)
+    pure subroutine heapsort_integer(array, perm, n_arr, n_perm)
+        integer(int32), intent(in) :: n_arr
+        integer(int32), intent(in) :: n_perm
+        integer(int32), intent(in) :: array(n_arr)
             !! Integer input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout) :: perm(n_perm)
             !! Permutation vector that will be sorted
 
         integer(int32) :: n, i
 
-        n = size(perm)
+        n = n_perm
 
         ! Build max-heap
         do i = n/2, 1, -1
@@ -811,71 +813,71 @@ contains
             call swap_int(perm(1), perm(i))
             call heapify_integer(array, perm, i - 1, 1)
         end do
-
-    contains
-
-        !> AUTHOR_MOHAMED_AKDI
-        !| Iterative heapify (non-recursive, pure)
-        !| Restore the max-heap property for the subtree rooted at `root`.
-        !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
-        !| We reorder the permutation vector `perm` (indices) rather than moving
-        !| array values. Guard accesses by checking child indices before indexing.
-        pure subroutine heapify_integer(array, perm, heap_size, root)
-            integer(int32), intent(in) :: array(:)
-                !! Integer input array to sort
-            integer(int32), intent(inout) :: perm(:)
-                !! Permutation vector that will be sorted
-            integer(int32), intent(in) :: heap_size
-                !! Size of the heap
-            integer(int32), intent(in) :: root
-                !! Root index
-
-            integer(int32) :: current, next_idx, largest_idx
-
-            current = root
-
-            do
-                ! Compute left-child index (use largest_idx as left to avoid extra var)
-                largest_idx = 2*current
-                ! If there is no left child the subtree is a leaf; nothing to do
-                if (largest_idx > heap_size) exit
-
-                ! Compute right-child index (may be out of heap bounds)
-                next_idx = largest_idx + 1
-
-                ! Only compare right-child when it actually exists (guarded access)
-                if (next_idx <= heap_size) then
-                    if (array(perm(next_idx)) > array(perm(largest_idx))) then
-                        ! Right child is larger than left child
-                        largest_idx = next_idx
-                    end if
-                end if
-
-                ! Compare the selected child with the current node; if the child is
-                ! greater, swap permutation indices so the larger value moves up the
-                ! heap. We swap entries of `perm` (indices), not the array values.
-                if (array(perm(largest_idx)) > array(perm(current))) then
-                    call swap_int(perm(current), perm(largest_idx))
-                    current = largest_idx
-                else
-                    exit
-                end if
-            end do
-        end subroutine heapify_integer
     end subroutine heapsort_integer
+
+    !> AUTHOR_MOHAMED_AKDI
+    !| Iterative heapify (non-recursive, pure)
+    !| Restore the max-heap property for the subtree rooted at `root`.
+    !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
+    !| We reorder the permutation vector `perm` (indices) rather than moving
+    !| array values. Guard accesses by checking child indices before indexing.
+    pure subroutine heapify_integer(array, perm, heap_size, root)
+        integer(int32), intent(in), contiguous :: array(:)
+            !! Integer input array to sort
+        integer(int32), intent(inout), contiguous :: perm(:)
+            !! Permutation vector that will be sorted
+        integer(int32), intent(in) :: heap_size
+            !! Size of the heap
+        integer(int32), intent(in) :: root
+            !! Root index
+
+        integer(int32) :: current, next_idx, largest_idx
+
+        current = root
+
+        do
+            ! Compute left-child index (use largest_idx as left to avoid extra var)
+            largest_idx = 2*current
+            ! If there is no left child the subtree is a leaf; nothing to do
+            if (largest_idx > heap_size) exit
+
+            ! Compute right-child index (may be out of heap bounds)
+            next_idx = largest_idx + 1
+
+            ! Only compare right-child when it actually exists (guarded access)
+            if (next_idx <= heap_size) then
+                if (array(perm(next_idx)) > array(perm(largest_idx))) then
+                    ! Right child is larger than left child
+                    largest_idx = next_idx
+                end if
+            end if
+
+            ! Compare the selected child with the current node; if the child is
+            ! greater, swap permutation indices so the larger value moves up the
+            ! heap. We swap entries of `perm` (indices), not the array values.
+            if (array(perm(largest_idx)) > array(perm(current))) then
+                call swap_int(perm(current), perm(largest_idx))
+                current = largest_idx
+            else
+                exit
+            end if
+        end do
+    end subroutine heapify_integer
 
     !> AUTHOR_MOHAMED_AKDI
     !| Internal heapsort implementation for character arrays.
     !| Lexicographic heapsort using string comparison, indirect via `perm`.
-    pure subroutine heapsort_character(array, perm)
-        character(len=*), intent(in)    :: array(:)
+    pure subroutine heapsort_character(array, perm, n_arr, n_perm)
+        integer(int32), intent(in) :: n_arr
+        integer(int32), intent(in) :: n_perm
+        character(len=*), intent(in)    :: array(n_arr)
             !! Character input array to sort
-        integer(int32), intent(inout) :: perm(:)
+        integer(int32), intent(inout) :: perm(n_perm)
             !! Permutation vector that will be sorted
 
         integer(int32) :: n, i
 
-        n = size(perm)
+        n = n_perm
 
         ! Build max-heap
         do i = n/2, 1, -1
@@ -887,56 +889,54 @@ contains
             call swap_int(perm(1), perm(i))
             call heapify_character(array, perm, i - 1, 1)
         end do
-
-    contains
-
-        !> AUTHOR_MOHAMED_AKDI
-        !| Iterative heapify (non-recursive, pure)
-        !| Restore the max-heap property for the subtree rooted at `root`.
-        !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
-        !| We reorder the permutation vector `perm` (indices) rather than moving
-        !| array values. Guard accesses by checking child indices before indexing.
-        pure subroutine heapify_character(array, perm, heap_size, root)
-            character(len=*), intent(in) :: array(:)
-                !! Character input array to sort
-            integer(int32), intent(inout) :: perm(:)
-                !! Permutation vector that will be sorted
-            integer(int32), intent(in) :: heap_size
-                !! Size of the heap
-            integer(int32), intent(in) :: root
-                !! Root index
-
-            integer(int32) :: current, next_idx, largest_idx
-
-            current = root
-
-            do
-                ! Compute left-child index (use largest_idx directly as left = 2*current)
-                largest_idx = 2*current
-                ! If there is no left child the subtree is a leaf; nothing to do
-                if (largest_idx > heap_size) exit
-
-                ! Potential right child index
-                next_idx = largest_idx + 1
-
-                ! Only compare right child when it exists to avoid OOB access
-                if (next_idx <= heap_size) then
-                    if (array(perm(next_idx)) > array(perm(largest_idx))) then
-                        largest_idx = next_idx
-                    end if
-                end if
-
-                ! If the selected child is larger than current, swap permutation
-                ! indices so the larger element moves up. We swap entries in `perm`.
-                if (array(perm(largest_idx)) > array(perm(current))) then
-                    call swap_int(perm(current), perm(largest_idx))
-                    current = largest_idx
-                else
-                    exit
-                end if
-            end do
-        end subroutine heapify_character
     end subroutine heapsort_character
+
+    !> AUTHOR_MOHAMED_AKDI
+    !| Iterative heapify (non-recursive, pure)
+    !| Restore the max-heap property for the subtree rooted at `root`.
+    !| Heap layout (1-based): left child = 2*i, right child = 2*i+1.
+    !| We reorder the permutation vector `perm` (indices) rather than moving
+    !| array values. Guard accesses by checking child indices before indexing.
+    pure subroutine heapify_character(array, perm, heap_size, root)
+        character(len=*), intent(in), contiguous :: array(:)
+            !! Character input array to sort
+        integer(int32), intent(inout), contiguous :: perm(:)
+            !! Permutation vector that will be sorted
+        integer(int32), intent(in) :: heap_size
+            !! Size of the heap
+        integer(int32), intent(in) :: root
+            !! Root index
+
+        integer(int32) :: current, next_idx, largest_idx
+
+        current = root
+
+        do
+            ! Compute left-child index (use largest_idx directly as left = 2*current)
+            largest_idx = 2*current
+            ! If there is no left child the subtree is a leaf; nothing to do
+            if (largest_idx > heap_size) exit
+
+            ! Potential right child index
+            next_idx = largest_idx + 1
+
+            ! Only compare right child when it exists to avoid OOB access
+            if (next_idx <= heap_size) then
+                if (array(perm(next_idx)) > array(perm(largest_idx))) then
+                    largest_idx = next_idx
+                end if
+            end if
+
+            ! If the selected child is larger than current, swap permutation
+            ! indices so the larger element moves up. We swap entries in `perm`.
+            if (array(perm(largest_idx)) > array(perm(current))) then
+                call swap_int(perm(current), perm(largest_idx))
+                current = largest_idx
+            else
+                exit
+            end if
+        end do
+    end subroutine heapify_character
 
     !> AUTHOR_VIVIAN_BASS
     !| Swap two integer values in-place.
@@ -1355,7 +1355,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: n, i
+        integer(int32) :: n
         integer(int32), allocatable :: perm(:)
 
         n = size(array, kind=int32)

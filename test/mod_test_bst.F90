@@ -139,8 +139,11 @@ contains
         ]
 
         expected_ix = [ 23, 25, 18, 34, 62, 35, 41, 69, 15, 30, 6, 19, 42, 10, 63, 43, 5, 40, 98, 16, 12, 28, 90, 58, 75, 96, 94, 36, 22, 2, 76, 11, 92, 44, 14, 61, 4, 20, 65, 60, 84, 54, 82, 100, 29, 39, 50, 56, 57, 64, 45, 7, 51, 71, 99, 38, 55, 97, 17, 95, 93, 73, 59, 1, 80, 78, 87, 68, 72, 9, 74, 85, 13, 21, 3, 83, 86, 47, 67, 37, 66, 33, 89, 31, 91, 70, 88, 8, 77, 32, 49, 79, 46, 27, 81, 52, 53, 26, 48, 24 ]
+        
         call build_bst_index(x, n, ix, ierr)
         call assert_equal_int(ierr, ERR_OK, "bst construction failed")
+        call assert_permutation(ix, n, "ix not permutation")
+
         ! Check monotonicity of x
         is_sorted = .true.
         do i = 2, n
@@ -149,8 +152,8 @@ contains
                 exit
             end if
         end do
+        call assert_true(is_sorted, "BST index test FAILED: x(ix) is not monotonic.")
 
-        call assert_permutation(ix, n, "ix not permutation")
         call assert_true(is_sorted, "BST index test FAILED: x(ix) is not monotonic.")
     end subroutine test_bst_index_construction
 

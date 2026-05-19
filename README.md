@@ -169,6 +169,8 @@ Usage:
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--fc=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`. *Note that `--compiler` beats `--fc` if both specified*
 - `-D<directive>`: Define a preprocessor directive
+- `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`. Note that included libraries won't be affected, so the flags expand to `-lxxhash -lzip <flags>`).<br>
+  *Note: With using this option, the `--max_performance` option won't have any effect*
 
 *Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores, e.g. `--keep-fpm-toml` or `--keep_fpm.toml` becoming `KEEP_FPM_TOML` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $COMPILER > --fc > $FC`.*
 

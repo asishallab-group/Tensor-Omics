@@ -71,6 +71,11 @@ function get_flags() {
   # Libraries: greps the libraries from .fpm.toml and translates them from '"<lib>"' to '-l<lib>'
   printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
 
+  if [[ "$OVERRIDE_FLAGS" ]]; then
+    echo "$OVERRIDE_FLAGS"
+    return
+  fi
+
   if [[ $MAX_PERFORMANCE ]]; then
     echo -en "-DMAX_PERFORMANCE "
   fi
@@ -78,7 +83,7 @@ function get_flags() {
   # Detect compiler and choose appropriate profile:
   if [[ "$COMPILER" == "ifx" ]]; then
     # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
-    echo "-O0 -parallel -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    echo "-O3 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else

@@ -179,8 +179,6 @@ contains
         call validate_dimension_size(k_families, ierr)
         call validate_all_in_range_int(total_included_n_reps_per_f, k_families, ierr, min=0_int32)
         call validate_all_in_range_real(global_js_divergences, k_families, ierr, min=0.0_real64)
-        call validate_all_in_range_real(support_weights, k_families, ierr, min=0.0_real64)
-        call validate_all_in_range_real(contribution_scores, k_families, ierr, min=0.0_real64)
 
         if (is_err(ierr)) return
 
