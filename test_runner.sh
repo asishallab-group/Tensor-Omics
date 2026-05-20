@@ -18,12 +18,12 @@ if [[ -z "$SKIP_KINDS_TEST" ]]; then
   for d in "${directives[@]}"; do
     test_directive=${d%% *}
     test_directive=${test_directive#-DTEST_KIND_MISMATCH_}
-    echo -en "Testing safeguard for mismatch for $test_directive: "
+    msg_prefix="Testing safeguard for mismatch for $test_directive"
     if [[ $(bash build.sh "$@" "${directives}" 1>kinds.out 2>/dev/null; grep "Divi.*zero" kinds.out) ]]; then
-      echo "success"
+      echo "$msg_prefix: success" >&2
     else
-      echo "failure"
-      cat kinds.out
+      echo "$msg_prefix: failure" >&2
+      cat kinds.out >&2
       failed=1
     fi
   done
@@ -32,7 +32,7 @@ if [[ -z "$SKIP_KINDS_TEST" ]]; then
 EOF
   check_exit_code "Kind Mismatch Test failed"
 
-  echo "Compiling src/"
+  stderr "Compiling src/"
   COMPILER=$COMPILER bash build.sh --clean-build "$@"
   check_exit_code "Build failed"
 else
@@ -40,12 +40,10 @@ else
   check_exit_code "Build failed"
 fi
 
-echo "Using compiler: $COMPILER"
-
 rm -f *.test.*
 rm -f manifest.txt
 
-echo "Running tests..."
+stderr "Running tests..."
 
 # By default same behavior as compiling manually, as fpm has some struggles sometimes with correct linking, e.g. some routine changes in src, but the tests use the old implementation.
 if [[ -z $REUSE_MOD_FILES ]]; then

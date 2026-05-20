@@ -7,13 +7,14 @@ function init() {
   get_compiler
 
   if [[ -z $(command -v $COMPILER) ]]; then
-    stderr "$COMPILER not installed"
+    stderr "$COMPILER not installed or accessible in current scope"
     exit 1
   fi
   FLAGS=$(get_flags)
 }
 
 function utils_fpm() {
+  echo "Using compiler: $COMPILER"
   declare prefix="fpm build"
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
@@ -49,7 +50,11 @@ function get_compiler() {
           COMPILER="$compiler"
           return
         else
-          stderr "Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead. Use '--i-want-to-use-this-compiler' to run with '$compiler' anyway."
+          stderr "
+Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead.
+Use '--i-want-to-use-this-compiler' to run with '$compiler' anyway.
+Use '--override-flags' to define additional compiler-related flags like '--override-flags=\"-O3 -fPIC\"'
+"
         fi
       fi
     else
@@ -74,7 +79,7 @@ function get_flags() {
       echo "-O3 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
     elif [[ "$COMPILER" == "nvfortran" ]]; then
       echo "-O3 -Mconcur -fPIC -fopenmp -stdpar=multicore"
-    else
+    elif [[ "$COMPILER" == "gfortran" ]]; then
       echo "-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
     fi
   else
