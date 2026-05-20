@@ -1,6 +1,6 @@
 from error_handling import check_err_code
 
-#> f42_helper-import_libs: Import necessary packagesclock_hand_angle_between_vectors_c
+#> f42_helper-import_libs: Import necessary packages
 import numpy as np
 import ctypes
 import os

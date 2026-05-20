@@ -8,7 +8,7 @@ function init() {
 
   # --compiler beats global $COMPILER beats --fc beats global $FC
   COMPILER=$(get_compiler)
-  if [[ -z $(which $COMPILER) ]]; then
+  if [[ -z $(command -v $COMPILER) ]]; then
     stderr "$COMPILER not installed"
     exit 1
   fi
@@ -83,7 +83,7 @@ function get_flags() {
   # Detect compiler and choose appropriate profile:
   if [[ "$COMPILER" == "ifx" ]]; then
     # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
-    echo "-O3 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    echo "-O2 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
   elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else

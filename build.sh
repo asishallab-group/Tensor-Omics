@@ -10,13 +10,14 @@ init "$@"
 mkdir -p build
 
 # trigger clean build on branch switch
-if [[ $(which git) ]]; then
-  git branch --show-current 2>/dev/null 1> build/.branch.tmp || true
-  touch build/.branch
-  if [[ $(diff build/.branch.tmp build/.branch) ]]; then
+if [[ $(command -v git) ]]; then
+  current_branch=$(git branch --show-current 2>/dev/null || true)
+  filename="build/.${current_branch//\//_.SLASH._}.branch" # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
+  if [[ ! -f "$filename" ]]; then
     CLEAN_BUILD=1
+    rm -f build/.*.branch
+    : > "$filename"
   fi
-  mv build/.branch.tmp build/.branch
 fi
 
 # Clean build directory if it exists

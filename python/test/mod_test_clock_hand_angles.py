@@ -391,16 +391,17 @@ def test_nearly_opposite_vectors():
 
 def test_mixed_positive_negative():
     """Test vectors with mixed positive/negative components"""
-    v1 = np.array([1.0, -2.0, 3.0], dtype=np.float64)
-    v2 = np.array([-2.0, 1.0, -3.0], dtype=np.float64)
+    v1 = np.array([1.0, -2.0, 3.0, 0.0], dtype=np.float64)
+    v2 = np.array([-2.0, 1.0, -3.0, 0.0], dtype=np.float64)
     selected_axes = np.array([1, 2, 3], dtype=np.int32)
     v1 = v1 / np.sqrt(np.sum(v1**2))
     v2 = v2 / np.sqrt(np.sum(v2**2))
+    c1 = v1[1]*v2[2] - v1[2]*v2[1]
+    c2 = v1[2]*v2[0] - v1[0]*v2[2]
+    c3 = v1[0]*v2[1] - v1[1]*v2[0]
+
     result = tox_clock_hand_angle_between_vectors(v1, v2, selected_axes)
-    c1=v2[0]*v1[1]-v2[1]*v1[0]
-    c2=v2[1]*v1[2]-v2[2]*v1[1]
-    c3=v2[2]*v1[0]-v2[0]*v1[2]
-    sign = np.sign(c1*v1[0] + c2*v1[1] + c3*v1[2])
+    sign = np.sign(c1 + c2 + c3)
     assert np.isclose(result, sign * np.acos(v1 @ v2)), "Angle mismatch"
 
 

@@ -32,7 +32,6 @@ runs:
     - name: Install needed libraries and dependencies used in TensorOmics
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm which  # 'which' needed in build script
         pacman -Sy --needed --noconfirm libzip xxhash
         pacman -Scc --noconfirm
 
