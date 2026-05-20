@@ -39,6 +39,13 @@ module test_suite
 
     type(suite_entry), allocatable :: available_suites(:)
 
+    character(len=11) :: COLOR_CREAM = achar(27) // "[38;5;255m"
+    character(len=11) :: COLOR_GREEN = achar(27) // "[38;5;154m"
+    character(len=11) :: COLOR_COPPER = achar(27) // "[38;5;214m"
+    character(len=11) :: COLOR_LIGHT_GRAY = achar(27) // "[38;5;252m"
+    character(len=11) :: COLOR_RED = achar(27) // "[38;5;196m"
+    character(len=4) :: COLOR_RESET = achar(27) // "[0m"
+
 contains
 
     !> Register all test suites here.
@@ -74,10 +81,10 @@ contains
 
         do i = 1, size(all_tests)
             call all_tests(i)%test_proc()
-            print "(' ',A,' passed.')", trim(all_tests(i)%name)
+            print "(' "//COLOR_COPPER//"',A,'"//COLOR_GREEN//" passed"//COLOR_CREAM//"."//COLOR_RESET//"')", trim(all_tests(i)%name)
         end do
 
-        print "('All ',A,' tests passed successfully.')", trim(suite_name)
+        print "('"//COLOR_CREAM//"All ''"//COLOR_LIGHT_GRAY//"',A,'"//COLOR_CREAM//"'' tests passed successfully."//COLOR_RESET//"')", trim(suite_name)
     end subroutine run_all_tests
 
     !> Run selected tests by name from a given suite.
@@ -93,14 +100,14 @@ contains
             do j = 1, size(all_tests)
                 if (trim(test_names(i)) == trim(all_tests(j)%name)) then
                     call all_tests(j)%test_proc()
-                    print "(' ',A,' passed.')", trim(test_names(i))
+                    print "(' "//COLOR_COPPER//"',A,'"//COLOR_GREEN//" passed"//COLOR_CREAM//"."//COLOR_RESET//"')", trim(test_names(i))
                     found = .true.
                     exit
                 end if
             end do
 
             if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
+                print "('"//COLOR_RED//"Unknown test"//COLOR_CREAM//": "//COLOR_COPPER//"', A)", trim(test_names(i))
             end if
         end do
     end subroutine run_named_tests
