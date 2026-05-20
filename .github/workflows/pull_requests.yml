@@ -25,9 +25,11 @@ jobs:
     strategy:
       matrix:
         compiler: [ifx, gfortran]
+        max_performance_flag: [--max-performance, ""]
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}
+      extra_build_args: ${{ matrix.max_performance_flag }}
 
       # This is the commit of the PR branch head
       ref: ${{ github.event.pull_request.head.sha }}

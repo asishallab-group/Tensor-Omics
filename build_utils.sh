@@ -78,17 +78,19 @@ function get_flags() {
 
   if [[ $MAX_PERFORMANCE ]]; then
     echo -en "-DMAX_PERFORMANCE "
+    # Detect compiler and choose appropriate profile:
+    if [[ "$COMPILER" == "ifx" ]]; then
+      # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
+      echo "-O3 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
+    elif [[ "$COMPILER" == "nvfortran" ]]; then
+      echo "-O3 -Mconcur -fPIC -fopenmp -stdpar=multicore"
+    else
+      echo "-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
+    fi
+  else
+    echo "-fPIC"
   fi
 
-  # Detect compiler and choose appropriate profile:
-  if [[ "$COMPILER" == "ifx" ]]; then
-    # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
-    echo "-O2 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  elif [[ "$COMPILER" == "nvfortran" ]]; then
-    echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
-  else
-    echo "-O0 -g -fbacktrace -fcheck=all -fPIC"
-  fi
 }
 
 function handle_args() {
