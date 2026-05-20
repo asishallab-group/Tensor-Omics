@@ -1,13 +1,11 @@
 function init() {
-  ALIGN=$(get_alignment)
-
   # handle_args overwrites:
-  # ALIGN if --align=<align> specified
   # FC if --fc=<compiler> specified
   handle_args "$@"
 
   # --compiler beats global $COMPILER beats --fc beats global $FC
-  COMPILER=$(get_compiler)
+  get_compiler
+
   if [[ -z $(command -v $COMPILER) ]]; then
     stderr "$COMPILER not installed"
     exit 1
@@ -24,22 +22,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "-I." -- $ARGS
-}
-
-function get_alignment() {
-  ALIGN=32
-  # Detect capabilities in order of descending priority:
-  if lscpu | grep -q amx; then
-  ALIGN=128
-  elif lscpu | grep -q avx512; then
-  ALIGN=64
-  elif lscpu | grep -q avx2; then
-  ALIGN=32
-  elif lscpu | grep -q sse2; then
-  ALIGN=16
-  fi
-  echo $ALIGN
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-I." -- $ARGS
 }
 
 # gets compiler from context, it uses
@@ -49,28 +32,35 @@ function get_alignment() {
 function get_compiler() {
   declare compiler=${COMPILER:-$FC}
   declare default=gfortran
+  COMPILER_FEATURE=
 
   # Detect compiler and choose appropriate profile:
   if [[ "$compiler" == "ifx" ]]; then
-    echo ifx
+    COMPILER_FEATURE=ifx
+    COMPILER=ifx
   elif [[ "$compiler" == "nvfortran" ]]; then
-    echo nvfortran
+    COMPILER_FEATURE=nvfortran
+    COMPILER=nvfortran
   else
     if [[ $compiler ]]; then
       if [[ $compiler != "$default" ]]; then
-        stderr "Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead"
+        if [[ $I_WANT_TO_USE_THIS_COMPILER ]]; then
+          COMPILER_FEATURE=unknown-compiler
+          COMPILER="$compiler"
+          return
+        else
+          stderr "Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead. Use '--i-want-to-use-this-compiler' to run with '$compiler' anyway."
+        fi
       fi
     else
       stderr "No compiler specified, using '$default'. To specify the compiler, use --compiler=<compiler> or the env variables \$FC, \$COMPILER"
     fi
-    echo $default
+    COMPILER_FEATURE=$default
+    COMPILER=$default
   fi
 }
 
 function get_flags() {
-  # Libraries: greps the libraries from .fpm.toml and translates them from '"<lib>"' to '-l<lib>'
-  printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
-
   if [[ "$OVERRIDE_FLAGS" ]]; then
     echo "$OVERRIDE_FLAGS"
     return
@@ -105,9 +95,19 @@ function handle_args() {
       declare undashed=${arg:2}
       declare key=${undashed%%=*}
       # extract value after first '=' if present, else set to 1
-      declare val=$(echo "$undashed" | sed 's/^'$key'\(=\(.*\)\?\)\?/\2/g')
+      val="${undashed#"$key"}"      # strip leading $key
+      val="${val#=}"                # strip leading '=' if present
       : ${val:=1}
-      declare -g "$(echo "$key" | sed 's/\W/_/g; s/\w/\U&/g')=$val"
+
+      declare varname="$key"
+
+      # Replace non-alphanumeric with _
+      varname="${varname//[^a-zA-Z0-9]/_}"
+
+      # Uppercase everything
+      varname="${varname^^}"
+
+      declare -g "$varname=$val"
     else
       ARGS="$ARGS $arg"
     fi
@@ -127,41 +127,4 @@ function check_exit_code() {
     echo "Exit code: $code"
     exit $code
   fi
-}
-
-function generate_fpm_toml() {
-  extra_libs=   # space, tab or comma separated list, like: "lib1, lib2"
-  if [[ "$2" == "ifx" ]]; then
-    extra_libs="iomp5"
-  fi
-
-  awk -v extra_libs="$extra_libs" '
-{
-  line = $0
-
-  # match category, like "build" from [build] or "test.dependencies" from [test.dependencies]
-  match($0, /^[ \t]*\[[ \t]*([a-z\.]+)[ \t]*\]/, arr)
-
-  if (arr[1]) {
-    category = arr[1]
-  }
-
-  if (category == "build") {
-    # match: link = [ "lib_1.0" , "lib_2.0" ]
-    # and extract the array elements
-    match($0, /^[ \t]*link[ \t]*=[ \t]*\[([ \ta-z,",_0-9\.]+)\]/, arr)
-
-    if (arr[1]) {
-      # unify separators, trim start and wrap each lib in: ",\"<lib>\""
-      gsub(/[\t,]/," ",extra_libs)
-      sub(/^ +/,"",extra_libs)
-      gsub(/[^ ]+/,",\"&\"",extra_libs)
-
-      line = sprintf("link = [%s %s]", arr[1], extra_libs)
-    }
-  }
-
-  print line
-}
-' $1
 }

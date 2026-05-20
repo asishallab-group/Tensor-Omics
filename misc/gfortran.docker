@@ -9,7 +9,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
 
 # Install fpm binary
 RUN curl -L --output /usr/local/bin/fpm \
-  https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12 && \
+  https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12 && \
   chmod a+x /usr/local/bin/fpm
 
 # Install R Rcpp package

@@ -4,8 +4,6 @@ source build_utils.sh
 
 init "$@"
 
-echo "Detected alignment: $ALIGN"
-
 if [[ -z "$SKIP_KINDS_TEST" ]]; then
   bash -s -- "$@" <<'EOF'
   function get_directives() {
@@ -35,10 +33,10 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   echo "Compiling src/"
-  COMPILER=$COMPILER bash build.sh --clean-build --keep-fpm-toml "$@"
+  COMPILER=$COMPILER bash build.sh --clean-build "$@"
   check_exit_code "Build failed"
 else
-  COMPILER=$COMPILER bash build.sh --keep-fpm-toml "$@"
+  COMPILER=$COMPILER bash build.sh "$@"
   check_exit_code "Build failed"
 fi
 
@@ -58,8 +56,6 @@ fi
 utils_fpm test ${TEST_TARGET:-run_tests}
 
 check_exit_code "Tests failed"
-
-rm fpm.toml
 
 if [[ -z "$KEEP_FILES" ]]; then
   for type in zip txt bin; do

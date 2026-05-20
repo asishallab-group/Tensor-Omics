@@ -57,10 +57,12 @@ This repository contains the source code, methods, snippets and tests for the **
 /helper
   └── helper_c_wrapper.py       #  helper script to generate c wrappers subroutines
 
-build.sh        # Compile and generate shared libraries
-ford.yml        # Generates documentation
-fpm.toml        # Defines compilation options
-test_runner.sh  # Compile and generate unit test
+authors.h        # header file, defining macros for author meta tags for Ford documentation
+build.sh         # Compile and generate shared libraries
+build_utils.sh   # Several functions used by build.sh and test_runner.sh
+fpm.toml         # Defines fpm related compilation settings, also includes Ford config
+run_all_tests.sh # Convenience script for running all Fortran and Python, R tests
+test_runner.sh   # Compile and generate unit test
 
 ```
 
@@ -114,7 +116,7 @@ test_runner.sh  # Compile and generate unit test
 Example usage:
 
 ```bash
-ford ford.yml
+ford concise_project_info.md
 ```
 
 This generates an HTML site you can explore in a browser (`doc/index.html` by default).
@@ -164,12 +166,11 @@ Usage:
 
 #### Further Options
 
-- `--keep-fpm-toml`: Different compilers need different libraries sometimes, thus the actual `fpm.toml` is being temporarily generated from `.fpm.toml` and removed after compilation. For keeping the file, use this option.
 - `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then (but also in other unusual changes, like switching WSL distro, so completely new environment).
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--fc=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`. *Note that `--compiler` beats `--fc` if both specified*
 - `-D<directive>`: Define a preprocessor directive
-- `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`. Note that included libraries won't be affected, so the flags expand to `-lxxhash -lzip <flags>`).<br>
+- `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
   *Note: With using this option, the `--max_performance` option won't have any effect*
 
 *Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores, e.g. `--keep-fpm-toml` or `--keep_fpm.toml` becoming `KEEP_FPM_TOML` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $COMPILER > --fc > $FC`.*

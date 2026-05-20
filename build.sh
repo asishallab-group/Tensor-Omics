@@ -26,7 +26,6 @@ if [[ "$CLEAN_BUILD" ]]; then
 fi
 
 # Build with FPM first
-generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
 utils_fpm build
 
 check_exit_code "Build with fpm failed"
@@ -35,14 +34,14 @@ check_exit_code "Build with fpm failed"
 rm -f build/libtensor-omics.so
 
 # Retrieve output path for .so from fpm and copy to build directory
-tensoromics_so="$(utils_fpm list 2>&1 | grep 'libtensor-omics\.so' | sed 's/^\s*//g')"
+while IFS= read -r line; do
+    if [[ $line == *libtensor-omics\.so* ]]; then
+        # remove leading whitespaces
+        tensoromics_so="${line#"${line%%[![:space:]]*}"}"
+    fi
+done <<< "$(utils_fpm list 2>&1)"
+
 cp "${tensoromics_so}" build 2>/dev/null
 check_exit_code "No .so file created"
 
-# Remove fpm.toml if not needed anymore
-# IMPORTANT: the toml file is needed for the prior `utils_fpm list`, otherwise fpm will return a wrong path
-if [[ -z "$KEEP_FPM_TOML" ]]; then
-  rm fpm.toml
-fi
-
-echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
+echo "Build complete with compiler: $COMPILER"

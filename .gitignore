@@ -1,6 +1,3 @@
-# ignore generated fpm.toml
-fpm.toml
-
 ## node modules
 **/node_modules*
 

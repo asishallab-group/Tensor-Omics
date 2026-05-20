@@ -1,0 +1,27 @@
+name = "tensor-omics"
+version = "0.1.0"
+license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "shared" 
+
+[features]
+unknown-compiler.build.link = ["xxhash", "zip"]
+gfortran.build.link = ["xxhash", "zip"]
+ifx.build.link = ["xxhash", "zip", "iomp5"]
+
+[[test]]
+name = "run_tests"
+source-dir = "test"
+main = "run_tests.F90"
+
+[extra.ford]
+project = "TensorOmics"
+output_dir = "doc"
+license = "mit"
+print_creation_date = true
+creation_date = "%Y-%m-%d %H:%M %z"
+preprocessor = "pcpp -D__GFORTRAN__ -I."
