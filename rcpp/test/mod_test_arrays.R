@@ -50,7 +50,7 @@ test_real_serialization <- function() {
   tox_serialize_real_array(arr5r, fn("real5d.test.bin"))
   assert_true(all(tox_deserialize_real_array(fn("real5d.test.bin")) == arr5r))
 }
-test__serialization <- function() {
+test_logical_serialization <- function() {
   arr1l <- c(TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE)
   tox_serialize_logical_array(arr1l, fn("logical1d.test.bin"))
   assert_true(all(tox_deserialize_logical_array(fn("logical1d.test.bin")) == arr1l))
