@@ -14,14 +14,14 @@ if [[ $(command -v git) ]]; then
   current_branch=$(git branch --show-current 2>/dev/null || true)
   filename="build/.${current_branch//\//_.SLASH._}.branch" # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
   if [[ ! -f "$filename" ]]; then
-    CLEAN_BUILD=1
+    TOX_CLEAN_BUILD=1
     rm -f build/.*.branch
     : > "$filename"
   fi
 fi
 
 # Clean build directory if it exists
-if [[ "$CLEAN_BUILD" ]]; then
+if [[ "$TOX_CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 

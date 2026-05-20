@@ -168,12 +168,12 @@ Usage:
 
 - `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then (but also in other unusual changes, like switching WSL distro, so completely new environment).
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
-- `--fc=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`. *Note that `--compiler` beats `--fc` if both specified*
 - `-D<directive>`: Define a preprocessor directive
 - `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
   *Note: With using this option, the `--max_performance` option won't have any effect*
+- environment variable `FC` is supported as well for specifying compiler, with precedence `--compiler > $TOX_COMPILER > $FC`.
 
-*Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores, e.g. `--keep-fpm-toml` or `--keep_fpm.toml` becoming `KEEP_FPM_TOML` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $COMPILER > --fc > $FC`.*
+*Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores and a `TOX_` prefix, e.g. `--override-flags` or `--override:flags` becoming `TOX_OVERRIDE_FLAGS` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `TOX_COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $TOX_COMPILER > $FC` or more general `--<option_name> > $TOX_<uppercase_option_name_with_underscores>`. The support for `$FC` is just an additional feature.*
 
 ---
 
@@ -211,7 +211,7 @@ Additionally to the options from `build.sh` specified above, the `test_runner.sh
 
 - `--skip-kinds-test`: The framework has a compile-time safeguard to ensure that C types match our Fortran kinds. As this is usually the case, the test script enforces mismatches and checks correct behavior. This option can skip that, which might be handy, because it will always pass on the same platform, while triggering a `--clean-build` afterwards, which takes its time.
 - `--reuse-mod-files`: By default, all module files for test modules created by `fpm` will be removed to enforce recompilation of the tests. This is because `fpm` doesn't recognize tiny but critical changes in `src`. As it usually works fine and saves time for test compilation, feel free to use this option when debugging tests.
-- `--test-target=<target>`: Inspect `.fpm.toml` to see which test targets exist. Currently there is only `run_tests`, which is the default here.
+- `--test-target=<target>`: Inspect `fpm.toml` to see which test targets exist. Currently there is only `run_tests`, which is the default here.
 - `--keep-files`: All temporary files created by the runner here in the root of the repo will be removed by default. To keep them for debugging, add this option.
 - `--keep-<ext>`: The more fine-grained variant to `--keep-files`, so e.g. `--keep-zip` or `--keep-txt` will keep the temporary `*.txt` and `*.zip` files created during tests.
 

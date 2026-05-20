@@ -1,9 +1,7 @@
 function init() {
-  # handle_args overwrites:
-  # FC if --fc=<compiler> specified
   handle_args "$@"
 
-  # --compiler beats global $COMPILER beats --fc beats global $FC
+  # --compiler beats global $COMPILER beats global $FC
   get_compiler
 
   if [[ -z $(command -v $COMPILER) ]]; then
@@ -23,15 +21,15 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --flag "-I." -- $ARGS
 }
 
 # gets compiler from context, it uses
-# 1. $COMPILER if defined (by --compiler)
+# 1. $TOX_COMPILER if defined (by --compiler)
 # 2. else $FC
 # falls back to gfortran if the set compiler is not known
 function get_compiler() {
-  declare compiler=${COMPILER:-$FC}
+  declare compiler=${TOX_COMPILER:-$FC}
   declare default=gfortran
   COMPILER_FEATURE=
 
@@ -45,7 +43,7 @@ function get_compiler() {
   else
     if [[ $compiler ]]; then
       if [[ $compiler != "$default" ]]; then
-        if [[ $I_WANT_TO_USE_THIS_COMPILER ]]; then
+        if [[ $TOX_I_WANT_TO_USE_THIS_COMPILER ]]; then
           COMPILER_FEATURE=unknown-compiler
           COMPILER="$compiler"
           return
@@ -66,12 +64,12 @@ Use '--override-flags' to define additional compiler-related flags like '--overr
 }
 
 function get_flags() {
-  if [[ "$OVERRIDE_FLAGS" ]]; then
-    echo "$OVERRIDE_FLAGS"
+  if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
+    echo "$TOX_OVERRIDE_FLAGS"
     return
   fi
 
-  if [[ $MAX_PERFORMANCE ]]; then
+  if [[ $TOX_MAX_PERFORMANCE ]]; then
     echo -en "-DMAX_PERFORMANCE "
     # Detect compiler and choose appropriate profile:
     if [[ "$COMPILER" == "ifx" ]]; then
@@ -112,7 +110,7 @@ function handle_args() {
       # Uppercase everything
       varname="${varname^^}"
 
-      declare -g "$varname=$val"
+      declare -g "TOX_${varname}=$val"
     else
       ARGS="$ARGS $arg"
     fi

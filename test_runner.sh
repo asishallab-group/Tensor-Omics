@@ -4,7 +4,7 @@ source build_utils.sh
 
 init "$@"
 
-if [[ -z "$SKIP_KINDS_TEST" ]]; then
+if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   bash -s -- "$@" <<'EOF'
   function get_directives() {
     echo "-D'OPEN_PAREN=(' -D'CLOSE_PAREN=)' -D'$1(KIND)=KIND(KIND)' -D'$2(KIND)=$1 OPEN_PAREN KIND CLOSE_PAREN' -D'$3(KIND)=$1 OPEN_PAREN 2 CLOSE_PAREN'"
@@ -33,10 +33,10 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   stderr "Compiling src/"
-  COMPILER=$COMPILER bash build.sh --clean-build "$@"
+  bash build.sh --clean-build "$@" --compiler="$COMPILER"
   check_exit_code "Build failed"
 else
-  COMPILER=$COMPILER bash build.sh "$@"
+  bash build.sh "$@" --compiler="$COMPILER"
   check_exit_code "Build failed"
 fi
 
@@ -46,24 +46,24 @@ rm -f manifest.txt
 stderr "Running tests..."
 
 # By default same behavior as compiling manually, as fpm has some struggles sometimes with correct linking, e.g. some routine changes in src, but the tests use the old implementation.
-if [[ -z $REUSE_MOD_FILES ]]; then
+if [[ -z $TOX_REUSE_MOD_FILES ]]; then
   rm -f build/$COMPILER_*/**/*mod_test*
 fi
 
 # Run the executable
-utils_fpm test ${TEST_TARGET:-run_tests}
+utils_fpm test ${TOX_TEST_TARGET:-run_tests}
 
 check_exit_code "Tests failed"
 
-if [[ -z "$KEEP_FILES" ]]; then
+if [[ -z "$TOX_KEEP_FILES" ]]; then
   for type in zip txt bin; do
-    keep=KEEP_${type^^}
+    keep=TOX_KEEP_${type^^}
     if [[ -z "${!keep}" ]]; then
       rm -f *.test.$type
     fi
   done
 
-  if [[ -z "$KEEP_TXT" ]]; then
+  if [[ -z "$TOX_KEEP_TXT" ]]; then
     rm -f manifest.txt
   fi
 fi
