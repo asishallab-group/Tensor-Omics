@@ -11,7 +11,7 @@ from tensoromics_functions import (
     relative_axes_changes_from_shift_vector,
     relative_axes_expression_from_expression_vector
 )
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 
 TOL = 1e-12
 
@@ -56,11 +56,7 @@ def test_shift_mixed_vector():
 
 def test_shift_zero_vector():
     vec = np.array([0, 0, 0], dtype=np.float64)
-    try:
-        contrib = relative_axes_changes_from_shift_vector(vec)
-        raise AssertionError("Expected exception for zero vector, but got result: {}".format(contrib))
-    except RuntimeError as e:
-        print("✓ shift zero vector: caught expected exception ({})".format(e))
+    assert_error(lambda: relative_axes_changes_from_shift_vector(vec), "Expected exception for zero vector")
 
 
 def test_shift_one_nonzero_axis():
@@ -114,11 +110,7 @@ def test_expr_mixed_vector():
 
 def test_expr_zero_vector():
     vec = np.array([0, 0, 0], dtype=np.float64)
-    try:
-        contrib = relative_axes_expression_from_expression_vector(vec)
-        raise AssertionError("Expected exception for zero vector, but got result: {}".format(contrib))
-    except RuntimeError as e:
-        print("✓ expr zero vector: caught expected exception ({})".format(e))
+    assert_error(lambda: relative_axes_expression_from_expression_vector(vec), "Expected exception for zero vector")
 
 
 def test_expr_one_nonzero_axis():

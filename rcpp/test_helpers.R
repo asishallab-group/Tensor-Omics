@@ -36,6 +36,7 @@ ccat <- function(...) {
 
 run_all_tests <- function(env = parent.frame(), test_only = TRUE) {
   # Discover candidate names
+  env <- as.environment(env)
   if (test_only) {
     test_names <- ls(env, pattern = "^test_")
   } else {

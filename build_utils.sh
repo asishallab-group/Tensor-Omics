@@ -31,7 +31,8 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --flag "-I. -Iexternal/lib" -- $ARGS
+  rm -f build/cache.toml  # can cause issues, but doesn't affect compilation when missing
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
 }
 
 # gets compiler from context, it uses
@@ -124,6 +125,16 @@ function handle_args() {
       ARGS="$ARGS $arg"
     fi
   done
+}
+
+function find_and_mv_libs() {
+  while IFS= read -r line; do
+    if [[ $line == *.so || $line == *.a ]]; then
+      # remove leading whitespaces
+      lib="${line#"${line%%[![:space:]]*}"}"
+      cp "${lib}" "$2" 2>/dev/null
+    fi
+  done <<< "$1"
 }
 
 function echo_compiler() {

@@ -6,17 +6,12 @@ license = "MIT"
 library = true
 
 [library]
-type = "shared" 
+type = "shared"
 
 [features]
-unknown-compiler.build.link = ["xxhash", "zip"]
-gfortran.build.link = ["xxhash", "zip"]
-ifx.build.link = ["xxhash", "zip", "iomp5"]
-
-netlib.flags = "-O2 -std=legacy -ffixed-line-length-none -fallow-argument-mismatch -w"
-
-[dependencies]
-loess-netlib = { path = "external/loess_netlib", features = ["netlib"] }
+unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
 
 [[test]]
 name = "run_tests"

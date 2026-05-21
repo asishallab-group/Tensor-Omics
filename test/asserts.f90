@@ -30,31 +30,42 @@ contains
         character(*), intent(in) :: msg
         character(*), intent(in), optional :: additional_msg, got, expected, tol, at
 
+        logical :: comma
+
         write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
         if (present(additional_msg)) then
             write (error_unit, "(A)", advance="no") COLOR_RED // " --- " // COLOR_ERROR // trim(additional_msg)
         end if
         write (error_unit, "(A)") COLOR_RESET
 
+        comma = .false.
+
         if (present(got) .or. present(expected) .or. present(tol) .or. present(at)) then
             write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    ("
 
             if (present(got)) then
                 write (error_unit, "(A)", advance="no") COLOR_RED // "      got" // COLOR_CREAM // ": " // got
-                if (present(expected)) then
-                    write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
-                    write (error_unit, "(A)", advance="no") COLOR_GREEN // " expected" // COLOR_CREAM // ": " // expected
-                    if (present(tol)) then
-                        write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
-                        write (error_unit, "(A)", advance="no") COLOR_YELLOW // "      tol" // COLOR_CREAM // ": " // tol
-                    end if
-                end if
+                comma = .true.
 
                 if (present(at)) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
             end if
 
+            if (present(expected)) then
+                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
+                write (error_unit, "(A)", advance="no") COLOR_GREEN // " expected" // COLOR_CREAM // ": " // expected
+                comma = .true.
+            end if
+
+            if (present(tol)) then
+                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
+                write (error_unit, "(A)", advance="no") COLOR_YELLOW // "      tol" // COLOR_CREAM // ": " // tol
+                comma = .true.
+            end if
+
             if (present(at)) then
+                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
                 write (error_unit, "(A)", advance="no") COLOR_CREAM // "       at: " // at
+                comma = .true.
             end if
 
             write (error_unit, "()")

@@ -702,7 +702,7 @@ void construct_neighborhoods_c(
   int* ierr
 );
 
-void normalize_variable_timeseries_C(
+void normalize_variable_timeseries_c(
   const double* v,
   double* v_norm,
   const int* n_points,

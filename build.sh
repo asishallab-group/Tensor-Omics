@@ -25,22 +25,27 @@ if [[ "$TOX_CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 
+# clean output directories for safety, so no wrong libs will be linked accidentally
+rm -f build/*.so
+rm -f external/*.a
+
 # Build with FPM first
+# dependencies
+cd external/loess_netlib
+root=../..
+fpm build --compiler "$COMPILER"
+find_and_mv_libs "$(fpm build --compiler "$COMPILER" --list 2>&1)" "$root/external"
+cd $root
+# tox
 utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
 # Remove outdated .so file -> no accidental reuse
 rm -f build/libtensor-omics.so
-utils_fpm list 2>&1
+
 # Retrieve output path for .so from fpm and copy to build directory
-while IFS= read -r line; do
-    if [[ $line == *\.so* ]]; then
-        # remove leading whitespaces
-        so="${line#"${line%%[![:space:]]*}"}"
-        cp "${so}" build 2>/dev/null
-    fi
-done <<< "$(utils_fpm list 2>&1)"
+find_and_mv_libs "$(utils_fpm list 2>&1)" "build"
 
 check_exit_code "No .so file created"
 

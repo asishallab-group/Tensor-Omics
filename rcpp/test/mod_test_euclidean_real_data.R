@@ -6,6 +6,7 @@
 
 # Source the main functions
 source("rcpp/tensoromics_functions.R")
+source("rcpp/test_helpers.R")
 
 # Function to generate gene_to_family mapping from Orthogroups.tsv file
 generate_gene_to_family_mapping <- function(orthogroups_file, centroids_file, gene_expression_file, 
@@ -153,8 +154,12 @@ run_real_data_example <- function() {
 
 # Run example if script is executed directly
 if (interactive() || length(commandArgs(trailingOnly = TRUE)) == 0) {
-  cat("Running example with real data...\n")
-  results <- run_real_data_example()
+  run_all_tests(
+    env=list(
+      euclidean_real_data_example=function() {results <- run_real_data_example()}
+    ),
+    test_only=FALSE
+  )
 } else {
   cat("Script loaded. Use run_real_data_example() to run the example.\n")
 }
