@@ -7,7 +7,11 @@ Designed for distributed high-performance computing, Tensor Omics is implemented
 
 ## Detailed Method Description
 
-Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
+Please read the manuscript [`./misc/Tensor_Omics_Methods.pdf`](./misc/Tensor_Omics_Methods.pdf) for details.
+
+## Documentation
+
+You find the [here as Web Page](./doc) or as PDF in [`./misc/tox_manual.pdf`](./misc/tox_manual.pdf).
 
 ## Key Features
 
@@ -68,13 +72,13 @@ test_runner.sh   # Compile and generate unit test
 
 ## Notes
 
-* **`/build`** is used to store shared libraries, compiled and binary files resulting from Fortran compilation. It keeps the repo clean by separating source and compiled code.
-* **`/doc`** contains the auto-generated documentation, which is built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
-* **`/misc`** contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
+* [**`/build`**](./build) is used to store shared libraries, compiled and binary files resulting from Fortran compilation. It keeps the repo clean by separating source and compiled code.
+* [**`/doc`**](./doc) contains the auto-generated documentation, which is built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
+* [**`/misc`**](./misc) contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
 
-* **`/python`** includes python scripts that coordinate analysis workflows
-* **`/rcpp`** includes R scripts that coordinate analysis workflows
-* **`/snippets/`** includes frequently used or testable units of logic reused across development stages.
+* [**`/python`**](./python) includes python scripts that coordinate analysis workflows
+* [**`/rcpp`**](./rcpp) includes R scripts that coordinate analysis workflows
+* [**`/snippets`**](./snippets) includes frequently used or testable units of logic reused across development stages.
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
     {
@@ -88,10 +92,10 @@ test_runner.sh   # Compile and generate unit test
         }
     }
   ```
-* **`/src`** contains performance-critical Fortran code. These are compiled during the build process.
+* [**`/src`**](./src) contains performance-critical Fortran code. These are compiled during the build process.
   - All `.f90` files should include `precompiler_constants.f90`
   - Subroutines that do not perform `input/output` operations or memory allocations must be declared as `pure`.
-* **`/test`** contains the unit tests for the Fortran subroutines.
+* [**`/test`**](./test) contains the unit tests for the Fortran subroutines.
 
   * The file `asserts.f90` must exist and can be modified if additional assert functions are needed.
   * There must be a central program called `run_tests.f90` which contains all the test calls defined in the modules.
@@ -99,7 +103,7 @@ test_runner.sh   # Compile and generate unit test
   * All test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Otherwise, compilation errors may occur.
   * Check details in `test/readme.md`
 
-* **`/helper`** this folder will not be included in the final version of TOX. For now, it serves to help us create the C wrapper for the subroutines more quickly and easily. See details in `helper/readme.md`.
+* [**`/helper`**](./helper) this folder will not be included in the final version of TOX. For now, it serves to help us create the C wrapper for the subroutines more quickly and easily. See details in `helper/readme.md`.
 
 ---
 
@@ -184,9 +188,9 @@ The test suite framework provides a robust and scalable system for organizing an
 
 #### Architecture
 
-1. **`run_tests.f90`** - Main program that handles command line arguments
+1. [**`/run_tests.f90`**](./run_tests.f90) - Main program that handles command line arguments
 2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`asserts.f90`** - Assertion function library for validating results
+3. [**`/asserts.f90`**](./asserts.f90) - Assertion function library for validating results
 
 #### System Usage
 
