@@ -14,7 +14,7 @@ sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv, cacheDir = "rcpp/r
 cat("✓ TensorOmics Rcpp functions loaded successfully\n")
 
 source("rcpp/error_handling.R")
-
+tox_log2_transformation
 #> tox_data_integration:calc_neighborhood_size_c: Compute neighborhood size
 #' Calculate neighborhood size for JSD calculation
 #'
@@ -467,6 +467,28 @@ tox_log2_transformation <- function(expr) {
   check_err_code(result$ierr)
 
   return(result$transformed_expr)
+}
+
+#> tox_normalization:normalize_unit_length_c: Normalize a vector to unit length
+#' Normalize a numeric vector to unit length
+#'
+#' @param vector Numeric vector
+#' @return Numeric vector with unit norm
+#' 
+tox_normalize_unit_length <- function(vector) {
+  
+  # Input Validation
+  validate_numeric_vector(vector)
+  validate_nonempty(vector)
+
+  # Call the Rcpp forwarder
+  result <- tox_normalize_unit_length_rcpp(vector)
+  
+  # Check for errors
+  check_err_code(result$ierr)
+
+  # Return the normalized vector
+  return(result$vector)
 }
 
 #> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue group
