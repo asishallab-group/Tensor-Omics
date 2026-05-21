@@ -48,7 +48,7 @@ def run_all_tests(functions, script_file_name=args[0], test_only=True):
         test_name = test_func.__name__
         try:
             test_func()
-            cprint(f"@green.✓ @copper.{test_name} @green.passed.")
+            cprint(f"@green.✓ @copper.{test_name} @green.passed@cream..")
             passed += 1
         except AssertionError as e:
             cprint(f"@red.✗ @dark_copper.{test_name} @red.FAILED@cream.: @error.{e}")

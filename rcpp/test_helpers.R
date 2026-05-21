@@ -63,7 +63,7 @@ run_all_tests <- function(env = parent.frame(), test_only = TRUE) {
       {
 
         test_func()
-        ccat(sprintf("@green.✓ @copper.%s @green.passed.\n", name))
+        ccat(sprintf("@green.✓ @copper.%s @green.passed@cream..\n", name))
         passed <- passed + 1
       },
       error = function(e) {

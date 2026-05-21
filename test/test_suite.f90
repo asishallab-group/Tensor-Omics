@@ -76,7 +76,7 @@ contains
 
         do i = 1, size(all_tests)
             call all_tests(i)%test_proc()
-            print "(A)", COLOR_COPPER // " " // trim(all_tests(i)%name) // COLOR_GREEN // " passed." // COLOR_RESET
+            print "(A)", COLOR_COPPER // " " // trim(all_tests(i)%name) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
         end do
 
         print "(A)", COLOR_CREAM // "All '" // COLOR_DARK_COPPER // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
@@ -96,7 +96,7 @@ contains
             do j = 1, size(all_tests)
                 if (trim(test_names(i)) == trim(all_tests(j)%name)) then
                     call all_tests(j)%test_proc()
-                    print "(A)", COLOR_COPPER // " " // trim(test_names(i)) // COLOR_GREEN // " passed." // COLOR_RESET
+                    print "(A)", COLOR_COPPER // " " // trim(test_names(i)) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
                     found = .true.
                     exit
                 end if
@@ -119,7 +119,7 @@ contains
         type(test_case), allocatable :: all_tests(:)
 
         do i = 1, size(available_suites)
-            print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // "'" // COLOR_RESET
+            print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
             all_tests = available_suites(i)%get_all()
             call run_all_tests(trim(available_suites(i)%name), all_tests)
         end do
@@ -133,7 +133,7 @@ contains
 
         do i = 1, size(available_suites)
             if (trim(available_suites(i)%name) == trim(requested_suite)) then
-                print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // "'" // COLOR_RESET
+                print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
                 all_tests = available_suites(i)%get_all()
                 call run_all_tests(trim(requested_suite), all_tests)
                 return
