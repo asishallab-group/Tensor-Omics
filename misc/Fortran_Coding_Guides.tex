@@ -322,8 +322,8 @@ if (is_err(ierr)) return
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
 \begin{itemize}
-  \item \texttt{set\_err(ierr, code)}: Always overwrites \texttt{ierr} with \texttt{code}.
-  \item \texttt{set\_err\_once(ierr, code)}: Only sets \texttt{ierr} if it is currently \texttt{ERR\_OK}. Preserves the first error encountered when chaining multiple fallible calls.
+  \item \texttt{set\_err(ierr, code)}: Sets \texttt{ierr} to \texttt{code} only if \texttt{ierr} is currently \texttt{ERR\_OK}. Preserves the first error encountered.
+  \item \texttt{set\_err\_once(ierr, code)}: Identical in behaviour to \texttt{set\_err}; provided as a more explicit alias to signal intent when chaining multiple fallible calls.
 \end{itemize}
 
 \subsection{Never Silent Errors}
@@ -571,7 +571,7 @@ If you need a compound structure that must cross the language boundary, decompos
 % =============================================================================
 
 The file \texttt{src/f42\_utils.F90} contains general-purpose helper functions shared across the project:
-\texttt{mean}, \texttt{std\_dev}, \texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close}, \texttt{logx}, \texttt{compute\_edf}, etc.
+\texttt{mean}, \texttt{std\_dev}, \texttt{norm}, \texttt{clamp\_real}/\texttt{clamp\_int}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close}, \texttt{logx}, \texttt{compute\_edf}, etc.
 
 \textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether \texttt{f42\_utils} already provides it. If you write a function that is genuinely reusable across modules, add it to \texttt{f42\_utils} rather than creating a module-local copy. This prevents duplication and keeps utility logic in one place.
 
@@ -586,7 +586,7 @@ use f42_utils, only: norm, is_close, logx, mean, std_dev, sort_array
 Every module that defines C wrappers must \texttt{use safeguard}. This module contains compile-time assertions that verify the C and Fortran kind constants are equivalent on the target platform:
 
 \begin{lstlisting}[language=Fortran]
-use safeguard   ! guarantees c_int == int32 and c_double == real64
+use safeguard   ! guarantees c_int == int32, c_double == real64, c_double_complex == real64
 \end{lstlisting}
 
 If these kinds do not match, the module fails to compile with a descriptive error, preventing silent ABI (Application Binary Interface) mismatch bugs. The ABI is the low-level contract between compiled code: it specifies how function arguments are laid out in memory, what sizes the types occupy, and how values are returned. When the Fortran kind for \texttt{real64} (8 bytes) does not match the C kind for \texttt{c\_double} on a given platform, data passed through a C wrapper would be misinterpreted silently, producing incorrect results without any runtime error.
@@ -626,15 +626,25 @@ pure subroutine compute_tissue_versatility_c( &
 
   ! All scalars and arrays must have the target attribute
   integer(c_int), intent(in),  target :: n_axes
+    !! Number of axes (dimensions) - same doc as core routine
   integer(c_int), intent(in),  target :: n_vectors
+    !! Total number of expression vectors
   integer(c_int), intent(in),  target :: n_selected_axes
+    !! Number of selected axes (count of non-zero entries in axes_selection)
   integer(c_int), intent(in),  target :: n_selected_vectors
+    !! Number of selected vectors (count of non-zero entries in exp_vecs_selection_index)
   real(c_double), intent(in),  target :: expression_vectors(n_axes, n_vectors)
+    !! Gene expression matrix (n_axes x n_vectors), column-major
   integer(c_int), intent(in),  target :: exp_vecs_selection_index(n_vectors)
+    !! Selection mask for vectors: 1 = include, 0 = skip (logical converted to int)
   integer(c_int), intent(in),  target :: axes_selection(n_axes)
+    !! Selection mask for axes: 1 = include, 0 = skip (logical converted to int)
   real(c_double), intent(out), target :: tissue_versatilities(n_selected_vectors)
+    !! Output: tissue versatility score for each selected vector
   real(c_double), intent(out), target :: tissue_angles_deg(n_selected_vectors)
+    !! Output: angle in degrees for each selected vector
   integer(c_int), intent(out), target :: ierr
+    !! Error code: 0 = success
 
   ! 1. Always check ierr pointer first (silent return if null)
   M_CHECK_IERR_NON_NULL
@@ -668,7 +678,9 @@ end subroutine compute_tissue_versatility_c
   \item \textbf{No optional arguments}: \texttt{bind(C)} and optional arguments are incompatible. Override via the \texttt{\_expert\_c} variant.
   \item \textbf{No derived types}: Pass components as flat scalars and arrays.
   \item \textbf{Stable symbol names}: The \texttt{bind(C, name="...")} string is the ABI surface. Never rename it after publication.
+  
   \item \textbf{No aliasing}: Never pass the same memory region under two different argument names.
+  \item \textbf{Copy FORD comments from the core routine}: Every argument declaration in the C wrapper must carry the same \texttt{!!} documentation comment as the corresponding argument in the original core subroutine. 
 \end{enumerate}
 
 \subsection{Character / String Arguments}
@@ -696,6 +708,40 @@ character(len=:), allocatable :: fortran_str
 call c_char_1d_as_string(filename, filename_len, fortran_str, ierr)
 if (is_err(ierr)) return
 \end{lstlisting}
+
+\subsection{Logical Arguments}
+
+Fortran's \texttt{logical} type is \textbf{not interoperable with C} and must never appear in a \texttt{bind(C)} wrapper. Replace every \texttt{logical} argument with \texttt{integer(c\_int)}.
+The convention is \texttt{0 = .false.}, \textbf{any non-zero = .true.}
+
+The wrapper declares a local \texttt{logical} variable and converts via the project utility
+\texttt{c\_int\_as\_logical} (from \texttt{tox\_conversions}):
+
+\begin{lstlisting}[language=Fortran]
+! Core routine uses logical
+pure subroutine compute_tissue_versatility(..., axes_selection, ...)
+  logical, intent(in) :: axes_selection(n_axes)
+    !! Selection mask for axes: .true. = include, .false. = skip
+  ...
+end subroutine
+
+! C wrapper receives integer(c_int), converts to logical before calling core
+pure subroutine compute_tissue_versatility_c(..., axes_selection, ...) &
+    bind(C, name="compute_tissue_versatility_c")
+  use tox_conversions, only: c_int_as_logical
+  integer(c_int), intent(in), target :: axes_selection(n_axes)
+    !! Selection mask for axes: 1 = include, 0 = skip (any non-zero is .true.)
+  logical :: axes_selection_f(n_axes)
+  ...
+  call c_int_as_logical(axes_selection, axes_selection_f)
+  call compute_tissue_versatility(..., axes_selection_f, ...)
+end subroutine
+\end{lstlisting}
+
+The reverse conversion (for \texttt{intent(out)} logical arguments) uses \texttt{logical\_as\_c\_int},
+also from \texttt{tox\_conversions}: \texttt{0} for \texttt{.false.}, \texttt{1} for \texttt{.true.}
+
+On the Python side, pass a \texttt{numpy} \texttt{int32} array (\texttt{selection.astype(np.int32)}). On the R side, use \texttt{as.integer(selection)} before passing to the Rcpp forwarder.
 
 \subsection{When Not to Write a Wrapper}
 
@@ -871,7 +917,7 @@ lib = ctypes.CDLL(dll_path)
 \subsection{Python Wrapper Pattern}
 
 \begin{lstlisting}[language=Python]
-#> tox_tissue_versatility:compute_tissue_versatility_c
+#> tox_tissue_versatility:compute_tissue_versatility_c: Compute tissue versatility for gene expression vectors
 def compute_tissue_versatility(expression_vectors, gene_selection, axis_selection):
     """
     Compute tissue versatility for each selected gene expression vector.
