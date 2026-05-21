@@ -14,7 +14,7 @@ sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv, cacheDir = "rcpp/r
 cat("✓ TensorOmics Rcpp functions loaded successfully\n")
 
 source("rcpp/error_handling.R")
-tox_log2_transformation
+
 #> tox_data_integration:calc_neighborhood_size_c: Compute neighborhood size
 #' Calculate neighborhood size for JSD calculation
 #'
