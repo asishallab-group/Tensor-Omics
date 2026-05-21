@@ -241,6 +241,7 @@ contains
         ! Validate effective points
         n_eff = max(2_int32, int(ceiling(span*real(n, real64))))
         call validate_in_range_int(n_eff, ierr, min=degree + 3_int32)
+        if (is_err(ierr)) return
 
         ! Perform the three-step LOESS fitting procedure:
         ! 1. Decomposition: Initialize workspace arrays and decompose the problem
@@ -337,6 +338,7 @@ contains
         ! Validate effective points
         n_eff = max(2_int32, int(ceiling(span*real(n, real64))))
         call validate_in_range_int(n_eff, ierr, min=degree + 3_int32)
+        if (is_err(ierr)) return
 
         ! Initialize robust weights to 1 (no reweighting on first iteration)
         robust_weights = 1.0_real64

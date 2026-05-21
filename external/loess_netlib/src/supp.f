@@ -60,7 +60,7 @@
      +ertex influence matrix'
       if(i.eq.999) print *,'LOESS DEBUG: not yet implemented'
       print *,'Assert failed, error code ',i
-      stop
+      stop 1
       end
       subroutine ehg183(s,i,n,inc)
       character*(*) s
