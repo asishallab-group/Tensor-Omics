@@ -76,10 +76,10 @@ contains
 
         do i = 1, size(all_tests)
             call all_tests(i)%test_proc()
-            print "(' "//COLOR_COPPER//"',A,'"//COLOR_GREEN//" passed"//COLOR_CREAM//"."//COLOR_RESET//"')", trim(all_tests(i)%name)
+            print "(A)", COLOR_COPPER // " " // trim(all_tests(i)%name) // COLOR_GREEN // " passed." // COLOR_RESET
         end do
 
-        print "('"//COLOR_CREAM//"All ''"//COLOR_LIGHT_GRAY//"',A,'"//COLOR_CREAM//"'' tests passed successfully."//COLOR_RESET//"')", trim(suite_name)
+        print "(A)", COLOR_CREAM // "All '" // COLOR_DARK_COPPER // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
     end subroutine run_all_tests
 
     !> Run selected tests by name from a given suite.
@@ -87,24 +87,30 @@ contains
         character(len=*), intent(in) :: test_names(:)
         type(test_case), intent(in) :: all_tests(:)
         integer :: i, j
-        logical :: found
+        logical :: found, some_not_found
 
+        some_not_found = .false.
         do i = 1, size(test_names)
             found = .false.
 
             do j = 1, size(all_tests)
                 if (trim(test_names(i)) == trim(all_tests(j)%name)) then
                     call all_tests(j)%test_proc()
-                    print "(' "//COLOR_COPPER//"',A,'"//COLOR_GREEN//" passed"//COLOR_CREAM//"."//COLOR_RESET//"')", trim(test_names(i))
+                    print "(A)", COLOR_COPPER // " " // trim(test_names(i)) // COLOR_GREEN // " passed." // COLOR_RESET
                     found = .true.
                     exit
                 end if
             end do
 
             if (.not. found) then
-                print "('"//COLOR_RED//"Unknown test"//COLOR_CREAM//": "//COLOR_COPPER//"', A)", trim(test_names(i))
+                print "(A)", COLOR_RED // "Unknown test" // COLOR_CREAM // ": " // COLOR_COPPER // trim(test_names(i)) // COLOR_RESET
+                some_not_found = .true.
             end if
         end do
+
+        if (some_not_found) then
+            stop 1
+        end if
     end subroutine run_named_tests
 
     !> Run every registered suite.
@@ -113,7 +119,7 @@ contains
         type(test_case), allocatable :: all_tests(:)
 
         do i = 1, size(available_suites)
-            print *, "Running suite: ", trim(available_suites(i)%name)
+            print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // "'" // COLOR_RESET
             all_tests = available_suites(i)%get_all()
             call run_all_tests(trim(available_suites(i)%name), all_tests)
         end do
@@ -127,13 +133,14 @@ contains
 
         do i = 1, size(available_suites)
             if (trim(available_suites(i)%name) == trim(requested_suite)) then
+                print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // "'" // COLOR_RESET
                 all_tests = available_suites(i)%get_all()
                 call run_all_tests(trim(requested_suite), all_tests)
                 return
             end if
         end do
 
-        print *, "Unknown test suite: ", trim(requested_suite)
+        print "(A)", COLOR_RED // "Unknown test suite" // COLOR_CREAM // ": " // COLOR_DARK_COPPER // trim(requested_suite) // COLOR_RESET
         stop 1
     end subroutine run_suite_all
 
@@ -153,7 +160,7 @@ contains
             end if
         end do
 
-        print *, "Unknown test suite: ", trim(requested_suite)
+        print "(A)", COLOR_RED // "Unknown test suite" // COLOR_CREAM // ": " // COLOR_DARK_COPPER // trim(requested_suite) // COLOR_RESET
         stop 1
     end subroutine run_suite_named
 
