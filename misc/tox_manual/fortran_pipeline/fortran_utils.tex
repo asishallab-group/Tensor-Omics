@@ -1,0 +1,597 @@
+\subsubsection{Fortran Utils}
+\begin{enumerate}
+    \item \textbf{Binary Search Trees for 1D Range Queries}
+          
+          Binary Search Trees provide efficient indexing and range query capabilities
+          for one-dimensional data using flat array implementations for optimal memory
+          performance.
+          
+          \textbf{Fortran BST Implementation}
+          
+          \begin{enumerate}
+            \item \textbf{Build BST Index}
+                  
+                  Constructs a Binary Search Tree index by sorting the input values and storing
+                  permutation indices. Uses an efficient stack-based sorting algorithm.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{values real(real64)}: 1D array of values to index
+                          
+                    \item \texttt{num\_values integer(int32)}: Number of elements
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{sorted\_indices integer(int32)}: Permutation indices after
+                          sorting (1-based)
+                          
+                    \item \texttt{left\_stack, right\_stack integer(int32)}: Sorting workspace
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+call build_bst_index(values, num_values, sorted_indices, left_stack, &
+                        right_stack, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Sorted Value}
+                  
+                  Retrieves the value at a specific position in the sorted order defined
+                  by the BST index.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{values real(real64)}: Original values array
+                          
+                    \item \texttt{sorted\_indices integer(int32)}: BST index array (1-based)
+                          
+                    \item \texttt{position integer(int32)}: Position in sorted order (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{sorted\_value real(real64)}: Value at specified position
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+sorted_value = get_sorted_value(values, sorted_indices, &
+                                position, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{BST Range Query}
+                  
+                  Efficiently finds all values within a specified range using the precomputed
+                  BST index.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{values real(real64)}: Original values array
+                          
+                    \item \texttt{sorted\_indices integer(int32)}: BST index array (1-based)
+                          
+                    \item \texttt{num\_values integer(int32)}: Number of elements
+                          
+                    \item \texttt{lower\_bound, upper\_bound real(real64)}: Range boundaries
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{output\_indices integer(int32)}: Indices of matching values
+                          (1-based)
+                          
+                    \item \texttt{num\_matches integer(int32)}: Number of matches found
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+call bst_range_query(values, sorted_indices, num_values, &
+                    lower_bound, upper_bound, output_indices, &
+                    num_matches, ierr)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+    \item \textbf{k-d Trees for Multi-Dimensional Indexing} \label{sec:kd_trees}
+          
+          k-d trees provide efficient space partitioning for multi-dimensional data with
+          support for both Euclidean and spherical geometries.
+          
+          \textbf{Fortran k-d Tree Implementation}
+          
+          \begin{enumerate}
+            \item \textbf{Build k-d Tree Index}
+                  
+                  Constructs a k-d tree index using stack-based non-recursive partitioning
+                  along specified dimensions.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{points real(real64)}: Data points matrix (dimensions ×
+                          points)
+                          
+                    \item \texttt{num\_dimensions integer(int32)}: Number of dimensions
+                          
+                    \item \texttt{num\_points integer(int32)}: Number of points
+                          
+                    \item \texttt{dimension\_order integer(int32)}: Dimension ordering for
+                          splitting (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{kd\_indices integer(int32)}: Output index array (1-based)
+                          
+                    \item \texttt{workspace integer(int32)}: Workspace array
+                          
+                    \item \texttt{value\_buffer real(real64)}: Value buffer for sorting
+                          
+                    \item \texttt{permutation integer(int32)}: Permutation array
+                          
+                    \item \texttt{left\_stack, right\_stack integer(int32)}: Sorting stacks
+                          
+                    \item \texttt{recursion\_stack integer(int32)}: Recursion stack
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+call build_kd_index(points, num_dimensions, num_points, kd_indices, &
+                    dimension_order, workspace, value_buffer, &
+                    permutation, left_stack, right_stack, &
+                    recursion_stack, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Build Spherical k-d Tree}
+                  
+                  Specialized k-d tree construction optimized for unit vectors on hyperspheres.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{vectors real(real64)}: Unit vectors matrix (dimensions
+                          × vectors)
+                          
+                    \item \texttt{num\_dimensions integer(int32)}: Number of dimensions
+                          
+                    \item \texttt{num\_vectors integer(int32)}: Number of vectors
+                          
+                    \item \texttt{dimension\_order integer(int32)}: Dimension ordering for
+                          splitting (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{sphere\_indices integer(int32)}: Output index array (1-based)
+                          
+                    \item Various workspace arrays (same as build\_kd\_index)
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+call build_spherical_kd(vectors, num_dimensions, num_vectors, &
+                        sphere_indices, dimension_order, workspace, &
+                        value_buffer, permutation, left_stack, & 
+                        right_stack, recursion_stack, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Point from k-d Index}
+                  
+                  Retrieves point coordinates from specified position in k-d tree ordering.
+                  
+                  \textbf{Input:}
+                  \begin{itemize}
+                    \item \texttt{points real(real64)}: Original points matrix
+                          
+                    \item \texttt{kd\_indices integer(int32)}: k-d tree index array (1-based)
+                          
+                    \item \texttt{position integer(int32)}: Position in index (1-based)
+                  \end{itemize}
+                  \textbf{Output:}
+                  \begin{itemize}
+                    \item \texttt{point\_values real(real64)}: Retrieved point values
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran]
+call get_kd_point(points, kd_indices, position, point_values, ierr)
+                  \end{lstlisting}
+          \end{enumerate}
+          \item \textbf{Hashing}
+          
+          The TensorOmics package provides high-performance hashing utilities using the
+          XXH3 algorithm for both hash maps and hash sets. These utilities are
+          implemented in Fortran with separate chaining collision resolution and
+          automatic resizing.
+          
+          \begin{enumerate}
+            \item \textbf{Hashmap}
+                  
+                  The hashmap implementation provides key-value storage with string keys
+                  and integer values, using the XXH3 hashing algorithm for optimal
+                  performance.
+                  
+                  \begin{itemize}
+                    \item \textbf{Type Definition:}
+                          \begin{lstlisting}[language=Fortran]
+type(hashmap_type) :: map
+                          \end{lstlisting}
+                          
+                    \item \textbf{Create Hashmap:} Initialize a new hashmap with optional initial size. The Hashmap size will be set to the next greater
+                          power of two.
+                          \begin{lstlisting}[language=Fortran]
+call hashmap_create(map, initial_size)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{map}: Hashmap object to create
+                                  
+                            \item \textbf{(Optional)} \texttt{initial\_size}: Initial size
+                                  of the hashmap
+                          \end{itemize}
+                          
+                    \item \textbf{Insert Key-Value Pair:} Insert or update a key-value pair in the hashmap. 
+                          \begin{lstlisting}[language=Fortran]
+call hashmap_put(map, key, value)
+                    \end{lstlisting}
+                    \begin{itemize}
+                        \item \texttt{map}: Hashmap to insert into
+                              
+                        \item \texttt{key}: String key to store
+                              
+                        \item \texttt{value}: Integer value to store
+                    \end{itemize}
+                    
+                    \item \textbf{Lookup Key:} Retrieve the value associated with a key.
+                          \begin{lstlisting}[language=Fortran]
+value = hashmap_get(map, key)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{map}: Hashmap to search
+                                  
+                            \item \texttt{key}: String key to look for
+                                  
+                            \item \textbf{Returns:} Integer value, or -1 if key not found
+                          \end{itemize}
+                          
+                    \item \textbf{Destroy Hashmap:} Clean up and deallocate the hashmap.
+                          It is important to always call this function when the hashmap is no
+                          longer in use to avoid memory leaks.
+                          \begin{lstlisting}[language=Fortran]
+call hashmap_destroy(map)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{map}: Hashmap to destroy
+                          \end{itemize}
+                  \end{itemize}
+                  
+                  \textbf{Hashmap Usage Example:}
+                  \begin{lstlisting}[language=Fortran]
+use xxh3_hashmap_module
+
+type(hashmap_type) :: gene_map
+integer :: gene_index
+
+! Create hashmap for gene IDs
+call hashmap_create(gene_map, initial_size=1000)
+
+! Store gene indices
+call hashmap_put(gene_map, "Gene_001", 1)
+call hashmap_put(gene_map, "Gene_002", 2)
+call hashmap_put(gene_map, "Gene_003", 3)
+
+! Lookup gene index
+gene_index = hashmap_get(gene_map, "Gene_002")
+! gene_index = 2
+
+! Clean up
+call hashmap_destroy(gene_map)
+                  \end{lstlisting}
+                  
+            \item \textbf{Hashset}
+                  
+                  The hashset implementation provides unique string storage with fast membership
+                  testing, using the same XXH3 hashing algorithm as the hashmap.
+                  
+                  \begin{itemize}
+                    \item \textbf{Type Definition:}
+                          \begin{lstlisting}[language=Fortran]
+type(hashset_type) :: set
+                          \end{lstlisting}
+                          
+                    \item \textbf{Create Hashset:} Initialize a new hashset with
+                          optional initial size. The hashset size will be increased to the next
+                          greatest power of two.
+                          \begin{lstlisting}[language=Fortran]
+call hashset_create(set, initial_size)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{set}: Hashset object to create
+                                  
+                            \item \textbf{(Optional)} \texttt{initial\_size}: Initial size
+                                  of the hashset
+                          \end{itemize}
+                          
+                    \item \textbf{Insert Key:} Insert a unique key into the hashset. 
+                    \begin{lstlisting}[language=Fortran]
+call hashset_put(set, key, ierr)
+                    \end{lstlisting}
+                    \begin{itemize}
+                        \item \texttt{set}: Hashset to insert into
+                              
+                        \item \texttt{key}: String key to store
+                              
+                        \item \texttt{ierr}: Error code (0 if successful, error if duplicate)
+                    \end{itemize}
+                    
+                    \item \textbf{Check Membership:} Test if a key exists in the hashset.
+                          \begin{lstlisting}[language=Fortran]
+exists = is_in_hashset(set, key)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{set}: Hashset to search
+                                  
+                            \item \texttt{key}: String key to check
+                                  
+                            \item \textbf{Returns:} Logical indicating membership
+                          \end{itemize}
+                          
+                    \item \textbf{Destroy Hashset:} Clean up and deallocate the hashset.
+                          It is important that this function is always called when the hashset
+                          is no longer in use to avoid memory leaks.
+                          \begin{lstlisting}[language=Fortran]
+call hashset_destroy(set)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{set}: Hashset to destroy
+                          \end{itemize}
+                  \end{itemize}
+                  
+                  \textbf{Hashset Usage Example:}
+                  \begin{lstlisting}[language=Fortran]
+use xxh3_hashmap_module
+
+type(hashset_type) :: unique_genes
+integer :: ierr
+logical :: exists
+
+! Create hashset for unique gene validation
+call hashset_create(unique_genes, initial_size=5000)
+
+! Add genes to set
+call hashset_put(unique_genes, "Gene_001", ierr)
+call hashset_put(unique_genes, "Gene_002", ierr)
+call hashset_put(unique_genes, "Gene_003", ierr)
+
+! Check for duplicates (will return error)
+call hashset_put(unique_genes, "Gene_001", ierr)
+! ierr != 0 indicates duplicate key
+
+! Test membership
+exists = is_in_hashset(unique_genes, "Gene_002")
+! exists = .true.
+
+! Clean up
+call hashset_destroy(unique_genes)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+          \textbf{Technical Features:}
+          \begin{itemize}
+            \item Uses XXH3 non-cryptographic hash algorithm for optimal performance
+                  
+            \item Automatic resizing when load factor exceeds 0.75
+                  
+            \item Separate chaining collision resolution
+                  
+            \item Table sizes are powers of two for efficient modulo operations
+                  
+            \item Keys are automatically trimmed and normalized
+                  
+            \item Memory efficient with proper cleanup procedures
+                  
+            \item Thread-safe for read operations (concurrent writes not supported)
+          \end{itemize}
+          
+          \textbf{Performance Characteristics:}
+          \begin{itemize}
+            \item Average case O(1) for insertions and lookups
+                  
+            \item Memory usage proportional to number of elements + overhead
+                  
+            \item Resizing operations are O(n) but amortized over many insertions
+          \end{itemize}
+          
+    \item \textbf{Sorting Algorithms}
+          
+          The TensorOmics package provides high-performance quicksort implementations
+          for various data types using iterative algorithms with manual stack management.
+          These sorting routines operate indirectly through permutation vectors to
+          preserve the original data order.
+          
+          \begin{enumerate}
+            \item \textbf{Generic Sorting Interface}
+                  
+                  A unified interface for sorting different data types through the \texttt{sort\_array}
+                  generic procedure.
+                  
+                  \begin{itemize}
+                    \item \textbf{Generic Procedure:}
+                          \begin{lstlisting}[language=Fortran]
+call sort_array(array, perm, stack_left, stack_right)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{array}: Input array to sort (real, integer, or
+                                  character)
+                                  
+                            \item \texttt{perm}: Permutation vector that will be reordered
+                                  
+                            \item \texttt{stack\_left}: Work array for left indices (size =
+                                  array size)
+                                  
+                            \item \texttt{stack\_right}: Work array for right indices (size
+                                  = array size)
+                          \end{itemize}
+                          
+                          \textbf{Supported Types:}
+                          \begin{lstlisting}[language=Fortran]
+! Real arrays
+real(real64) :: data_real(:)
+! Integer arrays  
+integer(int32) :: data_int(:)
+! Character arrays
+character(len=*) :: data_char(:)
+                          \end{lstlisting}
+                  \end{itemize}
+                  
+            \item \textbf{Type-Specific Sorting Procedures}
+                  
+                  Direct access to type-specific sorting routines for explicit control.
+                  
+                  \begin{itemize}
+                    \item \textbf{Sort Real Arrays:}
+                          \begin{lstlisting}[language=Fortran]
+call sort_real(array, perm, stack_left, stack_right)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{array}: Real(real64) input array to sort
+                                  
+                            \item \texttt{perm}: Permutation vector that will be sorted
+                                  
+                            \item \texttt{stack\_left}: Manual stack of left indices
+                                  
+                            \item \texttt{stack\_right}: Manual stack of right indices
+                          \end{itemize}
+                          
+                    \item \textbf{Sort Integer Arrays:}
+                          \begin{lstlisting}[language=Fortran]
+call sort_integer(array, perm, stack_left, stack_right)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{array}: Integer(int32) input array to sort
+                                  
+                            \item \texttt{perm}: Permutation vector that will be sorted
+                                  
+                            \item \texttt{stack\_left}: Manual stack of left indices
+                                  
+                            \item \texttt{stack\_right}: Manual stack of right indices
+                          \end{itemize}
+                          
+                    \item \textbf{Sort Character Arrays:}
+                          \begin{lstlisting}[language=Fortran]
+call sort_character(array, perm, stack_left, stack_right)
+                          \end{lstlisting}
+                          \begin{itemize}
+                            \item \texttt{array}: Character input array to sort (lexicographic
+                                  order)
+                                  
+                            \item \texttt{perm}: Permutation vector that will be sorted
+                                  
+                            \item \texttt{stack\_left}: Manual stack of left indices
+                                  
+                            \item \texttt{stack\_right}: Manual stack of right indices
+                          \end{itemize}
+                  \end{itemize}
+                  
+                  \textbf{Sorting Usage Example:} 
+                  \begin{lstlisting}[language=Fortran]
+use f42_utils
+use iso_fortran_env, only: real64, int32
+
+real(real64) :: expression_data(1000)
+integer(int32) :: perm(1000), stack_left(1000), stack_right(1000)
+integer :: i
+
+! Initialize permutation
+do i = 1, 1000
+perm(i) = i
+end do
+
+! Sort expression data indirectly
+call sort_real(expression_data, perm, stack_left, stack_right)
+
+! Access sorted data through permutation
+! expression_data(perm(1)) is the smallest value
+! expression_data(perm(1000)) is the largest value
+            \end{lstlisting}
+            
+            \item \textbf{Technical Implementation Details}
+                  
+                  \begin{itemize}
+                    \item \textbf{Algorithm:} Iterative quicksort with manual stack
+                          management
+                          
+                    \item \textbf{Sorting Method:} Indirect sorting via permutation
+                          vectors
+                          
+                    \item \textbf{Pivot Selection:} Median-of-three (center element)
+                          
+                    \item \textbf{Memory:} Requires two work arrays of same size as
+                          input
+                          
+                    \item \textbf{Performance:} Average case O(n log n), worst case O(n²)
+                          
+                    \item \textbf{Stability:} Not stable (order of equal elements not preserved)
+                  \end{itemize}
+                  
+            \item \textbf{Work Array Requirements}
+                  
+                  For sorting an array of size \texttt{n}, you must provide:
+                  \begin{itemize}
+                    \item \texttt{perm(n)}: Permutation vector (initialize with 1, 2, ...,
+                          n)
+                          
+                    \item \texttt{stack\_left(n)}: Work array for stack operations
+                          
+                    \item \texttt{stack\_right(n)}: Work array for stack operations
+                  \end{itemize}
+                  
+                  \textbf{Initialization Pattern:}
+                  \begin{lstlisting}[language=Fortran]
+do i = 1, n
+    perm(i) = i          ! Identity permutation
+end do
+                  \end{lstlisting}
+                  
+            \item \textbf{Advanced Usage: Direct Algorithm Access}
+                  
+                  For maximum performance in tight loops, you can call the internal
+                  quicksort procedures directly:
+                  
+                  \begin{lstlisting}[language=Fortran]
+! Internal quicksort for real arrays
+call quicksort_real(array, perm, n, stack_left, stack_right)
+
+! Internal quicksort for integer arrays  
+call quicksort_int(array, perm, n, stack_left, stack_right)
+
+! Internal quicksort for character arrays
+call quicksort_char(array, perm, n, stack_left, stack_right)
+                  \end{lstlisting}
+                  
+                  \begin{itemize}
+                    \item These procedures require explicit array size parameter \texttt{n}
+                          
+                    \item Work arrays must be properly initialized
+                          
+                    \item Provides slightly better performance by skipping interface overhead
+                  \end{itemize}
+          \end{enumerate}
+          
+          \textbf{Performance Considerations:}
+          \begin{itemize}
+            \item Manual stack management avoids recursion limits for large arrays
+                  
+            \item Indirect sorting preserves original data and allows multiple sort orders
+                  
+            \item Character sorting uses Fortran's intrinsic lexicographic comparison
+                  
+            \item Memory usage is $4n$ for all data including input, work array, and
+                  both stacks.
+                  
+            \item In case of memory considerations, heapsort might be used.
+          \end{itemize}
+          
+          \textbf{Error Handling:}
+          \begin{itemize}
+            \item All sorting procedures are \texttt{pure} (no side effects)
+                  
+            \item No explicit error codes - assumes valid input dimensions
+                  
+            \item User must ensure work arrays are properly sized
+                  
+            \item Invalid permutations may result in incorrect sorting
+          \end{itemize}
+\end{enumerate}

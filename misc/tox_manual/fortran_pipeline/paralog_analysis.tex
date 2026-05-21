@@ -1,0 +1,224 @@
+\subsubsection{Paralog Analysis}
+The Fortran module provides comprehensive routines for paralog analysis.
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{Detect Neofunctionalization}: Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.
+    \item \textbf{Detect Dosage Effect}: Identifies subsets of paralogs with small angle to the \lstinline!ancestor! (\lstinline!max_angle!) and sum to a magnitude significantly exceeding \lstinline!norm(ancestor)! (\lstinline!gain!).
+    \item \textbf{Detect Subfunctionalization}: Identifies subsets of paralogs exhibiting significant angles to the \lstinline!ancestor!.
+\end{itemize}
+
+\begin{enumerate}
+    \item \textbf{Detect Neofunctionalization}
+
+        Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!ancestors real(real64), dimension(n_axes, n_families)!: RAP projected unit length expression vector of ancestral ortholog
+            \item \lstinline!n_families integer(int32)!: number of vectors in \lstinline!ancestors!
+            \item \lstinline!genes real(real64), dimension(n_axes, n_genes)!: RAP projected unit length expression vectors of genes
+            \item \lstinline!n_axes integer(int32)!: size of \lstinline!ancestors! vector and vectors in \lstinline!genes!
+            \item \lstinline!gene_to_fam integer(int32), dimension(n_genes)!: mapping of gene index to family index
+            \item \lstinline!n_genes integer(int32)!: number of vectors in \lstinline!genes!
+            \item \lstinline!thresholds real(real64), dimension(n_axes)!: threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
+            \item \lstinline!neofunc logical, dimension(n_genes, n_axes)!: \lstinline!.true.! if neofunctionalization has been detected for the respective axes
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Vector RAP Projection}]
+call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Detect Dosage Effect}
+
+        Identifies subsets of paralogs with small angle to the \lstinline!ancestor! (\lstinline!max_angle!) and sum to a magnitude significantly exceeding \lstinline!norm(ancestor)! (\lstinline!gain!).
+
+        The size of the \lstinline!work_arr_paralog_subsets! has binomial complexity. This is why this subroutine only handles one single family, the size varies too much across them. If it is wanted to have all results in one array, consider an array of pointers, using a derived type.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!ancestor real(real64), dimension(n_dims)!: expression vector of ancestral ortholog
+            \item \lstinline!genes real(real64), dimension(n_dims, n_genes)!: expression vectors of genes
+            \item \lstinline!n_genes integer(int32)!: number of vectors in \lstinline!genes!
+            \item \lstinline!n_dims integer(int32)!: size of \lstinline!ancestor! vector and vectors in \lstinline!genes!
+            \item \lstinline!filtered_paralogs_mask integer(int32), dimension(n_mask_chunks)!: bit mask with genes' indices kept by pattern set to 1, else 0. Use \lstinline!filter_paralogs_by_pattern! for its calculation
+            \item \lstinline!n_mask_chunks integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes. Use subroutine \lstinline!mask_chunk_count! for calculation
+            \item \lstinline!n_results integer(int32)!: number of resulting subsets. They are stored as the first \lstinline!n_results! elements of \lstinline!work_arr_paralog_subsets!
+            \item \lstinline!max_subset_size integer(int32)!: maximum subset size of checked gene subsets. \\ \textbf{USE \lstinline!calc_work_arr_paralog_subsets_size! TO DETERMINE THIS NUMBER}
+            \item \lstinline!work_arr_paralog_subsets integer(int32), dimension(n_mask_chunks, n_paralog_subsets)!: working array to hold bitmask encoded subsets for detection. Each bitmask is built of 32 bit chunks. \(\frac{n\_genes + 31}{32}\) is equivalent to \(ceil(\frac{n\_genes}{32})\) and represents the number of chunks.
+            \item \lstinline!n_paralog_subsets integer(int32)!: number of gene subsets that can be stored in \\ \lstinline!work_arr_paralog_subsets!. \\ \textbf{USE \lstinline!calc_work_arr_paralog_subsets_size! TO DETERMINE THIS NUMBER}
+            \item \lstinline!active_mask integer(int32), dimension(n_mask_chunks)!: working array to hold the extended subsets
+            \item \lstinline!temp_paralog_vector real(real64), dimension(n_dims)!: vector used for pruning subsets
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!max_angle real(real64), optional!: in dosage mode maximum angle in radians \(0 \le angle \le \pi\) that a subset candidate must not exceed, otherwise pruned, default is \(\pi\)
+            \item \lstinline!gain_gamma real(real64), optional!: positive magnitude gain for dosage effect, default 0.1
+        \end{itemize}
+
+\begin{lstlisting}[caption={Dosage Effect Detection}]
+call detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, &
+                          n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, &
+                          active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma)
+\end{lstlisting}
+
+
+    \item \textbf{Detect Subfunctionalization}
+
+        Identifies subsets of paralogs exhibiting significant angles to the \lstinline!ancestor!.
+
+        The size of the \lstinline!work_arr_paralog_subsets! has binomial complexity. This is why this subroutine only handles one single family, the size varies too much across them. If it is wanted to have all results in one array, consider an array of pointers, using a derived type.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!ancestor real(real64), dimension(n_dims)!: expression vector of ancestral ortholog
+            \item \lstinline!genes real(real64), dimension(n_dims, n_genes)!: expression vectors of genes
+            \item \lstinline!n_genes integer(int32)!: number of vectors in \lstinline!genes!
+            \item \lstinline!n_dims integer(int32)!: size of \lstinline!ancestor! vector and vectors in \lstinline!genes!
+            \item \lstinline!rdi_threshold real(real64)!: max allowed residual distance from \lstinline!ancestor!
+            \item \lstinline!filtered_paralogs_mask integer(int32), dimension(n_mask_chunks)!: bit mask with genes' indices kept by pattern set to 1, else 0. Use \lstinline!filter_paralogs_by_pattern! for its calculation
+            \item \lstinline!n_mask_chunks integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes. Use subroutine \lstinline!mask_chunk_count! for calculation
+            \item \lstinline!n_results integer(int32)!: number of resulting subsets. They are stored as the first \lstinline!n_results! elements of \lstinline!work_arr_paralog_subsets!
+            \item \lstinline!max_subset_size integer(int32)!: maximum subset size of checked gene subsets. \\ \textbf{USE \lstinline!calc_work_arr_paralog_subsets_size! TO DETERMINE THIS NUMBER}
+            \item \lstinline!work_arr_paralog_subsets integer(int32), dimension(n_mask_chunks, n_paralog_subsets)!: working array to hold bitmask encoded subsets for detection. Each bitmask is built of 32 bit chunks. \(\frac{n\_genes + 31}{32}\) is equivalent to \(ceil(\frac{n\_genes}{32})\) and represents the number of chunks.
+            \item \lstinline!n_paralog_subsets integer(int32)!: number of gene subsets that can be stored in \\ \lstinline!work_arr_paralog_subsets!. \\ \textbf{USE \lstinline!calc_work_arr_paralog_subsets_size! TO DETERMINE THIS NUMBER}
+            \item \lstinline!active_mask integer(int32), dimension(n_mask_chunks)!: working array to hold the extended subsets
+            \item \lstinline!temp_paralog_vector real(real64), dimension(n_dims)!: vector used for pruning subsets
+            \item \lstinline!paralog_norms real(real64), dimension(n_genes)!: needed for subset pruning, holds the euclidean norms of genes (you can use the \lstinline!norm! function from \lstinline!f42_utils! for this)
+            \item \lstinline!sorted_paralog_norms_perm integer(int32), dimension(n_genes)!: needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the \lstinline!ancestor!
+            \item \lstinline!temp_work_array real(real64), dimension(n_genes)!: needed for efficient check of minimum value after a certain index
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Subfunctionalization Detection}]
+call detect_subfunctionalization(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, &
+                                 n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, &
+                                 n_paralog_subsets, active_mask, temp_paralog_vector, paralog_norms, &
+                                 sorted_paralog_norms_perm, temp_work_array, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Mask Chunk Count}
+
+        This subroutine easily determines the needed chunk count for subset bit masks, as an integer has only 32 bits.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!n_genes integer(int32)!: number of genes
+            \item \lstinline!count integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes
+        \end{itemize}
+
+\begin{lstlisting}[caption={Mask Chunk Count}]
+call mask_chunk_count(n_genes, count)
+\end{lstlisting}
+
+
+    \item \textbf{Filter Paralogs By Pattern Subfunctionalization}
+
+        This subroutine prefilters the genes for subfunctionalization,  
+        as genes that are already too close in angle to the \lstinline!ancestor! don't match the pattern and don't need to be tried as subset extensions.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!gene_angles real(real64), dimension(n_genes)!: vector holding the angles between ancestor and genes (\(0 \le angle \le \pi\))
+            \item \lstinline!threshold real(real64)!: filter threshold
+            \item \lstinline!n_genes integer(int32)!: number of genes
+            \item \lstinline!n_families integer(int32)!: number of families
+            \item \lstinline!gene_to_fam integer(int32), dimension(n_genes)!: mapping of gene index to family index, so gene \lstinline!i! is related to \lstinline!gene_angles(i)! and part of family \lstinline!j=gene_to_fam(i)!
+            \item \lstinline!masks integer(int32), dimension(n_mask_chunks, n_families)!: bit mask that will have indices of genes kept by pattern set to 1, else 0
+            \item \lstinline!n_mask_chunks integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Prefiltering Paralogs for Subfunctionalization}]
+call filter_paralogs_by_pattern_subfunctionalization(gene_angles, threshold, n_genes, n_families, &
+                                                     gene_to_fam, masks, n_mask_chunks, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Filter Paralogs By Pattern Dosage Effect}
+
+        This subroutine prefilters the genes for dosage effect,  
+        as genes that are already too distant in angle to the \lstinline!ancestor! don't match the pattern and don't need to be tried as subset extensions.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!gene_angles real(real64), dimension(n_genes)!: vector holding the angles between ancestor and genes (\(0 \le angle \le \pi\))
+            \item \lstinline!threshold real(real64)!: filter threshold
+            \item \lstinline!n_genes integer(int32)!: number of genes
+            \item \lstinline!n_families integer(int32)!: number of families
+            \item \lstinline!gene_to_fam integer(int32), dimension(n_genes)!: mapping of gene index to family index, so gene \lstinline!i! is related to \lstinline!gene_angles(i)! and part of family \lstinline!j=gene_to_fam(i)!
+            \item \lstinline!masks integer(int32), dimension(n_mask_chunks, n_families)!: bit mask that will have indices of genes kept by pattern set to 1, else 0
+            \item \lstinline!n_mask_chunks integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Prefiltering Paralogs for Dosage Effect}]
+call filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold, n_genes, n_families, &
+                                              gene_to_fam, masks, n_mask_chunks, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Calculate Work Array Paralog Subsets Size}
+
+        The \texttt{detect\_*} subroutines need a work array for the to-be-tested subsets.  
+        In worst case, all need to be tried and subsets that cannot be extended will be kept as results.  
+        This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.  
+
+        This subroutine calculates the needed size for the work array.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!max_subset_size integer(int32)!: maximum size that a subset must not exceed.  
+                If the desired size is too large and leads to an integer overflow, \lstinline!max_subset_size! will be set to the maximum valid size.  
+                Also, size will be set to number of genes in \lstinline!filtered_paralogs_mask! if larger.
+            \item \lstinline!n_genes integer(int32)!: number of genes
+            \item \lstinline!work_array_size integer(int32)!: the calculated needed work array size in absolute worst case scenario. Look into source for details.
+            \item \lstinline!filtered_paralogs_mask integer(int32), dimension(n_mask_chunks)!: output mask with all genes disabled that did not pass the filter
+            \item \lstinline!n_mask_chunks integer(int32)!: number of 32 bit chunks a mask needs to encode \lstinline!n_genes! genes
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Work Array Size Calculation}]
+call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, &
+                                        filtered_paralogs_mask, n_mask_chunks, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Mask Set State}
+
+        Sets the state of a bit/gene in \lstinline!bit_mask!.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!bit_mask integer(int32), dimension(:)!: chunked mask to mark active paralogs
+            \item \lstinline!i_gene integer(int32)!: index of paralog to be marked active
+            \item \lstinline!state logical!: state the bit should be set to
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+\begin{lstlisting}[caption={Set Bit State in Mask}]
+call mask_set_state(bit_mask, i_gene, state, ierr)
+\end{lstlisting}
+
+
+    \item \textbf{Mask Check State}
+
+        Checks the state of a bit/paralog in \lstinline!bit_mask! \(\Rightarrow{}\) \lstinline!.true.! if 1 else \lstinline!false!.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!bit_mask integer(int32), dimension(:)!: chunked mask to mark active paralogs
+            \item \lstinline!i_gene integer(int32)!: index of paralog to be marked active
+        \end{itemize}
+
+        \textbf{Result:}
+        \begin{itemize}
+            \item \lstinline!state logical!: check result
+        \end{itemize}
+
+\begin{lstlisting}[caption={Check Bit State in Mask}]
+state = mask_check_state(bit_mask, i_gene)
+\end{lstlisting}
+
+\end{enumerate}

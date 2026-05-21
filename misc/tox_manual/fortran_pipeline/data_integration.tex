@@ -1,0 +1,372 @@
+\subsubsection{Data Integration}
+The Fortran module provides comprehensive routines for data integration, based on Jensen-Shannon Divergence. This is very useful for cross-study data.
+
+\textbf{Key Features:}
+\begin{itemize}
+    \item \textbf{Calculate Jensen-Shannon Compatibility Score}: Score to evaluate how compatible two studies are.
+    \item \textbf{Perform JSD Permutation Test}: Random sampling of the input data and recalculation of the JS score to test stability of the compatibility.
+    \item \textbf{Family-Wise Score Contribution}: Calculates the impact of selected families on the calculated score.
+\end{itemize}
+
+\begin{enumerate}
+    \item \textbf{Pool Mean Expression Values (Allocated)}
+
+        Pools per-gene mean expression values from two studies, sorts them, and computes reference points \lstinline!x_star! using empirical quantiles.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!n_genes_S1 integer(int32)!: number of genes in study S1
+            \item \lstinline!mean_S1 real(real64), dimension(n_genes_S1)!: per-gene mean expression values for study S1
+            \item \lstinline!n_genes_S2 integer(int32)!: number of genes in study S2
+            \item \lstinline!mean_S2 real(real64), dimension(n_genes_S2)!: per-gene mean expression values for study S2
+            \item \lstinline!n_points integer(int32)!: number of reference points to define
+            \item \lstinline!n_pool integer(int32)!: number of included (non-NaN) pooled mean-expression values
+            \item \lstinline!x_star real(real64), dimension(n_points)!: mean-expression reference points
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Pool Means (Allocated)}]
+call pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
+        \end{lstlisting}
+
+    \item \textbf{Pool Mean Expression Values}
+
+        Pools per-gene mean expression values across studies, removes trailing NaNs (which are sorted to the end), and computes empirical-quantile reference points \lstinline!x_star!.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!pooled_means real(real64), dimension(pool_size)!: pooled mean-expression values
+            \item \lstinline!pooled_means_perm integer(int32), dimension(pool_size)!: permutation vector that sorts \lstinline!pooled_means!
+            \item \lstinline!pool_size integer(int32)!: number of pooled means (typically \lstinline!n_genes_S1 + n_genes_S2!)
+            \item \lstinline!n_points integer(int32)!: number of reference points to compute
+            \item \lstinline!n_pool integer(int32)!: number of included (non-NaN) pooled means
+            \item \lstinline!x_star real(real64), dimension(n_points)!: mean-expression reference points
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Pool Means}]
+call pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        \end{lstlisting}
+
+    \item \textbf{Calculate Neighborhood Size}
+
+        Determines the number of neighbors to use for \lstinline!construct_neighborhoods!, based on the pooled mean-expression distribution, the number of reference points, and optional user-defined limits.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!n_pool integer(int32)!: total number of pooled mean-expression values across both studies
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!n_genes_S integer(int32)!: number of genes in the current study
+            \item \lstinline!mean_S real(real64), dimension(n_genes_S)!: per-gene mean expression values
+            \item \lstinline!desired_size integer(int32), optional!: optional upper limit for neighborhood size (default: 1000)
+            \item \lstinline!n_neighbors integer(int32)!: calculated neighborhood size
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Calculate Neighborhood Size}]
+n_neighbors = calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size)
+        \end{lstlisting}
+
+    \item \textbf{Construct Neighborhoods (Allocated)}
+
+        Constructs neighborhood-based residual sets (kNN) by allocating temporary distance and permutation arrays, then delegating to \lstinline!construct_neighborhoods!.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!x_star real(real64), dimension(n_points)!: mean-expression reference points
+            \item \lstinline!n_genes_S integer(int32)!: number of genes in the study
+            \item \lstinline!mean_S real(real64), dimension(n_genes_S)!: per-gene mean expression values
+            \item \lstinline!n_reps_S integer(int32)!: number of biological replicates
+            \item \lstinline!resid_S real(real64), dimension(n_reps_S, n_genes_S)!: matrix of signed residuals
+            \item \lstinline!neighborhood_residuals real(real64), dimension(n_reps_S, n_neighbors, n_points)!: residual vectors for each neighborhood
+            \item \lstinline!neighborhood_indices integer(int32), dimension(n_neighbors, n_points)!: indices of selected neighborhood genes
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors (compute via \lstinline!calc_neighborhood_size!)
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Construct Neighborhoods (Allocated)}]
+call construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
+    neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
+        \end{lstlisting}
+
+    \item \textbf{Construct Neighborhoods}
+
+        Constructs neighborhood-based residual sets (kNN) for each reference point by computing distances to \lstinline!x_star!, sorting genes by distance, and selecting the \lstinline!n_neighbors! closest non‑NaN genes.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!x_star real(real64), dimension(n_points)!: mean‑expression reference points
+            \item \lstinline!n_genes_S integer(int32)!: number of genes in the study
+            \item \lstinline!mean_S real(real64), dimension(n_genes_S)!: per‑gene mean expression values
+            \item \lstinline!n_reps_S integer(int32)!: number of biological replicates
+            \item \lstinline!resid_S real(real64), dimension(n_reps_S, n_genes_S)!: matrix of signed residuals
+            \item \lstinline!tmp_distances real(real64), dimension(n_genes_S)!: work array for distances
+            \item \lstinline!tmp_distances_perm integer(int32), dimension(n_genes_S)!: permutation vector for sorting distances
+            \item \lstinline!neighborhood_residuals real(real64), dimension(n_reps_S, n_neighbors, n_points)!: residual vectors for each neighborhood
+            \item \lstinline!neighborhood_indices integer(int32), dimension(n_neighbors, n_points)!: indices of selected neighborhood genes
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors (compute via \lstinline!calc_neighborhood_size!)
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Construct Neighborhoods}]
+call construct_neighborhoods(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
+    tmp_distances, tmp_distances_perm, neighborhood_residuals, neighborhood_indices, &
+    n_neighbors, ierr)
+        \end{lstlisting}
+
+    \item \textbf{Determine Shared Residual Range}
+
+        Computes the shared residual range \([-R, R]\) for the absolute residuals pooled from studies S1 and S2.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!abs_residual_pool real(real64), dimension(pool_size)!: absolute residual values of the concatenated S1,S2 residuals
+            \item \lstinline!abs_residual_pool_perm integer(int32), dimension(pool_size)!: permutation vector that sorts \lstinline!abs_residual_pool!
+            \item \lstinline!pool_size integer(int32)!: size of the residual pool
+            \item \lstinline!shared_residual_range real(real64)!: computed residual range \(R\)
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!residual_range_quantile real(real64), optional!: quantile for determining the residual range (default: 95.0)
+        \end{itemize}
+
+\begin{lstlisting}[caption={Shared Residual Range}]
+call determine_shared_residual_range(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, ierr, residual_range_quantile)
+\end{lstlisting}
+    
+    \item \textbf{Determine Shared Residual Range (Allocated)}
+
+        Computes the shared residual range \([-R, R]\) for two studies by allocating and flattening the residual pool from both studies before computing the percentile-based range.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1 real(real64), dimension(n_reps_S1, n_neighbors, n_points)!: neighborhood residuals for study 1, NaN allowed
+            \item \lstinline!neighborhood_residuals_S2 real(real64), dimension(n_reps_S2, n_neighbors, n_points)!: neighborhood residuals for study 2, NaN allowed
+            \item \lstinline!n_reps_S1 integer(int32)!: number of replicates in study 1
+            \item \lstinline!n_reps_S2 integer(int32)!: number of replicates in study 2
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!shared_residual_range real(real64)!: computed residual range \(R\)
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!residual_range_quantile real(real64), optional!: quantile for determining the residual range (default: 95.0)
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Allocated Shared Residual Range}]
+call determine_shared_residual_range_alloc(neighborhood_residuals_S1, neighborhood_residuals_S2, &
+    n_reps_S1, n_reps_S2, n_neighbors, n_points, shared_residual_range, ierr, residual_range_quantile)
+        \end{lstlisting}
+
+    \item \textbf{Build Residual Histograms}
+
+        Summarizes neighborhood residuals into absolute histogram counts and probability mass functions \lstinline!pmf(residual, bin)! for each reference point.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals real(real64), dimension(n_reps, n_neighbors, n_points)!: neighborhood residuals for a study, NaN allowed
+            \item \lstinline!n_reps integer(int32)!: number of replicates
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!shared_residual_range real(real64)!: residual range \(R\) from \lstinline!determine_shared_residual_range_alloc!
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins in \([-R, R]\)
+            \item \lstinline!counts integer(int32), dimension(n_points, n_bins)!: absolute histogram counts
+            \item \lstinline!pmf real(real64), dimension(n_points, n_bins)!: normalized histogram counts
+            \item \lstinline!included_n_reps integer(int32), dimension(n_points)!: number of non-NaN residuals per reference point
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!neighbor_mask logical, dimension(n_neighbors, n_points), optional!: mask to exclude specific neighbors
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Residual Histograms}]
+call build_residual_histograms(neighborhood_residuals, n_reps, n_neighbors, n_points, &
+    shared_residual_range, n_bins, counts, pmf, included_n_reps, ierr, neighbor_mask)
+        \end{lstlisting}
+
+    \item \textbf{Compute Divergence per Reference Point}
+
+        Computes the Jensen–Shannon divergence per reference point using the probability mass functions from two studies.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!pmf_S1 real(real64), dimension(n_points, n_bins)!: normalized histogram counts for study 1
+            \item \lstinline!pmf_S2 real(real64), dimension(n_points, n_bins)!: normalized histogram counts for study 2
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins in \([-R, R]\)
+            \item \lstinline!js_divergences real(real64), dimension(n_points)!: Jensen–Shannon divergence per reference point
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Per-Reference-Point Divergence}]
+call compute_divergence_per_reference_point(pmf_S1, pmf_S2, n_points, n_bins, js_divergences, ierr)
+        \end{lstlisting}
+
+    \item \textbf{Compute Weighted Global Divergence}
+
+        Computes the global weighted Jensen–Shannon divergence using per-reference-point divergences and the number of included residuals from both studies.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!js_divergences real(real64), dimension(n_points)!: Jensen–Shannon divergence per reference point
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!included_n_reps_S1 integer(int32), dimension(n_points)!: non-NaN residual counts for study 1
+            \item \lstinline!included_n_reps_S2 integer(int32), dimension(n_points)!: non-NaN residual counts for study 2
+            \item \lstinline!global_js_divergence real(real64)!: weighted global Jensen–Shannon divergence
+            \item \lstinline!weights real(real64), dimension(n_points)!: weights used in the global divergence calculation
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Weighted Global Divergence}]
+call compute_weighted_global_divergence(js_divergences, n_points, included_n_reps_S1, &
+    included_n_reps_S2, global_js_divergence, weights, ierr)
+        \end{lstlisting}
+
+    \item \textbf{GJCT Permutation Test (Allocated)}
+
+        Estimates how likely the observed global Jensen–Shannon divergence is to occur by chance under the null hypothesis that both studies are exchangeable.  
+        Allocates all required working arrays and delegates to \lstinline!gjct_permutation_test!.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1 real(real64), dimension(n_reps_S1, n_neighbors, n_points)!: neighborhood residuals for study 1, NaN allowed
+            \item \lstinline!neighborhood_residuals_S2 real(real64), dimension(n_reps_S2, n_neighbors, n_points)!: neighborhood residuals for study 2, NaN allowed
+            \item \lstinline!n_reps_S1 integer(int32)!: number of replicates in study 1
+            \item \lstinline!n_reps_S2 integer(int32)!: number of replicates in study 2
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!global_jsd_observed real(real64)!: observed global JSD value
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins
+            \item \lstinline!shared_residual_range real(real64)!: shared residual range from \lstinline!determine_shared_residual_range!
+            \item \lstinline!n_permutations integer(int32)!: number of permutations to perform
+            \item \lstinline!jsd_null real(real64), dimension(n_permutations)!: global JSD values under the null hypothesis
+            \item \lstinline!p_value real(real64)!: empirical p‑value
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!random_seed integer(int32), optional!: seed for shuffling
+            \item \lstinline!neighbor_mask_S1 logical, dimension(n_neighbors, n_points), optional!: mask to exclude neighbors in study 1
+            \item \lstinline!neighbor_mask_S2 logical, dimension(n_neighbors, n_points), optional!: mask to exclude neighbors in study 2
+        \end{itemize}
+
+        \begin{lstlisting}[caption={GJCT Permutation Test (Allocated)}]
+call gjct_permutation_test_alloc(neighborhood_residuals_S1, neighborhood_residuals_S2, &
+    n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, &
+    shared_residual_range, n_permutations, jsd_null, p_value, ierr, random_seed, &
+    neighbor_mask_S1, neighbor_mask_S2)
+        \end{lstlisting}
+
+    \item \textbf{GJCT Permutation Test}
+
+        Estimates how likely the observed global Jensen–Shannon divergence is to occur by chance under the null hypothesis that both studies are exchangeable.  
+        Reuses preallocated workspace arrays and performs all permutations in-place.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!neighborhood_residuals_S1_copy real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(inout)!: copy of residuals for study 1, shuffled in-place
+            \item \lstinline!neighborhood_residuals_S2_copy real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(inout)!: copy of residuals for study 2, shuffled in-place
+            \item \lstinline!n_reps_S1 integer(int32)!: number of replicates in study 1
+            \item \lstinline!n_reps_S2 integer(int32)!: number of replicates in study 2
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!global_jsd_observed real(real64)!: observed global JSD value
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins
+            \item \lstinline!shared_residual_range real(real64)!: shared residual range from \lstinline!determine_shared_residual_range!
+            \item \lstinline!n_permutations integer(int32)!: number of permutations to perform
+            \item \lstinline!jsd_null real(real64), dimension(n_permutations)!: global JSD values under the null hypothesis
+            \item \lstinline!p_value real(real64)!: empirical p‑value
+            \item \lstinline!tmp_pool real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors)!: working array for shuffling pooled residuals
+            \item \lstinline!tmp_pmf_S1 real(real64), dimension(n_points, n_bins)!: PMF workspace for study 1
+            \item \lstinline!tmp_pmf_S2 real(real64), dimension(n_points, n_bins)!: PMF workspace for study 2
+            \item \lstinline!tmp_counts integer(int32), dimension(n_points, n_bins)!: histogram count workspace
+            \item \lstinline!tmp_included_n_reps_S1 integer(int32), dimension(n_points)!: workspace for included counts (study 1)
+            \item \lstinline!tmp_included_n_reps_S2 integer(int32), dimension(n_points)!: workspace for included counts (study 2)
+            \item \lstinline!tmp_js_divergences real(real64), dimension(n_points)!: workspace for per‑point divergences
+            \item \lstinline!tmp_weights real(real64), dimension(n_points)!: workspace for weights
+            \item \lstinline!ierr integer(int32)!: error code
+            \item \lstinline!random_seed integer(int32), optional!: seed for shuffling
+            \item \lstinline!neighbor_mask_S1 logical, dimension(n_neighbors, n_points), optional!: mask to exclude neighbors in study 1
+            \item \lstinline!neighbor_mask_S2 logical, dimension(n_neighbors, n_points), optional!: mask to exclude neighbors in study 2
+        \end{itemize}
+
+        \begin{lstlisting}[caption={GJCT Permutation Test}]
+call gjct_permutation_test(neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, &
+    n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, &
+    shared_residual_range, n_permutations, jsd_null, p_value, tmp_pool, tmp_pmf_S1, &
+    tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, &
+    tmp_js_divergences, tmp_weights, ierr, random_seed, neighbor_mask_S1, neighbor_mask_S2)
+        \end{lstlisting}
+
+    \item \textbf{FJCT Compute JSD (Allocated)}
+
+        Computes the family-level compatibility score \lstinline!global_js_divergence! between two studies for a single gene family by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!family_idx integer(int32)!: index of the family to analyze
+            \item \lstinline!gene_to_family_S1 integer(int32), dimension(n_genes_S1)!: mapping of genes to families in study 1
+            \item \lstinline!gene_to_family_S2 integer(int32), dimension(n_genes_S2)!: mapping of genes to families in study 2
+            \item \lstinline!n_genes_S1 integer(int32)!: number of genes in study 1
+            \item \lstinline!n_genes_S2 integer(int32)!: number of genes in study 2
+            \item \lstinline!n_reps_S1 integer(int32)!: number of replicates in study 1
+            \item \lstinline!n_reps_S2 integer(int32)!: number of replicates in study 2
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!neighborhood_residuals_S1 real(real64), dimension(n_reps_S1, n_neighbors, n_points)!: residuals for study 1, NaN allowed
+            \item \lstinline!neighborhood_residuals_S2 real(real64), dimension(n_reps_S2, n_neighbors, n_points)!: residuals for study 2, NaN allowed
+            \item \lstinline!neighborhood_genes_S1 integer(int32), dimension(n_reps_S1, n_neighbors, n_points)!: gene indices for study 1
+            \item \lstinline!neighborhood_genes_S2 integer(int32), dimension(n_reps_S2, n_neighbors, n_points)!: gene indices for study 2
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins
+            \item \lstinline!shared_residual_range real(real64)!: shared residual range from \lstinline!determine_shared_residual_range!
+            \item \lstinline!js_divergences real(real64), dimension(n_points)!: Jensen–Shannon divergence per reference point
+            \item \lstinline!included_n_reps_S1 integer(int32), dimension(n_points)!: included non-NaN residuals for study 1
+            \item \lstinline!included_n_reps_S2 integer(int32), dimension(n_points)!: included non-NaN residuals for study 2
+            \item \lstinline!total_included_n_reps integer(int32)!: total included residuals across both studies
+            \item \lstinline!global_js_divergence real(real64)!: weighted global Jensen–Shannon divergence
+            \item \lstinline!weights real(real64), dimension(n_points)!: weights used in the global divergence calculation
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Family-Level JSD (Allocated)}]
+call fjct_compute_jsd_alloc(family_idx, gene_to_family_S1, gene_to_family_S2, &
+    n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
+    neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, &
+    n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, &
+    included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, ierr)
+        \end{lstlisting}
+
+    \item \textbf{FJCT Compute JSD}
+
+        Computes the family-level compatibility score \lstinline!global_js_divergence! between two studies for a single gene family, reusing preallocated workspace arrays for efficiency.
+
+        \textbf{Arguments:}
+        \begin{itemize}
+            \item \lstinline!family_idx integer(int32)!: index of the family to analyze
+            \item \lstinline!gene_to_family_S1 integer(int32), dimension(n_genes_S1)!: mapping of genes to families in study 1
+            \item \lstinline!gene_to_family_S2 integer(int32), dimension(n_genes_S2)!: mapping of genes to families in study 2
+            \item \lstinline!n_genes_S1 integer(int32)!: number of genes in study 1
+            \item \lstinline!n_genes_S2 integer(int32)!: number of genes in study 2
+            \item \lstinline!n_reps_S1 integer(int32)!: number of replicates in study 1
+            \item \lstinline!n_reps_S2 integer(int32)!: number of replicates in study 2
+            \item \lstinline!n_neighbors integer(int32)!: number of neighbors
+            \item \lstinline!n_points integer(int32)!: number of reference points
+            \item \lstinline!neighborhood_residuals_S1 real(real64), dimension(n_reps_S1, n_neighbors, n_points)!: residuals for study 1, NaN allowed
+            \item \lstinline!neighborhood_residuals_S2 real(real64), dimension(n_reps_S2, n_neighbors, n_points)!: residuals for study 2, NaN allowed
+            \item \lstinline!neighborhood_genes_S1 integer(int32), dimension(n_reps_S1, n_neighbors, n_points)!: gene indices for study 1
+            \item \lstinline!neighborhood_genes_S2 integer(int32), dimension(n_reps_S2, n_neighbors, n_points)!: gene indices for study 2
+            \item \lstinline!n_bins integer(int32)!: number of histogram bins
+            \item \lstinline!shared_residual_range real(real64)!: shared residual range from \lstinline!determine_shared_residual_range!
+            \item \lstinline!js_divergences real(real64), dimension(n_points)!: Jensen–Shannon divergence per reference point
+            \item \lstinline!included_n_reps_S1 integer(int32), dimension(n_points)!: included non-NaN residuals for study 1
+            \item \lstinline!included_n_reps_S2 integer(int32), dimension(n_points)!: included non-NaN residuals for study 2
+            \item \lstinline!total_included_n_reps integer(int32)!: total included residuals across both studies
+            \item \lstinline!global_js_divergence real(real64)!: weighted global Jensen–Shannon divergence
+            \item \lstinline!weights real(real64), dimension(n_points)!: weights used in the global divergence calculation
+            \item \lstinline!tmp_counts integer(int32), dimension(n_points, n_bins)!: working array for histogram construction
+            \item \lstinline!pmf_S1 real(real64), dimension(n_points, n_bins)!: PMF for study 1
+            \item \lstinline!pmf_S2 real(real64), dimension(n_points, n_bins)!: PMF for study 2
+            \item \lstinline!ierr integer(int32)!: error code
+        \end{itemize}
+
+        \begin{lstlisting}[caption={Family-Level JSD}]
+call fjct_compute_jsd(family_idx, gene_to_family_S1, gene_to_family_S2, &
+    n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
+    neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, &
+    n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, &
+    included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, &
+    tmp_counts, pmf_S1, pmf_S2, ierr)
+        \end{lstlisting}
+\end{enumerate}

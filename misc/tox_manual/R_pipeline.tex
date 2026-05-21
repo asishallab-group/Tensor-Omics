@@ -1,0 +1,11 @@
+\renewcommand{\sectionspath}[1]{tox_manual/R_pipeline/#1}
+
+\lstset{ language=R }
+
+\subsection{R Pipeline}
+\subsubsection{Overview}
+The R workflow is exposed through the \texttt{tensoromics\_functions.R}, which interfaces via Rcpp in \texttt{tensoromics\_functions.cpp} with Fortran.
+module. The functions provide a high-level interface that mirrors the Fortran pipeline.
+
+\input{tox_manual/pipeline_sections}
+\input{\sectionspath{r_utils}}

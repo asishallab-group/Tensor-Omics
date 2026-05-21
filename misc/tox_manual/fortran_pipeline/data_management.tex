@@ -1,0 +1,499 @@
+\subsubsection{Data Management}
+\begin{enumerate}
+    \item \textbf{Data Reading and Processing} \\
+          \begin{enumerate}
+            \item Reading Data
+                  \begin{itemize}
+                    \item \textbf{Read Gene IDs from TSV File}
+                          
+                          Reads gene identifiers from a TSV file containing expression data.
+                          Typically reads from the first column after skipping header rows. Call
+                          the \texttt{read\_gene\_ids\_from\_tsv\_file} subroutine with the
+                          following arguments:
+                          
+                          \textbf{Input arguments:}
+                          \begin{itemize}
+                            \item \texttt{filename character(len=*)}: Path to the TSV file
+                                  
+                            \item \texttt{n\_header\_rows integer(int32)}: Number of header rows
+                                  to skip (typically 1)
+                                  
+                            \item \texttt{gene\_col integer(int32)}: Column index containing
+                                  gene IDs (typically 1)
+                          \end{itemize}
+                          \textbf{Output arguments:}
+                          \begin{itemize}
+                            \item \texttt{gene\_ids character(len=*)}: Pre-allocated array for
+                                  gene identifiers
+                                  
+                            \item \texttt{ierr integer(int32)}: Error code
+                          \end{itemize}
+                          \begin{lstlisting}[language=Fortran, caption={Read Gene IDs from TSV File}]
+character(len=256) :: gene_ids(n_genes)  
+! Pre-allocate with expected size
+
+integer(int32) :: ierr
+
+call read_gene_ids_from_tsv_file('expression_data.tsv', &
+                             gene_ids, 1, 1, ierr)
+                          \end{lstlisting}
+                          
+                    \item \textbf{Read Expression Vectors}
+                          
+                          Reads expression data from one or more TSV/CSV files and populates
+                          a pre-allocated 2D array (samples x genes). Uses hashmap for
+                          efficient gene ID matching and validates for finite values. Call the
+                          \texttt{read\_expression\_vectors} subroutine with the following
+                          arguments:
+                          
+                          \textbf{Input arguments:}
+                          \begin{itemize}
+                            \item \texttt{file\_list character(len=*)}: Array of file paths to
+                                  read from
+                                  
+                            \item \texttt{gene\_ids character(len=*)}: Reference gene IDs for
+                                  validation and matching
+                                  
+                            \item \texttt{expression\_vectors real(real64)}: Pre-allocated 2D
+                                  array for expression data
+                                  
+                            \item \texttt{n\_header\_rows integer(int32)}: Number of header rows
+                                  to skip
+                                  
+                            \item \texttt{gene\_col integer(int32)}: Column index containing
+                                  gene IDs
+                                  
+                            \item \texttt{value\_cols integer(int32)}: Array of column indices
+                                  containing expression values
+                                  
+                            \item \texttt{start\_row integer(int32)}: Starting row index in expression\_vectors
+                                  array
+                                  
+                            \item \texttt{delimiter character(len=1), optional}: Column delimiter
+                                  (default: tab)
+                          \end{itemize}
+                          \textbf{Output arguments:}
+                          \begin{itemize}
+                            \item \texttt{expression\_vectors real(real64)}: Pre-allocated 2D
+                                  array for expression data populated with data
+                                  
+                            \item \texttt{ierr integer(int32)}: Error code
+                          \end{itemize}
+                          \begin{lstlisting}[language=Fortran, caption={Read Expression Vectors}]
+! Pre-allocate arrays
+real(real64) :: expr_data(n_samples, n_genes)
+
+! Read TSV file with tab delimiter (default)
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                            value_cols, 1, ierr)
+
+! Read CSV file with comma delimiter
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                            value_cols, 1, ierr, ',')
+                          \end{lstlisting}
+                          
+                    \item \textbf{Read OrthoFinder Family Mapping}
+                          
+                          Reads gene family assignments from OrthoFinder output TSV file and
+                          creates mapping arrays between genes and families. The \texttt{gene\_to\_fam}
+                          array contains for each gene the index of it's family. Uses
+                          hashmap for efficient gene lookup. Call the \texttt{read\_orthofinder\_file}
+                          subroutine with the following arguments:
+                          
+                          \textbf{Input arguments:}
+                          \begin{itemize}
+                            \item \texttt{filename character(len=*)}: Path to OrthoFinder TSV
+                                  file
+                                  
+                            \item \texttt{gene\_ids character(len=*)}: Pre-allocated array of
+                                  gene IDs to match
+                          \end{itemize}
+                          \textbf{Output arguments:}
+                          \begin{itemize}
+                            \item \texttt{family\_ids character(len=*)}: Pre-allocated array
+                                  for family identifiers
+                                  
+                            \item \texttt{gene\_to\_fam integer(int32)}: Pre-allocated array
+                                  for gene to family mapping
+                                  
+                            \item \texttt{ierr integer(int32)}: Error code
+                          \end{itemize}
+                          \begin{lstlisting}[language=Fortran, caption={Read OrthoFinder Family Mapping}]
+character(len=256) :: family_ids(n_families)  
+! Pre-allocate with expected family count
+
+integer(int32) :: gene_to_fam(n_genes)     
+! Pre-allocate with gene count
+
+integer(int32) :: ierr
+
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, &
+                            family_ids, gene_to_fam, ierr)
+                          \end{lstlisting}
+                          
+                          \textbf{Important Implementation Details:}
+                          \begin{itemize}
+                            \item All output arrays must be pre-allocated with the correct dimensions
+                                  and sizes
+                                  
+                            \item Uses hashmap data structure for O(1) gene ID lookups
+                                  
+                            \item Validates for finite values (rejects NaN and Inf) in expression
+                                  data
+                                  
+                            \item Handles both TSV (tab-separated) and CSV (comma-separated)
+                                  formats, gene\_to\_fam array uses 1-based indexing for family
+                                  assignments (0 indicates unassigned)
+                          \end{itemize}
+                          
+                          \textbf{Typical Data Reading Workflow:}
+                          \begin{lstlisting}[language=Fortran, caption={Complete Data Reading Workflow}]
+! 1. Pre-allocate arrays
+
+! 2. Read gene IDs from expression file
+call read_gene_ids_from_tsv_file('expression.tsv', gene_ids, &
+                                    1, 1, ierr)
+
+! 3. Read expression data (columns 2-68 contain sample data)
+character(len=256) :: files(1) = ['expression.tsv']
+
+call read_expression_vectors(files, gene_ids, expr_data, 1, 1, &
+                             samples, 1, ierr)
+
+! 4. Read family mapping from OrthoFinder
+call read_orthofinder_file('Orthogroups.tsv', gene_ids, & 
+                            family_ids, gene_to_fam, ierr)
+                          \end{lstlisting}
+                  \end{itemize}
+          \end{enumerate}
+          
+    \item \textbf{Data Filtering and Validation}
+          \begin{itemize}
+            \item \textbf{Get Unassigned Genes Mask}
+                  
+                  Creates a logical mask identifying genes that have no family assignment
+                  (gene\_to\_fam value $=$ 0). Call the \texttt{get\_unassigned\_mask} subroutine
+                  with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{gene\_to\_fam integer(int32)}: Gene to family mapping array
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{mask logical}: Logical mask array (same size as gene\_to\_fam)
+                          
+                    \item \texttt{n\_genes\_kept integer(int32)}: Number of genes with family
+                          assignments
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Create Unassigned Genes Mask}]
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept, ierr
+
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+! unassigned_mask(i) = .true. if gene i has family assignment
+! n_kept = count of genes with family assignments
+                  \end{lstlisting}
+                  
+            \item \textbf{Apply Unassigned Mask}
+                  
+                  Filters out genes without family assignments from all data arrays (gene\_ids,
+                  expression\_vectors, gene\_to\_fam). Arrays are reallocated to the
+                  filtered size. Call the \texttt{apply\_unassigned\_mask} subroutine
+                  with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{mask logical}: Logical mask from get\_unassigned\_mask
+                          
+                    \item \texttt{n\_genes\_kept integer(int32)}: Number of genes to keep
+                          (from get\_unassigned\_mask)
+                  \end{itemize}
+                  \textbf{Input/Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{gene\_ids character(len=*), allocatable}: Gene IDs array
+                          (reallocated)
+                          
+                    \item \texttt{expression\_vectors real(real64), allocatable}: Expression
+                          data matrix (reallocated)
+                          
+                    \item \texttt{gene\_to\_fam integer(int32), allocatable}: Gene to family
+                          mapping (reallocated)
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Filter Unassigned Genes}]
+character(len=256), allocatable :: gene_ids(n_genes)
+real(real64), allocatable :: expr_data(n_samples,n_genes)
+integer(int32), allocatable :: gene_to_fam(n_genes)
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept, ierr
+
+! First create the mask
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+
+! Then apply it to filter all arrays
+call apply_unassigned_mask(gene_ids, expr_data, gene_to_fam, &
+                          unassigned_mask, n_kept, ierr)
+! Arrays are now reallocated to size n_kept
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Data Structure}
+                  
+                  Performs comprehensive validation of data dimensions and consistency across
+                  all arrays. Call the \texttt{validate\_data\_structure} subroutine with
+                  the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{n\_genes integer(int32)}: Number of genes
+                          
+                    \item \texttt{n\_families integer(int32)}: Number of gene families
+                          
+                    \item \texttt{n\_samples integer(int32)}: Number of samples
+                          
+                    \item \texttt{gene\_ids character(len=*)}: Gene identifier array
+                          
+                    \item \texttt{family\_ids character(len=*)}: Family identifier array
+                          
+                    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping
+                          
+                    \item \texttt{expression real(real64)}: Expression data matrix
+                          
+                    \item \texttt{centroids real(real64)}: Family centroids matrix
+                          
+                    \item \texttt{shift\_vectors real(real64)}: Shift vectors matrix
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Validate Data Structure}]
+call validate_data_structure(n_genes, n_families, n_samples, &
+                            gene_ids, family_ids, gene_to_fam, &
+                            expr_data, centroids, shift_vectors, &
+                            ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Expression Data}
+                  
+                  Validates expression data matrix for NaN, Inf, and optionally negative
+                  values. Call the \texttt{validate\_expression\_data} subroutine with the
+                  following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{expression real(real64)}: Expression data matrix to validate
+                          
+                    \item \texttt{allow\_negative logical}: Whether to allow negative expression
+                          values
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Validate Expression Data}]
+! Validate expression data (disallow negative values)
+call validate_expression_data(expr_data, .false., ierr)
+
+! Validate allowing negative values (e.g., for log-fold changes)
+call validate_expression_data(expr_data, .true., ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Empty Strings}
+                  
+                  Validates that a string array contains no empty or whitespace-only entries.
+                  Call the \texttt{validate\_empty\_strings} subroutine with the following
+                  arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{string\_array character(len=*)}: String array to validate
+                          
+                    \item \texttt{array\_name character(len=*)}: Name for error messages
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Validate String Array}]
+call validate_empty_strings(gene_ids, "Gene IDs", ierr)
+call validate_empty_strings(family_ids, "Family IDs", ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate Gene to Family Mapping}
+                  
+                  Validates that all gene to family indices are within valid range (1 to
+                  n\_families). Call the \texttt{validate\_gene\_to\_family\_mapping} subroutine
+                  with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping
+                          array
+                          
+                    \item \texttt{n\_families integer(int32)}: Number of valid families
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Validate Gene-Family Mapping}]
+call validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Validate String Array Uniqueness}
+                  
+                  Validates that all entries in a string array are unique (no duplicates).
+                  Uses a hashet implementation internally for O(n) runtime. Call the
+                  \texttt{validate\_string\_array\_uniqueness} subroutine with the following
+                  arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{string\_array character(len=*)}: String array to check
+                          for duplicates
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Validate Unique Strings}]
+call validate_string_array_uniqueness(gene_ids, ierr)
+call validate_string_array_uniqueness(family_ids, ierr)
+                  \end{lstlisting}
+          \end{itemize}
+          
+    \item \textbf{Data Accessors}
+          \begin{itemize}
+            \item \textbf{Get Gene Index}
+                  
+                  Finds the array index for a given gene identifier. Call the \texttt{get\_gene\_index}
+                  function with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{gene\_ids character(len=*)}: Array of gene identifiers
+                          
+                    \item \texttt{gene\_id character(len=*)}: Gene ID to find
+                  \end{itemize}
+                  \textbf{Return value:}
+                  \begin{itemize}
+                    \item \texttt{index integer(int32)}: Array index (1-based) or 0 if not
+                          found
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Find Gene Index}]
+integer(int32) :: gene_idx
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+if (gene_idx > 0) then
+    ! Gene found at position gene_idx
+else
+    ! Gene not found
+end if
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Family Index}
+                  
+                  Finds the array index for a given family identifier. Call the \texttt{get\_family\_index}
+                  function with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{family\_ids character(len=*)}: Array of family identifiers
+                          
+                    \item \texttt{family\_id character(len=*)}: Family ID to find
+                  \end{itemize}
+                  \textbf{Return value:}
+                  \begin{itemize}
+                    \item \texttt{index integer(int32)}: Array index (1-based) or 0 if not
+                          found
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Find Family Index}]
+integer(int32) :: fam_idx
+
+fam_idx = get_family_index(family_ids, 'OG0000001')
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Family for Gene Index}
+                  
+                  Retrieves the family index for a given gene index. Call the \texttt{get\_family\_for\_gene\_index}
+                  subroutine with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{gene\_index integer(int32)}: Gene array index (1-based)
+                          
+                    \item \texttt{gene\_to\_family integer(int32)}: Gene to family mapping
+                          array
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{family\_index integer(int32)}: Family array index (1-based)
+                          
+                    \item \texttt{ierr integer(int32)}: Error code
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Get Family for Gene}]
+integer(int32) :: gene_idx, fam_idx, ierr
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+call get_family_for_gene_index(gene_idx, gene_to_fam, fam_idx, ierr)
+                  \end{lstlisting}
+                  
+            \item \textbf{Get Family Centroid}
+                  
+                  Retrieves the centroid expression profile for a given family. Call the
+                  \texttt{get\_family\_centroid} subroutine with the following arguments:
+                  
+                  \textbf{Input arguments:}
+                  \begin{itemize}
+                    \item \texttt{family\_index integer(int32)}: Family array index (1-based)
+                          
+                    \item \texttt{family\_centroids real(real64)}: Family centroids matrix
+                  \end{itemize}
+                  \textbf{Output arguments:}
+                  \begin{itemize}
+                    \item \texttt{ierr integer(int32)}: Error code
+                          
+                    \item \texttt{centroid\_vector real(real64)}: Centroid expression profile
+                  \end{itemize}
+                  \begin{lstlisting}[language=Fortran, caption={Get Family Centroid}]
+real(real64) :: centroid_vector(n_samples)
+integer(int32) :: fam_idx, ierr
+
+fam_idx = get_family_index(family_ids, 'OG0000001')
+call get_family_centroid(fam_idx, centroids, centroid_vector, ierr)
+                  \end{lstlisting}
+                  
+                  \textbf{Complete Validation Workflow:} 
+                  \begin{lstlisting}[language=Fortran, caption={Complete Data Validation Workflow}]
+integer(int32) :: ierr
+
+! 1. Filter unassigned genes
+logical :: unassigned_mask(n_genes)
+integer(int32) :: n_kept
+call get_unassigned_mask(gene_to_fam, unassigned_mask, n_kept)
+call apply_unassigned_mask(gene_ids, expr_data, gene_to_fam, &
+unassigned_mask, n_kept, ierr)
+
+! 2. Validate individual components
+call validate_empty_strings(gene_ids, "Gene IDs", ierr)
+call validate_empty_strings(family_ids, "Family IDs", ierr)
+call validate_string_array_uniqueness(gene_ids, ierr)
+call validate_string_array_uniqueness(family_ids, ierr)
+call validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
+call validate_expression_data(expr_data, .false., ierr)
+
+! 3. Comprehensive structure validation
+call validate_data_structure(n_genes, n_families, n_samples, gene_ids, &
+family_ids, gene_to_fam, expr_data, &
+centroids, shift_vectors, ierr)
+
+! 4. Use accessors for data retrieval
+integer(int32) :: gene_idx, fam_idx
+real(real64) :: centroid(n_samples)
+
+gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
+call get_family_for_gene_index(gene_idx, gene_to_fam, fam_idx, ierr)
+call get_family_centroid(fam_idx, centroids, centroid, ierr)
+            \end{lstlisting}
+          \end{itemize}
+\end{enumerate}

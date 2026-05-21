@@ -1,0 +1,388 @@
+\subsubsection{Data Persistence}
+\begin{enumerate}
+    \item \textbf{R Interface for Array Serialization and Deserialization}
+          
+          The R interface provides bindings to the Fortran serialization and deserialization
+          routines, enabling efficient handling of multi-dimensional arrays. This interface
+          supports R arrays, matrices, and vectors with automatic type conversion to
+          compatible Fortran data types.
+          \begin{enumerate}
+            \item {General Architecture}
+                  
+                  The R package provides ten main functions for array handling:
+                  
+                  \begin{itemize}
+                    \item \texttt{tox\_serialize\_int\_array(array, filename)} -
+                          Serialize N-dimensional integer arrays
+                          
+                    \item \texttt{tox\_deserialize\_int\_array(filename)} - Deserialize
+                          N-dimensional integer arrays
+                          
+                    \item \texttt{tox\_serialize\_real\_array(array, filename)} -
+                          Serialize N-dimensional real arrays
+                          
+                    \item \texttt{tox\_deserialize\_real\_array(filename)} - Deserialize
+                          N-dimensional real arrays
+                          
+                    \item \texttt{tox\_serialize\_char\_array(array, filename)} -
+                          Serialize N-dimensional character arrays
+                          
+                    \item \texttt{tox\_deserialize\_char\_array(filename)} - Deserialize
+                          N-dimensional character arrays
+                          
+                    \item \texttt{tox\_serialize\_logical\_array(array, filename)} -
+                          Serialize N-dimensional logical array
+                          
+                    \item \texttt{tox\_deserialize\_logical\_array(filename)} -
+                          Deserialize N-dimensional logical array
+                          
+                    \item \texttt{tox\_serialize\_complex\_array(array, filename)} -
+                          Serialize N-dimensional complex array
+                          
+                    \item \texttt{tox\_deserialize\_complex\_array(filename)} -
+                          Deserialize N-dimensional complex array
+                  \end{itemize}
+                  
+            \item \textbf{Array Functions}
+                  
+                  \textbf{Serialization Functions:}
+                  \begin{itemize}
+                    \item \texttt{array} (input): R array, matrix, or vector to be serialized
+                          \\ \textbf{Type:}
+                          \begin{itemize}
+                            \item \texttt{Integer}
+                                  
+                            \item \texttt{Numeric} (double precision)
+                                  
+                            \item \texttt{Characters}
+                                  
+                            \item \texttt{Logical}
+                                  
+                            \item \texttt{Complex}
+                          \end{itemize}
+                          \textbf{Dimensions:} Theoretically are N dimensions supported, but
+                          typical use cases should not exceed 5 dimensions \\
+                          
+                    \item \texttt{filename} (input): Name of the binary file to create \\
+                          \textbf{Type:} \texttt{character}
+                  \end{itemize}
+                  \begin{lstlisting}[language=R, caption={R Array Serialization Example}]
+tox_serialize_int_array(array, filename)
+tox_serialize_real_array(array, filename)
+tox_serialize_char_array(array, filename)
+                  \end{lstlisting}
+                  
+                  \textbf{Deserialization Functions:}
+                  \begin{itemize}
+                    \item \texttt{filename} (input): Name of the binary file to read \\ \textbf{Type:}
+                          \texttt{character}
+                          
+                    \item \textbf{Return Value:} Deserialized R array with original
+                          dimensions \\ \textbf{Type:} \texttt{array}, \texttt{matrix}, or \texttt{vector}
+                          \\ \textbf{Data Type:} Same as original
+                  \end{itemize}
+                  \begin{lstlisting}[language=R, caption={R Array Deserialization Example}]
+restored_int <- tox_deserialize_int_array(filename)
+restored_real <- tox_deserialize_real_array(filename)
+restored_char <- tox_deserialize_char_array(filename)
+                  \end{lstlisting}
+                  
+            \item \textbf{Implementation Details}
+                  
+                  \begin{itemize}
+                    \item The R interface automatically converts between R data types and
+                          Fortran-compatible formats
+                          
+                    \item Integer vectors are converted to 32-bit integers
+                          
+                    \item Numeric vectors are converted to 64-bit floating point
+                          
+                    \item Character arrays handle variable-length strings with automatic
+                          padding
+                          
+                    \item All array dimensions are preserved during serialization/deserialization
+                          
+                    \item The interface handles both regular arrays and matrices seamlessly
+                  \end{itemize}
+                  
+                  \subsubsection*{Usage Example}
+                  
+                  \begin{lstlisting}[language=R, caption={Full example of serialization and deserialization in R}]
+tox_serialize_int_array(arr1, fn("int1d.bin"))
+restored <- tox_deserialize_int_array(fn("int1d.bin"))
+
+# Real array example
+arr2 <- matrix(runif(12), nrow = 3, ncol = 4)
+tox_serialize_real_array(arr2, fn("real2d.bin"))
+restored <- tox_deserialize_real_array(fn("real2d.bin"))
+
+# Character array example
+arr3 <- c("GENE1", "BRCA1", "TP53", "EGFR")
+tox_serialize_char_array(arr3, fn("char1d.bin"))
+restored <- tox_deserialize_char_array(fn("char1d.bin"))
+                  \end{lstlisting}
+                  
+            \item \textbf{Compatibility Notes}
+                  
+                  \begin{itemize}
+                    \item Requires R with appropriate Fortran bindings
+                          
+                    \item Supports standard R data types (integer, numeric, character, logical,
+                          complex)
+                          
+                    \item Preserves array attributes and dimensions during serialization
+                          
+                    \item Character arrays maintain content but may have padding removed
+                          upon deserialization
+                  \end{itemize}
+          \end{enumerate}
+    
+    \item \textbf{Create Zip Archive (Low-Level) (R)}
+
+The low-level function creates a zip archive from keys and filenames,
+directly calling the Fortran backend. Use this function for custom data serialization
+scenarios or when you need fine-grained control over archive creation.
+Call the \texttt{create\_zip\_archive} function with the following arguments:
+
+    \begin{itemize}
+    \item \texttt{zip\_filename}: Name of the zip file to create
+          
+    \item \texttt{keys}: Vector of keys for the manifest (identifiers for
+          each file)
+          
+    \item \texttt{filenames}: Vector of filenames to include in archive
+    \end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Create Zip Archive (Low-Level)}]
+create_zip_archive(zip_filename, keys, filenames)
+\end{lstlisting}
+
+\item \textbf{Extract Zip Archive (R)}
+
+The function extracts a zip archive created by \texttt{create\_zip\_archive}
+and returns a list mapping data keys to extracted filenames. This is useful
+for accessing individual files from custom archives. Call the \texttt{extract\_zip\_archive}
+function with the following arguments:
+
+\begin{itemize}
+    \item \texttt{zip\_filename}: Path to the zip file to extract
+\end{itemize}
+
+\textbf{Returns:}
+\begin{itemize}
+    \item List mapping data keys to extracted temporary filenames
+\end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Extract Zip Archive}]
+extract_zip_archive(zip_filename)
+\end{lstlisting}
+
+\item \textbf{Save TOX Data (High-Level) (R)}
+
+The high-level function saves TOX data to a zip archive, handling
+validation, serialization, and archive creation for standard-conform tox
+gene data. This function automatically manages temporary files and cleanup.
+Call the \texttt{save\_tox\_data} function with the following arguments:
+
+\begin{itemize}
+    \item \texttt{zip\_filename}: Name of the zip file to create
+          
+    \item \textbf{(Optional)} \texttt{gene\_ids}: Character vector of gene
+          IDs
+          
+    \item \textbf{(Optional)} \texttt{gene\_ids\_name}: Filename for gene
+          IDs in the archive
+          
+    \item \textbf{(Optional)} \texttt{expression\_vectors}: Numeric matrix
+          of expression values (n\_samples × n\_genes)
+          
+    \item \textbf{(Optional)} \texttt{expression\_vectors\_name}: Filename
+          for expression vectors in the archive
+          
+    \item \textbf{(Optional)} \texttt{gene\_to\_fam}: Integer vector mapping
+          each gene to its family index (0 = unassigned)
+          
+    \item \textbf{(Optional)} \texttt{gene\_to\_fam\_name}: Filename for
+          gene to family mapping in the archive
+          
+    \item \textbf{(Optional)} \texttt{family\_ids}: Character vector of
+          family IDs
+          
+    \item \textbf{(Optional)} \texttt{family\_ids\_name}: Filename for
+          family IDs in the archive
+          
+    \item \textbf{(Optional)} \texttt{family\_centroids}: Numeric matrix of
+          family centroids (n\_samples × n\_families)
+          
+    \item \textbf{(Optional)} \texttt{family\_centroids\_name}: Filename for
+          family centroids in the archive
+          
+    \item \textbf{(Optional)} \texttt{shift\_vectors}: Numeric matrix of
+          shift vectors (2*n\_samples × n\_genes)
+          
+    \item \textbf{(Optional)} \texttt{shift\_vectors\_name}: Filename for
+          shift vectors in the archive
+\end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Save TOX Data}]
+save_tox_data(zip_filename,
+              gene_ids = NULL, gene_ids_name = NULL,
+              expression_vectors = NULL, expression_vectors_name = NULL,
+              gene_to_fam = NULL, gene_to_fam_name = NULL,
+              family_ids = NULL, family_ids_name = NULL,
+              family_centroids = NULL, family_centroids_name = NULL,
+              shift_vectors = NULL, shift_vectors_name = NULL)
+\end{lstlisting}
+
+\item \textbf{Read TOX Data (R)}
+
+The function reads data from a zip archive created by \texttt{save\_tox\_data},
+extracting and deserializing the requested data components for standard-conform
+tox gene data. This function automatically handles file extraction and
+cleanup. Call the \texttt{read\_tox\_data} function with the following
+arguments:
+
+\begin{itemize}
+    \item \texttt{zip\_filename}: Name of the zip file to read from
+          
+    \item \textbf{(Optional)} \texttt{gene\_ids}: If not NULL, will attempt to
+          read gene IDs from archive
+          
+    \item \textbf{(Optional)} \texttt{expression\_vectors}: If not NULL, will
+          attempt to read expression vectors from archive
+          
+    \item \textbf{(Optional)} \texttt{gene\_to\_fam}: If not NULL, will attempt
+          to read gene to family mapping from archive
+          
+    \item \textbf{(Optional)} \texttt{family\_ids}: If not NULL, will attempt
+          to read family IDs from archive
+          
+    \item \textbf{(Optional)} \texttt{family\_centroids}: If not NULL, will attempt
+          to read family centroids from archive
+          
+    \item \textbf{(Optional)} \texttt{shift\_vectors}: If not NULL, will attempt
+          to read shift vectors from archive
+\end{itemize}
+
+\textbf{Return list:}
+\begin{itemize}
+    \item \textbf{gene\_ids}: Loaded gene IDs vector (if requested)
+          
+    \item \textbf{expression\_vectors}: Loaded expression vectors matrix (if
+          requested)
+          
+    \item \textbf{gene\_to\_fam}: Loaded gene-to-family mapping vector (if
+          requested)
+          
+    \item \textbf{family\_ids}: Loaded family IDs vector (if requested)
+          
+    \item \textbf{family\_centroids}: Loaded family centroids matrix (if
+          requested)
+          
+    \item \textbf{shift\_vectors}: Loaded shift vectors matrix (if requested)
+\end{itemize}
+
+\begin{lstlisting}[language=R, caption={R Read TOX Data}]
+read_tox_data(zip_filename,
+              gene_ids = NULL,
+              expression_vectors = NULL,
+              gene_to_fam = NULL,
+              family_ids = NULL,
+              family_centroids = NULL,
+              shift_vectors = NULL)
+\end{lstlisting}
+
+\textbf{R Data Archiving Workflow Examples:} 
+\begin{lstlisting}[language=R, caption={R Standard TOX Data Archiving}]
+# Save complete TOX dataset
+save_tox_data(
+    zip_filename = "complete_tox_dataset.zip",
+    gene_ids = gene_ids,
+    gene_ids_name = "gene_ids.bin",
+    expression_vectors = expression_vectors,
+    expression_vectors_name = "expression.bin",
+    gene_to_fam = gene_to_fam,
+    gene_to_fam_name = "gene_to_fam.bin",
+    family_ids = family_ids,
+    family_ids_name = "family_ids.bin",
+    family_centroids = family_centroids,
+    family_centroids_name = "centroids.bin",
+    shift_vectors = shift_vectors,
+    shift_vectors_name = "shift_vectors.bin"
+)
+
+# Save partial dataset
+save_tox_data(
+    zip_filename = "basic_data.zip",
+    gene_ids = gene_ids,
+    gene_ids_name = "gene_ids.bin",
+    expression_vectors = expression_vectors,
+    expression_vectors_name = "expression.bin"
+)
+
+# Read data back with selective loading
+loaded_data <- read_tox_data(
+    zip_filename = "complete_tox_dataset.zip",
+    gene_ids = TRUE,
+    expression_vectors = TRUE,
+    gene_to_fam = TRUE
+)
+\end{lstlisting}
+
+\begin{lstlisting}[language=R, caption={R Custom Archive Creation and Extraction}]
+# Create custom archive with non-standard data
+create_zip_archive(
+    zip_filename = "custom_data.zip",
+    keys = c("3d_tensor", "results"),
+    filenames = c("tensor_data.bin", "analysis_results.bin")
+)
+
+# Extract and access custom archive
+file_mapping <- extract_zip_archive("custom_data.zip")
+cat("Files in archive:\n")
+print(file_mapping)
+# Output: $3d_tensor = "tensor_data.bin", $results = "analysis_results.bin"
+\end{lstlisting}
+
+\begin{lstlisting}[language=R, caption={R Mixed Standard and Custom Data Archiving}]
+# Serialize custom arrays
+tox_serialize_real_array(custom_array, "custom_data.bin")
+tox_serialize_int_array(another_array, "another_data.bin")
+
+# Create mixed archive with both standard and custom data
+create_zip_archive(
+    zip_filename = "mixed_archive.zip",
+    keys = c("standard_expression", "custom_feature", 
+        "analysis_results"),
+    filenames = c("expression.bin", "custom_data.bin", 
+        "another_data.bin")
+)
+
+# Later, extract and process
+mapping <- extract_zip_archive("mixed_archive.zip")
+expression_data <- tox_deserialize_real_array(
+    mapping[["standard_expression"]])
+custom_features <- tox_deserialize_real_array(
+    mapping[["custom_feature"]])
+results <- tox_deserialize_int_array(
+    mapping[["analysis_results"]])
+\end{lstlisting}
+
+\textbf{Important Notes for R Archive Functions:}
+\begin{itemize}
+    \item All archive functions automatically handle temporary file cleanup
+          
+    \item The \texttt{save\_tox\_data} function validates data dimensions
+          before serialization
+          
+    \item Both \texttt{save\_tox\_data} and \texttt{read\_tox\_data} use the
+          standard TOX data keys: "gene\_ids", "expression", "gene\_to\_family",
+          "family\_ids", "family\_centroids", "shift\_vectors"
+          
+    \item Archives created with R functions are compatible with Python and Fortran
+          implementations
+          
+    \item Error codes are automatically checked and converted to informative
+          error messages
+\end{itemize}
+\end{enumerate}

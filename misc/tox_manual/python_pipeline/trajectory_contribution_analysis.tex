@@ -1,0 +1,645 @@
+\subsubsection{Trajectory Contribution Analysis}
+\begin{enumerate}
+    \item \textbf{Fortran Core Contribution Analysis Functions}
+          
+    \item \textbf{Trajectory Contribution Calculation}
+          
+          Computes integrated trajectory-level contribution between two vectors using
+          cosine similarity.
+          
+          \textbf{Arguments:}
+          \begin{itemize}
+            \item \texttt{factor}: 1D numpy array of shape \texttt{(n\_timepoints,)}
+                  — independent variable
+                  
+            \item \texttt{dependent}: 1D numpy array of shape \texttt{(n\_timepoints,)}
+                  — dependent variable
+                  
+            \item \texttt{mode}: Processing mode (1 = cosine similarity, 2 = angle/acos)
+          \end{itemize}
+          \textbf{Returns:}
+          \begin{itemize}
+            \item \texttt{contribution}: Scalar contribution value (float)
+          \end{itemize}
+          \begin{lstlisting}[language=Python, caption={Trajectory-Level Contribution Calculation}]
+contribution = tox_trajectory_contribution(factor, dependent, mode)
+          \end{lstlisting}
+          
+    \item \textbf{Spike Contribution Calculation}
+          
+          Computes timepoint-wise spike contributions between two vectors.
+          
+          \textbf{Arguments:}
+          \begin{itemize}
+            \item \texttt{factor}: 1D numpy array of shape \texttt{(n\_timepoints,)}
+                  — independent variable
+                  
+            \item \texttt{dependent}: 1D numpy array of shape \texttt{(n\_timepoints,)}
+                  — dependent variable
+                  
+            \item \texttt{mode}: Processing mode (1 = Normal, 2 = RAP)
+          \end{itemize}
+          \textbf{Returns:}
+          \begin{itemize}
+            \item \texttt{contribution}: 1D numpy array of shape \texttt{(n\_timepoints,)}
+                  with contribution values per timepoint (read-only)
+          \end{itemize}
+          \begin{lstlisting}[language=Python, caption={Spike-Wise Contribution Calculation}]
+spike_contributions = tox_spike_contribution(factor, dependent, mode)
+          \end{lstlisting}
+          
+    \item \textbf{Calculate Contributions (Allocation Version)}
+          
+          Calculates both spike and integrated contributions for a specific factor with
+          internal memory allocation.
+          
+          \textbf{Arguments:}
+          \begin{itemize}
+            \item \texttt{trajectories}: 3D numpy array of shape \texttt{(n\_factors,
+                  n\_samples, n\_timepoints)} in Fortran order
+            
+            \item \texttt{i\_factor}: 0-based index of the independent variable
+                  
+            \item \texttt{dependent\_idx}: 0-based index of the dependent variable
+                  
+            \item \texttt{mode}: Processing mode (1 = Normal, 2 = RAP)
+          \end{itemize}
+          \textbf{Returns:}
+          \begin{itemize}
+            \item Dictionary containing:
+                  \begin{itemize}
+                    \item \texttt{spikes}: Spike contributions \texttt{[n\_timepoints, n\_samples]}
+                          (read-only)
+                          
+                    \item \texttt{trajectory}: Integrated contributions \texttt{[n\_samples]}
+                          (read-only)
+                  \end{itemize}
+          \end{itemize}
+          \begin{lstlisting}[language=Python, caption={Contributions Calculation with Internal Allocation}]
+result = tox_calc_contributions(trajectories, i_factor, 
+                                dependent_idx, mode)
+
+# Access results
+spike_contribs = result['spikes']        # [n_timepoints, n_samples]
+traj_contribs = result['trajectory']     # [n_samples]
+          \end{lstlisting}
+          
+    \item \textbf{Calculate Contributions (Expert Version)}
+          
+          Calculates both spike and integrated contributions using caller-provided work
+          arrays for optimal performance.
+          
+          \textbf{Arguments:}
+          \begin{itemize}
+            \item \texttt{trajectories}: 3D numpy array of shape \texttt{(n\_factors,
+                  n\_samples, n\_timepoints)} in Fortran order
+            
+            \item \texttt{i\_factor}: 0-based index of the independent variable
+                  
+            \item \texttt{dependent\_idx}: 0-based index of the dependent variable
+                  
+            \item \texttt{mode}: Processing mode (1 = Normal, 2 = RAP)
+                  
+            \item \texttt{temp\_factor\_vector}: 1D work array of shape \texttt{(n\_timepoints,)}
+                  
+            \item \texttt{temp\_dependent\_vector}: 1D work array of shape \texttt{(n\_timepoints,)}
+          \end{itemize}
+          \textbf{Returns:}
+          \begin{itemize}
+            \item Dictionary containing:
+                  \begin{itemize}
+                    \item \texttt{spikes}: Spike contributions \texttt{[n\_timepoints, n\_samples]}
+                          (read-only)
+                          
+                    \item \texttt{trajectory}: Integrated contributions \texttt{[n\_samples]}
+                          (read-only)
+                  \end{itemize}
+          \end{itemize}
+          \begin{lstlisting}[language=Python, caption={Expert Contributions Calculation with Work Arrays}]
+result = tox_calc_contributions_expert(
+    trajectories, i_factor, dependent_idx, mode, 
+    temp_factor_vector, temp_dependent_vector
+)
+
+# Access results (same structure as tox_calc_contributions)
+spike_contribs = result['spikes']
+traj_contribs = result['trajectory']
+          \end{lstlisting}
+\end{enumerate}
+
+\textbf{Processing Modes:}
+\begin{itemize}
+    \item \texttt{mode = 1} (Normal): Returns cosine similarity for normal vectors
+          
+    \item \texttt{mode = 2} (RAP): Returns arccos of cosine similarity for RAP projected
+          vectors
+\end{itemize}
+
+\textbf{Key Features of Python Interface:}
+\begin{itemize}
+    \item \textbf{Automatic Memory Management}: Handles Fortran memory layout and
+          data type conversion automatically
+          
+    \item \textbf{Comprehensive Error Handling}: Converts Fortran error codes to
+          Python exceptions
+          
+    \item \textbf{Memory Efficient}: Output arrays are marked as read-only to prevent
+          accidental modification
+          
+    \item \textbf{Flexible Input}: Accepts both lists and numpy arrays with automatic
+          conversion
+          
+    \item \textbf{Performance Optimized}: Expert versions allow pre-allocated work
+          arrays for critical code paths
+\end{itemize}
+
+\textbf{Usage Example:}
+\begin{lstlisting}[language=Python, caption={Complete Contribution Analysis Workflow}]
+import numpy as np
+
+# Example data
+n_factors, n_samples, n_timepoints = 5, 100, 50
+trajectories = np.random.rand(n_factors, n_samples, n_timepoints).astype(np.float64)
+
+# Single vector analysis
+factor_vec = np.random.rand(n_timepoints)
+dependent_vec = np.random.rand(n_timepoints)
+
+# Compute trajectory contribution
+traj_contrib = tox_trajectory_contribution(factor_vec, dependent_vec, 
+    mode=1)
+
+# Compute spike contributions  
+spike_contribs = tox_spike_contribution(factor_vec, dependent_vec, mode=1)
+
+# Full trajectory analysis
+result = tox_calc_contributions(trajectories, i_factor=0, 
+    dependent_idx=1, mode=1)
+spikes = result['spikes']        # [50, 100]
+trajectory = result['trajectory'] # [100]
+
+# Expert version with pre-allocated work arrays
+temp_factor = np.empty(n_timepoints, dtype=np.float64)
+temp_dependent = np.empty(n_timepoints, dtype=np.float64)
+result_expert = tox_calc_contributions_expert(
+    trajectories, i_factor=0, dependent_idx=1, mode=1,
+    temp_factor, temp_dependent
+)
+\end{lstlisting}
+\begin{enumerate}
+    \item \textbf{Python Interface for Outlier Detection}
+          
+          The Python interface provides wrappers for the Fortran outlier detection routines,
+          handling data type conversion, memory layout, and error checking
+          automatically.
+          
+          \begin{enumerate}
+            \item \textbf{Calculate Integrated Threshold (Expert Version)}
+                  
+                  Calculate empirical threshold for integrated contributions using pre-computed
+                  permutations for optimal performance.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{contributions}: 1D numpy array of integrated contributions
+                          [n\_samples] in Fortran order
+                          
+                    \item \texttt{percentile\_val}: Percentile value for threshold (0.0--100.0)
+                          
+                    \item \texttt{permutation}: Pre-computed permutation indices for sorted
+                          contributions [n\_samples] in Fortran order
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{threshold}: Scalar threshold value
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Integrated Threshold Calculation (Expert)}]
+threshold = calc_integrated_threshold_expert(
+    contributions, percentile_val, permutation
+)
+                  \end{lstlisting}
+                  
+            \item \textbf{Calculate Integrated Threshold (Convenience Version)}
+                  
+                  Calculate empirical threshold for integrated contributions with internal
+                  allocation and sorting.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{contributions}: 1D numpy array of integrated contributions
+                          [n\_samples] in Fortran order
+                          
+                    \item \texttt{percentile\_val}: Percentile value for threshold (0.0--100.0)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{threshold}: Scalar threshold value
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Integrated Threshold Calculation}]
+threshold = calc_integrated_threshold(contributions, percentile_val)
+                  \end{lstlisting}
+                  
+            \item \textbf{Detect Integrated Outliers}
+                  
+                  Identify outlier samples where integrated contributions exceed the empirical
+                  threshold.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{contributions}: 1D numpy array of integrated contributions
+                          [n\_samples] in Fortran order
+                          
+                    \item \texttt{threshold}: Scalar threshold value for outlier detection
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{outlier\_mask}: 1D boolean array indicating outlier samples
+                          [n\_samples] (read-only)
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Integrated Outlier Detection}]
+outlier_mask = detect_outliers_integrated(contributions, threshold)
+                  \end{lstlisting}
+                  
+            \item \textbf{Calculate Spike Thresholds (Expert Version)}
+                  
+                  Calculate empirical thresholds for spike contributions using pre-sorted
+                  permutations for optimal performance.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{spike\_contribs}: 2D numpy array of spike contributions
+                          [n\_timepoints, n\_samples] in Fortran order (rows=timepoints,
+                          columns=samples)
+                          
+                    \item \texttt{percentile\_val}: Percentile value for threshold (0.0--100.0)
+                          
+                    \item \texttt{permutation}: Pre-computed permutation indices [n\_samples,
+                    n\_timepoints] in Fortran order (each column contains sorted indices
+                    for a timepoint)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{thresholds}: 1D numpy array of thresholds for each timepoint
+                          [n\_timepoints] (read-only)
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Spike Thresholds Calculation (Expert)}]
+thresholds = calc_spike_thresholds_expert(
+    spike_contribs, percentile_val, permutation
+)
+                  \end{lstlisting}
+                  
+            \item \textbf{Calculate Spike Thresholds (Convenience Version)}
+                  
+                  Calculate empirical thresholds for spike contributions with internal allocations
+                  and sorting.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{spike\_contribs}: 2D numpy array of spike contributions
+                          [n\_timepoints, n\_samples] in Fortran order (rows=timepoints,
+                          columns=samples)
+                          
+                    \item \texttt{percentile\_val}: Percentile value for threshold (0.0--100.0)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{thresholds}: 1D numpy array of thresholds for each timepoint
+                          [n\_timepoints] (read-only)
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Spike Thresholds Calculation}]
+thresholds = calc_spike_thresholds(spike_contribs, percentile_val)
+                  \end{lstlisting}
+                  
+            \item \textbf{Detect Spike Outliers}
+                  
+                  Identify outliers in spike contributions by comparing against timepoint-specific
+                  thresholds.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{spike\_contribs}: 2D numpy array of spike contributions
+                          [n\_timepoints, n\_samples] in Fortran order (rows=timepoints,
+                          columns=samples)
+                          
+                    \item \texttt{thresholds}: 1D numpy array of thresholds for each timepoint
+                          [n\_timepoints] in Fortran order
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item \texttt{outlier\_mask}: 2D boolean array indicating outliers [n\_timepoints,
+                    n\_samples] (read-only)
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Spike Outlier Detection}]
+outlier_mask = detect_outliers_spike(spike_contribs, thresholds)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+          \textbf{Key Features of the Python Interface:}
+          \begin{itemize}
+            \item \textbf{Automatic Type Conversion}: Input arrays automatically converted
+                  to \texttt{np.float64} and \texttt{np.int32} with Fortran memory layout
+                  
+            \item \textbf{Dimension Validation}: Input dimensions are validated before
+                  calling Fortran routines
+                  
+            \item \textbf{Error Handling}: Fortran error codes are converted to Python
+                  exceptions via \texttt{check\_err\_code()}
+                  
+            \item \textbf{Memory Efficiency}: Output arrays are marked as read-only to
+                  prevent accidental modification
+                  
+            \item \textbf{Boolean Conversion}: C integer arrays (0/1) are automatically
+                  converted to Python boolean arrays
+          \end{itemize}
+          
+          \textbf{Usage Notes:}
+          \begin{itemize}
+            \item Use \textbf{expert} versions when you have pre-computed
+                  permutations for better performance
+                  
+            \item Use \textbf{convenience} versions for simpler workflows where
+                  internal allocation is acceptable
+                  
+            \item All input arrays should be in \textbf{Fortran order} (column-major)
+                  for optimal performance
+                  
+            \item Output arrays are \textbf{read-only} to maintain data integrity
+          \end{itemize}
+          
+    \item \textbf{Complete Pipeline Functions}
+          
+          The Python interface provides two complete pipeline functions for processing
+          trajectories with integrated outlier detection workflows.
+          
+          \begin{enumerate}
+            \item \textbf{Process Trajectories with Per-Timepoint Percentiles}
+                  
+                  Processes multiple trajectories with percentile thresholds calculated separately
+                  for each timepoint. This provides timepoint-specific sensitivity for
+                  spike contribution analysis.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{trajectories}: 3D numpy array of shape \texttt{(n\_factors,
+                          n\_samples, n\_timepoints)} in Fortran order
+                    
+                    \item \texttt{factor\_mask}: 1D boolean array of shape \texttt{(n\_factors,)}
+                          indicating which factors to process
+                          
+                    \item \texttt{dependent\_idx}: 1-based index of the dependent variable
+                          (will be excluded from processing)
+                          
+                    \item \texttt{mode}: Processing mode (1 = Normal, 2 = RAP)
+                          
+                    \item \texttt{percentile}: Percentile value for threshold calculation
+                          (0.0--100.0)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Dictionary containing:
+                          \begin{itemize}
+                            \item \texttt{integrated\_contribs}: Integrated contributions \texttt{[n\_samples,
+                                  n\_processed\_factors]}
+                            
+                            \item \texttt{spike\_contribs}: Spike contributions \texttt{[n\_timepoints,
+                                  n\_samples, n\_processed\_factors]}
+                            
+                            \item \texttt{thresholds\_integrated}: Thresholds for integrated
+                                  contributions \texttt{[n\_processed\_factors]}
+                                  
+                            \item \texttt{thresholds\_spike}: Thresholds for spike contributions
+                                  \texttt{[n\_timepoints, n\_processed\_factors]}
+                                  
+                            \item \texttt{outliers\_integrated}: Outliers for integrated contributions
+                                  \texttt{[n\_samples, n\_processed\_factors]} (boolean)
+                                  
+                            \item \texttt{outliers\_spike}: Outliers for spike contributions
+                                  \texttt{[n\_timepoints, n\_samples, n\_processed\_factors]} (boolean)
+                          \end{itemize}
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Complete Trajectory Processing with Per-Timepoint Thresholds}]
+results = tox_process_trajectories(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
+
+# Access results
+integrated_contribs = results['integrated_contribs']        
+# [n_samples, n_processed]
+
+spike_contribs = results['spike_contribs']                  
+# [n_timepoints, n_samples, n_processed]
+
+thresholds_integrated = results['thresholds_integrated']    
+# [n_processed]
+
+thresholds_spike = results['thresholds_spike']              
+# [n_timepoints, n_processed]
+
+outliers_integrated = results['outliers_integrated']        
+# [n_samples, n_processed] (bool)
+
+outliers_spike = results['outliers_spike']                  
+# [n_timepoints, n_samples, n_processed] (bool)
+                  \end{lstlisting}
+                  
+            \item \textbf{Process Trajectories with Global Percentile}
+                  
+                  Processes trajectories using a single global percentile threshold for all
+                  timepoints in spike contributions. This provides consistent
+                  sensitivity across all timepoints.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{trajectories}: 3D numpy array of shape \texttt{(n\_factors,
+                          n\_samples, n\_timepoints)} in Fortran order
+                    
+                    \item \texttt{factor\_mask}: 1D boolean array of shape \texttt{(n\_factors,)}
+                          indicating which factors to process
+                          
+                    \item \texttt{dependent\_idx}: 1-based index of the dependent variable
+                          (will be excluded from processing)
+                          
+                    \item \texttt{mode}: Processing mode (1 = Normal, 2 = RAP)
+                          
+                    \item \texttt{percentile}: Percentile value for threshold calculation
+                          (0.0--100.0)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Dictionary containing:
+                          \begin{itemize}
+                            \item \texttt{integrated\_contribs}: Integrated contributions \texttt{[n\_samples,
+                                  n\_processed\_factors]}
+                            
+                            \item \texttt{spike\_contribs}: Spike contributions \texttt{[n\_timepoints,
+                                  n\_samples, n\_processed\_factors]}
+                            
+                            \item \texttt{thresholds\_integrated}: Thresholds for integrated
+                                  contributions \texttt{[n\_processed\_factors]}
+                                  
+                            \item \texttt{thresholds\_spike}: Thresholds for spike contributions
+                                  \texttt{[n\_processed\_factors]} (1D array)
+                                  
+                            \item \texttt{outliers\_integrated}: Outliers for integrated contributions
+                                  \texttt{[n\_samples, n\_processed\_factors]} (boolean)
+                                  
+                            \item \texttt{outliers\_spike}: Outliers for spike contributions
+                                  \texttt{[n\_timepoints, n\_samples, n\_processed\_factors]} (boolean)
+                          \end{itemize}
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Complete Trajectory Processing with Global Threshold}]
+results = tox_process_trajectories_flat(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
+
+# Access results - note thresholds_spike is 1D in flat version
+integrated_contribs = results['integrated_contribs']        
+# [n_samples, n_processed]
+
+spike_contribs = results['spike_contribs']                  
+# [n_timepoints, n_samples, n_processed]
+
+thresholds_integrated = results['thresholds_integrated']    
+# [n_processed]
+
+thresholds_spike = results['thresholds_spike']              
+# [n_processed] (1D)
+
+outliers_integrated = results['outliers_integrated']        
+# [n_samples, n_processed] (bool)
+
+outliers_spike = results['outliers_spike']                  
+# [n_timepoints, n_samples, n_processed] (bool)
+                  \end{lstlisting}
+          \end{enumerate}
+          
+          \textbf{Key Differences Between Pipeline Functions:}
+          \begin{itemize}
+            \item \texttt{tox\_process\_trajectories}: Uses \textbf{per-timepoint
+                  percentiles} for spike thresholds (\texttt{thresholds\_spike} shape: \texttt{[n\_timepoints,
+                  n\_processed]})
+            
+            \item \texttt{tox\_process\_trajectories\_flat}: Uses \textbf{global
+                  percentile} for spike thresholds (\texttt{thresholds\_spike} shape: \texttt{[n\_processed]})
+          \end{itemize}
+          
+          \textbf{Pipeline Features:}
+          \begin{itemize}
+            \item \textbf{Automatic Factor Filtering}: Processes only factors marked
+                  in \texttt{factor\_mask}, excluding the dependent variable
+                  
+            \item \textbf{Memory Efficient}: All output arrays use Fortran memory layout
+                  and are marked as read-only
+                  
+            \item \textbf{Error Handling}: Comprehensive error checking with automatic
+                  exception conversion
+                  
+            \item \textbf{Boolean Output}: Outlier masks are automatically converted
+                  from C integers to Python boolean arrays
+                  
+            \item \textbf{Dimension Validation}: Input dimensions and factor mask consistency
+                  are validated
+          \end{itemize}
+          
+          \textbf{Usage Example:} 
+          \begin{lstlisting}[language=Python, caption={Typical Pipeline Usage}]
+import numpy as np
+
+# Example data: 10 factors, 100 samples, 50 timepoints
+trajectories = np.random.rand(10, 100, 50).astype(np.float64)
+factor_mask = np.array([True, True, False, True, True, False, 
+    True, True, True, False])
+dependent_idx = 5  # 1-based index
+mode = 1  # Normal mode
+percentile = 95.0
+
+# Process with per-timepoint thresholds
+results = tox_process_trajectories(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
+
+# Process with global threshold  
+results_flat = tox_process_trajectories_flat(
+    trajectories, factor_mask, dependent_idx, mode, percentile
+)
+    \end{lstlisting}
+    
+    \item \textbf{Python Core Contribution Analysis Functions}
+          
+          \textbf{The Python interface provides comprehensive wrappers for
+            trajectory contribution analysis, including EDF computation and various contribution
+          calculation modes.}
+          
+          \begin{enumerate}
+            \item \textbf{Empirical Distribution Function (EDF) Computation}
+                  
+                  Computes the empirical cumulative distribution function for observed data
+                  values.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{values}: Array of observed data values (list or numpy
+                          array)
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Dictionary containing:
+                          \begin{itemize}
+                            \item \texttt{unique\_values}: Sorted unique data values (read-only
+                                  numpy array)
+                                  
+                            \item \texttt{cdf\_values}: Corresponding cumulative frequencies
+                                  between 0 and 1 (read-only)
+                                  
+                            \item \texttt{n\_unique}: Number of unique values found (int)
+                          \end{itemize}
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Empirical Distribution Function Computation}]
+result = compute_edf(values)
+
+# Access results
+unique_vals = result['unique_values']  
+# Sorted unique values
+
+cdf_vals = result['cdf_values']        
+# Cumulative distribution values  
+
+n_unique = result['n_unique']          
+# Number of unique values
+                  \end{lstlisting}
+                  
+            \item \textbf{Empirical Distribution Function (Expert Version)}
+                  
+                  Computes EDF using pre-sorted permutation for optimal performance.
+                  
+                  \textbf{Arguments:}
+                  \begin{itemize}
+                    \item \texttt{values}: Array of observed data values (list or numpy
+                          array)
+                          
+                    \item \texttt{perm}: Pre-sorted permutation indices (1-based Fortran
+                          style, must be sorted by values[perm])
+                  \end{itemize}
+                  \textbf{Returns:}
+                  \begin{itemize}
+                    \item Dictionary containing:
+                          \begin{itemize}
+                            \item \texttt{unique\_values}: Sorted unique data values (read-only
+                                  numpy array)
+                                  
+                            \item \texttt{cdf\_values}: Corresponding cumulative frequencies
+                                  between 0 and 1 (read-only)
+                                  
+                            \item \texttt{n\_unique}: Number of unique values found (int)
+                          \end{itemize}
+                  \end{itemize}
+                  \begin{lstlisting}[language=Python, caption={Expert EDF Computation with Pre-sorted Permutation}]
+result = compute_edf_expert(values, perm)
+
+# Access results (same structure as compute_edf)
+unique_vals = result['unique_values']
+cdf_vals = result['cdf_values']
+n_unique = result['n_unique']
+                  \end{lstlisting}
+          \end{enumerate}
+\end{enumerate}
