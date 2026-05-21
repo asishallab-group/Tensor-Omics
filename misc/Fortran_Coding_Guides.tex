@@ -69,6 +69,13 @@ docker run -it -v `pwd`:/opt arch-gfortran '/opt/build.sh'
 
 Using Docker ensures every team member compiles with the same toolchain version, regardless of operating system.
 
+\subsection{Fortran Standard Reference}
+
+When in doubt about language semantics, consult the official Fortran standard draft:
+\begin{center}
+  \url{https://j3-fortran.org/doc/year/26/26-007.pdf}
+\end{center}
+
 % =============================================================================
 \section{File Extensions: \texttt{.F90} vs \texttt{.f90}}
 % =============================================================================
@@ -82,6 +89,37 @@ Fortran source files in this project use \emph{two} extensions with a precise me
 \end{itemize}
 
 \textbf{Rule:} If in doubt, use \texttt{.F90}. Do not mix files that use macros with the \texttt{.f90} extension, as gfortran will silently skip the preprocessor pass and produce cryptic compilation errors.
+
+% =============================================================================
+\section{Code Formatting}
+% =============================================================================
+
+\subsection{Indentation}
+
+Use \textbf{4 spaces} per indentation level. Never use tabs. The project formatter is \texttt{fprettify}; run it before committing:
+
+\begin{lstlisting}[language=bash]
+fprettify -i 4 -l 1000 <path-to-file>
+\end{lstlisting}
+
+The \texttt{-l 1000} flag sets a generous line-length limit so that \texttt{fprettify} does not introduce spurious line continuations in long argument lists.
+
+\subsection{One Dummy Argument Declaration Per Line}
+
+Each dummy argument (subroutine/function parameter) must be declared on its own line. This is required so that every argument can carry its own FORD documentation comment:
+
+\begin{lstlisting}[language=Fortran]
+! CORRECT
+integer(int32), intent(in) :: n_genes
+  !! Total number of genes
+real(real64), intent(in) :: expression_vectors(n_axes, n_genes)
+  !! Gene expression matrix (n_axes x n_genes)
+
+! WRONG: two arguments on one line cannot be individually documented
+integer(int32), intent(in) :: n_genes, n_axes
+\end{lstlisting}
+
+For \textbf{local variables} this rule does not apply — grouping related locals on one line is acceptable. Local variables do not need FORD comments, but must still follow the naming conventions (meaningful, descriptive names).
 
 % =============================================================================
 \section{Always Use Double Precision}
@@ -381,17 +419,40 @@ subroutine my_routine(data, n, span, degree)
 
 Prefer \texttt{do concurrent} over plain \texttt{do} loops whenever the iterations are independent. This is the primary parallelisation mechanism in this project. Do not use OpenMP pragma loops — let the compiler exploit \texttt{do concurrent} through its own vectorisation and threading back-ends.
 
+\subsection{Locality Specifications}
+
+Every variable used inside a \texttt{do concurrent} loop \textbf{must} carry an explicit locality specification. Do not rely on the compiler's assumption — leaving it implicit makes the intent ambiguous and can produce incorrect results with aggressive optimisers.
+
+\begin{tabular}{lp{9cm}}
+\toprule
+Specification & Meaning \\
+\midrule
+\texttt{shared(\ldots vars)} & All iterations read/write the \emph{same} instance of the variable. Use for arrays being filled element-wise or for read-only scalars. \\
+\texttt{local(\ldots vars)} & Each iteration gets its own \emph{private} copy, uninitialised at entry. Use for loop-local temporaries. \\
+\texttt{local\_init(\ldots vars)} & Like \texttt{local}, but each copy is initialised to the value the variable had before the loop. \\
+\texttt{reduce(op:\ldots vars)} & Each iteration contributes to a scalar accumulator via \texttt{op}. The final result is the reduction of all per-iteration contributions. \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\noindent Supported \texttt{reduce} operators: \texttt{+}, \texttt{*}, \texttt{max}, \texttt{min}, \texttt{iand}, \texttt{ieor}, \texttt{ior}, \texttt{.and.}, \texttt{.or.}, \texttt{.eqv.}, \texttt{.neqv.}
+
 \begin{lstlisting}[language=Fortran]
-! Preferred: explicit concurrency annotation
+! Element-wise: array filled in parallel, scalar read-only
 do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
   vector(i_dim) = vector(i_dim) / vector_norm
 end do
 
-! With reduction (summing into a scalar is safe)
-squares_sum = 0.0_real64
-do concurrent (i_element = 1:n_elements) &
-    shared(vec, mean_val) reduce(+:squares_sum)
-  squares_sum = squares_sum + (vec(i_element) - mean_val) ** 2
+! Reduction: accumulate a sum over independent iterations
+means_sum = 0.0_real64
+do concurrent (i_gene = 1:n_genes) shared(gene_means) reduce(+:means_sum)
+  means_sum = means_sum + gene_means(i_gene)
+end do
+
+! Local temporary: each iteration owns its own scratch variable
+do concurrent (i_vec = 1:n_vectors) shared(mat, norms) local(tmp_norm)
+  tmp_norm = norm2(mat(:, i_vec))
+  norms(i_vec) = tmp_norm
 end do
 \end{lstlisting}
 
@@ -884,9 +945,11 @@ def compute_tissue_versatility(expression_vectors, gene_selection, axis_selectio
 
 \begin{itemize}
   \item \texttt{!>} — Starts the description of a module, subroutine, or function.
-  \item \texttt{!!} — Continues a description on the next line (trail comment after a declaration).
-  \item \texttt{!|} — Documents an argument; place this comment \textbf{on the line immediately after} the argument declaration, not before it.
+  \item \texttt{!|} — Continues or extends a description (e.g.\ a second line after \texttt{!>}); also used to document an argument when placed \textbf{before} the declaration.
+  \item \texttt{!!} — Trail comment placed \textbf{after} the declaration (on the following line, indented). This is the preferred way to document individual arguments in this codebase.
 \end{itemize}
+
+\noindent In summary: \texttt{!|} before, \texttt{!!} after. Both are valid FORD syntax; the template below uses \texttt{!!} consistently.
 
 \subsection{Module and Subroutine Template}
 
@@ -966,6 +1029,7 @@ Each test function is named \texttt{test\_<description>}.
   \item \textbf{Link to the relevant issue} in the MR description.
   \item \textbf{Update FORD documentation} and tests as part of the same MR as the implementation.
   \item \textbf{Check the CI/CD workflow.} After pushing or updating an MR, always verify that the automated workflow (tests, build, documentation generation) passes. If it fails, \emph{fix it yourself} — do not wait to be told. A failing pipeline blocks the merge and means the code is not yet ready for review.
+  \item \textbf{Use GitHub, not GitLab.} Since May 2026 the project is developed exclusively on GitHub. Do not open issues, branches, or MRs on the old GitLab repository — those will not be seen or merged.
 \end{itemize}
 
 % =============================================================================
@@ -1024,6 +1088,76 @@ tox_calculate_tissue_versatility <- function(...) {
   \item Module names must start with \texttt{tox\_} or \texttt{f42\_}. Helper snippets use the \texttt{\#> (tox|f42)\_helper-<name>: <description>} format.
   \item To run the generator manually: \texttt{python helper/generate\_snippets.py} from the project root.
 \end{itemize}
+
+% =============================================================================
+\section{Integrating External Fortran Code from Netlib}
+% =============================================================================
+
+Netlib is the canonical archive for legacy scientific Fortran (BLAS, LINPACK, LOESS, etc.). This section explains how to extract, compile, and link Netlib packages so they can be added to \texttt{external/}.
+
+\subsection{Shell Archives (shar)}
+
+Netlib sometimes distributes packages as \textbf{Shell Archives} (\texttt{.shar}): self-extracting shell scripts that reconstruct source files when executed. Each line of actual source is prefixed with a hyphen; the script uses \texttt{sed} to strip those prefixes during extraction and write the real files. This format dates to the 1980s and was also a safety measure against accidental execution of embedded shell commands.
+
+Do not copy-paste the text manually. Save it to a file and run it:
+
+\begin{lstlisting}[language=bash]
+wget https://netlib.org/a/loess
+sh loess          # extracts README, loessf.f, lowesf.f, lowescp.f, ...
+\end{lstlisting}
+
+Perform extraction in a \textbf{temporary directory outside the project}. Once compilation is confirmed working, move the relevant files into \texttt{external/}.
+
+\subsection{Checking Dependencies}
+
+After extraction, read the \texttt{README}. Many Netlib packages omit routines they assumed were already present on the target system. LOESS, for example, depends on LINPACK routines (\texttt{dqrsl}, \texttt{dsvdc}) that are not included in the distributed archive. Missing symbols cause linker errors such as:
+
+\begin{lstlisting}[language=bash]
+undefined reference to 'dqrsl'
+undefined reference to 'dsvdc'
+\end{lstlisting}
+
+Fetch the missing \texttt{.f} files from Netlib and add them to the compilation.
+
+\subsection{Compiling Legacy Fortran Sources}
+
+Old Fortran (fixed-form, F77) requires special flags:
+
+\begin{lstlisting}[language=bash]
+gfortran -O2 -std=legacy -ffixed-line-length-none \
+         -fallow-argument-mismatch -fPIC -w \
+         -c file1.f file2.f file3.f
+\end{lstlisting}
+
+\begin{tabular}{lp{9.5cm}}
+\toprule
+Flag & Purpose \\
+\midrule
+\texttt{-O2} & Standard optimisations. \\
+\texttt{-std=legacy} & Accepts F77 constructs no longer valid in modern standards. \\
+\texttt{-ffixed-line-length-none} & Removes the 72-character column limit of fixed-form source. \\
+\texttt{-fallow-argument-mismatch} & Suppresses fatal errors from implicit-interface argument-type mismatches common in old code. \\
+\texttt{-fPIC} & Position-independent code; required when object files will be linked into a shared library (\texttt{.so}). \\
+\texttt{-w} & Suppresses warnings. Use it only after the initial integration is stable; omit it while diagnosing problems. \\
+\texttt{-c} & Compile only (produce \texttt{.o} files); do not link. \\
+\bottomrule
+\end{tabular}
+
+\subsection{Linking}
+
+To build a \textbf{static library} for inclusion in Tensor-Omics:
+
+\begin{lstlisting}[language=bash]
+ar rcs libname.a *.o
+\end{lstlisting}
+
+To build a standalone \textbf{executable} for testing:
+
+\begin{lstlisting}[language=bash]
+gfortran -o program_name file1.o file2.o file3.o
+\end{lstlisting}
+
+If \texttt{undefined reference} errors appear at link time, a dependency is missing. Classic culprits in Netlib packages are additional routines from \textbf{BLAS}, \textbf{LINPACK}, or utility functions such as \texttt{d1mach} — fetch and compile those as well.
 
 % =============================================================================
 \section{Quick-Reference Checklist}
