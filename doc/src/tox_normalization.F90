@@ -2,601 +2,847 @@
 
 !> Module with normalization routines for tensor omics.
 module tox_normalization
-  use safeguard
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, is_err, validate_dimension_size, validate_in_range_real
-  use f42_utils, only: norm, is_close, logx
+    use safeguard
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int
+    use f42_utils, only: norm, is_close, logx, mean, std_dev
+    use tox_loess, only: loess_alloc
+
+#define CM_LOESS_SPAN_DEFAULT 0.7_real64
+#define CM_LOESS_DEGREE_DEFAULT 2_int32
+
 contains
 
-  !> Normalizes an input vector to unit length in-place
-  pure subroutine normalize_unit_length(vector, n_dims, ierr)
-    integer(int32), intent(in) :: n_dims
-      !! number of elements in `vector`
-    real(real64), dimension(n_dims), intent(inout) :: vector
-      !! Vector that will be normalized to unit length
-    integer(int32), intent(out) :: ierr
-      !! Error code
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Normalizes an input vector to unit length in-place
+    pure subroutine normalize_unit_length(vector, n_dims, ierr)
+        integer(int32), intent(in) :: n_dims
+            !! number of elements in `vector`
+        real(real64), dimension(n_dims), intent(inout) :: vector
+            !! Vector that will be normalized to unit length
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    integer(int32) :: i_dim
-    real(real64) :: vector_norm
+        integer(int32) :: i_dim
+        real(real64) :: vector_norm
 
-    call set_ok(ierr)
+        call set_ok(ierr)
 
-    call validate_dimension_size(n_dims, ierr)
-    if(is_err(ierr)) return
+        call validate_dimension_size(n_dims, ierr)
+        if (is_err(ierr)) return
 
-    vector_norm = norm(vector)
-    if (is_close(vector_norm, 0.0_real64)) then
-        call set_err(ierr, ERR_DIVISION_BY_ZERO)
-        return
-    end if
+        vector_norm = norm(vector)
+        if (is_close(vector_norm, 0.0_real64)) then
+            call set_err(ierr, ERR_DIVISION_BY_ZERO)
+            return
+        end if
 
-    ! check for nan, inf
-    call validate_in_range_real(vector_norm, ierr)
-    if (is_err(ierr)) return
+        ! check for nan, inf
+        call validate_in_range_real(vector_norm, ierr)
+        if (is_err(ierr)) return
 
-    do i_dim = 1, n_dims
-        vector(i_dim) = vector(i_dim) / vector_norm
-    end do
-  end subroutine normalize_unit_length
+        do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
+            vector(i_dim) = vector(i_dim)/vector_norm
+        end do
+    end subroutine normalize_unit_length
 
-  !> Complete normalization pipeline for gene expression data.
-  !! Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
-  !! Final result is in buf_log. If fold change is needed, call calc_fchange separately.
-  pure subroutine normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
+    !> AUTHOR_VIVIAN_BASS
+    !| Complete normalization pipeline for gene expression data.
+    !| Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
+    !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
+    subroutine normalization_pipeline_alloc(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr)
 
-    !| Number of genes (rows)
-    integer(int32), intent(in) :: n_genes
-    !| Number of tissues (columns)
-    integer(int32), intent(in) :: n_tissues
-    !| Number of replicate groups
-    integer(int32), intent(in) :: n_grps
-    !| Stack size for quicksort
-    integer(int32), intent(in) :: max_stack
-    !| Flattened input matrix (n_genes * n_tissues), column-major
-    real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
-    !| Buffer for std dev normalization (n_genes * n_tissues)
-    real(real64), intent(out) :: buf_stddev(n_genes * n_tissues)
-    !| Buffer for quantile normalization (n_genes * n_tissues)
-    real(real64), intent(out) :: buf_quant(n_genes * n_tissues)
-    !| Buffer for replicate averaging (n_genes * n_grps)
-    real(real64), intent(out) :: buf_avg(n_genes * n_grps)
-    !| Buffer for log2(x+1) transformation (n_genes * n_grps)
-    real(real64), intent(out) :: buf_log(n_genes * n_grps)
-    !| Temporary column vector for sorting (n_genes)
-    real(real64), intent(out) :: temp_col(n_genes)
-    !| Buffer for rank means (n_genes)
-    real(real64), intent(out) :: rank_means(n_genes)
-    !| Permutation vector for sorting (n_genes)
-    integer(int32), intent(out) :: perm(n_genes)
-    !| Left stack for quicksort (max_stack)
-    integer(int32), intent(out) :: stack_left(max_stack)
-    !| Right stack for quicksort (max_stack)
-    integer(int32), intent(out) :: stack_right(max_stack)
-    !| Start column index for each replicate group (n_grps)
-    integer(int32), intent(in) :: group_s(n_grps)
-    !| Number of columns per replicate group (n_grps)
-    integer(int32), intent(in) :: group_c(n_grps)
-    !| Error code
-    integer(int32), intent(out) :: ierr
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
+            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+            !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+        real(real64), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
+            !! Log-transformed grouped `expr`
 
-    ! Error handling
-    call set_ok(ierr)
-    if (n_genes <= 0 .or. n_tissues <= 0 .or. n_grps <= 0 .or. max_stack <= 0) then
-      call set_err(ierr, ERR_EMPTY_INPUT)
-      return
-    end if
+        real(real64), intent(in), optional :: span
+            !! LOESS span parameter, default: `CM_LOESS_SPAN_DEFAULT`
+        integer(int32), intent(in), optional :: degree
+            !! LOESS degree parameter, default: `CM_LOESS_DEGREE_DEFAULT`
+        logical, intent(in), optional :: use_quantile
+            !! Use quantile normalization, default: `.false.`
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    ! Step 1: Normalize per-gene by std dev
-    call normalize_by_std_dev(n_genes, n_tissues, input_matrix, buf_stddev, ierr)
-    if (is_err(ierr)) return
+        ! Local variables
+        logical :: actual_use_quantile
 
-    ! Step 2: Quantile normalization
-    call quantile_normalization(n_genes, n_tissues, buf_stddev, buf_quant, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    if (is_err(ierr)) return
+        real(real64), dimension(:), allocatable, target :: tmp_loess_y, tmp_yhat_global
+        real(real64), dimension(:, :), allocatable :: expr_copy
+        integer(int32), dimension(:), allocatable, target :: tmp_indices_used
 
-    ! Step 3: Average replicates
-    call calc_tiss_avg(n_genes, n_grps, group_s, group_c, buf_quant, buf_avg, ierr)
-    if (is_err(ierr)) return
+        real(real64), dimension(:, :), pointer :: log_transformed_expr_transposed_view
+        real(real64), dimension(:), pointer :: tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_yhat_global_ptr, tmp_genes_row_ptr, tmp_rank_means_ptr
+        integer(int32), dimension(:), pointer :: tmp_indices_used_ptr, tmp_perm_ptr
 
-    ! Step 4: Log2(x+1) transformation
-    call log2_transformation(n_genes, n_grps, buf_avg, buf_log, ierr)
-    if (is_err(ierr)) return
+        ! Error handling
+        call set_ok(ierr)
 
-  end subroutine normalization_pipeline
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_replicates, ierr)
+        call validate_dimension_size(n_tissues, ierr)
 
-  !> Normalizes each gene's expression vector using `sqrt(mean(x^2))`
-  !| across tissues (not classical standard deviation).
-  pure subroutine normalize_by_std_dev(n_genes, n_tissues, input_matrix, output_matrix, ierr)
-      implicit none
+        if (is_err(ierr)) return
 
-      !| Number of genes (rows)
-      integer(int32), intent(in) :: n_genes
-      !| Number of tissues (columns)
-      integer(int32), intent(in) :: n_tissues
-      !| Flattened input matrix of gene expression values (column-major)
-      real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
-      !| Output normalized matrix (same shape as input)
-      real(real64), intent(out) :: output_matrix(n_genes * n_tissues)
-      !| Error code
-      integer(int32), intent(out) :: ierr
+        M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
-      ! Local variables
-      integer(int32) :: i_gene, i_tissue
-      real(real64) :: std_dev, temp_sum
+        log_transformed_expr_transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
+        tmp_loess_x_ptr => log_transformed_expr_transposed_view(:, 1)
+        select case (n_tissues)
+            case (1)
+                M_ALLOCATE(tmp_loess_y(n_genes))
+                tmp_loess_y_ptr => tmp_loess_y
+                M_ALLOCATE(tmp_yhat_global(n_genes))
+                tmp_yhat_global_ptr => tmp_yhat_global
+            case (2)
+                tmp_loess_y_ptr => log_transformed_expr_transposed_view(:, 2)
+                M_ALLOCATE(tmp_yhat_global(n_genes))
+                tmp_yhat_global_ptr => tmp_yhat_global
+            case (3:)
+                tmp_loess_y_ptr => log_transformed_expr_transposed_view(:, 2)
+                tmp_yhat_global_ptr => log_transformed_expr_transposed_view(:, 3)
+        end select
 
-      ! Error handling
-      call set_ok(ierr)
-      if (n_genes <= 0 .or. n_tissues <= 0) then
-        call set_err(ierr, ERR_EMPTY_INPUT)
-        return
-      end if
+        M_ALLOCATE(tmp_indices_used(n_genes))
+        tmp_indices_used_ptr => tmp_indices_used
 
-      ! Loop over each gene
-      do i_gene = 1, n_genes
-          temp_sum = 0.0d0
-          do i_tissue = 1, n_tissues
-              temp_sum = temp_sum + input_matrix((i_tissue-1)*n_genes + i_gene)**2
-          end do
+        M_ALLOCATE(expr_copy(n_replicates, n_genes))
+        expr_copy = expr
 
-          std_dev = sqrt(temp_sum / dble(n_tissues))
-          if (std_dev == 0.0d0) std_dev = 1.0d0
+        ! Step 1: Normalize per-gene by std dev
+        call normalize_by_std_dev_inplace_helper(n_genes, n_replicates, expr_copy, tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used_ptr, tmp_yhat_global_ptr, span, degree, ierr)
+        if (is_err(ierr)) return
 
-          do i_tissue = 1, n_tissues
-              output_matrix((i_tissue-1)*n_genes + i_gene) = input_matrix((i_tissue-1)*n_genes + i_gene) / std_dev
-          end do
-      end do
+        ! Step 2: Quantile normalization (conditional)
+        if (actual_use_quantile) then
+            tmp_perm_ptr => tmp_indices_used_ptr
+            tmp_genes_row_ptr => tmp_loess_x_ptr
+            tmp_rank_means_ptr => tmp_loess_y_ptr
+            call quantile_normalization_inplace_helper(n_genes, n_replicates, expr_copy, tmp_genes_row_ptr, tmp_rank_means_ptr, tmp_perm_ptr)
+        end if
 
-  end subroutine normalize_by_std_dev
+        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr_copy, log_transformed_expr)
+        if (is_err(ierr)) return
 
-  !> Quantile normalization of a gene expression matrix (F42-compliant).
-  !| Computes average expression per rank across tissues.
+        ! Step 4: Log2(x+1) transformation
+        call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
+        if (is_err(ierr)) return
+    end subroutine normalization_pipeline_alloc
 
-  pure subroutine quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, &
-                                      temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    use f42_utils, only: sort_array
+    !> AUTHOR_VIVIAN_BASS
+    !| Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
+    !| This procedure applies a global stabilization based on the relationship between
+    !| gene-wise mean expression and empirical standard deviation.
+    subroutine normalize_by_std_dev_alloc(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
+            !! Normalized `expr`
+        real(real64), intent(in), optional :: span
+            !! LOESS span parameter, default: `CM_LOESS_SPAN_DEFAULT`
+        integer(int32), intent(in), optional :: degree
+            !! LOESS degree parameter, default: `CM_LOESS_DEGREE_DEFAULT`
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    implicit none
+        ! Buffers for LOESS fitting (preallocated to avoid internal allocations)
+        real(real64), dimension(:), allocatable :: tmp_loess_x, tmp_loess_y, tmp_yhat_global
+        integer(int32), dimension(:), allocatable :: tmp_indices_used
 
-    !| Number of genes (rows)
-    integer(int32), intent(in) :: n_genes
-    !| Number of tissues (columns)
-    integer(int32), intent(in) :: n_tissues
-    !| Flattened input matrix (column-major)
-    real(real64), intent(in) :: input_matrix(n_genes * n_tissues)
-    !| Output normalized matrix (same shape as input)
-    real(real64), intent(out) :: output_matrix(n_genes * n_tissues)
-    !| Temporary vector for column sorting (size n_genes)
-    real(real64), intent(out) :: temp_col(n_genes)
-    !| Preallocated vector to store rank means (size n_genes)
-    real(real64), intent(out) :: rank_means(n_genes)
-    !| Permutation vector (size n_genes)
-    integer(int32), intent(out) :: perm(n_genes)
-    !| Stack size passed from R
-    integer(int32), intent(in) :: max_stack
-    !| Manual quicksort stack (≥ log2(n_genes) + 10)
-    integer(int32), intent(out) :: stack_left(max_stack)
-    !| Manual quicksort stack (same size as stack_left)
-    integer(int32), intent(out) :: stack_right(max_stack)
-    !| Error code
-    integer(int32), intent(out) :: ierr
+        M_ALLOCATE(tmp_loess_x(n_genes))
+        M_ALLOCATE(tmp_loess_y(n_genes))
+        M_ALLOCATE(tmp_yhat_global(n_genes))
+        M_ALLOCATE(tmp_indices_used(n_genes))
 
-    ! Locals
-    integer(int32) :: i_gene, i_tissue
+        normalized_expr = expr
+        call normalize_by_std_dev_inplace_helper(n_genes, n_replicates, normalized_expr, &
+                                    tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                    span, degree, ierr)
+    end subroutine normalize_by_std_dev_alloc
 
-    ! Error handling
-    call set_ok(ierr)
-    if (n_genes <= 0 .or. n_tissues <= 0 .or. max_stack <= 0) then
-      call set_err(ierr, ERR_EMPTY_INPUT)
-      return
-    end if
+    !> AUTHOR_VIVIAN_BASS
+    !| Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
+    !| This procedure applies a global stabilization based on the relationship between
+    !| gene-wise mean expression and empirical standard deviation.
+    subroutine normalize_by_std_dev_inplace_helper(n_genes, n_replicates, expr, &
+                                    tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                    span, degree, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(inout) :: expr
+            !! Gene Expression matrix
 
-    ! Initialize rank means
-    rank_means = 0.0d0
+        ! Buffers for LOESS fitting (preallocated to avoid internal allocations)
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_x
+            !! Mean values (X-axis for LOESS)
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_y
+            !! Empirical standard deviation values (Y-axis for LOESS)
+        integer(int32), dimension(n_genes), intent(out) :: tmp_indices_used
+            !! Mapping back to gene indices
+        real(real64), dimension(n_genes), intent(out) :: tmp_yhat_global
+            !! Fitted standard deviation values (LOESS predictions)
 
-    ! === First pass: accumulate values by rank across tissues ===
-    do i_tissue = 1, n_tissues
-        ! Prepare current column and initialize permutation
+        real(real64), intent(in), optional :: span
+            !! LOESS span parameter, default: `CM_LOESS_SPAN_DEFAULT`
+        integer(int32), intent(in), optional :: degree
+            !! LOESS degree parameter, default: `CM_LOESS_DEGREE_DEFAULT`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        ! Local variables
+        integer(int32) :: i_gene, i_valid, i_tissue, n_valid, gene_idx, actual_degree
+        real(real64) :: mean_val, fitted_sd, actual_span
+
+        M_DEFAULT_VAL(span, actual_span, CM_LOESS_SPAN_DEFAULT)
+        M_DEFAULT_VAL(degree, actual_degree, CM_LOESS_DEGREE_DEFAULT)
+
+        ! Initialize error code and output arrays
+        call set_ok(ierr)
+        n_valid = 0
+        tmp_yhat_global = 0.0_real64
+
+        ! Step 1: stats per gene
         do i_gene = 1, n_genes
-            temp_col(i_gene) = input_matrix((i_tissue - 1) * n_genes + i_gene)
-            perm(i_gene) = i_gene
+            mean_val = mean(expr(:, i_gene))
+            tmp_loess_x(i_gene) = mean_val
+            tmp_loess_y(i_gene) = std_dev(expr(:, i_gene))
+
+            if (is_close(tmp_loess_y(i_gene), 0.0_real64)) cycle
+
+            n_valid = n_valid + 1
+            tmp_loess_x(n_valid) = tmp_loess_x(i_gene)
+            tmp_loess_y(n_valid) = tmp_loess_y(i_gene)
+            tmp_indices_used(n_valid) = i_gene
         end do
 
-        ! Sort current column with index tracking
+        if (n_valid < 5) then
+            call set_err(ierr, ERR_INVALID_INPUT)
+            return
+        end if
 
-        call sort_array(temp_col, perm, stack_left, stack_right)
+        call loess_alloc(x=tmp_loess_x(1:n_valid), y=tmp_loess_y(1:n_valid), &
+                         span=actual_span, degree=actual_degree, fitted_values=tmp_yhat_global(1:n_valid), &
+                         mode=1, n_iters=3, ierr=ierr)
+        if (is_err(ierr)) return
 
-        ! Accumulate values for each rank
-        do i_gene = 1, n_genes
-            rank_means(i_gene) = rank_means(i_gene) + temp_col(perm(i_gene))
+        ! Step 3: apply normalization
+        do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
+            fitted_sd = tmp_yhat_global(i_valid)
+            if (is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
+
+            gene_idx = tmp_indices_used(i_valid)
+            do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)
+                expr(i_tissue, gene_idx) = expr(i_tissue, gene_idx) / fitted_sd
+            end do
         end do
-    end do
+    end subroutine normalize_by_std_dev_inplace_helper
 
-    ! Average the rank values
-    do i_gene = 1, n_genes
-        rank_means(i_gene) = rank_means(i_gene) / dble(n_tissues)
-    end do
+    !> AUTHOR_VIVIAN_BASS
+    !| Normalizes each gene's expression vector using `sqrt(mean(x^2))`
+    !| across tissues (not classical standard deviation).
+    pure subroutine root_mean_sq_normalization(n_genes, n_replicates, expr, normalized_expr, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
+            !! Normalized `expr`
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-    ! === Second pass: assign averaged values by rank ===
-    do i_tissue = 1, n_tissues
-        ! Prepare column and reset permutation
-        do i_gene = 1, n_genes
-            temp_col(i_gene) = input_matrix((i_tissue - 1) * n_genes + i_gene)
-            perm(i_gene) = i_gene
+        ! Error handling
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_replicates, ierr)
+
+        if (is_err(ierr)) return
+
+        normalized_expr = expr
+        call root_mean_sq_normalization_inplace_helper(n_genes, n_replicates, normalized_expr)
+    end subroutine root_mean_sq_normalization
+
+    !> AUTHOR_VIVIAN_BASS
+    !| Normalizes each gene's expression vector using `sqrt(mean(x^2))`
+    !| across tissues (not classical standard deviation).
+    pure subroutine root_mean_sq_normalization_inplace_helper(n_genes, n_replicates, expr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(inout) :: expr
+            !! Gene Expression matrix
+
+        ! Local variables
+        integer(int32) :: i_gene, i_tissue
+        real(real64) :: std_dev, temp_sum
+
+        ! Loop over each gene
+        do concurrent (i_gene = 1:n_genes) local(temp_sum, std_dev) shared(n_replicates, expr)
+            temp_sum = 0.0_real64
+            do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene) reduce(+:temp_sum)
+                temp_sum = temp_sum + expr(i_tissue, i_gene)**2
+            end do
+
+            std_dev = sqrt(temp_sum/real(n_replicates, kind=real64))
+
+            if (.not. is_close(std_dev, 0.0_real64)) then
+                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, std_dev)
+                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / std_dev
+                end do
+            end if
+        end do
+    end subroutine root_mean_sq_normalization_inplace_helper
+
+    !> AUTHOR_VIVIAN_BASS
+    !| Quantile normalization of a gene expression matrix (F42-compliant).
+    !| Computes average expression per rank across tissues.
+    pure subroutine quantile_normalization(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
+            !! Normalized `expr`
+        real(real64), dimension(n_genes), intent(out) :: rank_means
+            !! Preallocated vector to store rank means
+        real(real64), dimension(n_genes), intent(out) :: tmp_genes_row
+            !! Temporary vector for sorting a tissue in `expr` across genes
+        integer(int32), dimension(n_genes), intent(out) :: tmp_perm
+            !! Permutation vector
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        ! Error handling
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_replicates, ierr)
+
+        if (is_err(ierr)) return
+
+        normalized_expr = expr
+        call quantile_normalization_inplace_helper(n_genes, n_replicates, normalized_expr, rank_means, tmp_genes_row, tmp_perm)
+    end subroutine quantile_normalization
+
+    !> AUTHOR_VIVIAN_BASS
+    !| Quantile normalization of a gene expression matrix (F42-compliant).
+    !| Computes average expression per rank across tissues.
+    pure subroutine quantile_normalization_inplace_helper(n_genes, n_replicates, expr, rank_means, tmp_genes_row, tmp_perm)
+        use f42_utils, only: sort_array_heapsort
+
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
+        real(real64), dimension(n_replicates, n_genes), intent(inout) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_genes), intent(out) :: rank_means
+            !! Preallocated vector to store rank means
+        real(real64), dimension(n_genes), intent(out) :: tmp_genes_row
+            !! Temporary vector for sorting a tissue in `expr` across genes
+        integer(int32), dimension(n_genes), intent(out) :: tmp_perm
+            !! Permutation vector
+
+        ! Locals
+        integer(int32) :: i_gene, i_tissue
+
+        ! Initialize rank means
+        rank_means = 0.0_real64
+
+        do concurrent (i_gene = 1:n_genes) shared(tmp_perm)
+            tmp_perm(i_gene) = i_gene
         end do
 
-        call sort_array(temp_col, perm, stack_left, stack_right)
+        ! === First pass: accumulate values by rank across tissues ===
+        do i_tissue = 1, n_replicates
+            ! Prepare current column and initialize permutation
+            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+                tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
+            end do
 
+            ! Sort current column with index tracking
+            call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-        do i_gene = 1, n_genes
-            output_matrix((i_tissue - 1) * n_genes + perm(i_gene)) = rank_means(i_gene)
+            ! Accumulate values for each rank
+            do i_gene = 1, n_genes
+                rank_means(i_gene) = rank_means(i_gene) + tmp_genes_row(tmp_perm(i_gene))
+            end do
         end do
-    end do
-  end subroutine quantile_normalization
 
-  !> Apply `log2(x + 1)` transformation to each element of the input matrix.
-  !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-  !| matrix flattened in column-major order. The `log2` is computed via:
-  !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-  !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+        ! Average the rank values
+        do concurrent (i_gene = 1:n_genes) shared(rank_means, n_replicates)
+            rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
+        end do
 
-  pure subroutine log2_transformation(n_genes, n_grps, input_matrix, output_matrix, ierr)
-      implicit none
+        ! === Second pass: assign averaged values by rank ===
+        do i_tissue = 1, n_replicates
+            ! Prepare column and reset tmp_permutation
+            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+                tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
+            end do
 
-      !| Number of genes (rows)
-      integer(int32), intent(in) :: n_genes
-      !| Number of tissues (columns)
-      integer(int32), intent(in) :: n_grps
-      !| Flattened input matrix (size: n_genes * n_grps)
-      real(real64), intent(in) :: input_matrix(n_genes * n_grps)
-      !| Output matrix (same size as input)
-      real(real64), intent(out) :: output_matrix(n_genes * n_grps)
-      !| Error code
-      integer(int32), intent(out) :: ierr
-      ! Locals
-      integer(int32) :: i_elem
+            call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-      ! Error handling
-      call set_ok(ierr)
-      if (n_genes <= 0 .or. n_grps <= 0) then
-        call set_err(ierr, ERR_EMPTY_INPUT)
-        return
-      end if
+            do concurrent (i_gene = 1:n_genes) shared(expr, tmp_perm, rank_means, i_tissue)
+                expr(i_tissue, tmp_perm(i_gene)) = rank_means(i_gene)
+            end do
+        end do
+    end subroutine quantile_normalization_inplace_helper
 
-      ! Loop through all elements in the flattened input matrix
-      do i_elem = 1, n_genes * n_grps
-          ! Apply the log2(x + 1) transformation
-          call logx(input_matrix(i_elem) + 1.0d0, 2.0_real64, output_matrix(i_elem), ierr)
-          if (is_err(ierr)) return
-      end do
-  end subroutine log2_transformation
+    !> AUTHOR_VIVIAN_BASS
+    !| Apply `log2(x + 1)` transformation to each element of the input matrix.
+    !| This subroutine performs element-wise `log2(x + 1)` transformation on a
+    !| matrix flattened in column-major order. The `log2` is computed via:
+    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
+    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    pure subroutine log2_transformation(n_genes, n_tissues, expr, transformed_expr, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
+            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+        real(real64), dimension(n_tissues, n_genes), intent(out) :: transformed_expr
+            !! Log-transformed `expr`
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
+        ! Error handling
+        call set_ok(ierr)
 
-  !> Calculate tissue averages by averaging replicates within each group.
-  !| For each group of tissue replicates, this subroutine computes the average
-  !| expression per gene. The input matrix is column-major, flattened as a 1D array.
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_tissues, ierr)
 
-  pure subroutine calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
-      implicit none
-      
-      !| Number of genes (rows)
-      integer(int32), intent(in) :: n_gene
-      !| Number of tissue groups
-      integer(int32), intent(in) :: n_grps
-      !| Start column index for each group (length: n_grps)
-      integer(int32), intent(in) :: group_s(n_grps)
-      !| Number of columns per group (length: n_grps)
-      integer(int32), intent(in) :: group_c(n_grps)
-      !| Flattened input matrix (length: n_gene * n_col)
-      real(real64), intent(in) :: input_matrix(n_gene * sum(group_c))
-      !| Flattened output matrix (length: n_gene * n_grps)
-      real(real64), intent(out) :: output_matrix(n_gene * n_grps)
-      !| Error code
-      integer(int32), intent(out) :: ierr
+        if (is_err(ierr)) return
 
-      ! === Local variables ===
-      integer(int32) :: i_gene, i_group, i_col, j_col
-      real(real64) :: sum_val
-      integer(int32) :: start_idx, count_cols
+        transformed_expr = expr
+        call log2_transformation_inplace_helper(n_genes, n_tissues, transformed_expr, ierr)
+    end subroutine log2_transformation
 
-      ! Error handling
-      call set_ok(ierr)
-      if (n_gene <= 0 .or. n_grps <= 0) then
-        call set_err(ierr, ERR_EMPTY_INPUT)
-        return
-      end if
+    !> AUTHOR_VIVIAN_BASS
+    !| Apply `log2(x + 1)` transformation to each element of the input matrix.
+    !| This subroutine performs element-wise `log2(x + 1)` transformation on a
+    !| matrix flattened in column-major order. The `log2` is computed via:
+    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
+    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    pure subroutine log2_transformation_inplace_helper(n_genes, n_tissues, expr, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        real(real64), dimension(n_tissues, n_genes), intent(inout) :: expr
+            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        ! Locals
+        integer(int32) :: i_gene, i_group, tmp_ierr
+        real(real64) :: expr_val
 
-      ! === Loop over each group ===
-      do i_group = 1, n_grps
-          start_idx = group_s(i_group)
-          count_cols = group_c(i_group)
+        call set_ok(ierr)
 
-          do i_gene = 1, n_gene
-              sum_val = 0.0d0
+        ! Loop through all elements in the flattened input matrix
+        do concurrent (i_gene = 1:n_genes) shared(n_tissues, expr, ierr)
+            do concurrent (i_group = 1:n_tissues) local(tmp_ierr, expr_val) shared(expr, ierr, i_gene)
+                ! Apply the log2(x + 1) transformation
+                expr_val = expr(i_group, i_gene) + 1.0_real64
+                call logx(expr_val, 2.0_real64, expr(i_group, i_gene), tmp_ierr)
+                if (is_err(tmp_ierr)) ierr = tmp_ierr
+            end do
+        end do
+    end subroutine log2_transformation_inplace_helper
 
-              do j_col = 0, count_cols - 1
-                  i_col = start_idx + j_col
-                  sum_val = sum_val + input_matrix((i_col - 1) * n_gene + i_gene)
-              end do
+    !> AUTHOR_VIVIAN_BASS
+    !| Calculate tissue averages by averaging replicates within each tissue.
+    !| For each tissue of tissue replicates, this subroutine computes the average
+    !| expression per gene.
+    pure subroutine calc_tiss_avg(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
+            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+            !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
+            !! Tissue averages per gene
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-              output_matrix((i_group - 1) * n_gene + i_gene) = sum_val / dble(count_cols)
-          end do
-      end do
-  end subroutine calc_tiss_avg
+        ! Error handling
+        call set_ok(ierr)
 
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_tissues, ierr)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, min=1_int32)
 
-  !> Calculate `log2 fold changes` between condition and control columns.
-  !| For each control-condition pair, this subroutine computes the `log2 fold change`
-  !| by subtracting the expression value in the control column from the corresponding
-  !| value in the condition column, for all genes.
-  !|
-  !| The input matrix must be column-major and flattened as a 1D array.
+        if (is_err(ierr)) return
 
-  pure subroutine calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
+    end subroutine calc_tiss_avg
 
-      implicit none
+    !> AUTHOR_VIVIAN_BASS
+    !| (no input validation) Calculate tissue averages by averaging replicates within each group.
+    !| For each group of tissue replicates, this subroutine computes the average
+    !| expression per gene.
+    pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
+            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+            !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+            !! Gene Expression matrix
+        real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
+            !! Tissue averages per gene
 
-      ! === Arguments ===
-      !| Number of genes (rows)
-      integer(int32), intent(in) :: n_genes
-      !| Number of columns in the input matrix
-      integer(int32), intent(in) :: n_cols
-      !| Number of control-condition pairs
-      integer(int32), intent(in) :: n_pairs
-      !| Control column indices (length n_pairs)
-      integer(int32), intent(in) :: control_cols(n_pairs)
-      !| Condition column indices (length n_pairs)
-      integer(int32), intent(in) :: cond_cols(n_pairs)
-      !| Input matrix, flattened (length: n_genes × n_cols)
-      real(real64), intent(in) :: i_matrix(n_genes * n_cols)
-      !| Output matrix for fold changes (length: n_genes × n_pairs)
-      real(real64), intent(out) :: o_matrix(n_genes * n_pairs)
-      !| Error code
-      integer(int32), intent(out) :: ierr
+        ! === Local variables ===
+        integer(int32) :: i_gene, i_group, i_tissue
+        real(real64) :: sum_val
+        integer(int32) :: start_idx, stop_idx
 
-      ! === Locals ===
-      integer(int32) :: i_gene, i_pair
-      integer(int32) :: control_col, cond_col
+        ! === Loop over each group ===
+        do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
+            do concurrent (i_group = 1:n_tissues) local(start_idx, stop_idx, sum_val) shared(reps_per_tissue, expr, tissue_averages)
+                if (i_group == 1) then
+                    start_idx = 1
+                else
+                    start_idx = sum(reps_per_tissue(:i_group-1)) + 1
+                end if
+                stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
-      ! Error handling
-      call set_ok(ierr)
-      if (n_genes <= 0 .or. n_cols <= 0 .or. n_pairs <= 0) then
-        call set_err(ierr, ERR_EMPTY_INPUT)
-        return
-      end if
+                sum_val = 0.0_real64
+                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene) reduce(+:sum_val)
+                    sum_val = sum_val + expr(i_tissue, i_gene)
+                end do
 
-      ! === Loop over each pair ===
-      do i_pair = 1, n_pairs
-          control_col = control_cols(i_pair)
-          cond_col    = cond_cols(i_pair)
+                tissue_averages(i_group, i_gene) = sum_val / real(reps_per_tissue(i_group), real64)
+            end do
+        end do
+    end subroutine calc_tiss_avg_helper
 
-          do i_gene = 1, n_genes
-              o_matrix((i_pair - 1) * n_genes + i_gene) = &
-                  i_matrix((cond_col - 1) * n_genes + i_gene) - &
-                  i_matrix((control_col - 1) * n_genes + i_gene)
-          end do
-      end do
+    !> AUTHOR_VIVIAN_BASS
+    !| Calculate `log2 fold changes` between condition and control groups.
+    !| For each control-condition pair, this subroutine computes the `log2 fold change`
+    !| by subtracting the expression value in the control group from the corresponding
+    !| value in the condition group, for all genes.
+    pure subroutine calc_fchange(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr)
+        ! === Arguments ===
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes (rows)
+        integer(int32), intent(in) :: n_tissues
+            !! Number of tissues
+        integer(int32), intent(in) :: n_pairs
+            !! Number of control-condition pairs
+        integer(int32), dimension(n_pairs), intent(in) :: control_tissues
+            !! Control tissue indices
+        integer(int32), dimension(n_pairs), intent(in) :: condition_tissues
+            !! Condition tissue indices
+        real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
+            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+        real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
+            !! Output matrix for fold changes
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
-  end subroutine calc_fchange
+        ! === Locals ===
+        integer(int32) :: i_gene, i_pair
+        integer(int32) :: control_group, cond_group
+
+        ! Error handling
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_genes, ierr)
+        call validate_dimension_size(n_tissues, ierr)
+        call validate_dimension_size(n_pairs, ierr)
+
+        if (is_err(ierr)) return
+
+        ! === Loop over each pair ===
+        do concurrent (i_gene = 1:n_genes) shared(n_pairs, control_tissues, condition_tissues, expr, fold_changes)
+            do concurrent (i_pair = 1:n_pairs) local(control_group, cond_group) shared(i_gene, control_tissues, condition_tissues, expr, fold_changes)
+                control_group = control_tissues(i_pair)
+                cond_group = condition_tissues(i_pair)
+                fold_changes(i_pair, i_gene) = expr(cond_group, i_gene) - expr(control_group, i_gene)
+            end do
+        end do
+    end subroutine calc_fchange
+
 end module tox_normalization
 
+!> C wrapper for [[tox_normalization(module):root_mean_sq_normalization(subroutine)]]
+pure subroutine root_mean_sq_normalization_c(n_genes, n_replicates, expr, normalized_expr, ierr) bind(C, name="root_mean_sq_normalization_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_f_pointer, c_loc
+    use tox_normalization, only: root_mean_sq_normalization
+    M_USE_NULL_VALIDATION
+    implicit none
 
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_replicates
+        !! Number of tissues (columns)
+    real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix
+    real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+        !! Normalized `expr`
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
 
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_replicates)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(normalized_expr)
 
+    call root_mean_sq_normalization(n_genes, n_replicates, expr, normalized_expr, ierr)
 
+end subroutine root_mean_sq_normalization_c
 
+!> C wrapper for [[tox_normalization(module):normalize_by_std_dev_alloc(subroutine)]]
+subroutine normalize_by_std_dev_c(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr) bind(C, name="normalize_by_std_dev_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: normalize_by_std_dev_alloc
+    M_USE_NULL_VALIDATION
+    implicit none
 
-!> C/Python wrapper for normalization pipeline.
-!| Provides a C/Python-compatible interface to the normalization pipeline routine.
-!| Suitable for use with ctypes. Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
-!| Final result is in buf_log. If fold change is needed, call calc_fchange separately.
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_replicates
+        !! Number of tissues (columns)
+    real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix
+    real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+        !! Normalized `expr`
+    real(c_double), intent(in), target :: span
+        !! LOESS span parameter
+    integer(c_int), intent(in), target :: degree
+        !! LOESS degree parameter
+    integer(c_int), intent(out), target:: ierr
+        !! Error code
 
-pure subroutine normalization_pipeline_c(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr) bind(C, name="normalization_pipeline_c")
-  use, intrinsic :: iso_c_binding, only : c_int, c_double
-  use tox_normalization, only: normalization_pipeline
-  M_USE_NULL_VALIDATION
-  implicit none
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_replicates)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(normalized_expr)
+    M_CHECK_NON_NULL(span)
+    M_CHECK_NON_NULL(degree)
 
-  !| Number of genes (rows)
-  integer(c_int), intent(in), target :: n_genes
-  !| Number of tissues (columns)
-  integer(c_int), intent(in), target :: n_tissues
-  !| Number of replicate groups
-  integer(c_int), intent(in), target :: n_grps
-  !| Flattened input matrix (n_genes * n_tissues), column-major
-  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
-  !| Buffer for std dev normalization (n_genes * n_tissues)
-  real(c_double), intent(out), target :: buf_stddev(n_genes * n_tissues)
-  !| Buffer for quantile normalization (n_genes * n_tissues)
-  real(c_double), intent(out), target :: buf_quant(n_genes * n_tissues)
-  !| Buffer for replicate averaging (n_genes * n_grps)
-  real(c_double), intent(out), target :: buf_avg(n_genes * n_grps)
-  !| Buffer for log2(x+1) transformation (n_genes * n_grps)
-  real(c_double), intent(out), target :: buf_log(n_genes * n_grps)
-  !| Temporary column vector for sorting (n_genes)
-  real(c_double), intent(out), target :: temp_col(n_genes)
-  !| Buffer for rank means (n_genes)
-  real(c_double), intent(out), target :: rank_means(n_genes)
-  !| Permutation vector for sorting (n_genes)
-  integer(c_int), intent(out), target :: perm(n_genes)
-  !| Stack size for quicksort
-  integer(c_int), intent(in), target :: max_stack
-  !| Left stack for quicksort (max_stack)
-  integer(c_int), intent(out), target :: stack_left(max_stack)
-  !| Right stack for quicksort (max_stack)
-  integer(c_int), intent(out), target :: stack_right(max_stack)
-  !| Start column index for each replicate group (n_grps)
-  integer(c_int), intent(in), target :: group_s(n_grps)
-  !| Number of columns per replicate group (n_grps)
-  integer(c_int), intent(in), target :: group_c(n_grps)
-  !| Error code
-  integer(c_int), intent(out), target :: ierr
+    ! Call the internal routine with 2D arrays
+    call normalize_by_std_dev_alloc(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr)
 
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(n_tissues)
-  M_CHECK_NON_NULL(n_grps)
-  M_CHECK_NON_NULL(max_stack)
-  M_CHECK_NON_NULL(input_matrix)
-  M_CHECK_NON_NULL(buf_stddev)
-  M_CHECK_NON_NULL(buf_quant)
-  M_CHECK_NON_NULL(buf_avg)
-  M_CHECK_NON_NULL(buf_log)
-  M_CHECK_NON_NULL(temp_col)
-  M_CHECK_NON_NULL(rank_means)
-  M_CHECK_NON_NULL(perm)
-  M_CHECK_NON_NULL(stack_left)
-  M_CHECK_NON_NULL(stack_right)
-  M_CHECK_NON_NULL(group_s)
-  M_CHECK_NON_NULL(group_c)
-
-  call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-end subroutine normalization_pipeline_c
-
-!> C-compatible wrapper for normalize_by_std_dev
-pure subroutine normalize_by_std_dev_c(n_genes, n_tissues, input_matrix, output_matrix, ierr) bind(C, name="normalize_by_std_dev_c")
-  use tox_normalization, only: normalize_by_std_dev
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
-
-  !| Number of genes (rows)
-  integer(c_int), intent(in), target :: n_genes
-  !| Number of tissues (columns)
-  integer(c_int), intent(in), target :: n_tissues
-  !| Flattened input matrix (n_genes * n_tissues)
-  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
-  !| Output normalized matrix (same shape as input)
-  real(c_double), intent(out), target :: output_matrix(n_genes * n_tissues)
-  !| Error code
-  integer(c_int), intent(out), target :: ierr
-
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(n_tissues)
-  M_CHECK_NON_NULL(input_matrix)
-  M_CHECK_NON_NULL(output_matrix)
-
-  call normalize_by_std_dev(n_genes, n_tissues, input_matrix, output_matrix, ierr)
 end subroutine normalize_by_std_dev_c
 
-!> C-compatible wrapper for quantile_normalization
-pure subroutine quantile_normalization_c(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr) bind(C, name="quantile_normalization_c")
-  use tox_normalization, only: quantile_normalization
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
+!> C wrapper for [[tox_normalization(module):quantile_normalization(subroutine)]]
+pure subroutine quantile_normalization_c(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm, ierr) &
+    bind(C, name="quantile_normalization_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: quantile_normalization
+    M_USE_NULL_VALIDATION
+    implicit none
 
-  integer(c_int), intent(in), target :: n_genes
-  integer(c_int), intent(in), target :: n_tissues
-  real(c_double), intent(in), target :: input_matrix(n_genes * n_tissues)
-  real(c_double), intent(out), target :: output_matrix(n_genes * n_tissues)
-  real(c_double), intent(out), target :: temp_col(n_genes)
-  real(c_double), intent(out), target :: rank_means(n_genes)
-  integer(c_int), intent(out), target :: perm(n_genes)
-  integer(c_int), intent(out), target :: stack_left(max_stack)
-  integer(c_int), intent(out), target :: stack_right(max_stack)
-  integer(c_int), intent(in), target :: max_stack
-  integer(c_int), intent(out), target :: ierr
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_replicates
+        !! Number of tissues (columns)
+    real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix
+    real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+        !! Normalized `expr`
+    real(c_double), dimension(n_genes), intent(out), target :: tmp_genes_row
+        !! Temporary vector for sorting a tissue in `expr` across genes
+    real(c_double), dimension(n_genes), intent(out), target :: rank_means
+        !! Preallocated vector to store rank means
+    integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm
+        !! Permutation vector
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
 
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(n_tissues)
-  M_CHECK_NON_NULL(max_stack)
-  M_CHECK_NON_NULL(input_matrix)
-  M_CHECK_NON_NULL(output_matrix)
-  M_CHECK_NON_NULL(temp_col)
-  M_CHECK_NON_NULL(rank_means)
-  M_CHECK_NON_NULL(perm)
-  M_CHECK_NON_NULL(stack_left)
-  M_CHECK_NON_NULL(stack_right)
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_replicates)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(normalized_expr)
+    M_CHECK_NON_NULL(tmp_genes_row)
+    M_CHECK_NON_NULL(rank_means)
+    M_CHECK_NON_NULL(tmp_perm)
 
-  call quantile_normalization(n_genes, n_tissues, input_matrix, output_matrix, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
+    call quantile_normalization(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm, ierr)
 end subroutine quantile_normalization_c
 
-!> C-compatible wrapper for log2_transformation
-pure subroutine log2_transformation_c(n_genes, n_grps, input_matrix, output_matrix, ierr) bind(C, name="log2_transformation_c")
-  use tox_normalization, only: log2_transformation
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
+!> C wrapper for [[tox_normalization(module):log2_transformation(subroutine)]]
+pure subroutine log2_transformation_c(n_genes, n_replicates, expr, transformed_expr, ierr) bind(C, name="log2_transformation_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: log2_transformation
+    M_USE_NULL_VALIDATION
+    implicit none
 
-  integer(c_int), intent(in), target :: n_genes
-  integer(c_int), intent(in), target :: n_grps
-  real(c_double), intent(in), target :: input_matrix(n_genes * n_grps)
-  real(c_double), intent(out), target :: output_matrix(n_genes * n_grps)
-  integer(c_int), intent(out), target :: ierr
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_replicates
+        !! Number of tissues (columns)
+    real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+    real(c_double), dimension(n_replicates, n_genes), intent(out), target :: transformed_expr
+        !! Log-transformed `expr`
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
 
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(n_grps)
-  M_CHECK_NON_NULL(input_matrix)
-  M_CHECK_NON_NULL(output_matrix)
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_replicates)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(transformed_expr)
 
-  call log2_transformation(n_genes, n_grps, input_matrix, output_matrix, ierr)
+    call log2_transformation(n_genes, n_replicates, expr, transformed_expr, ierr)
 end subroutine log2_transformation_c
 
-!> C-compatible wrapper for calc_tiss_avg
-pure subroutine calc_tiss_avg_c(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr) bind(C, name="calc_tiss_avg_c")
-  use tox_normalization, only: calc_tiss_avg
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
+!> C wrapper for [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+pure subroutine calc_tiss_avg_c(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr) bind(C, name="calc_tiss_avg_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: calc_tiss_avg
+    M_USE_NULL_VALIDATION
+    implicit none
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_tissues
+        !! Number of tissues
+    integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
+        !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+        !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+    real(c_double), dimension(sum(reps_per_tissue), n_genes), intent(in), target :: expr
+        !! Gene Expression matrix
+    real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
+        !! Tissue averages per gene
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
 
-  integer(c_int), intent(in), target :: n_gene
-  integer(c_int), intent(in), target :: n_grps
-  integer(c_int), intent(in), target :: group_s(n_grps)
-  integer(c_int), intent(in), target :: group_c(n_grps)
-  real(c_double), intent(in), target :: input_matrix(n_gene * sum(group_c))
-  real(c_double), intent(out), target :: output_matrix(n_gene * n_grps)
-  integer(c_int), intent(out), target :: ierr
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_tissues)
+    M_CHECK_NON_NULL(reps_per_tissue)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(tissue_averages)
 
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_gene)
-  M_CHECK_NON_NULL(n_grps)
-  M_CHECK_NON_NULL(group_s)
-  M_CHECK_NON_NULL(group_c)
-  M_CHECK_NON_NULL(input_matrix)
-  M_CHECK_NON_NULL(output_matrix)
-
-  call calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr)
 end subroutine calc_tiss_avg_c
 
-!> C-compatible wrapper for calc_fchange
-pure subroutine calc_fchange_c(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr) bind(C, name="calc_fchange_c")
-  use tox_normalization, only: calc_fchange
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
+!> C wrapper for [[tox_normalization(module):calc_fchange(subroutine)]]
+pure subroutine calc_fchange_c(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr) bind(C, name="calc_fchange_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: calc_fchange
+    M_USE_NULL_VALIDATION
+    implicit none
 
-  integer(c_int), intent(in), target :: n_genes
-  integer(c_int), intent(in), target :: n_cols
-  integer(c_int), intent(in), target :: n_pairs
-  integer(c_int), intent(in), target :: control_cols(n_pairs)
-  integer(c_int), intent(in), target :: cond_cols(n_pairs)
-  real(c_double), intent(in), target :: i_matrix(n_genes * n_cols)
-  real(c_double), intent(out), target :: o_matrix(n_genes * n_pairs)
-  integer(c_int), intent(out), target :: ierr
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_tissues
+        !! Number of tissues
+    integer(c_int), intent(in), target :: n_pairs
+        !! Number of control-condition pairs
+    integer(c_int), dimension(n_pairs), intent(in), target :: control_tissues
+        !! Control tissue indices
+    integer(c_int), dimension(n_pairs), intent(in), target :: condition_tissues
+        !! Condition tissue indices
+    real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+    real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
+        !! Output matrix for fold changes
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
 
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(n_cols)
-  M_CHECK_NON_NULL(n_pairs)
-  M_CHECK_NON_NULL(control_cols)
-  M_CHECK_NON_NULL(cond_cols)
-  M_CHECK_NON_NULL(i_matrix)
-  M_CHECK_NON_NULL(o_matrix)
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_tissues)
+    M_CHECK_NON_NULL(n_pairs)
+    M_CHECK_NON_NULL(control_tissues)
+    M_CHECK_NON_NULL(condition_tissues)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(fold_changes)
 
-  call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
+    call calc_fchange(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr)
 end subroutine calc_fchange_c
 
-!> C-compatible wrapper for normalize_unit_length
+!> C wrapper for [[tox_normalization(module):normalization_pipeline_alloc(subroutine)]]
+subroutine normalization_pipeline_c(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr) bind(C, name="normalization_pipeline_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_normalization, only: normalization_pipeline_alloc
+    use tox_conversions, only: c_int_as_logical
+    M_USE_NULL_VALIDATION
+    implicit none
+
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes (rows)
+    integer(c_int), intent(in), target :: n_replicates
+        !! Number of tissues (columns)
+    integer(c_int), intent(in), target :: n_tissues
+        !! Number of tissues
+    real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        !! Gene Expression matrix
+    integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
+        !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+        !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+    real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
+        !! Log-transformed grouped `expr`
+    real(c_double), intent(in), target :: span
+        !! LOESS span parameter
+    integer(c_int), intent(in), target :: degree
+        !! LOESS degree parameter
+    integer(c_int), intent(in), target :: use_quantile
+        !! Use quantile normalization (0/1 logical)
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
+
+    logical :: use_quantile_f
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(n_replicates)
+    M_CHECK_NON_NULL(n_tissues)
+    M_CHECK_NON_NULL(expr)
+    M_CHECK_NON_NULL(reps_per_tissue)
+    M_CHECK_NON_NULL(log_transformed_expr)
+    M_CHECK_NON_NULL(span)
+    M_CHECK_NON_NULL(degree)
+    M_CHECK_NON_NULL(use_quantile)
+
+    call c_int_as_logical(use_quantile, use_quantile_f)
+
+    call normalization_pipeline_alloc(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile_f, ierr)
+end subroutine normalization_pipeline_c
+
+!> C wrapper for [[tox_normalization(module):normalize_unit_length(subroutine)]]
 pure subroutine normalize_unit_length_c(vector, n_dims, ierr) bind(C, name="normalize_unit_length_c")
     use tox_normalization, only: normalize_unit_length
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     M_USE_NULL_VALIDATION
     implicit none
-  
+
     integer(c_int), intent(in), target :: n_dims
         !! number of elements in `vector`
     real(c_double), dimension(n_dims), intent(inout), target :: vector

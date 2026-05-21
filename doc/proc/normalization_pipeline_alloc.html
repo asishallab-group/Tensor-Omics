@@ -10,7 +10,7 @@
     <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
-    <title>normalization_pipeline &ndash; TensorOmics</title>
+    <title>normalization_pipeline_alloc &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>normalization_pipeline
+    <h1>normalization_pipeline_alloc
       <small>Subroutine</small>
       
     </h1>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">32 statements</a>
+                 title=" 0.6% of total for procedures.">81 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -102,7 +103,7 @@
           <ol class="breadcrumb justify-content-end mb-0">
                 <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
                 <li class="breadcrumb-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
-            <li class="breadcrumb-item active" aria-current="page">normalization_pipeline</li>
+            <li class="breadcrumb-item active" aria-current="page">normalization_pipeline_alloc</li>
           </ol>
         </nav>
       </div>
@@ -149,13 +150,13 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)  
+    <h2>public  subroutine normalization_pipeline_alloc(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr)  
 </h2>
     
 
     <p>Complete normalization pipeline for gene expression data.
 Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
-Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p>
+Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +172,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes"></span>
+              <span class="anchor" id="variable-n_genes~44"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -186,6 +187,67 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
         </tr>
         <tr>
             <td>
+              <span class="anchor" id="variable-n_replicates"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_replicates</strong></td>
+            <td>
+                <p>Number of replicates per gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expr~11"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_replicates, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expr</strong></td>
+            <td>
+                <p>Gene Expression matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-log_transformed_expr"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_tissues, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>log_transformed_expr</strong></td>
+            <td>
+                <p>Log-transformed grouped <code>expr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-reps_per_tissue"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_tissues)
+            </td>
+            <td>::</td>
+            <td><strong>reps_per_tissue</strong></td>
+            <td>
+                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the <code>expr(1:2, i_gene)</code> related to the first tissue and <code>expr(3:, i_gene)</code> related to the second one.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
               <span class="anchor" id="variable-n_tissues"></span>
               integer(kind=int32),
             </td>
@@ -196,222 +258,57 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
             <td>::</td>
             <td><strong>n_tissues</strong></td>
             <td>
-                <p>Number of tissues (columns)</p>
+                <p>Number of tissues</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-input_matrix"></span>
+              <span class="anchor" id="variable-span~8"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
+            <td><strong>span</strong></td>
             <td>
-                <p>Flattened input matrix (n_genes * n_tissues), column-major</p>
+                <p>LOESS span parameter, default: <code>0.7_real64</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-buf_stddev"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>buf_stddev</strong>(n_genes*n_tissues)</td>
-            <td>
-                <p>Buffer for std dev normalization (n_genes * n_tissues)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-buf_quant"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>buf_quant</strong>(n_genes*n_tissues)</td>
-            <td>
-                <p>Buffer for quantile normalization (n_genes * n_tissues)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-buf_avg"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>buf_avg</strong>(n_genes*n_grps)</td>
-            <td>
-                <p>Buffer for replicate averaging (n_genes * n_grps)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-buf_log"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>buf_log</strong>(n_genes*n_grps)</td>
-            <td>
-                <p>Buffer for log2(x+1) transformation (n_genes * n_grps)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-temp_col"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>temp_col</strong>(n_genes)</td>
-            <td>
-                <p>Temporary column vector for sorting (n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-rank_means"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>rank_means</strong>(n_genes)</td>
-            <td>
-                <p>Buffer for rank means (n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-perm"></span>
+              <span class="anchor" id="variable-degree~8"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
+            <td><strong>degree</strong></td>
             <td>
-                <p>Permutation vector for sorting (n_genes)</p>
+                <p>LOESS degree parameter, default: <code>2_int32</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-use_quantile"></span>
+              logical,
             </td>
-<td>intent(out)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(max_stack)</td>
+            <td><strong>use_quantile</strong></td>
             <td>
-                <p>Left stack for quicksort (max_stack)</p>
+                <p>Use quantile normalization, default: <code>.false.</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>stack_right</strong>(max_stack)</td>
-            <td>
-                <p>Right stack for quicksort (max_stack)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_stack"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max_stack</strong></td>
-            <td>
-                <p>Stack size for quicksort</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-group_s"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>group_s</strong>(n_grps)</td>
-            <td>
-                <p>Start column index for each replicate group (n_grps)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-group_c"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>group_c</strong>(n_grps)</td>
-            <td>
-                <p>Number of columns per replicate group (n_grps)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_grps"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_grps</strong></td>
-            <td>
-                <p>Number of replicate groups</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~21"></span>
+              <span class="anchor" id="variable-ierr~216"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -458,7 +355,7 @@ Final result is in buf_log. If fold change is needed, call calc_fchange separate
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>

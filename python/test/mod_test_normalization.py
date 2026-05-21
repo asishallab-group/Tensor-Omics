@@ -17,11 +17,10 @@ from tensoromics_functions import (
     tox_calculate_fold_changes,
     tox_normalize_unit_length
 )
+from test_helpers import run_all_tests
 
 
 def test_normalize_unit_length():
-    import numpy as np
-
     TOL = 1e-12
 
     # -------------------------------
@@ -70,82 +69,46 @@ def test_normalize_unit_length():
         pass  # expected
 
 
-def print_matrix(name, mat):
-    """Pretty print matrix with name"""
-    print(f"\n{name}:")
-    print(f"Shape: {mat.shape}")
-    for i, row in enumerate(mat):
-        print(f"  Row {i+1}: {row}")
+def test_tox_stddev_example_1():
+    # Input data - need at least 10 genes for LOESS
+    mat = np.array([[j + i for j in range(1, 100)] for i in range(100)], dtype=np.float64, order="F")
 
-def test_tox_normalize_example_1():
-    """Example 1: Simple 2x3 matrix normalization"""
-    print("="*50)
-    print("TOX_NORMALIZE EXAMPLE 1: Simple 2x3 matrix")
-    print("="*50)
+    # Call tox function with LOESS parameters
+    span = 0.75
+    degree = 2
+    result = tox_normalize_by_std_dev(mat, span=span, degree=degree)
 
-    # Input data
-    mat = np.array([[1.0, 2.0, 3.0], 
-                    [4.0, 5.0, 6.0]], dtype=np.float64)
+    for i in range(mat.shape[1]):
+        col = mat[:, i]
+        normalized_col = col / np.std(col, dtype=np.float64)
+        assert np.allclose(result[:, i], normalized_col), "result doesn't match expected"
 
-    print_matrix("Input", mat)
 
-    # Call tox function
-    result = tox_normalize_by_std_dev(mat)
-    print_matrix("Output", result)
+def test_tox_stddev_example_2():
+    # Need at least 10 genes for LOESS
+    mat = np.array([[j * 1e6 + i*1e5 for j in range(10)] for i in range(10)], dtype=np.float64)
 
-    # Manual verification
-    print("\nManual verification:")
-    for i in range(mat.shape[0]):
-        row = mat[i, :]
-        std_dev = np.sqrt(np.mean(row**2))
-        normalized_row = row / std_dev
-        print(f"  Gene {i+1}: std_dev={std_dev:.4f}, normalized={normalized_row}")
+    span = 0.75
+    degree = 2
+    result = tox_normalize_by_std_dev(mat, span=span, degree=degree)
 
-    # Verify results are finite
-    assert np.all(np.isfinite(result)), "All results should be finite"
-    print("✓ Test passed!")
+    for i in range(mat.shape[1]):
+        col = mat[:, i]
+        normalized_col = col / np.std(col, dtype=np.float64)
+        assert np.allclose(result[:, i], normalized_col), "result doesn't match expected"
 
-def test_tox_normalize_example_2():
-    """Example 2: Large values"""
-    print("="*50)
-    print("TOX_NORMALIZE EXAMPLE 2: Large values")
-    print("="*50)
-
-    mat = np.array([[1e6, 2e6], 
-                    [3e6, 4e6]], dtype=np.float64)
-
-    print_matrix("Input", mat)
-
-    result = tox_normalize_by_std_dev(mat)
-    print_matrix("Output", result)
-
-    assert np.all(np.isfinite(result)), "All results should be finite"
-    print(f"All finite? {np.all(np.isfinite(result))}")
-    print("✓ Test passed!")
 
 def test_tox_quantile_example_1():
-    """Example 1: Simple quantile normalization"""
-    print("="*50)
-    print("TOX_QUANTILE EXAMPLE 1: Simple 3x3 matrix")
-    print("="*50)
-
-    mat = np.array([[5.0, 2.0, 8.0],
-                    [1.0, 6.0, 3.0],
-                    [9.0, 4.0, 7.0]], dtype=np.float64)
-
-    print_matrix("Input", mat)
+    mat = np.array([[3.0, 1.0, 2.0], [6.0, 4.0, 5.0]], dtype=np.float64, order="F")
 
     result = tox_quantile_normalization(mat)
-    print_matrix("Output", result)
 
     # Check column distributions
-    print("\nColumn distributions (sorted):")
-    for j in range(mat.shape[1]):
-        sorted_col = np.sort(result[:, j])
-        print(f"  Column {j+1}: {sorted_col}")
+    expected_col = np.array([2.5, 3.5, 4.5], dtype=np.float64)
+    for j in range(mat.shape[0]):
+        sorted_col = np.sort(result[j, :])
+        assert np.allclose(sorted_col, expected_col), "result doesn't match expected"
 
-    assert np.all(np.isfinite(result)), "All results should be finite"
-    print("✓ Test passed!")
 
 def test_tox_log2_example_1():
     """Example 1: Simple log2 transformation"""
@@ -154,23 +117,21 @@ def test_tox_log2_example_1():
     print("="*50)
 
     # Input data: [0, 3, 7, 15] → log2(x+1) = [0, 2, 3, 4]
-    mat = np.array([[0.0, 3.0], 
+    mat = np.array([[0.0, 3.0],
                     [7.0, 15.0]], dtype=np.float64)
 
-    print_matrix("Input", mat)
 
     result = tox_log2_transformation(mat)
-    print_matrix("Output", result)
 
     # Manual verification
     print("\nManual verification (log2(x+1)):")
     expected = np.log2(mat + 1)
-    print_matrix("Expected", expected)
 
     match = np.allclose(result, expected)
     print(f"Match? {match}")
     assert match, "Results should match expected log2(x+1)"
     print("✓ Test passed!")
+
 
 def test_tox_log2_example_2():
     """Example 2: Edge cases for log2"""
@@ -181,10 +142,8 @@ def test_tox_log2_example_2():
     # Edge cases: zeros, ones, large values
     mat = np.array([[0.0, 1.0, 1023.0]], dtype=np.float64)
 
-    print_matrix("Input (edge cases)", mat)
 
     result = tox_log2_transformation(mat)
-    print_matrix("Output", result)
 
     print(f"log2(0+1)={result[0,0]:.3f}, log2(1+1)={result[0,1]:.3f}, log2(1023+1)={result[0,2]:.3f}")
 
@@ -194,6 +153,7 @@ def test_tox_log2_example_2():
         assert abs(result[0,i] - expected) < 1e-10, f"Value {i} should be {expected}"
 
     print("✓ Test passed!")
+
 
 def test_tox_calc_tiss_avg_example_1():
     """Example 1: Average tissue replicates"""
@@ -205,14 +165,12 @@ def test_tox_calc_tiss_avg_example_1():
     mat = np.array([[1.0, 7.0, 3.0, 9.0, 5.0, 11.0],   # Gene 1: samples 1-6
                     [2.0, 8.0, 4.0, 10.0, 6.0, 12.0]], dtype=np.float64)  # Gene 2: samples 1-6
 
-    print_matrix("Input (2 genes × 6 samples)", mat)
     print("Tissue groups: [1,3,5] start columns, [2,2,2] replicates each")
 
     group_starts = np.array([1, 3, 5], dtype=np.int32)  # 1-based indexing for Fortran
     group_counts = np.array([2, 2, 2], dtype=np.int32)
 
-    result = tox_calculate_tissue_averages(mat, group_starts, group_counts)
-    print_matrix("Output (2 genes × 3 tissues)", result)
+    result = tox_calculate_tissue_averages(mat, group_counts)
 
     # Manual verification
     print("\nManual verification:")
@@ -227,6 +185,7 @@ def test_tox_calc_tiss_avg_example_1():
     assert match, "Results should match expected averages"
     print("✓ Test passed!")
 
+
 def test_tox_calc_tiss_avg_example_2():
     """Example 2: Unequal replicates"""
     print("="*50)
@@ -237,17 +196,16 @@ def test_tox_calc_tiss_avg_example_2():
     mat = np.array([[1.0, 8.0, 2.0, 9.0, 3.0, 10.0, 4.0],   # Gene 1
                     [5.0, 12.0, 6.0, 13.0, 7.0, 14.0, 8.0]], dtype=np.float64)  # Gene 2
 
-    print_matrix("Input (2 genes × 7 samples)", mat)
     print("Tissue groups: [1,3,6] start columns, [2,3,2] replicates each")
 
     group_starts = np.array([1, 3, 6], dtype=np.int32)
     group_counts = np.array([2, 3, 2], dtype=np.int32)
 
-    result = tox_calculate_tissue_averages(mat, group_starts, group_counts)
-    print_matrix("Output (2 genes × 3 tissues)", result)
+    result = tox_calculate_tissue_averages(mat, group_counts)
 
     assert np.all(np.isfinite(result)), "All results should be finite"
     print("✓ Test passed!")
+
 
 def test_tox_calc_fchange_example_1():
     """Example 1: Simple fold change"""
@@ -259,7 +217,6 @@ def test_tox_calc_fchange_example_1():
     mat = np.array([[1.0, 2.0],   # Gene 1: control=1, condition=2
                     [4.0, 8.0]], dtype=np.float64)  # Gene 2: control=4, condition=8
 
-    print_matrix("Input (2 genes × 2 samples)", mat)
     print("Control column: 1, Condition column: 2")
 
     control_cols = np.array([1], dtype=np.int32)  # 1-based indexing
@@ -269,7 +226,7 @@ def test_tox_calc_fchange_example_1():
 
     print(f"\nOutput (fold changes): {result.flatten()}")
 
-    # Manual verification  
+    # Manual verification
     print("\nManual verification (condition - control):")
     print(f"Gene 1: {mat[0,1]} - {mat[0,0]} = {mat[0,1] - mat[0,0]}")
     print(f"Gene 2: {mat[1,1]} - {mat[1,0]} = {mat[1,1] - mat[1,0]}")
@@ -281,6 +238,7 @@ def test_tox_calc_fchange_example_1():
     assert match, "Results should match expected fold changes"
     print("✓ Test passed!")
 
+
 def test_tox_calc_fchange_example_2():
     """Example 2: Multiple conditions vs same control"""
     print("="*50)
@@ -291,7 +249,6 @@ def test_tox_calc_fchange_example_2():
     mat = np.array([[2.0, 6.0, 10.0],   # Gene 1: control=2, condition1=6, condition2=10
                     [4.0, 16.0, 24.0]], dtype=np.float64)  # Gene 2: control=4, condition1=16, condition2=24
 
-    print_matrix("Input (2 genes × 3 samples)", mat)
     print("Control column: 1, Condition columns: 2 and 3")
     print("Pairs: (control=1,condition=2) and (control=1,condition=3)")
 
@@ -300,7 +257,6 @@ def test_tox_calc_fchange_example_2():
     condition_cols = np.array([2, 3], dtype=np.int32)    # Different conditions
 
     result = tox_calculate_fold_changes(mat, control_cols, condition_cols)
-    print_matrix("Output (2 genes × 2 pairs)", result)
 
     print("\nManual verification:")
     print(f"Pair 1 (condition2-control1): Gene1={mat[0,1]}-{mat[0,0]}={mat[0,1]-mat[0,0]}, Gene2={mat[1,1]}-{mat[1,0]}={mat[1,1]-mat[1,0]}")
@@ -313,6 +269,7 @@ def test_tox_calc_fchange_example_2():
     assert match, "Results should match expected fold changes"
     print("✓ Test passed!")
 
+
 def test_error_handling():
     """Test error handling"""
     print("="*50)
@@ -324,7 +281,7 @@ def test_error_handling():
     mat_nan = np.array([[1.0, np.nan], [3.0, 4.0]], dtype=np.float64)
 
     try:
-        tox_normalize_by_std_dev(mat_nan)
+        tox_normalize_by_std_dev(mat_nan, span=0.75, degree=2)
         assert False, "Should have raised ValueError for NaN input"
     except ValueError as e:
         print(f"✓ Correctly caught NaN error: {e}")
@@ -334,7 +291,7 @@ def test_error_handling():
     mat_inf = np.array([[1.0, np.inf], [3.0, 4.0]], dtype=np.float64)
 
     try:
-        tox_normalize_by_std_dev(mat_inf)
+        tox_normalize_by_std_dev(mat_inf, span=0.75, degree=2)
         assert False, "Should have raised ValueError for infinite input"
     except ValueError as e:
         print(f"✓ Correctly caught infinite error: {e}")
@@ -346,7 +303,7 @@ def test_error_handling():
     group_counts = np.array([1, 2], dtype=np.int32)  # Wrong length
 
     try:
-        tox_calculate_tissue_averages(mat, group_starts, group_counts)
+        tox_calculate_tissue_averages(mat, group_counts)
         assert False, "Should have raised ValueError for mismatched arrays"
     except ValueError as e:
         print(f"✓ Correctly caught mismatch error: {e}")
@@ -354,30 +311,5 @@ def test_error_handling():
     print("✓ All error handling tests passed!")
 
 
-
-if __name__ == "__main__":
-    print("TENSOR-OMICS PYTHON TOX_NORMALIZATION FUNCTIONS TEST SUITE")
-    print("Testing wrapper functions with tox_ prefix...")
-
-    try:
-        test_tox_normalize_example_1()
-        test_tox_normalize_example_2()
-        test_tox_quantile_example_1()
-        test_tox_log2_example_1()
-        test_tox_log2_example_2()
-        test_tox_calc_tiss_avg_example_1()
-        test_tox_calc_tiss_avg_example_2()
-        test_tox_calc_fchange_example_1()
-        test_tox_calc_fchange_example_2()
-        test_error_handling()
-        test_normalize_unit_length()
-
-        print("\n" + "="*50)
-        print("ALL TOX_NORMALIZATION FUNCTION TESTS COMPLETED SUCCESSFULLY!")
-        print("="*50)
-
-    except Exception as e:
-        print(f"\nERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        print("Check function implementations and signatures.")
+if __name__ == '__main__':
+    run_all_tests([test_tox_stddev_example_1, test_tox_stddev_example_2, test_tox_quantile_example_1])

@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.6% of total for procedures.">77 statements</a>
+                 title=" 0.7% of total for procedures.">92 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier_int, loess_x, loess_y, loess_n, ierr, percentile) bind(C, name="detect_outliers_c")  
+    <h2> subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, p_values, ierr, percentile) bind(C, name="detect_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,8 +157,8 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -184,7 +184,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~65"></span>
+              <span class="anchor" id="variable-n_genes~79"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -199,7 +199,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~28"></span>
+              <span class="anchor" id="variable-n_families~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -209,12 +209,12 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of genes</p>
+                <p>Total number of families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~19"></span>
+              <span class="anchor" id="variable-distances~18"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -229,7 +229,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~33"></span>
+              <span class="anchor" id="variable-gene_to_fam~32"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -244,67 +244,22 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_array~2"></span>
+              <span class="anchor" id="variable-tmp_work_array~2"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               target
             </td>
             <td>::</td>
-            <td><strong>work_array</strong>(n_genes)</td>
+            <td><strong>tmp_work_array</strong>(n_genes)</td>
             <td>
                 <p>Work array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~29"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
-            <td>
-                <p>Permutation array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-stack_left~16"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>stack_left</strong>(n_genes)</td>
-            <td>
-                <p>Stack array for left indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-stack_right~16"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>stack_right</strong>(n_genes)</td>
-            <td>
-                <p>Stack array for right indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-is_outlier_int~2"></span>
+              <span class="anchor" id="variable-tmp_perm~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -312,17 +267,62 @@ Calls detect_outliers with C-compatible types for external interface.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>is_outlier_int</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong>(n_genes)</td>
+            <td>
+                <p>Permutation array for sorting (dimension n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_left~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_left</strong>(n_genes)</td>
+            <td>
+                <p>Stack array for left indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_right~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_right</strong>(n_genes)</td>
+            <td>
+                <p>Stack array for right indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-is_outlier~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>is_outlier</strong>(n_genes)</td>
             <td>
                 <p>Output integer array indicating outliers (1=outlier, 0=not)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~6"></span>
+              <span class="anchor" id="variable-loess_x~5"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               target
             </td>
@@ -334,10 +334,10 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~6"></span>
+              <span class="anchor" id="variable-loess_y~5"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               target
             </td>
@@ -352,7 +352,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
               <span class="anchor" id="variable-loess_n~2"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               target
             </td>
@@ -364,7 +364,22 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~302"></span>
+              <span class="anchor" id="variable-p_values~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>p_values</strong>(n_genes)</td>
+            <td>
+                <p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~332"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -374,7 +389,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0=ok, 201=invalid family indices</p>
+                <p>Error code</p>
             </td>
         </tr>
         <tr>
@@ -426,7 +441,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>

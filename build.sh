@@ -25,6 +25,11 @@ if [[ "$TOX_CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 
+# Compile external libraries
+# if [[ ! -f external/lib/libloess_netlib.a ]]; then
+  ./build_externals.sh
+# fi
+
 # Build with FPM first
 utils_fpm build
 

@@ -188,7 +188,7 @@ contains
         ok = .not. is_err(ierr)
     end function is_ok
 
-    !Checks if allocation is successful
+    !> Checks if allocation is successful
     pure subroutine check_io_stat(ios, ierr)
         integer(int32), intent(in) :: ios
         integer(int32), intent(inout) :: ierr

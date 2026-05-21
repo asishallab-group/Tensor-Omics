@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">16 statements</a>
+                 title=" 0.4% of total for procedures.">61 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, threshold, percentile) bind(C, name="identify_outliers_c")  
+    <h2> subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile, ierr) bind(C, name="identify_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,8 +156,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -183,7 +184,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
+              <span class="anchor" id="variable-n_genes~78"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +199,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~5"></span>
+              <span class="anchor" id="variable-rdi~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -213,7 +214,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~4"></span>
+              <span class="anchor" id="variable-sorted_rdi~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -223,12 +224,27 @@ Calls identify_outliers with C-compatible types for external interface.</p>
             <td>::</td>
             <td><strong>sorted_rdi</strong>(n_genes)</td>
             <td>
-                <p>Sorted RDI array (must be sorted in ascending order before calling)</p>
+                <p>Filtered RDI array (no negatives, no NaNs)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier_int"></span>
+              <span class="anchor" id="variable-perm~27"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_genes)</td>
+            <td>
+                <p>Permutation array with sorted indices</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-is_outlier~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -236,7 +252,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>is_outlier_int</strong>(n_genes)</td>
+            <td><strong>is_outlier</strong>(n_genes)</td>
             <td>
                 <p>Output integer array indicating outliers (1=outlier, 0=not)</p>
             </td>
@@ -258,6 +274,21 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
+              <span class="anchor" id="variable-p_values~5"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>p_values</strong>(n_genes)</td>
+            <td>
+                <p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
               <span class="anchor" id="variable-percentile~6"></span>
               real(kind=c_double),
             </td>
@@ -269,6 +300,21 @@ Calls identify_outliers with C-compatible types for external interface.</p>
             <td><strong>percentile</strong></td>
             <td>
                 <p>Percentile threshold for outlier detection</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~331"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -305,7 +351,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>

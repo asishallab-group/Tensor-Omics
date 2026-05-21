@@ -63,6 +63,51 @@ contains
     end subroutine init_perm
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| Calculates the arithmetic mean of vector
+    pure real(real64) function mean(vec)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the mean value from
+
+        mean = sum(vec)/real(size(vec, kind=int32), real64)
+    end function mean
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Calculates the standard deviation of vector, with or without Bessel's correction
+    pure real(real64) function std_dev(vec, do_bessel_correction)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the standard deviation value from
+        logical, intent(in), optional :: do_bessel_correction
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`
+            !!
+            !! |    Case     |                                                Formula                                                      |
+            !! |-------------|-------------------------------------------------------------------------------------------------------------|
+            !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
+            !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
+
+        logical :: bessel
+        integer(int32) :: n_elements, i_element
+        real(real64) :: mean_val, squares_sum
+
+        M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
+
+        mean_val = mean(vec)
+        n_elements = size(vec, kind=int32)
+        if (bessel) then
+            squares_sum = 0.0_real64
+            do concurrent(i_element=1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
+                squares_sum = squares_sum + (vec(i_element) - mean_val)**2
+            end do
+            std_dev = sqrt(squares_sum/real(n_elements - 1, kind=real64))
+        else
+            squares_sum = 0.0_real64
+            do concurrent(i_element=1:n_elements) shared(vec) reduce(+:squares_sum)
+                squares_sum = squares_sum + vec(i_element)**2
+            end do
+            std_dev = sqrt(max(0.0_real64, squares_sum/real(n_elements, kind=real64) - mean_val**2))
+        end if
+    end function std_dev
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Function to find the position to place a value in a sorted array using binary search
     pure integer(int32) function binary_search_insertion(arr, perm, value, lower_idx, upper_idx) result(idx)
         real(real64), dimension(:), contiguous, intent(in) :: arr
@@ -351,7 +396,7 @@ contains
         dot_product = 0.0_real64
         norm1 = 0.0_real64
         norm2 = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2) reduce(+:dot_product, norm1, norm2)
+        do concurrent(i_dim=1:n_dims) shared(v1, v2) reduce(+:dot_product, norm1, norm2)
             dot_product = dot_product + v1(i_dim)*v2(i_dim)
             norm1 = norm1 + v1(i_dim)**2
             norm2 = norm2 + v2(i_dim)**2
@@ -374,7 +419,7 @@ contains
         real(real64), intent(in) :: degrees
             !! degrees to be converted
 
-        radians = modulo(degrees, 360.0_real64) * PI / 180
+        radians = modulo(degrees, 360.0_real64)*PI/180
     end function radians
 
     !> AUTHOR_FRANZ_ERIC_SILL
@@ -383,7 +428,7 @@ contains
         real(real64), intent(in) :: radians
             !! radians to be converted
 
-        degrees = modulo(radians, 2 * PI) * 180 / PI
+        degrees = modulo(radians, 2*PI)*180/PI
     end function degrees
 
     !> AUTHOR_FRANZ_ERIC_SILL
@@ -396,7 +441,7 @@ contains
         real(real64) :: norm_val
 
         norm_val = 0.0_real64
-        do concurrent (i_dim = 1:size(vector)) shared(vector) reduce(+:norm_val)
+        do concurrent(i_dim=1:size(vector)) shared(vector) reduce(+:norm_val)
             norm_val = norm_val + vector(i_dim)**2
         end do
         norm = sqrt(norm_val)
@@ -412,7 +457,7 @@ contains
 
         integer(int32) :: i_dim
 
-        do concurrent (i_dim = 1:size(vector)) shared(vector, to_be_added)
+        do concurrent(i_dim=1:size(vector)) shared(vector, to_be_added)
             vector(i_dim) = vector(i_dim) + to_be_added(i_dim)
         end do
     end subroutine add_vector
@@ -427,7 +472,7 @@ contains
 
         integer(int32) :: i_dim
 
-        do concurrent (i_dim = 1:size(vector)) shared(vector, to_be_subtracted)
+        do concurrent(i_dim=1:size(vector)) shared(vector, to_be_subtracted)
             vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
         end do
     end subroutine subtract_vector
@@ -563,10 +608,10 @@ contains
 
             ! Partitioning loop
             do
-                do while (array(perm(i)) .lessthan. pivot_val)
+                do while (array(perm(i)) .lessthan.pivot_val)
                     i = i + 1
                 end do
-                do while (array(perm(j)) .greaterthan. pivot_val)
+                do while (array(perm(j)) .greaterthan.pivot_val)
                     j = j - 1
                 end do
                 if (i <= j) then
@@ -773,13 +818,13 @@ contains
 
             ! Only compare the right child (next_idx) when it actually exists
             if (next_idx <= heap_size) then
-                if (array(perm(next_idx)) .greaterthan. array(perm(largest_idx))) then
+                if (array(perm(next_idx)) .greaterthan.array(perm(largest_idx))) then
                     largest_idx = next_idx
                 end if
             end if
 
             ! If the larger child is greater than current, swap permutation entries
-            if (array(perm(largest_idx)) .greaterthan. array(perm(current))) then
+            if (array(perm(largest_idx)) .greaterthan.array(perm(current))) then
                 call swap_int(perm(current), perm(largest_idx))
                 current = largest_idx
             else
@@ -1090,9 +1135,9 @@ contains
         ! Check if we should use kernel smoothing
         use_kernel = (kernel_sigma > 0.0_real64)
 
-        do concurrent (i_target = 1:n_target) &
-                local(query_x, sum_weights, min_dist, min_idx, exact_match_found, used_idx, ref_x, delta, i_used, weight) &
-                shared(y_out, n_used, indices_used, x_ref, x_query, y_ref, use_kernel, kernel_cutoff, kernel_sigma)
+        do concurrent(i_target=1:n_target) &
+            local(query_x, sum_weights, min_dist, min_idx, exact_match_found, used_idx, ref_x, delta, i_used, weight) &
+            shared(y_out, n_used, indices_used, x_ref, x_query, y_ref, use_kernel, kernel_cutoff, kernel_sigma)
 
             query_x = x_query(i_target)
             sum_weights = 0.0_real64
@@ -1378,6 +1423,91 @@ contains
         call calc_percentile_helper(array, perm, percentile, value)
     end subroutine calc_percentile_alloc
 
+    !> AUTHOR_VIVIAN_BASS
+    !| Calculate empirical p-values for scaled expression distances (RDI).
+    !|
+    !| Implements:
+    !|   P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !|
+    !| Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    !|
+    !| Assumptions / preconditions:
+    !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+    pure subroutine compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes being processed.
+        real(real64), intent(in) :: rdi(n_genes)
+            !! empirical distribution D
+        real(real64), intent(in) :: sorted_rdi(n_genes)
+            !! empirical distribution D with non negative values
+        real(real64), intent(out) :: p_values(n_genes)
+            !! Output array to store the computed p-values for each gene.
+        real(real64), intent(in) :: c_const
+            !! Constant used in the computation, typically 1
+        integer(int32), intent(in) :: perm(n_genes)
+            !! Permutation array with sorted indices for sorted_rdi
+
+        integer(int32) :: i, first_ge, count_ge
+        real(real64) :: denom, d
+
+        denom = real(n_genes, real64) + c_const
+        if (denom <= 0.0_real64) then
+            p_values = 1.0_real64
+            return
+        end if
+
+        do i = 1, n_genes
+            d = rdi(i)
+
+            ! Invalid / negative => not an outlier: p = 1
+            if (d < 0.0_real64) then
+                p_values(i) = 1.0_real64
+                cycle
+            end if
+
+            first_ge = lower_bound_ge(sorted_rdi, perm, n_genes, d)
+
+            if (first_ge <= n_genes) then
+                count_ge = n_genes - first_ge + 1_int32
+            else
+                count_ge = 0_int32
+            end if
+
+            p_values(i) = (real(count_ge, real64) + c_const)/denom
+        end do
+
+    end subroutine compute_empirical_p_values
+
+    !> AUTHOR_VIVIAN_BASS
+    !| First position pos in [1..n] such that sorted_rdi(perm(pos)) >= x. Returns n+1 if none.
+    pure integer(int32) function lower_bound_ge(vals, p, n, x) result(pos)
+        real(real64), intent(in) :: vals(n)
+            !! Input array of values to be searched
+        integer(int32), intent(in) :: p(n)
+            !! Permutation array with sorted indices
+        integer(int32), intent(in) :: n
+            !! Number of elements in the `vals` and `p` arrays
+        real(real64), intent(in) :: x
+            !! Input value to be searched for or compared against within `vals`
+
+        integer(int32) :: l, h, mid
+
+        l = 1_int32
+        h = n
+        pos = n + 1_int32
+
+        do while (l <= h)
+            mid = l + (h - l)/2_int32
+            if (vals(p(mid)) >= x) then
+                pos = mid
+                h = mid - 1_int32
+            else
+                l = mid + 1_int32
+            end if
+        end do
+    end function lower_bound_ge
+
 end module f42_utils
 
 ! === C WRAPPERS ===
@@ -1538,3 +1668,26 @@ subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_value
 
     call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_expert_c
+
+!> C-compatible wrapper for compute_empirical_p_values
+subroutine compute_empirical_p_values_c(n_genes, rdi, sorted_rdi, perm, p_values, c_const) bind(C, name="empirical_p_values_c")
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use f42_utils, only: compute_empirical_p_values
+    implicit none
+
+    integer(c_int), intent(in), target :: n_genes
+        !! Number of genes being processed.
+    real(c_double), intent(in), target :: rdi(n_genes)
+        !! empirical distribution D
+    real(c_double), intent(in), target :: sorted_rdi(n_genes)
+        !! empirical distribution D with non negative values
+    integer(c_int), intent(in), target :: perm(n_genes)
+        !! Permutation array with sorted indices for sorted_rdi
+    real(c_double), intent(out), target :: p_values(n_genes)
+        !! Output array to store the computed p-values for each gene.
+    real(c_double), intent(in), target :: c_const
+        !! Constant used in the computation, typically 1
+
+    call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+
+end subroutine compute_empirical_p_values_c

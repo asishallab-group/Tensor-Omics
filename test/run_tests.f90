@@ -32,6 +32,8 @@ program main
     use mod_test_clustering, only: get_all_tests_clustering
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
+    use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
+    use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
     implicit none
 
     integer :: nargs
@@ -48,7 +50,7 @@ program main
     call add_suite("normalize_by_std_dev", get_all_tests_normalize_by_std_dev)
     call add_suite("quantile_normalization", get_all_tests_quantile_normalization)
     call add_suite("log2_transformation", get_all_tests_log2_transformation)
-    ! call add_suite("tiss_avg", get_all_tests_tiss_avg)
+    call add_suite("tiss_avg", get_all_tests_tiss_avg)
     call add_suite("calc_fchange", get_all_tests_calc_fchange)
     call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
     call add_suite("rap_tools_omics_vector_RAP_projection", get_all_tests_rap_tools_omics_vector_RAP_projection)
@@ -69,6 +71,8 @@ program main
     call add_suite("clustering", get_all_tests_clustering)
     call add_suite("data_integration", get_all_tests_data_integration)
     call add_suite("binary_search", get_all_tests_binary_search)
+    call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
+    call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
 
     nargs = command_argument_count()
 
@@ -105,4 +109,3 @@ contains
     end subroutine print_usage
 
 end program main
-

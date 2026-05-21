@@ -9,9 +9,9 @@ library = true
 type = "shared" 
 
 [features]
-unknown-compiler.build.link = ["xxhash", "zip"]
-gfortran.build.link = ["xxhash", "zip"]
-ifx.build.link = ["xxhash", "zip", "iomp5"]
+unknown-compiler.build.link = ["loess_netlib", "xxhash", "zip"]
+gfortran.build.link = ["loess_netlib", "xxhash", "zip"]
+ifx.build.link = ["loess_netlib", "xxhash", "zip", "iomp5"]
 
 [[test]]
 name = "run_tests"

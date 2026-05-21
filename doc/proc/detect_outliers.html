@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">34 statements</a>
+                 title=" 0.2% of total for procedures.">34 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)  
+    <h2>public  subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, p_values, ierr, percentile)  
 </h2>
     
 
@@ -169,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~60"></span>
+              <span class="anchor" id="variable-n_genes~75"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -184,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~24"></span>
+              <span class="anchor" id="variable-n_families~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,60 +229,60 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_array"></span>
+              <span class="anchor" id="variable-tmp_work_array"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>work_array</strong>(n_genes)</td>
+            <td><strong>tmp_work_array</strong>(n_genes)</td>
             <td>
                 <p>Work array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~27"></span>
+              <span class="anchor" id="variable-tmp_perm~6"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong>(n_genes)</td>
             <td>
                 <p>Permutation array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~14"></span>
+              <span class="anchor" id="variable-tmp_stack_left~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(n_genes)</td>
+            <td><strong>tmp_stack_left</strong>(n_genes)</td>
             <td>
                 <p>Stack array for left indices during sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~14"></span>
+              <span class="anchor" id="variable-tmp_stack_right~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(n_genes)</td>
+            <td><strong>tmp_stack_right</strong>(n_genes)</td>
             <td>
                 <p>Stack array for right indices during sorting</p>
             </td>
@@ -307,7 +307,7 @@
               <span class="anchor" id="variable-loess_x~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -322,7 +322,7 @@
               <span class="anchor" id="variable-loess_y~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -337,7 +337,7 @@
               <span class="anchor" id="variable-loess_n"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -349,7 +349,22 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~299"></span>
+              <span class="anchor" id="variable-p_values~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>p_values</strong>(n_genes)</td>
+            <td>
+                <p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~328"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -359,7 +374,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0=ok, 201=invalid family indices</p>
+                <p>Error code</p>
             </td>
         </tr>
         <tr>
@@ -411,7 +426,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>

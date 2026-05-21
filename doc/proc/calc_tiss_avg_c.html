@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">40 statements</a>
+                 title=" 0.3% of total for procedures.">35 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine calc_tiss_avg_c(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr) bind(C, name="calc_tiss_avg_c")  
+    <h2>pure subroutine calc_tiss_avg_c(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr) bind(C, name="calc_tiss_avg_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -166,7 +166,7 @@
     </div>
 
 
-    <p>C-compatible wrapper for calc_tiss_avg</p>
+    <p>C wrapper for <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
 
 
     <h3>Arguments</h3>
@@ -182,7 +182,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene~2"></span>
+              <span class="anchor" id="variable-n_genes~60"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -190,14 +190,14 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_gene</strong></td>
+            <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_grps~6"></span>
+              <span class="anchor" id="variable-n_tissues~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -205,74 +205,60 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_grps</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
-                
+                <p>Number of tissues</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_s~4"></span>
+              <span class="anchor" id="variable-reps_per_tissue~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_tissues), target
             </td>
             <td>::</td>
-            <td><strong>group_s</strong>(n_grps)</td>
+            <td><strong>reps_per_tissue</strong></td>
             <td>
-                
+                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the <code>expr(1:2, i_gene)</code> related to the first tissue and <code>expr(3:, i_gene)</code> related to the second one.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_c~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>group_c</strong>(n_grps)</td>
-            <td>
-                
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-input_matrix~10"></span>
+              <span class="anchor" id="variable-expr~27"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(sum(reps_per_tissue), n_genes), target
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_gene*sum(group_c))</td>
+            <td><strong>expr</strong></td>
             <td>
-                
+                <p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~8"></span>
+              <span class="anchor" id="variable-tissue_averages~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_tissues, n_genes), target
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(n_gene*n_grps)</td>
+            <td><strong>tissue_averages</strong></td>
             <td>
-                
+                <p>Tissue averages per gene</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~31"></span>
+              <span class="anchor" id="variable-ierr~229"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -282,7 +268,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -319,7 +305,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>

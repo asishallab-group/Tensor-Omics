@@ -31,7 +31,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" LIBRARY_PATH="external/lib:$LIBRARY_PATH" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --flag "-I. -Iexternal/lib" -- $ARGS
 }
 
 # gets compiler from context, it uses

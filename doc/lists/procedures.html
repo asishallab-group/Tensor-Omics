@@ -264,16 +264,16 @@ Push right and left intervals onto stack</p></td>
                  <td><a href='../proc/calc_fchange.html'>calc_fchange</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculate <code>log2 fold changes</code> between condition and control columns.
+                 <td><p>Calculate <code>log2 fold changes</code> between condition and control groups.
 For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
-by subtracting the expression value in the control column from the corresponding
-value in the condition column, for all genes.</p><a href="../proc/calc_fchange.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+by subtracting the expression value in the control group from the corresponding
+value in the condition group, for all genes.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_fchange_c.html'>calc_fchange_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for calc_fchange</p></td>
+                 <td><p>C wrapper for <a href="../proc/calc_fchange.html">calc_fchange</a></p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/calc_neighborhood_size.html'>calc_neighborhood_size</a></td>
@@ -311,15 +311,23 @@ Uses linear interpolation between adjacent values.</p></td>
                  <td><a href='../proc/calc_tiss_avg.html'>calc_tiss_avg</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene. The input matrix is column-major, flattened as a 1D array.</p></td>
+                 <td><p>Calculate tissue averages by averaging replicates within each tissue.
+For each tissue of tissue replicates, this subroutine computes the average
+expression per gene.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_tiss_avg_c.html'>calc_tiss_avg_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for calc_tiss_avg</p></td>
+                 <td><p>C wrapper for <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_tiss_avg_helper.html'>calc_tiss_avg_helper</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Calculate tissue averages by averaging replicates within each group.
+For each group of tissue replicates, this subroutine computes the average
+expression per gene.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_work_arr_paralog_subsets_size.html'>calc_work_arr_paralog_subsets_size</a></td>
@@ -340,6 +348,12 @@ This is the reason why the work array holds the results as well, as all subsets 
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
                  <td><p>Converts a character value to c_char, elemental -&gt; any shape</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/check_alloc_stat.html'>check_alloc_stat</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/check_for_nan_inf.html'>check_for_nan_inf</a></td>
@@ -550,6 +564,19 @@ or have a custom permutation vector. This skips the internal sorting step
 for better performance when the caller has full control.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_empirical_p_values.html'>compute_empirical_p_values</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate empirical p-values for scaled expression distances (RDI).</p><a href="../proc/compute_empirical_p_values.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_empirical_p_values_c.html'>compute_empirical_p_values_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-compatible wrapper for compute_empirical_p_values
+Constant used in the computation, typically 1</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_factor_velocity_from_trajectories_helper.html'>compute_factor_velocity_from_trajectories_helper</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
@@ -581,9 +608,9 @@ This is the recommended version for most users as it handles memory allocation a
                  <td><a href='../proc/compute_family_scaling_expert_c.html'>compute_family_scaling_expert_c</a></td>
                  <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+                 <td><p>C wrapper for compute_family_scaling expert version.
 Calls compute_family_scaling with C-compatible types for external interface.
-This version requires pre-allocated work arrays for maximum performance and control.</p></td>
+This wrapper is designed for external use, providing additional arguments for advanced configurations.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/compute_gene_means.html'>compute_gene_means</a></td>
@@ -1467,8 +1494,8 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td>Subroutine</td>
                  <td><p>Identify gene outliers based on the top percentile of RDI values.
-Expects sorted_rdi to be filtered (no negative values) and sorted in ascending order before calling.
-If sorted_rdi contains negatives or is not sorted, results may be invalid.</p></td>
+Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
+If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/identify_outliers_c.html'>identify_outliers_c</a></td>
@@ -1598,6 +1625,74 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td><p>Wrapper for deserialize_real_2D function</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/loess_alloc.html'>loess_alloc</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Wrapper subroutine for LOESS fitting (plain or robust).
+This subroutine selects between plain and robust LOESS fitting based on the mode.
+It dynamically allocates the required arrays and computes workspace sizes.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/loess_decomposition.html'>loess_decomposition</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/loess_evaluation.html'>loess_evaluation</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_fit_plain.html'>loess_fit_plain</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform plain LOESS fitting.
+Fits a LOESS model to the data using the specified smoothing parameter.
+Outputs the smoothed response variable array.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_fit_plain_c.html'>loess_fit_plain_c</a></td>
+                 <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform plain LOESS fitting.
+Fits a LOESS model to the data using the specified smoothing parameter.
+Outputs the smoothed response variable array.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_fit_robust.html'>loess_fit_robust</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform robust LOESS fitting with bisquare reweighting.
+Fits a LOESS model to the data using robust iterations to handle outliers.
+The robust fitting process iterates n_iters times, each iteration:
+ - Combines original weights with robust weights (down-weights from previous iteration)
+ - Runs LOESS fitting with combined weights
+ - Computes residuals (y - fitted values)
+ - Updates robust weights using bisquare function (suppresses large residuals)</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/loess_fit_robust_c.html'>loess_fit_robust_c</a></td>
+                 <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform robust LOESS fitting with bisquare reweighting.
+Fits a LOESS model to the data using robust iterations to handle outliers.
+Outputs the smoothed response variable array.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/loess_fitting.html'>loess_fitting</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/loess_robust_weights.html'>loess_robust_weights</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Interface</td>
+                 <td></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/loess_smooth_2d.html'>loess_smooth_2d</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
@@ -1626,7 +1721,17 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><a href='../proc/log2_transformation_c.html'>log2_transformation_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for log2_transformation</p></td>
+                 <td><p>C wrapper for <a href="../proc/log2_transformation.html">log2_transformation</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/log2_transformation_inplace_helper.html'>log2_transformation_inplace_helper</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
+This subroutine performs element-wise <code>log2(x + 1)</code> transformation on a
+matrix flattened in column-major order. The <code>log2</code> is computed via:
+<code>log(x + 1) / log(2)</code>, which is numerically equivalent and avoids the
+non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/logical_as_c_int.html'>logical_as_c_int</a></td>
@@ -1639,6 +1744,12 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Compute logarithm for any base</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/lower_bound_ge.html'>lower_bound_ge</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>First position pos in [1..n] such that sorted_rdi(perm(pos)) &gt;= x. Returns n+1 if none.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/malloc.html'>malloc</a></td>
@@ -1683,6 +1794,12 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><p>Sets the state of a bit/gene in <code>bit_mask</code></p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/mean.html'>mean</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/mean_vector.html'>mean_vector</a></td>
                  <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
                  <td>Subroutine</td>
@@ -1719,21 +1836,18 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><p>Calculates the euclidean norm of a vector</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalization_pipeline.html'>normalization_pipeline</a></td>
+                 <td><a href='../proc/normalization_pipeline_alloc.html'>normalization_pipeline_alloc</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Complete normalization pipeline for gene expression data.
 Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
-Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p></td>
+Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalization_pipeline_c.html'>normalization_pipeline_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C/Python wrapper for normalization pipeline.
-Provides a C/Python-compatible interface to the normalization pipeline routine.
-Suitable for use with ctypes. Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
-Final result is in buf_log. If fold change is needed, call calc_fchange separately.</p></td>
+                 <td><p>C wrapper for <a href="../proc/normalization_pipeline_alloc.html">normalization_pipeline_alloc</a></p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_all_trajectories.html'>normalize_all_trajectories</a></td>
@@ -1750,17 +1864,26 @@ Normalizes each factor independently across time for each sample</p></td>
                  <td></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalize_by_std_dev.html'>normalize_by_std_dev</a></td>
+                 <td><a href='../proc/normalize_by_std_dev_alloc.html'>normalize_by_std_dev_alloc</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
-                 <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
-across tissues (not classical standard deviation).</p></td>
+                 <td><p>Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
+This procedure applies a global stabilization based on the relationship between
+gene-wise mean expression and empirical standard deviation.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_by_std_dev_c.html'>normalize_by_std_dev_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for normalize_by_std_dev</p></td>
+                 <td><p>C wrapper for <a href="../proc/normalize_by_std_dev_alloc.html">normalize_by_std_dev_alloc</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/normalize_by_std_dev_inplace_helper.html'>normalize_by_std_dev_inplace_helper</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
+This procedure applies a global stabilization based on the relationship between
+gene-wise mean expression and empirical standard deviation.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_single_trajectory.html'>normalize_single_trajectory</a></td>
@@ -1785,7 +1908,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><a href='../proc/normalize_unit_length_c.html'>normalize_unit_length_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for normalize_unit_length</p></td>
+                 <td><p>C wrapper for <a href="../proc/normalize_unit_length.html">normalize_unit_length</a></p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_variable_timeseries.html'>normalize_variable_timeseries</a></td>
@@ -1888,7 +2011,14 @@ Computes average expression per rank across tissues.</p></td>
                  <td><a href='../proc/quantile_normalization_c.html'>quantile_normalization_c</a></td>
                  <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for quantile_normalization</p></td>
+                 <td><p>C wrapper for <a href="../proc/quantile_normalization.html">quantile_normalization</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/quantile_normalization_inplace_helper.html'>quantile_normalization_inplace_helper</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Quantile normalization of a gene expression matrix (F42-compliant).
+Computes average expression per rank across tissues.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/quicksort_char.html'>quicksort_char</a></td>
@@ -2025,6 +2155,26 @@ Wrapper for single RAP-projected expression vectors</p></td>
                  <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C/Python wrapper for relative_axes_expression_from_expression_vector</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/root_mean_sq_normalization.html'>root_mean_sq_normalization</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
+across tissues (not classical standard deviation).</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/root_mean_sq_normalization_c.html'>root_mean_sq_normalization_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C wrapper for <a href="../proc/root_mean_sq_normalization.html">root_mean_sq_normalization</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/root_mean_sq_normalization_inplace_helper.html'>root_mean_sq_normalization_inplace_helper</a></td>
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
+across tissues (not classical standard deviation).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_expression_vectors.html'>save_expression_vectors</a></td>
@@ -2413,6 +2563,12 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td><p>Helper subroutine to split strings</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/std_dev.html'>std_dev</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a></td>
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
@@ -2455,6 +2611,28 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td><p>For memory efficiency this subroutine helps holding different kinds of masks in a single array.
 To achieve this, <code>subsets</code> has this structure: [...results, ...active_masks, ...new_active_masks]
 This routine removes an active mask from the <code>subsets</code> array and returns it in <code>active_mask</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_loess_c.html'>tox_loess_c</a></td>
+                 <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface for the LOESS wrapper subroutine.
+This subroutine selects between plain and robust LOESS fitting based on the mode.
+It dynamically allocates the required arrays and computes workspace sizes.</p><a href="../proc/tox_loess_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_loess_required_workspace.html'>tox_loess_required_workspace</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Recommend workspace sizes based on Netlib exact formulas.
+Computes the required sizes for integer and real workspace arrays.
+These sizes depend on the dimensionality of the data and the maximum neighborhood size.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_loess_required_workspace_c.html'>tox_loess_required_workspace_c</a></td>
+                 <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/validate_all_data.html'>validate_all_data</a></td>
@@ -2701,7 +2879,7 @@ Converts integer mask to logical and calls which.</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-12 19:20 +0000"             </p>
+ on "2026-05-21 05:51 +0000"             </p>
           </div>
         </div>
         <br>
