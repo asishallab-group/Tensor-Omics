@@ -5,6 +5,7 @@
 
 # Source the main functions
 source("rcpp/tensoromics_functions.R")
+source("rcpp/test_helpers.R")
 
 # =====================
 # Tests for compute_empirical_p_values
