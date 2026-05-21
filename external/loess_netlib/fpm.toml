@@ -1,0 +1,15 @@
+name = "loess-netlib"
+version = "0.1.0"
+license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "static" 
+
+[fortran]
+source-form = "fixed"
+
+[dependencies]
+loess-netlib-drotg = { path = "./drotg" }

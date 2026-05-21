@@ -25,11 +25,6 @@ if [[ "$TOX_CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 
-# Compile external libraries
-# if [[ ! -f external/lib/libloess_netlib.a ]]; then
-  ./build_externals.sh
-# fi
-
 # Build with FPM first
 utils_fpm build
 
@@ -37,16 +32,16 @@ check_exit_code "Build with fpm failed"
 
 # Remove outdated .so file -> no accidental reuse
 rm -f build/libtensor-omics.so
-
+utils_fpm list 2>&1
 # Retrieve output path for .so from fpm and copy to build directory
 while IFS= read -r line; do
-    if [[ $line == *libtensor-omics\.so* ]]; then
+    if [[ $line == *\.so* ]]; then
         # remove leading whitespaces
-        tensoromics_so="${line#"${line%%[![:space:]]*}"}"
+        so="${line#"${line%%[![:space:]]*}"}"
+        cp "${so}" build 2>/dev/null
     fi
 done <<< "$(utils_fpm list 2>&1)"
 
-cp "${tensoromics_so}" build 2>/dev/null
 check_exit_code "No .so file created"
 
 stderr "

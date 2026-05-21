@@ -9,9 +9,14 @@ library = true
 type = "shared" 
 
 [features]
-unknown-compiler.build.link = ["loess_netlib", "xxhash", "zip"]
-gfortran.build.link = ["loess_netlib", "xxhash", "zip"]
-ifx.build.link = ["loess_netlib", "xxhash", "zip", "iomp5"]
+unknown-compiler.build.link = ["xxhash", "zip"]
+gfortran.build.link = ["xxhash", "zip"]
+ifx.build.link = ["xxhash", "zip", "iomp5"]
+
+netlib.flags = "-O2 -std=legacy -ffixed-line-length-none -fallow-argument-mismatch -w"
+
+[dependencies]
+loess-netlib = { path = "external/loess_netlib", features = ["netlib"] }
 
 [[test]]
 name = "run_tests"
