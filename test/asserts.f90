@@ -4,7 +4,7 @@
 module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET
+    use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
     implicit none
     private
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
@@ -19,22 +19,47 @@ module asserts
 
     public :: operator(//)
     interface operator(//)
-        module procedure str_concat_int
-        module procedure int_concat_str
+        module procedure str_concat_int, int_concat_str
+        module procedure str_concat_real, real_concat_str
+        module procedure str_concat_complex, complex_concat_str
     end interface operator(//)
 
 contains
 
-    subroutine assertion_error(msg, additional_msg)
+    subroutine assertion_error(msg, additional_msg, got, expected, tol, at)
         character(*), intent(in) :: msg
-        character(*), intent(in), optional :: additional_msg
+        character(*), intent(in), optional :: additional_msg, got, expected, tol, at
 
         write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
         if (present(additional_msg)) then
             write (error_unit, "(A)", advance="no") COLOR_RED // " --- " // COLOR_ERROR // trim(additional_msg)
         end if
-
         write (error_unit, "(A)") COLOR_RESET
+
+        if (present(got) .or. present(expected) .or. present(tol) .or. present(at)) then
+            write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    ("
+
+            if (present(got)) then
+                write (error_unit, "(A)", advance="no") COLOR_RED // "      got" // COLOR_CREAM // ": " // got
+                if (present(expected)) then
+                    write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
+                    write (error_unit, "(A)", advance="no") COLOR_GREEN // " expected" // COLOR_CREAM // ": " // expected
+                    if (present(tol)) then
+                        write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
+                        write (error_unit, "(A)", advance="no") COLOR_YELLOW // "      tol" // COLOR_CREAM // ": " // tol
+                    end if
+                end if
+
+                if (present(at)) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
+            end if
+
+            if (present(at)) then
+                write (error_unit, "(A)", advance="no") COLOR_CREAM // "       at: " // at
+            end if
+
+            write (error_unit, "()")
+            write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
+        end if
 
         error stop 1
     end subroutine assertion_error
@@ -45,9 +70,7 @@ contains
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         if (abs(a - b) > tol) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), &
-                " (got ", a, ", expected ", b, ", tol=", tol, ")"
-            stop 1
+            call assertion_error(msg, got=""//a, expected=""//b, tol=""//tol)
         end if
     end subroutine
 
@@ -57,8 +80,7 @@ contains
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         if (abs(a - b) <= tol) then
-            write (error_unit, *) "ASSERTION FAILED (should not be equal): ", trim(msg)
-            stop 1
+            call assertion_error(msg, "(should not be equal)")
         end if
     end subroutine
 
@@ -69,9 +91,7 @@ contains
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         if (any(abs(a - b) > tol)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), &
-                " (complex arrays differ, tol=", tol, ")"
-            stop 1
+            call assertion_error(msg, additional_msg="complex arrays differ", tol=""//tol)
         end if
     end subroutine
 
@@ -81,7 +101,7 @@ contains
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
         if (any(a .neqv. b)) then
-            call assertion_error(msg, "(logical arrays differ)")
+            call assertion_error(msg, additional_msg="logical arrays differ")
         end if
     end subroutine
 
@@ -90,7 +110,7 @@ contains
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (.not. cond) then
-            call assertion_error(msg, "(got .false., expected .true.)")
+            call assertion_error(msg, got=".false.", expected=".true.")
         end if
     end subroutine
 
@@ -99,7 +119,7 @@ contains
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (cond) then
-            call assertion_error(msg, "(got .true., expected .false.)")
+            call assertion_error(msg, got=".true.", expected=".false.")
         end if
     end subroutine
 
@@ -108,7 +128,7 @@ contains
         integer(int32), intent(in) :: a, b
         character(*), intent(in) :: msg
         if (a /= b) then
-            call assertion_error(trim(msg), "(got " // a // ", expected " // b // ")")
+            call assertion_error(trim(msg), got=""//a, expected=""//b)
         end if
     end subroutine
 
@@ -117,7 +137,7 @@ contains
         integer(int32), intent(in) :: a, b
         character(*), intent(in) :: msg
         if (a == b) then
-            call assertion_error(msg, "(should not be equal, compared " // a // " and " // b // ")")
+            call assertion_error(msg, additional_msg="should not be equal", got=a // " and " // b)
         end if
     end subroutine
 
@@ -126,8 +146,7 @@ contains
         real(real64), intent(in) :: a, b, tol
         character(*), intent(in) :: msg
         if (abs(a - b) > tol) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (got ", a, ", expected ", b, ", tol=", tol, ")"
-            stop 1
+            call assertion_error(msg, got=""//a, expected=""//b, tol=""//tol)
         end if
     end subroutine
 
@@ -136,8 +155,7 @@ contains
         real(real64), intent(in) :: a, b, tol
         character(*), intent(in) :: msg
         if (abs(a - b) <= tol) then
-            write (error_unit, *) "ASSERTION FAILED (should not be equal): ", trim(msg)
-            stop 1
+            call assertion_error(msg, additional_msg="should not be equal", got=a // " and " // b)
         end if
     end subroutine
 
@@ -146,7 +164,7 @@ contains
         integer(int32), intent(in) :: a(n), b(n), n
         character(*), intent(in) :: msg
         if (any(a /= b)) then
-            call assertion_error(msg, "(integer arrays differ)")
+            call assertion_error(msg, additional_msg="integer arrays differ")
         end if
     end subroutine
 
@@ -156,8 +174,7 @@ contains
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
         if (any(abs(a - b) > tol)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (real arrays differ, tol=", tol, ")"
-            stop 1
+            call assertion_error(msg, additional_msg="real arrays differ", tol=""//tol)
         end if
     end subroutine
 
@@ -168,7 +185,7 @@ contains
         character(*), intent(in) :: msg
         integer, intent(in) :: n
         if (any(a /= b)) then
-            call assertion_error(msg, "(character arrays differ)")
+            call assertion_error(msg, additional_msg="character arrays differ")
         end if
     end subroutine
 
@@ -181,7 +198,7 @@ contains
 
         do i = 1, n
             if (ieee_is_nan(a(i))) then
-                call assertion_error(msg, "(NaN detected)")
+                call assertion_error(msg, additional_msg="NaN detected")
             end if
         end do
     end subroutine
@@ -194,7 +211,7 @@ contains
         integer :: i
         do i = 1, n
             if (abs(a(i)) > huge(1.0_real64)) then
-                call assertion_error(msg, "(Inf detected)")
+                call assertion_error(msg, additional_msg="Inf detected")
             end if
         end do
     end subroutine
@@ -204,8 +221,7 @@ contains
         real(real64), intent(in) :: a, minval, maxval
         character(*), intent(in) :: msg
         if (a < minval .or. a > maxval) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value ", a, " not in [", minval, ",", maxval, "])"
-            stop 1
+            call assertion_error(msg, expected="value in range [" // minval // "," // maxval // "]", got=""//a)
         end if
     end subroutine
 
@@ -214,7 +230,7 @@ contains
         integer(int32), intent(in) :: a, minval, maxval
         character(*), intent(in) :: msg
         if (a < minval .or. a > maxval) then
-            call assertion_error(msg, "(value " // a // " not in [" // minval // "," // maxval // "])")
+            call assertion_error(msg, expected="value in range [" // minval // "," // maxval // "]", got=""//a)
         end if
     end subroutine
 
@@ -223,7 +239,7 @@ contains
         integer(int32), intent(in) :: arr(n), n, val
         character(*), intent(in) :: msg
         if (.not. any(arr == val)) then
-            call assertion_error(msg, "(value " // val // " not found)")
+            call assertion_error(msg, additional_msg="value '" // val // "' not found")
         end if
     end subroutine
 
@@ -234,7 +250,7 @@ contains
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
-                call assertion_error(msg, "(not sorted at position " // i // ")")
+                call assertion_error(msg, additional_msg="not sorted", at=""//i)
             end if
         end do
     end subroutine
@@ -247,7 +263,7 @@ contains
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
-                write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (not sorted at position ", i, ")"
+                call assertion_error(msg, additional_msg="not sorted", at=""//i)
             end if
         end do
     end subroutine
@@ -257,7 +273,7 @@ contains
         integer(int32), intent(in) :: n1, n2
         character(*), intent(in) :: msg
         if (n1 /= n2) then
-            call assertion_error(msg, "(shapes differ: " // n1 // " vs " // n2 // ")")
+            call assertion_error(msg, additional_msg="shapes differ", got=n1 // " and " // n2)
         end if
     end subroutine
 
@@ -265,7 +281,7 @@ contains
     subroutine assert_string_equal(a, b, msg)
         character(*), intent(in) :: a, b, msg
         if (trim(a) /= trim(b)) then
-            call assertion_error(msg, "(got '" // trim(a) // "', expected '"// trim(b) // "')")
+            call assertion_error(msg, got="'" // trim(a) // "'", expected="'" // trim(b) // "'")
         end if
     end subroutine
 
@@ -273,7 +289,8 @@ contains
     subroutine assert_string_contains(a, b, msg)
         character(*), intent(in) :: a, b, msg
         if (index(a, b) == 0) then
-            call assertion_error(msg, "(substring '" // trim(b) // "' not found in '"// trim(a) // "')")
+            call assertion_error(msg, got="'" // trim(a) // "'", expected="'" // trim(b) // "'")
+            call assertion_error(msg, "substring not found", got="string '" // trim(a) // "'", expected="substring '" // trim(b) // "'")
         end if
     end subroutine
 
@@ -282,7 +299,7 @@ contains
         integer(int32), intent(in) :: n, a(n), b
         character(*), intent(in) :: msg
         if (findloc(a, b, 1) == 0) then
-            call assertion_error(msg, "(integer " // b // " not found in array)")
+            call assertion_error(msg, additional_msg="integer " // b // " not found in array")
         end if
     end subroutine
 
@@ -294,8 +311,7 @@ contains
         integer :: i
         do i = 1, n
             if (abs(a(i) - b(i)) > atol + rtol*abs(b(i))) then
-                write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (arrays differ at ", i, ")"
-                stop 1
+                call assertion_error(msg, additional_msg="real arrays differ", at=""//i)
             end if
         end do
     end subroutine
@@ -308,8 +324,7 @@ contains
         real(real64) :: s
         s = sum(arr)
         if (abs(s - expected) > 1e-12_real64) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (sum=", s, ", expected=", expected, ")"
-            stop 1
+            call assertion_error(msg, got="sum=" // s, expected=""//expected)
         end if
     end subroutine
 
@@ -321,7 +336,7 @@ contains
         do i = 1, n - 1
             do j = i + 1, n
                 if (arr(i) == arr(j)) then
-                    call assertion_error(msg, "(duplicate value " // arr(i) // " at positions " // i // " and " // j // ")")
+                    call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=i // " and " // j)
                 end if
             end do
         end do
@@ -336,10 +351,10 @@ contains
         found = .false.
         do i = 1, n
             if (arr(i) < 1 .or. arr(i) > n) then
-                call assertion_error(msg, "(value out of range: " // arr(i) // ")")
+                call assertion_error(msg, additional_msg="value out of range for permutation", got=""//arr(i))
             end if
             if (found(arr(i))) then
-                call assertion_error(msg, "(duplicate value: " // arr(i) // ")")
+                call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=""//i)
             end if
             found(arr(i)) = .true.
         end do
@@ -401,6 +416,41 @@ contains
             end if
         end if
     end function digit_count_int32
+
+    function str_concat_complex(str, complex) result(str_out)
+        character(len=*), intent(in) :: str
+        complex(real64), intent(in) :: complex
+        character(len=:), allocatable :: str_out
+
+        str_out = str // "("//real(complex)//", "//aimag(complex)//")"
+    end function str_concat_complex
+
+    function complex_concat_str(complex, str) result(str_out)
+        character(len=*), intent(in) :: str
+        complex(real64), intent(in) :: complex
+        character(len=:), allocatable :: str_out
+
+        str_out = "" // complex // str
+    end function complex_concat_str
+
+    function str_concat_real(str, real) result(str_out)
+        character(len=*), intent(in) :: str
+        real(real64), intent(in) :: real
+        character(len=:), allocatable :: str_out
+
+        character(32) :: tmp
+
+        write(tmp, '(ES25.17E3)') real
+        str_out = str // trim(adjustl(tmp))
+    end function str_concat_real
+
+    function real_concat_str(real, str) result(str_out)
+        character(len=*), intent(in) :: str
+        real(real64), intent(in) :: real
+        character(len=:), allocatable :: str_out
+
+        str_out = "" // real // str
+    end function real_concat_str
 
     function str_concat_int(str, int) result(str_out)
         character(len=*), intent(in) :: str
