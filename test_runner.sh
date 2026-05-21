@@ -6,6 +6,8 @@ init "$@"
 
 if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   bash -s -- "$@" <<'EOF'
+  source build_utils.sh
+
   function get_directives() {
     echo "-D'OPEN_PAREN=(' -D'CLOSE_PAREN=)' -D'$1(KIND)=KIND(KIND)' -D'$2(KIND)=$1 OPEN_PAREN KIND CLOSE_PAREN' -D'$3(KIND)=$1 OPEN_PAREN 2 CLOSE_PAREN'"
   }
@@ -18,11 +20,11 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   for d in "${directives[@]}"; do
     test_directive=${d%% *}
     test_directive=${test_directive#-DTEST_KIND_MISMATCH_}
-    msg_prefix="Testing safeguard for mismatch for $test_directive"
+    msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$test_directive"
     if [[ $(bash build.sh "$@" "${directives}" 1>kinds.out 2>/dev/null; grep "Divi.*zero" kinds.out) ]]; then
-      echo "$msg_prefix: success" >&2
+      stderr "$msg_prefix$COLOR_CREAM: ${COLOR_GREEN}success"
     else
-      echo "$msg_prefix: failure" >&2
+      stderr "$msg_prefix$COLOR_CREAM: ${COLOR_RED}failure"
       cat kinds.out >&2
       failed=1
     fi
