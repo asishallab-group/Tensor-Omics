@@ -67,3 +67,7 @@ if [[ -z "$TOX_KEEP_FILES" ]]; then
     rm -f manifest.txt
   fi
 fi
+
+stderr "
+${COLOR_GREEN}All tests passed with compiler${COLOR_CREAM}: $(echo_compiler $COMPILER)
+"

@@ -1,18 +1,28 @@
+COLOR_GREEN="\033[38;5;154m"
+COLOR_COPPER="\033[38;5;214m"
+COLOR_DARK_COPPER="\033[38;5;208m"
+COLOR_RED="\033[38;5;196m"
+COLOR_LIGHT_GRAY="\033[38;5;252m"
+COLOR_YELLOW="\033[38;5;226m"
+COLOR_CREAM="\033[38;5;255m"
+COLOR_ERROR="\033[38;5;222m"
+COLOR_RESET="\033[0m"
+
 function init() {
   handle_args "$@"
 
-  # --compiler beats global $COMPILER beats global $FC
+  # --compiler beats global $TOX_COMPILER beats global $FC
   get_compiler
 
   if [[ -z $(command -v $COMPILER) ]]; then
-    stderr "$COMPILER not installed or accessible in current scope"
+    error "'$(echo_compiler $COMPILER)' not installed or accessible in current scope"
     exit 1
   fi
   FLAGS=$(get_flags)
 }
 
 function utils_fpm() {
-  echo "Using compiler: $COMPILER"
+  cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
   declare prefix="fpm build"
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
@@ -48,15 +58,14 @@ function get_compiler() {
           COMPILER="$compiler"
           return
         else
-          stderr "
-Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead.
-Use '--i-want-to-use-this-compiler' to run with '$compiler' anyway.
-Use '--override-flags' to define additional compiler-related flags like '--override-flags=\"-O3 -fPIC\"'
+          warning "Compiler '$(echo_compiler $compiler)' not officially supported by Tensor Omics, trying '$(echo_compiler $default)' instead.
+Use '$COLOR_LIGHT_GRAY--i-want-to-use-this-compiler$COLOR_CREAM' to run with '$(echo_compiler $compiler)' anyway.
+Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compiler-related flags like '$COLOR_LIGHT_GRAY--override-flags=\"-O3 -fPIC\"$COLOR_RESET'
 "
         fi
       fi
     else
-      stderr "No compiler specified, using '$default'. To specify the compiler, use --compiler=<compiler> or the env variables \$FC, \$COMPILER"
+      warning "No compiler specified, using '$(echo_compiler $default)'. To specify the compiler, use $COLOR_LIGHT_GRAY--compiler=<$(echo_compiler compiler)$COLOR_LIGHT_GRAY>$COLOR_CREAM or the env variables $COLOR_LIGHT_GRAY\$$(echo_compiler FC)$COLOR_CREAM, $COLOR_LIGHT_GRAY\$$(echo_compiler TOX_COMPILER)"
     fi
     COMPILER_FEATURE=$default
     COMPILER=$default
@@ -117,17 +126,34 @@ function handle_args() {
   done
 }
 
+function echo_compiler() {
+  echo "$COLOR_COPPER$1$COLOR_CREAM"
+}
+
+function cecho() {
+  echo -e "$COLOR_CREAM$@$COLOR_RESET"
+}
+
+function error() {
+  stderr "${COLOR_RED}Error$COLOR_CREAM: $@"
+  exit 1
+}
+
+function warning() {
+  stderr "${COLOR_DARK_COPPER}Warning$COLOR_CREAM: $@"
+}
+
 function stderr() {
-  echo "$@" >&2
+  cecho "$@" >&2
 }
 
 function check_exit_code() {
   code=$?
   if [[ ! $code -eq 0 ]]; then
     if [[ "$@" ]]; then
-      echo -en "$@ - "
+      error "$@ - ${COLOR_RED}Exit code${COLOR_CREAM}: $code"
+    else
+      error "${COLOR_RED}Exit code${COLOR_CREAM}: $code"
     fi
-    echo "Exit code: $code"
-    exit $code
   fi
 }

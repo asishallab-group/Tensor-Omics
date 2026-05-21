@@ -44,4 +44,6 @@ done <<< "$(utils_fpm list 2>&1)"
 cp "${tensoromics_so}" build 2>/dev/null
 check_exit_code "No .so file created"
 
-stderr "Build complete with compiler: $COMPILER"
+stderr "
+${COLOR_GREEN}Build complete with compiler${COLOR_CREAM}: $(echo_compiler $COMPILER)
+"
