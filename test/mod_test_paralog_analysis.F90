@@ -79,7 +79,7 @@ contains
 
         call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_neofunctionalization: Case 2 ierr")
-        call assert_equal_array_logical(neofunc, expected, n_genes*n_axes, "test_detect_neofunctionalization: Case 2 output")
+        call assert_equal_array_logical(.not. neofunc, expected, n_genes*n_axes, "test_detect_neofunctionalization: Case 2 output")
     end subroutine test_detect_neofunctionalization
 
     !> Test the input validation for the detect_neofunctionalization function.

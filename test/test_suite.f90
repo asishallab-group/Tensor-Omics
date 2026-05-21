@@ -2,14 +2,6 @@
 !> Common definitions for all test suites.
 module test_suite
     implicit none
-    private
-
-    public :: test_interface
-    public :: test_case
-    public :: get_all_interface
-    public :: suite_entry
-    public :: available_suites
-    public :: initialize_suites, add_suite, run_all_tests, run_named_tests, run_all_suites, run_suite_all, run_suite_named, split_test_list
 
     !> Common interface for all test procedures.
     abstract interface
@@ -39,11 +31,14 @@ module test_suite
 
     type(suite_entry), allocatable :: available_suites(:)
 
-    character(len=11) :: COLOR_CREAM = achar(27) // "[38;5;255m"
     character(len=11) :: COLOR_GREEN = achar(27) // "[38;5;154m"
     character(len=11) :: COLOR_COPPER = achar(27) // "[38;5;214m"
-    character(len=11) :: COLOR_LIGHT_GRAY = achar(27) // "[38;5;252m"
+    character(len=11) :: COLOR_DARK_COPPER = achar(27) // "[38;5;208m"
     character(len=11) :: COLOR_RED = achar(27) // "[38;5;196m"
+    character(len=11) :: COLOR_LIGHT_GRAY = achar(27) // "[38;5;252m"
+    character(len=11) :: COLOR_YELLOW = achar(27) // "[38;5;226m"
+    character(len=11) :: COLOR_CREAM = achar(27) // "[38;5;255m"
+    character(len=11) :: COLOR_ERROR = achar(27) // "[38;5;222m"
     character(len=4) :: COLOR_RESET = achar(27) // "[0m"
 
 contains

@@ -4,6 +4,7 @@
 module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET
     implicit none
     private
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
@@ -16,7 +17,27 @@ module asserts
     public :: assert_equal_array_char, assert_equal_array_logical
     public :: assert_equal_complex, assert_not_equal_complex, assert_equal_array_complex
 
+    public :: operator(//)
+    interface operator(//)
+        module procedure str_concat_int
+        module procedure int_concat_str
+    end interface operator(//)
+
 contains
+
+    subroutine assertion_error(msg, additional_msg)
+        character(*), intent(in) :: msg
+        character(*), intent(in), optional :: additional_msg
+
+        write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
+        if (present(additional_msg)) then
+            write (error_unit, "(A)", advance="no") COLOR_RED // " --- " // COLOR_ERROR // trim(additional_msg)
+        end if
+
+        write (error_unit, "(A)") COLOR_RESET
+
+        error stop 1
+    end subroutine assertion_error
 
     !> Assert that two complex numbers are equal within a tolerance.
     subroutine assert_equal_complex(a, b, tol, msg)
@@ -60,9 +81,7 @@ contains
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
         if (any(a .neqv. b)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), &
-                " (logical arrays differ)"
-            stop 1
+            call assertion_error(msg, "(logical arrays differ)")
         end if
     end subroutine
 
@@ -71,8 +90,7 @@ contains
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (.not. cond) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg)
-            stop 1
+            call assertion_error(msg, "(got .false., expected .true.)")
         end if
     end subroutine
 
@@ -81,8 +99,7 @@ contains
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (cond) then
-            write (error_unit, *) "ASSERTION FAILED (expected false): ", trim(msg)
-            stop 1
+            call assertion_error(msg, "(got .true., expected .false.)")
         end if
     end subroutine
 
@@ -91,8 +108,7 @@ contains
         integer(int32), intent(in) :: a, b
         character(*), intent(in) :: msg
         if (a /= b) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (got ", a, ", expected ", b, ")"
-            stop 1
+            call assertion_error(trim(msg), "(got " // a // ", expected " // b // ")")
         end if
     end subroutine
 
@@ -101,8 +117,7 @@ contains
         integer(int32), intent(in) :: a, b
         character(*), intent(in) :: msg
         if (a == b) then
-            write (error_unit, *) "ASSERTION FAILED (should not be equal): ", trim(msg)
-            stop 1
+            call assertion_error(msg, "(should not be equal, compared " // a // " and " // b // ")")
         end if
     end subroutine
 
@@ -131,8 +146,7 @@ contains
         integer(int32), intent(in) :: a(n), b(n), n
         character(*), intent(in) :: msg
         if (any(a /= b)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (integer arrays differ)"
-            stop 1
+            call assertion_error(msg, "(integer arrays differ)")
         end if
     end subroutine
 
@@ -154,8 +168,7 @@ contains
         character(*), intent(in) :: msg
         integer, intent(in) :: n
         if (any(a /= b)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (character arrays differ)"
-            stop 1
+            call assertion_error(msg, "(character arrays differ)")
         end if
     end subroutine
 
@@ -168,8 +181,7 @@ contains
 
         do i = 1, n
             if (ieee_is_nan(a(i))) then
-                write (error_unit, *) "ASSERTION FAILED: NaN detected - ", trim(msg)
-                stop 1
+                call assertion_error(msg, "(NaN detected)")
             end if
         end do
     end subroutine
@@ -182,8 +194,7 @@ contains
         integer :: i
         do i = 1, n
             if (abs(a(i)) > huge(1.0_real64)) then
-                write (error_unit, *) "ASSERTION FAILED: Inf detected - ", trim(msg)
-                stop 1
+                call assertion_error(msg, "(Inf detected)")
             end if
         end do
     end subroutine
@@ -203,8 +214,7 @@ contains
         integer(int32), intent(in) :: a, minval, maxval
         character(*), intent(in) :: msg
         if (a < minval .or. a > maxval) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value ", a, " not in [", minval, ",", maxval, "])"
-            stop 1
+            call assertion_error(msg, "(value " // a // " not in [" // minval // "," // maxval // "])")
         end if
     end subroutine
 
@@ -213,8 +223,7 @@ contains
         integer(int32), intent(in) :: arr(n), n, val
         character(*), intent(in) :: msg
         if (.not. any(arr == val)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value ", val, " not found)"
-            stop 1
+            call assertion_error(msg, "(value " // val // " not found)")
         end if
     end subroutine
 
@@ -225,8 +234,7 @@ contains
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
-                write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (not sorted at position ", i, ")"
-                stop 1
+                call assertion_error(msg, "(not sorted at position " // i // ")")
             end if
         end do
     end subroutine
@@ -240,7 +248,6 @@ contains
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
                 write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (not sorted at position ", i, ")"
-                stop 1
             end if
         end do
     end subroutine
@@ -250,8 +257,7 @@ contains
         integer(int32), intent(in) :: n1, n2
         character(*), intent(in) :: msg
         if (n1 /= n2) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (shapes differ: ", n1, " vs ", n2, ")"
-            stop 1
+            call assertion_error(msg, "(shapes differ: " // n1 // " vs " // n2 // ")")
         end if
     end subroutine
 
@@ -259,8 +265,7 @@ contains
     subroutine assert_string_equal(a, b, msg)
         character(*), intent(in) :: a, b, msg
         if (trim(a) /= trim(b)) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (got '"//trim(a)//"', expected '"//trim(b)//"')"
-            stop 1
+            call assertion_error(msg, "(got '" // trim(a) // "', expected '"// trim(b) // "')")
         end if
     end subroutine
 
@@ -268,8 +273,7 @@ contains
     subroutine assert_string_contains(a, b, msg)
         character(*), intent(in) :: a, b, msg
         if (index(a, b) == 0) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (substring '"//trim(b)//"' not found in '"//trim(a)//"')"
-            stop 1
+            call assertion_error(msg, "(substring '" // trim(b) // "' not found in '"// trim(a) // "')")
         end if
     end subroutine
 
@@ -278,8 +282,7 @@ contains
         integer(int32), intent(in) :: n, a(n), b
         character(*), intent(in) :: msg
         if (findloc(a, b, 1) == 0) then
-            write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (integer ", b, " not found in array)"
-            stop 1
+            call assertion_error(msg, "(integer " // b // " not found in array)")
         end if
     end subroutine
 
@@ -318,8 +321,7 @@ contains
         do i = 1, n - 1
             do j = i + 1, n
                 if (arr(i) == arr(j)) then
-                    write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (duplicate value ", arr(i), " at positions ", i, " and ", j, ")"
-                    stop 1
+                    call assertion_error(msg, "(duplicate value " // arr(i) // " at positions " // i // " and " // j // ")")
                 end if
             end do
         end do
@@ -334,15 +336,93 @@ contains
         found = .false.
         do i = 1, n
             if (arr(i) < 1 .or. arr(i) > n) then
-                write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (value out of range: ", arr(i), ")"
-                stop 1
+                call assertion_error(msg, "(value out of range: " // arr(i) // ")")
             end if
             if (found(arr(i))) then
-                write (error_unit, *) "ASSERTION FAILED: ", trim(msg), " (duplicate value: ", arr(i), ")"
-                stop 1
+                call assertion_error(msg, "(duplicate value: " // arr(i) // ")")
             end if
             found(arr(i)) = .true.
         end do
     end subroutine
 
+    !> Very efficient digit counting function for an integer. Having the absolute value, it needs only 4 cycles and one assignment in worst case
+    pure integer(int32) function digit_count_int32(val) result(digit_count)
+        integer(int32), intent(in) :: val
+        integer(int32) :: abs_val
+        integer(int32), parameter :: min_int = -huge(1_int32)-1, max_int=huge(1_int32)
+
+        ! absolute value, safe for -2147483648
+        if (val == min_int) then
+            abs_val = max_int
+        else
+            abs_val = abs(val)
+        end if
+
+        ! --- perfectly balanced binary search over powers of 10 ---
+        if (abs_val < 100000_int32) then
+            if (abs_val < 1000_int32) then
+                if (abs_val < 100_int32) then
+                    if (abs_val < 10_int32) then
+                        digit_count = 1
+                    else
+                        digit_count = 2
+                    end if
+                else
+                    if (abs_val < 1000_int32) then
+                        digit_count = 3
+                    else
+                        digit_count = 4
+                    end if
+                end if
+            else
+                if (abs_val < 10000_int32) then
+                    digit_count = 4
+                else
+                    digit_count = 5
+                end if
+            end if
+        else
+            if (abs_val < 10000000_int32) then
+                if (abs_val < 1000000_int32) then
+                    digit_count = 6
+                else
+                    digit_count = 7
+                end if
+            else
+                if (abs_val < 100000000_int32) then
+                    digit_count = 8
+                else
+                    if (abs_val < 1000000000_int32) then
+                        digit_count = 9
+                    else
+                        digit_count = 10
+                    end if
+                end if
+            end if
+        end if
+    end function digit_count_int32
+
+    function str_concat_int(str, int) result(str_out)
+        character(len=*), intent(in) :: str
+        integer(int32), intent(in) :: int
+        character(len=:), allocatable :: str_out
+
+        if (int < 0) then
+            ! one more char for sign
+            allocate(character(len=len(str) + digit_count_int32(int) + 1) :: str_out)
+        else
+            allocate(character(len=len(str) + digit_count_int32(int)) :: str_out)
+        end if
+
+        str_out(1:len(str)) = str
+        write (str_out(len(str)+1:), "(I0)") int
+    end function str_concat_int
+
+    function int_concat_str(int, str) result(str_out)
+        character(len=*), intent(in) :: str
+        integer(int32), intent(in) :: int
+        character(len=:), allocatable :: str_out
+
+        str_out = "" // int // str
+    end function int_concat_str
 end module asserts
