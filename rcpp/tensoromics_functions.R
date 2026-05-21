@@ -7,7 +7,7 @@ library(Rcpp)
 lib_path <- shQuote(normalizePath("build"))
 
 # Set up compilation flags for linking with Fortran library
-Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
+Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics"))
 
 # Compile and load all TensorOmics Rcpp wrapper functions (includes error_handling.cpp)
 sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv, cacheDir = "rcpp/rcpp_cache")
@@ -3558,3 +3558,185 @@ tox_which <- function(mask, m_max = length(mask)) {
 
   return(result$idx_out[seq_len(n_take)])
 }
+
+#' Wrapper for compute_gene_means_rcpp
+#'
+#' @param expr_list A list of numeric matrices (genes in columns, reps in rows), one for each study
+#' @return A list with elements:
+#'   - means: matrix of gene means (max_n_genes_all_studies × n_studies)
+#'   - max_n_genes_all_studies: integer
+#'   - max_n_reps_all_studies: integer
+#'   - ierr: error code from C
+#' @export
+compute_gene_means <- function(expr_list) {
+  validate_is_list(expr_list)
+
+  for (x in expr_list) validate_numeric_matrix(x)
+
+  res <- compute_gene_means_rcpp(expr_list)
+
+  check_err_code(res$ierr)
+
+  return(res)
+}
+
+#' Wrapper for compute_residuals_rcpp
+#'
+#' @param expr_list A list of numeric matrices (genes in columns, reps in rows), one for each study
+#' @param means Numeric matrix of gene means (from compute_gene_means)
+#' @param max_n_reps_all_studies Integer, maximum number of replicates across studies
+#'
+#' @return A list containing:
+#'   - residuals: 3D numeric array (max_n_reps × max_n_genes × n_studies)
+#'   - ierr: error code from C
+#'
+#' @export
+compute_residuals <- function(expr_list, means, max_n_reps_all_studies) {
+
+  validate_is_list(expr_list)
+  for (x in expr_list) validate_numeric_matrix(x)
+  validate_numeric_matrix(means)
+
+  validate_length_equals_n(expr_list, ncol(means))
+
+  res <- compute_residuals_rcpp(expr_list, means, max_n_reps_all_studies)
+  check_err_code(res$ierr)
+
+  return(res)
+}
+
+#' Determine JSCompTest parameter set (wrapper)
+#'
+#' @param residuals 3D numeric array: [max_n_reps, max_n_genes, n_studies]
+#' @param gene_means Numeric matrix: [max_n_genes, n_studies]
+#' @param n_bootstraps Number of bootstrap iterations
+#' @param join_method One of "min", "max", "median"
+#' @param min_count_per_mean_bin Minimum histogram count per mean bin
+#' @param min_neighbor_overlap Minimum overlap between neighbor bins
+#' @param succeeding_ci_overlap Required overlap after join_method
+#' @param random_seed RNG seed for bootstrapping
+#' @param two_sided_bootstrapping_significance_level Two‑sided significance level
+#' @param residual_range_quantile Quantile for shared residual range
+#'
+#' @return List with fields:
+#'   - n_points
+#'   - n_neighbors
+#'   - shared_residual_range
+#'   - n_bins
+#'   - best_candidate_pair_confidence_interval (2 × n_studies matrix)
+#'   - ierr
+#'
+#' @export
+determine_js_comp_test_n_points_n_neighbors <- function(
+    residuals,
+    gene_means,
+    n_bootstraps,
+    join_method = c("min", "max", "median"),
+    min_count_per_mean_bin = 5,
+    min_neighbor_overlap = 0.1,
+    succeeding_ci_overlap = 0.9,
+    random_seed = 42,
+    two_sided_bootstrapping_significance_level = 2.5,
+    residual_range_quantile = 95.0
+) {
+
+  validate_numeric_array(residuals)
+  validate_length_equals_n(dim(residuals), 3)
+  validate_numeric_matrix(gene_means)
+
+  # --- Validate join_method ---
+  join_method <- match.arg(join_method)
+
+  # --- Forward to Rcpp implementation ---
+  res <- determine_js_comp_test_n_points_n_neighbors_rcpp(
+    residuals = residuals,
+    gene_means = gene_means,
+    n_bootstraps = n_bootstraps,
+    join_method = join_method,
+    min_count_per_mean_bin = min_count_per_mean_bin,
+    min_neighbor_overlap = min_neighbor_overlap,
+    succeeding_ci_overlap = succeeding_ci_overlap,
+    random_seed = random_seed,
+    two_sided_bootstrapping_significance_level =
+        two_sided_bootstrapping_significance_level,
+    residual_range_quantile = residual_range_quantile
+  )
+
+  check_err_code(res$ierr)
+
+  return(res)
+}
+
+#' JSCompTest wrapper (R interface to js_comp_test_rcpp)
+#'
+#' @param residuals 3D numeric array [max_n_reps, max_n_genes, n_studies]
+#' @param gene_means Numeric matrix [max_n_genes, n_studies]
+#' @param shared_residual_range Positive number defining the interval [-R, R]
+#' @param n_bins Number of histogram bins
+#' @param n_points Number of reference points
+#' @param n_neighbors Number of neighbors per reference point
+#' @param n_permutations Number of permutation-test iterations
+#' @param random_seed Random seed
+#'
+#' @return A list with:
+#'   - x_star
+#'   - n_pool
+#'   - neighborhood_ranges
+#'   - neighborhood_residuals
+#'   - pmfs
+#'   - counts
+#'   - included_n_reps
+#'   - mean_pmf
+#'   - mean_pmf_counts
+#'   - mean_pmf_included_n_reps
+#'   - js_divergences
+#'   - weights
+#'   - global_js_divergence
+#'   - p_values
+#'   - ierr
+#'
+#' @export
+js_comp_test <- function(
+    residuals,
+    gene_means,
+    shared_residual_range,
+    n_bins,
+    n_points,
+    n_neighbors,
+    n_permutations = 1000,
+    random_seed = 42
+) {
+
+    # --- Validate residuals ---
+  validate_numeric_array(residuals)
+  validate_length_equals_n(dim(residuals), 3)
+
+  dims <- dim(residuals)
+  max_n_reps  <- dims[1]
+  max_n_genes <- dims[2]
+  n_studies   <- dims[3]
+
+  # --- Validate gene_means ---
+  validate_numeric_matrix(gene_means)
+  validate_numeric_scalar(shared_residual_range)
+  validate_integer_scalar(n_bins)
+  validate_integer_scalar(n_points)
+  validate_integer_scalar(n_neighbors)
+
+  # --- Forward to Rcpp implementation ---
+  res <- js_comp_test_rcpp(
+      residuals = residuals,
+      gene_means = gene_means,
+      shared_residual_range = shared_residual_range,
+      n_bins = n_bins,
+      n_points = n_points,
+      n_neighbors = n_neighbors,
+      n_permutations = n_permutations,
+      random_seed = random_seed
+  )
+
+  check_err_code(res$ierr)
+
+  return(res)
+}
+

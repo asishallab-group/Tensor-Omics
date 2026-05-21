@@ -73,3 +73,15 @@ assert_equal_numeric <- function(x, y, tol = 1e-12, msg = "Real mismatch") {
   }
   invisible(TRUE)
 }
+
+assert_fails <- function(func, msg = "Function should fail") {
+  failed <- FALSE
+  tryCatch(
+    {
+      func()
+    },
+    error = function(e) {failed <<- TRUE}
+  )
+  if (!failed) stop(msg, call. = FALSE)
+  invisible(TRUE)
+}

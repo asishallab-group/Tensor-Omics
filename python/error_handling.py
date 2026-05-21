@@ -1,6 +1,8 @@
 #> tox_helper: throw error in error case
-def check_err_code(ierr: int) -> None:
-    if ierr == 0:
+def check_err_code(ierr: int, arg_pos_map: dict = {}) -> None:
+    arg_pos, code = divmod(ierr, 10000)
+
+    if code == 0:
         return
     msg = {
         # I/O errors
@@ -44,5 +46,14 @@ def check_err_code(ierr: int) -> None:
         # Internal errors
         9001: "Internal error: unexpected state.",
         9999: "Unknown error.",
-    }.get(ierr, f"Unmapped error code: {ierr}")
-    raise RuntimeError(msg)
+    }.get(code)
+
+    if msg is not None:
+        if (arg := arg_pos_map.get(arg_pos)) is not None:
+            raise RuntimeError(f"Argument '{arg}', the {arg_pos}. argument of the called Fortran function, triggered: {msg}")
+        elif arg_pos == 0:
+            raise RuntimeError(msg)
+        else:
+            raise RuntimeError(f"The {arg_pos}. argument of the called Fortran function triggered: {msg}")
+    else:
+        raise Warning(f"Unmapped error code: {ierr}")

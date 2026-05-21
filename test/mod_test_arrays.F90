@@ -19,8 +19,6 @@ module mod_test_arrays
     use test_suite, only: test_case
     implicit none
     public
-
-
 contains
 
 

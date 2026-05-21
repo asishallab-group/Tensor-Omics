@@ -37,13 +37,13 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_genes, ierr)
-        call validate_dimension_size(n_axes, ierr)
-        call validate_dimension_size(n_families, ierr)
-        call validate_all_in_range_real(ancestors, n_axes * n_families, ierr, min=-1.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(genes, n_axes * n_genes, ierr, min=-1.0_real64, max=1.0_real64)
-        call validate_all_in_range_int(gene_to_fam, n_genes, ierr, min=1_int32, max=n_families)
-        call validate_all_in_range_real(thresholds, n_axes, ierr, min=-1.0_real64, max=1.0_real64)
+        call validate_dimension_size(n_genes, ierr, arg_pos=6_int32)
+        call validate_dimension_size(n_axes, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(ancestors, n_axes * n_families, ierr, arg_pos=1_int32, min=-1.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(genes, n_axes * n_genes, ierr, arg_pos=3_int32, min=-1.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families)
+        call validate_all_in_range_real(thresholds, n_axes, ierr, arg_pos=7_int32, min=-1.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
         do i_gene = 1, n_genes
@@ -810,12 +810,13 @@ contains
 
         integer(int32) :: i_mask_chunk
 
-        idx = size(bit_mask) * 32
+        idx = 1
         do i_mask_chunk = size(bit_mask), 1, -1
-            idx = idx - leadz(bit_mask(i_mask_chunk))
-            if (mod(idx, 32) /= 0) exit
+            if (bit_mask(i_mask_chunk) /= 0) then
+                idx = i_mask_chunk * 32 - leadz(bit_mask(i_mask_chunk)) + 1
+                exit
+            end if
         end do
-        idx = idx + 1
     end function mask_get_first_successor_idx
 
     !> Sets the state of a bit/gene in `bit_mask`

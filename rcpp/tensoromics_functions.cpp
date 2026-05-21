@@ -1,1087 +1,928 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-
- 
-
 // ===================================================================
 // FORTRAN FUNCTIONS
 // ===================================================================
 
 extern "C" {
-void compute_edf_c(
-  const double* values,
-  const int* n_values,
-  double* unique_values,
-  double* cdf_values,
-  int* n_unique,
-  int* ierr
-);
-void compute_edf_expert_c(
-  const double* values,
-  const int* n_values,
-  const int* perm,
-  double* unique_values,
-  double* cdf_values,
-  int* n_unique,
-  int* ierr
-);
-void compute_all_contributions_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const int* factor_indices,
-  const int* n_selected_factors,
-  const int* dependent_indices,
-  const int* n_selected_dependents,
-  const char* mode,
-  double* local_contributions,
-  double* total_contributions,
-  double* temp_factors,
-  double* temp_dependent,
-  int* ierr
-);
-void compute_baselines_factor_dependent_c(
-  const double* factor,
-  const double* dependent,
-  const int* n_timepoints,
-  const char* mode,
-  double* factor_baseline,
-  double* dependent_baseline,
-  int* ierr
-);
-void compute_contributions_c(
-  const double* factor,
-  const double* dependent,
-  const int* n_dims,
-  const char* mode,
-  double* local_contributions,
-  double* total_contribution,
-  int* ierr
-);
-void perform_permutation_test_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const int* factor_idx,
-  const int* dependent_idx,
-  const int* sample_idx,
-  const char* mode,
-  const int* n_permutations,
-  double* local_contributions,
-  double* total_contributions,
-  double* temp_factor,
-  double* temp_dependent,
-  int* ierr,
-  const int* random_seed
-);
-void compute_p_values_c(
-  const double* local_contributions_observed,
-  const double* total_contribution_observed,
-  const double* local_contributions_perm,
-  const double* total_contributions_perm,
-  const int* n_timepoints,
-  const int* n_permutations,
-  double* local_p_values,
-  double* total_p_value,
-  int* ierr
-);
-
-void compute_velocity_trajectories_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* velocity,
-  int* ierr
-);
-void compute_acceleration_from_velocity_c(
-  const double* velocity,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* acceleration,
-  int* ierr
-);
-void compute_velocity_trajectory_c(
-  const double* trajectory,
-  const int* n_timepoints,
-  double* velocity,
-  int* ierr
-);
-void compute_acceleration_from_velocity_trajectory_c(
-  const double* velocity,
-  const int* n_timepoints,
-  double* acceleration,
-  int* ierr
-);
-void compute_velocity_acceleration_contributions_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const char* mode,
-  double* factor_workspace,
-  double* dependent_workspace,
-  double* contributions_workspace,
-  double* contrib_velocity,
-  double* velocity_contribution_series,
-  double* contrib_acceleration,
-  double* acceleration_contribution_series,
-  int* ierr
-);
-void compute_velocity_acceleration_contributions_alloc_c(
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  const char* mode,
-  double* contrib_velocity,
-  double* velocity_contribution_series,
-  double* contrib_acceleration,
-  double* acceleration_contribution_series,
-  int* ierr
-);
-void cluster_factor_trajectories_k_means_c(
-  const int* n_clusters,
-  const double* trajectories,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  double* centroids,
-  int* labels,
-  int* label_counts,
-  const int* max_iterations,
-  int* ierr
-);
-
-void k_means_clustering_c(
-  const int* n_clusters,
-  const double* data_points,
-  const int* n_points,
-  const int* n_dims,
-  double* centroids,
-  int* labels,
-  int* label_counts,
-  const int* max_iterations,
-  int* ierr
-);
-
-void linkage_clustering_c(
-  double* distances,
-  const int* n_points,
-  int* merge_i,
-  int* merge_j,
-  double* heights,
-  int* cluster_sizes,
-  const char* method,
-  int* ierr
-);
-
-void relative_axes_changes_from_shift_vector_c(
-  const double* vec,
-  const int* n_axes,
-  double* contributions,
-  int* ierr
-);
-
-void relative_axes_expression_from_expression_vector_c(
-  const double* vec,
-  const int* n_axes,
-  double* contributions,
-  int* ierr
-);
-
-void clock_hand_angle_between_vectors_c(
-  const double* v1,
-  const double* v2,
-  const int* n_dims,
-  double* signed_angle,
-  const int* selected_axes_for_signed,
-  int* ierr
-);
-
-void clock_hand_angles_for_shift_vectors_c(
-  const double* origins,
-  const double* targets,
-  const int* n_dims,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* selected_axes_for_signed,
-  double* signed_angles,
-  int* ierr
-);
-
-void omics_vector_RAP_projection_c(
-  const double* vecs,
-  const int* n_axes,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* axes_selection_mask,
-  const int* n_selected_axes,
-  double* projections,
-  int* ierr
-);
-
-void omics_field_RAP_projection_c(
-  const double* vecs,
-  const int* n_axes,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
-  const int* axes_selection_mask,
-  const int* n_selected_axes,
-  double* projections,
-  int* ierr
-);
-
-void normalize_by_std_dev_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void quantile_normalization_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  int* ierr
-);
-
-void log2_transformation_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void normalize_unit_length_c(
-  double* vector,
-  const int* n_dims,
-  int* ierr
-);
-
-void calc_tiss_avg_c(
-  const int* n_genes,
-  const int* n_grps,
-  const int* group_s,
-  const int* group_c,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void calc_fchange_c(
-  const int* n_genes,
-  const int* n_cols,
-  const int* n_pairs,
-  const int* control_cols,
-  const int* cond_cols,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void fjct_compute_jsd_c(
-  const int* family_idx,
-  const int* gene_to_family_S1,
-  const int* gene_to_family_S2,
-  const int* n_genes_S1,
-  const int* n_genes_S2,
-  const double* neighborhood_residuals_S1,
-  const double* neighborhood_residuals_S2,
-  const int* neighborhood_genes_S1,
-  const int* neighborhood_genes_S2,
-  const int* n_reps_S1,
-  const int* n_reps_S2,
-  const int* n_neighbors,
-  const int* n_points,
-  const int* n_bins,
-  const double* shared_residual_range,
-  double* js_divergences,
-  int* included_n_reps_S1,
-  int* included_n_reps_S2,
-  int* total_included_n_reps,
-  double* global_js_divergence,
-  double* weights,
-  int* ierr
-);
-
-void fjct_compute_jsd_expert_c(
-  const double* neighborhood_residuals_S1,
-  const double* neighborhood_residuals_S2,
-  const int* n_reps_S1,
-  const int* n_reps_S2,
-  const int* n_neighbors,
-  const int* n_points,
-  const int* neighbor_mask_S1,
-  const int* neighbor_mask_S2,
-  const int* n_bins,
-  const double* shared_residual_range,
-  double* js_divergences,
-  int* included_n_reps_S1,
-  int* included_n_reps_S2,
-  int* total_included_n_reps,
-  double* global_js_divergence,
-  double* weights,
-  double* pmf_S1,
-  double* pmf_S2,
-  int* tmp_counts,
-  int* ierr
-);
-
-void fjct_compute_contribution_scores_c(
-  const double* global_js_divergences,
-  const int* total_included_n_reps_per_f,
-  const int* k_families,
-  const double* support_weights,
-  double* contribution_scores,
-  int* ierr
-);
-
-void gjct_permutation_test_c(
-  const double* neighborhood_residuals_S1,
-  const double* neighborhood_residuals_S2,
-  const int* n_reps_S1,
-  const int* n_reps_S2,
-  const int* n_neighbors,
-  const int* n_points,
-  const double* global_jsd_observed,
-  const int* n_bins,
-  const double* shared_residual_range,
-  const int* n_permutations,
-  double* jsd_null,
-  double* p_value,
-  int* ierr,
-  const int* random_seed
-);
-
-void gjct_permutation_test_filtered_c(
-  const double* neighborhood_residuals_S1,
-  const double* neighborhood_residuals_S2,
-  const int* n_reps_S1,
-  const int* n_reps_S2,
-  const int* n_neighbors,
-  const int* n_points,
-  const double* global_jsd_observed,
-  const int* n_bins,
-  const double* shared_residual_range,
-  const int* n_permutations,
-  double* jsd_null,
-  double* p_value,
-  int* ierr,
-  const int* random_seed,
-  const int* neighbor_mask_S1,
-  const int* neighbor_mask_S2
-);
-
-void compute_weighted_global_divergence_c(
-  const double* js_divergences,
-  const int* n_points,
-  const int* included_n_residuals_S1,
-  const int* included_n_residuals_S2,
-  double* global_js_divergence,
-  double* weights,
-  int* ierr
-);
-
-void compute_divergence_per_reference_point_c(
-  const double* pmf_S1,
-  const double* pmf_S2,
-  const int* n_points,
-  const int* n_bins,
-  double* js_divergences,
-  int* ierr
-);
-
-void build_residual_histograms_c(
-  const double* neighborhood_residuals,
-  const int* n_reps,
-  const int* n_neighbors,
-  const int* n_points,
-  const double* shared_residual_range,
-  const int* n_bins,
-  int* counts,
-  double* pmf,
-  int* included_n_residuals,
-  int* ierr
-);
-
-void build_residual_histograms_filtered_c(
-  const double* neighborhood_residuals,
-  const int* n_reps,
-  const int* n_neighbors,
-  const int* n_points,
-  const double* shared_residual_range,
-  const int* n_bins,
-  int* counts,
-  double* pmf,
-  int* included_n_residuals,
-  int* ierr,
-  const int* neighbor_mask
-);
-
-void determine_shared_residual_range_c(
-  const double* neighborhood_residuals_S1,
-  const double* neighborhood_residuals_S2,
-  const int* n_reps_S1,
-  const int* n_reps_S2,
-  const int* n_neighbors,
-  const int* n_points,
-  const double* residual_range_quantile,
-  double* shared_residual_range,
-  int* ierr
-);
-
-void determine_shared_residual_range_expert_c(
-  const double* residual_pool,
-  int* residual_pool_perm,
-  const int* n_pool,
-  const double* residual_range_quantile,
-  double* shared_R,
-  int* ierr
-);
-
-void compute_gene_means_c(
-  const int* n_genes,
-  const int* n_reps,
-  const double* expr,
-  double* means,
-  int* ierr
-);
-
-void compute_residuals_c(
-  const int* n_genes,
-  const int* n_reps,
-  const double* expr,
-  const double* means,
-  double* resid,
-  int* ierr
-);
-
-void pool_means_c(
-  const int* n_genes_S1,
-  const double* mean_S1,
-  const int* n_genes_S2,
-  const double* mean_S2,
-  const int* n_points,
-  const int* n_pool,
-  double* x_star,
-  int* ierr
-);
-
-void pool_means_expert_c(
-  const double* pooled_means,
-  int* pooled_means_perm,
-  const int* pool_size,
-  const int* n_points,
-  const int* n_pool,
-  double* x_star,
-  int* ierr
-);
-
-void calc_neighborhood_size_c(
-  const int* n_pool,
-  const int* n_points,
-  const int* n_genes_S,
-  const double* mean_S,
-  const int* desired_size,
-  int* n_neighbors,
-  int* ierr
-);
-
-void construct_neighborhoods_c(
-  const int* n_points,
-  const double* x_star,
-  const int* n_genes_S,
-  const double* mean_S,
-  const int* n_reps_S,
-  const double* resid_S,
-  double* neighborhood_residuals,
-  int* neighborhood_indices,
-  const int* n_neighbors,
-  int* ierr
-);
-
-    
-
-void normalization_pipeline_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* buf_stddev,
-  double* buf_quant,
-  double* buf_avg,
-  double* buf_log,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  const int* group_s,
-  const int* group_c,
-  const int* n_grps,
-  int* ierr
-);
-
-void normalize_variable_timeseries_C(
-  const double* v,
-  double* v_norm,
-  const int* n_points,
-  int* ierr,
-  int* status
-);
-
-void normalize_single_trajectory_C(
-  const double* trajectory,
-  double* trajectory_norm,
-  const int* n_factors,
-  const int* n_timepoints,
-  int* ierr,
-  int* status
-);
-
-void normalize_all_trajectories_C(
-  const double* trajectories,
-  double* trajectories_norm,
-  const int* n_factors,
-  const int* n_samples,
-  const int* n_timepoints,
-  int* ierr,
-  int* status
-);
-
-void compute_family_scaling_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* ierr
-);
-
-void compute_family_scaling_expert_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* perm_tmp,
-  int* stack_left_tmp,
-  int* stack_right_tmp,
-  double* family_distances,
-  int* ierr
-);
-
-void compute_rdi_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  const double* dscale,
-  double* rdi,
-  double* sorted_rdi,
-  int* perm,
-  int* stack_left,
-  int* stack_right
-);
-
-void identify_outliers_c(
-  const int* n_genes,
-  const double* rdi,
-  const double* sorted_rdi,
-  int* is_outlier_int,
-  double* threshold,
-  const double* percentile
-);
-
-void detect_outliers_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* work_array,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  int* is_outlier_int,
-  double* loess_x,
-  double* loess_y,
-  int* loess_n,
-  const double* percentile,
-  int* ierr
-);
-
-void euclidean_distance_c(
-  const double* vec1,
-  const double* vec2,
-  const int* d,
-  double* result
-);
-
-void distance_to_centroid_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* genes,
-  const double* centroids,
-  const int* gene_to_fam,
-  double* distances,
-  const int* d
-);
-
-void compute_tissue_versatility_c(
-  const int* n_axes,
-  const int* n_vectors,
-  const double* expression_vectors,
-  const int* exp_vecs_selection_index,
-  const int* n_selected_vectors,
-  const int* axes_selection,
-  const int* n_selected_axes,
-  double* tissue_versatilities,
-  double* tissue_angles_deg,
-  int* ierr
-);
-
-void compute_shift_vector_field_c(
-  const int* d,
-  const int* n_genes,
-  const int* n_families,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const int* gene_to_centroid,
-  double* shift_vectors,
-  int* ierr
-);
-
-
-void detect_neofunctionalization_c(
-  const double* ancestors,
-  const int* n_families,
-  const double* genes,
-  const int* n_axes,
-  const int* gene_to_fam,
-  const int* n_genes,
-  const double* thresholds,
-  int* neofunc,
-  int* ierr
-);
-
-void mask_check_state_c(
-  const int* bit_mask,
-  const int* n_mask_chunks,
-  const int* i_gene,
-  int* state,
-  int* ierr
-);
-
-void mask_chunk_count_c(
-  const int* n_genes,
-  int* count,
-  int* ierr
-);
-
-void calc_work_arr_paralog_subsets_size(
-  const int* max_subset_size,
-  const int* n_genes,
-  int* work_array_size,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void filter_paralogs_by_pattern_dosage_effect(
-  const double* gene_angles,
-  const double* threshold,
-  const int* n_genes,
-  const int* n_families,
-  const int* gene_to_fam,
-  int* masks,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void filter_paralogs_by_pattern_subfunctionalization_c(
-  const double* gene_angles,
-  const double* threshold,
-  const int* n_genes,
-  const int* n_families,
-  const int* gene_to_fam,
-  int* masks,
-  const int* n_mask_chunks,
-  int* ierr
-);
-
-void detect_subfunctionalization_c(
-  const double* ancestor,
-  const double* genes,
-  const int* n_genes,
-  const int* n_dims,
-  const double* rdi_threshold,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* n_results,
-  const int* max_subset_size,
-  int* work_arr_paralog_subsets,
-  const int* n_paralog_subsets,
-  int* active_mask,
-  double* temp_paralog_vector,
-  const double* paralog_norms,
-  const int* sorted_paralog_norms_perm,
-  double* temp_work_array,
-  int* ierr
-);
-
-void detect_dosage_effect_c(
-  const double* ancestor,
-  const double* genes,
-  const int* n_genes,
-  const int* n_dims,
-  const int* filtered_paralogs_mask,
-  const int* n_mask_chunks,
-  int* n_results,
-  const int* max_subset_size,
-  int* work_arr_paralog_subsets,
-  const int* n_paralog_subsets,
-  int* active_mask,
-  double* temp_paralog_vector,
-  const double* max_angle,
-  const double* gain_gamma,
-  int* ierr
-);
-
-void mean_vector_c(
-  const double* expression_vectors,
-  const int* n_axes,
-  const int* n_genes,
-  const int* gene_indices,
-  const int* n_selected_genes,
-  double* centroid_col,
-  int* ierr
-);
-
-void group_centroid_c(
-  const double* expression_vectors,
-  const int* n_axes,
-  const int* n_genes,
-  const int* gene_to_family,
-  const int* n_families,
-  double* centroid_matrix,
-  const char* mode,
-  const int* ortholog_set,
-  int* selected_indices,
-  const int* selected_indices_len,
-  int* ierr
-);
-
-void build_kd_index_C(
-  const double* points,
-  const int* num_dimensions,
-  const int* num_points,
-  int* kd_indices,
-  const int* dimension_order,
-  int* workspace,
-  double* value_buffer,
-  int* permutation,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void which_c(
-  const int* mask,
-  const int* n,
-  int* idx_out,
-  const int* m_max,
-  int* m_out,
-  int* ierr
-);
-
-void loess_smooth_2d_c(
-  const int* n_total,
-  const int* n_target,
-  const double* x_ref,
-  const double* y_ref,
-  const int* indices_used,
-  int* n_used,
-  const double* x_query,
-  const double* kernel_sigma,
-  const double* kernel_cutoff,
-  double* y_out,
-  int* ierr
-);
-
-void deserialize_int_nd_C(
-  int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_real_nd_C(
-  double* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_char_nd_C(
-  char* ascii_arr,
-  const int* clen,
-  const int* total_array_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_int_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_real_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_char_nd_C(
-  const char* ascii_arr,
-  const int* dims,
-  const int* ndim,
-  const int* clen,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_logical_nd_C(
-  int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_logical_nd_C(
-  const int* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_complex_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_complex_nd_C(
-  void* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void get_array_metadata_C(
-  const char* filename_ascii,
-  const int* fn_len,
-  int* dims_out,
-  const int* dims_out_capacity,
-  int* ndims,
-  int* ierr,
-  int* clen
-);
-
-void build_bst_index_C(
-  const double* values,
-  const int* num_values,
-  int* sorted_indices,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void bst_range_query_C(
-  const double* values,
-  const int* sorted_indices,
-  const int* num_values,
-  const double* lower_bound,
-  const double* upper_bound,
-  int* output_indices,
-  int* num_matches,
-  int* ierr
-);
-
-void build_spherical_kd_C(
-  const double* vectors,
-  const int* num_dimensions,
-  const int* num_vectors,
-  int* sphere_indices,
-  const int* dimension_order,
-  int* workspace,
-  double* value_buffer,
-  int* permutation,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void read_expression_vectors_tsv_C(
-  const char* file_list_raw,
-  const int* file_list_len,
-  const int* n_files,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  double* expression_vectors,
-  const int* n_samples,
-  const int* n_header_rows,
-  const int* gene_col,
-  const int* value_cols,
-  const int* n_value_cols,
-  const char* delimiter_raw,
-  int* ierr
-);
-
-void read_gene_ids_from_tsv_file_C(
-  const char* filename_raw,
-  const int* fn_len,
-  char* gene_ids_raw,
-  int* gene_ids_len,
-  int* n_genes,
-  const int* n_header_rows,
-  const int* gene_col,
-  int* ierr
-);
-
-void read_orthofinder_file_C(
-  const char* filename_raw,
-  const int* fn_len,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  char* family_ids_raw,
-  int* family_ids_len,
-  int* n_families,
-  int* gene_to_fam,
-  int* ierr
-);
-
-void filter_unassigned_genes_C(
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const int* n_genes,
-  const int* gene_to_fam,
-  int* mask,
-  int* n_genes_kept,
-  int* ierr
-);
-
-void validate_data_structure_C(
-  const int* n_genes,
-  const int* n_families,
-  const int* n_samples,
-  const char* gene_ids_raw,
-  const int* gene_ids_len,
-  const char* gene_family_ids_raw,
-  const int* fam_len,
-  const int* gene_to_fam,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const double* shift_vectors,
-  int* ierr
-);
-
-void validate_gene_to_family_mapping_C(
-  const int* gene_to_fam,
-  const int* n_genes,
-  const int* n_families,
-  int* ierr
-);
-
-void validate_expression_data_C(
-  const double* expression_vectors,
-  const int* n_genes,
-  const int* n_samples,
-  const int* check_non_negative,
-  int* ierr
-);
-
-void validate_family_centroids_C(
-  const double* family_centroids,
-  const int* n_families,
-  const int* n_samples,
-  int* ierr
-);
-
-void validate_shift_vectors_C(
-  const double* shift_vectors,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const int* gene_to_fam,
-  const int* n_genes,
-  const int* n_samples,
-  const int* n_families,
-  int* ierr
-);
-
-void validate_string_array_uniqueness_C(
-  const char* str_arr,
-  const int* str_len,
-  const int* n_strings,
-  int* ierr
-);
-
-void validate_all_data_C(
-  const int* n_genes,
-  const int* n_families,
-  const int* n_samples,
-  const char* gene_ids_raw,
-  const int* gene_len,
-  const char* gene_family_ids_raw,
-  const int* fam_len,
-  const int* gene_to_fam,
-  const double* expression_vectors,
-  const double* family_centroids,
-  const double* shift_vectors,
-  int* ierr
-);
+  void compute_gene_means_c(
+    const double* expr,
+    const int* n_genes,
+    const int* n_reps,
+    double* means,
+    const int* max_n_genes_all_studies,
+    int* ierr
+  );
+  void compute_residuals_c(
+    const double* expr,
+    const int* n_genes,
+    const int* n_reps,
+    const double* means,
+    const int* max_n_genes_all_studies,
+    const int* max_n_reps_all_studies,
+    double* resid,
+    int* ierr
+  );
+  void determine_js_comp_test_n_points_n_neighbors_c(
+    int* n_points,
+    int* n_neighbors,
+    double* residuals,
+    int* max_n_reps_all_studies,
+    int* max_n_genes_all_studies,
+    double* shared_residual_range,
+    int* n_bins,
+    double* gene_means,
+    int* n_studies,
+    int* n_bootstraps,
+    double* best_candidate_pair_confidence_interval,
+    const char* join_method,
+    int* ierr,
+    const int* min_count_per_mean_bin,
+    double* min_neighbor_overlap,
+    double* succeeding_ci_overlap,
+    double* two_sided_bootstrapping_significance_level,
+    int* random_seed,
+    double* residual_range_quantile
+  );
+  void js_comp_test_c(
+    const double* gene_means,
+    const int* max_n_genes_all_studies,
+    const int* n_studies,
+    const double* residuals,
+    const double* shared_residual_range,
+    const int* n_bins,
+    const int* max_n_reps_all_studies,
+    double* x_star,
+    int* n_pool,
+    const int* n_points,
+    const int* n_neighbors,
+    int* neighborhood_ranges,
+    int* neighborhood_residuals,
+    double* pmfs,
+    int* counts,
+    int* included_n_reps,
+    double* mean_pmf,
+    int* mean_pmf_counts,
+    int* mean_pmf_included_n_reps,
+    double* js_divergences,
+    double* weights,
+    double* global_js_divergence,
+    double* p_values,
+    int* ierr,
+    const int* n_permutations,
+    const int* random_seed
+  );
+  void compute_edf_c(
+    const double* values,
+    const int* n_values,
+    double* unique_values,
+    double* cdf_values,
+    int* n_unique,
+    int* ierr
+  );
+  void compute_edf_expert_c(
+    const double* values,
+    const int* n_values,
+    const int* perm,
+    double* unique_values,
+    double* cdf_values,
+    int* n_unique,
+    int* ierr
+  );
+  void compute_all_contributions_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const int* factor_indices,
+    const int* n_selected_factors,
+    const int* dependent_indices,
+    const int* n_selected_dependents,
+    const char* mode,
+    double* local_contributions,
+    double* total_contributions,
+    double* temp_factors,
+    double* temp_dependent,
+    int* ierr
+  );
+  void compute_baselines_factor_dependent_c(
+    const double* factor,
+    const double* dependent,
+    const int* n_timepoints,
+    const char* mode,
+    double* factor_baseline,
+    double* dependent_baseline,
+    int* ierr
+  );
+  void compute_contributions_c(
+    const double* factor,
+    const double* dependent,
+    const int* n_dims,
+    const char* mode,
+    double* local_contributions,
+    double* total_contribution,
+    int* ierr
+  );
+  void perform_permutation_test_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const int* factor_idx,
+    const int* dependent_idx,
+    const int* sample_idx,
+    const char* mode,
+    const int* n_permutations,
+    double* local_contributions,
+    double* total_contributions,
+    double* temp_factor,
+    double* temp_dependent,
+    int* ierr,
+    const int* random_seed
+  );
+  void compute_p_values_c(
+    const double* local_contributions_observed,
+    const double* total_contribution_observed,
+    const double* local_contributions_perm,
+    const double* total_contributions_perm,
+    const int* n_timepoints,
+    const int* n_permutations,
+    double* local_p_values,
+    double* total_p_value,
+    int* ierr
+  );
+
+  void compute_velocity_trajectories_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* velocity,
+    int* ierr
+  );
+  void compute_acceleration_from_velocity_c(
+    const double* velocity,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* acceleration,
+    int* ierr
+  );
+  void compute_velocity_trajectory_c(
+    const double* trajectory,
+    const int* n_timepoints,
+    double* velocity,
+    int* ierr
+  );
+  void compute_acceleration_from_velocity_trajectory_c(
+    const double* velocity,
+    const int* n_timepoints,
+    double* acceleration,
+    int* ierr
+  );
+  void compute_velocity_acceleration_contributions_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const char* mode,
+    double* factor_workspace,
+    double* dependent_workspace,
+    double* contributions_workspace,
+    double* contrib_velocity,
+    double* velocity_contribution_series,
+    double* contrib_acceleration,
+    double* acceleration_contribution_series,
+    int* ierr
+  );
+  void compute_velocity_acceleration_contributions_alloc_c(
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    const char* mode,
+    double* contrib_velocity,
+    double* velocity_contribution_series,
+    double* contrib_acceleration,
+    double* acceleration_contribution_series,
+    int* ierr
+  );
+  void cluster_factor_trajectories_k_means_c(
+    const int* n_clusters,
+    const double* trajectories,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    double* centroids,
+    int* labels,
+    int* label_counts,
+    const int* max_iterations,
+    int* ierr
+  );
+
+  void k_means_clustering_c(
+    const int* n_clusters,
+    const double* data_points,
+    const int* n_points,
+    const int* n_dims,
+    double* centroids,
+    int* labels,
+    int* label_counts,
+    const int* max_iterations,
+    int* ierr
+  );
+
+  void linkage_clustering_c(
+    double* distances,
+    const int* n_points,
+    int* merge_i,
+    int* merge_j,
+    double* heights,
+    int* cluster_sizes,
+    const char* method,
+    int* ierr
+  );
+
+  void relative_axes_changes_from_shift_vector_c(
+    const double* vec,
+    const int* n_axes,
+    double* contributions,
+    int* ierr
+  );
+
+  void relative_axes_expression_from_expression_vector_c(
+    const double* vec,
+    const int* n_axes,
+    double* contributions,
+    int* ierr
+  );
+
+  void clock_hand_angle_between_vectors_c(
+    const double* v1,
+    const double* v2,
+    const int* n_dims,
+    double* signed_angle,
+    const int* selected_axes_for_signed,
+    int* ierr
+  );
+
+  void clock_hand_angles_for_shift_vectors_c(
+    const double* origins,
+    const double* targets,
+    const int* n_dims,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* selected_axes_for_signed,
+    double* signed_angles,
+    int* ierr
+  );
+
+  void omics_vector_RAP_projection_c(
+    const double* vecs,
+    const int* n_axes,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* axes_selection_mask,
+    const int* n_selected_axes,
+    double* projections,
+    int* ierr
+  );
+
+  void omics_field_RAP_projection_c(
+    const double* vecs,
+    const int* n_axes,
+    const int* n_vecs,
+    const int* vecs_selection_mask,
+    const int* n_selected_vecs,
+    const int* axes_selection_mask,
+    const int* n_selected_axes,
+    double* projections,
+    int* ierr
+  );
+
+  void normalize_by_std_dev_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void quantile_normalization_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    double* temp_col,
+    double* rank_means,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    const int* max_stack,
+    int* ierr
+  );
+
+  void log2_transformation_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void normalize_unit_length_c(
+    double* vector,
+    const int* n_dims,
+    int* ierr
+  );
+
+  void calc_tiss_avg_c(
+    const int* n_genes,
+    const int* n_grps,
+    const int* group_s,
+    const int* group_c,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void calc_fchange_c(
+    const int* n_genes,
+    const int* n_cols,
+    const int* n_pairs,
+    const int* control_cols,
+    const int* cond_cols,
+    const double* input_matrix,
+    double* output_matrix,
+    int* ierr
+  );
+
+  void normalization_pipeline_c(
+    const int* n_genes,
+    const int* n_tissues,
+    const double* input_matrix,
+    double* buf_stddev,
+    double* buf_quant,
+    double* buf_avg,
+    double* buf_log,
+    double* temp_col,
+    double* rank_means,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    const int* max_stack,
+    const int* group_s,
+    const int* group_c,
+    const int* n_grps,
+    int* ierr
+  );
+
+  void normalize_variable_timeseries_C(
+    const double* v,
+    double* v_norm,
+    const int* n_points,
+    int* ierr,
+    int* status
+  );
+
+  void normalize_single_trajectory_C(
+    const double* trajectory,
+    double* trajectory_norm,
+    const int* n_factors,
+    const int* n_timepoints,
+    int* ierr,
+    int* status
+  );
+
+  void normalize_all_trajectories_C(
+    const double* trajectories,
+    double* trajectories_norm,
+    const int* n_factors,
+    const int* n_samples,
+    const int* n_timepoints,
+    int* ierr,
+    int* status
+  );
+
+  void compute_family_scaling_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* dscale,
+    double* loess_x,
+    double* loess_y,
+    int* indices_used,
+    int* ierr
+  );
+
+  void compute_family_scaling_expert_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* dscale,
+    double* loess_x,
+    double* loess_y,
+    int* indices_used,
+    int* perm_tmp,
+    int* stack_left_tmp,
+    int* stack_right_tmp,
+    double* family_distances,
+    int* ierr
+  );
+
+  void compute_rdi_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    const double* dscale,
+    double* rdi,
+    double* sorted_rdi,
+    int* perm,
+    int* stack_left,
+    int* stack_right
+  );
+
+  void identify_outliers_c(
+    const int* n_genes,
+    const double* rdi,
+    const double* sorted_rdi,
+    int* is_outlier_int,
+    double* threshold,
+    const double* percentile
+  );
+
+  void detect_outliers_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* distances,
+    const int* gene_to_fam,
+    double* work_array,
+    int* perm,
+    int* stack_left,
+    int* stack_right,
+    int* is_outlier_int,
+    double* loess_x,
+    double* loess_y,
+    int* loess_n,
+    const double* percentile,
+    int* ierr
+  );
+
+  void euclidean_distance_c(
+    const double* vec1,
+    const double* vec2,
+    const int* d,
+    double* result
+  );
+
+  void distance_to_centroid_c(
+    const int* n_genes,
+    const int* n_families,
+    const double* genes,
+    const double* centroids,
+    const int* gene_to_fam,
+    double* distances,
+    const int* d
+  );
+
+  void compute_tissue_versatility_c(
+    const int* n_axes,
+    const int* n_vectors,
+    const double* expression_vectors,
+    const int* exp_vecs_selection_index,
+    const int* n_selected_vectors,
+    const int* axes_selection,
+    const int* n_selected_axes,
+    double* tissue_versatilities,
+    double* tissue_angles_deg,
+    int* ierr
+  );
+
+  void compute_shift_vector_field_c(
+    const int* d,
+    const int* n_genes,
+    const int* n_families,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const int* gene_to_centroid,
+    double* shift_vectors,
+    int* ierr
+  );
+
+
+  void detect_neofunctionalization_c(
+    const double* ancestors,
+    const int* n_families,
+    const double* genes,
+    const int* n_axes,
+    const int* gene_to_fam,
+    const int* n_genes,
+    const double* thresholds,
+    int* neofunc,
+    int* ierr
+  );
+
+  void mask_check_state_c(
+    const int* bit_mask,
+    const int* n_mask_chunks,
+    const int* i_gene,
+    int* state,
+    int* ierr
+  );
+
+  void mask_chunk_count_c(
+    const int* n_genes,
+    int* count,
+    int* ierr
+  );
+
+  void calc_work_arr_paralog_subsets_size(
+    const int* max_subset_size,
+    const int* n_genes,
+    int* work_array_size,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void filter_paralogs_by_pattern_dosage_effect(
+    const double* gene_angles,
+    const double* threshold,
+    const int* n_genes,
+    const int* n_families,
+    const int* gene_to_fam,
+    int* masks,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void filter_paralogs_by_pattern_subfunctionalization_c(
+    const double* gene_angles,
+    const double* threshold,
+    const int* n_genes,
+    const int* n_families,
+    const int* gene_to_fam,
+    int* masks,
+    const int* n_mask_chunks,
+    int* ierr
+  );
+
+  void detect_subfunctionalization_c(
+    const double* ancestor,
+    const double* genes,
+    const int* n_genes,
+    const int* n_dims,
+    const double* rdi_threshold,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* n_results,
+    const int* max_subset_size,
+    int* work_arr_paralog_subsets,
+    const int* n_paralog_subsets,
+    int* active_mask,
+    double* temp_paralog_vector,
+    const double* paralog_norms,
+    const int* sorted_paralog_norms_perm,
+    double* temp_work_array,
+    int* ierr
+  );
+
+  void detect_dosage_effect_c(
+    const double* ancestor,
+    const double* genes,
+    const int* n_genes,
+    const int* n_dims,
+    const int* filtered_paralogs_mask,
+    const int* n_mask_chunks,
+    int* n_results,
+    const int* max_subset_size,
+    int* work_arr_paralog_subsets,
+    const int* n_paralog_subsets,
+    int* active_mask,
+    double* temp_paralog_vector,
+    const double* max_angle,
+    const double* gain_gamma,
+    int* ierr
+  );
+
+  void mean_vector_c(
+    const double* expression_vectors,
+    const int* n_axes,
+    const int* n_genes,
+    const int* gene_indices,
+    const int* n_selected_genes,
+    double* centroid_col,
+    int* ierr
+  );
+
+  void group_centroid_c(
+    const double* expression_vectors,
+    const int* n_axes,
+    const int* n_genes,
+    const int* gene_to_family,
+    const int* n_families,
+    double* centroid_matrix,
+    const char* mode,
+    const int* ortholog_set,
+    int* selected_indices,
+    const int* selected_indices_len,
+    int* ierr
+  );
+
+  void build_kd_index_C(
+    const double* points,
+    const int* num_dimensions,
+    const int* num_points,
+    int* kd_indices,
+    const int* dimension_order,
+    int* workspace,
+    double* value_buffer,
+    int* permutation,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void which_c(
+    const int* mask,
+    const int* n,
+    int* idx_out,
+    const int* m_max,
+    int* m_out,
+    int* ierr
+  );
+
+  void loess_smooth_2d_c(
+    const int* n_total,
+    const int* n_target,
+    const double* x_ref,
+    const double* y_ref,
+    const int* indices_used,
+    int* n_used,
+    const double* x_query,
+    const double* kernel_sigma,
+    const double* kernel_cutoff,
+    double* y_out,
+    int* ierr
+  );
+
+  void deserialize_int_nd_C(
+    int* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_real_nd_C(
+    double* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_char_nd_C(
+    char* ascii_arr,
+    const int* clen,
+    const int* total_array_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_int_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_real_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_char_nd_C(
+    const char* ascii_arr,
+    const int* dims,
+    const int* ndim,
+    const int* clen,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_logical_nd_C(
+    int* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_logical_nd_C(
+    const int* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void serialize_complex_nd_C(
+    const void* arr,
+    const int* dims,
+    const int* ndim,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void deserialize_complex_nd_C(
+    void* arr,
+    const int* arr_size,
+    const char* filename_ascii,
+    const int* fn_len,
+    int* ierr
+  );
+
+  void get_array_metadata_C(
+    const char* filename_ascii,
+    const int* fn_len,
+    int* dims_out,
+    const int* dims_out_capacity,
+    int* ndims,
+    int* ierr,
+    int* clen
+  );
+
+  void build_bst_index_C(
+    const double* values,
+    const int* num_values,
+    int* sorted_indices,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void bst_range_query_C(
+    const double* values,
+    const int* sorted_indices,
+    const int* num_values,
+    const double* lower_bound,
+    const double* upper_bound,
+    int* output_indices,
+    int* num_matches,
+    int* ierr
+  );
+
+  void build_spherical_kd_C(
+    const double* vectors,
+    const int* num_dimensions,
+    const int* num_vectors,
+    int* sphere_indices,
+    const int* dimension_order,
+    int* workspace,
+    double* value_buffer,
+    int* permutation,
+    int* left_stack,
+    int* right_stack,
+    int* ierr
+  );
+
+  void read_expression_vectors_tsv_C(
+    const char* file_list_raw,
+    const int* file_list_len,
+    const int* n_files,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    double* expression_vectors,
+    const int* n_samples,
+    const int* n_header_rows,
+    const int* gene_col,
+    const int* value_cols,
+    const int* n_value_cols,
+    const char* delimiter_raw,
+    int* ierr
+  );
+
+  void read_gene_ids_from_tsv_file_C(
+    const char* filename_raw,
+    const int* fn_len,
+    char* gene_ids_raw,
+    int* gene_ids_len,
+    int* n_genes,
+    const int* n_header_rows,
+    const int* gene_col,
+    int* ierr
+  );
+
+  void read_orthofinder_file_C(
+    const char* filename_raw,
+    const int* fn_len,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    char* family_ids_raw,
+    int* family_ids_len,
+    int* n_families,
+    int* gene_to_fam,
+    int* ierr
+  );
+
+  void filter_unassigned_genes_C(
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const int* n_genes,
+    const int* gene_to_fam,
+    int* mask,
+    int* n_genes_kept,
+    int* ierr
+  );
+
+  void validate_data_structure_C(
+    const int* n_genes,
+    const int* n_families,
+    const int* n_samples,
+    const char* gene_ids_raw,
+    const int* gene_ids_len,
+    const char* gene_family_ids_raw,
+    const int* fam_len,
+    const int* gene_to_fam,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const double* shift_vectors,
+    int* ierr
+  );
+
+  void validate_gene_to_family_mapping_C(
+    const int* gene_to_fam,
+    const int* n_genes,
+    const int* n_families,
+    int* ierr
+  );
+
+  void validate_expression_data_C(
+    const double* expression_vectors,
+    const int* n_genes,
+    const int* n_samples,
+    const int* check_non_negative,
+    int* ierr
+  );
+
+  void validate_family_centroids_C(
+    const double* family_centroids,
+    const int* n_families,
+    const int* n_samples,
+    int* ierr
+  );
+
+  void validate_shift_vectors_C(
+    const double* shift_vectors,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const int* gene_to_fam,
+    const int* n_genes,
+    const int* n_samples,
+    const int* n_families,
+    int* ierr
+  );
+
+  void validate_string_array_uniqueness_C(
+    const char* str_arr,
+    const int* str_len,
+    const int* n_strings,
+    int* ierr
+  );
+
+  void validate_all_data_C(
+    const int* n_genes,
+    const int* n_families,
+    const int* n_samples,
+    const char* gene_ids_raw,
+    const int* gene_len,
+    const char* gene_family_ids_raw,
+    const int* fam_len,
+    const int* gene_to_fam,
+    const double* expression_vectors,
+    const double* family_centroids,
+    const double* shift_vectors,
+    int* ierr
+  );
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -1354,706 +1195,349 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes,
     return distances;
 }
 
-//' Determine shared residual range for JSD calculation (expert method)
+//' Calculate means of expression vectors for multiple studies
 //'
-//'@param residual_pool Numeric vector of residuals from both sets
-//'@param residual_pool_perm Integer vector for permutation of residual pool
-//'@param residual_range_quantile Double quantile to determine shared residual range (e.g.,95.0 for 95th percentile)
-//'@return List with shared residual range
+//' @param expr_list List of numeric matrices holding the per-gene expressions, one for each study
+//' @return List with matrix 'means', integers 'max_n_genes_all_studies' and 'max_n_reps_all_studies'
 // [[Rcpp::export]]
-List tox_determine_shared_residual_range_expert_rcpp(NumericVector residual_pool,
-                                                     IntegerVector residual_pool_perm,
-                                                     double residual_range_quantile = 95.0) {
+Rcpp::List compute_gene_means_rcpp(Rcpp::List expr_list) {
 
-    int pool_size = residual_pool.size();
-    double shared_R = 0.0;
-    int ierr = 0;
+    int n_studies = expr_list.size();
 
-    determine_shared_residual_range_expert_c(residual_pool.begin(),
-                                             residual_pool_perm.begin(),
-                                             &pool_size,
-                                             &residual_range_quantile,
-                                             &shared_R,
-                                             &ierr);
+    // Determine max dimensions across all studies
+    int max_n_genes_all_studies = 0;
+    int max_n_reps_all_studies  = 0;
 
-    return List::create(Named("shared_R") = shared_R,
-                        Named("ierr") = ierr);
-}
-
-//' Determine shared residual range for JSD calculation
-//'
-//'@param neighborhood_residuals_S1 Numeric vector of neighborhood residuals for set 1 (reps x neighbors x points)
-//'@param neighborhood_residuals_S2 Numeric vector of neighborhood residuals for set 2
-//'@param residual_range_quantile Double quantile to determine shared residual range (e.g.,95.0 for 95th percentile)
-//'@return List with shared residual range
-// [[Rcpp::export]]
-List tox_determine_shared_residual_range_rcpp(NumericVector neighborhood_residuals_S1,
-                                              NumericVector neighborhood_residuals_S2,
-                                              double residual_range_quantile = 95.0) {
-
-    IntegerVector dims = neighborhood_residuals_S1.attr("dim");
-    int n_reps_S1 = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-    dims = neighborhood_residuals_S2.attr("dim");
-    int n_reps_S2 = dims[0];
-
-    double shared_R = 0.0;
-    int ierr = 0;
-
-    determine_shared_residual_range_c(neighborhood_residuals_S1.begin(),
-                                      neighborhood_residuals_S2.begin(),
-                                      &n_reps_S1,
-                                      &n_reps_S2,
-                                      &n_neighbors,
-                                      &n_points,
-                                      &residual_range_quantile,
-                                      &shared_R,
-                                      &ierr);
-
-    return List::create(Named("shared_R") = shared_R,
-                        Named("ierr") = ierr);
-}
-
-//' Build residual histograms for JSD calculation
-//'
-//' @param neighborhood_residuals Numeric vector of neighborhood residuals (reps x neighbors x points)
-//' @param shared_residual_range Double maximum residual value to consider for histogram binning
-//' @param n_bins Integer number of histogram bins
-//' @return List with counts, pmf and included number of residuals
-// [[Rcpp::export]]
-List tox_build_residual_histograms_rcpp(NumericVector neighborhood_residuals,
-                                        double shared_residual_range,
-                                        int n_bins) {
-
-    IntegerVector dims = neighborhood_residuals.attr("dim");
-    int n_reps = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-
-    IntegerMatrix counts(n_points, n_bins);
-    NumericMatrix pmf(n_points, n_bins);
-    IntegerVector included_n_residuals(n_points);
-
-    int ierr = 0;
-
-    build_residual_histograms_c(neighborhood_residuals.begin(),
-                                &n_reps,
-                                &n_neighbors,
-                                &n_points,
-                                &shared_residual_range,
-                                &n_bins,
-                                counts.begin(),
-                                pmf.begin(),
-                                included_n_residuals.begin(),
-                                &ierr);
-
-    return List::create(Named("counts") = counts,
-                        Named("pmf") = pmf,
-                        Named("included_n_residuals") = included_n_residuals,
-                        Named("ierr") = ierr);
-}
-
-//' Build residual histograms for JSD calculation with neighbor filtering
-//'
-//' @param neighborhood_residuals Numeric vector of neighborhood residuals (reps x neighbors x points)
-//' @param shared_residual_range Double maximum residual value to consider for histogram binning
-//' @param n_bins Integer number of histogram bins
-//' @param neighbor_mask Integer vector indicating which neighbors to include (length should be equal to number of neighbors)
-//' @return List with counts, pmf and included number of residuals
-// [[Rcpp::export]]
-List tox_build_residual_histograms_filtered_rcpp(NumericVector neighborhood_residuals,
-                                                 double shared_residual_range,
-                                                 int n_bins,
-                                                 IntegerVector neighbor_mask) {
-
-    IntegerVector dims = neighborhood_residuals.attr("dim");
-    int n_reps = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-
-    IntegerMatrix counts(n_points, n_bins);
-    NumericMatrix pmf(n_points, n_bins);
-    IntegerVector included_n_residuals(n_points);
-
-    int ierr = 0;
-
-    build_residual_histograms_filtered_c(neighborhood_residuals.begin(),
-                                         &n_reps,
-                                         &n_neighbors,
-                                         &n_points,
-                                         &shared_residual_range,
-                                         &n_bins,
-                                         counts.begin(),
-                                         pmf.begin(),
-                                         included_n_residuals.begin(),
-                                         &ierr,
-                                         neighbor_mask.begin());
-
-    return List::create(Named("counts") = counts,
-                        Named("pmf") = pmf,
-                        Named("included_n_residuals") = included_n_residuals,
-                        Named("ierr") = ierr);
-}
-//' Compute JSD divergence per reference point
-//'
-//' @param pmf_S1 Numeric matrix of probability mass functions for set 1 (points x bins)
-//' @param pmf_S2 Numeric matrix of probability mass functions for set 2 (points x bins)
-//' @return List with JSD divergences per point
-// [[Rcpp::export]]
-List tox_compute_divergence_per_reference_point_rcpp(NumericMatrix pmf_S1,
-                                                     NumericMatrix pmf_S2) {
-
-    int n_points = pmf_S1.nrow();
-    int n_bins = pmf_S1.ncol();
-
-    NumericVector js_divergences(n_points);
-    int ierr = 0;
-
-    compute_divergence_per_reference_point_c(pmf_S1.begin(),
-                                             pmf_S2.begin(),
-                                             &n_points,
-                                             &n_bins,
-                                             js_divergences.begin(),
-                                             &ierr);
-
-    return List::create(Named("js_divergences") = js_divergences,
-                        Named("ierr") = ierr);
-}
-//' Compute weighted global JSD divergence
-//'
-//' @param js_divergences Numeric vector of JSD divergences per point
-//' @param included_n_residuals_S1 Integer vector of included residuals for set 1
-//' @param included_n_residuals_S2 Integer vector of included residuals for set 2
-//' @return List with global JSD divergence and weights
-// [[Rcpp::export]]
-List tox_compute_weighted_global_divergence_rcpp(NumericVector js_divergences,
-                                                 IntegerVector included_n_residuals_S1,
-                                                 IntegerVector included_n_residuals_S2) {
-    int n_points = js_divergences.size();
-
-    double global_jsd = 0.0;
-    NumericVector weights(n_points);
-    int ierr = 0;
-
-    compute_weighted_global_divergence_c(js_divergences.begin(),
-                                         &n_points,
-                                         included_n_residuals_S1.begin(),
-                                         included_n_residuals_S2.begin(),
-                                         &global_jsd,
-                                         weights.begin(),
-                                         &ierr);
-
-    return List::create(Named("global_js_divergence") = global_jsd,
-                        Named("weights") = weights,
-                        Named("ierr") = ierr);
-}
-//' Perform permutation test for global JSD divergence
-//'
-//'@param neighborhood_residuals_S1 Numeric vector of neighborhood residuals for set 1 (reps x neighbors x points)
-//'@param neighborhood_residuals_S2 Numeric vector of neighborhood residuals for set 2
-//'@param global_jsd_observed Double observed global JSD divergence
-//'@param n_bins Integer number of histogram bins
-//'@param shared_residual_range Double maximum residual value to consider for histogram binning
-//'@param n_permutations Integer number of permutations to perform
-//'@param random_seed Integer random seed for permutation reproducibility
-//'@return List with null distribution of JSD divergences and p-value
-// [[Rcpp::export]]
-List tox_gjct_permutation_test_rcpp(NumericVector neighborhood_residuals_S1,
-                                    NumericVector neighborhood_residuals_S2,
-                                    double global_jsd_observed,
-                                    int n_bins,
-                                    double shared_residual_range,
-                                    int n_permutations,
-                                    int random_seed) {
-
-    IntegerVector dims = neighborhood_residuals_S1.attr("dim");
-    int n_reps_S1 = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-    dims = neighborhood_residuals_S2.attr("dim");
-    int n_reps_S2 = dims[0];
-
-    NumericVector jsd_null(n_permutations);
-    double p_value = 0.0;
-    int ierr = 0;
-
-    gjct_permutation_test_c(neighborhood_residuals_S1.begin(),
-                            neighborhood_residuals_S2.begin(),
-                            &n_reps_S1,
-                            &n_reps_S2,
-                            &n_neighbors,
-                            &n_points,
-                            &global_jsd_observed,
-                            &n_bins,
-                            &shared_residual_range,
-                            &n_permutations,
-                            jsd_null.begin(),
-                            &p_value,
-                            &ierr,
-                            &random_seed);
-
-    return List::create(Named("jsd_null") = jsd_null,
-                        Named("p_value")  = p_value,
-                        Named("ierr")     = ierr);
-}
-//' Perform permutation test for global JSD divergence with neighbor filtering
-//'
-//'@param neighborhood_residuals_S1 Numeric vector of neighborhood residuals for set 1
-//'@param neighborhood_residuals_S2 Numeric vector of neighborhood residuals for set 2
-//'@param global_jsd_observed Double observed global JSD divergence
-//'@param n_bins Integer number of histogram bins
-//'@param shared_residual_range Double maximum residual value to consider for histogram binning
-//'@param n_permutations Integer number of permutations to perform
-//'@param random_seed Integer random seed for permutation reproducibility
-//'@param neighbor_mask_S1 Integer vector of neighbor indices for set 1
-//'@param neighbor_mask_S2 Integer vector of neighbor indices for set 2
-//'@return List with null distribution of JSD divergences and  p-value
-// [[Rcpp::export]]
-List tox_gjct_permutation_test_filtered_rcpp(NumericVector neighborhood_residuals_S1,
-                                             NumericVector neighborhood_residuals_S2,
-                                             double global_jsd_observed,
-                                             int n_bins,
-                                             double shared_residual_range,
-                                             int n_permutations,
-                                             IntegerVector neighbor_mask_S1,
-                                             IntegerVector neighbor_mask_S2,
-                                             int random_seed) {
-
-    IntegerVector dims = neighborhood_residuals_S1.attr("dim");
-    int n_reps_S1 = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-    dims = neighborhood_residuals_S2.attr("dim");
-    int n_reps_S2 = dims[0];
-
-    NumericVector jsd_null(n_permutations);
-    double p_value = 0.0;
-    int ierr = 0;
-
-    gjct_permutation_test_filtered_c(neighborhood_residuals_S1.begin(),
-                                     neighborhood_residuals_S2.begin(),
-                                     &n_reps_S1,
-                                     &n_reps_S2,
-                                     &n_neighbors,
-                                     &n_points,
-                                     &global_jsd_observed,
-                                     &n_bins,
-                                     &shared_residual_range,
-                                     &n_permutations,
-                                     jsd_null.begin(),
-                                     &p_value,
-                                     &ierr,
-                                     &random_seed,
-                                     neighbor_mask_S1.begin(),
-                                     neighbor_mask_S2.begin());
-
-    return List::create(Named("jsd_null") = jsd_null,
-                        Named("p_value")  = p_value,
-                        Named("ierr")     = ierr);
-}
-//' Calculate neighborhood size for JSD calculation
-//'
-//' @param n_pool Integer number of pooled genes to consider for neighborhood construction
-//' @param n_points Integer number of reference points
-//' @param n_genes_S Integer number of genes in the dataset
-//' @param mean_S Numeric vector of mean expression values for each gene
-//' @param desired_size Integer desired neighborhood size (if 0, the function will determine the optimal size)
-//' @return List with calculated neighborhood size
-// [[Rcpp::export]]
-List tox_calc_neighborhood_size_rcpp(int n_pool,
-                                     int n_points,
-                                     int n_genes_S,
-                                     NumericVector mean_S,
-                                     int desired_size = 0) {
-    int n_neighbors = 0;
-    int ierr = 0;
-
-    calc_neighborhood_size_c(&n_pool,
-                             &n_points,
-                             &n_genes_S,
-                             mean_S.begin(),
-                             &desired_size,
-                             &n_neighbors,
-                             &ierr);
-
-    return List::create(Named("n_neighbors") = n_neighbors,
-                        Named("ierr")        = ierr);
-}
-
-//' Construct neighborhoods for JSD calculation
-//'
-//' @param x_star Numeric vector of reference points
-//' @param n_pool Integer number of pooled genes to consider for neighborhood construction
-//' @param mean_S Numeric vector of mean expression values for each gene
-//' @param resid_S Numeric matrix of residuals for each gene and reference point
-//' @param desired_n_neighbors Integer desired neighborhood size (if 0, the function will determine the optimal size)
-//' @return List with constructed neighborhoods and error code
-// [[Rcpp::export]]
-List tox_construct_neighborhoods_rcpp(NumericVector x_star,
-                                      int n_pool,
-                                      NumericVector mean_S,
-                                      NumericMatrix resid_S,
-                                      int desired_n_neighbors = 0) {
-
-    int n_points  = x_star.size();
-    int n_genes_S = mean_S.size();
-    int n_reps_S  = resid_S.nrow();
-    int n_neighbors = 0;
-    int ierr = 0;
-
-    calc_neighborhood_size_c(&n_pool,
-                             &n_points,
-                             &n_genes_S,
-                             mean_S.begin(),
-                             &desired_n_neighbors,
-                             &n_neighbors,
-                             &ierr);
-
-    if (ierr != 0) {
-        NumericVector neigh_res(0);
-        IntegerMatrix neigh_idx(0, n_points);
-
-        return List::create(Named("neighborhood_residuals") = neigh_res,
-                            Named("neighborhood_indices")   = neigh_idx,
-                            Named("ierr")                   = ierr);
+    for (int s = 0; s < n_studies; ++s) {
+        Rcpp::NumericMatrix mat = expr_list[s];
+        max_n_reps_all_studies  = std::max(max_n_reps_all_studies,  mat.nrow());
+        max_n_genes_all_studies = std::max(max_n_genes_all_studies, mat.ncol());
     }
 
-    NumericVector neigh_res(n_reps_S * n_neighbors * n_points);
-    IntegerMatrix neigh_idx(n_neighbors, n_points);
+    // Output matrix: (max_n_genes_all_studies x n_studies)
+    Rcpp::NumericMatrix means(max_n_genes_all_studies, n_studies);
 
-    construct_neighborhoods_c(&n_points,
-                              x_star.begin(),
-                              &n_genes_S,
-                              mean_S.begin(),
-                              &n_reps_S,
-                              resid_S.begin(),
-                              neigh_res.begin(),
-                              neigh_idx.begin(),
-                              &n_neighbors,
-                              &ierr);
+    int ierr = 0;
 
-    neigh_res.attr("dim") = IntegerVector::create(
-        n_reps_S,
-        n_neighbors,
+    for (int s = 0; s < n_studies; ++s) {
+
+        Rcpp::NumericMatrix expr = expr_list[s];
+        int n_reps  = expr.nrow();
+        int n_genes = expr.ncol();
+
+        // Pointer to the start of column s in the output matrix
+        double* means_col = means.begin() + s * max_n_genes_all_studies;
+
+        compute_gene_means_c(
+            expr.begin(),
+            &n_genes,
+            &n_reps,
+            means_col,                     // direct slice
+            &max_n_genes_all_studies,
+            &ierr
+        );
+    }
+
+    return Rcpp::List::create(
+        Rcpp::Named("means") = means,
+        Rcpp::Named("max_n_genes_all_studies") = max_n_genes_all_studies,
+        Rcpp::Named("max_n_reps_all_studies") = max_n_reps_all_studies,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+//' Calculate residuals of expression vectors for multiple studies, using the output from 'compute_gene_means_rcpp'
+//'
+//' @param expr_list List of numeric matrices holding the per-gene expressions, one for each study
+//' @param means Numeric Matrix of gene means: nrow=max_n_genes_all_studies, ncol=n_studies
+//' @return List with 3D Integer vector 'residuals' (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+// [[Rcpp::export]]
+Rcpp::List compute_residuals_rcpp(
+    Rcpp::List expr_list,
+    Rcpp::NumericMatrix means,   // from compute_gene_means_rcpp
+    int max_n_reps_all_studies
+) {
+    int n_studies = expr_list.size();
+
+    // Determine max dimensions across all studies
+    int max_n_genes_all_studies = means.nrow();
+
+    // Allocate 3D output: (max_n_reps, max_n_genes, n_studies)
+    Rcpp::NumericVector resid(
+        max_n_reps_all_studies *
+        max_n_genes_all_studies *
+        n_studies
+    );
+
+    resid.attr("dim") = Rcpp::IntegerVector::create(
+        max_n_reps_all_studies,
+        max_n_genes_all_studies,
+        n_studies
+    );
+
+    int ierr = 0;
+
+    // Process each study
+    for (int s = 0; s < n_studies; ++s) {
+
+        Rcpp::NumericMatrix expr = expr_list[s];
+        int n_reps  = expr.nrow();
+        int n_genes = expr.ncol();
+
+        // Means slice for this study (column s)
+        double* means_col = means.begin() + s * max_n_genes_all_studies;
+
+        // Residuals slice for this study (3D block)
+        double* resid_slice =
+            resid.begin() +
+            s * (max_n_reps_all_studies * max_n_genes_all_studies);
+
+        compute_residuals_c(
+            expr.begin(),
+            &n_genes,
+            &n_reps,
+            means_col,
+            &max_n_genes_all_studies,
+            &max_n_reps_all_studies,
+            resid_slice,
+            &ierr
+        );
+    }
+
+    return Rcpp::List::create(
+        Rcpp::Named("residuals") = resid,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+//' Determine a good parameter set for the JSCompTest (js_comp_test_alloc_rcpp)
+//'
+//' @param residuals 3D Numeric Vector of residuals (max_n_reps, max_n_genes, n_studies) from 'compute_residuals_rcpp'
+//' @param gene_means 3D Numeric Vector of residuals from 'compute_residuals_rcpp' (max_n_genes, n_studies)
+//' @param n_bootstraps Number of bootstrapping iterations to perform to determine the confidence interval for a candidate
+//' @param join_method "min", "max", "median" -> Either the min-overlap of all studies' confidence intervals to a prior parameter canidate succeeds 'min_neighbor_overlap', or the max or median overlap
+//' @param min_count_per_mean_bin When summing all studies' neighborhood residual histogram bin counts for a parameter candidate, this is the minimum count it should exceed
+//' @param min_neighbor_overlap In a created neighborhood of residuals, how much overlap should exist between one and its successor
+//' @param succeeding_ci_overlap After applying the 'join_method', this is the final condition to make a parameter candidate succeed
+//' @param random_seed Integer used as random seed for random number generation in bootstrapping
+//' @param two_sided_bootstrapping_significance_level When performing bootstrapping, this is the two-sided significance level of all obtained bootstrap-values
+//' @param residual_range_quantile The quantile used for determining the shared residual range
+//' @return List with 'best_candidate_pair_confidence_interval' as the resulting interval from bootstrapping ([-1, -1] on fallback) and the determined parameters for 'js_comp_test_rcpp' -> 'n_points', 'n_neighbors', 'n_bins', 'shared_residual_range'
+// [[Rcpp::export]]
+Rcpp::List determine_js_comp_test_n_points_n_neighbors_rcpp(
+    Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
+    Rcpp::NumericMatrix gene_means,  // [max_n_genes, n_studies]
+    int n_bootstraps,
+    String join_method,         // "min", "max", "median"
+    int min_count_per_mean_bin = 5,
+    double min_neighbor_overlap = 0.1,
+    double succeeding_ci_overlap = 0.9,
+    int random_seed = 42,
+    double two_sided_bootstrapping_significance_level = 2.5,
+    double residual_range_quantile = 95.0
+) {
+    // dims(residuals) = [max_n_reps_all_studies, max_n_genes_all_studies, n_studies]
+    Rcpp::IntegerVector dims = residuals.attr("dim");
+    int max_n_reps_all_studies  = dims[0];
+    int max_n_genes_all_studies = dims[1];
+    int n_studies               = dims[2];
+
+    int n_points  = 0;
+    int n_neighbors = 0;
+    double shared_residual_range = 0.0;
+    int n_bins = 0;
+    int ierr = 0;
+
+    Rcpp::NumericMatrix best_ci(2, n_studies);
+
+    determine_js_comp_test_n_points_n_neighbors_c(
+        &n_points,
+        &n_neighbors,
+        residuals.begin(),
+        &max_n_reps_all_studies,
+        &max_n_genes_all_studies,
+        &shared_residual_range,
+        &n_bins,
+        gene_means.begin(),
+        &n_studies,
+        &n_bootstraps,
+        best_ci.begin(),
+        join_method.get_cstring(),
+        &ierr,
+        &min_count_per_mean_bin,
+        &min_neighbor_overlap,
+        &succeeding_ci_overlap,
+        &two_sided_bootstrapping_significance_level,
+        &random_seed,
+        &residual_range_quantile
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("n_points") = n_points,
+        Rcpp::Named("n_neighbors") = n_neighbors,
+        Rcpp::Named("shared_residual_range") = shared_residual_range,
+        Rcpp::Named("n_bins") = n_bins,
+        Rcpp::Named("best_candidate_pair_confidence_interval") = best_ci,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+//' Determine a good parameter set for the JSCompTest (js_comp_test_alloc_rcpp)
+//'
+//' @param residuals 3D Numeric Vector of residuals (max_n_reps, max_n_genes, n_studies) from 'compute_residuals_rcpp'
+//' @param gene_means 3D Numeric Vector of residuals from 'compute_residuals_rcpp' (max_n_genes, n_studies)
+//' @param shared_residual_range Positive Number defining the interval [-R, R] the residuals will be clamped
+//' @param n_bins Number specifying the number of histogram bins used for 
+//' @param n_points Number of reference points used to create residual neighborhoods
+//' @param n_neighbors Number of neighbors per reference point used to create residual neighborhoods
+//' @param n_permutations Number of permutations the permutation test should execute
+//' @param random_seed Integer used as random seed for random number generation in bootstrapping
+//' @return List with
+//'            x_star: The per-point value the neighborhood residuals surround
+//'            n_pool: The number of residuals included in calculations (non-NaNs)
+//'            neighborhood_ranges: The range of genes a neighborhood spans. It may be larger than the neighborhood size, as genes with same mean expression will be included in this range.
+//'            neighborhood_residuals: Integer Matrix (n_neighbors, n_points) representing the neighborhoods by gene indices
+//'            counts: per-point Histogram counts of the neighborhoods
+//'            pmfs: per-point normalized histogram counts -> probabilities
+//'            included_n_reps: per-study, per-point number of included residuals in the histogram
+//'            mean_pmf_counts: Summed counts across all studies
+//'            mean_pmf: normalized mean pmf counts
+//'            mean_pmf_included_n_reps: Summed included_n_reps across studies
+//'            js_divergences: per-study, per-point Jensen-Shannon Divergences (JSD)
+//'            global_js_divergence: per-study global JSD
+//'            weights: per-study per-point fractional global JSD contribution
+//'            p_values: Result of the permutation test that means how much percent of reshuffles of the neighborhood residuals are worse, to get a confidence in how much the global JSD is explained by randomness.
+//'            ierr: Error code, zero if OK
+// [[Rcpp::export]]
+Rcpp::List js_comp_test_rcpp(
+    Rcpp::NumericVector residuals,   // 3D: [max_n_reps, max_n_genes, n_studies]
+    Rcpp::NumericMatrix gene_means,  // [max_n_genes, n_studies]
+    double shared_residual_range,
+    int n_bins,
+    int n_points,
+    int n_neighbors,
+    int n_permutations = 1000,
+    int random_seed = 42
+) {
+    // dims(residuals) = [max_n_reps_all_studies, max_n_genes_all_studies, n_studies]
+    Rcpp::IntegerVector dims = residuals.attr("dim");
+    int max_n_reps_all_studies  = dims[0];
+    int max_n_genes_all_studies = dims[1];
+    int n_studies               = dims[2];
+
+    // Outputs
+    Rcpp::NumericVector x_star(n_points);
+    int n_pool = 0;
+
+    Rcpp::IntegerVector neighborhood_ranges(
+        2 * n_points * n_studies
+    );
+    neighborhood_ranges.attr("dim") =
+        Rcpp::IntegerVector::create(2, n_points, n_studies);
+
+    Rcpp::IntegerVector neighborhood_residuals(
+        n_neighbors * n_points * n_studies
+    );
+    neighborhood_residuals.attr("dim") =
+        Rcpp::IntegerVector::create(n_neighbors, n_points, n_studies);
+
+    Rcpp::NumericVector pmfs(
+        n_bins * n_points * n_studies
+    );
+    pmfs.attr("dim") =
+        Rcpp::IntegerVector::create(n_bins, n_points, n_studies);
+
+    Rcpp::IntegerVector counts(
+        n_bins * n_points * n_studies
+    );
+    counts.attr("dim") =
+        Rcpp::IntegerVector::create(n_bins, n_points, n_studies);
+
+    Rcpp::IntegerVector included_n_reps(
+        n_points * n_studies
+    );
+    included_n_reps.attr("dim") =
+        Rcpp::IntegerVector::create(n_points, n_studies);
+
+    Rcpp::NumericVector mean_pmf(
+        n_bins * n_points
+    );
+    mean_pmf.attr("dim") =
+        Rcpp::IntegerVector::create(n_bins, n_points);
+
+    Rcpp::IntegerVector mean_pmf_counts(
+        n_bins * n_points
+    );
+    mean_pmf_counts.attr("dim") =
+        Rcpp::IntegerVector::create(n_bins, n_points);
+
+    Rcpp::IntegerVector mean_pmf_included_n_reps(
         n_points
     );
 
-    return List::create(Named("neighborhood_residuals") = neigh_res,
-                        Named("neighborhood_indices")   = neigh_idx,
-                        Named("ierr")                   = ierr);
-}
-//' Compute gene means for JSD calculation
-//'
-//' @param expr Numeric matrix of gene expression values (replicates x genes)
-//' @return List with gene means 
-// [[Rcpp::export]]
-List tox_compute_gene_means_rcpp(NumericMatrix expr) {
+    Rcpp::NumericVector js_divergences(
+        n_points * n_studies
+    );
+    js_divergences.attr("dim") =
+        Rcpp::IntegerVector::create(n_points, n_studies);
 
-    int n_reps  = expr.nrow();
-    int n_genes = expr.ncol();
+    Rcpp::NumericVector weights(
+        n_points * n_studies
+    );
+    weights.attr("dim") =
+        Rcpp::IntegerVector::create(n_points, n_studies);
 
-    NumericVector means(n_genes);
-    int ierr = 0;
-
-    compute_gene_means_c(&n_genes,
-                         &n_reps,
-                         expr.begin(),
-                         means.begin(),
-                         &ierr);
-
-    return List::create(Named("means") = means,
-                        Named("ierr")  = ierr);
-}
-
-//' Compute residuals for JSD calculation
-//'
-//' @param expr Numeric matrix of gene expression values (replicates x genes)
-//' @param means Numeric vector of gene means (length equal to number of genes)
-//' @return List with residuals matrix 
-// [[Rcpp::export]]
-List tox_compute_residuals_rcpp(NumericMatrix expr,
-                                NumericVector means) {
-
-    int n_reps  = expr.nrow();
-    int n_genes = expr.ncol();
-
-    NumericMatrix resid(n_reps, n_genes);
-    int ierr = 0;
-
-    compute_residuals_c(&n_genes,
-                        &n_reps,
-                        expr.begin(),
-                        means.begin(),
-                        resid.begin(),
-                        &ierr);
-
-    return List::create(Named("resid") = resid,
-                        Named("ierr")  = ierr);
-}
-//' Calculate pooled means for JSD calculation
-//'@param mean_S1 Numeric vector of gene means for set 1
-//'@param mean_S2 Numeric vector of gene means for set 2
-//'@param n_points Integer number of reference points to calculate
-//'@return List with pooled means 
-// [[Rcpp::export]]
-List tox_pool_means_rcpp(NumericVector mean_S1,
-                         NumericVector mean_S2,
-                         int n_points) {
-
-    int n_genes_S1 = mean_S1.size();
-    int n_genes_S2 = mean_S2.size();
-
-    NumericVector x_star(n_points);
-    int n_pool = 0;
-    int ierr = 0;
-
-    pool_means_c(&n_genes_S1,
-                 mean_S1.begin(),
-                 &n_genes_S2,
-                 mean_S2.begin(),
-                 &n_points,
-                 &n_pool,
-                 x_star.begin(),
-                 &ierr);
-
-    return List::create(Named("n_pool") = n_pool,
-                        Named("x_star") = x_star,
-                        Named("ierr")   = ierr);
-}
-
-//' Calculate pooled means for JSD calculation using expert method
-//'
-//'@param pooled_means Numeric vector of pooled means (length equal to number of reference points)
-//'@param pooled_perm Integer vector for permutation of pooled means
-//'@param n_points Integer number of reference points to calculate
-//'@return List with pooled means
-// [[Rcpp::export]]
-List tox_pool_means_expert_rcpp(NumericVector pooled_means,
-                                IntegerVector pooled_perm,
-                                int n_points) {
-
-    NumericVector x_star(n_points);
-    int pool_size = pooled_means.size();
-    int n_pool = 0;
-    int ierr = 0;
-
-    pool_means_expert_c(pooled_means.begin(),
-                        pooled_perm.begin(),
-                        &pool_size,
-                        &n_points,
-                        &n_pool,
-                        x_star.begin(),
-                        &ierr);
-
-    return List::create(Named("n_pool") = n_pool,
-                        Named("x_star") = x_star,
-                        Named("ierr")   = ierr);
-}
-//' Compute JSD divergences for each reference point and global JSD divergence
-//'
-//' @param family_idx Integer index of the gene family being analyzed
-//' @param gene_to_family_S1 Integer vector mapping each gene in set 1 to its family
-//' @param gene_to_family_S2 Integer vector mapping each gene in set 2 to its family
-//' @param neighborhood_residuals_S1 Numeric vector of neighborhood residuals for set 1 (reps x neighbors x points)
-//' @param neighborhood_residuals_S2 Numeric vector of neighborhood residuals for set 2 (reps x neighbors x points)
-//' @param neighborhood_genes_S1 Integer matrix of gene indices for neighborhoods in set 1 (neighbors x points)
-//' @param neighborhood_genes_S2 Integer matrix of gene indices for neighborhoods in set 2 (neighbors x points)
-//' @param n_bins Integer number of histogram bins for JSD calculation
-//' @param shared_residual_range Double maximum residual value to consider for histogram binning
-//' @return List with JSD divergences per point, included number of replicates, total included replicates, global JSD divergence, weights, and error code
-// [[Rcpp::export]]
-List tox_fjct_compute_jsd_alloc_rcpp(int family_idx,
-                                     IntegerVector gene_to_family_S1,
-                                     IntegerVector gene_to_family_S2,
-                                     NumericVector neighborhood_residuals_S1,
-                                     NumericVector neighborhood_residuals_S2,
-                                     IntegerMatrix neighborhood_genes_S1,
-                                     IntegerMatrix neighborhood_genes_S2,
-                                     int n_bins,
-                                     double shared_residual_range) {
-
-    IntegerVector dims = neighborhood_residuals_S1.attr("dim");
-    int n_reps_S1 = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-    dims = neighborhood_residuals_S2.attr("dim");
-    int n_reps_S2 = dims[0];
-    NumericVector jsd(n_points);
-    IntegerVector inc1(n_points);
-    IntegerVector inc2(n_points);
-    int n_genes_S1 = gene_to_family_S1.size();
-    int n_genes_S2 = gene_to_family_S2.size();
-    int total_included = 0;
-    double global_jsd = 0.0;
-    NumericVector weights(n_points);
-    int ierr = 0;
-
-    fjct_compute_jsd_c(&family_idx,
-                       gene_to_family_S1.begin(),
-                       gene_to_family_S2.begin(),
-                       &n_genes_S1,
-                       &n_genes_S2,
-                       neighborhood_residuals_S1.begin(),
-                       neighborhood_residuals_S2.begin(),
-                       neighborhood_genes_S1.begin(),
-                       neighborhood_genes_S2.begin(),
-                       &n_reps_S1,
-                       &n_reps_S2,
-                       &n_neighbors,
-                       &n_points,
-                       &n_bins,
-                       &shared_residual_range,
-                       jsd.begin(),
-                       inc1.begin(),
-                       inc2.begin(),
-                       &total_included,
-                       &global_jsd,
-                       weights.begin(),
-                       &ierr);
-
-    return List::create(Named("js_divergences") = jsd,
-                        Named("included_n_reps_S1") = inc1,
-                        Named("included_n_reps_S2") = inc2,
-                        Named("total_included_n_reps") = total_included,
-                        Named("global_js_divergence") = global_jsd,
-                        Named("weights") = weights,
-                        Named("ierr") = ierr);
-}
-
-//' Compute JSD divergences for each reference point and global JSD divergence using expert method
-//'
-//' @param neighborhood_residuals_S1 Numeric vector of neighborhood residuals for set 1 (reps x neighbors x points)
-//' @param neighborhood_residuals_S2 Numeric vector of neighborhood residuals for set 2 (reps x neighbors x points)
-//' @param neighbor_mask_S1 Integer matrix of neighbor masks for set 1 (neighbors x points)
-//' @param neighbor_mask_S2 Integer matrix of neighbor masks for set 2 (neighbors x points)
-//' @param n_bins Integer number of histogram bins for JSD calculation
-//' @param shared_residual_range Double maximum residual value to consider for histogram binning
-//' @return List with JSD divergences per point, included number of replicates, total included replicates, global JSD divergence and weights
-// [[Rcpp::export]]
-List tox_fjct_compute_jsd_expert_rcpp(NumericVector neighborhood_residuals_S1,
-                                      NumericVector neighborhood_residuals_S2,
-                                      IntegerMatrix neighbor_mask_S1,
-                                      IntegerMatrix neighbor_mask_S2,
-                                      int n_bins,
-                                      double shared_residual_range) {
-
-    IntegerVector dims = neighborhood_residuals_S1.attr("dim");
-    int n_reps_S1 = dims[0];
-    int n_neighbors = dims[1];
-    int n_points = dims[2];
-    dims = neighborhood_residuals_S2.attr("dim");
-    int n_reps_S2 = dims[0];
-    NumericVector jsd(n_points);
-    IntegerVector inc1(n_points);
-    IntegerVector inc2(n_points);
-    int total_included = 0;
-    double global_jsd = 0.0;
-    NumericVector weights(n_points);
-
-    NumericMatrix pmf_S1(n_points, n_bins);
-    NumericMatrix pmf_S2(n_points, n_bins);
-    IntegerMatrix tmp_counts(n_points, n_bins);
+    Rcpp::NumericVector global_js_divergence(n_studies);
+    Rcpp::NumericVector p_values(n_studies);
 
     int ierr = 0;
 
-    fjct_compute_jsd_expert_c(neighborhood_residuals_S1.begin(),
-                              neighborhood_residuals_S2.begin(),
-                              &n_reps_S1,
-                              &n_reps_S2,
-                              &n_neighbors,
-                              &n_points,
-                              neighbor_mask_S1.begin(),
-                              neighbor_mask_S2.begin(),
-                              &n_bins,
-                              &shared_residual_range,
-                              jsd.begin(),
-                              inc1.begin(),
-                              inc2.begin(),
-                              &total_included,
-                              &global_jsd,
-                              weights.begin(),
-                              pmf_S1.begin(),
-                              pmf_S2.begin(),
-                              tmp_counts.begin(),
-                              &ierr);
+    js_comp_test_c(
+        gene_means.begin(),
+        &max_n_genes_all_studies,
+        &n_studies,
+        residuals.begin(),
+        &shared_residual_range,
+        &n_bins,
+        &max_n_reps_all_studies,
+        x_star.begin(),
+        &n_pool,
+        &n_points,
+        &n_neighbors,
+        neighborhood_ranges.begin(),
+        neighborhood_residuals.begin(),
+        pmfs.begin(),
+        counts.begin(),
+        included_n_reps.begin(),
+        mean_pmf.begin(),
+        mean_pmf_counts.begin(),
+        mean_pmf_included_n_reps.begin(),
+        js_divergences.begin(),
+        weights.begin(),
+        global_js_divergence.begin(),
+        p_values.begin(),
+        &ierr,
+        &n_permutations,
+        &random_seed
+    );
 
-    return List::create(Named("js_divergences") = jsd,
-                        Named("included_n_reps_S1") = inc1,
-                        Named("included_n_reps_S2") = inc2,
-                        Named("total_included_n_reps") = total_included,
-                        Named("global_js_divergence") = global_jsd,
-                        Named("weights") = weights,
-                        Named("pmf_S1") = pmf_S1,
-                        Named("pmf_S2") = pmf_S2,
-                        Named("tmp_counts") = tmp_counts,
-                        Named("ierr") = ierr);
-}
-
-//' Compute contribution scores for each family based on global JSD divergences and included replicates
-//'
-//' @param global_js_divergences Numeric vector of global JSD divergences for each family
-//' @param total_included_n_reps_per_f Integer vector of total included replicates for each family
-//' @return List with support weights and contribution scores
-// [[Rcpp::export]]
-List tox_fjct_compute_contribution_scores_rcpp(NumericVector global_js_divergences,
-                                               IntegerVector total_included_n_reps_per_f) {
-
-    int k_families = global_js_divergences.size();
-    NumericVector support_weights(k_families);
-    NumericVector contribution_scores(k_families);
-    int ierr = 0;
-
-    fjct_compute_contribution_scores_c(global_js_divergences.begin(),
-                                       total_included_n_reps_per_f.begin(),
-                                       &k_families,
-                                       support_weights.begin(),
-                                       contribution_scores.begin(),
-                                       &ierr);
-
-    return List::create(Named("support_weights") = support_weights,
-                        Named("contribution_scores") = contribution_scores,
-                        Named("ierr") = ierr);
-}
-
-
-
-//' Calculate Tissue Versatility
-//'
-//' @param expression_vectors Numeric matrix of expression vectors (axes x vectors)
-//' @param vector_selection Integer vector indicating selected vectors
-//' @param axis_selection Integer vector indicating selected axes
-//' @return List with tissue versatilities, angles, and selection counts
-// [[Rcpp::export]]
-List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
-                                           IntegerVector vector_selection,
-                                           IntegerVector axis_selection) {
-
-    int n_axes = expression_vectors.nrow();
-    int n_vectors = expression_vectors.ncol();
-    int n_selected_vectors = sum(vector_selection);
-    int n_selected_axes = sum(axis_selection);
-
-    NumericVector tissue_versatilities(n_selected_vectors);
-    NumericVector tissue_angles_deg(n_selected_vectors);
-    int ierr = 0;
-
-    compute_tissue_versatility_c(&n_axes,
-                                 &n_vectors,
-                                 expression_vectors.begin(),
-                                 vector_selection.begin(),
-                                 &n_selected_vectors,
-                                 axis_selection.begin(),
-                                 &n_selected_axes,
-                                 tissue_versatilities.begin(),
-                                 tissue_angles_deg.begin(),
-                                 &ierr);
-
-    return List::create(Named("tissue_versatilities") = tissue_versatilities,
-                        Named("tissue_angles_deg") = tissue_angles_deg,
-                        Named("n_selected_vectors") = n_selected_vectors,
-                        Named("n_selected_axes") = n_selected_axes,
-                        Named("ierr") = ierr);
+    return Rcpp::List::create(
+        Rcpp::Named("x_star") = x_star,
+        Rcpp::Named("n_pool") = n_pool,
+        Rcpp::Named("neighborhood_ranges") = neighborhood_ranges,
+        Rcpp::Named("neighborhood_residuals") = neighborhood_residuals,
+        Rcpp::Named("pmfs") = pmfs,
+        Rcpp::Named("counts") = counts,
+        Rcpp::Named("included_n_reps") = included_n_reps,
+        Rcpp::Named("mean_pmf") = mean_pmf,
+        Rcpp::Named("mean_pmf_counts") = mean_pmf_counts,
+        Rcpp::Named("mean_pmf_included_n_reps") = mean_pmf_included_n_reps,
+        Rcpp::Named("js_divergences") = js_divergences,
+        Rcpp::Named("weights") = weights,
+        Rcpp::Named("global_js_divergence") = global_js_divergence,
+        Rcpp::Named("p_values") = p_values,
+        Rcpp::Named("ierr") = ierr
+    );
 }
 
 

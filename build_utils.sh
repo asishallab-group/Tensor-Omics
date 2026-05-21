@@ -1,3 +1,32 @@
+function init() {
+  ALIGN=$(get_alignment)
+
+  # handle_args overwrites:
+  # ALIGN if --align=<align> specified
+  # FC if --fc=<compiler> specified
+  handle_args "$@"
+
+  # --compiler beats global $COMPILER beats --fc beats global $FC
+  COMPILER=$(get_compiler)
+  if [[ -z $(which $COMPILER) ]]; then
+    stderr "$COMPILER not installed"
+    exit
+  fi
+  FLAGS=$(get_flags)
+}
+
+function utils_fpm() {
+  declare prefix="fpm build"
+  declare libpath="$LD_LIBRARY_PATH"
+  if [[ "$1" == "test" ]]; then
+    prefix="fpm test --target ${2:-run_tests}"
+    libpath=build:"$libpath"
+  elif [[ "$1" == "list" ]]; then
+    prefix="fpm build --list"
+  fi
+  LD_LIBRARY_PATH="$libpath" $prefix --compiler $COMPILER --flag "$FLAGS $DIRECTIVES" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" --flag "$MAX_PERF_FLAG" -- $ARGS
+}
+
 function get_alignment() {
   ALIGN=32
   # Detect capabilities in order of descending priority:
@@ -13,40 +42,42 @@ function get_alignment() {
   echo $ALIGN
 }
 
+# gets compiler from context, it uses
+# 1. $COMPILER if defined (by --compiler)
+# 2. else $FC
+# falls back to gfortran if the set compiler is not known
 function get_compiler() {
+  declare compiler=${COMPILER:-$FC}
+  declare default=gfortran
+
   # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
+  if [[ "$compiler" == "ifx" || "$compiler" == "ifort" ]]; then
     echo ifx
-  elif [[ "$FC" == "nvfortran" ]]; then
+  elif [[ "$compiler" == "nvfortran" ]]; then
     echo nvfortran
   else
-    echo gfortran
+    if [[ $compiler ]]; then
+      if [[ $compiler != "$default" ]]; then
+        stderr "Compiler '$compiler' not officially supported by Tensor Omics, trying '$default' instead"
+      fi
+    else
+      stderr "No compiler specified, using '$default'. To specify the compiler, use --compiler=<compiler> or the env variables \$FC, \$COMPILER"
+    fi
+    echo $default
   fi
 }
 
 function get_flags() {
-  # Libraries
-  echo -en "-lzip -lxxhash "
+  # Libraries: greps the libraries from .fpm.toml and translates them from '"<lib>"' to '-l<lib>'
+  printf "%s" "$(grep -oP 'link = \[\K.*\]' .fpm.toml)" | sed 's/ //g; s/"/-l/g; s/-l,/ /g; s/-l]/ /g;'
 
   # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
+  if [[ "$COMPILER" == "ifx" || "$COMPILER" == "ifort" ]]; then
     echo "-O2 -fopenmp-target-do-concurrent -warn all -diag-enable=all -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  elif [[ "$FC" == "nvfortran" ]]; then
+  elif [[ "$COMPILER" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
     echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
-  fi
-}
-
-function get_module_flag() {
-  if [[ $1 ]]; then
-    if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-      echo "-module $1"
-    elif [[ "$FC" == "nvfortran" ]]; then
-      echo "-module $1"
-    else
-      echo "-J$1"
-    fi
   fi
 }
 
@@ -54,6 +85,7 @@ function handle_args() {
   MAX_PERF_FLAG=""
   ARGS=""
   DIRECTIVES=""
+  
   for arg in "$@"; do
     if [[ "$arg" == "--max-performance" ]]; then
       MAX_PERF_FLAG="-DMAX_PERFORMANCE"
@@ -62,65 +94,19 @@ function handle_args() {
     # genericly handle optional flags
     elif [[ "$arg" == --* ]]; then
       declare undashed=${arg:2}
-      declare key=${undashed%=*}
-      declare val=${undashed##$key}
-      if [[ ! $val ]];then val=1;fi
+      declare key=${undashed%%=*}
+      # extract value after first '=' if present, else set to 1
+      declare val=$(echo "$undashed" | sed 's/^'$key'\(=\(.*\)\?\)\?/\2/g')
+      : ${val:=1}
       declare -g "$(echo "$key" | sed 's/\W/_/g; s/\w/\U&/g')=$val"
     else
       ARGS="$ARGS $arg"
     fi
   done
-
-  # if extra directives are added, a clean build is necessary. Otherwise fpm doesn't recompile
-  if [[ $DIRECTIVES ]]; then
-    CLEAN_BUILD=1
-  fi
 }
 
 function stderr() {
   echo "$@" >&2
-}
-
-function check_build() {
-  if [[ "$@" ]]; then
-    missing=()
-    for c in "$@"; do
-      if [[ ! $(find build -name "$c") ]]; then
-        missing+=(" '$c'")
-      fi
-    done
-    if [[ "$missing" ]]; then
-      stderr "Missing files:$(IFS=', ';echo "${missing[*]}")"
-      return 1
-    fi
-  fi
-
-  mod_count=$(find build -name "*.mod" | wc -l)
-  obj_count=$(find build -name "*.o" | wc -l) 
-  so_count=$(find build -name "*.so" | wc -l)
-
-  if [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod files"
-    return 2
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o files"
-    return 3
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o and .so files"
-    return 4
-  elif [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .so files"
-    return 5
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .o files"
-    return 6
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .o and .so files"
-    return 7
-  elif [ ! $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .so files"
-    return 8
-  fi
 }
 
 function check_exit_code() {

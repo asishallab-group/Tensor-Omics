@@ -18,7 +18,6 @@ Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
 * **Robust to sparsity and noise**: percentile-based empirical thresholds and local geometric measures enable stability.
 * **Broad applications**: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.
 
-
 *Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.*
 
 ---

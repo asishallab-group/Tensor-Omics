@@ -145,6 +145,17 @@ def test_detect_neofunctionalization():
                          [False, False]], dtype=bool, order="F")
     assert np.array_equal(neofunc, expected), "Case 2 output mismatch"
 
+    # -------------------------------
+    # Case 3: Input validation
+    # -------------------------------
+    try:
+        tox_detect_neofunctionalization(ancestors[1:0], genes, gene_to_fam, thresholds)
+        assert False, "Empty ancestor should fail"
+    except AssertionError as e:
+        raise e
+    except RuntimeError:
+        pass
+
     print("✅ Neofunctionalization passed.")
 
 
