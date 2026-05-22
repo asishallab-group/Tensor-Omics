@@ -3403,37 +3403,40 @@ List tox_build_spherical_kd_rcpp(NumericMatrix V,
 
 //' Calculate reading of expression vectors from TSV files
 //'
-//' @param file_list_raw Raw matrix of filenames (one per column) for TSV files to read
-//' @param gene_ids_raw Raw matrix of gene IDs to match against the TSV files
+//' @param file_list CharacterVector of filenames for TSV files to read
+//' @param gene_ids CharacterVector of gene IDs to match against the TSV files
 //' @param value_cols Integer vector of column indices in the TSV files that contain expression values
-//' @param delimiter_raw Raw vector specifying the delimiter used in the TSV files
+//' @param delimiter String specifying the delimiter used in the TSV files
 //' @param n_samples Integer specifying the expected number of samples (rows) in the TSV files
 //' @param n_header_rows Integer specifying the number of header rows to skip in the TSV files
 //' @param gene_col Integer specifying the column index in the TSV files that contains gene IDs
 //' @return List with expression vector matrix and error code from reading function
 // [[Rcpp::export]]
-List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
-                                         RawMatrix gene_ids_raw,
+List tox_read_expression_vectors_tsv_rcpp(CharacterVector file_list,
+                                         CharacterVector gene_ids,
                                          IntegerVector value_cols,
-                                         RawVector delimiter_raw,
+                                         Rcpp::String delimiter,
                                          int n_samples,
                                          int n_header_rows,
                                          int gene_col) {
 
-    int file_list_len = file_list_raw.nrow();
-    int n_files = file_list_raw.ncol();
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
+    int max_filename_len = get_max_string_length(file_list);
+    std::vector<char> file_list_C = r_to_c_CharacterVector(file_list, max_filename_len);
+    int n_files = file_list.size();
+
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+    int n_genes = gene_ids.size();
     int n_value_cols = value_cols.size();
 
     NumericMatrix expression_vectors(n_samples, n_genes);
     int ierr = 0;
 
-    read_expression_vectors_tsv_c(reinterpret_cast<const char*>(file_list_raw.begin()),
-                                  &file_list_len,
+    read_expression_vectors_tsv_c(file_list_C.data(),
+                                  &max_filename_len,
                                   &n_files,
-                                  reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                                  &gene_ids_len,
+                                  gene_ids_C.data(),
+                                  &max_gene_id_len,
                                   &n_genes,
                                   expression_vectors.begin(),
                                   &n_samples,
@@ -3441,7 +3444,7 @@ List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
                                   &gene_col,
                                   value_cols.begin(),
                                   &n_value_cols,
-                                  reinterpret_cast<const char*>(delimiter_raw.begin()),
+                                  delimiter.get_cstring(),
                                   &ierr);
 
     return List::create(Named("expression_vectors") = expression_vectors,
@@ -3450,107 +3453,112 @@ List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
 
  //' Calculate reading of gene IDs from TSV files, returning a raw matrix of gene IDs and an error code
  //'
- //' @param filename_raw Raw vector specifying the filename of the TSV file to read
+ //' @param filename String specifying the filename of the TSV file to read
  //' @param n_genes Integer specifying the expected number of genes (columns) in the TSV
  //' @param gene_ids_len Integer specifying the maximum length of gene IDs (rows) to read from the TSV file
  //' @param n_header_rows Integer specifying the number of header rows to skip in the TSV file 
  //' @param gene_col Integer specifying the column index in the TSV file that contains gene IDs
  //' @return List with raw matrix of gene IDs and error code from reading function         
 // [[Rcpp::export]]
-List tox_read_gene_ids_from_tsv_file_rcpp(RawVector filename_raw,
+List tox_read_gene_ids_from_tsv_file_rcpp(Rcpp::String filename,
                                          int n_genes,
                                          int gene_ids_len,
                                          int n_header_rows,
                                          int gene_col) {
 
-    RawMatrix gene_ids_raw(gene_ids_len, n_genes);
-    std::fill(gene_ids_raw.begin(), gene_ids_raw.end(), static_cast<Rbyte>(0));
+    std::vector<char> gene_ids_C(gene_ids_len * n_genes, '\0');
 
     int ierr = 0;
-    int fn_len = filename_raw.size();
+    int fn_len = strlen(filename.get_cstring());
 
-    read_gene_ids_from_tsv_file_c(reinterpret_cast<const char*>(filename_raw.begin()),
+    read_gene_ids_from_tsv_file_c(filename.get_cstring(),
                                   &fn_len,
-                                  reinterpret_cast<char*>(gene_ids_raw.begin()),
+                                  gene_ids_C.data(),
                                   &gene_ids_len,
                                   &n_genes,
                                   &n_header_rows,
                                   &gene_col,
                                   &ierr);
 
-    return List::create(Named("gene_ids_raw") = gene_ids_raw,
+    CharacterVector gene_ids_R = c_to_r_CharacterVector(gene_ids_C, n_genes, gene_ids_len);
+
+    return List::create(Named("gene_ids") = gene_ids_R,
                         Named("ierr") = ierr);
 }
 
 //' Calculate reading of OrthoFinder output files to extract family IDs and gene-to-family mappings
 //'
-//' @param filename_raw Raw vector specifying the filename of the OrthoFinder output file to read
-//' @param gene_ids_raw Raw matrix of gene IDs to match against the OrthoFinder output file
+//' @param filename Rcpp::String specifying the filename of the OrthoFinder output file to read
+//' @param gene_ids CharacterVector of gene IDs to match against the OrthoFinder output file
 //' @param n_families Integer specifying the expected number of families (columns) in the OrthoFinder output file
-//' @param family_ids_len Integer specifying the maximum length of family IDs (rows) to read from the OrthoFinder output file
+//' @param max_family_id_len Integer specifying the maximum length of family IDs (rows) to read from the OrthoFinder output file
 //' @return List with raw matrix of family IDs, integer vector mapping genes to families, and error code from reading function
 // [[Rcpp::export]]
-List tox_read_orthofinder_file_rcpp(RawVector filename_raw,
-                                   RawMatrix gene_ids_raw,
+List tox_read_orthofinder_file_rcpp(Rcpp::String filename,
+                                   CharacterVector gene_ids,
                                    int n_families,
-                                   int family_ids_len) {
+                                   int max_family_id_len) {
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
 
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
-
-    RawMatrix family_ids_raw(family_ids_len, n_families);
-    std::fill(family_ids_raw.begin(), family_ids_raw.end(), static_cast<Rbyte>(0));
-    IntegerVector gene_to_fam(n_genes);
+    std::vector<char> family_ids_C(max_family_id_len * n_families, '\0');
+    IntegerVector gene_to_fam(n_gene_ids);
     int ierr = 0;
-    int fn_len = filename_raw.size();
+    int fn_len = strlen(filename.get_cstring());
 
-    read_orthofinder_file_c(reinterpret_cast<const char*>(filename_raw.begin()),
+    read_orthofinder_file_c(filename.get_cstring(),
                             &fn_len,
-                            reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                            &gene_ids_len,
-                            &n_genes,
-                            reinterpret_cast<char*>(family_ids_raw.begin()),
-                            &family_ids_len,
+                            gene_ids_C.data(),
+                            &max_gene_id_len,
+                            &n_gene_ids,
+                            family_ids_C.data(),
+                            &max_family_id_len,
                             &n_families,
                             gene_to_fam.begin(),
                             &ierr);
 
-    return List::create(Named("family_ids_raw") = family_ids_raw,
+    CharacterVector family_ids_R = c_to_r_CharacterVector(family_ids_C, n_families, max_family_id_len);
+
+    return List::create(Named("family_ids") = family_ids_R,
                         Named("gene_to_fam") = gene_to_fam,
                         Named("ierr") = ierr);
 }
 
 //' Calculate validation of data structure for gene IDs, family IDs, gene-to-family mappings, expression vectors, family centroids, and shift vectors
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to validate
-//' @param gene_family_ids_raw Raw matrix of family IDs to validate
+//' @param gene_ids CharacterVector of gene IDs to validate
+//' @param gene_family_ids CharacterVector of family IDs to validate
 //' @param gene_to_fam Integer vector mapping genes to families to validate
 //' @param expression_vectors Numeric matrix of expression vectors to validate
 //' @param family_centroids Numeric matrix of family centroids to validate
 //' @param shift_vectors Numeric matrix of shift vectors to validate
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_data_structure_rcpp(RawMatrix gene_ids_raw,
-                                     RawMatrix gene_family_ids_raw,
+int tox_validate_data_structure_rcpp(CharacterVector gene_ids,
+                                     CharacterVector gene_family_ids,
                                      IntegerVector gene_to_fam,
                                      NumericMatrix expression_vectors,
                                      NumericMatrix family_centroids,
                                      NumericMatrix shift_vectors) {
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
 
-    int n_genes = gene_ids_raw.ncol();
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_families = gene_family_ids_raw.ncol();
-    int fam_len = gene_family_ids_raw.nrow();
+    int max_gene_family_id_len = get_max_string_length(gene_family_ids);
+    int n_gene_families = gene_family_ids.size();
+    std::vector<char> gene_family_ids_C = r_to_c_CharacterVector(gene_family_ids, max_gene_family_id_len);
+
     int n_samples = expression_vectors.nrow();
     int ierr = 0;
 
-    validate_data_structure_c(&n_genes,
-                             &n_families,
+    validate_data_structure_c(&n_gene_ids,
+                             &n_gene_families,
                              &n_samples,
-                             reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                             &gene_ids_len,
-                             reinterpret_cast<const char*>(gene_family_ids_raw.begin()),
-                             &fam_len,
+                             gene_ids_C.data(),
+                             &max_gene_id_len,
+                             gene_family_ids_C.data(),
+                             &max_gene_family_id_len,
                              gene_to_fam.begin(),
                              expression_vectors.begin(),
                              family_centroids.begin(),
@@ -3562,23 +3570,25 @@ int tox_validate_data_structure_rcpp(RawMatrix gene_ids_raw,
 
 //' Calculate filtering of unassigned genes based on gene IDs and gene-to-family mappings
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to filter
+//' @param gene_ids CharacterVector of gene IDs to filter
 //' @param gene_to_fam Integer vector mapping genes to families to use for filtering
 //' @return List with integer mask indicating which genes are assigned to families, number of genes kept after filtering, and error code from filtering function
 // [[Rcpp::export]]
 
-List tox_filter_unassigned_genes_rcpp(RawMatrix gene_ids_raw,
+List tox_filter_unassigned_genes_rcpp(CharacterVector gene_ids,
                                       IntegerVector gene_to_fam) {
 
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
-    IntegerVector mask(n_genes);
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+
+    IntegerVector mask(n_gene_ids);
     int n_genes_kept = 0;
     int ierr = 0;
 
-    filter_unassigned_genes_c(reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                              &gene_ids_len,
-                              &n_genes,
+    filter_unassigned_genes_c(gene_ids_C.data(),
+                              &max_gene_id_len,
+                              &n_gene_ids,
                               gene_to_fam.begin(),
                               mask.begin(),
                               &n_genes_kept,
@@ -3678,17 +3688,18 @@ int tox_validate_shift_vectors_rcpp(NumericMatrix shift_vectors,
 
 //' Calculate validation of string array uniqueness based on raw matrix of strings, checking for duplicates
 //'
-//' @param string_arr_raw Raw matrix of strings to validate for uniqueness
+//' @param string_arr CharacterVector of strings to validate for uniqueness
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_string_array_uniqueness_rcpp(RawMatrix string_arr_raw) {
+int tox_validate_string_array_uniqueness_rcpp(CharacterVector string_arr) {
 
-    int str_len = string_arr_raw.nrow();
-    int n_strings = string_arr_raw.ncol();
+    int max_string_len = get_max_string_length(string_arr);
+    int n_strings = string_arr.size();
+    std::vector<char> string_arr_C = r_to_c_CharacterVector(string_arr, max_string_len);
     int ierr = 0;
 
-    validate_string_array_uniqueness_c(reinterpret_cast<const char*>(string_arr_raw.begin()),
-                                       &str_len,
+    validate_string_array_uniqueness_c(string_arr_C.data(),
+                                       &max_string_len,
                                        &n_strings,
                                        &ierr);
 
@@ -3697,35 +3708,38 @@ int tox_validate_string_array_uniqueness_rcpp(RawMatrix string_arr_raw) {
 
 //' Calculate validation of all data components together, including gene IDs, family IDs, gene-to-family mappings, expression vectors, family centroids, and shift vectors
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to validate
-//' @param gene_family_ids_raw Raw matrix of family IDs to validate
+//' @param gene_ids CharacterVector of gene IDs to validate
+//' @param gene_family_ids CharacterVector of family IDs to validate
 //' @param gene_to_fam Integer vector mapping genes to families to validate
 //' @param expression_vectors Numeric matrix of expression vectors to validate
 //' @param family_centroids Numeric matrix of family centroids to validate
 //' @param shift_vectors Numeric matrix of shift vectors to validate
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_all_data_rcpp(RawMatrix gene_ids_raw,
-                               RawMatrix gene_family_ids_raw,
+int tox_validate_all_data_rcpp(CharacterVector gene_ids,
+                               CharacterVector gene_family_ids,
                                IntegerVector gene_to_fam,
                                NumericMatrix expression_vectors,
                                NumericMatrix family_centroids,
                                NumericMatrix shift_vectors) {
 
-    int n_genes = gene_ids_raw.ncol();
-    int gene_len = gene_ids_raw.nrow();
-    int n_families = gene_family_ids_raw.ncol();
-    int fam_len = gene_family_ids_raw.nrow();
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_genes = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+
+    int max_gene_family_id_len = get_max_string_length(gene_family_ids);
+    int n_gene_families = gene_family_ids.size();
+    std::vector<char> gene_family_ids_C = r_to_c_CharacterVector(gene_family_ids, max_gene_family_id_len);
     int n_samples = expression_vectors.nrow();
     int ierr = 0;
 
     validate_all_data_c(&n_genes,
-                        &n_families,
+                        &n_gene_families,
                         &n_samples,
-                        reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                        &gene_len,
-                        reinterpret_cast<const char*>(gene_family_ids_raw.begin()),
-                        &fam_len,
+                        gene_ids_C.data(),
+                        &max_gene_id_len,
+                        gene_family_ids_C.data(),
+                        &max_gene_family_id_len,
                         gene_to_fam.begin(),
                         expression_vectors.begin(),
                         family_centroids.begin(),

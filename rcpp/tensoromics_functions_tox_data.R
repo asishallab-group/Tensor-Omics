@@ -9,71 +9,12 @@ lib_path <- shQuote(normalizePath("build"))
 Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
 
 # Compile and load all TensorOmics Rcpp wrapper functions (includes error_handling.cpp)
-sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv, cacheDir = "rcpp/rcpp_cache")
+tox_validate_gene_to_family_mapping_rcpp
 
-
-cat("✓ TensorOmics Rcpp functions loaded successfully\n")
+cat("✓ TensorOmics Rcpp Tox Data functions loaded successfully\n")
 
 source("rcpp/error_handling.R")
-
-
-
-# Helper functions for string to raw conversions
-strings_to_raw_matrix <- function(arr, clen) {
-  n <- length(arr)
-  # Create a matrix of raw bytes with dimensions clen x n
-  mat <- matrix(raw(1), nrow = clen, ncol = n)
-  for (i in seq_along(arr)) {
-    # Convert string to raw bytes
-    raw_bytes <- charToRaw(arr[i])
-    length_bytes <- length(raw_bytes)
-    if (length_bytes > 0) {
-      # Copy raw bytes into matrix
-      mat[1:min(length_bytes, clen), i] <- raw_bytes[1:min(length_bytes, clen)]
-    }
-    # Note: No null termination needed - Fortran handles this
-  }
-  mat  # Return the raw matrix
-}
-
-# Helper function for raw to string conversion
-raw_matrix_to_strings <- function(raw_mat, clen) {
-  # raw_mat: raw matrix with dimensions clen x n
-  if (is.null(dim(raw_mat))) {
-    # 1D vector: convert to matrix with one column
-    raw_mat <- matrix(raw_mat, nrow = clen)
-  }
-  n <- ncol(raw_mat)
-  strings <- character(n)
-  for (i in seq_len(n)) {
-    raw_vec <- raw_mat[, i]
-    # Find first null byte (if any)
-    null_pos <- which(raw_vec == as.raw(0))
-    if (length(null_pos) > 0) {
-      end_pos <- min(null_pos[1] - 1, length(raw_vec))
-    } else {
-      end_pos <- length(raw_vec)
-    }
-    if (end_pos > 0) {
-      strings[i] <- rawToChar(raw_vec[1:end_pos])
-    } else {
-      strings[i] <- ""
-    }
-  }
-  strings
-}
-
-# Helper function for string to raw conversion
-string_to_raw <- function(s, len) {
-  raw_bytes <- charToRaw(s)
-  if (length(raw_bytes) < len) {
-    # Pad with zeros if needed (Fortran will handle null termination)
-    raw_bytes <- c(raw_bytes, raw(1))
-    length(raw_bytes) <- len
-    raw_bytes[is.na(raw_bytes)] <- as.raw(0)
-  }
-  raw_bytes[1:len]  # Ensure exact length
-}
 
 #> tox_data_read_write:read_gene_ids_from_tsv_file_c: Read gene ids from a tsv file
 #' Read gene IDs from a TSV file (R wrapper)
@@ -84,11 +25,9 @@ string_to_raw <- function(s, len) {
 #' @param gene_col Column index for gene IDs
 #' @return List with gene_ids (character vector) and ierr
 read_gene_ids_from_tsv_file <- function(filename, n_genes, gene_ids_len, n_header_rows, gene_col) {
-  filename_raw <- charToRaw(filename)
-  res <- tox_read_gene_ids_from_tsv_file_rcpp(filename_raw, n_genes, gene_ids_len, n_header_rows, gene_col)
-  gene_ids <- raw_matrix_to_strings(res$gene_ids_raw, gene_ids_len)
+  res <- tox_read_gene_ids_from_tsv_file_rcpp(filename, n_genes, gene_ids_len, n_header_rows, gene_col)
   check_err_code(res$ierr)
-  list(gene_ids = gene_ids, ierr = res$ierr)
+  return(res)
 }
 
 #> tox_data_read_write:read_expression_vectors_tsv_c: Read expression vectors from given tabular (csv/tsv) files
@@ -103,20 +42,17 @@ read_gene_ids_from_tsv_file <- function(filename, n_genes, gene_ids_len, n_heade
 #' @return List with expression_vectors (matrix) and ierr
 read_expression_vectors_tsv <- function(file_list, gene_ids, n_samples, n_header_rows, gene_col, value_cols, delimiter = "\t") {
   # Convert file_list and gene_ids to raw matrices
-  file_list_raw <- strings_to_raw_matrix(file_list, max(nchar(file_list)))
-  gene_ids_raw <- strings_to_raw_matrix(gene_ids, max(nchar(gene_ids)))
-  delimiter_raw <- charToRaw(delimiter)
   res <- tox_read_expression_vectors_tsv_rcpp(
-    file_list_raw,
-    gene_ids_raw,
+    file_list,
+    gene_ids,
     as.integer(value_cols),
-    delimiter_raw,
+    delimiter,
     as.integer(n_samples),
     as.integer(n_header_rows),
     as.integer(gene_col)
   )
   check_err_code(res$ierr)
-  list(expression_vectors = res$expression_vectors, ierr = res$ierr)
+  return(res)
 }
 
 #> tox_data_read_write:read_orthofinder_file_c: Read an orthofinder family file and map genes to families
@@ -138,11 +74,7 @@ read_orthofinder_file <- function(filename, gene_ids, n_families, family_len) {
   result <- tox_read_orthofinder_file_rcpp(filename, gene_ids, n_families, family_len)
 
   check_err_code(result$ierr)
-  list(
-    family_ids = raw_matrix_to_strings(result$family_ids_raw, family_raw_len),
-    gene_to_fam = result$gene_to_fam,
-    ierr = result$ierr
-  )
+  return(result)
 }
 
 #> tox_data_tools:filter_unassigned_genes_c: Filter out genes that are not assigned to any family (where gene_to_fam == 0).
@@ -168,10 +100,6 @@ filter_unassigned_genes <- function(gene_ids, expression_vectors, gene_to_fam) {
     n_genes_kept = n_genes_kept
   )
 }
-
-
-# R wrappers for validation routines (via C bindings)
-# Uses raw conversion helpers: strings_to_raw_matrix, raw_matrix_to_strings
 
 #> tox_data_validation:validate_data_structure_c: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.
 #' Validate overall data structure
@@ -205,50 +133,40 @@ validate_data_structure <- function(n_genes, n_families, n_samples, d,
                                     family_centroids, shift_vectors)
 
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_gene_to_family_mapping_c: Validate gene to family mapping
 #' Validate gene to family mapping
 #' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)
-#' @param n_genes Number of genes
-#' @param n_families Number of gene families
-validate_gene_to_family_mapping <- function(gene_to_fam, n_genes, n_families) {
-  ierr <- tox_validate_gene_to_family_mapping_rcpp(gene_to_fam, n_genes, n_families)
+#' @param n_families Number of families
+validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
+  ierr <- tox_validate_gene_to_family_mapping_rcpp(gene_to_fam, n_families)
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_expression_data_c: Validate expression data
 #' Validate expression data
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
-#' @param n_genes Number of genes
-#' @param n_samples Number of samples
 #' @param check_non_negative Logical flag to check for non-negative values
-validate_expression_data <- function(expression_vectors, n_genes, n_samples, check_non_negative = TRUE) {
+validate_expression_data <- function(expression_vectors, check_non_negative = TRUE) {
   expr_matrix <- as.matrix(expression_vectors)
 
-  ierr <- tox_validate_expression_data_rcpp(expression_vectors, 
-  n_genes, n_samples, check_non_negative)
+  ierr <- tox_validate_expression_data_rcpp(expression_vectors, check_non_negative)
 
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_family_centroids_c: Validate family centroids, checks for NaN/Inf
 #' Validate family centroids
 #' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)
-#' @param n_families Number of gene families
-#' @param n_samples Number of samples
-validate_family_centroids <- function(family_centroids, n_families, n_samples) {
+validate_family_centroids <- function(family_centroids) {
   fam_matrix <- as.matrix(family_centroids)
-  ierr <- tox_validate_family_centroids_rcpp(
-    family_centroids,
-    n_families,
-    n_samples
-  )
+  ierr <- tox_validate_family_centroids_rcpp(family_centroids)
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_shift_vectors_c: Validate shift vectors, checks if datatypes are correct and if the general structure matches
@@ -257,8 +175,7 @@ validate_family_centroids <- function(family_centroids, n_families, n_samples) {
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
 #' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)
 #' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)
-#' @param n_samples Number of samples
-validate_shift_vectors <- function(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples) {
+validate_shift_vectors <- function(shift_vectors, expression_vectors, family_centroids, gene_to_fam) {
   expr_matrix <- as.matrix(expression_vectors)
   fam_matrix <- as.matrix(family_centroids)
   shift_matrix <- as.matrix(shift_vectors)
@@ -266,61 +183,48 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
   n_genes <- ncol(expr_matrix)
   n_families <- ncol(fam_matrix)
 
-  ierr <- tox_validate_shift_vectors_rcpp(shift_vectors, 
-  expression_vectors, family_centroids, gene_to_fam, n_samples)
+  ierr <- tox_validate_shift_vectors_rcpp(shift_vectors, expression_vectors, family_centroids, gene_to_fam)
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_string_array_uniqueness_c: Validate uniqueness of strings
 #' Validate uniqueness of string array
 #' @param string_arr Character vector of gene IDs
-#' @param n_strings Number of genes
 #' Note: Uses hashset internally which may increase memory usage temporarily for large datasets
-validate_string_array_uniqueness <- function(string_arr, n_strings) {
-  n_strings <- as.integer(n_strings)
-
-  ierr <- tox_validate_string_array_uniqueness_rcpp(string_arr, n_strings)
+validate_string_array_uniqueness <- function(string_arr) {
+  ierr <- tox_validate_string_array_uniqueness_rcpp(string_arr)
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 #> tox_data_validation:validate_all_data_c: Comprehensive validation of all data components. This function performs all individual validations in one go.
 #' Validate all data components together
-#' @param n_genes Number of genes
-#' @param n_families Number of gene families
-#' @param n_samples Number of samples
 #' @param gene_ids Character vector of gene IDs
 #' @param gene_family_ids Character vector of gene family IDs
 #' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)
 #' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
 #' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)
 #' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)
-validate_all_data <- function(n_genes, n_families, n_samples,
-                              gene_ids, gene_family_ids,
+validate_all_data <- function(gene_ids, gene_family_ids,
                               gene_to_fam, expression_vectors,
                               family_centroids, shift_vectors) {
-  n_genes    <- as.integer(n_genes)
-  n_families <- as.integer(n_families)
-  n_samples  <- as.integer(n_samples)
-
   expr_matrix <- as.matrix(expression_vectors)
   fam_matrix <- as.matrix(family_centroids)
   shift_matrix <- as.matrix(shift_vectors)
 
-  ierr <- tox_validate_all_data_rcpp(n_genes, n_families, n_samples,
-                              gene_ids, gene_family_ids,
+  ierr <- tox_validate_all_data_rcpp(gene_ids, gene_family_ids,
                               gene_to_fam, expression_vectors,
                               family_centroids, shift_vectors)
 
   check_err_code(ierr)
-  list(ierr = ierr)
+  return(ierr)
 }
 
 
 #> tox_data_archive:create_zip_archive_c: Low-level function to create zip archive from keys and filenames.
 create_zip_archive <- function(zip_filename, keys, filenames) {
-  stop("Zip archive helpers have been removed. Use an external zip tool instead.")
+  # stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
 
 #> f42_helper: Save tox data to zip archive
@@ -338,30 +242,26 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 #' @param family_centroids_name Filename for family centroids in the archive
 #' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)
 #' @param shift_vectors_name Filename for shift vectors in the archive
+#' @param debug Specifying whether to print status messages or not
 save_tox_data <- function(zip_filename,
                                  gene_ids = NULL, gene_ids_name = NULL,
                                  expression_vectors = NULL, expression_vectors_name = NULL,
                                  gene_to_fam = NULL, gene_to_fam_name = NULL,
                                  family_ids = NULL, family_ids_name = NULL,
                                  family_centroids = NULL, family_centroids_name = NULL,
-                                 shift_vectors = NULL, shift_vectors_name = NULL) {
+                                 shift_vectors = NULL, shift_vectors_name = NULL, debug = TRUE) {
   
  
   # Validation moved to error_handling.R
   validate_non_empty_string(zip_filename)
-  validate_character_vector(gene_ids)
-  validate_numeric_matrix(expression_vectors)
-  validate_integer_vector(gene_to_fam)
-  validate_character_vector(family_ids)
-  validate_numeric_matrix(family_centroids)
-  validate_numeric_matrix(shift_vectors)
     
     # Write files to temporary directory
   temp_files <- character(0)
   keys <- character(0)
   filenames <- character(0)
   
-  if (gene_ids_array_valid && gene_ids_name_valid) {
+  if (!is.null(gene_ids)) {
+    validate_character_vector(gene_ids)
     tox_serialize_char_array(gene_ids, gene_ids_name)
     if(debug) {message(paste("Wrote gene IDs to", gene_ids_name))}
     temp_files <- c(temp_files, gene_ids_name)
@@ -369,7 +269,8 @@ save_tox_data <- function(zip_filename,
     filenames <- c(filenames, gene_ids_name)
   }
 
-  if (expression_vectors_array_valid && expression_vectors_name_valid) {
+  if (!is.null(expression_vectors)) {
+    validate_numeric_matrix(expression_vectors)
     tox_serialize_real_array(expression_vectors, expression_vectors_name)
     if(debug) {message(paste("Wrote expression vectors to", expression_vectors_name))}
     temp_files <- c(temp_files, expression_vectors_name)
@@ -377,7 +278,8 @@ save_tox_data <- function(zip_filename,
     filenames <- c(filenames, expression_vectors_name)
   }
   
-  if (gene_to_fam_array_valid && gene_to_fam_name_valid) {
+  if (!is.null(gene_to_fam)) {
+    validate_integer_vector(gene_to_fam)
     tox_serialize_int_array(gene_to_fam, gene_to_fam_name)
     if(debug) {message(paste("Wrote gene to family to", gene_to_fam_name))}
     temp_files <- c(temp_files, gene_to_fam_name)
@@ -385,7 +287,8 @@ save_tox_data <- function(zip_filename,
     filenames <- c(filenames, gene_to_fam_name)
   }
   
-  if (family_ids_array_valid && family_ids_name_valid) {
+  if (!is.null(family_ids)) {
+    validate_character_vector(family_ids)
     tox_serialize_char_array(family_ids, family_ids_name)
     if(debug) {message(paste("Wrote family IDs to", family_ids_name))}
     temp_files <- c(temp_files, family_ids_name)
@@ -393,7 +296,8 @@ save_tox_data <- function(zip_filename,
     filenames <- c(filenames, family_ids_name)
   }
   
-  if (family_centroids_array_valid && family_centroids_name_valid) {
+  if (!is.null(family_centroids)) {
+    validate_numeric_matrix(family_centroids)
     tox_serialize_real_array(family_centroids, family_centroids_name)
     if(debug){ message(paste("Wrote family centroids to", family_centroids_name))}
     temp_files <- c(temp_files, family_centroids_name)
@@ -401,7 +305,8 @@ save_tox_data <- function(zip_filename,
     filenames <- c(filenames, family_centroids_name)
   }
   
-  if (shift_vectors_array_valid && shift_vectors_name_valid) {
+  if (!is.null(shift_vectors)) {
+    validate_numeric_matrix(shift_vectors)
     tox_serialize_real_array(shift_vectors, shift_vectors_name)
     if(debug) { message(paste("Wrote shift vectors to", shift_vectors_name))}
     temp_files <- c(temp_files, shift_vectors_name)
@@ -442,12 +347,12 @@ read_tox_data <- function(zip_filename,
                           family_ids = NULL,
                           family_centroids = NULL,
                           shift_vectors = NULL) {
-  stop("Zip archive helpers have been removed. Use an external zip tool instead.")
+  # stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
 
 #> tox_data_archive:extract_zip_archive_c: Extract a zip archive created by create_zip_archive
 extract_zip_archive <- function(zip_filename) {
-  stop("Zip archive helpers have been removed. Use an external zip tool instead.")
+  # stop("Zip archive helpers have been removed. Use an external zip tool instead.")
 }
 
 
