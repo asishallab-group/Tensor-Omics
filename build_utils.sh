@@ -31,8 +31,8 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  rm -f build/cache.toml  # can cause issues, but doesn't affect compilation when missing
   LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
 }
 
 # gets compiler from context, it uses

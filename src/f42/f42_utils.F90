@@ -769,7 +769,9 @@ contains
     !| Sorts indirectly using the permutation vector `perm`. Uses `heapify_real` to maintain heap property.
     pure subroutine heapsort_real(array, perm, n_arr, n_perm)
         integer(int32), intent(in) :: n_arr
+            !! Size of `arr`
         integer(int32), intent(in) :: n_perm
+            !! Size of `perm`
         real(real64), intent(in) :: array(n_arr)
             !! Real input array to sort
         integer(int32), intent(inout) :: perm(n_perm)
@@ -838,7 +840,9 @@ contains
     !| Indirectly sorts `array` using `perm`, same algorithm as `heapsort_real`.
     pure subroutine heapsort_integer(array, perm, n_arr, n_perm)
         integer(int32), intent(in) :: n_arr
+            !! Size of `arr`
         integer(int32), intent(in) :: n_perm
+            !! Size of `perm`
         integer(int32), intent(in) :: array(n_arr)
             !! Integer input array to sort
         integer(int32), intent(inout) :: perm(n_perm)
@@ -914,7 +918,9 @@ contains
     !| Lexicographic heapsort using string comparison, indirect via `perm`.
     pure subroutine heapsort_character(array, perm, n_arr, n_perm)
         integer(int32), intent(in) :: n_arr
+            !! Size of `arr`
         integer(int32), intent(in) :: n_perm
+            !! Size of `perm`
         character(len=*), intent(in)    :: array(n_arr)
             !! Character input array to sort
         integer(int32), intent(inout) :: perm(n_perm)
