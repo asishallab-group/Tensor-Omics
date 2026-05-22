@@ -132,6 +132,7 @@ test_character_serialization <- function() {
   arr1c <- sprintf("%0*d", clen, 1:10)
   tox_serialize_char_array(arr1c, fn("char1d.test.bin"))
   deserialized_arr1c <- tox_deserialize_char_array(fn("char1d.test.bin"))
+
   assert_true(all(deserialized_arr1c == arr1c))
   arr2c <- matrix(sprintf("%0*d", clen, 1:12), nrow=3, ncol=4)
   tox_serialize_char_array(arr2c, fn("char2d.test.bin"))

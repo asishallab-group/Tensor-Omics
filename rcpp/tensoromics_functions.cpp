@@ -1016,7 +1016,7 @@ void deserialize_complex_nd_c(
 );
 
 void get_array_metadata_c(
-  const char* filename_ascii,
+  const char* filename,
   const int* fn_len,
   int* dims_out,
   const int* dims_out_capacity,
@@ -1177,6 +1177,46 @@ void validate_all_data_c(
   const double* shift_vectors,
   int* ierr
 );
+
+// Calculates the length of the longest contained string in the Rcpp::CharacterVector
+int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
+    int max_len = 0;
+    for (int j = 0; j < string_vec.size(); ++j)
+        max_len = std::max(max_len, (int)std::strlen(CHAR(string_vec[j])));
+    return std::max(max_len, 1);
+}
+
+// Pack R strings (Rcpp::CharacterVector) into a Fortran-compatible column-major char matrix (flattened)
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+std::vector<char> r_to_c_CharacterVector(const CharacterVector& string_vec_R, int max_string_length) {
+    int n_strings = string_vec_R.size();
+    std::vector<char> string_vec_C(max_string_length * n_strings, '\0');  // null-pad
+
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        // Get C string for current STRSXP
+        const char* str = Rcpp::String(string_vec_R[i_string]).get_cstring();
+        int len = std::min((int)std::strlen(str), max_string_length);
+        std::memcpy(string_vec_C.data() + i_string * max_string_length, str, len);
+    }
+    return string_vec_C;
+}
+
+// Unpack Fortran-compatible column-major char matrix (flattened) to a into a Rcpp::CharacterVector
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+Rcpp::CharacterVector c_to_r_CharacterVector(const std::vector<char>& string_vec_C, int n_strings, int max_string_length) {
+    Rcpp::CharacterVector string_vec_R(n_strings);
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        const char* str = string_vec_C.data() + i_string * max_string_length;
+
+        // find the first null char to determine length
+        int len = strnlen(str, max_string_length);
+        string_vec_R[i_string] = std::string(str, len);
+    }
+    return string_vec_R;
+}
+
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -2887,40 +2927,19 @@ int tox_serialize_char_array_rcpp(CharacterVector carr,
                                   Rcpp::String filename) {
 
     IntegerVector dim = carr.hasAttribute("dim")
-                            ? as<IntegerVector>(carr.attr("dim"))
+                            ? carr.attr("dim")
                             : IntegerVector::create((int)carr.size());
     int ndim = dim.size();
 
-    int total = 1;
-    for (int i = 0; i < ndim; ++i) {
-        total *= dim[i];
-    }
-
-    int clen = 0;
-    for (int i = 0; i < total; ++i) {
-        std::string s = as<std::string>(carr[i]);
-        if ((int)s.size() > clen) {
-            clen = (int)s.size();
-        }
-    }
-    if (clen == 0) {
-        clen = 1;
-    }
-
-    std::vector<char> ascii_flat(total * clen, 0);
-    for (int i = 0; i < total; ++i) {
-        std::string s = as<std::string>(carr[i]);
-        for (int j = 0; j < (int)s.size() && j < clen; ++j) {
-            ascii_flat[i * clen + j] = static_cast<char>(s[j]);
-        }
-    }
+    int clen = get_max_string_length(carr);
+    std::vector<char> carr_c = r_to_c_CharacterVector(carr, clen);
 
     int ierr = 0;
 
     const char* filename_c = filename.get_cstring();
     int fn_len = strlen(filename_c);
 
-    serialize_char_nd_c(ascii_flat.data(),
+    serialize_char_nd_c(carr_c.data(),
                         &clen,
                         dim.begin(),
                         &ndim,
@@ -3110,7 +3129,6 @@ List tox_deserialize_real_array_rcpp(Rcpp::String filename,
 // [[Rcpp::export]]
 List tox_deserialize_char_array_rcpp(Rcpp::String filename, 
                                      int max_dims = 5) {
-
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
@@ -3132,14 +3150,14 @@ List tox_deserialize_char_array_rcpp(Rcpp::String filename,
         return List::create(Named("ierr") = ierr);
     }
 
-    int total = 1;
+    int n_strings = 1;
     for (int i = 0; i < ndims; ++i) {
-        total *= dims_out[i];
+        n_strings *= dims_out[i];
     }
 
-    std::vector<char> ascii_out(total * clen);
+    std::vector<char> string_vec_C(n_strings * clen);
 
-    deserialize_char_nd_c(ascii_out.data(),
+    deserialize_char_nd_c(string_vec_C.data(),
                           &clen,
                           dims_out.data(),
                           &ndims,
@@ -3147,30 +3165,11 @@ List tox_deserialize_char_array_rcpp(Rcpp::String filename,
                           &fn_len,
                           &ierr);
 
-    CharacterVector out(total);
-    for (int i = 0; i < total; ++i) {
-        std::string s;
-        for (int j = 0; j < clen; ++j) {
-            char ch = ascii_out[i * clen + j];
-            if (ch == '\0') {
-                break;
-            }
-            s.push_back(ch);
-        }
+    CharacterVector string_vec_R = c_to_r_CharacterVector(string_vec_C, n_strings, clen);
+    string_vec_R.attr("dim") = IntegerVector(dims_out.begin(), dims_out.begin() + ndims);
 
-        // Trim trailing whitespace
-        size_t end = s.find_last_not_of(" \t\n\r\f\v");
-        if (end != std::string::npos) {
-            s = s.substr(0, end + 1);
-        } else {
-            s.clear();  // String was all whitespace
-        }
-
-        out[i] = s;
-    }
-
-    return List::create(Named("values") = out,
-                        Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin() + ndims),
+    return List::create(Named("values") = string_vec_R,
+                        Named("dims") = string_vec_R.attr("dim"),
                         Named("ndim") = ndims,
                         Named("ierr") = ierr);
 }
