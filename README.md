@@ -239,3 +239,7 @@ docker run -it -v `pwd`:/opt arch-gfortran ./build.sh
 Use `./test_runner.sh` if you want to run the unit tests for the modules. In case you want to test only one module, use `./test_runner.sh <test suite name>`, e.g. `./test_runner.sh get_outliers`
 
 Feel free to extend this README with additional information.
+
+## Without Docker Troubleshooting
+
+If you've installed `gfortran` via [Homebrew](https://brew.sh/), you might get some error like `Error: unknown pseudo-op: '.base64'`. In this case run `brew unlink binutils --force`, as mentioned in [this Homebrew discussion](https://github.com/orgs/Homebrew/discussions/6229#discussioncomment-16610565)

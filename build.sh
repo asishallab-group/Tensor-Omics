@@ -16,7 +16,8 @@ if [[ $(command -v git) ]]; then
   filename=build/${filename//\//_.SLASH._} # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
   if [[ ! -f "$filename" ]]; then
     TOX_CLEAN_BUILD=1
-    rm -f build/.*.branch
+    rm -f build/.$COMPILER.*.branch # remove prev branch file (should only be one)
+    rm -f build/.branch # this one for backwards compatibility with other still existing branches
     : > "$filename"
   fi
 fi

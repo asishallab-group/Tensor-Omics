@@ -32,7 +32,9 @@ function utils_fpm() {
     prefix="fpm build --list"
   fi
   LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
+  (exit $exit_code)
 }
 
 # gets compiler from context, it uses

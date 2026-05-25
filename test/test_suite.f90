@@ -41,6 +41,8 @@ module test_suite
     character(len=11) :: COLOR_ERROR = achar(27) // "[38;5;222m"
     character(len=4) :: COLOR_RESET = achar(27) // "[0m"
 
+    character(len=3) :: CHECK_MARK = char(int(z"E2")) // char(int(z"9C")) // char(int(z"93"))
+
 contains
 
     !> Register all test suites here.
@@ -75,12 +77,19 @@ contains
         integer :: i
 
         do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print "(A)", COLOR_COPPER // " " // trim(all_tests(i)%name) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
+            call run_test_case(all_tests(i))
         end do
 
         print "(A)", COLOR_CREAM // "All '" // COLOR_DARK_COPPER // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
     end subroutine run_all_tests
+
+    !> Run test for specific test case
+    subroutine run_test_case(case)
+        type(test_case), intent(in) :: case
+
+        call case%test_proc()
+        print "(A)", COLOR_GREEN // CHECK_MARK // COLOR_COPPER // " " // trim(case%name) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
+    end subroutine run_test_case
 
     !> Run selected tests by name from a given suite.
     subroutine run_named_tests(test_names, all_tests)
@@ -95,8 +104,7 @@ contains
 
             do j = 1, size(all_tests)
                 if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print "(A)", COLOR_COPPER // " " // trim(test_names(i)) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
+                    call run_test_case(all_tests(j))
                     found = .true.
                     exit
                 end if
@@ -108,6 +116,7 @@ contains
             end if
         end do
 
+        ! It is an error if a test case doesn't exist
         if (some_not_found) then
             stop 1
         end if
