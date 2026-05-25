@@ -1,15 +1,13 @@
 
 # Tensor Omics
 
+## About
+
 Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise.
 
 Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
 
-## Detailed Method Description
-
-Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
-
-## Key Features
+### Key Features
 
 * **Geometry-based analysis**: distances, angles, projections, and trajectory shifts are used as primary primitives.
 * **Explainable outputs**: results are interpretable in terms of vector geometry rather than opaque model coefficients.
@@ -18,16 +16,21 @@ Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
 * **Robust to sparsity and noise**: percentile-based empirical thresholds and local geometric measures enable stability.
 * **Broad applications**: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.
 
-
 *Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.*
 
----
+Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for a detailed method description.
 
-# TOX Project Structure
+The **user manual** is currently available in the [`general_documentation`](https://github.com/asishallab-group/Tensor-Omics/tree/general_documentation) branch at `misc/tox_manual.pdf`. To access it locally:
 
-This repository contains the source code, methods, snippets and tests for the **Tensor Omics (TOX)** project.
+```bash
+git fetch origin general_documentation
+git checkout general_documentation
+# open misc/tox_manual.pdf with your preferred PDF viewer
+```
 
-## Folder Overview
+### Project Structure
+
+This repository contains the source code, methods, snippets, and tests for the **Tensor Omics (TOX)** project.
 
 ```
 /build
@@ -42,11 +45,11 @@ This repository contains the source code, methods, snippets and tests for the **
 /python
   └── ...       # Python scripts that execute pipeline logic and invoke subroutines
 
-/r
-  └── ...       # R scripts that execute pipeline logic and invoke subroutines
+/rcpp
+  └── ...       # Rcpp scripts that execute pipeline logic and invoke subroutines
 
 /snippets
-└── ...         #Code templates or reusable short logic blocks 
+  └── ...       # Code templates or reusable short logic blocks
 
 /src
   └── ...       # Fortran backend
@@ -55,162 +58,246 @@ This repository contains the source code, methods, snippets and tests for the **
   └── ...       # Fortran testing
 
 /helper
-  └── helper_c_wrapper.py       #  helper script to generate c wrappers subroutines
+  ├── helper_c_wrapper.py       # generates C wrapper subroutines
+  ├── helper_rcpp_wrapper.py    # generates Rcpp wrapper subroutines
+  └── generate_snippets.py      # auto-generates VS Code snippet files from source code
 
-build.sh        # Compile and generate shared libraries
-ford.yml        # Generates documentation
-fpm.toml        # Defines compilation options
-test_runner.sh  # Compile and generate unit test
-
+build.sh          # Compile and generate shared libraries
+ford.yml          # Generates FORD documentation
+.fpm.toml         # Defines compilation options
+test_runner.sh    # Compile and run Fortran unit tests
+run_all_tests.sh  # Run the full test suite (Fortran + Python + R)
 ```
 
-## Notes
-
-* **`/build`** is used to store shared libraries, compiled and binary files resulting from Fortran compilation. It keeps the repo clean by separating source and compiled code.
-* **`/doc`** contains the auto-generated documentation, which is built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
-* **`/misc`** contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
-
-* **`/python`** includes python scripts that coordinate analysis workflows
-* **`/r`** includes R scripts that coordinate analysis workflows
-* **`/snippets/`** includes frequently used or testable units of logic reused across development stages. 
-  - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
-  ```
-    {
-        "Call to subroutine_name": {
-          "prefix": "tox|f42:subroutine_name",
-          "body": [
-            "! Brief explanation on what the subroutine does",
-            "call subroutine_name(arg1, arg2, arg3, arg4)"
-          ],
-          "description": "Insert a call to subroutine_name with brief explanation"
-        }
-    }
-  ```
-* **`/src`** contains performance-critical Fortran code. These are compiled during the build process.
-  - All `.f90` files should include `precompiler_constants.f90`
-  - Subroutines that do not perform `input/output` operations or memory allocations must be declared as `pure`.
-* **`/test`** contains the unit tests for the Fortran subroutines.
-
-  * The file `asserts.f90` must exist and can be modified if additional assert functions are needed.
-  * There must be a central program called `run_tests.f90` which contains all the test calls defined in the modules.
-  * Each subroutine's tests should be placed in independent modules (one file per tested subroutine). 
-  * All test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Otherwise, compilation errors may occur.
-  * Check details in `test/readme.md`
-
-* **`/helper`** this folder will not be included in the final version of TOX. For now, it serves to help us create the C wrapper for the subroutines more quickly and easily. See details in `helper/readme.md`.
+* **`/build`** stores shared libraries, compiled objects, and binary files resulting from Fortran compilation. It keeps the repository clean by separating source from compiled code.
+* **`/doc`** contains auto-generated documentation built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
+* **`/misc`** contains the team's coding guidelines (`misc/Fortran_Coding_Guides.pdf`), the detailed method description (`misc/Tensor_Omics_Methods.pdf`), and the Dockerfile (`misc/gfortran.docker`) used to compile the project without installing anything beyond Docker.
+* **`/python`** includes Python scripts that coordinate analysis workflows.
+* **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows.
+* **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines. See `snippets/readme.md` for details.
+* **`/src`** contains performance-critical Fortran code compiled during the build process. All `.f90` files must include `precompiler_constants.f90`. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
+* **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Each subroutine's tests live in an independent module named `mod_<subroutine_name>.f90`. See `test/readme.md` for details.
+* **`/helper`** is a temporary development aid for generating C wrappers (`helper_c_wrapper.py`), Rcpp wrappers (`helper_rcpp_wrapper.py`), and VS Code snippet files (`generate_snippets.py`). See `helper/readme.md` for details.
 
 ---
 
-### FORD (Fortran Online Reference Documentation)
+## Requirements
 
-[FORD](https://github.com/Fortran-FOSS-Programmers/ford) is a documentation generator specifically designed for Fortran projects. It allows developers to create clean, structured, and navigable HTML documentation from source code using lightweight markup embedded in comments.
+See [Install / Compilation](#install--compilation) for step-by-step setup instructions with Docker or native toolchain. For a native setup, you need:
 
-* Designed specifically for Fortran (unlike Doxygen which is general-purpose).
-* Supports documentation of modules, subroutines, functions, derived types, and more.
-* Uses `!!!` or `!>` comment syntax to annotate code.
-* Ideal for scientific and engineering projects using modern Fortran.
-* Easy to integrate into Git-based workflows.
+| Requirement | Version | Notes |
+|---|---|---|
+| gfortran | ≥ 15 | Available natively on Arch Linux and macOS (Homebrew); use Docker on other systems |
+| Python | ≥ 3.7 + NumPy | Python integration |
+| R | ≥ 3.6 + Rcpp | R integration |
 
-Example usage:
+[FORD](https://github.com/Fortran-FOSS-Programmers/ford) (`pip install ford`) is optional and only needed to regenerate the API documentation.
+
+---
+
+## Get the code
+
+Clone the repository from GitHub:
 
 ```bash
-ford ford.yml
+git clone https://github.com/asishallab-group/Tensor-Omics.git
+cd Tensor-Omics
 ```
-
-This generates an HTML site you can explore in a browser (`doc/index.html` by default).
-
-
-### Tensor Omics Snippets
-
-Organize and place the snippets inside the appropriate snippet folders according to their functionality:
-
-- Use the `f42:` prefix for F42-compliant infrastructure.
-- Use the `tox:` prefix for application-specific Tensor Omics subroutines.
-
-See `snippets/readme.md` for details.
 
 ---
 
+## Install / Compilation
 
-### Compilation
+We recommend using the provided **Docker image**: it comes with gfortran 15 and all required dependencies pre-installed, so no system-level changes are needed. If you already have gfortran 15+ installed, you can also compile natively.
 
-The `build.sh` script will compile all the files located in the `src/` directory.
+### Using Docker (recommended)
 
-It creates a directory for the compiled objects under `/build/<compiler>/`, and the resulting shared library will be named `libtensor-omics.so`.
+Install Docker as explained for your operating system in the [Docker documentation](https://docs.docker.com/get-docker/).
 
-This `.so` file is the one that must be loaded from R or Python.
+**Step 1:** Build the Docker image from the Dockerfile provided in `misc/`:
 
-Every time the code is compiled, a new `/build/<compiler>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
+```bash
+cd misc
+docker build -t arch-gfortran -f gfortran.docker .
+cd ..
+```
 
-Usage:
+**Step 2:** Compile the project inside the container:
 
-→ Uses the `gfortran` compiler without performance optimizations.
+```bash
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
+```
+
+### Native compilation
+
+If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `/build/<compiler>/`, and creates a symbolic link to the resulting shared library (`libtensor-omics.so`) so that Python and R always find the same path.
+
+gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not available in standard package repositories.
+
+**Arch Linux** (rolling release — always has the latest GCC):
+
+```bash
+sudo pacman -S gcc-fortran
+```
+
+**macOS** (via [Homebrew](https://brew.sh)):
+
+```bash
+brew install gcc
+```
+
+On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use the [Docker path](#using-docker-recommended) instead.
+
+**Default** — gfortran without optimisation flags:
 
 ```bash
 ./build.sh
 ```
 
-→ Uses the `gfortran` compiler with maximum performance flags.
+**Maximum performance** — gfortran with optimisation flags:
 
 ```bash
 ./build.sh --max-performance
 ```
 
-→ Uses the `ifx` compiler with maximum performance flags.
+**Intel Fortran Compiler** — with maximum performance flags:
 
 ```bash
 ./build.sh --max-performance FC=ifx
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+### Python integration
+
+The `python/` folder contains the wrapper functions needed to call Tensor Omics subroutines from Python, along with example scripts in `python/test/` that demonstrate usage and can serve as a starting point for your own analyses.
+
+Once the shared library is available, load it from Python:
+
+```python
+import ctypes, os
+
+lib_path = os.path.abspath("build/libtensor-omics.so")
+ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
+
+lib = ctypes.CDLL(lib_path)
+from tensoromics_functions import tox_euclidean_distance
+```
+
+Verify that the library loaded correctly:
+
+```bash
+python3 python/test/mod_test_euclidean_distance.py
+```
+
+### R integration
+
+The `rcpp/` folder contains the Rcpp wrapper functions for calling Tensor Omics from R, along with example tests in `rcpp/test/` that illustrate how to use each function.
+
+```r
+library(Rcpp)
+lib_path <- shQuote(normalizePath("build"))
+Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
+Rcpp::sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+```
+
+Verify that the library loaded correctly:
+
+```bash
+Rscript rcpp/test/mod_test_euclidean_distance.R
+```
 
 ---
 
+## API Documentation and Snippets
 
-### Testing
+### Reading the Fortran API documentation
 
-The test suite framework provides a robust and scalable system for organizing and executing unit tests in Fortran. It allows running individual tests, complete test suites, or all project tests with simple and clear syntax.
-
-#### Architecture
-
-1. **`run_tests.f90`** - Main program that handles command line arguments
-2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`asserts.f90`** - Assertion function library for validating results
-
-#### System Usage
+The `doc/` folder contains pre-generated HTML documentation produced by [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from the annotated Fortran source files. Open it in any browser:
 
 ```bash
-# Run all tests from all suites
+# Linux
+xdg-open doc/index.html
+
+# macOS
+open doc/index.html
+```
+
+The documentation covers all public modules, subroutines, functions, and derived types in `src/`. Navigate through the sidebar to browse by module, or use the search bar to look up a specific subroutine by name.
+
+To regenerate the documentation after making changes to the source code, install FORD (`pip install ford`) and run:
+
+```bash
+ford ford.yml
+```
+
+### Loading snippets into VS Code
+
+The `snippets/` folder contains VS Code snippet files for Fortran, Python, and R. Loading them gives you prefix-triggered autocomplete for all Tensor Omics subroutines — type a prefix and press `Tab` to insert the full call with argument placeholders.
+
+Snippets are organized by prefix:
+
+* `tox:*` — Tensor Omics analysis subroutines (start here if you are doing analysis)
+* `f42:*` — general-purpose infrastructure subroutines (sorting, data structures, etc.)
+* `toxdev:*` — development convenience snippets (parallel loop templates, argument declarations, etc.)
+
+**To load snippets in VS Code:**
+
+1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+2. Type `Snippets: Configure Snippets` and press Enter.
+3. Select the target language (e.g. `fortran`, `python`, `r`) or choose `New Global Snippets file...` to make all snippets available in any file.
+4. Copy the contents of the corresponding file from `snippets/` (e.g. `Fortran_tox_snippets.json` for Fortran analysis snippets) and paste it into the snippet file that opened.
+
+Alternatively, copy the snippet files directly to your VS Code user snippets directory:
+
+```bash
+# Linux
+cp snippets/Fortran_tox_snippets.json ~/.config/Code/User/snippets/
+cp snippets/Python_tox_snippets.json ~/.config/Code/User/snippets/
+cp snippets/R_tox_snippets.json       ~/.config/Code/User/snippets/
+
+# macOS
+cp snippets/Fortran_tox_snippets.json "$HOME/Library/Application Support/Code/User/snippets/"
+cp snippets/Python_tox_snippets.json  "$HOME/Library/Application Support/Code/User/snippets/"
+cp snippets/R_tox_snippets.json       "$HOME/Library/Application Support/Code/User/snippets/"
+```
+
+Restart VS Code after copying. Snippets are auto-generated from the source code by the CI pipeline — see `snippets/readme.md` for details on how they are maintained.
+
+---
+
+## Testing
+
+The test suite provides a scalable system for organizing and executing Fortran unit tests.
+
+### Architecture
+
+1. **`run_tests.f90`** — main program handling command-line arguments and dispatching all test calls.
+2. **Test modules** — one file per tested subroutine, named `mod_<subroutine_name>.f90`.
+3. **`asserts.f90`** — assertion library for validating results.
+
+Test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
+
+### Running tests
+
+```bash
+# Run the full test suite (Fortran + Python + R)
+./run_all_tests.sh
+
+# Run only Fortran tests
 ./test_runner.sh
 
-# Run all tests from a specific suite
+# Run all tests from a specific Fortran suite
 ./test_runner.sh <suite_name>
 
-# Run specific tests from a suite
+# Run specific tests within a suite
 ./test_runner.sh <suite_name> <test1,test2,test3>
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
-
-See `test/readme.md` for details.
-
 ---
 
-## Get latest gfortran with Docker
+## Contribute
 
-Install and setup Docker as explained for your operating system in the Docker
-documentation.
+Tensor Omics is developed openly and contributions are welcome — whether reporting issues, improving documentation, or suggesting new analysis subroutines.
 
-Use our Dockerfile `gfortran.docker` in `misc` directory:
-```bash
-docker build -t arch-gfortran -f gfortran.docker .
-```
+When writing Fortran code, consult the team's coding guidelines in `misc/Fortran_Coding_Guides.pdf`. 
+API documentation is generated from annotated source comments — see [Reading the Fortran API documentation](#reading-the-fortran-api-documentation) for how to regenerate it.
 
-Then build the project with:
-```bash
-docker run -it -v `pwd`:/opt arch-gfortran ./build.sh
-```
-
-Use `./test_runner.sh` if you want to run the unit tests for the modules. In case you want to test only one module, use `./test_runner.sh <test suite name>`, e.g. `./test_runner.sh get_outliers`
-
-Feel free to extend this README with additional information.
