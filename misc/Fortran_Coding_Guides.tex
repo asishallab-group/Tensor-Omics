@@ -46,28 +46,56 @@
 \section{Compiler: Always Use the Latest gfortran}
 % =============================================================================
 
-Always use the latest stable version of \texttt{gfortran} (15+). Newer compiler versions bring improved standard compliance, better auto-vectorization, and improved OpenMP/\texttt{do concurrent} support.
+Always use \texttt{gfortran} 15 or newer. Newer compiler versions bring improved standard compliance, better auto-vectorization, and improved \texttt{do concurrent} support.
 
-\subsection{Installing on Ubuntu}
+\subsection{Using Docker (Recommended)}
+
+The project provides a pre-built Docker image with gfortran 15 and all required dependencies: no system-level changes are needed. Install Docker as explained for your operating system in the \href{https://docs.docker.com/get-docker/}{Docker documentation}.
+
+\textbf{Step 1:} Build the image from the \texttt{Dockerfile} in \texttt{misc/}:
 
 \begin{lstlisting}[language=bash]
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-sudo apt-get update
-sudo apt-get install gfortran-15
-\end{lstlisting}
-
-\subsection{Using the Project Docker Image}
-
-If gfortran-15 is not available on your system, use our pre-built Docker image:
-\begin{lstlisting}[language=bash]
-# Build the image
+cd misc
 docker build -t arch-gfortran -f gfortran.docker .
-
-# Run the build inside the container
-docker run -it -v `pwd`:/opt arch-gfortran '/opt/build.sh'
+cd ..
 \end{lstlisting}
 
-Using Docker ensures every team member compiles with the same toolchain version, regardless of operating system.
+\textbf{Step 2:} Compile the project inside the container:
+
+\begin{lstlisting}[language=bash]
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
+\end{lstlisting}
+
+\subsection{Native Compilation}
+
+If you already have \texttt{gfortran} $\geq$ 15 installed, compile directly with \texttt{build.sh}. It compiles all files in \texttt{src/}, places compiled objects under \texttt{build/<compiler>/}, and creates a symbolic link to the resulting shared library (\texttt{libtensor-omics.so}) so that Python and R always find the same path.
+
+\textbf{Arch Linux} (rolling release --- always has the latest GCC):
+\begin{lstlisting}[language=bash]
+sudo pacman -S gcc-fortran
+\end{lstlisting}
+
+\textbf{macOS} (via \href{https://brew.sh}{Homebrew}):
+\begin{lstlisting}[language=bash]
+brew install gcc
+\end{lstlisting}
+
+On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use the Docker path instead.
+
+\textbf{Default} --- gfortran without optimisation flags:
+\begin{lstlisting}[language=bash]
+./build.sh
+\end{lstlisting}
+
+\textbf{Maximum performance} --- gfortran with optimisation flags:
+\begin{lstlisting}[language=bash]
+./build.sh --max-performance
+\end{lstlisting}
+
+\textbf{Intel Fortran Compiler} --- with maximum performance flags:
+\begin{lstlisting}[language=bash]
+./build.sh --max-performance FC=ifx
+\end{lstlisting}
 
 \subsection{Fortran Standard Reference}
 
