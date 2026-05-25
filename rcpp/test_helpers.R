@@ -49,9 +49,9 @@ run_all_tests <- function(env = parent.frame(), test_only = TRUE) {
 
   args <- commandArgs(trailingOnly = FALSE)
   file_arg <- grep("^--file=", args, value = TRUE)
-  script_name <- sub("^--file=", "", file_arg)
+  script_name <- sprintf("@light_gray.%s@light_gray.", sub("^--file=", "", file_arg))
 
-  ccat("@cream.Running R tests of @light_gray.'", script_name, "@cream.'...\n")
+  ccat("@cream.Running R tests of '", script_name, "@cream.'...\n")
 
   for (name in test_names) {
     obj <- get(name, envir = env)

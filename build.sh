@@ -12,7 +12,8 @@ mkdir -p build
 # trigger clean build on branch switch
 if [[ $(command -v git) ]]; then
   current_branch=$(git branch --show-current 2>/dev/null || true)
-  filename="build/.${current_branch//\//_.SLASH._}.branch" # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
+  filename=".${COMPILER}.${current_branch}.branch"
+  filename=build/${filename//\//_.SLASH._} # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
   if [[ ! -f "$filename" ]]; then
     TOX_CLEAN_BUILD=1
     rm -f build/.*.branch
