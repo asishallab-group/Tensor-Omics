@@ -18,7 +18,7 @@ function init() {
     error "'$(echo_compiler $COMPILER)' not installed or accessible in current scope"
     exit 1
   fi
-  FLAGS=$(get_flags)
+  get_flags_and_features
 }
 
 function utils_fpm() {
@@ -31,7 +31,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$COMPILER_FEATURE" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -44,20 +44,20 @@ function utils_fpm() {
 function get_compiler() {
   declare compiler=${TOX_COMPILER:-$FC}
   declare default=gfortran
-  COMPILER_FEATURE=
+  FEATURES=
 
   # Detect compiler and choose appropriate profile:
   if [[ "$compiler" == "ifx" ]]; then
-    COMPILER_FEATURE=ifx
+    FEATURES=ifx
     COMPILER=ifx
   elif [[ "$compiler" == "nvfortran" ]]; then
-    COMPILER_FEATURE=nvfortran
+    FEATURES=nvfortran
     COMPILER=nvfortran
   else
     if [[ $compiler ]]; then
       if [[ $compiler != "$default" ]]; then
         if [[ $TOX_I_WANT_TO_USE_THIS_COMPILER ]]; then
-          COMPILER_FEATURE=unknown-compiler
+          FEATURES=unknown-compiler
           COMPILER="$compiler"
           return
         else
@@ -70,32 +70,28 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
     else
       warning "No compiler specified, using '$(echo_compiler $default)'. To specify the compiler, use $COLOR_LIGHT_GRAY--compiler=<$(echo_compiler compiler)$COLOR_LIGHT_GRAY>$COLOR_CREAM or the env variables $COLOR_LIGHT_GRAY\$$(echo_compiler FC)$COLOR_CREAM, $COLOR_LIGHT_GRAY\$$(echo_compiler TOX_COMPILER)"
     fi
-    COMPILER_FEATURE=$default
+    FEATURES=$default
     COMPILER=$default
   fi
 }
 
-function get_flags() {
+function get_flags_and_features() {
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
-    echo "$TOX_OVERRIDE_FLAGS"
+    FLAGS="$TOX_OVERRIDE_FLAGS"
     return
   fi
 
   if [[ $TOX_MAX_PERFORMANCE ]]; then
-    echo -en "-DMAX_PERFORMANCE "
-    # Detect compiler and choose appropriate profile:
-    if [[ "$COMPILER" == "ifx" ]]; then
-      # echo "-O0 -g -traceback -check all -warn all -diag-enable=all -fPIC"
-      echo "-O3 -warn all -diag-enable=all -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-    elif [[ "$COMPILER" == "nvfortran" ]]; then
-      echo "-O3 -Mconcur -fPIC -fopenmp -stdpar=multicore"
-    elif [[ "$COMPILER" == "gfortran" ]]; then
-      echo "-O3 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
-    fi
-  else
-    echo "-fPIC"
+    FEATURES="$FEATURES,optimization"
+    FLAGS="-DMAX_PERFORMANCE -O3"
+  elif [[ $TOX_DIAGNOSTICS ]]; then
+    FLAGS="-O0"
+  fi
+  if [[ $TOX_DIAGNOSTICS ]]; then
+    FEATURES="$FEATURES,diagnostics"
   fi
 
+  FEATURES="$FEATURES,default"
 }
 
 function handle_args() {

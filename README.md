@@ -242,4 +242,4 @@ Feel free to extend this README with additional information.
 
 ## Without Docker Troubleshooting
 
-If you've installed `gfortran` via [Homebrew](https://brew.sh/), you might get some error like `Error: unknown pseudo-op: '.base64'`. In this case run `brew unlink binutils --force`, as mentioned in [this Homebrew discussion](https://github.com/orgs/Homebrew/discussions/6229#discussioncomment-16610565)
+If you've installed `gfortran` via [Homebrew](https://brew.sh/), you might get some error like `Error: unknown pseudo-op: '.base64'`. In this case run `brew link binutils --force`, as mentioned in [this Homebrew discussion](https://github.com/orgs/Homebrew/discussions/6229#discussioncomment-16610565)
