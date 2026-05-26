@@ -31,15 +31,27 @@ module test_suite
 
     type(suite_entry), allocatable :: available_suites(:)
 
-    character(len=11) :: COLOR_GREEN = achar(27) // "[38;5;154m"
-    character(len=11) :: COLOR_COPPER = achar(27) // "[38;5;214m"
-    character(len=11) :: COLOR_DARK_COPPER = achar(27) // "[38;5;208m"
-    character(len=11) :: COLOR_RED = achar(27) // "[38;5;196m"
-    character(len=11) :: COLOR_LIGHT_GRAY = achar(27) // "[38;5;252m"
-    character(len=11) :: COLOR_YELLOW = achar(27) // "[38;5;226m"
-    character(len=11) :: COLOR_CREAM = achar(27) // "[38;5;255m"
-    character(len=11) :: COLOR_ERROR = achar(27) // "[38;5;222m"
-    character(len=4) :: COLOR_RESET = achar(27) // "[0m"
+#ifndef NO_COLORS
+    character(len=*), parameter :: COLOR_GREEN = achar(27) // "[38;5;154m"
+    character(len=*), parameter :: COLOR_COPPER = achar(27) // "[38;5;214m"
+    character(len=*), parameter :: COLOR_DARK_COPPER = achar(27) // "[38;5;208m"
+    character(len=*), parameter :: COLOR_RED = achar(27) // "[38;5;196m"
+    character(len=*), parameter :: COLOR_LIGHT_GRAY = achar(27) // "[38;5;252m"
+    character(len=*), parameter :: COLOR_YELLOW = achar(27) // "[38;5;226m"
+    character(len=*), parameter :: COLOR_CREAM = achar(27) // "[38;5;255m"
+    character(len=*), parameter :: COLOR_ERROR = achar(27) // "[38;5;222m"
+    character(len=*), parameter :: COLOR_RESET = achar(27) // "[0m"
+#else
+    character(len=*), parameter :: COLOR_GREEN = ""
+    character(len=*), parameter :: COLOR_COPPER = ""
+    character(len=*), parameter :: COLOR_DARK_COPPER = ""
+    character(len=*), parameter :: COLOR_RED = ""
+    character(len=*), parameter :: COLOR_LIGHT_GRAY = ""
+    character(len=*), parameter :: COLOR_YELLOW = ""
+    character(len=*), parameter :: COLOR_CREAM = ""
+    character(len=*), parameter :: COLOR_ERROR = ""
+    character(len=*), parameter :: COLOR_RESET = ""
+#endif
 
     character(len=3) :: CHECK_MARK = char(int(z"E2")) // char(int(z"9C")) // char(int(z"93"))
 

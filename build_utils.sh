@@ -1,16 +1,22 @@
-COLOR_GREEN="\033[38;5;154m"
-COLOR_COPPER="\033[38;5;214m"
-COLOR_DARK_COPPER="\033[38;5;208m"
-COLOR_RED="\033[38;5;196m"
-COLOR_LIGHT_GRAY="\033[38;5;252m"
-COLOR_YELLOW="\033[38;5;226m"
-COLOR_CREAM="\033[38;5;255m"
-COLOR_ERROR="\033[38;5;222m"
-COLOR_RESET="\033[0m"
+DIRECTIVES=
+
+# define colors if output is not being piped
+if [[ -t 1 && -t 2 ]]; then
+  COLOR_GREEN="\033[38;5;154m"
+  COLOR_COPPER="\033[38;5;214m"
+  COLOR_DARK_COPPER="\033[38;5;208m"
+  COLOR_RED="\033[38;5;196m"
+  COLOR_LIGHT_GRAY="\033[38;5;252m"
+  COLOR_YELLOW="\033[38;5;226m"
+  COLOR_CREAM="\033[38;5;255m"
+  COLOR_ERROR="\033[38;5;222m"
+  COLOR_RESET="\033[0m"
+else
+  DIRECTIVES="-DNO_COLORS"
+fi
 
 function init() {
   handle_args "$@"
-
   # --compiler beats global $TOX_COMPILER beats global $FC
   get_compiler
 
@@ -96,7 +102,6 @@ function get_flags_and_features() {
 
 function handle_args() {
   ARGS=""
-  DIRECTIVES=""
   
   for arg in "$@"; do
     if [[ "$arg" == --* ]]; then
