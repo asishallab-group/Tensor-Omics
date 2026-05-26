@@ -1,5 +1,4 @@
 import numpy as np
-import json
 import os
 
 from pathlib import Path
@@ -8,10 +7,11 @@ import sys
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 from tensoromics_functions import tox_serialize_tox_data_as_flyer_json
+from test_helpers import run_all_tests
 
 
 def test_flyer_serialization():
-    # -------------------------------
+    # -----g--------------------------
     # Parameters
     # -------------------------------
     n_tissues = 2
@@ -109,18 +109,6 @@ def test_flyer_serialization():
 
     os.remove(filename)
 
-    print("✅ Flyer JSON serialization passed.")
-
-
-def main():
-    print("=================================================")
-    print("    TOX JSON PYTHON INTERFACE TESTS")
-    print("=================================================")
-    print()
-
-    # Run the tests
-    test_flyer_serialization()
-
 
 if __name__ == '__main__':
-    main()
+    run_all_tests(globals().values())

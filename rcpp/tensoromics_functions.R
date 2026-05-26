@@ -3558,3 +3558,35 @@ tox_which <- function(mask, m_max = length(mask)) {
 
   return(result$idx_out[seq_len(n_take)])
 }
+
+#' Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+#'
+#' @param filename String for output file to serialize to.
+#' @param tissues CharacterVector of tissue names.
+#' @param family_ids CharacterVector of family IDs.
+#' @param gene_ids CharacterVector of gene IDs.
+#' @param gene_species CharacterVector of species names.
+#' @param gene_types CharacterVector of gene type names (ortholog/paralog).
+#' @param centroids NumericMatrix with family centroids.
+#' @param gene_expressions NumericMatrix with gene expressions.
+#' @param gene_to_fam IntegerVector with Gene to family mapping -> each (gene) index holds the index of the assigned family.
+#' @param sorted_gene_to_fam_perm IntegerVector with permutation that sorts `gene_to_fam` (so gene indices sorted by family index).
+#' @param gene_outliers LogicalVector indicating whether a certain gene is an outlier or not.
+#' @return ierr int error code.
+serialize_tox_data_as_flyer_json <-  function(
+    filename, tissues, family_ids, gene_ids, gene_species, gene_types,
+    centroids, gene_expressions,
+    gene_to_fam, sorted_gene_to_fam_perm,
+    gene_outliers
+) {
+  ierr <- serialize_tox_data_as_flyer_json_rcpp(
+    filename, tissues, family_ids, gene_ids, gene_species, gene_types,
+    centroids, gene_expressions,
+    gene_to_fam, sorted_gene_to_fam_perm,
+    gene_outliers
+  )
+
+  check_err_code(ierr)
+
+  invisible()
+}

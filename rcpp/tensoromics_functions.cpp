@@ -9,6 +9,29 @@ using namespace Rcpp;
 // ===================================================================
 
 extern "C" {
+void serialize_tox_data_as_flyer_json_c(
+  const char* filename,
+  const int* filename_len,
+  const char* tissues,
+  const int* tissue_len,
+  const int* n_tissues,
+  const char* family_ids,
+  const int* family_id_len,
+  const int* n_families,
+  const double* centroids,
+  const char* gene_ids,
+  const int* gene_id_len,
+  const int* n_genes,
+  const double* genes,
+  const int* gene_to_fam,
+  const int* sorted_gene_to_fam_perm,
+  const int* gene_outliers,
+  const char* gene_species,
+  const int* gene_species_len,
+  const char* gene_types,
+  const int* gene_type_len,
+  int* ierr
+);
 void compute_edf_c(
   const double* values,
   const int* n_values,
@@ -1083,6 +1106,118 @@ void validate_all_data_C(
   int* ierr
 );
 }
+
+// Calculates the length of the longest contained string in the Rcpp::CharacterVector
+int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
+    int max_len = 0;
+    for (int j = 0; j < string_vec.size(); ++j)
+        max_len = std::max(max_len, (int)std::strlen(CHAR(string_vec[j])));
+    return std::max(max_len, 1);
+}
+
+// Pack R strings (Rcpp::CharacterVector) into a Fortran-compatible column-major char matrix (flattened)
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+std::vector<char> r_to_c_CharacterVector(const CharacterVector& string_vec_R, int max_string_length) {
+    int n_strings = string_vec_R.size();
+    std::vector<char> string_vec_C(max_string_length * n_strings, '\0');  // null-pad
+
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        // Get C string for current STRSXP
+        const char* str = Rcpp::String(string_vec_R[i_string]).get_cstring();
+        int len = std::min((int)std::strlen(str), max_string_length);
+        std::memcpy(string_vec_C.data() + i_string * max_string_length, str, len);
+    }
+    return string_vec_C;
+}
+
+// Unpack Fortran-compatible column-major char matrix (flattened) to a into a Rcpp::CharacterVector
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+Rcpp::CharacterVector c_to_r_CharacterVector(const std::vector<char>& string_vec_C, int n_strings, int max_string_length) {
+    Rcpp::CharacterVector string_vec_R(n_strings);
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        const char* str = string_vec_C.data() + i_string * max_string_length;
+
+        // find the first null char to determine length
+        int len = strnlen(str, max_string_length);
+        string_vec_R[i_string] = std::string(str, len);
+    }
+    return string_vec_R;
+}
+
+//' Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+//'
+//' @param filename String for output file to serialize to.
+//' @param tissues CharacterVector of tissue names.
+//' @param family_ids CharacterVector of family IDs.
+//' @param gene_ids CharacterVector of gene IDs.
+//' @param gene_species CharacterVector of species names.
+//' @param gene_types CharacterVector of gene type names (ortholog/paralog).
+//' @param centroids NumericMatrix with family centroids.
+//' @param gene_expressions NumericMatrix with gene expressions.
+//' @param gene_to_fam IntegerVector with Gene to family mapping -> each (gene) index holds the index of the assigned family.
+//' @param sorted_gene_to_fam_perm IntegerVector with permutation that sorts `gene_to_fam` (so gene indices sorted by family index).
+//' @param gene_outliers LogicalVector indicating whether a certain gene is an outlier or not.
+//' @return ierr int error code.
+// [[Rcpp::export]]
+int serialize_tox_data_as_flyer_json_rcpp(
+  Rcpp::String filename, CharacterVector tissues, CharacterVector family_ids, CharacterVector gene_ids, CharacterVector gene_species, CharacterVector gene_types,
+  NumericMatrix centroids, NumericMatrix gene_expressions,
+  IntegerVector gene_to_fam, IntegerVector sorted_gene_to_fam_perm,
+  LogicalVector gene_outliers)
+{
+  const int filename_len_c = strlen(filename.get_cstring());
+  const int tissue_len_c = get_max_string_length(tissues);
+  std::vector<char> tissues_c = r_to_c_CharacterVector(tissues, tissue_len_c);
+  const int n_tissues_c = tissues.size();
+  const int family_id_len_c = get_max_string_length(family_ids);
+  std::vector<char> family_ids_c = r_to_c_CharacterVector(family_ids, family_id_len_c);
+  const int n_families_c = family_ids.size();
+  const int gene_id_len_c = get_max_string_length(gene_ids);
+  std::vector<char> gene_ids_c = r_to_c_CharacterVector(gene_ids, gene_id_len_c);
+  const int n_genes_c = gene_ids.size();
+  const int gene_species_len_c = get_max_string_length(gene_species);
+  std::vector<char> gene_species_c = r_to_c_CharacterVector(gene_species, gene_species_len_c);
+  const int gene_types_len_c = get_max_string_length(gene_types);
+  std::vector<char> gene_types_c = r_to_c_CharacterVector(gene_types, gene_types_len_c);
+
+  std::vector<int> gene_outliers_c(n_genes_c);
+  for (int i_gene = 0; i_gene < n_genes_c; ++i_gene)
+  {
+    gene_outliers_c[i_gene] = gene_outliers[i_gene] ? 1 : 0;
+  }
+
+  int ierr = 0;
+
+  serialize_tox_data_as_flyer_json_c(
+    filename.get_cstring(),
+    &filename_len_c,
+    tissues_c.data(),
+    &tissue_len_c,
+    &n_tissues_c,
+    family_ids_c.data(),
+    &family_id_len_c,
+    &n_families_c,
+    centroids.begin(),
+    gene_ids_c.data(),
+    &gene_id_len_c,
+    &n_genes_c,
+    gene_expressions.begin(),
+    gene_to_fam.begin(),
+    sorted_gene_to_fam_perm.begin(),
+    gene_outliers_c.data(),
+    gene_species_c.data(),
+    &gene_species_len_c,
+    gene_types_c.data(),
+    &gene_types_len_c,
+    &ierr
+  );
+
+  return ierr;
+}
+
+
 //' Calculate k-means clustering of factor trajectories
 //'
 //' @param trajectories Numeric vector of trajectories (factors x samples x timepoints)

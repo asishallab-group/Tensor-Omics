@@ -3690,7 +3690,7 @@ def tox_serialize_tox_data_as_flyer_json(
     genes = np.asfortranarray(genes, dtype=np.float64)
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
     sorted_gene_to_fam_perm = np.ascontiguousarray(sorted_gene_to_fam_perm, dtype=np.int32)
-    gene_outliers = np.ascontiguousarray([int(i) for i in gene_outliers], dtype=np.int32)
+    gene_outliers = np.ascontiguousarray(gene_outliers, dtype=np.int32)
 
     # --- ctypes scalars ---
     n_tissues_c = ctypes.c_int(n_tissues)
