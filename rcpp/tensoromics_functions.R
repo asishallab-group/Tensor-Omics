@@ -3559,6 +3559,7 @@ tox_which <- function(mask, m_max = length(mask)) {
   return(result$idx_out[seq_len(n_take)])
 }
 
+#> f42_json:serialize_tox_data_as_flyer_json_c: Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
 #' Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
 #'
 #' @param filename String for output file to serialize to.
