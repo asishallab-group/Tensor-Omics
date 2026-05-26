@@ -20,8 +20,9 @@
 !test/test_files
 !test/test_files/**/*
 !test/mod_test*.[fF]90
-!test/run_tests.f90
-!test/test_suite.f90
+!test/run_tests.[Ff]90
+!test/test_suite.[Ff]90
+!test/asserts.[Ff]90
 
 # src
 !src
