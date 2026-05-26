@@ -31,6 +31,9 @@ contains
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
         allocate (all_tests(23))
+
+        call setup_global_data()
+
         all_tests(1) = test_case("test_read_gene_ids", test_read_gene_ids)
         all_tests(2) = test_case("test_read_expression_data", test_read_expression_data)
         all_tests(3) = test_case("test_read_family_mapping", test_read_family_mapping)
@@ -144,9 +147,6 @@ contains
 
     !> Test reading gene IDs
     subroutine test_read_gene_ids()
-        if (.not. allocated(gene_ids)) then
-            call setup_global_data()
-        end if
         call assert_true(allocated(gene_ids), "Gene IDs should be allocated")
         call assert_equal_int(size(gene_ids), n_genes, "Number of gene IDs should match")
         call assert_true(len_trim(gene_ids(1)) > 0, "First gene ID should not be empty")

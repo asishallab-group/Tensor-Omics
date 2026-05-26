@@ -18,9 +18,9 @@ optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
 optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
 
 diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all"
-diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -fPIC"
+diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all"
 
-default.flags = "-fPIC"
+default.linux.flags = "-fPIC"
 
 [[test]]
 name = "run_tests"

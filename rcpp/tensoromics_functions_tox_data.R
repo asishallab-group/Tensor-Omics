@@ -80,25 +80,16 @@ read_orthofinder_file <- function(filename, gene_ids, n_families, family_len) {
 #> tox_data_tools:filter_unassigned_genes_c: Filter out genes that are not assigned to any family (where gene_to_fam == 0).
 #' Filter out genes without family assignments
 #' @param gene_ids Character vector of gene IDs
-#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)
 #' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)
 #' @return A list with elements:    
-#'   - gene_ids: Filtered character vector of gene IDs
-#'   - expression_vectors: Filtered numeric matrix of expression values
-#'   - gene_to_fam: Filtered integer vector mapping each gene to its family index
-filter_unassigned_genes <- function(gene_ids, expression_vectors, gene_to_fam) {
+#'   - mask: Logical Mask indicating unassigned genes
+#'   - n_genes_kept: Count of TRUE in mask
+filter_unassigned_genes <- function(gene_ids, gene_to_fam) {
   
-  mask <- gene_to_fam != 0L
-  filtered_gene_ids <- gene_ids[mask]
-  filtered_expression_vectors <- expression_vectors[, mask, drop = FALSE]
-  filtered_gene_to_fam <- gene_to_fam[mask]
-  n_genes_kept <- sum(mask)
-  list(
-    gene_ids = filtered_gene_ids,
-    expression_vectors = filtered_expression_vectors,
-    gene_to_fam = filtered_gene_to_fam,
-    n_genes_kept = n_genes_kept
-  )
+  res <- tox_filter_unassigned_genes_rcpp(gene_ids, gene_to_fam)
+  res$mask <- res$mask != 0
+  check_err_code(res$ierr)
+  return(res)
 }
 
 #> tox_data_validation:validate_data_structure_c: Validate overall data structure consistency. Confirms sizes and dependencies as far as possible.

@@ -623,7 +623,7 @@ subroutine read_expression_vectors_tsv_c(file_list_raw, file_list_len, n_files, 
     integer(c_int), intent(in), target :: n_samples
         !! Number of samples
     real(c_double), intent(out), target :: expression_vectors(n_samples, n_genes)
-        !! Pointer to expression vectors (flat array)
+        !! Expression vectors
     integer(c_int), intent(in), target :: n_header_rows
         !! Number of header rows
     integer(c_int), intent(in), target :: gene_col

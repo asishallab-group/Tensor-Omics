@@ -43,13 +43,8 @@ utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
-# Remove outdated .so file -> no accidental reuse
-rm -f build/libtensor-omics.so
-
 # Retrieve output path for .so from fpm and copy to build directory
 find_and_mv_libs "$(utils_fpm list 2>&1)" "build"
-
-check_exit_code "No .so file created"
 
 stderr "
 ${COLOR_GREEN}Build complete with compiler${COLOR_CREAM}: $(echo_compiler $COMPILER)

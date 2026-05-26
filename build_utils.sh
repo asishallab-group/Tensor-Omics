@@ -78,6 +78,7 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
 function get_flags_and_features() {
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
     FLAGS="$TOX_OVERRIDE_FLAGS"
+    FEATURES=
     return
   fi
 
@@ -90,7 +91,6 @@ function get_flags_and_features() {
   if [[ $TOX_DIAGNOSTICS ]]; then
     FEATURES="$FEATURES,diagnostics"
   fi
-
   FEATURES="$FEATURES,default"
 }
 
@@ -99,16 +99,17 @@ function handle_args() {
   DIRECTIVES=""
   
   for arg in "$@"; do
-    if [[ "$arg" == -D* ]]; then
-      DIRECTIVES="$DIRECTIVES $arg"
-    # genericly handle optional flags
-    elif [[ "$arg" == --* ]]; then
+    if [[ "$arg" == --* ]]; then
       declare undashed=${arg:2}
       declare key=${undashed%%=*}
+
       # extract value after first '=' if present, else set to 1
       val="${undashed#"$key"}"      # strip leading $key
-      val="${val#=}"                # strip leading '=' if present
-      : ${val:=1}
+      if [[ "$val" == *=* ]]; then
+        val="${val#=}"                # strip leading '=' if present
+      else
+        val=1
+      fi
 
       declare varname="$key"
 
@@ -116,9 +117,13 @@ function handle_args() {
       varname="${varname//[^a-zA-Z0-9]/_}"
 
       # Uppercase everything
-      varname="${varname^^}"
+      varname="TOX_${varname^^}"
 
-      declare -g "TOX_${varname}=$val"
+      if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
+        DIRECTIVES="$DIRECTIVES -D\"${val}\""
+      else
+        declare -g "${varname}=$val"
+      fi
     else
       ARGS="$ARGS $arg"
     fi
