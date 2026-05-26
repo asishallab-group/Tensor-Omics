@@ -120,7 +120,8 @@ function handle_args() {
       varname="TOX_${varname^^}"
 
       if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
-        DIRECTIVES="$DIRECTIVES -D\"${val}\""
+        DIRECTIVES="$DIRECTIVES -D${val}"
+        TOX_CLEAN_BUILD=1
       else
         declare -g "${varname}=$val"
       fi
