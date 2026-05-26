@@ -21,8 +21,7 @@ on:
       - test_runner.sh
       - build.sh
       - build_utils.sh
-      - ford.yml
-      - .fpm.toml
+      - fpm.toml
 jobs:
   run_tests:
     if: ${{ github.actor != vars.CI_BOT_NAME }}
@@ -58,7 +57,7 @@ jobs:
         run: python helper/generate_snippets.py
 
       - name: Generate docs
-        run: ford ford.yml
+        run: ford fpm.toml
 
       - name: Commit
         uses: ./.github/actions/git-push
