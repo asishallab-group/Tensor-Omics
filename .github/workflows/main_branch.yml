@@ -57,7 +57,7 @@ jobs:
         run: python helper/generate_snippets.py
 
       - name: Generate docs
-        run: ford fpm.toml
+        run: ford concise_project_info.md
 
       - name: Commit
         uses: ./.github/actions/git-push
