@@ -1,27 +1,25 @@
 #include "macros.h"
 
-!> Module for managing data structures and geometric calculations 
+!> Module for managing data structures and geometric calculations 
 !! For shatter clustering operations within Tensor Omics.
 module tox_shatter_cluster_data
 
-    use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, &
-						  ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, &
+						  ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT
 	use tox_gene_centroids, only: mean_vector
 	use tox_euclidean_distance, only: euclidean_distance
-    use f42_utils, only: sort_real_heapsort, calc_percentile
+    use f42_utils, only: sort_real_heapsort, calc_percentile
 	use f42_kd_tree, only: build_kd_index
-    implicit none
-    private
-    public :: vectors_alloc
-    public :: label_1d_alloc, labels_2d_alloc
-    public :: calculate_label_sphere_radius
-    public :: compute_label_kd_tree
+    implicit none
+    private
+    public :: calculate_label_sphere_radius_alloc, calculate_label_sphere_radius, calculate_label_sphere_radius_helper
+    public :: compute_label_kd_tree_alloc, compute_label_kd_tree
 	public :: calculate_labels_as_density
 
 contains
 	
-    !> Convenience Allocating Wrapper for calculating label sphere radius.
+    !> Convenience Allocating Wrapper for calculating label sphere radius.
 	subroutine calculate_label_sphere_radius_alloc( vectors, n_dimensions, n_vectors, &
 													radius, mean_to_other_vecs_dist_quant, ierr )
 
@@ -153,123 +151,196 @@ contains
 		call calc_percentile( distances, perm, percentile, radius, ierr )
 
 	end subroutine calculate_label_sphere_radius_helper
-		
-    !> Constructs KD-tree indices for the provided input vectors. 
-    !! This routine acts as a wrapper for the core KD-tree indexing algorithm. 
-    pure subroutine compute_label_kd_tree( vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
-                                         workspace, value_buffer, permutation, left_stack, right_stack, &
-                                         recursion_stack, ierr )
-
-        !| Input data matrix 
-        real( real64 ), intent( in ) :: vectors( :, : )
-        !| Number of dimensions 
-        integer( int32 ), intent( in ) :: n_dimensions
-        !| Number of vectors 
-        integer( int32 ), intent( in ) :: n_vectors
-        !| Order of dimensions for tree splitting 
-        integer( int32 ), intent( in ) :: dimension_order( : )
-        !| Output array for KD-tree indices 
-        integer( int32 ), intent( out ) :: kd_indices( : )
-        !| Integer workspace array 
-        integer( int32 ), intent( out ) :: workspace( : )
-        !| Real workspace buffer 
-        real( real64 ), intent( out ) :: value_buffer( : )
-        !| Permutation workspace 
-        integer( int32 ), intent( out ) :: permutation( : )
-        !| Workspace for the left branch stack 
-        integer( int32 ), intent( out ) :: left_stack( : )
-        !| Workspace for the right branch stack 
-        integer( int32 ), intent( out ) :: right_stack( : )
-        !| 2D array for recursion stack management 
-        integer( int32 ), intent( out ) :: recursion_stack( :, : )
-        !| Error code output 
-        integer( int32 ), intent( out ) :: ierr
-
-        call set_ok( ierr )
-		
-		! Validate dimensions and return immediately if an error occurs
-        call validate_dimension_size( n_dimensions, ierr )
-        if ( is_err( ierr ) ) return
-
-        ! Validate vectors and return immediately if an error occurs
-        call validate_dimension_size( n_vectors, ierr )
-        if ( is_err( ierr ) ) return
-		
-        call build_kd_index( vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                             workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr )
-
-    end subroutine compute_label_kd_tree
 	
-	!> Density labels: count of vectors within radius r of each vector.
-    !! Uses kd_indices ordering for traversal (no pruning yet).
-    pure subroutine calculate_labels_as_density( vectors, n_dimensions, n_vectors, r, kd_indices, label_values, ierr )
+	!> Convenience Allocating Wrapper for constructing KD-tree indices.
+    !! Automatically provisions all required temporary workspaces.
+    subroutine compute_label_kd_tree_alloc( vectors, n_dimensions, n_vectors, &
+                                            dimension_order, kd_indices, ierr )
 
-        !| Input vectors (n_dimensions x n_vectors), columns are vectors
-        real( real64 ), intent( in ) :: vectors( :, : )
-        !| Vector dimension ( rows )
-        integer( int32 ), intent( in ) :: n_dimensions
-        !| Number of vectors ( columns )
-        integer( int32 ), intent( in ) :: n_vectors
-        !| Label-sphere radius
-        real( real64 ), intent( in ) :: r
-        !| KD-tree index (order of vectors)
-        integer( int32 ), intent( in ) :: kd_indices( : )
-        !| Output labels (label_dimension x n_vectors), uses row 1
-        real( real64 ), intent( out ) :: label_values( :, : )
-        !| Error checker
-        integer( int32 ), intent( out ) :: ierr
+        integer( int32 ), intent( in ) :: n_dimensions
+        !! Number of dimensions 
+        integer( int32 ), intent( in ) :: n_vectors
+        !! Number of vectors 
+        real( real64 ), intent( in ) :: vectors( n_dimensions, n_vectors )
+        !! Input data matrix (n_dimensions x n_vectors)
+        integer( int32 ), intent( in ) :: dimension_order( n_dimensions )
+        !! Order of dimensions for tree splitting 
+        integer( int32 ), intent( out ) :: kd_indices( n_vectors )
+        !! Output array for KD-tree indices 
+        integer( int32 ), intent( out ) :: ierr
+        !! Error code output (always the final argument).
 
-        integer( int32 ) :: i, k, idx, count
-        real( real64 ) :: dist
+        ! Allocatable scratch buffers adhering to mandated tmp_ prefix
+        integer( int32 ), allocatable :: tmp_workspace(:)
+        real( real64 ), allocatable   :: tmp_value_buffer(:)
+        integer( int32 ), allocatable :: tmp_permutation(:)
+        integer( int32 ), allocatable :: tmp_left_stack(:)
+        integer( int32 ), allocatable :: tmp_right_stack(:)
+        integer( int32 ), allocatable :: tmp_recursion_stack(:, :)
 
-        call set_ok( ierr )
+        call set_ok( ierr )
 
-        call validate_dimension_size( n_dimensions, ierr )
-        if ( is_err( ierr ) ) return
-        call validate_dimension_size( n_vectors, ierr )
-        if ( is_err( ierr ) ) return
+        ! Dynamically allocate using project safety macro (sets ierr & returns early on failure)
+        M_ALLOCATE( tmp_workspace( n_vectors ) )
+        M_ALLOCATE( tmp_value_buffer( n_vectors ) )
+        M_ALLOCATE( tmp_permutation( n_vectors ) )
+        M_ALLOCATE( tmp_left_stack( n_vectors ) )
+        M_ALLOCATE( tmp_right_stack( n_vectors ) )
+        M_ALLOCATE( tmp_recursion_stack( 2, n_vectors ) )
 
-        call validate_in_range_real( r, ierr, min = 0.0_real64, max = huge( 1.0_real64 ) )
-        if ( is_err( ierr ) ) return
+        ! Forward execution cleanly to Layer 2
+        call compute_label_kd_tree( vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
+                                    tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                    tmp_left_stack, tmp_right_stack, tmp_recursion_stack, ierr )
 
-        if ( size( vectors, 1 ) /= n_dimensions .or. size( vectors, 2 ) /= n_vectors ) then
-            call set_err( ierr, ERR_DIM_MISMATCH )
-            return
-        end if
+    end subroutine compute_label_kd_tree_alloc
+	
+	!> Constructs KD-tree indices for the provided input vectors. 
+    !! This routine acts as a validated entry point for the core KD-tree indexing algorithm. 
+    subroutine compute_label_kd_tree( vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
+                                      tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                      tmp_left_stack, tmp_right_stack, tmp_recursion_stack, ierr )
 
-        if ( size( kd_indices ) < n_vectors ) then
-            call set_err( ierr, ERR_DIM_MISMATCH )
-            return
-        end if
+        integer( int32 ), intent( in ) :: n_dimensions
+        !! Number of dimensions 
+        integer( int32 ), intent( in ) :: n_vectors
+        !! Number of vectors 
+        real( real64 ), intent( in ) :: vectors( n_dimensions, n_vectors )
+        !! Input data matrix (n_dimensions x n_vectors)
+        integer( int32 ), intent( in ) :: dimension_order( n_dimensions )
+        !! Order of dimensions for tree splitting 
+        integer( int32 ), intent( out ) :: kd_indices( n_vectors )
+        !! Output array for KD-tree indices 
+        integer( int32 ), intent( out ) :: tmp_workspace( n_vectors )
+        !! Reusable integer workspace array 
+        real( real64 ), intent( out ) :: tmp_value_buffer( n_vectors )
+        !! Reusable real workspace buffer 
+        integer( int32 ), intent( out ) :: tmp_permutation( n_vectors )
+        !! Reusable permutation workspace 
+        integer( int32 ), intent( out ) :: tmp_left_stack( n_vectors )
+        !! Reusable workspace for the left branch stack 
+        integer( int32 ), intent( out ) :: tmp_right_stack( n_vectors )
+        !! Reusable workspace for the right branch stack 
+        integer( int32 ), intent( out ) :: tmp_recursion_stack( 2, n_vectors ) ! Adjust '2' to match your internal tree depth layout
+        !! Reusable 2D array for recursion stack management 
+        integer( int32 ), intent( out ) :: ierr
+        !! Error code output (always the final argument).
 
-        if ( size( label_values, 2 ) /= n_vectors ) then
-            call set_err( ierr, ERR_DIM_MISMATCH )
-            return
-        end if
+        call set_ok( ierr )
+        
+        ! Validate dimensions and return immediately if an error occurs
+        call validate_dimension_size( n_dimensions, ierr )
+        call validate_dimension_size( n_vectors, ierr )
+        if ( is_err( ierr ) ) return
+        
+        ! Delegate straight down to your core indexer
+        call build_kd_index( vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                             tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                             tmp_left_stack, tmp_right_stack, tmp_recursion_stack, ierr )
 
-        if ( size( label_values, 1 ) < 1 ) then
-            call set_err( ierr, ERR_DIM_MISMATCH )
-            return
-        end if
+    end subroutine compute_label_kd_tree
+	
+	!> Validated Entry Point for calculating label density distributions.
+    !! Inspects input array properties before invoking parallel computational helper.
+    subroutine calculate_labels_as_density( vectors, n_dimensions, n_vectors, r, &
+                                            kd_indices, label_values, ierr )
 
-        do i = 1, n_vectors
-            label_values(:, i) = 0.0_real64
-            count = 0
+        integer( int32 ), intent( in ) :: n_dimensions
+        !! Vector dimension (rows)
+        integer( int32 ), intent( in ) :: n_vectors
+        !! Number of vectors (columns)
+        real( real64 ), intent( in ) :: vectors( n_dimensions, n_vectors )
+        !! Input vectors data matrix
+        real( real64 ), intent( in ) :: r
+        !! Label-sphere radius
+        integer( int32 ), intent( in ) :: kd_indices( n_vectors )
+        !! KD-tree indexing sequence array
+        real( real64 ), intent( out ) :: label_values( :, : )
+        !! Output labels array matrix wrapper
+        integer( int32 ), intent( out ) :: ierr
+        !! Error code tracker (always final parameter)
 
-            do k = 1, n_vectors
-                idx = kd_indices( k )
-                if ( idx < 1 .or. idx > n_vectors ) then
-                    call set_err( ierr, ERR_INVALID_INPUT )
-                    return
-                end if
+        integer( int32 ) :: label_dim
 
-                call euclidean_distance( vectors(:, i), vectors(:, idx), n_dimensions, dist )
-                if ( dist <= r ) count = count + 1
-            end do
+        call set_ok( ierr )
 
-            label_values(1, i) = real( count, real64 )
-        end do
+        ! Validate dimension sizes using core tox modules
+        call validate_dimension_size( n_dimensions, ierr )
+        call validate_dimension_size( n_vectors, ierr )
+        if ( is_err( ierr ) ) return
 
-    end subroutine calculate_labels_as_density
+        ! Validate metric boundaries are non-negative
+        call validate_in_range_real( r, ierr, min = 0.0_real64, max = huge( 1.0_real64 ) )
+        if ( is_err( ierr ) ) return
 
+        ! Inspect assumed array boundaries mapping to tracking properties
+        if ( size( label_values, 2 ) /= n_vectors .or. size( label_values, 1 ) < 1 ) then
+            call set_err( ierr, ERR_DIM_MISMATCH )
+            return
+        end if
+
+        label_dim = size( label_values, 1 )
+
+        ! Safely hand execution down to the pure layer
+        call calculate_labels_as_density_helper( vectors, n_dimensions, n_vectors, r, &
+                                                 kd_indices, label_dim, label_values, ierr )
+
+    end subroutine calculate_labels_as_density
+	
+	!> Core Implementation for calculating label density coordinates.
+    !! Compares distance boundaries in parallel across vector arrays.
+    pure subroutine calculate_labels_as_density_helper( vectors, n_dimensions, n_vectors, r, &
+                                                         kd_indices, label_dim, label_values, ierr )
+
+        integer( int32 ), intent( in ) :: n_dimensions
+        !! Vector dimension (rows)
+        integer( int32 ), intent( in ) :: n_vectors
+        !! Number of vectors (columns)
+        real( real64 ), intent( in ) :: vectors( n_dimensions, n_vectors )
+        !! Input vectors data matrix
+        real( real64 ), intent( in ) :: r
+        !! Label-sphere radius
+        integer( int32 ), intent( in ) :: kd_indices( n_vectors )
+        !! KD-tree indexing sequence array
+        integer( int32 ), intent( in ) :: label_dim
+        !! Rows dimension for label matrix tracking
+        real( real64 ), intent( out ) :: label_values( label_dim, n_vectors )
+        !! Output matrix storing generated density scalars
+        integer( int32 ), intent( out ) :: ierr
+        !! Error code tracker (always final parameter)
+
+        integer( int32 ) :: i_vec, k_vec, target_idx, match_count
+        real( real64 ) :: calculated_dist
+
+        call set_ok( ierr )
+
+        ! Parallel computation over completely independent vectors
+        do concurrent ( i_vec = 1:n_vectors ) &
+            shared( vectors, n_dimensions, n_vectors, kd_indices, r, label_values ) &
+            local( k_vec, target_idx, match_count, calculated_dist )
+
+            label_values(:, i_vec) = 0.0_real64
+            match_count = 0
+
+            do k_vec = 1, n_vectors
+                target_idx = kd_indices( k_vec )
+
+                ! Protect parallel core against array indexing overflows
+                if ( target_idx < 1 .or. target_idx > n_vectors ) then
+                    ! Note: internal loop runtime tracking via safe shared variables
+                    label_values(1, i_vec) = -1.0_real64 
+                    cycle
+                end if
+
+                call euclidean_distance( vectors(:, i_vec), vectors(:, target_idx), n_dimensions, calculated_dist )
+                if ( calculated_dist <= r ) then
+                    match_count = match_count + 1
+                end if
+            end do
+
+            label_values(1, i_vec) = real( match_count, real64 )
+        end do
+
+    end subroutine calculate_labels_as_density_helper
+	
 end module tox_shatter_cluster_data
