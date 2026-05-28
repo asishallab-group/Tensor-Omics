@@ -9,13 +9,6 @@ When working with vectors in space, our goal is to cluster them according to dif
     \item More complex Clustering Characteristics (CC)
 \end{itemize}
 
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.5\textwidth]{figures/shatter_vectors_1a.png}
-    \caption{Vectors in space, evaluated by complex clustering characteristics.}
-    \label{fig:shatter_vectors}
-\end{figure}
-
 \subsection{Algorithm Sketch}
 To illustrate the algorithm, we use \textbf{Local Density} as an example Clustering Characteristic (CC).
 
@@ -30,13 +23,6 @@ To illustrate the algorithm, we use \textbf{Local Density} as an example Cluster
         \item Being within a fixed radius
     \end{itemize}
 \end{enumerate}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.6\textwidth]{figures/shatter_vectors_1b.png}
-    \caption{Iterative cluster growth along defined local volumes.}
-    \label{fig:shatter_clusters}
-\end{figure}
 
 \subsection{Iterative Cluster Growth}
 To track the state of the graph, we maintain a list of visited edges and a list of nodes assigned to clusters.
