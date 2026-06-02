@@ -3653,7 +3653,7 @@ def tox_compute_p_values(local_contributions_observed,
     }
 
 
-#> f42_json:serialize_tox_data_as_flyer_json_c: Serialize tox data
+#> f42_json:serialize_tox_data_as_flyer_json_c: Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
 def tox_serialize_tox_data_as_flyer_json(
     filename: str,
     tissues,
@@ -3668,7 +3668,7 @@ def tox_serialize_tox_data_as_flyer_json(
     gene_types
 ):
     """
-    Python wrapper for serialize_tox_data_as_flyer_json_c.
+    Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
 
     String lengths (tissue_len, family_id_len, ...) must match the fixed lengths
     used on the Fortran side.
