@@ -92,7 +92,7 @@ contains
             call run_test_case(all_tests(i))
         end do
 
-        print "(A)", COLOR_CREAM // "All '" // COLOR_DARK_COPPER // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
+        print "(A)", COLOR_CREAM // "All '" // COLOR_LIGHT_GRAY // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
     end subroutine run_all_tests
 
     !> Run test for specific test case
@@ -140,7 +140,7 @@ contains
         type(test_case), allocatable :: all_tests(:)
 
         do i = 1, size(available_suites)
-            print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
+            print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_LIGHT_GRAY // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
             all_tests = available_suites(i)%get_all()
             call run_all_tests(trim(available_suites(i)%name), all_tests)
         end do
@@ -154,7 +154,7 @@ contains
 
         do i = 1, size(available_suites)
             if (trim(available_suites(i)%name) == trim(requested_suite)) then
-                print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_DARK_COPPER // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
+                print "(A)", COLOR_CREAM // "Running suite: '" // COLOR_LIGHT_GRAY // trim(available_suites(i)%name) // COLOR_CREAM // "'" // COLOR_RESET
                 all_tests = available_suites(i)%get_all()
                 call run_all_tests(trim(requested_suite), all_tests)
                 return

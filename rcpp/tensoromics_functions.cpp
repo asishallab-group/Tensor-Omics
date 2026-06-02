@@ -2266,7 +2266,7 @@ List tox_normalize_variable_timeseries_rcpp(NumericVector v) {
 //' Normalize all factors in a single trajectory independently
 //'
 //' @param trajectory Numeric matrix (timepoints x factors)
-//' @return List with normalized trajectory, status code, and error code
+//' @return List with normalized trajectory, status codes per factor, and error code
 // [[Rcpp::export]]
 List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
 
@@ -2274,14 +2274,14 @@ List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
   int n_factors = trajectory.ncol();
   NumericMatrix trajectory_norm(n_timepoints, n_factors);
   int ierr = 0;
-  int status = 0;
+  IntegerVector status(n_factors);
 
   normalize_single_trajectory_c(trajectory.begin(),
                                 trajectory_norm.begin(),
                                 &n_factors,
                                 &n_timepoints,
                                 &ierr,
-                                &status);
+                                status.begin());
 
   return List::create(Named("traj_norm") = trajectory_norm,
                       Named("status") = status,
@@ -2295,7 +2295,7 @@ List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
 //' @param n_factors Integer number of factors
 //' @param n_samples Integer number of samples
 //' @param n_timepoints Integer number of timepoints
-//' @return List with normalized trajectories, status code, and error code
+//' @return List with normalized trajectories, status codes per factor-sample pair, and error code
 // [[Rcpp::export]]
 List tox_normalize_all_trajectories_rcpp(NumericVector trajectories,
                                           int n_factors,
@@ -2304,7 +2304,7 @@ List tox_normalize_all_trajectories_rcpp(NumericVector trajectories,
 
   NumericVector trajectories_norm(n_factors * n_samples * n_timepoints);
   int ierr = 0;
-  int status = 0;
+  IntegerMatrix status(n_factors, n_samples);
 
   normalize_all_trajectories_c(trajectories.begin(),
                                 trajectories_norm.begin(),
@@ -2312,7 +2312,7 @@ List tox_normalize_all_trajectories_rcpp(NumericVector trajectories,
                                 &n_samples,
                                 &n_timepoints,
                                 &ierr,
-                                &status);
+                                status.begin());
 
   return List::create(Named("traj_norm") = trajectories_norm,
                       Named("status") = status,

@@ -173,6 +173,7 @@ Usage:
 - `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then (but also in other unusual changes, like switching WSL distro, so completely new environment).
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--directive=<directive>`: Define a preprocessor directive, can be used multiple times, like `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`
+- `--diagnostics`: While `--max-performance` enables optimization flags, this one enables flags for diagnostics, which helps for debugging. Can be combined with `--max-performance` though.
 - `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
   *Note: With using this option, the `--max_performance` option won't have any effect*
 - environment variable `FC` is supported as well for specifying compiler, with precedence `--compiler > $TOX_COMPILER > $FC`.

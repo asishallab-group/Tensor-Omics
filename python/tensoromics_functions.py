@@ -3227,7 +3227,7 @@ def tox_normalize_single_trajectory(trajectory):
     Returns:
         dict: {
             'traj_norm' (np.ndarray): Normalized trajectory shape (n_timepoints, n_factors) in [0,1],
-            'status' (int): Status code from normalization routine
+            'status' (np.ndarray): Status code from normalization routine for each factor
         }
     """
     traj_arr = np.asfortranarray(trajectory, dtype=np.float64)
@@ -3237,7 +3237,7 @@ def tox_normalize_single_trajectory(trajectory):
     n_timepoints_c = ctypes.c_int(n_timepoints)
     traj_norm = np.empty_like(traj_arr)
     ierr = ctypes.c_int(0)
-    status = ctypes.c_int(0)
+    status = np.empty((n_factors), dtype=np.int32, order="F")
 
     normalize_c = lib.normalize_single_trajectory_c
     normalize_c.argtypes = [
@@ -3246,18 +3246,18 @@ def tox_normalize_single_trajectory(trajectory):
         ctypes.POINTER(ctypes.c_int),                                    # n_factors
         ctypes.POINTER(ctypes.c_int),                                    # n_timepoints
         ctypes.POINTER(ctypes.c_int),                                    # ierr
-        ctypes.POINTER(ctypes.c_int)                                     # status
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS")     # status
     ]
     normalize_c.restype = None
 
     normalize_c(traj_arr, traj_norm, ctypes.byref(n_factors_c),
-                ctypes.byref(n_timepoints_c), ctypes.byref(ierr), ctypes.byref(status))
+                ctypes.byref(n_timepoints_c), ctypes.byref(ierr), status)
     check_err_code(ierr.value)
 
     _readonly(traj_norm)
     result = {
         "traj_norm": traj_norm,
-        "status": status.value
+        "status": status
     }
     return result
 
@@ -3273,7 +3273,7 @@ def tox_normalize_all_trajectories(trajectories):
     Returns:
         dict: {
             'traj_norm' (np.ndarray): Normalized trajectories (n_factors × n_samples × n_timepoints) in [0,1],
-            'status' (int): Status code from normalization routine
+            'status' (np.ndarray): Status code from normalization routine for each factor-sample pair
         }
     """
     traj_arr = np.asfortranarray(trajectories, dtype=np.float64)
@@ -3284,7 +3284,7 @@ def tox_normalize_all_trajectories(trajectories):
     n_timepoints_c = ctypes.c_int(n_timepoints)
     traj_norm = np.empty_like(traj_arr)
     ierr = ctypes.c_int(0)
-    status = ctypes.c_int(0)
+    status = np.empty((n_factors, n_samples), dtype=np.int32, order="F")
 
     normalize_c = lib.normalize_all_trajectories_c
     normalize_c.argtypes = [
@@ -3294,20 +3294,20 @@ def tox_normalize_all_trajectories(trajectories):
         ctypes.POINTER(ctypes.c_int),                                    # n_samples
         ctypes.POINTER(ctypes.c_int),                                    # n_timepoints
         ctypes.POINTER(ctypes.c_int),                                    # ierr
-        ctypes.POINTER(ctypes.c_int)                                     # status
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS")   # status
     ]
     normalize_c.restype = None
 
     normalize_c(traj_arr, traj_norm, ctypes.byref(n_factors_c),
                 ctypes.byref(n_samples_c), ctypes.byref(n_timepoints_c),
-                ctypes.byref(ierr), ctypes.byref(status))
+                ctypes.byref(ierr), status)
     check_err_code(ierr.value)
 
     _readonly(traj_norm)
 
     result = {
         "traj_norm": traj_norm,
-        "status": status.value
+        "status": status
     }
     return result
 

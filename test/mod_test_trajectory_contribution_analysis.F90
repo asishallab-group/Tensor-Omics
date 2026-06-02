@@ -769,7 +769,7 @@ contains
         integer(int32), parameter :: n_factors = 3, n_timepoints = 4
         real(real64) :: trajectory(n_timepoints, n_factors), trajectory_norm(n_timepoints, n_factors)
         real(real64) :: expected(n_timepoints, n_factors)
-        integer(int32) :: ierr, i_factor, i_timepoint, status
+        integer(int32) :: ierr, i_factor, i_timepoint, status(n_factors)
 
         ! Create test trajectory for ONE SAMPLE: factors × timepoints
         do i_factor = 1, n_factors
@@ -811,7 +811,7 @@ contains
         integer(int32), parameter :: n_factors = 2, n_samples = 3, n_timepoints = 4
         real(real64) :: trajectories(n_factors, n_samples, n_timepoints)
         real(real64) :: trajectories_norm(n_factors, n_samples, n_timepoints)
-        integer(int32) :: ierr, i_factor, i_sample, i_timepoint, status
+        integer(int32) :: ierr, i_factor, i_sample, i_timepoint, status(n_factors, n_samples)
 
         ! Fill with known pattern: factor × sample × timepoint
         do i_factor = 1, n_factors

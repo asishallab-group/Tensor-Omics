@@ -145,7 +145,7 @@ contains
     end subroutine map_err_arg_pos
 
     !> set the error code to OK, use at beginning of procedures
-    pure subroutine set_ok(ierr)
+    elemental subroutine set_ok(ierr)
         integer(int32), intent(out) :: ierr
             !! Error code
         ierr = ERR_OK
