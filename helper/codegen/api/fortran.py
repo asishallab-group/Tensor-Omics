@@ -4,10 +4,10 @@ from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable,
 import warnings
 from enum import Enum
 import re
-from .utils import Indentable
+from .utils import Indentable, CodeGenerator
 
 
-class Project(_Project):
+class Project(CodeGenerator, _Project):
     """Class for the parsed codebase"""
     def __init__(self):
         directory = "."
@@ -25,7 +25,7 @@ class Project(_Project):
 
 
 # TODO: handle derived types
-class Fortran_Type:
+class Fortran_Type(CodeGenerator):
     def __init__(self, type_name: str, kind: str = None, length: str = None):
         if type_name not in ("character", "logical", "type") and kind is None:
             raise ValueError(f"kind must be present for '{type_name}'")
@@ -50,37 +50,8 @@ class Fortran_Type:
         except ValueError as e:
             raise ValueError(f"{e} of '{arg.name}' in '{arg.parent.name}'")
 
-    def __format__(self, spec):
-        match spec:
-            case "C":
-                match self.name:
-                    case "logical":
-                        return f"integer(c_int)"
-                    case "character":
-                        return f"character(len=1, kind=c_char)"
-                    case "integer":
-                        return f"integer(c_int)"
-                    case "real":
-                        return f"real(c_double)"
-                    case "complex":
-                        return f"real(c_double_complex)"
-                    case _:
-                        raise ValueError(f"'{self.name}' not supported for C formatting")
-            case "Fortran":
-                match self.name:
-                    case "character":
-                        return f"character(len={self.length})"
-                    case "logical":
-                        return "logical"
-                    case "type":
-                        raise ValueError(f"'{self.name}' not supported for C formatting")
-                    case _:
-                        return f"{self.type}(kind={self.kind})"
-            case _:
-                raise ValueError(f"Unsupported formatting spec '{spec}'")
 
-
-class DocList:
+class DocList(CodeGenerator):
     """Class for managing parsed Ford documentation. Each line is one element"""
     def __init__(self, doc_list: List[str, ...], type: str):
         if type not in ("module", "procedure", "argument"):
@@ -112,22 +83,14 @@ class DocList:
     def __setitem__(self, idx, value):
         self.doc_list[idx] = value
 
-    def __str__(self):
-        match self.type:
-            case "argument":
-                formatted = f"!!{"\n!!".join(self.doc_list)}"
-            case "procedure" | "module":
-                formatted = f"!|{"\n!|".join(self.doc_list)}"
-        return Indentable(arg_str)
-
     def __add__(self, other: list):
-        return DocList([*new.doc_list, *other], self.type)
+        return DocList([*self.doc_list, *other], self.type)
 
     def __radd__(self, other: list):
-        return DocList([*other, *new.doc_list], self.type)
+        return DocList([*other, *self.doc_list], self.type)
 
 
-class Dimension(tuple):
+class Dimension(CodeGenerator, tuple):
     """Representation of the dimension attribute of a variable"""
     def __new__(cls, arg: List[str, ...] = ()):
         return super(cls, cls).__new__(cls, arg)
@@ -147,14 +110,8 @@ class Dimension(tuple):
             # TODO: shape might include some funtion like 'int(n, int32)' -> results in wrong extent
             return cls([dim.strip() for dim in dims.split(",")])
 
-    def __str__(self):
-        if len(self) == 0:
-            return ""
-        else:
-            return f"dimension({", ".join(self)}), "
 
-
-class Intent(Enum):
+class Intent(CodeGenerator, Enum):
     IN = 1
     OUT = 2
     INOUT = 3
@@ -169,11 +126,8 @@ class Intent(Enum):
             raise SyntaxError(f"No intent for '{value.name}' in '{value.parent.name}' of module '{value.parent.parent.name}'")
         raise KeyError(f"'{value}' invalid intent")
 
-    def __str__(self):
-        return f"intent({self.name.lower()})"
 
-
-class ProcedureArgument:
+class ProcedureArgument(CodeGenerator):
     """Wrapper class for procedure arguments"""
 
     def __init__(self, argument: FortranVariable):
@@ -193,7 +147,7 @@ class ProcedureArgument:
             ...
 
 
-class Procedure:
+class Procedure(CodeGenerator):
     """Wrapper class for Fortran procedures"""
     def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
         self.name = procedure.name
@@ -203,15 +157,3 @@ class Procedure:
         self.retvar = getattr(procedure, "retvar", None)
         self.type = "subroutine" if self.retvar is None else "function"
         self.parent = procedure.parent
-
-    def __format__(self, spec):
-        match spec:
-            case "call":
-                call = f"{self.name}({", ".join(arg.name for arg in self.args)})"
-                if self.retvar is None:
-                    call = "call " + call
-                else:
-                    call = f"{self.retvar} = {call}"
-                return Indentable(call)
-            case _:
-                raise ValueError(f"Unsupported format spec '{spec}'")

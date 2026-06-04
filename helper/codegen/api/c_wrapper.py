@@ -1,5 +1,5 @@
-from .ford_api import Project, Procedure, ProcedureArgument, DocList, Dimension, Intent, Fortran_Type
-from .utils import Indentable
+from .fortran import Project, Procedure, ProcedureArgument, DocList, Dimension, Intent, Fortran_Type
+from .utils import CodeGenerator
 from typing import List, Tuple
 from enum import Enum
 import re
@@ -8,10 +8,9 @@ import os
 
 
 NAME_SUFFIX = "_c"
-INDENT = 4
 
 
-class C_Argument:
+class C_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
     def __init__(self, name: str, doc: DocList, type: Fortran_Type, dimension: Dimension, intent: Intent, default_value=None, only_c_arg=False):
         self.name = name
@@ -69,20 +68,8 @@ class C_Argument:
 
         return argument, tuple(extra_dim_args)
 
-    def __format__(self, spec):
-        match spec:
-            case "dummy":
-                arg_str = f"{format(self.type, "C")}, {self.dimension}{self.intent}, target :: {self.name}"
-                for line in self.doc:
-                    arg_str += f"\n    !!{line}"
-            case "name":
-                arg_str = self.name
-            case _:
-                raise ValueError(f"Unsupported format spec '{spec}'")
-        return Indentable(arg_str)
 
-
-class C_Arguments(tuple):
+class C_Arguments(CodeGenerator, tuple):
     """Collection of C_Argument objects"""
     def __new__(cls, procedure: Procedure):
         arguments = []
@@ -104,24 +91,8 @@ class C_Arguments(tuple):
 
         return super(cls, cls).__new__(cls, arguments)
 
-    def __format__(self, spec):
-        match spec:
-            case "dummy":
-                formatted = "\n".join(format(arg, "dummy") for arg in self)
-            case "arglist":
-                formatted = ", ".join(arg.name for arg in self)
-            case "null_validation":
-                formatted = "M_CHECK_IERR_NON_NULL"
-                for arg in self:
-                    if arg.name != "ierr":
-                        formatted += f"\nM_CHECK_NON_NULL({arg.name})"
-            case _:
-                raise ValueError(f"Unsupported format spec '{spec}'")
 
-        return Indentable(formatted)
-
-
-class C_Wrapper:
+class C_Wrapper(CodeGenerator):
     """Includes all relevant information about a C wrapper, meaning its C name, arguments and argument docstrings"""
     def __init__(self, procedure: Procedure, module_name: str):
         self.doc = procedure.doc_list
@@ -148,22 +119,8 @@ class C_Wrapper:
         self.name = name + NAME_SUFFIX
         self.arguments = C_Arguments(procedure)
 
-    def __str__(self):
-        wrapper = f"""!> C-wrapper for {self.orig_proc_ford_link}
-!|{"\n!|".join(self.doc)}
-subroutine {self.name}({format(self.arguments, "arglist")}) bind(C, name="{self.name}")
-    use {self.module_name}, only: {self.orig_proc_name}
-{format(self.arguments, "dummy") >> INDENT}
 
-{format(self.arguments, "null_validation") >> INDENT}
-
-{self.orig_proc_call >> INDENT}
-end subroutine {self.name}"""
-
-        return Indentable(wrapper)
-
-
-class C_Module:
+class C_Module(CodeGenerator):
     """Includes a bunch of wrappers that should appear in one c interfacing module"""
     def __init__(self, name: str, orig_mod_name: str, doc: DocList):
         self.name = name
@@ -185,28 +142,8 @@ class C_Module:
     def __len__(self):
         return len(self.c_wrappers)
 
-    def __str__(self):
-        return f"""#include <src/macros.h>
 
-!> Module for C-wrappers for [[{self.orig_mod_name}(module)]]
-!|{"\n!|".join(self.doc)}
-module {self.name}
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
-    use, intrinsic :: iso_c_binding, only: c_loc, c_associated
-
-    use tox_conversions, only: logical_as_c_int, c_int_as_logical
-    use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
-    use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
-
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
-contains
-
-{"\n\n    ".join(str(c_wrapper) >> INDENT for c_wrapper in self)}
-
-end module {self.name}"""
-
-
-class C_Modules(tuple):
+class C_Modules(CodeGenerator, tuple):
     """Collection of C_Module objects"""
     def __new__(cls, project: Project):
         """
@@ -243,4 +180,4 @@ class C_Modules(tuple):
             module_file_path = c_wrapper_dir.joinpath(module.name + ".F90")
 
             with open(module_file_path, "w") as module_file:
-                module_file.write(str(module))
+                module_file.write(format(module))
