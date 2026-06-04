@@ -344,6 +344,7 @@ pure subroutine fjct_compute_jsd_expert_c( &
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: fjct_compute_jsd
     use tox_conversions, only: c_int_as_logical
+    use tox_errors, only: validate_dimension_size, is_err, set_ok, ERR_ALLOC_FAIL
     M_USE_NULL_VALIDATION
     implicit none
 
@@ -396,7 +397,7 @@ pure subroutine fjct_compute_jsd_expert_c( &
     integer(c_int), intent(out), target :: ierr
         !! Error code
 
-    logical, dimension(n_neighbors,n_points) :: mask1_f, mask2_f
+    logical, dimension(:,:), allocatable :: mask1_f, mask2_f
 
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_reps_S1)
@@ -418,6 +419,16 @@ pure subroutine fjct_compute_jsd_expert_c( &
     M_CHECK_NON_NULL(pmf_S1)
     M_CHECK_NON_NULL(pmf_S2)
     M_CHECK_NON_NULL(tmp_counts)
+
+    call set_ok(ierr)
+
+    call validate_dimension_size(n_neighbors, ierr)
+    call validate_dimension_size(n_points, ierr)
+
+    if (is_err(ierr)) return
+
+    M_ALLOCATE(mask1_f(n_neighbors, n_points))
+    M_ALLOCATE(mask2_f(n_neighbors, n_points))
 
     call c_int_as_logical(neighbor_mask_S1, mask1_f)
     call c_int_as_logical(neighbor_mask_S2, mask2_f)

@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !> Module for computing the shift vector field for all genes.
 module tox_shift_vectors
   use safeguard
@@ -59,34 +61,7 @@ contains
   end subroutine
 end module
 
-!> R wrapper for `compute_shift_vector_field`
-!| Calls `compute_shift_vector_field` with standard Fortran types for R interface.
-!| When using these R wrapper functions, copies of the arrays will be created. No direct modification of the original R objects occurs..
-pure subroutine compute_shift_vector_field_r(d, n_genes, n_families, expression_vectors, family_centroids, &
-                                             gene_to_centroid, shift_vectors, ierr)
-  use tox_shift_vectors, only: compute_shift_vector_field
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
 
-  !| Expression vector dimension
-  integer(int32), intent(in) :: d
-  !| Total number of genes
-  integer(int32), intent(in) :: n_genes
-  !| Total number of families
-  integer(int32), intent(in) :: n_families
-  !| Gene expression matrix `(d × n_genes)`
-  real(real64), intent(in) :: expression_vectors(d, n_genes)
-  !| Family centroid matrix `(d × n_families)`
-  real(real64), intent(in) :: family_centroids(d, n_families)
-  !| Mapping from genes to family centroids to genes of `expression_vectors` -> `family_centroids(:, gene_to_centroid(n))` returns the family centroid of `expression_vectors(:,n)`
-  integer(int32), intent(in) :: gene_to_centroid(n_genes)
-  !| Output, real matrix array, size = 2d x `n_genes`, stores the centroid of the gene's family in rows 1..d and the shift vectors in rows d+1...2d
-  real(real64), intent(out) :: shift_vectors(2*d, n_genes)
-  !| Error code: 0 - success, non-zero = error
-  integer(int32), intent(out) :: ierr
-  call compute_shift_vector_field(d, n_genes, n_families, expression_vectors, family_centroids, &
-                                  gene_to_centroid, shift_vectors, ierr)
-end subroutine compute_shift_vector_field_r
 
 !> C wrapper for `compute_shift_vector_field`.
 !| Exposes `compute_shift_vector_field` to C via iso_c_binding types with explicit dimensions.
@@ -95,14 +70,15 @@ pure subroutine compute_shift_vector_field_c(d, n_genes, n_families, expression_
                                              shift_vectors, ierr) bind(C, name="compute_shift_vector_field_c")
   use, intrinsic :: iso_c_binding, only: c_double, c_int
   use tox_shift_vectors, only: compute_shift_vector_field
+  M_USE_NULL_VALIDATION
   implicit none
 
   !| Expression vector dimension
-  integer(c_int), intent(in), value :: d
+  integer(c_int), intent(in), target :: d
   !| Total number of genes
-  integer(c_int), intent(in), value :: n_genes
+  integer(c_int), intent(in), target :: n_genes
   !| Total number of families
-  integer(c_int), intent(in), value :: n_families
+  integer(c_int), intent(in), target :: n_families
   !| Gene expression matrix `(d × n_genes)`
   real(c_double), intent(in), target :: expression_vectors(d, n_genes)
   !| Family centroid matrix `(d × n_families)`
@@ -112,7 +88,16 @@ pure subroutine compute_shift_vector_field_c(d, n_genes, n_families, expression_
   !| Output, real matrix array, size = 2d x `n_genes`, stores the centroid of the gene's family in rows 1..d and the shift vectors in rows d+1...2d
   real(c_double), intent(out), target :: shift_vectors(2*d, n_genes)
   !| Error code: 0 - success, non-zero = error
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(d)
+  M_CHECK_NON_NULL(n_genes)
+  M_CHECK_NON_NULL(n_families)
+  M_CHECK_NON_NULL(expression_vectors)
+  M_CHECK_NON_NULL(family_centroids)
+  M_CHECK_NON_NULL(gene_to_centroid)
+  M_CHECK_NON_NULL(shift_vectors)
 
   call compute_shift_vector_field(d, n_genes, n_families, expression_vectors, family_centroids, &
                                   gene_to_centroid, shift_vectors, ierr)

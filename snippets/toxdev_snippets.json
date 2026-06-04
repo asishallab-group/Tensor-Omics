@@ -49,16 +49,16 @@
   "R wrapper legend": {
     "prefix": "toxdev:legend_r",
     "body": [
-    "!> IMPORTANT - When using these R wrapper functions, copies of the arrays will be created.",
-    "!| No direct modification of the original R objects occurs."
+      "!> IMPORTANT - When using these R wrapper functions, copies of the arrays will be created.",
+      "!| No direct modification of the original R objects occurs."
     ],
     "description": "Standard legend for R wrappers about array copy behavior"
   },
   "C wrapper legend": {
     "prefix": "toxdev:legend_c",
     "body": [
-    "!> IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.",
-    "!| The Fortran routine will operate directly on the memory provided by the caller."
+      "!> IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.",
+      "!| The Fortran routine will operate directly on the memory provided by the caller."
     ],
     "description": "Standard legend for C wrappers about direct memory access"
   },
@@ -87,6 +87,6 @@
     "body": [
       "${1:c_type}, intent(${2:inout}), target :: ${3:name}(*)"
     ],
-    "description": "C-style argument declaration"
+    "description": "C-style argument declaration (pass-by-reference with target)"
   }
 }

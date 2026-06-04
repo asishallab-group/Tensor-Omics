@@ -138,6 +138,13 @@ contains
     integer(int32), intent(out) :: ierr
     if(is_err(ios)) call set_err(ierr, ERR_ALLOC_FAIL)
   end subroutine check_io_stat
+
+  pure subroutine check_alloc_stat(stat, ierr)
+    integer(int32), intent(in)    :: stat
+    integer(int32), intent(inout) :: ierr
+    if (is_err(stat)) call set_err_once(ierr, ERR_ALLOC_FAIL)
+  end subroutine check_alloc_stat
+
   
   pure subroutine validate_dimension_size(n, ierr)
     integer(int32), intent(in), optional :: n

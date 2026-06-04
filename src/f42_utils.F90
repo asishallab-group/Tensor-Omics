@@ -8,7 +8,7 @@ module f42_utils
   use tox_errors, only: ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, set_ok, set_err_once, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size
   use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
   implicit none
-
+  public :: init_random, rand_range
   public :: sort_real, sort_integer, sort_character
   public :: sort_array
   public :: compute_edf, compute_edf_alloc
@@ -32,6 +32,47 @@ module f42_utils
   real(real64), parameter :: PI = 4.0_real64 * atan(1.0_real64)
   real(real64), parameter :: EPS = epsilon(1.0_real64)
 contains
+
+    pure real(real64) function mean(vec)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the mean value from
+
+        mean = sum(vec) / real(size(vec, kind=int32), real64)
+    end function mean
+
+    pure real(real64) function std_dev(vec, do_bessel_correction)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the standard deviation value from
+        logical, intent(in), optional :: do_bessel_correction
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`
+            !!
+            !! |    Case     |                                                Formula                                                      |
+            !! |-------------|-------------------------------------------------------------------------------------------------------------|
+            !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
+            !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
+
+        logical :: bessel
+        integer(int32) :: n_elements, i_element
+        real(real64) :: mean_val, squares_sum
+
+        M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
+
+        mean_val = mean(vec)
+        n_elements = size(vec, kind=int32)
+        if (bessel) then
+            squares_sum = 0.0_real64
+            do concurrent (i_element = 1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
+                squares_sum = squares_sum + (vec(i_element) - mean_val) ** 2
+            end do
+            std_dev = sqrt(squares_sum / real(n_elements - 1, kind=real64))
+        else
+            squares_sum = 0.0_real64
+            do concurrent (i_element = 1:n_elements) shared(vec) reduce(+:squares_sum)
+                squares_sum = squares_sum + vec(i_element) ** 2
+            end do
+            std_dev = sqrt(max(0.0_real64, squares_sum / real(n_elements, kind=real64) - mean_val ** 2))
+        end if
+    end function std_dev
 
   !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
   pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
@@ -120,7 +161,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -137,7 +177,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -1204,106 +1243,179 @@ contains
     call calc_percentile(array, perm, percentile, value, ierr)
   end subroutine calc_percentile_alloc
 
+  !> Calculate empirical p-values for scaled expression distances (RDI).
+  !|
+  !| Implements:
+  !|   P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+  !|
+  !| Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+  !|
+  !| Assumptions / preconditions:
+  !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
+  !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+  pure subroutine compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+    integer(int32), intent(in) :: n_genes
+    !| Number of genes being processed.
+    real(real64), intent(in) :: rdi(n_genes)
+    !| empirical distribution D
+    real(real64), intent(in) :: sorted_rdi(n_genes)   
+    !| empirical distribution D with non negative values
+    real(real64), intent(out) :: p_values(n_genes)
+    !| Output array to store the computed p-values for each gene.
+    real(real64), intent(in) :: c_const
+    !| Constant used in the computation, typically 1
+    integer(int32), intent(in) :: perm(n_genes)
+    !| Permutation array with sorted indices for sorted_rdi
+
+    integer(int32) :: i, first_ge, count_ge
+    real(real64) :: denom, d
+
+    denom = real(n_genes, real64) + c_const
+    if (denom <= 0.0_real64) then
+      p_values = 1.0_real64
+      return
+    end if
+
+    do i = 1, n_genes
+      d = rdi(i)
+
+      ! Invalid / negative => not an outlier: p = 1
+      if (d < 0.0_real64) then
+        p_values(i) = 1.0_real64
+        cycle
+      end if
+
+      first_ge = lower_bound_ge(sorted_rdi, perm, n_genes, d)
+
+      if (first_ge <= n_genes) then
+        count_ge = n_genes - first_ge + 1_int32
+      else
+        count_ge = 0_int32
+      end if
+
+      p_values(i) = (real(count_ge, real64) + c_const) / denom
+    end do
+
+  end subroutine compute_empirical_p_values
+
+  !> First position pos in [1..n] such that sorted_rdi(perm(pos)) >= x. Returns n+1 if none.
+  pure integer(int32) function lower_bound_ge(vals, p, n, x) result(pos)
+    real(real64), intent(in) :: vals(n)
+    !| Input array of values to be searched
+    integer(int32), intent(in) :: p(n)
+    !| Permutation array with sorted indices
+    integer(int32), intent(in) :: n
+    !| Number of elements in the `vals` and `p` arrays
+    real(real64), intent(in) :: x
+    !| Input value to be searched for or compared against within `vals`
+
+    integer(int32) :: l, h, mid
+
+    l = 1_int32
+    h = n
+    pos = n + 1_int32
+
+    do while (l <= h)
+      mid = l + (h - l) / 2_int32
+      if (vals(p(mid)) >= x) then
+        pos = mid
+        h = mid - 1_int32
+      else
+        l = mid + 1_int32
+      end if
+    end do
+  end function lower_bound_ge
+
+
 end module f42_utils
 
-! === R WRAPPERS ===
 
-!> R wrapper for loess_smooth_2d.
-!| Direct wrapper - user must pre-filter indices in R before calling.
-subroutine loess_smooth_2d_r(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr)
-  use f42_utils, only: loess_smooth_2d
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-  !| Total number of reference points.
-  integer(int32), intent(in) :: n_total
-  !| Number of target points to smooth.
-  integer(int32), intent(in) :: n_target
-  !| Reference x-coordinates.
-  real(real64), intent(in) :: x_ref(n_total)
-  !| Reference y-coordinates (length n_total).
-  real(real64), intent(in) :: y_ref(n_total)
-  !| Indices of reference points used for smoothing (pre-filtered).
-  integer(int32), intent(in) :: indices_used(n_used)
-  !| Number of indices actually used for smoothing.
-  integer(int32), intent(in) :: n_used
-  !| Target x-coordinates to smooth.
-  real(real64), intent(in) :: x_query(n_target)
-  !| Bandwidth parameter for the kernel.
-  real(real64), intent(in) :: kernel_sigma
-  !| Cutoff for the kernel.
-  real(real64), intent(in) :: kernel_cutoff
-  !| Output smoothed values (length n_target).
-  real(real64), intent(out) :: y_out(n_target)
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(int32), intent(out) :: ierr
-  
-  call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr)
-end subroutine loess_smooth_2d_r
+
 
 ! === C WRAPPERS ===
 
 !> C wrapper for which.
 !| Converts integer mask to logical and calls which.
-subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
+pure subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
   use, intrinsic :: iso_c_binding, only: c_int
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: which
+  use tox_conversions, only: c_int_as_logical
+  M_USE_NULL_VALIDATION
   implicit none
   !| Size of the mask.
-  integer(c_int), intent(in), value :: n
+  integer(c_int), intent(in), target :: n
   !| Maximum size of idx_out.
-  integer(c_int), intent(in), value :: m_max
+  integer(c_int), intent(in), target :: m_max
   !| Integer mask array (0/1 values).
-  integer(c_int), intent(in) :: mask(n)
+  integer(c_int), intent(in), target :: mask(n)
   !| Output array for indices of true values.
-  integer(c_int), intent(out) :: idx_out(m_max)
+  integer(c_int), intent(out), target :: idx_out(m_max)
   !| Actual size of idx_out (number of true values found).
-  integer(c_int), intent(out) :: m_out
+  integer(c_int), intent(out), target :: m_out
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
   logical :: mask_f(n)
-  integer(int32) :: i, ierr_f
-  do i = 1, n
-    mask_f(i) = (mask(i) /= 0)
-  end do
+  integer(int32) :: ierr_f
+  
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n)
+  M_CHECK_NON_NULL(m_max)
+  M_CHECK_NON_NULL(mask)
+  M_CHECK_NON_NULL(idx_out)
+  
+  ! Use tox_conversions utility for c_int to logical conversion
+  call c_int_as_logical(mask, mask_f)
   call which(mask_f, n, idx_out, m_max, m_out, ierr_f)
   ierr = ierr_f
 end subroutine which_c
 
 !> C wrapper for loess_smooth_2d.
 !| Direct wrapper - user must pre-filter indices in C before calling.
-subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
+pure subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32
   use f42_utils, only: loess_smooth_2d
+  M_USE_NULL_VALIDATION
   implicit none
   !| Total number of reference points.
-  integer(c_int), intent(in), value :: n_total
+  integer(c_int), intent(in), target :: n_total
   !| Number of target points to smooth.
-  integer(c_int), intent(in), value :: n_target
+  integer(c_int), intent(in), target :: n_target
   !| Reference x-coordinates.
-  real(c_double), intent(in) :: x_ref(n_total)
+  real(c_double), intent(in), target :: x_ref(n_total)
   !| Reference y-coordinates (length n_total).
-  real(c_double), intent(in) :: y_ref(n_total)
+  real(c_double), intent(in), target :: y_ref(n_total)
   !| Indices of reference points used for smoothing (pre-filtered).
-  integer(c_int), intent(in) :: indices_used(n_used)
+  integer(c_int), intent(in), target :: indices_used(n_used)
   !| Number of indices actually used for smoothing.
-  integer(c_int), intent(in), value :: n_used
+  integer(c_int), intent(in), target :: n_used
   !| Target x-coordinates to smooth.
-  real(c_double), intent(in) :: x_query(n_target)
+  real(c_double), intent(in), target :: x_query(n_target)
   !| Bandwidth parameter for the kernel.
-  real(c_double), intent(in), value :: kernel_sigma
+  real(c_double), intent(in), target :: kernel_sigma
   !| Cutoff for the kernel.
-  real(c_double), intent(in), value :: kernel_cutoff
+  real(c_double), intent(in), target :: kernel_cutoff
   !| Output smoothed values (length n_target).
-  real(c_double), intent(out) :: y_out(n_target)
+  real(c_double), intent(out), target :: y_out(n_target)
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
 
   integer(int32) :: ierr_f
+  
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_total)
+  M_CHECK_NON_NULL(n_target)
+  M_CHECK_NON_NULL(x_ref)
+  M_CHECK_NON_NULL(y_ref)
+  M_CHECK_NON_NULL(indices_used)
+  M_CHECK_NON_NULL(n_used)
+  M_CHECK_NON_NULL(x_query)
+  M_CHECK_NON_NULL(kernel_sigma)
+  M_CHECK_NON_NULL(kernel_cutoff)
+  M_CHECK_NON_NULL(y_out)
+  
   call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
     kernel_sigma, kernel_cutoff, y_out, ierr_f)
   ierr = ierr_f
@@ -1321,19 +1433,26 @@ subroutine compute_edf_c(values, n_values, unique_values, cdf_values, n_unique, 
   use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf_alloc
+  M_USE_NULL_VALIDATION
   implicit none
   !| Number of values in the input array.
-  integer(c_int), intent(in), value :: n_values
+  integer(c_int), intent(in), target :: n_values
   !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in) :: values(n_values)
+  real(c_double), intent(in), target :: values(n_values)
   !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out) :: unique_values(n_values)
+  real(c_double), intent(out), target :: unique_values(n_values)
   !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out) :: cdf_values(n_values)
+  real(c_double), intent(out), target :: cdf_values(n_values)
   !| Number of unique values found.
-  integer(c_int), intent(out) :: n_unique
+  integer(c_int), intent(out), target :: n_unique
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_values)
+  M_CHECK_NON_NULL(values)
+  M_CHECK_NON_NULL(unique_values)
+  M_CHECK_NON_NULL(cdf_values)
 
   call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_c
@@ -1347,22 +1466,53 @@ subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_value
   use, intrinsic :: iso_c_binding, only: c_int, c_double
   use, intrinsic :: iso_fortran_env, only: int32, real64
   use f42_utils, only: compute_edf
+  M_USE_NULL_VALIDATION
   implicit none
   !| Number of values in the input array.
-  integer(c_int), intent(in), value :: n_values
+  integer(c_int), intent(in), target :: n_values
   !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in) :: values(n_values)
+  real(c_double), intent(in), target :: values(n_values)
   !| Pre-sorted permutation indices (must be sorted by values[perm]).
   !| Caller is responsible for sorting this array before calling.
-  integer(c_int), intent(in) :: perm(n_values)
+  integer(c_int), intent(in), target :: perm(n_values)
   !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out) :: unique_values(n_values)
+  real(c_double), intent(out), target :: unique_values(n_values)
   !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out) :: cdf_values(n_values)
+  real(c_double), intent(out), target :: cdf_values(n_values)
   !| Number of unique values found.
-  integer(c_int), intent(out) :: n_unique
+  integer(c_int), intent(out), target :: n_unique
   !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_values)
+  M_CHECK_NON_NULL(values)
+  M_CHECK_NON_NULL(perm)
+  M_CHECK_NON_NULL(unique_values)
+  M_CHECK_NON_NULL(cdf_values)
 
   call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_expert_c
+
+!> C-compatible wrapper for compute_empirical_p_values
+subroutine compute_empirical_p_values_c(n_genes, rdi, sorted_rdi, perm, p_values, c_const) bind(C, name="empirical_p_values_c")
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
+  use f42_utils, only: compute_empirical_p_values
+  implicit none
+
+  integer(c_int), intent(in), target :: n_genes
+  !| Number of genes being processed.
+  real(c_double), intent(in), target :: rdi(n_genes)
+  !| empirical distribution D
+  real(c_double), intent(in), target :: sorted_rdi(n_genes)
+  !| empirical distribution D with non negative values
+  integer(c_int), intent(in), target :: perm(n_genes)
+  !| Permutation array with sorted indices for sorted_rdi
+  real(c_double), intent(out), target :: p_values(n_genes)
+  !| Output array to store the computed p-values for each gene.
+  real(c_double), intent(in), target :: c_const
+  !| Constant used in the computation, typically 1
+
+  call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+
+end subroutine compute_empirical_p_values_c

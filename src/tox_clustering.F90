@@ -6,7 +6,6 @@ module tox_clustering
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
     use tox_errors, only: is_err, set_err, set_ok, ERR_NAN_INF, ERR_INVALID_INPUT, validate_dimension_size, validate_distance_matrix, validate_all_in_range_real, validate_in_range_int
     implicit none
-
     integer(int32), parameter :: METHOD_AVERAGE = 0
     integer(int32), parameter :: METHOD_WEIGHTED = 1
     integer(int32), parameter :: METHOD_WARD = 2
@@ -528,6 +527,38 @@ pure subroutine k_means_clustering_c(n_clusters, data_points, n_points, n_dims, 
     call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations)
 end subroutine k_means_clustering_c
 
+!> C-compatible wrapper for cluster_factor_trajectories_k_means
+pure subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")
+    use tox_clustering, only: cluster_factor_trajectories_k_means
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    M_USE_NULL_VALIDATION
+    implicit none
+
+    integer(c_int), intent(in), target :: n_clusters
+    integer(c_int), intent(in), target :: n_factors
+    integer(c_int), intent(in), target :: n_samples
+    integer(c_int), intent(in), target :: n_timepoints
+    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
+    real(c_double), dimension(n_factors, n_clusters), intent(inout), target :: centroids
+    integer(c_int), dimension(n_samples * n_timepoints), intent(out), target :: labels
+    integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
+    integer(c_int), intent(out), target :: ierr
+    integer(c_int), intent(in), target :: max_iterations
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_clusters)
+    M_CHECK_NON_NULL(n_factors)
+    M_CHECK_NON_NULL(n_samples)
+    M_CHECK_NON_NULL(n_timepoints)
+    M_CHECK_NON_NULL(trajectories)
+    M_CHECK_NON_NULL(centroids)
+    M_CHECK_NON_NULL(labels)
+    M_CHECK_NON_NULL(label_counts)
+    M_CHECK_NON_NULL(max_iterations)
+
+    call cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
+end subroutine cluster_factor_trajectories_k_means_c
+
 !> C-compatible wrapper for linkage_clustering
 subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr) bind(C, name="linkage_clustering_c")
     use tox_clustering, only: linkage_clustering, METHOD_WARD, METHOD_AVERAGE, METHOD_WEIGHTED
@@ -591,3 +622,4 @@ subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, 
     end select
 
 end subroutine linkage_clustering_c
+

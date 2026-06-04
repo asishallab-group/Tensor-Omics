@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 !> Module for serializing integer arrays to binary files.
 module f42_serialize_int
   use safeguard
@@ -185,47 +187,6 @@ contains
 end module f42_serialize_int
 
 
-!> Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.
-!! R can not pass a multidimensional array directly, so we use a flat array and dimensions. Therefore, exposing serialize_int_*d to R is not needed.
-subroutine serialize_int_flat_r(arr, array_size, dims, ndim, filename_raw, fn_len, ierr)
-  use iso_fortran_env, only: int32
-  use f42_serialize_int, only: serialize_int_nd
-  use tox_errors, only : set_ok, is_ok
-  use tox_conversions, only : c_char_1d_as_string
-  use iso_c_binding, only: c_char
-  implicit none
-
-  integer(int32), intent(in) :: ndim 
-  !! Number of dimensions
-  integer(int32), intent(in) :: array_size
-  !! Size of the flat array
-  integer(int32), intent(in) :: arr(array_size)
-  !! Flat integer array to serialize
-  integer(int32), intent(in) :: dims(ndim)
-  !! Dimensions of the array
-  integer(int32), intent(in) :: fn_len
-  !! Length of the filename array
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-  !! Array of ASCII characters representing the filename
-  integer(int32), intent(out) :: ierr
-  !! Error code
-
-  character(len=:), allocatable :: filename
-  integer(int32) :: i, total_len
-
-  call set_ok(ierr)
-
-  call c_char_1d_as_string(filename_raw, filename, ierr)
-  if (.not. is_ok(ierr)) return
-
-  total_len = 1
-  do i = 1, ndim
-    total_len = total_len * dims(i)
-  end do
-
-  call serialize_int_nd(arr(1:total_len), dims(1:ndim), ndim, filename, ierr)
-end subroutine serialize_int_flat_r
-
 !> C binding for the subroutine to serialize a flat integer array to a binary file.
 subroutine serialize_int_nd_C(arr, dims, ndim, filename_raw, fn_len, ierr) bind(C, name="serialize_int_nd_C")
   use iso_c_binding, only: c_int, c_char
@@ -233,24 +194,32 @@ subroutine serialize_int_nd_C(arr, dims, ndim, filename_raw, fn_len, ierr) bind(
   use tox_errors, only : set_ok, is_ok
   use iso_fortran_env, only : int32
   use tox_conversions, only : c_char_1d_as_string
+  M_USE_NULL_VALIDATION
   implicit none
 
   ! input
-  integer(c_int), intent(in), value :: ndim
+  integer(c_int), intent(in), target :: ndim
     !! Number of dimensions
-  integer(c_int), intent(in) :: dims(ndim)
+  integer(c_int), intent(in), target :: dims(ndim)
     !! Dimensions of the array
-  integer(c_int), intent(in) :: arr(product(dims))
+  integer(c_int), intent(in), target :: arr(product(dims))
     !! Pointer to the flat integer array  
-  integer(c_int), intent(in), value :: fn_len
+  integer(c_int), intent(in), target :: fn_len
     !! Length of the filename array
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
+  character(kind=c_char, len=1), intent(in), target :: filename_raw(fn_len)
     !! Array of ASCII characters representing the filename
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
     !! Error code
 
   ! Local
   character(len=:), allocatable :: filename
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(ndim)
+  M_CHECK_NON_NULL(fn_len)
+  M_CHECK_NON_NULL(arr)
+  M_CHECK_NON_NULL(dims)
+  M_CHECK_NON_NULL(filename_raw)
 
   call set_ok(ierr)
 

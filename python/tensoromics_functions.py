@@ -13,13 +13,36 @@ lib = ctypes.CDLL(dll_path)
 
 #> f42_helper: convert a filename to ASCII chars to transfer it as integer to fortran
 def _filename_to_ascii_array(filename):
+    """
+    Convert a filename string to an ASCII integer array.
+
+    Args:
+        filename (str): Input filename.
+
+    Returns:
+        dict: {
+            'ascii_arr' (np.ndarray): Array of ASCII codes,
+            'length' (int): Length of the array
+        }
+    """
     ascii_arr = np.array([ord(c) for c in filename], dtype=np.int32)
-    return ascii_arr, np.int32(len(ascii_arr))
+    return {
+        'ascii_arr': ascii_arr,
+        'length': int(len(ascii_arr))
+    }
 
 
 #> f42_helper: Mark all given NumPy arrays as read-only
 def _readonly(*arrays: np.ndarray) -> None:
-    """Mark all given NumPy arrays as read-only."""
+    """
+    Mark all given NumPy arrays as read-only.
+
+    Args:
+        arrays (np.ndarray): One or more NumPy arrays.
+
+    Returns:
+        None: Updates arrays in place.
+    """
     for a in arrays:
         if isinstance(a, np.ndarray):
             a.flags.writeable = False
@@ -29,7 +52,15 @@ def _readonly(*arrays: np.ndarray) -> None:
 
 #> f42_helper: converts a c_char array back to a string
 def _c_char_array_to_string(c_array):
-    """Convert c_char array back to string"""
+    """
+    Convert a C char array back to a Python string.
+
+    Args:
+        c_array (np.ndarray): Input C char buffer.
+
+    Returns:
+        str: Decoded ASCII string up to null terminator.
+    """
     # Find null terminator or use full length
     bytes_list = []
     for i in range(len(c_array)):
@@ -42,7 +73,16 @@ def _c_char_array_to_string(c_array):
 
 #> f42_helper: Convert list of strings to flat c_char array
 def _strings_to_c_char_matrix(strings, max_length):
-    """Convert list of strings to flat c_char array (Fortran-compatible, NumPy-wrapped)"""
+    """
+    Convert a list of strings to a Fortran-compatible char matrix.
+
+    Args:
+        strings (list of str): Input strings.
+        max_length (int): Fixed length per string.
+
+    Returns:
+        np.ndarray: Character matrix with shape (n_strings, max_length).
+    """
     import numpy as np
     n_strings = len(strings)
     total_size = n_strings * max_length
@@ -71,7 +111,16 @@ def _strings_to_c_char_matrix(strings, max_length):
 
 #> f42_helper: Convert numpy string array to c_char matrix
 def _string_array_to_c_char_matrix(string_array, max_length):
-    """Convert numpy string array to c_char matrix"""
+    """
+    Convert a NumPy string array to a C-compatible char matrix.
+
+    Args:
+        string_array (np.ndarray): Input NumPy string array.
+        max_length (int): Fixed length per string.
+
+    Returns:
+        np.ndarray: Byte matrix of encoded strings.
+    """
     import numpy as np
 
     # Flatten the array and convert to list of strings
@@ -94,7 +143,16 @@ def _string_array_to_c_char_matrix(string_array, max_length):
 
 #> f42_helper: Faster version using bytes operations
 def _c_char_matrix_to_strings(matrix, n_strings):
-    """Faster version using bytes operations"""
+    """
+    Convert a C char matrix into Python strings.
+
+    Args:
+        matrix (np.ndarray): Character matrix.
+        n_strings (int): Number of strings to decode.
+
+    Returns:
+        list of str: Decoded strings.
+    """
     import numpy as np
 
     strings = []
@@ -125,7 +183,16 @@ def _c_char_matrix_to_strings(matrix, n_strings):
 
 #> f42_helper: Convert string to c_char array with null termination
 def _string_to_c_char_array(s, length):
-    """Convert string to c_char array with null termination"""
+    """
+    Convert a Python string to a null-terminated C char array.
+
+    Args:
+        s (str): Input string.
+        length (int): Output array length.
+
+    Returns:
+        np.ndarray: Byte array with null termination when possible.
+    """
     if s is None:
         s = ""
 
@@ -147,9 +214,18 @@ def _string_to_c_char_array(s, length):
 #> f42_array_utils:get_array_metadata_C: Helper function to read dimensions of integer/real array
 def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     """
-    Reads dimensions (and optionally character length) of an array file.
-    with_clen=True -> returns (dims, clen)
-    with_clen=False -> returns dims only
+    Read dimensions (and optionally character length) of a serialized array file.
+
+    Args:
+        filename (str): Path to serialized file.
+        max_dims (int): Maximum number of dimensions to read.
+        with_clen (bool): Whether to return character length metadata.
+
+    Returns:
+        dict: {
+            "dims_out" (np.ndarray): Array dimensions,
+            "clen" (int, optional): Character length metadata (if with_clen is True)
+        }
     """
     filename_c = _string_to_c_char_array(filename, len(filename) + 1)
     fn_len = len(filename_c)
@@ -163,7 +239,7 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     # shared function
     lib.get_array_metadata_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"), # filename_c
-        ctypes.c_int,                                                         # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                         # fn_len
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"), # dims_out
         ctypes.POINTER(ctypes.c_int),                                         # dims_out_capacity
         ctypes.POINTER(ctypes.c_int),                                         # ndims
@@ -175,7 +251,7 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
     # call
     lib.get_array_metadata_C(
         filename_c,
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         dims_out,
         ctypes.byref(dims_out_capacity),
         ctypes.byref(ndims),
@@ -194,7 +270,14 @@ def tox_get_array_metadata(filename, max_dims=5, with_clen=False):
 #> f42_serialize_int:serialize_int_nd_C: Serialize an n-dimensional array of type 'int'
 def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional integer32 array to a binary file
+    Serialize an n-dimensional int32 array to a binary file.
+
+    Args:
+        arr (np.ndarray): Input int32 array.
+        filename (str): Output file path.
+
+    Returns:
+        None: Writes array data to disk.
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.int32:
         raise ValueError("arr must be a numpy array of int32")
@@ -217,9 +300,9 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     lib.serialize_int_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
-        ctypes.c_int,  # ndim
+        ctypes.POINTER(ctypes.c_int),  # ndim
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,  # fn_len
+        ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)
     ]
     lib.serialize_int_nd_C.restype = None
@@ -228,9 +311,9 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
     lib.serialize_int_nd_C(
         flat,
         dims,
-        ndim,
+        ctypes.byref(ctypes.c_int(ndim)),
         filename_c,
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
 
@@ -240,7 +323,13 @@ def tox_serialize_int_nd(arr: np.ndarray, filename: str):
 #> f42_deserialize_int:deserialize_int_nd_C: Deserialize an n-dimensional array of type 'int'
 def tox_deserialize_int_nd(filename):
     """
-    Deserializes an n-dimensional int32-Array.
+    Deserialize an n-dimensional int32 array from a binary file.
+
+    Args:
+        filename: Input file path.
+
+    Returns:
+        np.ndarray: Deserialized int32 array with original shape.
     """
     # read size of the array
     dims = tox_get_array_metadata(filename)
@@ -254,14 +343,14 @@ def tox_deserialize_int_nd(filename):
 
     lib.deserialize_int_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="F_CONTIGUOUS"),  # arr
-        ctypes.c_int,                                                          # total size
+        ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,                                                          # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.deserialize_int_nd_C.restype = None
 
-    lib.deserialize_int_nd_C(arr, total_size, filename_c, fn_len, ctypes.byref(ierr))
+    lib.deserialize_int_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape to original dimensions
 
@@ -269,7 +358,14 @@ def tox_deserialize_int_nd(filename):
 #> f42_serialize_real:serialize_real_nd_C: Serialize an n-dimensional array of type 'float'
 def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional real64 array to a binary file
+    Serialize an n-dimensional float64 array to a binary file.
+
+    Args:
+        arr: Input float64 array.
+        filename: Output file path.
+
+    Returns:
+        None: Writes array data to disk.
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.float64:
         raise ValueError("arr must be a numpy array of float64")
@@ -293,9 +389,9 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     lib.serialize_real_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"), # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
-        ctypes.c_int,  # ndim
+        ctypes.POINTER(ctypes.c_int),  # ndim
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,  # fn_len
+        ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     lib.serialize_real_nd_C.restype = None
@@ -304,9 +400,9 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
     lib.serialize_real_nd_C(
         flat,
         dims,
-        ndim,
+        ctypes.byref(ctypes.c_int(ndim)),
         filename_c,
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -315,7 +411,13 @@ def tox_serialize_real_nd(arr: np.ndarray, filename: str):
 #> f42_deserialize_real:deserialize_real_nd_C: Deserialize an n-dimensional array of type 'float'
 def tox_deserialize_real_nd(filename):
     """
-    Deserializes an n-dimensional array of type real64
+    Deserialize an n-dimensional float64 array from a binary file.
+
+    Args:
+        filename: Input file path.
+
+    Returns:
+        np.ndarray: Deserialized float64 array with original shape.
     """
     #read dimensions
     dims = tox_get_array_metadata(filename)
@@ -329,14 +431,14 @@ def tox_deserialize_real_nd(filename):
 
     lib.deserialize_real_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="F_CONTIGUOUS"),  # arr
-        ctypes.c_int,                                                          # total size
+        ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,                                                           # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                           # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.deserialize_real_nd_C.restype = None
 
-    lib.deserialize_real_nd_C(arr, total_size, filename_c, fn_len, ctypes.byref(ierr))
+    lib.deserialize_real_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape
 
@@ -344,7 +446,14 @@ def tox_deserialize_real_nd(filename):
 #> f42_serialize_char:serialize_char_nd_C: Serialize an n-dimensional array of type 'str'
 def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional character array to a binary file
+    Serialize an n-dimensional Unicode character array to a binary file.
+
+    Args:
+        arr: Input Unicode array.
+        filename: Output file path.
+
+    Returns:
+        None: Writes array data to disk.
     """
     if not isinstance(arr, np.ndarray) or arr.dtype.kind != 'U':
         raise ValueError("arr must be a numpy array of strings (dtype='U')")
@@ -368,10 +477,10 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     lib.serialize_char_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags='F_CONTIGUOUS'),  # raw_chars
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # dims
-        ctypes.c_int,                                                          # ndim
-        ctypes.c_int,                                                          # clen
+        ctypes.POINTER(ctypes.c_int),                                                          # ndim
+        ctypes.POINTER(ctypes.c_int),                                                          # clen
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags='C_CONTIGUOUS'),   # filename_c
-        ctypes.c_int,                                                          # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.serialize_char_nd_C.restype = None
@@ -379,10 +488,10 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
     lib.serialize_char_nd_C(
         raw_chars,
         dims,
-        ndim,
-        clen,
+        ctypes.byref(ctypes.c_int(ndim)),
+        ctypes.byref(ctypes.c_int(clen)),
         np.asarray(filename_c, dtype=np.byte),
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -391,7 +500,13 @@ def tox_serialize_char_nd(arr: np.ndarray, filename: str):
 #> f42_deserialize_char:deserialize_char_nd_C: Deserialize an n-dimensional array of type 'str'
 def tox_deserialize_char_nd(filename):
     """
-    Deserializes an n-dimensional character array from a binary file
+    Deserialize an n-dimensional Unicode array from a binary file.
+
+    Args:
+        filename: Input file path.
+
+    Returns:
+        np.ndarray: Deserialized Unicode array with original shape.
     """
     # Read dimensions and clen from file metadata
     dims, clen = tox_get_array_metadata(filename, with_clen=True)  # Sie müssen diese Funktion anpassen oder erstellen
@@ -410,20 +525,20 @@ def tox_deserialize_char_nd(filename):
 
     lib.deserialize_char_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=2, flags="F_CONTIGUOUS"),  # raw_chars (2D!)
-        ctypes.c_int,                                                         # clen
-        ctypes.c_int,                                                         # total_array_size
+        ctypes.POINTER(ctypes.c_int),                                                         # clen
+        ctypes.POINTER(ctypes.c_int),                                                         # total_array_size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,                                                         # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                         # fn_len
         ctypes.POINTER(ctypes.c_int)                                          # ierr
     ]
     lib.deserialize_char_nd_C.restype = None
 
     lib.deserialize_char_nd_C(
         raw_chars,
-        clen,
-        total_size,
+        ctypes.byref(ctypes.c_int(clen)),
+        ctypes.byref(ctypes.c_int(total_size)),
         np.asarray(filename_c, dtype=np.byte),
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -438,8 +553,14 @@ def tox_deserialize_char_nd(filename):
 #> f42_serialize_logical:serialize_logical_nd_C: Serialize an n-dimensional array of type 'bool'
 def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional logical array to a binary file
-    Converts Python booleans to C integers (1 for True, 0 for False)
+    Serialize an n-dimensional boolean array to a binary file.
+
+    Args:
+        arr: Input boolean array.
+        filename: Output file path.
+
+    Returns:
+        None: Writes array data to disk.
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.bool_:
         raise ValueError("arr must be a numpy array of bool")
@@ -463,9 +584,9 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     lib.serialize_logical_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr (as int32)
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
-        ctypes.c_int,  # ndim
+        ctypes.POINTER(ctypes.c_int),  # ndim
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,  # fn_len
+        ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)
     ]
     lib.serialize_logical_nd_C.restype = None
@@ -474,9 +595,9 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
     lib.serialize_logical_nd_C(
         flat_int,
         dims,
-        ndim,
+        ctypes.byref(ctypes.c_int(ndim)),
         filename_c,
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
 
@@ -486,8 +607,13 @@ def tox_serialize_logical_nd(arr: np.ndarray, filename: str):
 #> f42_deserialize_logical:deserialize_logical_nd_C: Deserialize an n-dimensional array of type 'bool'
 def tox_deserialize_logical_nd(filename):
     """
-    Deserializes an n-dimensional logical array.
-    Converts C integers (1 for True, 0 for False) back to Python booleans
+    Deserialize an n-dimensional boolean array from a binary file.
+
+    Args:
+        filename: Input file path.
+
+    Returns:
+        np.ndarray: Deserialized boolean array with original shape.
     """
     # read size of the array
     dims = tox_get_array_metadata(filename)
@@ -501,14 +627,14 @@ def tox_deserialize_logical_nd(filename):
 
     lib.deserialize_logical_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # arr (as int32)
-        ctypes.c_int,                                                          # total size
+        ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,                                                          # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                          # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.deserialize_logical_nd_C.restype = None
 
-    lib.deserialize_logical_nd_C(arr_int, total_size, filename_c, fn_len, ctypes.byref(ierr))
+    lib.deserialize_logical_nd_C(arr_int, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
 
     # Convert integer array back to boolean array (non-zero = True)
@@ -519,7 +645,14 @@ def tox_deserialize_logical_nd(filename):
 #> f42_serialize_complex:serialize_complex_nd_C: Serialize an n-dimensional array of type 'complex'
 def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     """
-    Serializes an n-dimensional complex128 array to a binary file
+    Serialize an n-dimensional complex128 array to a binary file.
+
+    Args:
+        arr: Input complex128 array.
+        filename: Output file path.
+
+    Returns:
+        None: Writes array data to disk.
     """
     if not isinstance(arr, np.ndarray) or arr.dtype != np.complex128:
         raise ValueError("arr must be a numpy array of complex128")
@@ -543,9 +676,9 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     lib.serialize_complex_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.complex128, ndim=1, flags="C_CONTIGUOUS"), # arr
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="C_CONTIGUOUS"),  # dims
-        ctypes.c_int,  # ndim
+        ctypes.POINTER(ctypes.c_int),  # ndim
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,  # fn_len
+        ctypes.POINTER(ctypes.c_int),  # fn_len
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     lib.serialize_complex_nd_C.restype = None
@@ -554,9 +687,9 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
     lib.serialize_complex_nd_C(
         flat,
         dims,
-        ndim,
+        ctypes.byref(ctypes.c_int(ndim)),
         filename_c,
-        fn_len,
+        ctypes.byref(ctypes.c_int(fn_len)),
         ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -565,7 +698,13 @@ def tox_serialize_complex_nd(arr: np.ndarray, filename: str):
 #> f42_deserialize_complex:deserialize_complex_nd_C: Deserialize an n-dimensional array of type 'complex'
 def tox_deserialize_complex_nd(filename):
     """
-    Deserializes an n-dimensional array of type complex128
+    Deserialize an n-dimensional complex128 array from a binary file.
+
+    Args:
+        filename: Input file path.
+
+    Returns:
+        np.ndarray: Deserialized complex128 array with original shape.
     """
     # read dimensions
     dims = tox_get_array_metadata(filename)
@@ -579,14 +718,14 @@ def tox_deserialize_complex_nd(filename):
 
     lib.deserialize_complex_nd_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.complex128, ndim=1, flags="C_CONTIGUOUS"),  # arr
-        ctypes.c_int,                                                          # total size
+        ctypes.POINTER(ctypes.c_int),                                                          # total size
         np.ctypeslib.ndpointer(dtype=np.byte, ndim=1, flags="C_CONTIGUOUS"),  # filename_c
-        ctypes.c_int,                                                           # fn_len
+        ctypes.POINTER(ctypes.c_int),                                                           # fn_len
         ctypes.POINTER(ctypes.c_int)                                           # ierr
     ]
     lib.deserialize_complex_nd_C.restype = None
 
-    lib.deserialize_complex_nd_C(arr, total_size, filename_c, fn_len, ctypes.byref(ierr))
+    lib.deserialize_complex_nd_C(arr, ctypes.byref(ctypes.c_int(total_size)), filename_c, ctypes.byref(ctypes.c_int(fn_len)), ctypes.byref(ierr))
     check_err_code(ierr.value)
     return arr.reshape(dims, order='F')  # Reshape
 
@@ -596,22 +735,24 @@ def build_bst_index(values):
     """
     Build a BST index for the given values.
 
-    Parameters:
-    values (np.array): 1D array of values to index
+    Args:
+        values: 1D array of values to index.
 
     Returns:
-    np.array: BST indices (1-based)
+        np.ndarray: BST indices (1-based).
     """
+    values = np.ascontiguousarray(values, dtype=np.float64)
     n = len(values)
     indices = np.empty(n, dtype=np.int32)
     stack_left = np.empty(n, dtype=np.int32)
     stack_right = np.empty(n, dtype=np.int32)
+    n_c = ctypes.c_int(n)
     ierr = ctypes.c_int()
 
     # Configure BST argument types
     lib.build_bst_index_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # values
-        ctypes.c_int32,                                                  # num_values
+        ctypes.POINTER(ctypes.c_int),                                    # num_values
         np.ctypeslib.ndpointer(dtype=np.int32),                          # sorted_indices (out)
         np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_left
         np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_right
@@ -619,27 +760,75 @@ def build_bst_index(values):
     ]
 
     # Build BST index
-    lib.build_bst_index_C(values, n, indices, stack_left, stack_right, ctypes.byref(ierr))
+    lib.build_bst_index_C(values, ctypes.byref(n_c), indices, stack_left, stack_right, ctypes.byref(ierr))
     check_err_code(ierr.value)
 
     return indices
 
 
-#> f42_helper: Alias for build_kd_index to build a spherical KD-Tree index for the given unit vectors
+#> f42_kd_tree:build_spherical_kd_c: Build Spherical KD-Tree index for unit vectors
 def build_spherical_kd(vectors, dimension_order=None):
     """
-    Alias for build_kd_index to build a spherical KD-Tree index for the given unit vectors.
+    Build a spherical KD-Tree index for unit vectors.
 
-    Parameters:
-    vectors (np.array): 2D array of unit vectors (d x n, Fortran order)
-    dimension_order (np.array): Order of dimensions for splitting (1-based)
+    Args:
+        vectors: 2D array of unit vectors (d x n, Fortran order).
+        dimension_order: Order of dimensions for splitting (1-based).
 
     Returns:
-    np.array: Spherical KD-Tree indices (1-based Fortran indices)
+        np.ndarray: Spherical KD-Tree indices (1-based Fortran indices).
     """
-    # For spherical KD-Tree, we use the same implementation as regular KD-Tree
-    # but with a different name for clarity
-    return build_kd_index(vectors, dimension_order)
+    vectors = np.asfortranarray(vectors, dtype=np.float64)
+    d, n = vectors.shape
+
+    if dimension_order is None:
+        dimension_order = np.arange(1, d + 1, dtype=np.int32)
+    else:
+        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
+        if dimension_order.ndim != 1 or len(dimension_order) != d:
+            raise ValueError("dimension_order must be a 1D array of length d")
+
+    sphere_ix = np.empty(n, dtype=np.int32)
+    work = np.empty(n, dtype=np.int32)
+    value_buffer = np.empty(n, dtype=np.float64)
+    perm = np.empty(n, dtype=np.int32)
+    stack_left = np.empty(n, dtype=np.int32)
+    stack_right = np.empty(n, dtype=np.int32)
+    ierr = ctypes.c_int(0)
+
+    build_spherical_kd_c = lib.build_spherical_kd_C
+    build_spherical_kd_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # vectors
+        ctypes.POINTER(ctypes.c_int),                                      # num_dimensions
+        ctypes.POINTER(ctypes.c_int),                                      # num_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # sphere_indices
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # dimension_order
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # workspace
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),   # value_buffer
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # permutation
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # left_stack
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # right_stack
+        ctypes.POINTER(ctypes.c_int)                                       # ierr
+    ]
+    build_spherical_kd_c.restype = None
+
+    build_spherical_kd_c(
+        vectors,
+        ctypes.byref(ctypes.c_int(d)),
+        ctypes.byref(ctypes.c_int(n)),
+        sphere_ix,
+        dimension_order,
+        work,
+        value_buffer,
+        perm,
+        stack_left,
+        stack_right,
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
+
+    _readonly(sphere_ix)
+    return sphere_ix
 
 
 #> f42_kd_tree:bst_range_query_C: Perform a range query on BST-indexed values
@@ -647,33 +836,39 @@ def bst_range_query(values, indices, lower_bound, upper_bound):
     """
     Perform a range query on BST-indexed values.
 
-    Parameters:
-    values (np.array): Original values array
-    indices (np.array): BST indices from build_bst_index
-    lower_bound (float): Lower bound of range (inclusive)
-    upper_bound (float): Upper bound of range (inclusive)
+    Args:
+        values: Original values array.
+        indices: BST indices from build_bst_index.
+        lower_bound: Lower bound of range (inclusive).
+        upper_bound: Upper bound of range (inclusive).
 
     Returns:
-    dictionary: (matching_indices, count) where matching_indices are 1-based Fortran indices
+        dict: {
+            'matching_indices' (np.ndarray): Indices matching the range,
+            'count' (int): Number of matches
+        }
     """
+    values = np.ascontiguousarray(values, dtype=np.float64)
+    indices = np.ascontiguousarray(indices, dtype=np.int32)
     n = len(values)
     output_indices = np.empty(n, dtype=np.int32)
-    match_count = ctypes.c_int32(0)
+    n_c = ctypes.c_int(n)
+    match_count = ctypes.c_int(0)
     ierr = ctypes.c_int()
 
     lib.bst_range_query_C.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.float64),  # values
-        np.ctypeslib.ndpointer(dtype=np.int32),    # sorted_indices
-        ctypes.c_int32,                            # num_values
-        ctypes.c_double,                           # low
-        ctypes.c_double,                           # high
-        np.ctypeslib.ndpointer(dtype=np.int32),    # out_indices (out)
-        ctypes.POINTER(ctypes.c_int32),            # number_matches (out)
+        np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # values
+        np.ctypeslib.ndpointer(dtype=np.int32, flags='C_CONTIGUOUS'),    # sorted_indices
+        ctypes.POINTER(ctypes.c_int),                                    # num_values
+        ctypes.POINTER(ctypes.c_double),                                 # low
+        ctypes.POINTER(ctypes.c_double),                                 # high
+        np.ctypeslib.ndpointer(dtype=np.int32),                          # out_indices (out)
+        ctypes.POINTER(ctypes.c_int),                                    # number_matches (out)
         ctypes.POINTER(ctypes.c_int)
     ]
 
     # Perform range query
-    lib.bst_range_query_C(values, indices, n, lower_bound, upper_bound,
+    lib.bst_range_query_C(values, indices, ctypes.byref(n_c), ctypes.byref(ctypes.c_double(lower_bound)), ctypes.byref(ctypes.c_double(upper_bound)),
                          output_indices, ctypes.byref(match_count), ctypes.byref(ierr))
     check_err_code(ierr.value)
 
@@ -692,13 +887,14 @@ def build_kd_index(points, dimension_order=None):
     """
     Build a KD-Tree index for the given points.
 
-    Parameters:
-    points (np.array): 2D array of points (d x n, Fortran order)
-    dimension_order (np.array): Order of dimensions for splitting (1-based)
+    Args:
+        points: 2D array of points (d x n, Fortran order).
+        dimension_order: Order of dimensions for splitting (1-based).
 
     Returns:
-    np.array: KD-Tree indices (1-based Fortran indices)
+        np.ndarray: KD-Tree indices (1-based Fortran indices).
     """
+    points = np.asfortranarray(points, dtype=np.float64)
     d, n = points.shape
 
     # Use default dimension order if not provided
@@ -717,25 +913,27 @@ def build_kd_index(points, dimension_order=None):
     permutation = np.empty(n, dtype=np.int32)
     stack_left = np.empty(n, dtype=np.int32)
     stack_right = np.empty(n, dtype=np.int32)
+    d_c = ctypes.c_int(d)
+    n_c = ctypes.c_int(n)
     ierr = ctypes.c_int()
 
     # Configure KD-Tree argument types
     lib.build_kd_index_C.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),  # X_flat (col-major)
-        ctypes.c_int32,                                                  # d
-        ctypes.c_int32,                                                  # n
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # kd_ix (out)
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # dim_order
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # work
-        np.ctypeslib.ndpointer(dtype=np.float64),                        # subarray
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # perm
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_left
-        np.ctypeslib.ndpointer(dtype=np.int32),                          # stack_right
+        ctypes.POINTER(ctypes.c_int),                                            # d
+        ctypes.POINTER(ctypes.c_int),                                            # n
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # kd_ix (out)
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # dim_order
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # work
+        np.ctypeslib.ndpointer(dtype=np.float64),                                # subarray
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # perm
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_left
+        np.ctypeslib.ndpointer(dtype=np.int32),                                  # stack_right
         ctypes.POINTER(ctypes.c_int)
     ]
 
     # Build KD-Tree index using the flat array
-    lib.build_kd_index_C(points, d, n, kd_indices, dimension_order, workspace,
+    lib.build_kd_index_C(points, ctypes.byref(d_c), ctypes.byref(n_c), kd_indices, dimension_order, workspace,
                         value_buffer, permutation, stack_left, stack_right, ctypes.byref(ierr))
     check_err_code(ierr.value)
 
@@ -746,14 +944,14 @@ def build_kd_index(points, dimension_order=None):
 def tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
     """
     Project selected vectors onto RAP constructed from selected axes.
+
     Args:
-        vecs: Expression vectors (n_axes x n_vecs)
-        vecs_selection_mask: Boolean/integer array (length n_vecs)
-        axes_selection_mask: Boolean/integer array (length n_axes)
+        vecs: Expression vectors (n_axes x n_vecs).
+        vecs_selection_mask: Boolean/integer array (length n_vecs).
+        axes_selection_mask: Boolean/integer array (length n_axes).
+
     Returns:
-        np.ndarray: Projected vectors (n_selected_axes x n_selected_vecs)
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        np.ndarray: Projected vectors (n_selected_axes x n_selected_vecs).
     """
     vecs = np.asfortranarray(vecs, dtype=np.float64)
     vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.int32)
@@ -766,24 +964,28 @@ def tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
     n_selected_vecs = int(np.sum(vecs_selection_mask))
     n_selected_axes = int(np.sum(axes_selection_mask))
     projections = np.empty((n_selected_axes, n_selected_vecs), order="F", dtype=np.float64)
+    n_axes_c = ctypes.c_int(n_axes)
+    n_vecs_c = ctypes.c_int(n_vecs)
+    n_selected_vecs_c = ctypes.c_int(n_selected_vecs)
+    n_selected_axes_c = ctypes.c_int(n_selected_axes)
     ierr = ctypes.c_int(0)
     omics_vector_RAP_projection = lib.omics_vector_RAP_projection_c
     omics_vector_RAP_projection.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # vecs
-        ctypes.c_int,                                                    # n_axes
-        ctypes.c_int,                                                    # n_vecs
+        ctypes.POINTER(ctypes.c_int),                                                    # n_axes
+        ctypes.POINTER(ctypes.c_int),                                                    # n_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # vecs_selection_mask
-        ctypes.c_int,                                                    # n_selected_vecs
+        ctypes.POINTER(ctypes.c_int),                                                    # n_selected_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # axes_selection_mask
-        ctypes.c_int,                                                    # n_selected_axes
+        ctypes.POINTER(ctypes.c_int),                                                    # n_selected_axes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # projections
         ctypes.POINTER(ctypes.c_int)                                     # ierr
     ]
     omics_vector_RAP_projection.restype = None
     omics_vector_RAP_projection(
-        vecs, n_axes, n_vecs,
-        vecs_selection_mask, n_selected_vecs,
-        axes_selection_mask, n_selected_axes,
+        vecs, ctypes.byref(n_axes_c), ctypes.byref(n_vecs_c),
+        vecs_selection_mask, ctypes.byref(n_selected_vecs_c),
+        axes_selection_mask, ctypes.byref(n_selected_axes_c),
         projections, ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -795,14 +997,14 @@ def tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
 def tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
     """
     Project selected vector fields onto RAP constructed from selected axes.
+
     Args:
-        vecs: Vector fields (2*n_axes x n_vecs)
-        vecs_selection_mask: Boolean/integer array (length n_vecs)
-        axes_selection_mask: Boolean/integer array (length n_axes)
+        vecs: Vector fields (2*n_axes x n_vecs).
+        vecs_selection_mask: Boolean/integer array (length n_vecs).
+        axes_selection_mask: Boolean/integer array (length n_axes).
+
     Returns:
-        np.ndarray: Projected vectors (n_selected_axes x n_selected_vecs)
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        np.ndarray: Projected vectors (n_selected_axes x n_selected_vecs).
     """
     vecs = np.asfortranarray(vecs, dtype=np.float64)
     vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.int32)
@@ -816,24 +1018,28 @@ def tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask):
     n_selected_vecs = int(np.sum(vecs_selection_mask))
     n_selected_axes = int(np.sum(axes_selection_mask))
     projections = np.empty((n_selected_axes, n_selected_vecs), order="F", dtype=np.float64)
+    n_axes_c = ctypes.c_int(n_axes)
+    n_vecs_c = ctypes.c_int(n_vecs)
+    n_selected_vecs_c = ctypes.c_int(n_selected_vecs)
+    n_selected_axes_c = ctypes.c_int(n_selected_axes)
     ierr = ctypes.c_int(0)
     omics_field_RAP_projection = lib.omics_field_RAP_projection_c
     omics_field_RAP_projection.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # vecs
-        ctypes.c_int,                                                    # n_axes
-        ctypes.c_int,                                                    # n_vecs
+        ctypes.POINTER(ctypes.c_int),                                                    # n_axes
+        ctypes.POINTER(ctypes.c_int),                                                    # n_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # vecs_selection_mask
-        ctypes.c_int,                                                    # n_selected_vecs
+        ctypes.POINTER(ctypes.c_int),                                                    # n_selected_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # axes_selection_mask
-        ctypes.c_int,                                                    # n_selected_axes
+        ctypes.POINTER(ctypes.c_int),                                                    # n_selected_axes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # projections
         ctypes.POINTER(ctypes.c_int)                                     # ierr
     ]
     omics_field_RAP_projection.restype = None
     omics_field_RAP_projection(
-        vecs, n_axes, n_vecs,
-        vecs_selection_mask, n_selected_vecs,
-        axes_selection_mask, n_selected_axes,
+        vecs, ctypes.byref(n_axes_c), ctypes.byref(n_vecs_c),
+        vecs_selection_mask, ctypes.byref(n_selected_vecs_c),
+        axes_selection_mask, ctypes.byref(n_selected_axes_c),
         projections, ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
@@ -847,14 +1053,12 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
     Calculate clock hand angle between two vectors
 
     Args:
-        v1: First vector (numpy array)
-        v2: Second vector (numpy array)
-        selected_axes_for_signed: Integer array of axes to use for signed angle (length n_dims)
+        v1: First vector (numpy array).
+        v2: Second vector (numpy array).
+        selected_axes_for_signed: Integer array of axes to use for signed angle (length n_dims).
 
     Returns:
-        float: Signed angle between vectors in degrees
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        float: Signed angle between vectors in degrees.
     """
     # Input validation and conversion
     v1 = np.ascontiguousarray(v1, dtype=np.float64)  # First vector
@@ -875,19 +1079,20 @@ def tox_clock_hand_angle_between_vectors(v1, v2, selected_axes_for_signed):
     # Prepare output and error code
     signed_angle = ctypes.c_double(0.0)
     ierr = ctypes.c_int(0)
+    n_dims_c = ctypes.c_int(n_dims)
     # Setup C wrapper
     clock_hand_angle = lib.clock_hand_angle_between_vectors_c
     clock_hand_angle.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # v1
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # v2
-        ctypes.c_int,  # n_dims
+        ctypes.POINTER(ctypes.c_int),  # n_dims
         ctypes.POINTER(ctypes.c_double),  # signed_angle
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # selected_axes_for_signed
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     clock_hand_angle.restype = None
     # Call Fortran routine
-    clock_hand_angle(v1, v2, n_dims, ctypes.byref(signed_angle), selected_axes_for_signed, ctypes.byref(ierr))
+    clock_hand_angle(v1, v2, ctypes.byref(n_dims_c), ctypes.byref(signed_angle), selected_axes_for_signed, ctypes.byref(ierr))
     # Check for errors
     check_err_code(ierr.value)
 
@@ -901,15 +1106,13 @@ def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mas
     Calculate clock hand angles for shift vectors
 
     Args:
-        origins: Origin vectors (n_dims x n_vecs)
-        targets: Target vectors (n_dims x n_vecs)
-        vecs_selection_mask: Boolean array indicating which vectors to process
-        selected_axes_for_signed: Integer array of axes to use for signed angle (length n_dims)
+        origins: Origin vectors (n_dims x n_vecs).
+        targets: Target vectors (n_dims x n_vecs).
+        vecs_selection_mask: Boolean array indicating which vectors to process.
+        selected_axes_for_signed: Integer array of axes to use for signed angle (length n_dims).
 
     Returns:
-        numpy.ndarray: Signed angles for selected vectors in degrees
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        np.ndarray: Signed angles for selected vectors in degrees.
     """
     # Input validation and conversion
     origins = np.asfortranarray(origins, dtype=np.float64)  # Origin vectors
@@ -933,22 +1136,35 @@ def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mas
     # Prepare output and error code
     signed_angles = np.zeros(n_selected_vecs, dtype=np.float64)
     ierr = ctypes.c_int(0)
+    n_dims_c = ctypes.c_int(n_dims)
+    n_vecs_c = ctypes.c_int(n_vecs)
+    n_selected_vecs_c = ctypes.c_int(n_selected_vecs)
     # Setup C wrapper
     clock_hand_angles = lib.clock_hand_angles_for_shift_vectors_c
     clock_hand_angles.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # origins
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # targets
-        ctypes.c_int,  # n_dims
-        ctypes.c_int,  # n_vecs
+        ctypes.POINTER(ctypes.c_int),  # n_dims
+        ctypes.POINTER(ctypes.c_int),  # n_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # vecs_selection_mask
-        ctypes.c_int,  # n_selected_vecs
+        ctypes.POINTER(ctypes.c_int),  # n_selected_vecs
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # selected_axes_for_signed
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # signed_angles
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     clock_hand_angles.restype = None
     # Call Fortran routine
-    clock_hand_angles(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ctypes.byref(ierr))
+    clock_hand_angles(
+        origins,
+        targets,
+        ctypes.byref(n_dims_c),
+        ctypes.byref(n_vecs_c),
+        vecs_selection_mask,
+        ctypes.byref(n_selected_vecs_c),
+        selected_axes_for_signed,
+        signed_angles,
+        ctypes.byref(ierr),
+    )
     # Check for errors
     check_err_code(ierr.value)
     # Mark output as read-only
@@ -960,16 +1176,19 @@ def tox_clock_hand_angles_for_shift_vectors(origins, targets, vecs_selection_mas
 def relative_axes_changes_from_shift_vector(shift_vector):
     """
     Compute relative axis contributions from a shift vector (RAP space).
+
     Args:
-        shift_vector (array-like): Input vector (1D)
+        shift_vector: Input vector (1D).
+
     Returns:
-        np.ndarray: Relative axis contributions (sum to 1)
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        np.ndarray: Relative axis contributions (sum to 1).
     """
     # Input validation and conversion
     vec = np.ascontiguousarray(shift_vector, dtype=np.float64)  # Shift vector
     n_dims = len(vec)
+    # Convert scalar parameters
+    n_dims_c = ctypes.c_int(n_dims)
+
     # Prepare output and error code
     contrib = np.zeros(n_dims, dtype=np.float64)
     ierr = ctypes.c_int(0)
@@ -977,13 +1196,13 @@ def relative_axes_changes_from_shift_vector(shift_vector):
     relative_axes_changes = lib.relative_axes_changes_from_shift_vector_c
     relative_axes_changes.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # shift_vector
-        ctypes.c_int,  # n_dims
+        ctypes.POINTER(ctypes.c_int),  # n_dims
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # contrib
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     relative_axes_changes.restype = None
     # Call Fortran routine
-    relative_axes_changes(vec, n_dims, contrib, ctypes.byref(ierr))
+    relative_axes_changes(vec, ctypes.byref(n_dims_c), contrib, ctypes.byref(ierr))
     # Check for errors
     check_err_code(ierr.value)
     # Mark output as read-only
@@ -995,16 +1214,19 @@ def relative_axes_changes_from_shift_vector(shift_vector):
 def relative_axes_expression_from_expression_vector(expression_vector):
     """
     Compute relative axis contributions from an expression vector (RAP space).
+
     Args:
-        expression_vector (array-like): Input vector (1D)
+        expression_vector: Input vector (1D).
+
     Returns:
-        np.ndarray: Relative axis contributions (sum to 1)
-    Raises:
-        RuntimeError: If Fortran routine returns error
+        np.ndarray: Relative axis contributions (sum to 1).
     """
     # Input validation and conversion
     vec = np.ascontiguousarray(expression_vector, dtype=np.float64)  # Expression vector
     n_dims = len(vec)
+    # Convert scalar parameters
+    n_dims_c = ctypes.c_int(n_dims)
+
     # Prepare output and error code
     contrib = np.zeros(n_dims, dtype=np.float64)
     ierr = ctypes.c_int(0)
@@ -1012,13 +1234,13 @@ def relative_axes_expression_from_expression_vector(expression_vector):
     relative_axes_changes = lib.relative_axes_expression_from_expression_vector_c
     relative_axes_changes.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # expression_vector
-        ctypes.c_int,  # n_dims
+        ctypes.POINTER(ctypes.c_int),  # n_dims
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # contrib
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     relative_axes_changes.restype = None
     # Call Fortran routine
-    relative_axes_changes(vec, n_dims, contrib, ctypes.byref(ierr))
+    relative_axes_changes(vec, ctypes.byref(n_dims_c), contrib, ctypes.byref(ierr))
     # Check for errors
     check_err_code(ierr.value)
     # Mark output as read-only
@@ -1026,328 +1248,367 @@ def relative_axes_expression_from_expression_vector(expression_vector):
     return contrib
 
 
-#> tox_normalization:normalize_by_std_dev_c: Normalize gene expression values by standard deviation
-def tox_normalize_by_std_dev(input_matrix):
+#> tox_normalization:root_mean_sq_normalization_c: Normalize gene expression values by standard deviation
+def tox_root_mean_sq_normalization(expr):
     """
     Normalize gene expression values by standard deviation
 
     Args:
-        input_matrix: A numeric matrix with genes as rows and tissues as columns
+        expr: A numeric matrix with genes as rows and tissues as columns
 
     Returns:
         numpy.ndarray: Normalized matrix with same dimensions as input
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    n_genes, n_tissues = input_matrix.shape
-
-    # Validate input data
-    if np.any(np.isnan(input_matrix)):
-        raise ValueError(f"Input matrix contains NaN values: {np.sum(np.isnan(input_matrix))}")
-    if np.any(np.isinf(input_matrix)):
-        raise ValueError(f"Input matrix contains infinite values: {np.sum(np.isinf(input_matrix))}")
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    n_replicates, n_genes = expr.shape
 
     # Flatten input and prepare output
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    output_flat = np.zeros_like(input_flat)
+    output = np.empty_like(expr)
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
-    normalize_c = lib.normalize_by_std_dev_c
+    normalize_c = lib.root_mean_sq_normalization_c
     normalize_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_tissues
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # output
+        ctypes.POINTER(ctypes.c_int(ctypes.c_int)),  # n_genes
+        ctypes.POINTER(ctypes.c_int(ctypes.c_int)),  # n_replicates
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     normalize_c.restype = None
 
     # Call Fortran routine
-    normalize_c(n_genes, n_tissues, input_flat, output_flat, ctypes.byref(ierr))
+    normalize_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        output,
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
 
-    # Reshape and return
-    result = output_flat.reshape((n_genes, n_tissues), order='F')
+    # Mark output as read-only
+    _readonly(output)
+    return output
+
+
+#> tox_normalization:normalize_by_std_dev_c: Normalize gene expression values by standard deviation using loess
+def tox_normalize_by_std_dev(expr, span=0.7, degree=2):
+    """
+    Normalize gene expression values by standard deviation using LOESS
+
+    Args:
+        expr: A numeric matrix with genes as rows and tissues as columns
+
+    Returns:
+        numpy.ndarray: Normalized matrix with same dimensions as input
+    """
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    n_replicates, n_genes = expr.shape
+
+    # Validate input data
+    if np.any(np.isnan(expr)):
+        raise ValueError(f"Input matrix contains NaN values: {np.sum(np.isnan(expr))}")
+    if np.any(np.isinf(expr)):
+        raise ValueError(f"Input matrix contains infinite values: {np.sum(np.isinf(expr))}")
+
+    # Flatten input and prepare output
+    output = np.empty_like(expr)
+    ierr = ctypes.c_int(0)
+
+    # Setup C wrapper
+    normalize_c = lib.normalize_by_std_dev_c
+    normalize_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_replicates
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
+        ctypes.POINTER(ctypes.c_double),  # span
+        ctypes.POINTER(ctypes.c_int),  # degree
+        ctypes.POINTER(ctypes.c_int)  # ierr
+    ]
+    normalize_c.restype = None
+
+    # Call Fortran routine
+    normalize_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        output,
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
 
     # Mark output as read-only
-    _readonly(result)
-    return result
+    _readonly(output)
+    return output
 
 
 #> tox_normalization:quantile_normalization_c: Quantile normalization of gene expression values
-def tox_quantile_normalization(input_matrix):
+def tox_quantile_normalization(expr):
     """
     Quantile normalization of gene expression values
 
     Args:
-        input_matrix: A numeric matrix with genes as rows and tissues as columns
+        expr: A numeric matrix with genes as rows and tissues as columns
 
     Returns:
         numpy.ndarray: Quantile-normalized matrix with same dimensions as input
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    n_genes, n_tissues = input_matrix.shape
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    n_replicates, n_genes = expr.shape
 
     # Flatten input and prepare output arrays
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    output_flat = np.zeros_like(input_flat)
-    temp_col = np.zeros(n_genes, dtype=np.float64)
-    rank_means = np.zeros(n_genes, dtype=np.float64)
-    perm = np.zeros(n_genes, dtype=np.int32)
-    max_stack = max(2 * n_genes, 2)
-    stack_left = np.zeros(max_stack, dtype=np.int32)
-    stack_right = np.zeros(max_stack, dtype=np.int32)
+    output = np.empty_like(expr)
+    temp_col = np.empty(n_genes, dtype=np.float64)
+    rank_means = np.empty(n_genes, dtype=np.float64)
+    perm = np.empty(n_genes, dtype=np.int32)
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     quantile_norm_c = lib.quantile_normalization_c
     quantile_norm_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_tissues
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # output
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # temp_col
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_replicates
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rank_means
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # temp_col
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_left
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_right
-        ctypes.c_int,  # max_stack
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     quantile_norm_c.restype = None
 
     # Call Fortran routine
-    quantile_norm_c(n_genes, n_tissues, input_flat, output_flat,
-                    temp_col, rank_means, perm, stack_left, stack_right, max_stack, ctypes.byref(ierr))
+    quantile_norm_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        output,
+        rank_means,
+        temp_col,
+        perm,
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
 
-    # Reshape and return
-    result = output_flat.reshape((n_genes, n_tissues), order='F')
-
     # Mark output as read-only
-    _readonly(result)
-    return result
+    _readonly(output)
+    return output
 
 
 #> tox_normalization:log2_transformation_c: Apply log2(x + 1) transformation to gene expression values
-def tox_log2_transformation(input_matrix):
+def tox_log2_transformation(expr):
     """
     Apply log2(x + 1) transformation to gene expression values
 
     Args:
-        input_matrix: A numeric matrix with genes as rows and tissues as columns
+        expr: A numeric matrix with genes as rows and tissues as columns
 
     Returns:
         numpy.ndarray: Log2-transformed matrix with same dimensions as input
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    n_genes, n_tissues = input_matrix.shape
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    n_tissues, n_genes = expr.shape
 
     # Flatten input and prepare output
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    output_flat = np.zeros_like(input_flat)
+    output = np.empty_like(expr)
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     log2_transform_c = lib.log2_transformation_c
     log2_transform_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_tissues
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # output
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_tissues
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     log2_transform_c.restype = None
 
     # Call Fortran routine
-    log2_transform_c(n_genes, n_tissues, input_flat, output_flat, ctypes.byref(ierr))
+    log2_transform_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_tissues)),
+        expr,
+        output,
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
 
-    # Reshape and return
-    result = output_flat.reshape((n_genes, n_tissues), order='F')
-
     # Mark output as read-only
-    _readonly(result)
-    return result
+    _readonly(output)
+    return output
 
 
-#> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue group
-def tox_calculate_tissue_averages(input_matrix, group_starts, group_counts):
+#> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue
+def tox_calculate_tissue_averages(expr, reps_per_tissue):
     """
-    Calculate average expression across replicates for each tissue group
+    Calculate average expression across replicates for each tissue
 
     Args:
-        input_matrix: A numeric matrix with genes as rows and tissue replicates as columns
-        group_starts: Array of starting column indices for each group (1-based for Fortran)
-        group_counts: Array of counts for each group
+        expr: A numeric matrix with genes as rows and tissue replicates as columns
+        reps_per_tissue: Array of replicate counts for each tissue
 
     Returns:
         numpy.ndarray: Matrix with genes as rows and averaged tissues as columns
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    group_starts = np.asarray(group_starts, dtype=np.int32)
-    group_counts = np.asarray(group_counts, dtype=np.int32)
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    reps_per_tissue = np.asfortranarray(reps_per_tissue, dtype=np.int32)
 
-    n_genes, n_samples = input_matrix.shape
-    n_groups = len(group_starts)
+    n_samples, n_genes = expr.shape
+    n_tissues = len(reps_per_tissue)
 
-    if len(group_counts) != n_groups:
-        raise ValueError("group_starts and group_counts must have same length")
-
-    # Flatten input and prepare output
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    output_flat = np.zeros(n_genes * n_groups, dtype=np.float64)
+    output = np.empty((n_tissues, n_genes), dtype=np.float64, order="F")
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     tiss_avg_c = lib.calc_tiss_avg_c
     tiss_avg_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_groups
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # group_starts
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # group_counts
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # output
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_tissues
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # reps_per_tissue
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     tiss_avg_c.restype = None
 
     # Call Fortran routine
-    tiss_avg_c(n_genes, n_groups, group_starts, group_counts, input_flat, output_flat, ctypes.byref(ierr))
+    tiss_avg_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_tissues)),
+        reps_per_tissue,
+        expr,
+        output,
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
 
-    # Reshape and return
-    result = output_flat.reshape((n_genes, n_groups), order='F')
-
     # Mark output as read-only
-    _readonly(result)
-    return result
+    _readonly(output)
+    return output
 
 
 #> tox_normalization:normalization_pipeline_c: Complete normalization pipeline for gene expression data (up to log2(x+1))
-def tox_normalization_pipeline(input_matrix, group_starts, group_counts):
+def tox_normalization_pipeline(expr, reps_per_tissue, span=0.7, degree=2, use_quantile=0):
     """
     Complete normalization pipeline for gene expression data (up to log2(x+1))
     Mirrors Fortran normalization_pipeline (no fold change).
 
     Args:
-        input_matrix: Numeric matrix (genes x tissues)
-        group_starts: Integer array, start column index for each replicate group (1-based)
-        group_counts: Integer array, number of columns per replicate group
+        expr: Numeric matrix (genes x tissues)
+        reps_per_tissue: Array of replicate counts for each tissue
+        span: Float, span parameter for loess normalization
+        degree: Integer, degree parameter for loess normalization
+        use_quantile: Integer, whether to apply quantile normalization
 
     Returns:
         numpy.ndarray: log2(x+1) normalized expression (genes x groups)
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    group_starts = np.asarray(group_starts, dtype=np.int32)
-    group_counts = np.asarray(group_counts, dtype=np.int32)
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    reps_per_tissue = np.asfortranarray(reps_per_tissue, dtype=np.int32)
 
-    n_genes, n_tissues = input_matrix.shape
-    n_grps = len(group_starts)
+    n_replicates, n_genes = expr.shape
+    n_tissues = len(reps_per_tissue)
 
     # Flatten input and allocate workspace
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    buf_stddev = np.zeros(n_genes * n_tissues, dtype=np.float64)
-    buf_quant = np.zeros(n_genes * n_tissues, dtype=np.float64)
-    buf_avg = np.zeros(n_genes * n_grps, dtype=np.float64)
-    buf_log = np.zeros(n_genes * n_grps, dtype=np.float64)
-    temp_col = np.zeros(n_genes, dtype=np.float64)
-    rank_means = np.zeros(n_genes, dtype=np.float64)
-    perm = np.zeros(n_genes, dtype=np.int32)
-    max_stack = max(2 * n_genes, 2)
-    stack_left = np.zeros(max_stack, dtype=np.int32)
-    stack_right = np.zeros(max_stack, dtype=np.int32)
+    log_transformed_expr = np.empty((n_tissues, n_genes), dtype=np.float64, order="F")
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     normalization_pipeline_c = lib.normalization_pipeline_c
     normalization_pipeline_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_tissues
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input_flat
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # buf_stddev
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # buf_quant
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # buf_avg
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # buf_log
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # temp_col
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rank_means
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_left
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_right
-        ctypes.c_int,  # max_stack
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # group_starts
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # group_counts
-        ctypes.c_int,  # n_grps
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_replicates
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expr
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # log_transformed_expr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # reps_per_tissue
+        ctypes.POINTER(ctypes.c_int),  # n_tissues
+        ctypes.POINTER(ctypes.c_double),  # span
+        ctypes.POINTER(ctypes.c_int),  # degree
+        ctypes.POINTER(ctypes.c_int),  # use_quantile
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     normalization_pipeline_c.restype = None
 
     # Call Fortran routine
     normalization_pipeline_c(
-        n_genes, n_tissues, input_flat, buf_stddev, buf_quant, buf_avg, buf_log,
-        temp_col, rank_means, perm, stack_left, stack_right, max_stack,
-        group_starts, group_counts, n_grps, ctypes.byref(ierr)
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        log_transformed_expr,
+        reps_per_tissue,
+        ctypes.byref(ctypes.c_int(n_tissues)),
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ctypes.c_int(use_quantile)),
+        ctypes.byref(ierr)
     )
     check_err_code(ierr.value)
 
-    # Reshape and return log2(x+1) output
-    result = buf_log.reshape((n_genes, n_grps), order='F')
-    _readonly(result)
-    return result
+    _readonly(log_transformed_expr)
+    return log_transformed_expr
 
 
 #> tox_normalization:calc_fchange_c: Calculate log2 fold changes between control and condition columns
-def tox_calculate_fold_changes(input_matrix, control_cols, condition_cols):
+def tox_calculate_fold_changes(expr, control_tissues, condition_tissues):
     """
     Calculate log2 fold changes between control and condition columns
 
     Args:
-        input_matrix: A numeric matrix with genes as rows and tissues/conditions as columns
-        control_cols: Array of control column indices (1-based for Fortran)
-        condition_cols: Array of condition column indices (1-based for Fortran)
+        expr: A numeric matrix with genes as rows and tissues/conditions as columns
+        control_tissues: Array of control column indices (1-based for Fortran)
+        condition_tissues: Array of condition column indices (1-based for Fortran)
 
     Returns:
         numpy.ndarray: Matrix with genes as rows and fold change values as columns
     """
-    input_matrix = np.asarray(input_matrix, dtype=np.float64)
-    control_cols = np.asarray(control_cols, dtype=np.int32)
-    condition_cols = np.asarray(condition_cols, dtype=np.int32)
+    expr = np.asfortranarray(expr, dtype=np.float64)
+    control_tissues = np.asfortranarray(control_tissues, dtype=np.int32)
+    condition_tissues = np.asfortranarray(condition_tissues, dtype=np.int32)
 
-    n_genes, n_samples = input_matrix.shape
-    n_pairs = len(control_cols)
+    n_genes, n_tissues = expr.shape
+    n_pairs = len(control_tissues)
 
-    if len(condition_cols) != n_pairs:
-        raise ValueError("control_cols and condition_cols must have same length")
+    if len(condition_tissues) != n_pairs:
+        raise ValueError("control_tissues and condition_tissues must have same length")
 
-    # Flatten input and prepare output
-    input_flat = np.asfortranarray(input_matrix).ravel(order='F')
-    output_flat = np.zeros(n_genes * n_pairs, dtype=np.float64)
+    output = np.empty(n_genes * n_pairs, dtype=np.float64)
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     fchange_c = lib.calc_fchange_c
     fchange_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_samples
-        ctypes.c_int,  # n_pairs
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # control_cols
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # condition_cols
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # input
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # output
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_tissues
+        ctypes.POINTER(ctypes.c_int),  # n_pairs
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # control_tissues
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # condition_tissues
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # input
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # output
         ctypes.POINTER(ctypes.c_int)  # ierr
     ]
     fchange_c.restype = None
 
     # Call Fortran routine
-    fchange_c(n_genes, n_samples, n_pairs, control_cols, condition_cols, input_flat, output_flat, ctypes.byref(ierr))
+    fchange_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_tissues)),
+        ctypes.byref(ctypes.c_int(n_pairs)),
+        control_tissues,
+        condition_tissues,
+        expr,
+        output,
+        ctypes.byref(ierr)
+    )
     check_err_code(ierr.value)
 
-    # Reshape and return
-    result = output_flat.reshape((n_genes, n_pairs), order='F')
-
     # Mark output as read-only
-    _readonly(result)
-    return result
+    _readonly(output)
+    return output
 
 
 #> tox_tissue_versatility:compute_tissue_versatility_c: Computes normalized tissue versatility for selected expression vectors
@@ -1355,23 +1616,18 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
     """
     Calculate Tissue Versatility
 
-    Computes normalized tissue versatility for selected expression vectors.
-    The metric is based on the angle between each gene expression vector and the space diagonal.
-    Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
-    This function automatically checks for errors and throws informative exceptions.
-
     Args:
-        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
-        vector_selection: Boolean or integer array indicating which vectors to process (length n_vectors)
-        axis_selection: Boolean or integer array indicating which axes to include in calculation (length n_axes)
+        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors).
+        vector_selection: Boolean or integer array indicating which vectors to process (length n_vectors).
+        axis_selection: Boolean or integer array indicating which axes to include in calculation (length n_axes).
 
     Returns:
-        dict: Dictionary containing:
-            - tissue_versatilities: Normalized tissue versatility values [0,1] for selected vectors
-            - tissue_angles_deg: Angles in degrees [0,90] for selected vectors
-            - n_selected_vectors: Number of vectors processed
-            - n_selected_axes: Number of axes used in calculation
-
+        dict: {
+            'tissue_versatilities' (np.ndarray): Normalized tissue versatility values in [0,1] for selected vectors,
+            'tissue_angles_deg' (np.ndarray): Angles in degrees [0,90] for selected vectors,
+            'n_selected_vectors' (int): Number of vectors processed,
+            'n_selected_axes' (int): Number of axes used in calculation
+        }
     """
     # Input validation
     if not isinstance(expression_vectors, np.ndarray):
@@ -1403,6 +1659,12 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
     select_vec = np.ascontiguousarray(vector_selection.astype(np.int32))
     select_axes = np.ascontiguousarray(axis_selection.astype(np.int32))
 
+    # Convert scalar parameters
+    n_axes_c = ctypes.c_int(n_axes)
+    n_vectors_c = ctypes.c_int(n_vectors)
+    n_selected_vectors_c = ctypes.c_int(n_selected_vectors)
+    n_selected_axes_c = ctypes.c_int(n_selected_axes)
+
     # Prepare output arrays
     tissue_versatilities = np.empty(n_selected_vectors, dtype=np.float64)
     tissue_angles_deg = np.empty(n_selected_vectors, dtype=np.float64)
@@ -1411,13 +1673,13 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
     # Setup C/Fortran wrapper with proper type annotations
     tv = lib.compute_tissue_versatility_c
     tv.argtypes = [
-        ctypes.c_int,  # n_axes
-        ctypes.c_int,  # n_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_axes
+        ctypes.POINTER(ctypes.c_int),  # n_vectors
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors (Fortran order)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # exp_vecs_selection_index
-        ctypes.c_int,  # n_selected_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_selected_vectors
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # axes_selection
-        ctypes.c_int,  # n_selected_axes
+        ctypes.POINTER(ctypes.c_int),  # n_selected_axes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_versatilities
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_angles_deg
         ctypes.POINTER(ctypes.c_int),  # ierr
@@ -1426,13 +1688,13 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
 
     # Call the C/Fortran wrapper
     tv(
-        n_axes,
-        n_vectors,
+        ctypes.byref(n_axes_c),
+        ctypes.byref(n_vectors_c),
         expr_f,
         select_vec,
-        n_selected_vectors,
+        ctypes.byref(n_selected_vectors_c),
         select_axes,
-        n_selected_axes,
+        ctypes.byref(n_selected_axes_c),
         tissue_versatilities,
         tissue_angles_deg,
         ctypes.byref(ierr)
@@ -1457,11 +1719,11 @@ def tox_euclidean_distance(vec1, vec2):
     Calculate Euclidean distance between two vectors
 
     Args:
-        vec1: First vector (numpy array)
-        vec2: Second vector (numpy array)
+        vec1: First vector (numpy array).
+        vec2: Second vector (numpy array).
 
     Returns:
-        float: Euclidean distance between the vectors
+        float: Euclidean distance between the vectors.
     """
     # Input validation
     if not isinstance(vec1, np.ndarray):
@@ -1483,6 +1745,9 @@ def tox_euclidean_distance(vec1, vec2):
     vec1 = np.ascontiguousarray(vec1, dtype=np.float64)
     vec2 = np.ascontiguousarray(vec2, dtype=np.float64)
 
+    # Convert scalar parameters
+    n_dims_c = ctypes.c_int(len(vec1))
+
     # Prepare output
     result = ctypes.c_double(0.0)
 
@@ -1491,13 +1756,13 @@ def tox_euclidean_distance(vec1, vec2):
     euclidean_distance_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
-        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double)
     ]
     euclidean_distance_c.restype = None
 
     # Call Fortran routine
-    euclidean_distance_c(vec1, vec2, len(vec1), ctypes.byref(result))
+    euclidean_distance_c(vec1, vec2, ctypes.byref(n_dims_c), ctypes.byref(result))
 
     return result.value
 
@@ -1508,13 +1773,13 @@ def tox_distance_to_centroid(genes, centroids, gene_to_fam, d):
     Calculate distance from each gene to its family centroid
 
     Args:
-        genes: Gene expression data as flat array (n_genes * d elements)
-        centroids: Family centroids as flat array (n_families * d elements)
-        gene_to_fam: Gene-to-family mapping (0 = no family, >0 = family index)
-        d: Number of dimensions
+        genes: Gene expression data as flat array (n_genes * d elements).
+        centroids: Family centroids as flat array (n_families * d elements).
+        gene_to_fam: Gene-to-family mapping (0 = no family, >0 = family index).
+        d: Number of dimensions.
 
     Returns:
-        numpy.ndarray: Distances from each gene to its centroid (-1 for invalid families)
+        np.ndarray: Distances from each gene to its centroid (-1 for invalid families).
     """
     # Input validation
     if not isinstance(genes, np.ndarray):
@@ -1548,24 +1813,29 @@ def tox_distance_to_centroid(genes, centroids, gene_to_fam, d):
     centroids = np.ascontiguousarray(centroids, dtype=np.float64)
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
 
+    # Convert scalar parameters
+    n_genes_c = ctypes.c_int(n_genes)
+    n_families_c = ctypes.c_int(n_families)
+    d_c = ctypes.c_int(d)
+
     # Prepare output array
     distances = np.zeros(n_genes, dtype=np.float64)
 
     # Setup C wrapper
     distance_to_centroid_c = lib.distance_to_centroid_c
     distance_to_centroid_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # genes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # centroids
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
-        ctypes.c_int   # d
+        ctypes.POINTER(ctypes.c_int)   # d
     ]
     distance_to_centroid_c.restype = None
 
     # Call Fortran routine
-    distance_to_centroid_c(n_genes, n_families, genes, centroids, gene_to_fam, distances, d)
+    distance_to_centroid_c(ctypes.byref(n_genes_c), ctypes.byref(n_families_c), genes, centroids, gene_to_fam, distances, ctypes.byref(d_c))
 
     # Mark output as read-only
     _readonly(distances)
@@ -1578,15 +1848,15 @@ def tox_loess_smooth_2d(x_ref, y_ref, indices_used, x_query, kernel_sigma, kerne
     LOESS smoothing in 2D
 
     Args:
-        x_ref: Reference x values
-        y_ref: Reference y values
-        indices_used: Indices of points to use (1-based for Fortran)
-        x_query: Query x values where to compute smoothed y
-        kernel_sigma: Kernel bandwidth parameter
-        kernel_cutoff: Kernel cutoff parameter
+        x_ref: Reference x values.
+        y_ref: Reference y values.
+        indices_used: Indices of points to use (1-based for Fortran).
+        x_query: Query x values where to compute smoothed y.
+        kernel_sigma: Kernel bandwidth parameter.
+        kernel_cutoff: Kernel cutoff parameter.
 
     Returns:
-        numpy.ndarray: Smoothed y values at query points
+        np.ndarray: Smoothed y values at query points.
     """
     # Input validation and conversion
     x_ref = np.ascontiguousarray(x_ref, dtype=np.float64)
@@ -1612,6 +1882,13 @@ def tox_loess_smooth_2d(x_ref, y_ref, indices_used, x_query, kernel_sigma, kerne
     if kernel_cutoff < 0:
         raise ValueError("kernel_cutoff must be non-negative")
 
+    # Convert scalar parameters
+    n_total_c = ctypes.c_int(n_total)
+    n_target_c = ctypes.c_int(n_target)
+    n_used_c = ctypes.c_int(n_used)
+    kernel_sigma_c = ctypes.c_double(kernel_sigma)
+    kernel_cutoff_c = ctypes.c_double(kernel_cutoff)
+
     # Prepare output and error code
     y_out = np.zeros(n_target, dtype=np.float64)
     ierr = ctypes.c_int(0)
@@ -1619,15 +1896,15 @@ def tox_loess_smooth_2d(x_ref, y_ref, indices_used, x_query, kernel_sigma, kerne
     # Setup C wrapper
     loess_smooth_2d_c = lib.loess_smooth_2d_c
     loess_smooth_2d_c.argtypes = [
-        ctypes.c_int,  # n_total
-        ctypes.c_int,  # n_target
+        ctypes.POINTER(ctypes.c_int),  # n_total
+        ctypes.POINTER(ctypes.c_int),  # n_target
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # x_ref
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # y_ref
         np.ctypeslib.ndpointer(dtype=np.int32, flags='C_CONTIGUOUS'),    # indices_used
-        ctypes.c_int,  # n_used
+        ctypes.POINTER(ctypes.c_int),  # n_used
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # x_query
-        ctypes.c_double,  # kernel_sigma
-        ctypes.c_double,  # kernel_cutoff
+        ctypes.POINTER(ctypes.c_double),  # kernel_sigma
+        ctypes.POINTER(ctypes.c_double),  # kernel_cutoff
         np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # y_out
         ctypes.POINTER(ctypes.c_int),  # ierr
     ]
@@ -1635,9 +1912,9 @@ def tox_loess_smooth_2d(x_ref, y_ref, indices_used, x_query, kernel_sigma, kerne
 
     # Call Fortran routine
     loess_smooth_2d_c(
-        n_total, n_target,
-        x_ref, y_ref, indices_used, n_used, x_query,
-        ctypes.c_double(kernel_sigma), ctypes.c_double(kernel_cutoff),
+        ctypes.byref(n_total_c), ctypes.byref(n_target_c),
+        x_ref, y_ref, indices_used, ctypes.byref(n_used_c), x_query,
+        ctypes.byref(kernel_sigma_c), ctypes.byref(kernel_cutoff_c),
         y_out, ctypes.byref(ierr)
     )
 
@@ -1675,31 +1952,31 @@ def tox_compute_family_scaling(distances, gene_to_fam):
     loess_x = np.zeros(n_families, dtype=np.float64)
     loess_y = np.zeros(n_families, dtype=np.float64)
     indices_used = np.zeros(n_families, dtype=np.int32)
-    error_code = np.zeros(1, dtype=np.int32)
+    error_code = ctypes.c_int(0)
 
     # Setup C wrapper
     compute_family_scaling_c = lib.compute_family_scaling_c
     compute_family_scaling_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # dscale
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_x
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_y
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # indices_used
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # error_code
+        ctypes.POINTER(ctypes.c_int),  # error code
     ]
     compute_family_scaling_c.restype = None
 
     # Call Fortran routine
     compute_family_scaling_c(
-        n_genes, n_families, distances, gene_to_fam,
-        dscale, loess_x, loess_y, indices_used, error_code
+        ctypes.byref(ctypes.c_int(n_genes)), ctypes.byref(ctypes.c_int(n_families)), distances, gene_to_fam,
+        dscale, loess_x, loess_y, indices_used, ctypes.byref(error_code)
     )
 
     # Check for errors
-    check_err_code(error_code[0])
+    check_err_code(error_code.value)
 
     # Mark outputs as read-only
     _readonly(dscale, loess_x, loess_y, indices_used)
@@ -1711,10 +1988,9 @@ def tox_compute_family_scaling(distances, gene_to_fam):
         'indices_used': indices_used
     }
 
-
 #> tox_get_outliers:compute_family_scaling_expert_c: Compute family scaling factors using LOESS smoothing (Expert Version)
-def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_left_tmp,
-                                 stack_right_tmp, family_distances):
+def tox_compute_family_scaling_expert(distances, gene_to_fam, span, degree, mode, n_iters, perm_tmp, stack_left_tmp,
+                                      stack_right_tmp):
     """
     Expert version of compute_family_scaling with user-provided work arrays
 
@@ -1728,7 +2004,6 @@ def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_le
         perm_tmp: Pre-allocated permutation array for sorting (n_genes)
         stack_left_tmp: Pre-allocated stack array for sorting (n_genes)
         stack_right_tmp: Pre-allocated stack array for sorting (n_genes)
-        family_distances: Pre-allocated work array for family distances (n_genes)
 
     Returns:
         dict: Dictionary containing scaling factors and intermediate results
@@ -1738,7 +2013,6 @@ def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_le
     perm_tmp = np.ascontiguousarray(perm_tmp, dtype=np.int32)
     stack_left_tmp = np.ascontiguousarray(stack_left_tmp, dtype=np.int32)
     stack_right_tmp = np.ascontiguousarray(stack_right_tmp, dtype=np.int32)
-    family_distances = np.ascontiguousarray(family_distances, dtype=np.float64)
 
     n_genes = len(distances)
     n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0
@@ -1751,21 +2025,50 @@ def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_le
         raise ValueError("stack_left_tmp must have same length as distances")
     if len(stack_right_tmp) != n_genes:
         raise ValueError("stack_right_tmp must have same length as distances")
-    if len(family_distances) != n_genes:
-        raise ValueError("family_distances must have same length as distances")
+
+    # Determine workspace sizes using tox_loess_required_workspace
+    workspace_sizes = tox_loess_required_workspace(1, n_families, False)
+    liv = workspace_sizes['liv']
+    lv = workspace_sizes['lv']
+
+    c_n_genes = ctypes.c_int(n_genes)
+    c_n_families = ctypes.c_int(n_families)
+
+    workspace_sizes = tox_loess_required_workspace(1, n_families, False)
+    c_liv = ctypes.c_int(workspace_sizes['liv'])
+    c_lv = ctypes.c_int(workspace_sizes['lv'])
+
+    c_span = ctypes.c_double(span)
+    c_degree = ctypes.c_int(degree)
+    c_mode = ctypes.c_int(mode)
+    c_n_iters = ctypes.c_int(n_iters)
+
+    # Allocate additional workspace arrays
+    iv = np.empty(liv, dtype=np.int32)
+    wv = np.empty(lv, dtype=np.float64)
+    diagl = np.empty(n_genes, dtype=np.float64)
+    w_init = np.empty(n_genes, dtype=np.float64)
+    z_mat = np.empty((n_genes, 1), dtype=np.float64)
+    rw = np.empty(n_genes, dtype=np.float64)
+    ww = np.empty(n_genes, dtype=np.float64)
+    res = np.empty(n_genes, dtype=np.float64)
+    pi = np.empty(n_genes, dtype=np.int32)
+    yhat_tmp = np.empty(n_genes, dtype=np.float64)
 
     # Prepare output arrays
-    dscale = np.zeros(n_families, dtype=np.float64)
-    loess_x = np.zeros(n_families, dtype=np.float64)
-    loess_y = np.zeros(n_families, dtype=np.float64)
-    indices_used = np.zeros(n_families, dtype=np.int32)
-    error_code = np.zeros(1, dtype=np.int32)
-
+    dscale = np.empty(n_families, dtype=np.float64)
+    loess_x = np.empty(n_families, dtype=np.float64)
+    loess_y = np.empty(n_families, dtype=np.float64)
+    indices_used = np.empty(n_families, dtype=np.int32)
+    excluded_low_sd = np.empty(n_families, dtype=np.int32)
+    means_aux = np.empty(n_families, dtype=np.float64)
+    error_code = ctypes.c_int(0)
+    low_sd_cutoff = ctypes.c_double(0)
     # Setup C wrapper
     compute_family_scaling_expert_c = lib.compute_family_scaling_expert_c
     compute_family_scaling_expert_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # dscale
@@ -1775,23 +2078,57 @@ def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_le
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm_tmp
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_left_tmp
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_right_tmp
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_distances
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # error_code
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # iv
+        ctypes.POINTER(ctypes.c_int),  # liv
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # wv
+        ctypes.POINTER(ctypes.c_int),  # lv
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # diagl
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # w_init
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_mat
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rw
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # ww
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # res
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # pi
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # yhat_tmp
+        ctypes.POINTER(ctypes.c_double),  # span
+        ctypes.POINTER(ctypes.c_int),  # degree
+        ctypes.POINTER(ctypes.c_int),  # mode
+        ctypes.POINTER(ctypes.c_int),  # n_iters
+        ctypes.POINTER(ctypes.c_double),  # low_sd_cutoff
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # excluded_low_sd
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # means_aux
+        ctypes.POINTER(ctypes.c_int),  # error_code
     ]
     compute_family_scaling_expert_c.restype = None
 
     # Call Fortran routine
     compute_family_scaling_expert_c(
-        n_genes, n_families, distances, gene_to_fam,
+        ctypes.byref(c_n_genes),
+        ctypes.byref(c_n_families),
+        distances,
+        gene_to_fam,
         dscale, loess_x, loess_y, indices_used,
-        perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, error_code
+        perm_tmp, stack_left_tmp, stack_right_tmp,
+        iv,
+        ctypes.byref(c_liv),
+        wv,
+        ctypes.byref(c_lv),
+        diagl, w_init, z_mat, rw, ww, res, pi, yhat_tmp,
+        ctypes.byref(c_span),
+        ctypes.byref(c_degree),
+        ctypes.byref(c_mode),
+        ctypes.byref(c_n_iters),
+        low_sd_cutoff,
+        excluded_low_sd,
+        means_aux,
+        ctypes.byref(error_code)
     )
 
     # Check for errors
-    check_err_code(error_code[0])
+    check_err_code(error_code.value)
 
     # Mark outputs as read-only
-    _readonly(dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances)
+    _readonly(dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, low_sd_cutoff, excluded_low_sd, means_aux)
 
     return {
         'dscale': dscale,
@@ -1801,7 +2138,9 @@ def tox_compute_family_scaling_expert(distances, gene_to_fam, perm_tmp, stack_le
         'perm_tmp': perm_tmp,
         'stack_left_tmp': stack_left_tmp,
         'stack_right_tmp': stack_right_tmp,
-        'family_distances': family_distances
+        'low_sd_cutoff': low_sd_cutoff.value,
+        'excluded_low_sd': excluded_low_sd,
+        'means_aux': means_aux
     }
 
 
@@ -1831,12 +2170,13 @@ def tox_compute_rdi(distances, gene_to_fam, dscale):
     perm = np.arange(1, n_genes + 1, dtype=np.int32)
     stack_left = np.zeros(n_genes, dtype=np.int32)
     stack_right = np.zeros(n_genes, dtype=np.int32)
+    ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     compute_rdi_c = lib.compute_rdi_c
     compute_rdi_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # dscale
@@ -1845,12 +2185,15 @@ def tox_compute_rdi(distances, gene_to_fam, dscale):
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_left
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # stack_right
+        ctypes.POINTER(ctypes.c_int),  # ierr
     ]
     compute_rdi_c.restype = None
 
     # Call Fortran routine
-    compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale,
-                  rdi, sorted_rdi, perm, stack_left, stack_right)
+    compute_rdi_c(ctypes.byref(ctypes.c_int(n_genes)), ctypes.byref(ctypes.c_int(n_families)), distances, gene_to_fam, dscale,
+                  rdi, sorted_rdi, perm, stack_left, stack_right, ctypes.byref(ierr))
+
+    check_err_code(ierr.value)
 
     # Mark output as read-only
     _readonly(rdi)
@@ -1873,32 +2216,45 @@ def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
             - threshold: Threshold value used for detection
     """
     rdi = np.ascontiguousarray(rdi, dtype=np.float64)
+
     n_genes = len(rdi)
 
+    p_values = np.ones(n_genes, dtype=np.float64)
+
     # Prepare sorted RDI (copy and filter out negatives)
+    # --- Build sorted_rdi (clamped) and perm (1-based, sorts sorted_rdi ascending) ---
     sorted_rdi = rdi.copy()
-    sorted_rdi[sorted_rdi < 0] = 0.0  # Filter out error values
-    sorted_rdi.sort()  # Sort in ascending order
+    sorted_rdi[sorted_rdi < 0.0] = 0.0
+
+    # argsort gives 0-based indices; use stable sort to keep deterministic behavior on ties
+    perm0 = np.argsort(sorted_rdi, kind="mergesort").astype(np.int32)
+    perm = np.ascontiguousarray(perm0 + 1, dtype=np.int32)  # Fortran expects 1-based
+
 
     # Prepare output arrays
     outliers_int = np.zeros(n_genes, dtype=np.int32)
     threshold_out = ctypes.c_double(0.0)
+    n_genes_c = ctypes.c_int(n_genes)
+    ierr = ctypes.c_int(0)
 
     # Setup C wrapper
     identify_outliers_c = lib.identify_outliers_c
     identify_outliers_c.argtypes = [
-        ctypes.c_int,  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_genes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rdi
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # sorted_rdi
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier_int
         ctypes.POINTER(ctypes.c_double),  # threshold (output)
-        ctypes.c_double,  # percentile
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
+        ctypes.POINTER(ctypes.c_double),  # percentile
+        ctypes.POINTER(ctypes.c_int),  # ierr
     ]
     identify_outliers_c.restype = None
 
     # Call Fortran routine
-    identify_outliers_c(n_genes, rdi, sorted_rdi, outliers_int,
-                        ctypes.byref(threshold_out), ctypes.c_double(percentile))
+    identify_outliers_c(ctypes.byref(n_genes_c), rdi, sorted_rdi, perm, outliers_int,
+                        ctypes.byref(threshold_out), p_values, ctypes.c_double(percentile), ctypes.byref(ierr))
 
     # Mark output as read-only
     _readonly(outliers_int)
@@ -1929,23 +2285,28 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
     n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0
 
     # Prepare work arrays
-    work_array = np.zeros(n_genes, dtype=np.float64)
-    perm = np.zeros(n_genes, dtype=np.int32)
-    stack_left = np.zeros(n_genes, dtype=np.int32)
-    stack_right = np.zeros(n_genes, dtype=np.int32)
+    work_array = np.empty(n_genes, dtype=np.float64)
+    perm = np.empty(n_genes, dtype=np.int32)
+    stack_left = np.empty(n_genes, dtype=np.int32)
+    stack_right = np.empty(n_genes, dtype=np.int32)
 
     # Prepare output arrays
-    outliers_int = np.zeros(n_genes, dtype=np.int32)
-    loess_x = np.zeros(n_families, dtype=np.float64)
-    loess_y = np.zeros(n_families, dtype=np.float64)
-    loess_n = np.zeros(n_families, dtype=np.int32)
+    outliers_int = np.empty(n_genes, dtype=np.int32)
+    loess_x = np.empty(n_families, dtype=np.float64)
+    loess_y = np.empty(n_families, dtype=np.float64)
+    loess_n = np.empty(n_families, dtype=np.int32)
+    p_values = np.empty(n_genes, dtype=np.float64)
     error_code = ctypes.c_int(0)
+    n_genes_c    = ctypes.c_int(n_genes)
+    n_families_c = ctypes.c_int(n_families)
+    percentile_c = ctypes.c_double(percentile)   # <-- float -> c_double
+
 
     # Setup C wrapper
     detect_outliers_c = lib.detect_outliers_c
     detect_outliers_c.argtypes = [
-        ctypes.c_int,  # n_genes
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distances
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # work_array
@@ -1956,17 +2317,18 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_x
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_y
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # loess_n
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
         ctypes.POINTER(ctypes.c_int),  # error_code
-        ctypes.c_double,  # percentile
+        ctypes.POINTER(ctypes.c_double),  # percentile
     ]
     detect_outliers_c.restype = None
 
     # Call Fortran routine
     detect_outliers_c(
-        n_genes, n_families, distances, gene_to_fam,
+        ctypes.byref(n_genes_c), ctypes.byref(n_families_c), distances, gene_to_fam,
         work_array, perm, stack_left, stack_right,
-        outliers_int, loess_x, loess_y, loess_n,
-        ctypes.byref(error_code), ctypes.c_double(percentile)
+        outliers_int, loess_x, loess_y, loess_n, p_values,
+        ctypes.byref(error_code), ctypes.byref(percentile_c)
     )
 
     # Check for errors
@@ -1979,7 +2341,8 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
         'outliers': outliers_int,
         'loess_x': loess_x,
         'loess_y': loess_y,
-        'loess_n': loess_n
+        'loess_n': loess_n,
+        'p_values': p_values
     }
 
 
@@ -1987,13 +2350,12 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
 def tox_which(cond):
     """
     'which' utility for Python, like in R/MATLAB.
-    Returns indices of TRUE elements in a logical array.
 
     Args:
-        cond: Array of boolean/integer values (0/1)
+        cond: Array of boolean/integer values (0/1).
 
     Returns:
-        tuple: (idx_out, m_out) where idx_out contains 1-based indices and m_out is count
+        np.ndarray: 1-based indices of True values.
     """
     cond = np.ascontiguousarray(cond, dtype=np.int32)
 
@@ -2015,9 +2377,9 @@ def tox_which(cond):
     which_c = lib.which_c
     which_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # mask
-        ctypes.c_int,                 # n
+        ctypes.POINTER(ctypes.c_int),                 # n
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # idx_out
-        ctypes.c_int,                 # m_max
+        ctypes.POINTER(ctypes.c_int),                 # m_max
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # m_out
         ctypes.POINTER(ctypes.c_int)  # error_code
     ]
@@ -2035,7 +2397,7 @@ def tox_which(cond):
     # Mark output as read-only
     _readonly(idx_out)
 
-    return idx_out, int(m_out[0])
+    return idx_out
 
 
 #> tox_shift_vectors:compute_shift_vector_field_c: Computes the shift vector field for each gene expression vector based on its family centroid
@@ -2043,19 +2405,13 @@ def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to
     """
     Calculate Shift Vector Field
 
-    Computes the shift vector field for each gene expression vector based on its family centroid.
-    The shift vector is defined as the difference between the gene expression vector and its corresponding family centroid,
-    starting at the expression vector and pointing to its family centroid.
-    This function automatically checks for errors and throws informative exceptions.
-
     Args:
-        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors)
-        family_centroids: Matrix where each column is a family centroid vector (n_axes x n_families)
-        gene_to_centroid: Array mapping each gene to its corresponding family centroid index in family_centroids with length n_vectors (1 based for fortran)
+        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors).
+        family_centroids: Matrix where each column is a family centroid vector (n_axes x n_families).
+        gene_to_centroid: Array mapping each gene to its corresponding family centroid index in family_centroids with length n_vectors (1 based for fortran).
 
     Returns:
-        shift_vectors: The computed shift vectors for each gene expression vector
-
+        np.ndarray: The computed shift vectors for each gene expression vector.
     """
 
     # Input validation
@@ -2097,6 +2453,11 @@ def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to
     family_c = np.asfortranarray(family_centroids, dtype=np.float64)
     gene_c = np.ascontiguousarray(gene_to_centroid.astype(np.int32))
 
+    # Convert scalar parameters
+    n_axes_genes_c = ctypes.c_int(n_axes_genes)
+    n_vectors_c = ctypes.c_int(n_vectors)
+    n_families_c = ctypes.c_int(n_families)
+
     # Prepare output arrays
     shift_vectors = np.empty((2*n_axes_genes, n_vectors), dtype=np.float64, order='F')
     ierr = ctypes.c_int(0)
@@ -2104,9 +2465,9 @@ def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to
     # Setup C/Fortran wrapper with proper type annotations
     sv = lib.compute_shift_vector_field_c
     sv.argtypes = [
-        ctypes.c_int,  # n_axes_genes
-        ctypes.c_int,  # n_vectors
-        ctypes.c_int,  # n_families
+        ctypes.POINTER(ctypes.c_int),  # n_axes_genes
+        ctypes.POINTER(ctypes.c_int),  # n_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors (Fortran order)
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # family_centroids (Fortran order)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_centroid
@@ -2117,9 +2478,9 @@ def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to
 
     # Call the C/Fortran wrapper
     sv(
-        n_axes_genes,
-        n_vectors,
-        n_families,
+        ctypes.byref(n_axes_genes_c),
+        ctypes.byref(n_vectors_c),
+        ctypes.byref(n_families_c),
         expr_v,
         family_c,
         gene_c,
@@ -2142,24 +2503,15 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
     """
     Computes expression centroids for groups of genes.
 
-    Computes the centroids for each gene family based on the expression vectors of its member genes.
-    This function automatically checks for errors and throws informative exceptions.
-
     Args:
-        vectors : np.ndarray
-            A 2D NumPy array (n_axes x n_genes) of gene expression vectors.
-        gene_to_family_map : np.ndarray
-            A 1D NumPy array of length n_genes, mapping each gene to a family ID.
-        n_families : int
-            The total number of unique families.
-        mode : str
-            The calculation mode. 'all' or 'orthologs'.
-        ortholog_set : np.ndarray
-            (Optional) A 1D boolean NumPy array of length n_genes, indicating ortholog membership (only required in 'orthologs' mode).
+        expression_vectors: expression_vectors description.
+        gene_to_family: gene_to_family description.
+        n_families: int.
+        mode: str.
+        ortholog_set: np.ndarray.
 
     Returns:
-        np.ndarray
-            A read-only (n_axes x n_families) NumPy array containing the computed centroids.
+        np.ndarray: Computed centroids for each group of genes.
     """
 
     # 1) Validate and prepare inputs
@@ -2188,20 +2540,24 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
     centroids_out = np.zeros((n_axes, n_families), dtype=np.float64, order="F")
     selected_indices = np.zeros(n_genes, dtype=np.int32, order="F")
     ierr = ctypes.c_int(0)
+    n_axes_c = ctypes.c_int(n_axes)
+    n_genes_c = ctypes.c_int(n_genes)
+    n_families_c = ctypes.c_int(n_families)
+    selected_indices_len_c = ctypes.c_int(n_genes)
 
     # 3) Setup C-interface signature
     group_centroid_c = lib.group_centroid_c
     group_centroid_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
-        ctypes.c_int,                                                   # n_axes
-        ctypes.c_int,                                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                                   # n_axes
+        ctypes.POINTER(ctypes.c_int),                                                   # n_genes
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # gene_to_family
-        ctypes.c_int,                                                   # n_families
+        ctypes.POINTER(ctypes.c_int),                                                   # n_families
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # centroid_matrix (out)
         ctypes.c_char * 10,                                             # mode (character array)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # ortholog_set (as int array)
         np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),   # selected_indices
-        ctypes.c_int,                                                   # selected_indices_len
+        ctypes.POINTER(ctypes.c_int),                                                   # selected_indices_len
         ctypes.POINTER(ctypes.c_int)                                    # ierr
     ]
     group_centroid_c.restype = None
@@ -2210,15 +2566,15 @@ def tox_group_centroid(expression_vectors, gene_to_family, n_families, mode, ort
     mode_buffer = ctypes.create_string_buffer(mode.encode('utf-8'), size=10)
     group_centroid_c(
         vecs_f,
-        n_axes,
-        n_genes,
+        ctypes.byref(n_axes_c),
+        ctypes.byref(n_genes_c),
         g2f_map_f,
-        n_families,
+        ctypes.byref(n_families_c),
         centroids_out,
         mode_buffer,
         ortho_set_int_f,
         selected_indices,
-        n_genes,
+        ctypes.byref(selected_indices_len_c),
         ctypes.byref(ierr)
     )
 
@@ -2235,15 +2591,12 @@ def tox_mean_vector(expression_vectors, gene_indices):
     """
     Compute the element-wise mean for a given set of gene expression vectors.
 
-    This function wraps the Fortran subroutine `mean_vector_c`
-    to compute the centroid (mean vector) for a selected set of genes.
-
     Args:
         expression_vectors: 2D numpy array (n_axes x n_genes) of gene expression vectors.
         gene_indices: 1D numpy array of column indices of selected genes (1-based).
 
     Returns:
-        numpy.ndarray: 1D array of length n_axes representing the computed centroid.
+        np.ndarray: 1D array of length n_axes representing the computed centroid.
     """
     # Validate inputs
     if not isinstance(expression_vectors, np.ndarray) or expression_vectors.ndim != 2:
@@ -2263,10 +2616,10 @@ def tox_mean_vector(expression_vectors, gene_indices):
     mean_vector_c = lib.mean_vector_c
     mean_vector_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # expression_vectors
-        ctypes.c_int,                                                   # n_axes
-        ctypes.c_int,                                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                                   # n_axes
+        ctypes.POINTER(ctypes.c_int),                                                   # n_genes
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # gene_indices
-        ctypes.c_int,                                                   # n_selected_genes
+        ctypes.POINTER(ctypes.c_int),                                                   # n_selected_genes
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"), # centroid_col (out)
         ctypes.POINTER(ctypes.c_int)                                    # ierr
     ]
@@ -2296,23 +2649,15 @@ def compute_edf(values):
     """
     Compute Empirical Distribution Function (EDF) for given values.
 
-    This function computes the empirical cumulative distribution function (EDF)
-    for a set of observed data values. The EDF represents the proportion of values
-    less than or equal to each unique value in the dataset.
-
     Args:
-        values: Array of observed data values (e.g., contributions or spikes)
-                Can be list or numpy array
+        values: Array of observed data values (e.g., contributions or spikes).
 
     Returns:
-        dict: Dictionary with keys:
-            - 'unique_values': Sorted unique data values (read-only numpy array)
-            - 'cdf_values': Corresponding cumulative frequencies between 0 and 1 (read-only)
-            - 'n_unique': Number of unique values found (int)
-
-    Raises:
-        RuntimeError: If error occurs during computation (invalid input, empty input)
-
+        dict: {
+            'unique_values' (np.ndarray): Sorted unique data values (read-only),
+            'cdf_values' (np.ndarray): Corresponding cumulative frequencies between 0 and 1 (read-only),
+            'n_unique' (int): Number of unique values found
+        }
     """
     # Input validation and conversion
     values = np.asarray(values, dtype=np.float64)
@@ -2328,7 +2673,7 @@ def compute_edf(values):
     # Define C interface with explicit size arrays
     lib.compute_edf_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # values(n_values)
-        ctypes.c_int,                                                                                # n_values
+        ctypes.POINTER(ctypes.c_int),                                                                                # n_values
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # unique_values(n_values)
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # cdf_values(n_values)
         ctypes.POINTER(ctypes.c_int),                                                                # n_unique
@@ -2339,7 +2684,7 @@ def compute_edf(values):
     # Call Fortran function via C interface
     lib.compute_edf_c(
         values,
-        n_values,
+        ctypes.byref(ctypes.c_int(n_values)),
         unique_values,
         cdf_values,
         ctypes.byref(n_unique),
@@ -2364,27 +2709,16 @@ def compute_edf_expert(values, perm):
     """
     Expert interface for Empirical Distribution Function (EDF) with pre-sorted permutation.
 
-    This function computes the EDF using a pre-sorted permutation array, allowing users
-    to have full control over the sorting algorithm or reuse existing permutations.
-
     Args:
-        values: Array of observed data values (e.g., contributions or spikes)
-        perm: Pre-sorted permutation indices (must be sorted by values[perm])
-              Array of 1-based indices in Fortran style
+        values: Array of observed data values (e.g., contributions or spikes).
+        perm: Pre-sorted permutation indices (must be sorted by values[perm]).
 
     Returns:
-        dict: Dictionary with keys:
-            - 'unique_values': Sorted unique data values (read-only numpy array)
-            - 'cdf_values': Corresponding cumulative frequencies between 0 and 1 (read-only)
-            - 'n_unique': Number of unique values found (int)
-
-    Raises:
-        RuntimeError: If error occurs during computation (invalid input, empty input)
-
-    Note:
-        The perm array must be sorted such that values[perm[i]] is in ascending order.
-        This function skips the internal sorting step for better performance.
-
+        dict: {
+            'unique_values' (np.ndarray): Sorted unique data values (read-only),
+            'cdf_values' (np.ndarray): Corresponding cumulative frequencies between 0 and 1 (read-only),
+            'n_unique' (int): Number of unique values found
+        }
     """
     # Input validation and conversion
     values = np.asarray(values, dtype=np.float64)
@@ -2404,7 +2738,7 @@ def compute_edf_expert(values, perm):
     # Define C interface
     lib.compute_edf_expert_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # values(n_values)
-        ctypes.c_int,                                                                                # n_values
+        ctypes.POINTER(ctypes.c_int),                                                                                # n_values
         np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),    # perm(n_values)
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # unique_values(n_values)
         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, shape=(n_values,), flags='F_CONTIGUOUS'),  # cdf_values(n_values)
@@ -2416,7 +2750,7 @@ def compute_edf_expert(values, perm):
     # Call Fortran function via C interface
     lib.compute_edf_expert_c(
         values,
-        n_values,
+        ctypes.byref(ctypes.c_int(n_values)),
         perm,
         unique_values,
         cdf_values,
@@ -2442,27 +2776,16 @@ def tox_compute_baselines_factor_dependent(factor, dependent, mode):
     """
     Compute scalar baselines for a factor and dependent variable.
 
-    Calculates baseline values for two time series based on the specified mode:
-    - "raw" : No centering, baseline = 0
-    - "min" : Minimum-centered baseline
-    - "mean" : Mean-centered baseline
-
     Args:
-        factor (np.ndarray): 1D array of shape (n_timepoints,) — factor time series
-        dependent (np.ndarray): 1D array of shape (n_timepoints,) — dependent time series
-        mode (str): Baseline computation mode:
-            - "raw" : No centering, baseline = 0
-            - "min" : Minimum-centered baseline
-            - "mean" : Mean-centered baseline
+        factor: 1D array of shape (n_timepoints,) — factor time series.
+        dependent: 1D array of shape (n_timepoints,) — dependent time series.
+        mode: Baseline computation mode:.
 
     Returns:
-        dict: Dictionary containing:
-            - 'baseline_factor': float, baseline value for factor
-            - 'baseline_dependent': float, baseline value for dependent variable
-
-    Raises:
-        ValueError: If factor and dependent have different lengths
-        RuntimeError: If error occurs during computation (invalid mode, etc.)
+        dict: {
+            'baseline_factor' (float): Baseline value for factor,
+            'baseline_dependent' (float): Baseline value for dependent variable
+        }
     """
     # Input validation and conversion
     factor = np.ascontiguousarray(factor, dtype=np.float64)
@@ -2481,7 +2804,7 @@ def tox_compute_baselines_factor_dependent(factor, dependent, mode):
     ierr = ctypes.c_int(0)
 
     # Setup C wrapper with proper type annotations
-    compute_baselines_c = lib.tox_compute_baselines_factor_dependent_c
+    compute_baselines_c = lib.compute_baselines_factor_dependent_c
     compute_baselines_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # factor
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # dependent
@@ -2513,21 +2836,88 @@ def tox_compute_baselines_factor_dependent(factor, dependent, mode):
     }
 
 
+#> tox_clustering:cluster_factor_trajectories_k_means_c: K-means clustering on factor trajectories
+def tox_cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, max_iterations=300):
+    """
+    Wrapper for cluster_factor_trajectories_k_means_c: k-means clustering on factor trajectories.
+
+    Args:
+        n_clusters: Number of clusters.
+        trajectories: Flattened trajectories (n_factors * n_samples * n_timepoints).
+        n_factors: Number of factors.
+        n_samples: Number of samples.
+        n_timepoints: Number of timepoints.
+        centroids: Initial centroids (n_factors x n_clusters).
+        max_iterations: Maximum number of iterations.
+
+    Returns:
+        dict: {
+            'centroids' (np.ndarray): Final cluster centroids (n_factors x n_clusters),
+            'labels' (np.ndarray): Cluster label for each point (1D int array),
+            'label_counts' (np.ndarray): Number of points in each cluster (1D int array)
+        }
+    """
+    trajectories = np.ascontiguousarray(trajectories, dtype=np.float64)
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
+
+    n_points = int(n_samples) * int(n_timepoints)
+    labels = np.empty(n_points, dtype=np.int32)
+    label_counts = np.empty(int(n_clusters), dtype=np.int32)
+    ierr = ctypes.c_int(0)
+
+    cluster_factor_trajectories_k_means_c = lib.cluster_factor_trajectories_k_means_c
+    cluster_factor_trajectories_k_means_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),                                      # n_clusters
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),   # trajectories
+        ctypes.POINTER(ctypes.c_int),                                      # n_factors
+        ctypes.POINTER(ctypes.c_int),                                      # n_samples
+        ctypes.POINTER(ctypes.c_int),                                      # n_timepoints
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),   # centroids
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # labels
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),     # label_counts
+        ctypes.POINTER(ctypes.c_int),                                      # ierr
+        ctypes.POINTER(ctypes.c_int)                                       # max_iterations
+    ]
+    cluster_factor_trajectories_k_means_c.restype = None
+
+    cluster_factor_trajectories_k_means_c(
+        ctypes.byref(ctypes.c_int(int(n_clusters))),
+        trajectories,
+        ctypes.byref(ctypes.c_int(int(n_factors))),
+        ctypes.byref(ctypes.c_int(int(n_samples))),
+        ctypes.byref(ctypes.c_int(int(n_timepoints))),
+        centroids,
+        labels,
+        label_counts,
+        ctypes.byref(ierr),
+        ctypes.byref(ctypes.c_int(int(max_iterations)))
+    )
+
+    check_err_code(ierr.value)
+    _readonly(centroids, labels, label_counts)
+
+    return {
+        "centroids": centroids,
+        "labels": labels,
+        "label_counts": label_counts
+    }
+
+
 #> tox_clustering:k_means_clustering_c: performs full k-means clustering
 def tox_k_means_clustering(data_points, centroids, max_iter):
     """
     Wrapper for k_means_clustering_c: performs full k-means clustering.
 
     Args:
-        data_points (np.ndarray): 2D array of shape (n_dims, n_points)
-        centroids (np.ndarray): 2D array of shape (n_dims, n_clusters), initial centroids
-        max_iter (int): maximum number of iterations
+        data_points: 2D array of shape (n_dims, n_points).
+        centroids: 2D array of shape (n_dims, n_clusters), initial centroids.
+        max_iter: maximum number of iterations.
 
     Returns:
         dict: {
-            "centroids": np.ndarray of shape (n_dims, n_clusters),
-            "labels": np.ndarray of shape (n_points),
-            "label_counts": np.ndarray of shape (n_clusters)
+            'centroids' (np.ndarray): Final cluster centroids (n_dims x n_clusters),
+            'labels' (np.ndarray): Cluster label for each point (1D int array),
+            'label_counts' (np.ndarray): Number of points in each cluster (1D int array)
         }
     """
 
@@ -2583,15 +2973,15 @@ def tox_linkage_clustering(distances, method):
     Wrapper for linkage_clustering_c: performs hierarchical clustering.
 
     Args:
-        distances (np.ndarray): 2D array of shape (n_points, n_points), symmetric distance matrix
-        method (str): linkage method, one of "average", "weighted", "ward"
+        distances: 2D array of shape (n_points, n_points), symmetric distance matrix.
+        method: linkage method, one of "average", "weighted", "ward".
 
     Returns:
         dict: {
-            "merge_i": np.ndarray of shape (n_points - 1),
-            "merge_j": np.ndarray of shape (n_points - 1),
-            "heights": np.ndarray of shape (n_points - 1),
-            "cluster_sizes": np.ndarray of shape (n_points - 1)
+            'merge_i' (np.ndarray): Index of first cluster merged at each step (1D int array, length n_points-1),
+            'merge_j' (np.ndarray): Index of second cluster merged at each step (1D int array, length n_points-1),
+            'heights' (np.ndarray): Height at which clusters are merged (1D float array, length n_points-1),
+            'cluster_sizes' (np.ndarray): Size of each newly formed cluster (1D int array, length n_points-1)
         }
     """
 
@@ -2654,7 +3044,7 @@ def tox_normalize_unit_length(vector):
     Normalize a vector to unit length in-place.
 
     Args:
-        vector (np.ndarray): 1D array of shape (n_dims,) to be normalized.
+        vector: 1D array of shape (n_dims,) to be normalized.
 
     Returns:
         np.ndarray: The same array, normalized in-place.
@@ -2683,17 +3073,15 @@ def tox_normalize_unit_length(vector):
 def tox_detect_neofunctionalization(ancestors, genes, gene_to_fam, thresholds):
     """
     Identify neofunctionalization for genes by checking whether the difference
-    of expression to its ancestor exceeds the threshold for each axis.
 
     Args:
-        ancestors (np.ndarray): 2D array of shape (n_axes, n_families).
-        genes (np.ndarray): 2D array of shape (n_axes, n_genes).
-        gene_to_fam (np.ndarray): 1D integer array of length n_genes mapping gene index to family index.
-        thresholds (np.ndarray): 1D array of shape (n_axes,) with per-axis thresholds.
+        ancestors: 2D array of shape (n_axes, n_families).
+        genes: 2D array of shape (n_axes, n_genes).
+        gene_to_fam: 1D integer array of length n_genes mapping gene index to family index.
+        thresholds: 1D array of shape (n_axes,) with per-axis thresholds.
 
     Returns:
-        np.ndarray: Integer array of shape (n_genes, n_axes) with 0/1 values
-                    (non-zero interpreted as True).
+        np.ndarray: Boolean array of shape (n_genes, n_axes) indicating neofunctionalization (True/False).
     """
 
     # Ensure contiguous arrays with correct dtypes
@@ -2743,11 +3131,11 @@ def tox_mask_check_state(bit_mask, i_gene):
     Check the state of a specific gene in a bit mask.
 
     Args:
-        bit_mask (array-like): Integer array representing the bit mask (chunks of 32 bits).
-        i_gene (int): Index of the gene to check.
+        bit_mask: Integer array representing the bit mask (chunks of 32 bits).
+        i_gene: Index of the gene to check.
 
     Returns:
-        bool  # indicating inactive or active
+        bool: True if gene is active, False otherwise.
     """
     bit_mask = np.ascontiguousarray(bit_mask, dtype=np.int32)
     n_mask_chunks = ctypes.c_int(len(bit_mask))
@@ -2777,10 +3165,10 @@ def tox_mask_chunk_count(n_genes):
     Compute the number of 32-bit chunks needed to encode a given number of genes.
 
     Args:
-        n_genes (int): Number of genes to encode.
+        n_genes: Number of genes to encode.
 
     Returns:
-        int  # Number of 32-bit chunks required
+        int: Number of 32-bit chunks required.
     """
     n_genes = ctypes.c_int(n_genes)
     count = ctypes.c_int(0)
@@ -2808,14 +3196,14 @@ def tox_calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, filtered_pa
     Calculate the required work array size for paralog subset analysis.
 
     Args:
-        max_subset_size (int): Maximum subset size (may be adjusted by the routine).
-        n_genes (int): Total number of genes.
-        filtered_paralogs_mask (array-like): Integer bit mask (chunks of 32 bits) marking filtered paralogs.
+        max_subset_size: Maximum subset size (may be adjusted by the routine).
+        n_genes: Total number of genes.
+        filtered_paralogs_mask: Integer bit mask (chunks of 32 bits) marking filtered paralogs.
 
     Returns:
         dict: {
-            'actual_max_subset_size': int,
-            'work_array_size': int
+            'actual_max_subset_size' (int): Actual maximum subset size used,
+            'work_array_size' (int): Required work array size
         }
     """
     filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
@@ -2854,10 +3242,10 @@ def tox_filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold,
     Filter paralogs by dosage effect using angle threshold, within the grouped slice.
 
     Args:
-        gene_angles (array-like): Angles for all genes (length = n_genes).
-        threshold (float): Filtering threshold.
+        gene_angles: Angles for all genes (length = n_genes).
+        threshold: Filtering threshold.
         gene_to_fam: Gene to family mapping (length = n_genes).
-        n_families (int): Number of families.
+        n_families: Number of families.
 
     Returns:
         np.ndarray: int32 mask (chunks of 32 bits) with 1 for kept, 0 otherwise.
@@ -2904,10 +3292,10 @@ def tox_filter_paralogs_by_pattern_subfunctionalization(gene_angles, threshold,
     Filter paralogs by subfunctionalization pattern using angle threshold, within the grouped slice.
 
     Args:
-        gene_angles (array-like): Angles for all genes (length = n_genes).
-        threshold (float): Filtering threshold.
-        gene_to_fam_Gene to family mapping = n_genes).
-        n_families (int): Number of families.
+        gene_angles: Angles for all genes (length = n_genes).
+        threshold: Filtering threshold.
+        gene_to_fam: gene_to_fam description.
+        n_families: Number of families.
 
     Returns:
         np.ndarray: int32 mask (chunks of 32 bits) with 1 for kept, 0 otherwise.
@@ -2954,16 +3342,19 @@ def tox_detect_subfunctionalization(ancestor, genes, rdi_threshold,
     Detect subfunctionalization among paralogs based on residual distance and pruning.
 
     Args:
-        ancestor (array-like): Vector (n_dims).
-        genes (array-like): 2D array (n_dims, n_genes), all genes.
-        rdi_threshold (float): Max allowed residual distance to ancestor.
-        filtered_paralogs_mask (array-like): int32 mask (chunks of 32 bits) for n_genes.
-        max_subset_size (int): Desired max subset size (may be adjusted).
-        paralog_norms (array-like): float64 norms for all genes (n_genes).
-        sorted_paralog_norms_perm (array-like): int32 permutation of norms (n_genes).
+        ancestor: Vector (n_dims).
+        genes: 2D array (n_dims, n_genes), all genes.
+        rdi_threshold: Max allowed residual distance to ancestor.
+        filtered_paralogs_mask: int32 mask (chunks of 32 bits) for n_genes.
+        max_subset_size: Desired max subset size (may be adjusted).
+        paralog_norms: float64 norms for all genes (n_genes).
+        sorted_paralog_norms_perm: int32 permutation of norms (n_genes).
 
     Returns:
-        dict: { 'n_results': int, 'results': np.ndarray }
+        dict: {
+            'n_results' (int): Number of results found,
+            'results' (np.ndarray): Array of detected subfunctionalization results
+        }
     """
     ancestor = np.asfortranarray(ancestor, dtype=np.float64)
     genes = np.asfortranarray(genes, dtype=np.float64)
@@ -3035,15 +3426,18 @@ def tox_detect_dosage_effect(ancestor, genes,
     Detect dosage effect among paralogs using gain and angle thresholds.
 
     Args:
-        ancestor (array-like): Vector (n_dims).
-        genes (array-like): 2D array (n_dims, n_genes), all genes.
-        filtered_paralogs_mask (array-like): int32 mask (chunks of 32 bits) for n_genes.
-        max_subset_size (int): Desired max subset size (may be adjusted).
-        gain_gamma (float): Required magnitude gain (default 0.1).
-        max_angle (float): Maximum allowed angle in radians (default π).
+        ancestor: Vector (n_dims).
+        genes: 2D array (n_dims, n_genes), all genes.
+        filtered_paralogs_mask: int32 mask (chunks of 32 bits) for n_genes.
+        max_subset_size: Desired max subset size (may be adjusted).
+        gain_gamma: Required magnitude gain (default 0.1).
+        max_angle: Maximum allowed angle in radians (default π).
 
     Returns:
-        dict: { 'n_results': int, 'results': np.ndarray }
+        dict: {
+            'n_results' (int): Number of results found,
+            'results' (np.ndarray): Array of detected dosage effect results
+        }
     """
     ancestor = np.asfortranarray(ancestor, dtype=np.float64)
     genes = np.asfortranarray(genes, dtype=np.float64)
@@ -3108,13 +3502,13 @@ def tox_normalize_variable_timeseries(v):
     Normalize a single variable across time using min-max scaling.
 
     Args:
-        v (array-like): 1D time series to normalize (length = n_points)
+        v: 1D time series to normalize (length = n_points).
 
     Returns:
-        np.ndarray: Normalized time series in [0,1]
-
-    Raises:
-        RuntimeError: If normalization fails
+        dict: {
+            'v_norm' (np.ndarray): Normalized time series in [0,1],
+            'status' (int): Status code from normalization routine
+        }
     """
     v_arr = np.asfortranarray(v, dtype=np.float64)
     n_points = ctypes.c_int(len(v_arr))
@@ -3149,13 +3543,13 @@ def tox_normalize_single_trajectory(trajectory):
     Normalize all factors in a single trajectory independently across time.
 
     Args:
-        trajectory (array-like): 2D array shape(n_timepoints, n_factors) for one sample
+        trajectory: 2D array shape(n_timepoints, n_factors) for one sample.
 
     Returns:
-        np.ndarray: Normalized trajectory shape(n_timepoints, n_factors) in [0,1]
-
-    Raises:
-        RuntimeError: If normalization fails
+        dict: {
+            'traj_norm' (np.ndarray): Normalized trajectory shape (n_timepoints, n_factors) in [0,1],
+            'status' (int): Status code from normalization routine
+        }
     """
     traj_arr = np.asfortranarray(trajectory, dtype=np.float64)
     n_timepoints, n_factors = traj_arr.shape
@@ -3195,13 +3589,13 @@ def tox_normalize_all_trajectories(trajectories):
     Normalize all trajectories across multiple entities.
 
     Args:
-        trajectories (array-like): 3D array (n_factors × n_samples × n_timepoints)
+        trajectories: 3D array (n_factors × n_samples × n_timepoints).
 
     Returns:
-        np.ndarray: Normalized trajectories (n_factors × n_samples × n_timepoints) in [0,1]
-
-    Raises:
-        RuntimeError: If normalization fails
+        dict: {
+            'traj_norm' (np.ndarray): Normalized trajectories (n_factors × n_samples × n_timepoints) in [0,1],
+            'status' (int): Status code from normalization routine
+        }
     """
     traj_arr = np.asfortranarray(trajectories, dtype=np.float64)
     n_factors, n_samples, n_timepoints = traj_arr.shape
@@ -3245,14 +3639,14 @@ def tox_compute_contributions(factor, dependent, mode):
     Compute contribution analysis for a factor–dependent pair.
 
     Args:
-        factor (np.ndarray): 1D array of shape (n_dims,) with factor time series.
-        dependent (np.ndarray): 1D array of shape (n_dims,) with dependent time series.
-        mode (str): Baseline mode ("raw", "min", "mean").
+        factor: 1D array of shape (n_dims,) with factor time series.
+        dependent: 1D array of shape (n_dims,) with dependent time series.
+        mode: Baseline mode ("raw", "min", "mean").
 
     Returns:
         dict: {
-            'local_contributions': np.ndarray, # 1D array of per-element contributions.
-            'total_contribution': float        # Sum of local contributions.
+            'local_contributions' (np.ndarray): 1D array of per-element contributions,
+            'total_contribution' (float): Sum of local contributions
         }
     """
 
@@ -3298,17 +3692,15 @@ def tox_compute_all_contributions(trajectories, factor_indices, dependent_indice
     Compute contribution analysis for every selected factor–dependent pair.
 
     Args:
-        trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints).
-        factor_indices (np.ndarray): 1D int32 array of length n_selected_factors.
-        dependent_indices (np.ndarray): 1D int32 array of length n_selected_dependents.
-        mode (str): Baseline mode ("raw", "min", "mean").
+        trajectories: 3D array of shape (n_factors, n_samples, n_timepoints).
+        factor_indices: 1D int32 array of length n_selected_factors.
+        dependent_indices: 1D int32 array of length n_selected_dependents.
+        mode: Baseline mode ("raw", "min", "mean").
 
     Returns:
         dict: {
-            "local_contributions": np.ndarray of shape
-                (n_timepoints, n_selected_factors, n_selected_dependents, n_samples),
-            "total_contributions": np.ndarray of shape
-                (n_selected_factors, n_selected_dependents, n_samples)
+            'local_contributions' (np.ndarray): Array of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples),
+            'total_contributions' (np.ndarray): Array of shape (n_selected_factors, n_selected_dependents, n_samples)
         }
     """
     # Ensure Fortran-order contiguous arrays
@@ -3376,18 +3768,18 @@ def tox_perform_permutation_test(trajectories, factor_idx, dependent_idx, sample
     Perform permutation test for a given factor–dependent pair.
 
     Args:
-        trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints).
-        factor_idx (int): Index of factor (1-based, Fortran convention).
-        dependent_idx (int): Index of dependent (1-based).
-        sample_idx (int): Index of sample (1-based).
-        mode (int): Baseline mode (1=RAW, 2=MIN, 3=MEAN).
-        n_permutations (int): Number of permutations to perform.
-        random_seed (int): Seed for RNG.
+        trajectories: 3D array of shape (n_factors, n_samples, n_timepoints).
+        factor_idx: Index of factor (1-based, Fortran convention).
+        dependent_idx: Index of dependent (1-based).
+        sample_idx: Index of sample (1-based).
+        mode: Baseline mode (1=RAW, 2=MIN, 3=MEAN).
+        n_permutations: Number of permutations to perform.
+        random_seed: Seed for RNG.
 
     Returns:
         dict: {
-            "local_contributions": np.ndarray of shape (n_timepoints, n_permutations),
-            "total_contributions": np.ndarray of shape (n_permutations,)
+            'local_contributions' (np.ndarray): Array of shape (n_timepoints, n_permutations),
+            'total_contributions' (np.ndarray): Array of shape (n_permutations,)
         }
     """
 
@@ -3460,16 +3852,15 @@ def tox_compute_p_values(local_contributions_observed,
     Compute p-values for observed contributions compared to permutation contributions.
 
     Args:
-        local_contributions_observed (np.ndarray): 1D array of shape (n_timepoints,)
-        total_contribution_observed (float): Observed total contribution
-        local_contributions_perm (np.ndarray): 2D array of shape (n_timepoints, n_permutations)
-        total_contributions_perm (np.ndarray): 1D array of shape (n_permutations,)
-        n_permutations (int): Number of permutations
+        local_contributions_observed: 1D array of shape (n_timepoints,).
+        total_contribution_observed: Observed total contribution.
+        local_contributions_perm: 2D array of shape (n_timepoints, n_permutations).
+        total_contributions_perm: 1D array of shape (n_permutations,).
 
     Returns:
         dict: {
-            "local_p_values": np.ndarray of shape (n_timepoints,),
-            "total_p_value": float
+            'local_p_values' (np.ndarray): Array of shape (n_timepoints,),
+            'total_p_value' (float): P-value for total contribution
         }
     """
 
@@ -3651,10 +4042,11 @@ def tox_build_residual_histograms(
         n_bins: int
 
     Returns:
-        dict with:
-            counts: (n_points, n_bins)
-            pmf: (n_points, n_bins)
-            included_n_residuals: (n_points,)
+        dict: {
+            'counts' (np.ndarray): Histogram counts (n_points, n_bins),
+            'pmf' (np.ndarray): Probability mass function (n_points, n_bins),
+            'included_n_residuals' (np.ndarray): Number of included residuals per point (n_points,)
+        }
     """
 
     E = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
@@ -3710,6 +4102,86 @@ def tox_build_residual_histograms(
     }
 
 
+#> tox_data_integration:build_residual_histograms_filtered_c: Build histogram counts and PMFs for one study
+def tox_build_residual_histograms_filtered(
+    neighborhood_residuals,
+    shared_residual_range,
+    n_bins,
+    neighbor_mask
+):
+    """
+    Build histogram counts and PMFs for one study.
+
+    Args:
+        neighborhood_residuals: np.ndarray (n_reps, n_neighbors, n_points)
+        shared_residual_range: float
+        n_bins: int
+        neighbor_mask : np.ndarray, shape (n_neighbors, n_points), bool
+            Mask selecting neighbors to be included in the histogram calculation.
+    Returns:
+        dict: {
+            'counts' (np.ndarray): Histogram counts (n_points, n_bins),
+            'pmf' (np.ndarray): Probability mass function (n_points, n_bins),
+            'included_n_residuals' (np.ndarray): Number of included residuals per point (n_points,)
+        }
+    """
+
+    E = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
+    neighbor_mask_c = np.asfortranarray(neighbor_mask, dtype=np.int32)
+
+    n_reps_c, n_neighbors_c, n_points_c = map(ctypes.c_int, E.shape)
+    n_bins_c = ctypes.c_int(n_bins)
+    R_c = ctypes.c_double(shared_residual_range)
+
+    counts = np.empty((n_points_c.value, n_bins), dtype=np.int32, order="F")
+    pmf = np.empty((n_points_c.value, n_bins), dtype=np.float64, order="F")
+    included = np.empty(n_points_c.value, dtype=np.int32)
+
+    ierr = ctypes.c_int(0)
+
+    fn = lib.build_residual_histograms_filtered_c
+    fn.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # E
+        ctypes.POINTER(ctypes.c_int),                                    # n_residuals
+        ctypes.POINTER(ctypes.c_int),                                    # n_neighbors
+        ctypes.POINTER(ctypes.c_int),                                    # n_points
+        ctypes.POINTER(ctypes.c_double),                                 # R
+        ctypes.POINTER(ctypes.c_int),                                    # n_bins
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),    # counts
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # pmf
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # included
+        ctypes.POINTER(ctypes.c_int),                                    # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),    # neighbor_mask
+    ]
+    fn.restype = None
+
+    fn(
+        E,
+        ctypes.byref(n_reps_c),
+        ctypes.byref(n_neighbors_c),
+        ctypes.byref(n_points_c),
+        ctypes.byref(R_c),
+        ctypes.byref(n_bins_c),
+        counts,
+        pmf,
+        included,
+        ctypes.byref(ierr),
+        neighbor_mask_c
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(counts)
+    _readonly(pmf)
+    _readonly(included)
+
+    return {
+        "counts": counts,
+        "pmf": pmf,
+        "included_n_residuals": included,
+    }
+
+
 #> tox_data_integration:compute_divergence_per_reference_point_c: Build histogram counts and PMFs for one study
 def tox_compute_divergence_per_reference_point(pmf_S1, pmf_S2):
     """
@@ -3720,7 +4192,7 @@ def tox_compute_divergence_per_reference_point(pmf_S1, pmf_S2):
         pmf_S2: np.ndarray (n_points, n_bins)
 
     Returns:
-        np.ndarray (n_points,)
+        np.ndarray: Jensen–Shannon divergences for each point (shape: n_points,)
     """
 
     P1 = np.asfortranarray(pmf_S1, dtype=np.float64)
@@ -3772,9 +4244,10 @@ def tox_compute_weighted_global_divergence(
         included_S2: np.ndarray (n_points,)
 
     Returns:
-        dict with:
-            global_js_divergence: float
-            weights: np.ndarray (n_points,)
+        dict: {
+            'global_js_divergence' (float): Weighted global Jensen–Shannon divergence value,
+            'weights' (np.ndarray): Weights for each point (n_points,)
+        }
     """
 
     jsd = np.ascontiguousarray(js_divergences, dtype=np.float64)
@@ -3836,9 +4309,10 @@ def gjct_permutation_test(
         n_permutations: int
 
     Returns:
-        dict with:
-            jsd_null: (n_permutations,)
-            p_value: float
+        dict: {
+            'jsd_null' (np.ndarray): Jensen–Shannon divergence values from permutations (n_permutations,),
+            'p_value' (float): P-value estimating the likelihood of the observed divergence under the null hypothesis
+        }
     """
 
     S1_c = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
@@ -3884,6 +4358,95 @@ def gjct_permutation_test(
         ctypes.byref(p_value),
         ctypes.byref(ierr),
         ctypes.byref(ctypes.c_int(random_seed)),
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(jsd_null)
+
+    return {
+        "jsd_null": jsd_null,
+        "p_value": p_value.value,
+    }
+
+
+#> tox_data_integration:gjct_permutation_test_filtered_c: Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
+def gjct_permutation_test_filtered(
+    neighborhood_residuals_S1, neighborhood_residuals_S2,
+    global_jsd_observed, n_bins, shared_residual_range,
+    n_permutations, neighbor_mask_S1, neighbor_mask_S2, random_seed=42
+):
+    """
+    Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
+
+    Args:
+        neighborhood_residuals_S1: np.ndarray (n_reps, n_neighbors, n_points)
+        neighborhood_residuals_S2: np.ndarray (n_reps, n_neighbors, n_points)
+        global_jsd_observed: float
+        n_bins: int
+        shared_residual_range: float
+        n_permutations: int
+        neighbor_mask_S1 : np.ndarray, shape (n_neighbors, n_points), bool
+            Mask selecting neighbors for study 1.
+        neighbor_mask_S2 : np.ndarray, shape (n_neighbors, n_points), bool
+            Mask selecting neighbors for study 2.
+        random_seed: int
+    Returns:
+        dict: {
+            'jsd_null' (np.ndarray): Jensen–Shannon divergence values from permutations (n_permutations,),
+            'p_value' (float): P-value estimating the likelihood of the observed divergence under the null hypothesis
+        }
+    """
+
+    S1_c = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
+    S2_c = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
+    neighbor_mask_S1_c = np.asfortranarray(neighbor_mask_S1, dtype=np.int32)
+    neighbor_mask_S2_c = np.asfortranarray(neighbor_mask_S2, dtype=np.int32)
+
+    n_reps_S1_c, n_neighbors_c, n_points_c = map(ctypes.c_int, S1_c.shape)
+    n_reps_S2_c = ctypes.c_int(S2_c.shape[0])
+
+    jsd_null = np.empty(n_permutations, dtype=np.float64, order="C")
+    p_value = ctypes.c_double(0.0)
+    ierr = ctypes.c_int(0)
+
+    fn = lib.gjct_permutation_test_filtered_c
+    fn.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # S1
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # S2
+        ctypes.POINTER(ctypes.c_int),                                    # n_reps_S1
+        ctypes.POINTER(ctypes.c_int),                                    # n_reps_S2
+        ctypes.POINTER(ctypes.c_int),                                    # n_neighbors
+        ctypes.POINTER(ctypes.c_int),                                    # n_points
+        ctypes.POINTER(ctypes.c_double),                                 # global_jsd_observed
+        ctypes.POINTER(ctypes.c_int),                                    # n_bins
+        ctypes.POINTER(ctypes.c_double),                                 # shared_residual_range
+        ctypes.POINTER(ctypes.c_int),                                    # n_permutations
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # jsd_null
+        ctypes.POINTER(ctypes.c_double),                 # p_value
+        ctypes.POINTER(ctypes.c_int),                    # ierr
+        ctypes.POINTER(ctypes.c_int),                                    # random_seed
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # neighbor_mask_S1
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),  # neighbor_mask_S2
+    ]
+    fn.restype = None
+
+    fn(
+        S1_c, S2_c,
+        ctypes.byref(n_reps_S1_c),
+        ctypes.byref(n_reps_S2_c),
+        ctypes.byref(n_neighbors_c),
+        ctypes.byref(n_points_c),
+        ctypes.byref(ctypes.c_double(global_jsd_observed)),
+        ctypes.byref(ctypes.c_int(n_bins)),
+        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        ctypes.byref(ctypes.c_int(n_permutations)),
+        jsd_null,
+        ctypes.byref(p_value),
+        ctypes.byref(ierr),
+        ctypes.byref(ctypes.c_int(random_seed)),
+        neighbor_mask_S1_c,
+        neighbor_mask_S2_c
     )
 
     check_err_code(ierr.value)
@@ -3992,9 +4555,10 @@ def tox_pool_means(mean_S1, mean_S2, n_points):
         n_points: int
 
     Returns:
-        dict with:
-            n_pool: int
-            x_star: np.ndarray (n_points,)
+        dict: {
+            'n_pool' (int): Number of pooled samples,
+            'x_star' (np.ndarray): Pooled means (shape: n_points,)
+        }
     """
     mean_S1_c = np.ascontiguousarray(mean_S1, dtype=np.float64)
     mean_S2_c = np.ascontiguousarray(mean_S2, dtype=np.float64)
@@ -4052,9 +4616,10 @@ def tox_pool_means_expert(pooled_means, pooled_perm, n_points):
         n_points: int
 
     Returns:
-        dict with:
-            n_pool: int
-            x_star: np.ndarray (n_points,)
+        dict: {
+            'n_pool' (int): Number of pooled samples,
+            'x_star' (np.ndarray): Pooled means (shape: n_points,)
+        }
     """
     pm = np.ascontiguousarray(pooled_means, dtype=np.float64)
     perm = np.ascontiguousarray(pooled_perm, dtype=np.int32)
@@ -4108,7 +4673,7 @@ def tox_calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size
         desired_size: int (optional)
 
     Returns:
-        n_neighbors: int
+        int: Number of neighbors computed for the given parameters.
     """
     mean_S_c = np.ascontiguousarray(mean_S, dtype=np.float64)
 
@@ -4153,9 +4718,10 @@ def tox_construct_neighborhoods(x_star, mean_S, resid_S, n_pool, desired_n_neigh
         desired_n_neighbors: int
 
     Returns:
-        dict with:
-            neighborhood_residuals: np.ndarray (n_reps_S, actual_n_neighbors, n_points)
-            neighborhood_indices: np.ndarray (actual_n_neighbors, n_points)
+        dict: {
+            'neighborhood_residuals' (np.ndarray): Residuals for each neighborhood (shape: n_reps_S, actual_n_neighbors, n_points),
+            'neighborhood_indices' (np.ndarray): Indices of neighbors for each point (shape: actual_n_neighbors, n_points)
+        }
     """
     x_star_c = np.ascontiguousarray(x_star, dtype=np.float64)
     mean_S_c = np.ascontiguousarray(mean_S, dtype=np.float64)
@@ -4222,54 +4788,30 @@ def fjct_compute_jsd(
     shared_residual_range
 ):
     """
-    Compute the family-level Jensen–Shannon divergence using the
-    Fortran routine `fjct_compute_jsd_alloc_c` from the tox_data_integration module.
+    Compute the family-level Jensen–Shannon divergence for a gene family.
 
-    This routine:
-      - builds family-specific neighbor masks,
-      - constructs masked residual histograms,
-      - computes per-point JSD values,
-      - computes weighted global JSD,
-      - returns included replicate counts and weights.
+    Args:
+        family_idx (int): Index of the gene family to analyze.
+        gene_to_family_S1 (np.ndarray): Family index for each gene in study 1 (n_genes_S1,).
+        gene_to_family_S2 (np.ndarray): Family index for each gene in study 2 (n_genes_S2,).
+        neighborhood_residuals_S1 (np.ndarray): Residuals for study 1 (n_reps_S1, n_neighbors, n_points).
+        neighborhood_residuals_S2 (np.ndarray): Residuals for study 2 (n_reps_S2, n_neighbors, n_points).
+        neighborhood_genes_S1 (np.ndarray): Gene indices for study 1 neighborhoods (n_neighbors, n_points).
+        neighborhood_genes_S2 (np.ndarray): Gene indices for study 2 neighborhoods (n_neighbors, n_points).
+        n_bins (int): Number of histogram bins.
+        shared_residual_range (float): Shared residual range for histogram construction.
 
-    Parameters
-    ----------
-    family_idx : int
-        Index of the gene family to analyze.
-    gene_to_family_S1 : np.ndarray, shape (n_genes_S1,), int32
-        Family index for each gene in study 1.
-    gene_to_family_S2 : np.ndarray, shape (n_genes_S2,), int32
-        Family index for each gene in study 2.
-    neighborhood_residuals_S1 : np.ndarray, shape (n_reps_S1, n_neighbors, n_points), float64 (F-order)
-        Residuals for study 1.
-    neighborhood_residuals_S2 : np.ndarray, shape (n_reps_S2, n_neighbors, n_points), float64 (F-order)
-        Residuals for study 2.
-    neighborhood_genes_S1 : np.ndarray, shape (n_neighbors, n_points), int32
-        Gene indices for study 1 neighborhoods.
-    neighborhood_genes_S2 : np.ndarray, shape (n_neighbors, n_points), int32
-        Gene indices for study 2 neighborhoods.
-    n_bins : int
-        Number of histogram bins.
-    shared_residual_range : float
-        Shared residual range for histogram construction.
-
-    Returns
-    -------
-    dict
-        {
-            "js_divergences": np.ndarray (n_points,),
-            "included_n_reps_S1": np.ndarray (n_points,),
-            "included_n_reps_S2": np.ndarray (n_points,),
-            "total_included_n_reps": int,
-            "global_js_divergence": float,
-            "weights": np.ndarray (n_points,),
-            "ierr": int
+    Returns:
+        dict: {
+            'js_divergences' (np.ndarray): Jensen–Shannon divergences for each point (n_points,),
+            'included_n_reps_S1' (np.ndarray): Number of included replicates for S1 (n_points,),
+            'included_n_reps_S2' (np.ndarray): Number of included replicates for S2 (n_points,),
+            'total_included_n_reps' (int): Total number of included replicates,
+            'global_js_divergence' (float): Weighted global Jensen–Shannon divergence value,
+            'weights' (np.ndarray): Weights for each point (n_points,),
+            'ierr' (int): Error code (0 if successful)
         }
 
-    Notes
-    -----
-    - All arrays must be Fortran-contiguous.
-    - Raises an exception if ierr != 0.
     """
 
     gene_to_family_S1 = np.asfortranarray(gene_to_family_S1, dtype=np.int32)
@@ -4368,43 +4910,31 @@ def fjct_compute_jsd_expert(
     shared_residual_range
 ):
     """
-    Expert variant of the family-level JSD computation. This version accepts
-    precomputed neighbor masks and returns full histogram data (PMFs and counts).
+    Expert variant of the family-level JSD computation. Accepts precomputed neighbor masks and returns full histogram data (PMFs and counts).
 
-    Parameters
-    ----------
-    neighborhood_residuals_S1 : np.ndarray, shape (n_reps_S1, n_neighbors, n_points), float64 (F-order)
-        Residuals for study 1.
-    neighborhood_residuals_S2 : np.ndarray, shape (n_reps_S2, n_neighbors, n_points), float64 (F-order)
-        Residuals for study 2.
-    neighbor_mask_S1 : np.ndarray, shape (n_neighbors, n_points), bool
-        Mask selecting neighbors for study 1.
-    neighbor_mask_S2 : np.ndarray, shape (n_neighbors, n_points), bool
-        Mask selecting neighbors for study 2.
-    n_bins : int
-        Number of histogram bins.
-    shared_residual_range : float
-        Shared residual range for histogram construction.
+    Args:
+        neighborhood_residuals_S1 (np.ndarray): Residuals for study 1 (n_reps_S1, n_neighbors, n_points).
+        neighborhood_residuals_S2 (np.ndarray): Residuals for study 2 (n_reps_S2, n_neighbors, n_points).
+        neighbor_mask_S1 (np.ndarray): Mask selecting neighbors for study 1 (n_neighbors, n_points).
+        neighbor_mask_S2 (np.ndarray): Mask selecting neighbors for study 2 (n_neighbors, n_points).
+        n_bins (int): Number of histogram bins.
+        shared_residual_range (float): Shared residual range for histogram construction.
 
-    Returns
-    -------
-    dict
-        {
-            "js_divergences": np.ndarray (n_points,),
-            "included_n_reps_S1": np.ndarray (n_points,),
-            "included_n_reps_S2": np.ndarray (n_points,),
-            "total_included_n_reps": int,
-            "global_js_divergence": float,
-            "weights": np.ndarray (n_points,),
-            "pmf_S1": np.ndarray (n_points, n_bins),
-            "pmf_S2": np.ndarray (n_points, n_bins),
-            "tmp_counts": np.ndarray (n_points, n_bins),
-            "ierr": int
+    Returns:
+        dict: {
+            'js_divergences' (np.ndarray): Jensen–Shannon divergences for each point (n_points,),
+            'included_n_reps_S1' (np.ndarray): Number of included replicates for S1 (n_points,),
+            'included_n_reps_S2' (np.ndarray): Number of included replicates for S2 (n_points,),
+            'total_included_n_reps' (int): Total number of included replicates,
+            'global_js_divergence' (float): Weighted global Jensen–Shannon divergence value,
+            'weights' (np.ndarray): Weights for each point (n_points,),
+            'pmf_S1' (np.ndarray): Probability mass function for S1 (n_points, n_bins),
+            'pmf_S2' (np.ndarray): Probability mass function for S2 (n_points, n_bins),
+            'tmp_counts' (np.ndarray): Histogram counts (n_points, n_bins),
+            'ierr' (int): Error code (0 if successful)
         }
 
-    Notes
-    -----
-    - All arrays must be Fortran-contiguous.
+
     """
 
     neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
@@ -4498,34 +5028,18 @@ def fjct_compute_contribution_scores(
     total_included_n_reps_per_f
 ):
     """
-    Compute per-family contribution scores using the Fortran routine
-    `fjct_compute_contribution_scores_c`.
+   Compute per-family contribution scores.
 
-    This combines:
-      1. the divergence of each family (global_js_divergences),
-      2. the residual support weight of each family
-         (total_included_n_reps_per_f / sum(total_included_n_reps_per_f)).
+        Args:
+            global_js_divergences (np.ndarray): Global Jensen–Shannon divergence for each family (k_families,).
+            total_included_n_reps_per_f (np.ndarray): Number of included replicates per family (k_families,).
 
-    Parameters
-    ----------
-    global_js_divergences : np.ndarray, shape (k_families,), float64
-        Weighted global JSD per family.
-    total_included_n_reps_per_f : np.ndarray, shape (k_families,), int32
-        Total included replicates per family.
-
-    Returns
-    -------
-    dict
-        {
-            "support_weights": np.ndarray (k_families,),
-            "contribution_scores": np.ndarray (k_families,),
-            "ierr": int
-        }
-
-    Notes
-    -----
-    - All arrays must be contiguous and correctly typed.
-    - Raises an exception if ierr != 0.
+        Returns:
+            dict: {
+                'support_weights' (np.ndarray): Support weights for each family (k_families,),
+                'contribution_scores' (np.ndarray): Contribution scores for each family (k_families,),
+                'ierr' (int): Error code (0 if successful)
+            }
     """
 
     global_js_divergences = np.asfortranarray(global_js_divergences, dtype=np.float64)
@@ -4565,3 +5079,712 @@ def fjct_compute_contribution_scores(
         "contribution_scores": contrib,
         "ierr": ierr.value,
     }
+
+
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectories_c: Compute velocity (first differences) for each trajectory time series
+def tox_compute_velocity_trajectories(trajectories):
+    """
+    Compute velocity (first differences) for each trajectory time series.
+
+    Args:
+        trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
+
+    Returns:
+        np.ndarray: Velocity trajectories of shape (n_factors, n_samples, n_timepoints)
+    """
+    trajectories = np.asarray(trajectories, dtype=np.float64)
+
+    if trajectories.ndim != 3:
+        raise ValueError("trajectories must be a 3D array (n_factors, n_samples, n_timepoints)")
+
+    n_factors, n_samples, n_timepoints = trajectories.shape
+
+    # Fortran arrays are column-major, so keep the order as-is
+    trajectories_f = np.asfortranarray(trajectories)
+    # Fortran output shape: (n_timepoints-1, n_factors, n_samples)
+    velocity_f_fort = np.empty((n_timepoints-1, n_factors, n_samples), dtype=np.float64, order='F')
+    # Python output shape: (n_factors, n_samples, n_timepoints)
+    velocity_f = np.zeros((n_factors, n_samples, n_timepoints), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    n_factors_c = ctypes.c_int(n_factors)
+    n_samples_c = ctypes.c_int(n_samples)
+    n_timepoints_c = ctypes.c_int(n_timepoints)
+
+
+    compute_velocity = lib.compute_velocity_trajectories_c
+    compute_velocity.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+    ]
+    compute_velocity.restype = None
+
+    # Fortran expects (n_timepoints-1, n_factors, n_samples)
+    compute_velocity(
+        trajectories_f,
+        ctypes.byref(n_factors_c),
+        ctypes.byref(n_samples_c),
+        ctypes.byref(n_timepoints_c),
+        velocity_f_fort,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    # Copy Fortran output to Python output, offset by 1 in time axis
+    if n_timepoints > 1:
+        velocity_f[:, :, 1:] = np.transpose(velocity_f_fort, (1, 2, 0))
+    _readonly(velocity_f)
+    return velocity_f
+
+
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_c: Compute acceleration (second differences) from velocity trajectories
+def tox_compute_acceleration_from_velocity(velocity):
+    """
+    Compute acceleration (second differences) from velocity trajectories.
+
+    Args:
+        velocity (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
+
+    Returns:
+        np.ndarray: Acceleration trajectories of shape (n_factors, n_samples, n_timepoints)
+
+    """
+    velocity = np.asarray(velocity, dtype=np.float64)
+
+    if velocity.ndim != 3:
+        raise ValueError("velocity must be a 3D array (n_factors, n_samples, n_timepoints)")
+    n_factors, n_samples, n_timepoints = velocity.shape
+
+    # Transpose velocity to Fortran ABI: (n_timepoints, n_factors, n_samples)
+    velocity_f = np.asfortranarray(np.transpose(velocity, (2, 0, 1)))
+    # Fortran expects (n_timepoints-1, n_factors, n_samples) and must be F_CONTIGUOUS
+    velocity_f = velocity_f[1:, :, :].copy(order='F')
+    acceleration_f_fort = np.empty((n_timepoints-2, n_factors, n_samples), dtype=np.float64, order='F')
+    acceleration_f = np.zeros((n_factors, n_samples, n_timepoints), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    n_factors_c = ctypes.c_int(n_factors)
+    n_samples_c = ctypes.c_int(n_samples)
+    n_timepoints_c = ctypes.c_int(n_timepoints)
+
+    compute_acceleration = lib.compute_acceleration_from_velocity_c
+    compute_acceleration.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+    ]
+    compute_acceleration.restype = None
+
+    compute_acceleration(
+        velocity_f,
+        ctypes.byref(n_factors_c),
+        ctypes.byref(n_samples_c),
+        ctypes.byref(n_timepoints_c),
+        acceleration_f_fort,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    # Copy Fortran output to Python output, offset by 2 in time axis
+    if n_timepoints > 2:
+        acceleration_f[:, :, 2:] = np.transpose(acceleration_f_fort, (1, 2, 0))
+    _readonly(acceleration_f)
+    return acceleration_f
+
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_alloc_c: Compute velocity and acceleration contributions for all variable pairs
+def tox_compute_velocity_acceleration_contributions(trajectories, mode):
+    """
+    Compute velocity and acceleration contributions for all variable pairs.
+
+    Args:
+        trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
+        mode (str): Baseline mode ("raw", "min", "mean")
+
+    Returns:
+        dict: {
+            "C_velocity": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "velocity_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints),
+            "C_acceleration": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "acceleration_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints)
+        }
+
+    """
+    trajectories = np.asarray(trajectories, dtype=np.float64)
+
+    if trajectories.ndim != 3:
+        raise ValueError("trajectories must be a 3D array (n_factors, n_samples, n_timepoints)")
+
+    n_factors, n_samples, n_timepoints = trajectories.shape
+
+    # Fortran-contiguous input (n_factors, n_samples, n_timepoints)
+    trajectories_f = np.asfortranarray(trajectories)
+
+    # Fortran-native output layout
+    # C_velocity_f:            (n_factors, n_factors, n_samples)
+    # velocity_series_f:       (n_timepoints, n_factors, n_factors, n_samples)
+    # C_acceleration_f:        (n_factors, n_factors, n_samples)
+    # acceleration_series_f:   (n_timepoints, n_factors, n_factors, n_samples)
+    C_velocity_f = np.zeros((n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    velocity_series_f = np.zeros((n_timepoints, n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    C_acceleration_f = np.zeros((n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    acceleration_series_f = np.zeros((n_timepoints, n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+
+    ierr = ctypes.c_int(0)
+
+    n_factors_c = ctypes.c_int(n_factors)
+    n_samples_c = ctypes.c_int(n_samples)
+    n_timepoints_c = ctypes.c_int(n_timepoints)
+
+    compute_contribs = lib.compute_velocity_acceleration_contributions_alloc_c
+    compute_contribs.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.c_char_p,
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+    ]
+    compute_contribs.restype = None
+
+    compute_contribs(
+        trajectories_f,
+        ctypes.byref(n_factors_c),
+        ctypes.byref(n_samples_c),
+        ctypes.byref(n_timepoints_c),
+        ctypes.c_char_p(mode.encode("utf-8")),
+        C_velocity_f,
+        velocity_series_f,
+        C_acceleration_f,
+        acceleration_series_f,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    # Public Python API stays sample-first for backwards compatibility:
+    # (n_samples, n_factors, n_factors) and (n_samples, n_factors, n_factors, n_timepoints)
+    C_velocity = np.transpose(C_velocity_f, (2, 0, 1))
+    velocity_series = np.transpose(velocity_series_f, (3, 1, 2, 0))
+    C_acceleration = np.transpose(C_acceleration_f, (2, 0, 1))
+    acceleration_series = np.transpose(acceleration_series_f, (3, 1, 2, 0))
+
+    _readonly(C_velocity, velocity_series, C_acceleration, acceleration_series)
+
+    return {
+        "C_velocity": C_velocity,
+        "velocity_contribution_series": velocity_series,
+        "C_acceleration": C_acceleration,
+        "acceleration_contribution_series": acceleration_series,
+    }
+
+#> tox_trajectory_contribution_analysis:compute_velocity_acceleration_contributions_c: Compute velocity and acceleration contributions for all variable pairs
+def tox_compute_velocity_acceleration_contributions_expert(trajectories, mode):
+    """
+    Compute velocity and acceleration contributions using the expert (non-allocating) Fortran routine.
+
+    Args:
+        trajectories (np.ndarray): 3D array of shape (n_factors, n_samples, n_timepoints)
+        mode (str): Baseline mode ("raw", "min", "mean")
+
+    Returns:
+        dict: {
+            "C_velocity": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "velocity_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints),
+            "C_acceleration": np.ndarray of shape (n_samples, n_factors, n_factors),
+            "acceleration_contribution_series": np.ndarray of shape (n_samples, n_factors, n_factors, n_timepoints)
+        }
+    """
+    trajectories = np.asarray(trajectories, dtype=np.float64)
+
+    if trajectories.ndim != 3:
+        raise ValueError("trajectories must be a 3D array (n_factors, n_samples, n_timepoints)")
+
+    n_factors, n_samples, n_timepoints = trajectories.shape
+
+    # Fortran-contiguous array with correct dimension order
+    trajectories_f = np.asfortranarray(trajectories)
+
+    # Fortran-native output layout
+    C_velocity_f = np.empty((n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    velocity_series_f = np.empty((n_timepoints, n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    C_acceleration_f = np.empty((n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+    acceleration_series_f = np.empty((n_timepoints, n_factors, n_factors, n_samples), dtype=np.float64, order="F")
+
+    # Workspace arrays with correct shapes (reused for velocity and acceleration)
+    vel_len = max(1, n_timepoints - 1)
+    factor_workspace = np.zeros((vel_len, n_factors), dtype=np.float64, order="F")
+    dependent_workspace = np.zeros(vel_len, dtype=np.float64, order="F")
+    contributions_workspace = np.zeros(vel_len, dtype=np.float64, order="F")
+
+    ierr = ctypes.c_int(0)
+
+    n_factors_c = ctypes.c_int(n_factors)
+    n_samples_c = ctypes.c_int(n_samples)
+    n_timepoints_c = ctypes.c_int(n_timepoints)
+
+    # Setup C wrapper for expert (non-allocating) routine
+    compute_contribs_expert = lib.compute_velocity_acceleration_contributions_c
+    compute_contribs_expert.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # trajectories
+        ctypes.POINTER(ctypes.c_int),                                    # n_factors
+        ctypes.POINTER(ctypes.c_int),                                    # n_samples
+        ctypes.POINTER(ctypes.c_int),                                    # n_timepoints
+        ctypes.c_char_p,                                                 # mode
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # factor_workspace
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # dependent_workspace
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # contributions_workspace
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # C_velocity
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # velocity_series
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # C_acceleration
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # acceleration_series
+        ctypes.POINTER(ctypes.c_int)                                     # ierr
+    ]
+    compute_contribs_expert.restype = None
+
+    # Call expert (non-allocating) Fortran routine
+    compute_contribs_expert(
+        trajectories_f,
+        ctypes.byref(n_factors_c),
+        ctypes.byref(n_samples_c),
+        ctypes.byref(n_timepoints_c),
+        ctypes.c_char_p(mode.encode("utf-8")),
+        factor_workspace,
+        dependent_workspace,
+        contributions_workspace,
+        C_velocity_f,
+        velocity_series_f,
+        C_acceleration_f,
+        acceleration_series_f,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    C_velocity = np.transpose(C_velocity_f, (2, 0, 1))
+    velocity_series = np.transpose(velocity_series_f, (3, 1, 2, 0))
+    C_acceleration = np.transpose(C_acceleration_f, (2, 0, 1))
+    acceleration_series = np.transpose(acceleration_series_f, (3, 1, 2, 0))
+
+    # Mark outputs as read-only
+    _readonly(C_velocity, velocity_series, C_acceleration, acceleration_series)
+
+    return {
+        "C_velocity": C_velocity,
+        "velocity_contribution_series": velocity_series,
+        "C_acceleration": C_acceleration,
+        "acceleration_contribution_series": acceleration_series,
+    }
+
+
+#> tox_trajectory_contribution_analysis:compute_velocity_trajectory_c: Compute velocity for a single trajectory (1D array)
+def tox_compute_velocity_trajectory(trajectory):
+    """
+    Compute velocity for a single trajectory (1D array).
+
+    Args:
+        trajectory (np.ndarray): 1D array of shape (n_timepoints,)
+    Returns:
+        np.ndarray: Velocity of shape (n_timepoints,)
+    """
+    trajectory = np.ascontiguousarray(trajectory, dtype=np.float64)
+    if trajectory.ndim != 1:
+        raise ValueError("trajectory must be a 1D array")
+    n_timepoints = len(trajectory)
+    velocity = np.zeros_like(trajectory)
+    ierr = ctypes.c_int(0)
+    compute_velocity_c = lib.compute_velocity_trajectory_c
+    compute_velocity_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int)
+    ]
+    compute_velocity_c.restype = None
+    # Fortran output is length n_timepoints-1
+    velocity_fort = np.zeros(n_timepoints-1, dtype=np.float64)
+    n_timepoints_c = ctypes.c_int(n_timepoints)
+    compute_velocity_c(
+        trajectory,
+        ctypes.byref(n_timepoints_c),
+        velocity_fort,
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
+    # Python expects first element zero, then differences
+    if n_timepoints > 1:
+        velocity[1:] = velocity_fort
+    _readonly(velocity)
+    return velocity
+
+
+#> tox_trajectory_contribution_analysis:compute_acceleration_from_velocity_trajectory_c: Compute acceleration for a single velocity trajectory (1D array)
+def tox_compute_acceleration_from_velocity_trajectory(velocity):
+    """
+    Compute acceleration for a single velocity trajectory (1D array).
+
+    Args:
+        velocity (np.ndarray): 1D array of shape (n_timepoints,)
+
+    Returns:
+        np.ndarray: Acceleration of shape (n_timepoints,)
+
+    """
+    velocity = np.ascontiguousarray(velocity, dtype=np.float64)
+    if velocity.ndim != 1:
+        raise ValueError("velocity must be a 1D array")
+    n_timepoints = len(velocity)
+    acceleration = np.zeros_like(velocity)
+    ierr = ctypes.c_int(0)
+    compute_accel_c = lib.compute_acceleration_from_velocity_trajectory_c
+    compute_accel_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+        ctypes.POINTER(ctypes.c_int)
+    ]
+    compute_accel_c.restype = None
+    # Fortran output is length n_timepoints-2
+    if n_timepoints > 2:
+        acceleration_fort = np.zeros(n_timepoints-2, dtype=np.float64)
+        n_timepoints_c = ctypes.c_int(n_timepoints)
+        compute_accel_c(
+            velocity,
+            ctypes.byref(n_timepoints_c),
+            acceleration_fort,
+            ctypes.byref(ierr)
+        )
+        check_err_code(ierr.value)
+        acceleration[2:] = acceleration_fort
+    _readonly(acceleration)
+    return acceleration
+
+
+#> tox_loess:tox_loess_required_workspace_c: Recommend workspace sizes based on Netlib exact formulas
+def tox_loess_required_workspace(d, nvmax, setlf):
+    """
+    Recommend workspace sizes based on Netlib exact formulas.
+
+    Args:
+        d (int): Dimensionality of the data.
+        nvmax (int): Maximum neighborhood size.
+        setlf (bool): Save matrix factorization flag.
+
+    Returns:
+        dict: {
+            "liv": int,  # Length of the integer workspace array.
+            "lv": int    # Length of the real workspace array.
+        }
+    """
+    d_c = ctypes.c_int(d)
+    nvmax_c = ctypes.c_int(nvmax)
+    setlf_c = ctypes.c_int(1 if setlf else 0)
+
+    liv_c = ctypes.c_int(0)
+    lv_c = ctypes.c_int(0)
+    ierr_c = ctypes.c_int(0)
+
+    required_workspace_c = lib.tox_loess_required_workspace_c
+    required_workspace_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int), # d
+        ctypes.POINTER(ctypes.c_int), # nvmax
+        ctypes.POINTER(ctypes.c_int), # liv 
+        ctypes.POINTER(ctypes.c_int), # lv 
+        ctypes.POINTER(ctypes.c_int), # setlf
+        ctypes.POINTER(ctypes.c_int)  # ierr
+    ]
+    required_workspace_c.restype = None
+
+    required_workspace_c(
+        ctypes.byref(d_c),
+        ctypes.byref(nvmax_c),
+        ctypes.byref(liv_c),
+        ctypes.byref(lv_c),
+        ctypes.byref(setlf_c),
+        ctypes.byref(ierr_c)
+    )
+
+    check_err_code(ierr_c.value)
+
+    return {"liv": liv_c.value, "lv": lv_c.value}
+
+
+#> tox_loess:loess_fit_plain_c: Perform plain LOESS fitting
+def loess_fit_plain(n, x, y, w, z, span, degree, nvmax, infl, setlf, iv, liv, wv, lv, diagl):
+    """
+    Perform plain LOESS fitting.
+
+    Args:
+        n (int): Total number of data points.
+        x, y, w, z (np.ndarray): Input arrays.
+        span (float): Smoothing parameter for LOESS.
+        degree (int): Degree of the LOESS polynomial.
+        nvmax (int): Maximum neighborhood size.
+        infl, setlf (bool): Flags for influence calculation and saving matrix factorization.
+        iv, wv (np.ndarray): Workspace arrays.
+        liv, lv (int): Lengths of workspace arrays.
+        diagl (np.ndarray): Diagonal elements of the hat matrix.
+
+    Returns:
+        np.ndarray: Smoothed response variable array.
+    """
+    # Ensure Fortran-order arrays
+    x = np.asfortranarray(x, dtype=np.float64)
+    y = np.asfortranarray(y, dtype=np.float64)
+    w = np.asfortranarray(w, dtype=np.float64)
+    z = np.asfortranarray(z, dtype=np.float64)
+    iv = np.asfortranarray(iv, dtype=np.int32)
+    wv = np.asfortranarray(wv, dtype=np.float64)
+    diagl = np.asfortranarray(diagl, dtype=np.float64)
+
+    infl_c = ctypes.c_int(1 if infl else 0)
+    setlf_c = ctypes.c_int(1 if setlf else 0)
+    yhat = np.empty(n, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    loess_fit_plain_c = lib.loess_fit_plain_c
+    loess_fit_plain_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),                                    # n
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # x
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # y
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # w
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # z
+        ctypes.POINTER(ctypes.c_double),                                 # span
+        ctypes.POINTER(ctypes.c_int),                                    # degree
+        ctypes.POINTER(ctypes.c_int),                                    # nvmax
+        ctypes.POINTER(ctypes.c_int),                                    # infl
+        ctypes.POINTER(ctypes.c_int),                                    # setlf
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS"),    # iv
+        ctypes.POINTER(ctypes.c_int),                                    # liv
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # wv
+        ctypes.POINTER(ctypes.c_int),                                    # lv
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # diagl
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # yhat
+        ctypes.POINTER(ctypes.c_int)                                     # ierr
+    ]
+
+    loess_fit_plain_c.restype = None
+
+    loess_fit_plain_c(
+        ctypes.byref(ctypes.c_int(n)),
+        x, y, w, z,
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ctypes.c_int(nvmax)),
+        ctypes.byref(infl_c),
+        ctypes.byref(setlf_c),
+        iv,
+        ctypes.byref(ctypes.c_int(liv)),
+        wv,
+        ctypes.byref(ctypes.c_int(lv)),
+        diagl,
+        yhat,
+        ctypes.byref(ierr)
+    )
+
+    _readonly(yhat)
+
+    check_err_code(ierr.value)
+
+    return yhat
+
+
+#> tox_loess:loess_fit_robust_c: Perform robust LOESS fitting with bisquare reweighting
+def loess_fit_robust(n, x, y, w, z, span, degree, nvmax, infl, setlf, n_iters, iv, liv, wv, lv, diagl, rw, ww, res, pi):
+    """
+    Perform robust LOESS fitting with bisquare reweighting.
+    """
+    # Ensure Fortran-order arrays
+    x = np.asfortranarray(x, dtype=np.float64)
+    y = np.asfortranarray(y, dtype=np.float64)
+    w = np.asfortranarray(w, dtype=np.float64)
+    z = np.asfortranarray(z, dtype=np.float64)
+    iv = np.asfortranarray(iv, dtype=np.int32)
+    wv = np.asfortranarray(wv, dtype=np.float64)
+    diagl = np.asfortranarray(diagl, dtype=np.float64)
+    rw = np.asfortranarray(rw, dtype=np.float64)
+    ww = np.asfortranarray(ww, dtype=np.float64)
+    res = np.asfortranarray(res, dtype=np.float64)
+    pi = np.asfortranarray(pi, dtype=np.int32)
+
+    infl_c = ctypes.c_int(1 if infl else 0)
+    setlf_c = ctypes.c_int(1 if setlf else 0)
+    yhat = np.empty(n, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    double_ptr = np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS")
+    int_ptr = np.ctypeslib.ndpointer(dtype=np.int32, flags="F_CONTIGUOUS")
+
+    loess_fit_robust_c = lib.loess_fit_robust_c
+    loess_fit_robust_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),      # n
+        double_ptr,                        # x
+        double_ptr,                        # y
+        double_ptr,                        # w
+        double_ptr,                        # z
+        ctypes.POINTER(ctypes.c_double),   # span
+        ctypes.POINTER(ctypes.c_int),      # degree
+        ctypes.POINTER(ctypes.c_int),      # nvmax
+        ctypes.POINTER(ctypes.c_int),      # infl
+        ctypes.POINTER(ctypes.c_int),      # setlf
+        ctypes.POINTER(ctypes.c_int),      # n_iters
+        int_ptr,                           # iv
+        ctypes.POINTER(ctypes.c_int),      # liv
+        double_ptr,                        # wv
+        ctypes.POINTER(ctypes.c_int),      # lv
+        double_ptr,                        # diagl
+        double_ptr,                        # rw
+        double_ptr,                        # ww
+        double_ptr,                        # res
+        int_ptr,                           # pi
+        double_ptr,                        # yhat
+        ctypes.POINTER(ctypes.c_int)       # ierr
+    ]
+    loess_fit_robust_c.restype = None
+
+    loess_fit_robust_c(
+        ctypes.byref(ctypes.c_int(n)),
+        x, y, w, z,
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ctypes.c_int(nvmax)),
+        ctypes.byref(infl_c),
+        ctypes.byref(setlf_c),
+        ctypes.byref(ctypes.c_int(n_iters)),
+        iv,
+        ctypes.byref(ctypes.c_int(liv)),
+        wv,
+        ctypes.byref(ctypes.c_int(lv)),
+        diagl,
+        rw, ww, res, pi,
+        yhat,
+        ctypes.byref(ierr)
+    )
+
+    _readonly(yhat) 
+    check_err_code(ierr.value)
+
+    return yhat
+
+
+#> tox_loess:tox_loess_c: Wrapper for LOESS fitting (plain or robust)
+def tox_loess(x, y, span, degree, mode, n_iters=3):
+    """
+    Wrapper for LOESS fitting (plain or robust).
+    """
+    x = np.asfortranarray(x, dtype=np.float64)
+    y = np.asfortranarray(y, dtype=np.float64)
+    n = len(y)
+
+    yhat = np.empty(n, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    double_ptr = np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS")
+
+    tox_loess_c = lib.tox_loess_c
+    tox_loess_c.argtypes = [
+        double_ptr,                        # x
+        double_ptr,                        # y
+        ctypes.POINTER(ctypes.c_int),      # n
+        ctypes.POINTER(ctypes.c_double),   # span
+        ctypes.POINTER(ctypes.c_int),      # degree
+        double_ptr,                        # yhat (output)
+        ctypes.POINTER(ctypes.c_int),      # mode
+        ctypes.POINTER(ctypes.c_int),      # n_iters
+        ctypes.POINTER(ctypes.c_int)       # ierr
+    ]
+    tox_loess_c.restype = None
+
+    tox_loess_c(
+        x, y,
+        ctypes.byref(ctypes.c_int(n)),
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        yhat,
+        ctypes.byref(ctypes.c_int(mode)),
+        ctypes.byref(ctypes.c_int(n_iters)),
+        ctypes.byref(ierr)
+    )
+
+    _readonly(yhat)
+    check_err_code(ierr.value)
+
+    return yhat
+
+
+#> f42_utils:compute_empirical_p_values_c: Compute empirical p-values from a distribution
+def compute_empirical_p_values(distribution, c_const):
+    """
+    Compute empirical one-sided upper-tail empirical p-values from a distribution.
+
+    Args:
+        distribution (array-like): Input distribution (1D). May contain negatives (treated as invalid).
+        c_const (float): Stability constant (usually 1.0).
+
+    Returns:
+        np.ndarray: Empirical p-values in the SAME order as `distribution`.
+    Raises:
+        RuntimeError: If Fortran routine returns error
+    """
+    # --- Input validation / conversion ---
+    dist = np.ascontiguousarray(distribution, dtype=np.float64)
+    n_elements = dist.size
+    if n_elements == 0:
+        return np.ascontiguousarray([], dtype=np.float64)
+
+    c_const = float(c_const)
+
+    # --- Build sorted_rdi (clamped) and perm (1-based, sorts sorted_rdi ascending) ---
+    sorted_rdi = dist.copy()
+    sorted_rdi[sorted_rdi < 0.0] = 0.0
+
+    # argsort gives 0-based indices; use stable sort to keep deterministic behavior on ties
+    perm0 = np.argsort(sorted_rdi, kind="mergesort").astype(np.int32)
+    perm = np.ascontiguousarray(perm0 + 1, dtype=np.int32)  # Fortran expects 1-based
+
+    # --- Outputs ---
+    p_values = np.zeros(n_elements, dtype=np.float64)
+
+    # --- ctypes setup ---
+    n_c = ctypes.c_int(int(n_elements))
+    c_c = ctypes.c_double(c_const)
+    ierr = ctypes.c_int(0)
+
+    empirical_p_values_c = lib.empirical_p_values_c
+    empirical_p_values_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),  # n_elements
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distribution (rdi)
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # sorted_rdi
+        np.ctypeslib.ndpointer(dtype=np.int32,  flags="C_CONTIGUOUS"),   # perm (1-based)
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
+        ctypes.POINTER(ctypes.c_double),  # c_const
+        ctypes.POINTER(ctypes.c_int)      # ierr
+    ]
+    empirical_p_values_c.restype = None
+
+    # --- Call Fortran routine (IMPORTANT: order matters) ---
+    empirical_p_values_c(
+        ctypes.byref(n_c),
+        dist,
+        sorted_rdi,
+        perm,
+        p_values,
+        ctypes.byref(c_c),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+    _readonly(p_values)
+    return p_values

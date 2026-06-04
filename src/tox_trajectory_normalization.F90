@@ -173,7 +173,7 @@ pure subroutine normalize_variable_timeseries_C(v, v_norm, n_points, ierr, statu
 
 end subroutine normalize_variable_timeseries_C
 
-pure subroutine normalize_single_trajectory_C(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status) bind(C, name="normalize_single_trajectory_C")
+ pure subroutine normalize_single_trajectory_C(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status) bind(C, name="normalize_single_trajectory_C")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_single_trajectory
     M_USE_NULL_VALIDATION
@@ -203,7 +203,7 @@ pure subroutine normalize_single_trajectory_C(trajectory, trajectory_norm, n_fac
 
 end subroutine normalize_single_trajectory_C
 
-pure subroutine normalize_all_trajectories_C(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status) bind(C, name="normalize_all_trajectories_C")
+ pure subroutine normalize_all_trajectories_C(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status) bind(C, name="normalize_all_trajectories_C")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_all_trajectories
     M_USE_NULL_VALIDATION

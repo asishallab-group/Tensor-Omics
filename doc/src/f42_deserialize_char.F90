@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 !> Module for deserializing character arrays from files
 module f42_deserialize_char
   use safeguard
@@ -214,61 +216,8 @@ contains
   
 end module f42_deserialize_char
 
-!> Subroutine to deserialize a flat character array from a file and return it as a raw array callable by R
-!> Deserializes the array into a flat buffer.
-!> @note The array is returned flat and needs to be reshaped in R
-subroutine deserialize_char_flat_r(raw_arr, arr_size, filename_raw, fn_len, clen_in, ierr)
-  use iso_fortran_env, only: int32
-  use f42_deserialize_char, only: deserialize_char_flat
-  use tox_errors, only : set_ok, is_ok
-  use tox_conversions, only : string_as_c_char_1d_r, c_char_1d_as_string
-  use iso_c_binding, only : c_char
-  implicit none
 
-  ! Arrays are allocated by R
-  integer(int32), intent(in) :: fn_len
-  !! Length of the filename array
-  integer(int32), intent(in) :: arr_size
-  !! Size of the ASCII array
-  integer(int32), intent(in) :: clen_in
-  !! Maximum length of character string
-  character(kind=c_char, len=1), intent(out) :: raw_arr(clen_in, arr_size)
-  !! Output array of ASCII characters, preallocated by R
-  character(kind=c_char, len=1), intent(in) :: filename_raw(fn_len)
-  !! Array of ASCII characters representing the filename
-  integer(int32), intent(out) :: ierr
-  !! Error code
 
-  character(len=:), allocatable :: filename
-  !! Filename as a string
-  character(len=:), pointer :: flat(:)
-  !! Flat character array
-  integer(int32), allocatable :: dims(:)
-  !! Output dimensions of the array
-  integer(int32) :: clen, i
-  integer(int32) :: total_array_size
-  !! Total size of the ASCII array
-
-  call set_ok(ierr)
-
-  call c_char_1d_as_string(filename_raw, filename, ierr)
-  if(.not. is_ok(ierr)) return
-
-  ! Deserialize flat character array (already trimmed in deserialize_char_flat)
-  call deserialize_char_flat(flat, dims, clen, filename, ierr)
-  if(.not. is_ok(ierr)) then
-    if(associated(flat)) DEALLOCATE(flat)
-    return
-  end if
-  total_array_size = product(dims)
-
-  ! Write data to raw array
-  do i = 1, size(flat)
-    call string_as_c_char_1d_r(flat(i), raw_arr(:, i))
-  end do
-
-  deallocate(flat)
-end subroutine deserialize_char_flat_r
 
 !> C binding for the subroutine to deserialize a flat character array from a file.
 !> Deserializes the array into a flat buffer.
@@ -280,26 +229,34 @@ subroutine deserialize_char_nd_C(raw_chars, clen, total_array_size, &
   use f42_deserialize_char, only: deserialize_char_flat
   use tox_conversions, only: c_char_1d_as_string, string_as_c_char_1d
   use tox_errors, only : is_ok, set_ok, set_err_once, ERR_ALLOC_FAIL
+  M_USE_NULL_VALIDATION
   implicit none
 
   ! Arguments
-  integer(c_int), value       :: clen
+  integer(c_int), intent(in), target :: clen
   !! Length of each character string
-  integer(c_int), value       :: total_array_size
+  integer(c_int), intent(in), target :: total_array_size
   !! Total size of the array
-  character(kind=c_char, len=1), intent(out) :: raw_chars(clen, total_array_size)
+  character(kind=c_char, len=1), intent(out), target :: raw_chars(clen, total_array_size)
   !! Output array of c_chars, preallocated by C/Python (2D: clen x total_array_size)
-  integer(c_int), value       :: fn_len
+  integer(c_int), intent(in), target :: fn_len
   !! Length of the filename array
-  character(kind=c_char, len=1), intent(in)  :: filename_c(fn_len)
+  character(kind=c_char, len=1), intent(in), target  :: filename_c(fn_len)
   !! c_char array representing the filename
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
   !! error code
 
   character(len=:), allocatable :: filename
   character(len=:), pointer     :: flat(:)
   integer(c_int), allocatable   :: dims(:)
   integer(int32) :: i, j, actual_clen
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(clen)
+  M_CHECK_NON_NULL(total_array_size)
+  M_CHECK_NON_NULL(fn_len)
+  M_CHECK_NON_NULL(raw_chars)
+  M_CHECK_NON_NULL(filename_c)
 
   call set_ok(ierr)
   

@@ -1,0 +1,42 @@
+name: 'Install Python'
+description: 'Installs Python and necessary dependencies'
+
+inputs:
+  packages:
+    description: 'Packages to install on the go via pip'
+    required: false
+    default: numpy pandas
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Python and Pip
+      shell: bash
+      run: |
+        pacman -Sy --needed --noconfirm python python-pip
+        pacman -Scc --noconfirm
+
+    - name: Set up Python environment
+      shell: bash
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        env | grep '\.venv' >> $GITHUB_ENV
+
+    - name: Install needed Python packages
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        pip install ${{ inputs.packages }}
+
+    - name: Show Python version for reproducibility
+      shell: bash
+      run: python --version
+
+    - name: Show Pip version for reproducibility
+      shell: bash
+      run: pip --version
+
+    - name: Show Pip packages' versions for reproducibility
+      shell: bash
+      run: pip list

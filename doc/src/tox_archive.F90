@@ -1,3 +1,5 @@
+#include "../macros.h"
+
 module tox_archive
     use safeguard
     use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr
@@ -1087,96 +1089,6 @@ contains
 
 end module tox_archive
 
-!> R-callable generic archive creation with arrays of keys and filenames
-subroutine create_zip_archive_generic_R(zip_filename, zip_len, &
-                                             keys, keys_len, keys_count, &
-                                             filenames, filenames_len, filenames_count, &
-                                             ierr)
-    use tox_archive, only: create_zip_archive
-    use tox_conversions, only: c_char_2d_as_string, c_char_1d_as_string
-    use iso_c_binding, only: c_char
-    use tox_errors, only: is_err, set_ok, set_err_once, ERR_INVALID_INPUT
-    use iso_fortran_env, only: int32
-    
-    integer(int32), intent(in) :: zip_len
-    !! length of the zip file
-    character(kind=c_char, len=1), intent(in) :: zip_filename(zip_len)
-    !! Zip filename as c_chars
-    integer(int32), intent(in) :: keys_count
-    !! Number of keys
-    integer(int32), intent(in) :: keys_len
-    !! Length of the keys
-    character(kind=c_char, len=1), intent(in) :: keys(keys_len, keys_count)
-    !! Keys as c_chars
-    integer(int32), intent(in) :: filenames_count
-    !! Number of files  
-    integer(int32), intent(in) :: filenames_len
-    !! Length of the filenames
-    character(kind=c_char, len=1), intent(in) :: filenames(filenames_len, filenames_count)
-    !! Filenames as c_chars
-    integer(int32), intent(out) :: ierr
-    !! Error code
-    
-    ! Local variables
-    character(len=:), allocatable :: f_zip_filename
-    character(len=:), allocatable :: f_keys(:)
-    character(len=:), allocatable :: f_filenames(:)
-    
-    call set_ok(ierr)
-    
-    call c_char_1d_as_string(zip_filename, f_zip_filename, ierr)
-    if(is_err(ierr)) return
-    
-    call c_char_2d_as_string(keys, f_keys, ierr)
-    if(is_err(ierr)) return
-    
-    call c_char_2d_as_string(filenames, f_filenames, ierr)
-    if(is_err(ierr)) return
-    
-    ! Validate array sizes
-    if (size(f_keys) /= size(f_filenames)) then
-        call set_err_once(ierr, ERR_INVALID_INPUT)
-        return
-    end if
-    
-    call create_zip_archive(f_zip_filename, f_keys, f_filenames, ierr)
-    
-end subroutine create_zip_archive_generic_R
-
-!> Wrapper to extract all files from a zip archive
-subroutine extract_zip_archive_generic_R(zip_filename, filename_len, ierr)
-    use iso_c_binding, only: c_char, c_null_char
-    use iso_fortran_env, only: int32
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_archive, only: extract_zip_archive
-    use tox_errors, only: set_ok, is_err
-    implicit none
-
-    integer(int32), intent(in) :: filename_len
-    !! Length of the filename
-    character(kind=c_char, len=1), intent(in) :: zip_filename(filename_len)
-    !! Zip filename as c_chars
-    integer(int32), intent(out) :: ierr
-    !! Error code
-    
-    ! Local variables
-    character(len=:), allocatable :: f_zip_filename
-    character(len=:), allocatable :: keys(:), filenames(:)
-    
-    call set_ok(ierr)
-    
-    ! Convert C string to Fortran string
-    call c_char_1d_as_string(zip_filename, f_zip_filename, ierr)
-    if(is_err(ierr)) return
-    
-    ! Extract the archive - this will extract all files to current directory
-    call extract_zip_archive(f_zip_filename, keys, filenames, ierr)
-    
-    ! Clean up allocated arrays
-    if (allocated(keys)) deallocate(keys)
-    if (allocated(filenames)) deallocate(filenames)
-end subroutine extract_zip_archive_generic_R
-
 !> C binding for generic archive creation with arrays of keys and filenames
 subroutine create_zip_archive_c(zip_filename, zip_len, &
                                              keys, keys_len, keys_count, &
@@ -1187,31 +1099,42 @@ subroutine create_zip_archive_c(zip_filename, zip_len, &
     use iso_c_binding, only: c_int, c_char
     use tox_errors, only: is_err, set_ok, set_err_once, ERR_INVALID_INPUT
     use iso_fortran_env, only: int32
+    M_USE_NULL_VALIDATION
     
     ! Input arguments
-    integer(c_int), intent(in), value :: zip_len
+    integer(c_int), intent(in), target :: zip_len
     !! Length of the zip filename
-    character(kind=c_char, len=1), intent(in) :: zip_filename(zip_len)
+    character(kind=c_char, len=1), intent(in), target :: zip_filename(zip_len)
     !! Zip Filename as c_chars
-    integer(c_int), intent(in), value :: keys_count
+    integer(c_int), intent(in), target :: keys_count
     !! number of keys
-    integer(c_int), intent(in), value :: keys_len
+    integer(c_int), intent(in), target :: keys_len
     !! lengths of the keys
-    character(kind=c_char, len=1), intent(in) :: keys(keys_len, keys_count)
+    character(kind=c_char, len=1), intent(in), target :: keys(keys_len, keys_count)
     !! Keys as c_chars
-    integer(c_int), intent(in), value :: filenames_count
+    integer(c_int), intent(in), target :: filenames_count
     !! Number of files  
-    integer(c_int), intent(in), value :: filenames_len
+    integer(c_int), intent(in), target :: filenames_len
     !! Length of the filenames
-    character(kind=c_char, len=1), intent(in) :: filenames(filenames_len, filenames_count)
+    character(kind=c_char, len=1), intent(in), target :: filenames(filenames_len, filenames_count)
     !! Filenames as c_chars
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
     !! Error code
     
     ! Local variables
     character(len=:), allocatable :: f_zip_filename
     character(len=:), allocatable :: f_keys(:)
     character(len=:), allocatable :: f_filenames(:)
+    
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(zip_len)
+    M_CHECK_NON_NULL(keys_count)
+    M_CHECK_NON_NULL(keys_len)
+    M_CHECK_NON_NULL(filenames_count)
+    M_CHECK_NON_NULL(filenames_len)
+    M_CHECK_NON_NULL(zip_filename)
+    M_CHECK_NON_NULL(keys)
+    M_CHECK_NON_NULL(filenames)
     
     call set_ok(ierr)
     
@@ -1242,18 +1165,23 @@ subroutine extract_zip_archive_c(zip_filename, filename_len, ierr) &
     use tox_errors, only: set_ok, is_err
     use iso_c_binding, only: c_int, c_char
     use iso_fortran_env, only: int32
+    M_USE_NULL_VALIDATION
 
     ! Input arguments
-    integer(c_int), intent(in), value :: filename_len
+    integer(c_int), intent(in), target :: filename_len
     !! Length of the filename
-    character(kind=c_char, len=1), intent(in) :: zip_filename(filename_len)
+    character(kind=c_char, len=1), intent(in), target :: zip_filename(filename_len)
     !! Zip filename length
-    integer(c_int), intent(out) :: ierr
+    integer(c_int), intent(out), target :: ierr
     !! Error code
     
     ! Local variables
     character(len=:), allocatable :: f_zip_filename
     character(len=:), allocatable :: keys(:), filenames(:)
+    
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(filename_len)
+    M_CHECK_NON_NULL(zip_filename)
     
     call set_ok(ierr)
     

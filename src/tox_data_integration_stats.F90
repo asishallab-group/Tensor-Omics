@@ -338,3 +338,91 @@ subroutine gjct_permutation_test_c( &
         jsd_null, p_value, ierr, random_seed)
 
 end subroutine gjct_permutation_test_c
+
+!> C-compatible wrapper for [[tox_data_integration(module):gjct_permutation_test_alloc(interface)]], including neighbor masks for filtered analysis
+subroutine gjct_permutation_test_filtered_c( &
+    neighborhood_residuals_S1, neighborhood_residuals_S2, &
+    n_reps_S1, n_reps_S2, n_neighbors, n_points, &
+    global_jsd_observed, n_bins, shared_residual_range, n_permutations, &
+    jsd_null, p_value, ierr, random_seed, neighbor_mask_S1, neighbor_mask_S2) &
+    bind(C, name="gjct_permutation_test_filtered_c")
+
+    use tox_data_integration, only: gjct_permutation_test_alloc
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_conversions, only: c_int_as_logical
+    use tox_errors, only: set_ok, validate_dimension_size, is_err, ERR_ALLOC_FAIL
+    M_USE_NULL_VALIDATION
+    implicit none
+
+    integer(c_int), intent(in), target :: n_reps_S1
+        !! Number of replicates in study 1
+    integer(c_int), intent(in), target :: n_reps_S2
+        !! Number of replicates in study 2
+    integer(c_int), intent(in), target :: n_neighbors
+        !! Number of neighbors in the studies
+    integer(c_int), intent(in), target :: n_points
+        !! Number of reference points in the studies
+    real(c_double), dimension(n_reps_S1, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S1
+        !! Computed neighborhood residuals for study 1 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
+    real(c_double), dimension(n_reps_S2, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S2
+        !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
+    real(c_double), intent(in), target :: global_jsd_observed
+        !! Observed global JSD value for both studies (from [[tox_data_integration(module):compute_weighted_global_divergence(interface)]])
+    integer(c_int), intent(in), target :: n_bins
+        !! Number of equally sized histogram bins used for the studies in [[tox_data_integration(module):build_residual_histograms(interface)]]
+    real(c_double), intent(in), target :: shared_residual_range
+        !! Computed residual range for both studies, from [[tox_data_integration(module):determine_shared_residual_range(interface)]]
+    integer(c_int), intent(in), target :: n_permutations
+        !! Number of permutations to perform
+    real(c_double), dimension(n_permutations), intent(out), target :: jsd_null
+        !! Vector of global divergence values obtained under the null hypothesis
+    real(c_double), intent(out), target :: p_value
+        !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
+    integer(c_int), intent(in), target :: random_seed
+        !! Seed to use for shuffling
+    integer(c_int), dimension(n_neighbors, n_points), intent(in), target :: neighbor_mask_S1
+        !! Mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+    integer(c_int), dimension(n_neighbors, n_points), intent(in), target :: neighbor_mask_S2
+        !! Mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+
+    logical, dimension(:, :), allocatable :: f_neighbor_mask_S1, f_neighbor_mask_S2
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_reps_S1)
+    M_CHECK_NON_NULL(n_reps_S2)
+    M_CHECK_NON_NULL(n_neighbors)
+    M_CHECK_NON_NULL(n_points)
+    M_CHECK_NON_NULL(neighborhood_residuals_S1)
+    M_CHECK_NON_NULL(neighborhood_residuals_S2)
+    M_CHECK_NON_NULL(global_jsd_observed)
+    M_CHECK_NON_NULL(n_bins)
+    M_CHECK_NON_NULL(shared_residual_range)
+    M_CHECK_NON_NULL(n_permutations)
+    M_CHECK_NON_NULL(jsd_null)
+    M_CHECK_NON_NULL(p_value)
+    M_CHECK_NON_NULL(random_seed)
+    M_CHECK_NON_NULL(neighbor_mask_S1)
+    M_CHECK_NON_NULL(neighbor_mask_S2)
+
+    call set_ok(ierr)
+
+    call validate_dimension_size(n_neighbors, ierr)
+    call validate_dimension_size(n_points, ierr)
+
+    if (is_err(ierr)) return
+
+    M_ALLOCATE(f_neighbor_mask_S1(n_neighbors, n_points))
+    M_ALLOCATE(f_neighbor_mask_S2(n_neighbors, n_points))
+
+    call c_int_as_logical(neighbor_mask_S1, f_neighbor_mask_S1)
+    call c_int_as_logical(neighbor_mask_S2, f_neighbor_mask_S2)
+
+    call gjct_permutation_test_alloc( &
+        neighborhood_residuals_S1, neighborhood_residuals_S2, &
+        n_reps_S1, n_reps_S2, n_neighbors, n_points, &
+        global_jsd_observed, n_bins, shared_residual_range, n_permutations, &
+        jsd_null, p_value, ierr, random_seed, f_neighbor_mask_S1, f_neighbor_mask_S2)
+
+end subroutine gjct_permutation_test_filtered_c

@@ -584,6 +584,81 @@ pure subroutine build_residual_histograms_c( &
 
 end subroutine build_residual_histograms_c
 
+!> C-compatible wrapper for [[tox_data_integration(module):build_residual_histograms(interface)]], including neighbor mask for filtered analysis
+pure subroutine build_residual_histograms_filtered_c( &
+    neighborhood_residuals, &
+    n_reps, n_neighbors, n_points, &
+    shared_residual_range, &
+    n_bins, &
+    counts, pmf, included_n_reps, &
+    ierr, neighbor_mask ) &
+    bind(C, name="build_residual_histograms_filtered_c")
+
+    use tox_data_integration, only: build_residual_histograms
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use tox_conversions, only: c_int_as_logical
+    use tox_errors, only: set_ok, is_err, validate_dimension_size, ERR_ALLOC_FAIL
+    M_USE_NULL_VALIDATION
+    implicit none
+
+    integer(c_int), intent(in), target :: n_reps
+        !! Number of replicates in the study
+    integer(c_int), intent(in), target :: n_neighbors
+        !! Number of reference points (k)
+    integer(c_int), intent(in), target :: n_points
+        !! Number of reference points in the studies
+    real(c_double), dimension(n_reps, n_neighbors, n_points), intent(in), target :: neighborhood_residuals
+        !! Computed neighborhood residuals for a study ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
+    real(c_double), intent(in), target :: shared_residual_range
+        !! Computed residual range (R) from [[tox_data_integration(module):determine_shared_residual_range_alloc(interface)]]
+    integer(c_int), intent(in), target :: n_bins
+        !! Number of equally sized histogram bins in range [-R,R]
+    integer(c_int), dimension(n_points, n_bins), intent(out), target :: counts
+        !! Absolute counts of a residual per bin
+    real(c_double), dimension(n_points, n_bins), intent(out), target :: pmf
+        !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+    integer(c_int), dimension(n_points), intent(out), target :: included_n_reps
+        !! Stores the count of non-NaN replicates (included ones)
+    integer(c_int), intent(out), target :: ierr
+        !! Error code
+    integer(c_int), dimension(n_neighbors, n_points), intent(in), target :: neighbor_mask
+        !! Mask to exclude specific neighbors (e.g. for family-wise analysis)
+
+    logical, dimension(:, :), allocatable :: f_neighbor_mask
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(neighborhood_residuals)
+    M_CHECK_NON_NULL(n_reps)
+    M_CHECK_NON_NULL(n_neighbors)
+    M_CHECK_NON_NULL(n_points)
+    M_CHECK_NON_NULL(shared_residual_range)
+    M_CHECK_NON_NULL(n_bins)
+    M_CHECK_NON_NULL(counts)
+    M_CHECK_NON_NULL(pmf)
+    M_CHECK_NON_NULL(included_n_reps)
+    M_CHECK_NON_NULL(neighbor_mask)
+
+    call set_ok(ierr)
+
+    call validate_dimension_size(n_neighbors, ierr)
+    call validate_dimension_size(n_points, ierr)
+
+    if (is_err(ierr)) return
+
+    M_ALLOCATE(f_neighbor_mask(n_neighbors, n_points))
+
+    call c_int_as_logical(neighbor_mask, f_neighbor_mask)
+
+    call build_residual_histograms( &
+        neighborhood_residuals, &
+        n_reps, n_neighbors, n_points, &
+        shared_residual_range, &
+        n_bins, &
+        counts, pmf, included_n_reps, &
+        ierr, f_neighbor_mask )
+
+end subroutine build_residual_histograms_filtered_c
+
 !> C-compatible wrapper for [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
 pure subroutine compute_divergence_per_reference_point_c( &
     pmf_S1, pmf_S2, &

@@ -1,4 +1,5 @@
-!> Unit test suite for tox_data_integration routine.
+! filepath: test/mod_test_data_integration.f90
+!> Unit test suite for data_integration routine.
 module mod_test_data_integration
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -6,27 +7,19 @@ module mod_test_data_integration
     use tox_data_integration
     use tox_errors
     use f42_utils, only: above, below, init_random, shuffle_vector
+    use test_suite, only: test_case
+
     implicit none
 
-    ! Abstract interface for all test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
-    ! Type to hold test name and procedure pointer
-    type :: test_case
-        character(len=128) :: name
-        procedure(test_interface), pointer, nopass :: test_proc => null()
-    end type test_case
 
     real(real64), parameter :: TOL = 1d-12
 
 contains
 
     !> Get array of all available tests.
-    function get_all_tests() result(all_tests)
-        type(test_case) :: all_tests(21)
+    function get_all_tests_data_integration() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
+        allocate(all_tests(21))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -54,47 +47,12 @@ contains
 
         all_tests(21) = test_case("test_fjct", test_fjct)
         ! all_tests(22) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
-    end function get_all_tests
+    end function get_all_tests_data_integration
 
-    !> Run all tox_data_integration tests.
-    subroutine run_all_tests_tox_data_integration
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i
+    
+    
 
-        all_tests = get_all_tests()
-
-        do i = 1, size(all_tests)
-            call all_tests(i)%test_proc()
-            print "(' ',A,' passed.')", trim(all_tests(i)%name)
-        end do
-        print *, "All tox_data_integration tests passed successfully."
-    end subroutine run_all_tests_tox_data_integration
-
-    !> Run specific tox_data_integration tests by name.
-    subroutine run_named_tests_tox_data_integration(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        type(test_case), allocatable :: all_tests(:)
-        integer(int32) :: i, j
-        logical :: found
-
-        all_tests = get_all_tests()
-
-        do i = 1, size(test_names)
-            found = .false.
-            do j = 1, size(all_tests)
-                if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-                    call all_tests(j)%test_proc()
-                    print "(' ',A,' passed.')", trim(test_names(i))
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i))
-            end if
-        end do
-    end subroutine run_named_tests_tox_data_integration
-
+    !> Test the fjct_compute_jsd_alloc function.
     subroutine test_fjct
         integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 4, n_neighbors = 5, n_points = 3, k_families = 2
         integer(int32), parameter :: n_bins = 4, n_genes_S1 = 10, n_genes_S2 = 10
@@ -203,6 +161,7 @@ contains
         call assert_equal_array_real(contribution_scores, expected_contribution_scores, k_families, TOL, "test_fjct: Contribution scores: support weights mismatch")
     end subroutine test_fjct
 
+    !> Test the gjct_permutation_test function with a simple synthetic example.
     subroutine test_gjct_permutation_test
         integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 1, n_points = 2, n_permutations = 2, n_bins = 4
         real(real64), dimension((n_reps_S1 + n_reps_S2) * n_neighbors * n_points ), target :: S_12, expected_S_12
@@ -306,7 +265,8 @@ contains
 
         call assert_equal_real(p_value, 1.0_real64 / 3.0_real64, TOL, "test_gjct_permutation_test: Test 3: for max observed jsd, p_value should be 1/3")
     end subroutine test_gjct_permutation_test
-
+    
+    !> Test the shuffle_reference_point_helper function with a simple synthetic example.
     subroutine test_shuffle_reference_point_helper
         integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2
         real(real64), dimension((n_reps_S1 + n_reps_S2) * n_neighbors ), target :: S_12, expected_S_12
@@ -331,7 +291,8 @@ contains
         call assert_equal_array_real(pool_flat, S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: pool should match concatenated S1, S2")
         call assert_equal_array_real(S_12, expected_S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: concatenated S1, S2 does not match the expected permutation")
     end subroutine test_shuffle_reference_point_helper
-
+    
+    !> Test the determine_shared_residual_range function with a simple synthetic example.
     subroutine test_determine_shared_residual_range
         integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2, n_points = 2
         real(real64), dimension(n_reps_S1, n_neighbors, n_points) :: S1
@@ -440,7 +401,8 @@ contains
         call assert_equal_real(R, 3.95_real64, TOL, "test_determine_shared_residual_range: Test 7: R should be 3.95")
 
     end subroutine test_determine_shared_residual_range
-
+    
+    !> Test the build_residual_histograms function with a simple synthetic example.
     subroutine test_build_residual_histograms
         integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
         integer(int32), parameter :: n_bins = 4
@@ -602,6 +564,7 @@ contains
 
     end subroutine test_build_residual_histograms
 
+    !> Test the compute_divergence_per_reference_point function with simple synthetic examples.
     subroutine test_compute_divergence_per_reference_point
         integer(int32), parameter :: n_points = 3, n_bins = 4
         real(real64), dimension(n_points, n_bins) :: p, q
@@ -735,6 +698,7 @@ contains
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 5: mixed patterns")
     end subroutine test_compute_divergence_per_reference_point
 
+    !> Test the compute_weighted_global_divergence function with simple synthetic examples.
     subroutine test_compute_weighted_global_divergence
         integer(int32), parameter :: n_points = 4
         real(real64), dimension(n_points) :: jsd
@@ -1139,6 +1103,7 @@ contains
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
 
+    !> Test the construct_neighborhoods function with simple synthetic examples.
     subroutine test_construct_neighborhoods_basic()
           integer(int32), parameter :: n_points    = 2
           integer(int32), parameter :: n_genes_S   = 5
@@ -1244,6 +1209,7 @@ contains
           call assert_equal_int(ierr, ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT")
     end subroutine test_construct_neighborhoods_basic
 
+    !> Test the construct_neighborhoods function with NaN means
     subroutine test_construct_neighborhoods_nan_means()
           integer(int32), parameter :: n_points    = 1
           integer(int32), parameter :: n_genes_S   = 4

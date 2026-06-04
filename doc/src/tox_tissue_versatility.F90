@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !> Module for calculating normalized tissue (axis) versatility.
 !| This module implements the angle-based metric for tissue versatility,
 !| quantifying how uniformly a gene is expressed across selected axes (tissues).
@@ -106,39 +108,6 @@ contains
 end module tox_tissue_versatility 
 
 
-!> R wrapper for compute_tissue_versatility.
-!| Calls compute_tissue_versatility with standard Fortran types for R interface.
-pure subroutine compute_tissue_versatility_r(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, &
-                                             n_selected_vectors, axes_selection, n_selected_axes, &
-                                             tissue_versatilities, tissue_angles_deg, ierr)
-  use tox_tissue_versatility, only: compute_tissue_versatility
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
-
-  !| Number of axes (tissues/dimensions)
-  integer(int32), intent(in) :: n_axes
-  !| Number of expression vectors (genes)
-  integer(int32), intent(in) :: n_vectors
-  !| Number of selected axes (count of .TRUE. in axes_selection)
-  integer(int32), intent(in) :: n_selected_axes
-  !| Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)
-  integer(int32), intent(in) :: n_selected_vectors
-  !| 2D array (n_axes, n_vectors), each column is a gene expression vector
-  real(real64), intent(in) :: expression_vectors(n_axes, n_vectors)
-  !| Logical array (n_vectors), .TRUE. for vectors to process
-  logical, intent(in) :: exp_vecs_selection_index(n_vectors)
-  !| Logical array (n_axes), .TRUE. for axes to include in calculation
-  logical, intent(in) :: axes_selection(n_axes)
-  !| Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities
-  real(real64), intent(out) :: tissue_versatilities(n_selected_vectors)
-  !| Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
-  real(real64), intent(out) :: tissue_angles_deg(n_selected_vectors)
-  !| Error code: 0 = success, non-zero = error
-  integer(int32), intent(out) :: ierr
-  call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, &
-                                  n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
-end subroutine compute_tissue_versatility_r
-
 
 !> C wrapper for compute_tissue_versatility.
 !| Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.
@@ -147,28 +116,40 @@ pure subroutine compute_tissue_versatility_c(n_axes, n_vectors, expression_vecto
                                              tissue_versatilities, tissue_angles_deg, ierr) bind(C, name="compute_tissue_versatility_c")
   use, intrinsic :: iso_c_binding, only : c_int, c_double
   use tox_tissue_versatility, only: compute_tissue_versatility
+  M_USE_NULL_VALIDATION
   implicit none
 
   !| Number of axes (tissues/dimensions)
-  integer(c_int), intent(in), value :: n_axes
+  integer(c_int), intent(in), target :: n_axes
   !| Number of expression vectors (genes)
-  integer(c_int), intent(in), value :: n_vectors
+  integer(c_int), intent(in), target :: n_vectors
   !| 2D array (n_axes, n_vectors), each column is a gene expression vector (column-major)
   real(c_double), intent(in), target :: expression_vectors(n_axes, n_vectors)
   !| Integer array (n_vectors), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.
   integer(c_int), intent(in), target :: exp_vecs_selection_index(n_vectors)
   !| Number of selected expression vectors (count of 1s in exp_vecs_selection_index)
-  integer(c_int), intent(in), value :: n_selected_vectors
+  integer(c_int), intent(in), target :: n_selected_vectors
   !| Integer array (n_axes), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.
   integer(c_int), intent(in), target :: axes_selection(n_axes)
   !| Number of selected axes (count of 1s in axes_selection)
-  integer(c_int), intent(in), value :: n_selected_axes
+  integer(c_int), intent(in), target :: n_selected_axes
   !| Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities for selected vectors
   real(c_double), intent(out), target :: tissue_versatilities(n_selected_vectors)
   !| Output, real array, length = n_selected_vectors, stores the calculated angles in degrees for selected vectors
   real(c_double), intent(out), target :: tissue_angles_deg(n_selected_vectors)
   !| Error code: 0 = success, non-zero = error  
-  integer(c_int), intent(out) :: ierr
+  integer(c_int), intent(out), target :: ierr
+
+  M_CHECK_IERR_NON_NULL
+  M_CHECK_NON_NULL(n_axes)
+  M_CHECK_NON_NULL(n_vectors)
+  M_CHECK_NON_NULL(expression_vectors)
+  M_CHECK_NON_NULL(exp_vecs_selection_index)
+  M_CHECK_NON_NULL(n_selected_vectors)
+  M_CHECK_NON_NULL(axes_selection)
+  M_CHECK_NON_NULL(n_selected_axes)
+  M_CHECK_NON_NULL(tissue_versatilities)
+  M_CHECK_NON_NULL(tissue_angles_deg)
 
   call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index /= 0, n_selected_vectors, &
                                   axes_selection /= 0, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)

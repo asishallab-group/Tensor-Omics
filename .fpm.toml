@@ -9,4 +9,4 @@ library = true
 type = "shared" 
 
 [build]
-link = ["xxhash", "zip"]
+link = ["xxhash", "zip", "loess_netlib"]
