@@ -154,7 +154,8 @@ contains
     close(unit)
   end subroutine
 
-  !> @brief Writes serialized real array from R to file with metdata.
+  !> category: C-interface
+  !| Writes serialized real array from R to file with metdata.
   subroutine serialize_real_nd(arr, dims, ndim, filename, ierr)
     real(real64), intent(in) :: arr(:)
       !! array to save

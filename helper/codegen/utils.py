@@ -1,19 +1,7 @@
-from ford.fortran_project import Project
-from ford.settings import load_toml_settings, load_markdown_settings
+class Indentable(str):
+    """Wrapper class to easily indent code blocks"""
+    def __new__(cls, *args, **kwargs):
+        return super(cls, cls).__new__(cls, *args, **kwargs)
 
-
-def get_project() -> Project:
-    directory = "."
-
-    # load settings from fpm.toml
-    proj_settings = load_toml_settings(directory)
-
-    # if no fpm.toml, use ford.yml
-    if proj_settings is None:
-        with open("ford.yml", "r") as f:
-            proj_settings, _ = load_markdown_settings(directory, f.read(), f.name)
-
-    proj = Project(proj_settings)
-    proj.correlate()
-
-    return proj
+    def __rshift__(self, level):
+        return level * " " + self.replace("\n", "\n" + level * " ")

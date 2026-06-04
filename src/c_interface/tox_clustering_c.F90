@@ -1,6 +1,7 @@
 #include <src/macros.h>
 
-!>
+!> Module for C-wrappers for [[tox_clustering(module)]]
+!|
 module tox_clustering_c
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
     use, intrinsic :: iso_c_binding, only: c_loc, c_associated
@@ -12,7 +13,8 @@ module tox_clustering_c
     use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
 contains
 
-    !> Performs k-means clustering on factor trajectories, so factor evolution over time
+    !> C-wrapper for [[tox_clustering(module):cluster_factor_trajectories_k_means(subroutine)]]
+    !| Performs k-means clustering on factor trajectories, so factor evolution over time
     subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")
         use tox_clustering, only: cluster_factor_trajectories_k_means
         integer(c_int), intent(in), target :: n_clusters

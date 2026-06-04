@@ -50,7 +50,7 @@ contains
     !! array to save
     character(len=*), intent(in) :: filename
     !! output filename
-    integer(int32) :: ierr
+    integer(int32), intent(out) :: ierr
     !! error code
     integer(int32) :: unit
     integer(int32) :: ioerror
@@ -70,14 +70,15 @@ contains
     close(unit)
   end subroutine
 
-  !> Serialize a 3D integer(int32) array to a binary file.
-  !! The file will contain a magic number, type code, dimension, shape, and the array data.
+  !> category: C-interface
+  !| Serialize a 3D integer(int32) array to a binary file.
+  !| The file will contain a magic number, type code, dimension, shape, and the array data.
   subroutine serialize_int_3d(arr, filename, ierr)
     integer(int32), intent(in) :: arr(:,:,:)
     !! array to save
     character(len=*), intent(in) :: filename
     !! output filename
-    integer(int32) :: ierr
+    integer(int32), intent(out) :: ierr
     !! error code
     integer(int32) :: unit
     integer(int32) :: ioerror

@@ -54,7 +54,8 @@ contains
     close(unit)
   end subroutine deserialize_char_flat
 
-  !> Directly deserialize a 1D character array from a file (array already allocated)
+  !> category: C-interface
+  !| Directly deserialize a 1D character array from a file (array already allocated)
   subroutine deserialize_char_1d(arr, filename, ierr)
     character(len=*), contiguous, intent(out) :: arr(:)
     !! Pre-allocated array to read the data into

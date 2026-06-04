@@ -118,7 +118,7 @@ module f42_array_utils
     !! character length (only for character arrays)
     integer(int32), intent(out) :: ierr
     !! error code
-    integer(int32), allocatable :: dims(:)
+    integer(int32), allocatable, intent(out) :: dims(:)
     !! dimensions of the array
     integer(int32) :: ioerror
     !! internal I/O error code

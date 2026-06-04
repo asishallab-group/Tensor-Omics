@@ -801,7 +801,8 @@ contains
         work_array_size = work_array_size - 1
     end subroutine calc_work_arr_paralog_subsets_size
 
-    !> Helper function that returns the index after the last active gene in `bit_mask`, so the first succeeding gene.
+    !> category: C-interface
+    !| Helper function that returns the index after the last active gene in `bit_mask`, so the first succeeding gene.
     pure function mask_get_first_successor_idx(bit_mask) result(idx)
         integer(int32), dimension(:), intent(in) :: bit_mask
             !! chunked mask to mark active genes

@@ -42,14 +42,15 @@ contains
     close(unit)
   end subroutine
 
-  !> Serialize a 2D complex(real64) array to a binary file.
+  !> category: C-interface
+  !| Serialize a 2D complex(real64) array to a binary file.
   !! The file will contain a magic number, type code, dimension, shape, and the array data.
   subroutine serialize_complex_2d(arr, filename, ierr)
     complex(real64), intent(in) :: arr(:,:)
     !! array to save
     character(len=*), intent(in) :: filename
     !! output filename
-    integer(int32) :: ierr
+    integer(int32), intent(out) :: ierr
     !! error code
     integer(int32) :: unit
     integer(int32) :: ioerror
@@ -76,7 +77,7 @@ contains
     !! array to save
     character(len=*), intent(in) :: filename
     !! output filename
-    integer(int32) :: ierr
+    integer(int32), intent(out) :: ierr
     !! error code
     integer(int32) :: unit
     integer(int32) :: ioerror
