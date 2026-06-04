@@ -13,4 +13,7 @@ def get_project() -> Project:
         with open("ford.yml", "r") as f:
             proj_settings, _ = load_markdown_settings(directory, f.read(), f.name)
 
-    return Project(proj_settings)
+    proj = Project(proj_settings)
+    proj.correlate()
+
+    return proj

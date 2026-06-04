@@ -36,7 +36,7 @@ export LIBRARY_PATH="$PWD/external/lib:${LIBRARY_PATH}"
 fpm build --compiler $COMPILER \
           --flag "$FLAGS $DIRECTIVES" \
           --flag "-DDEFAULT_ALIGNMENT=$ALIGN" \
-          --flag "$MAX_PERF_FLAG" 
+          --flag "$MAX_PERF_FLAG -I." 
 
 check_exit_code "Build with fpm failed"
 

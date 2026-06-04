@@ -11,7 +11,8 @@ module tox_clustering
     integer(int32), parameter :: METHOD_WARD = 2
 contains
 
-    !> Performs k-means clustering on factor trajectories, so factor evolution over time
+    !> category: C-interface
+    !| Performs k-means clustering on factor trajectories, so factor evolution over time
     pure subroutine cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
@@ -21,7 +22,7 @@ contains
             !! number of timepoints
         integer(int32), intent(in) :: n_samples
             !! number of samples
-        real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
+        real(real64), intent(in) :: trajectories(n_factors, n_samples, n_timepoints)
             !! matrix with data points to cluster
         real(real64), dimension(n_factors, n_clusters), intent(inout) :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
