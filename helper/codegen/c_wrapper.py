@@ -94,10 +94,12 @@ end subroutine {self.name}"""
 
     def C_Module(self, spec):
         doc = [f" Module for C-wrappers for [[{self.orig_mod_name}(module)]]"] + self.doc
-        return f"""#include <src/macros.h>
+        return f"""#ifndef NO_C_INTERFACE
+#include <src/macros.h>
 
 {format(doc, "module")}
 module {self.name}
+    use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
     use, intrinsic :: iso_c_binding, only: c_loc, c_associated
 
@@ -110,4 +112,5 @@ contains
 
 {"\n\n    ".join(format(c_wrapper) >> INDENT for c_wrapper in self)}
 
-end module {self.name}"""
+end module {self.name}
+#endif"""

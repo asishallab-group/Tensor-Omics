@@ -1,8 +1,10 @@
+#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
 !> Module for C-wrappers for [[f42_deserialize_char(module)]]
 !| Module for deserializing character arrays from files
 module f42_deserialize_char_c
+    use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
     use, intrinsic :: iso_c_binding, only: c_loc, c_associated
 
@@ -42,3 +44,4 @@ contains
     end subroutine deserialize_char_1d_c
 
 end module f42_deserialize_char_c
+#endif

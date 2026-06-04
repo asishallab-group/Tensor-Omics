@@ -1,7 +1,9 @@
+#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
 !> Module for C-wrappers for [[f42_serialize_real(module)]]
 module f42_serialize_real_c
+    use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
     use, intrinsic :: iso_c_binding, only: c_loc, c_associated
 
@@ -47,3 +49,4 @@ contains
     end subroutine serialize_real_nd_c
 
 end module f42_serialize_real_c
+#endif
