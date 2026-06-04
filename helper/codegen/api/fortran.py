@@ -1,10 +1,25 @@
 from ford.fortran_project import Project as _Project
 from ford.settings import load_toml_settings, load_markdown_settings
-from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable, FortranModuleProcedureImplementation
+from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable, FortranModuleProcedureImplementation, FortranModule
 import warnings
 from enum import Enum
 import re
 from .utils import Indentable, CodeGenerator
+
+
+class Module(CodeGenerator):
+    """Class for a parsed Fortran Module"""
+    def __init__(self, module: FortranModule):
+        self.name = module.name
+        self.doc_list = DocList.from_fortran(module)
+        self.procedures = tuple(map(Procedure, module.routines))
+
+
+class Modules(CodeGenerator, tuple):
+    """Collection of Module objects"""
+    def __new__(cls):
+        proj = Project()
+        return super(cls, cls).__new__(cls, map(Module, proj.modules))
 
 
 class Project(CodeGenerator, _Project):
@@ -21,6 +36,7 @@ class Project(CodeGenerator, _Project):
                 proj_settings, _ = load_markdown_settings(directory, f.read(), f.name)
 
         super(Project, self).__init__(proj_settings)
+
         self.correlate()
 
 
@@ -127,7 +143,7 @@ class Intent(CodeGenerator, Enum):
         raise KeyError(f"'{value}' invalid intent")
 
 
-class ProcedureArgument(CodeGenerator):
+class Procedure_Argument(CodeGenerator):
     """Wrapper class for procedure arguments"""
 
     def __init__(self, argument: FortranVariable):
@@ -152,7 +168,7 @@ class Procedure(CodeGenerator):
     def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
         self.name = procedure.name
         self.meta = procedure.meta
-        self.args = tuple(map(ProcedureArgument, procedure.args))
+        self.args = tuple(map(Procedure_Argument, procedure.args))
         self.doc_list = DocList.from_fortran(procedure)
         self.retvar = getattr(procedure, "retvar", None)
         self.type = "subroutine" if self.retvar is None else "function"

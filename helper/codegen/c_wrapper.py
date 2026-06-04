@@ -51,7 +51,7 @@ class C_Wrapper_Serializer(Serializer):
             case _:
                 raise ValueError(f"Unsupported format spec '{spec}'")
 
-    def C_Argument(self, spec):
+    def C_Wrapper_Argument(self, spec):
         match spec:
             case "dummy":
                 arg_str = f"{format(self.type, "C")}, {self.dimension}{self.intent}, target :: {self.name}"
@@ -61,7 +61,7 @@ class C_Wrapper_Serializer(Serializer):
                 raise ValueError(f"Unsupported format spec '{spec}'")
         return Indentable(arg_str)
 
-    def C_Arguments(self, spec):
+    def C_Wrapper_Arguments(self, spec):
         match spec:
             case "dummy":
                 formatted = "\n".join(format(arg, "dummy") for arg in self)
@@ -77,23 +77,26 @@ class C_Wrapper_Serializer(Serializer):
 
         return Indentable(formatted)
 
-    def C_Wrapper(self, spec):
-        doc = [f" C-wrapper for {self.orig_proc_ford_link}"] + self.doc
+    def C_Wrapper_Wrapper(self, spec):
+        orig_proc = self.orig_procedure
+        module_name = orig_proc.parent.name
+        ford_link = f"[[{module_name}(module):{orig_proc.name}({orig_proc.type})]]"
+        doc = [f" C-wrapper for {ford_link}"] + self.doc
 
         wrapper = f"""{format(doc, "subroutine")}
 subroutine {self.name}({format(self.arguments, "arglist")}) bind(C, name="{self.name}")
-    use {self.module_name}, only: {self.orig_proc_name}
+    use {module_name}, only: {self.orig_procedure.name}
 {format(self.arguments, "dummy") >> INDENT}
 
 {format(self.arguments, "null_validation") >> INDENT}
 
-{self.orig_proc_call >> INDENT}
+{format(orig_proc, "call") >> INDENT}
 end subroutine {self.name}"""
 
         return Indentable(wrapper)
 
-    def C_Module(self, spec):
-        doc = [f" Module for C-wrappers for [[{self.orig_mod_name}(module)]]"] + self.doc
+    def C_Wrapper_Module(self, spec):
+        doc = [f" Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc
         return f"""#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 

@@ -1,4 +1,4 @@
-from .fortran import Project, Procedure, ProcedureArgument, DocList, Dimension, Intent, Fortran_Type
+from .fortran import Module, Procedure, Procedure_Argument, DocList, Dimension, Intent, Fortran_Type
 from .utils import CodeGenerator
 from typing import List, Tuple
 from enum import Enum
@@ -10,7 +10,7 @@ import os
 NAME_SUFFIX = "_c"
 
 
-class C_Argument(CodeGenerator):
+class C_Wrapper_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
     def __init__(self, name: str, doc: DocList, type: Fortran_Type, dimension: Dimension, intent: Intent, default_value=None, only_c_arg=False):
         self.name = name
@@ -33,7 +33,7 @@ class C_Argument(CodeGenerator):
         )
 
     @classmethod
-    def from_proc_arg(cls, arg: ProcedureArgument) -> Tuple[Self, Tuple[C_Argument]]:
+    def from_proc_arg(cls, arg: Procedure_Argument) -> Tuple[Self, Tuple[C_Wrapper_Argument]]:
         dimension = list(arg.dimension)
         extra_dim_args = []
 
@@ -69,17 +69,17 @@ class C_Argument(CodeGenerator):
         return argument, tuple(extra_dim_args)
 
 
-class C_Arguments(CodeGenerator, tuple):
-    """Collection of C_Argument objects"""
+class C_Wrapper_Arguments(CodeGenerator, tuple):
+    """Collection of C_Wrapper_Argument objects"""
     def __new__(cls, procedure: Procedure):
         arguments = []
         for proc_arg in procedure.args:
-            arg, extra_dim_args = C_Argument.from_proc_arg(proc_arg)
+            arg, extra_dim_args = C_Wrapper_Argument.from_proc_arg(proc_arg)
             arguments = [*extra_dim_args, *arguments, arg]
 
         if procedure.retvar is not None:
             retvar = procedure.retvar
-            result_argument = C_Argument(
+            result_argument = C_Wrapper_Argument(
                 name=retvar.name,
                 doc=DocList.from_fortran(retvar),
                 type=Fortran_Type.from_fortran_variable(retvar),
@@ -92,17 +92,13 @@ class C_Arguments(CodeGenerator, tuple):
         return super(cls, cls).__new__(cls, arguments)
 
 
-class C_Wrapper(CodeGenerator):
+class C_Wrapper_Wrapper(CodeGenerator):
     """Includes all relevant information about a C wrapper, meaning its C name, arguments and argument docstrings"""
-    def __init__(self, procedure: Procedure, module_name: str):
+    def __init__(self, procedure: Procedure):
         self.doc = procedure.doc_list
-        self.module_name = module_name
-        self.orig_proc_name = procedure.name
-        self.orig_proc_type = procedure.type
-        self.orig_proc_ford_link = f"[[{self.module_name}(module):{self.orig_proc_name}({self.orig_proc_type})]]"
-        self.orig_proc_call = format(procedure, "call")
+        self.orig_procedure = procedure
 
-        match self.orig_proc_type:
+        match procedure.type:
             case "subroutine":
                 # alloc routines don't get the alloc suffix in the C wrapper name
                 if procedure.name.endswith("_alloc"):
@@ -117,24 +113,19 @@ class C_Wrapper(CodeGenerator):
                 name = procedure.name
 
         self.name = name + NAME_SUFFIX
-        self.arguments = C_Arguments(procedure)
+        self.arguments = C_Wrapper_Arguments(procedure)
 
 
-class C_Module(CodeGenerator):
+class C_Wrapper_Module(CodeGenerator):
     """Includes a bunch of wrappers that should appear in one c interfacing module"""
-    def __init__(self, name: str, orig_mod_name: str, doc: DocList):
-        self.name = name
-        self.orig_mod_name = orig_mod_name
-        self.doc = doc
+    def __init__(self, module: Module):
+        self.name = module.name + NAME_SUFFIX
+        self.orig_module = module
+        self.doc = module.doc_list
         self.c_wrappers = []
-
-    def __iadd__(self, c_wrapper):
-        if type(c_wrapper) is C_Wrapper:
-            self.c_wrappers.append(c_wrapper)
-        else:
-            raise TypeError("Only supporting values of type 'C_Wrapper' to be added")
-
-        return self
+        for procedure in module.procedures:
+            if procedure.meta.category == "C-interface":
+                self.c_wrappers.append(C_Wrapper_Wrapper(procedure))
 
     def __iter__(self):
         return iter(self.c_wrappers)
@@ -143,22 +134,18 @@ class C_Module(CodeGenerator):
         return len(self.c_wrappers)
 
 
-class C_Modules(CodeGenerator, tuple):
-    """Collection of C_Module objects"""
-    def __new__(cls, project: Project):
+class C_Wrapper_Modules(CodeGenerator, tuple):
+    """Collection of C_Wrapper_Module objects"""
+    def __new__(cls, modules: Modules):
         """
             Creates and Collects all C wrappers for the subroutines/functions in the Project that have the 'category: C-interface' meta-tag and returns them.
             The output will only have non-empty modules.
         """
         c_modules = []
 
-        for module in project.modules:
+        for module in modules:
             if not module.name.endswith(NAME_SUFFIX):
-                c_module = C_Module(module.name + NAME_SUFFIX, module.name, DocList.from_fortran(module))
-                for procedure in map(Procedure, module.routines):
-                    if procedure.meta.category == "C-interface":
-                        c_module += C_Wrapper(procedure, module.name)
-
+                c_module = C_Wrapper_Module(module)
                 if len(c_module) > 0:
                     c_modules.append(c_module)
 
