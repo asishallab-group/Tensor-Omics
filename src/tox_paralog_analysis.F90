@@ -8,7 +8,7 @@ module tox_paralog_analysis
     implicit none
 
     integer(int32), parameter :: DOSAGE_PATTERN = 0
-    integer(int32), parameter :: SUBFUNC_PATTERN = 1
+    integer(int32), parameter :: MODE_SUBFUNC_PATTERN = 1
 
 contains
 
@@ -133,10 +133,11 @@ contains
         real(real64), dimension(n_genes), intent(out) :: temp_work_array
             !! needed for efficient check of minimum value after a certain index
 
-        call detect_patterns(ancestor, genes, n_genes, n_dims, SUBFUNC_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=paralog_norms, subfunc_sorted_paralog_norms_perm=sorted_paralog_norms_perm, subfunc_temp_work_array=temp_work_array, ierr=ierr)
+        call detect_patterns(ancestor, genes, n_genes, n_dims, MODE_SUBFUNC_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=paralog_norms, subfunc_sorted_paralog_norms_perm=sorted_paralog_norms_perm, subfunc_temp_work_array=temp_work_array, ierr=ierr)
     end subroutine detect_subfunctionalization
 
-    !> Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    !> category: C-interface
+    !| Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
     pure subroutine detect_patterns(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)
         use f42_utils, only: PI
 
@@ -185,6 +186,7 @@ contains
             !! in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
         integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm
             !! in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
+            !! M_DOC_REQUIRED_IF_MODE(tox_paralog_analysis, MODE_SUBFUNC_PATTERN)
         real(real64), dimension(n_genes), intent(out), optional :: subfunc_temp_work_array
             !! in subfunctionalization mode needed for efficient check of minimum value after a certain index
         real(real64), intent(in), optional :: subfunc_rdi_threshold
@@ -357,7 +359,7 @@ contains
                     end if
                 end do
             end block
-        case (SUBFUNC_PATTERN)
+        case (MODE_SUBFUNC_PATTERN)
             block
                 real(real64) :: residual_norm
 
@@ -618,7 +620,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! error code
 
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
     end subroutine filter_paralogs_by_pattern_subfunctionalization
 
     !> This subroutine prefilters the genes for dosage effect,
@@ -698,7 +700,7 @@ contains
                     if (is_err(ierr)) return
                 end if
             end do
-        case (SUBFUNC_PATTERN)
+        case (MODE_SUBFUNC_PATTERN)
             ! only genes with angles greater than the gene-family median angle are marked active
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) >= threshold) then

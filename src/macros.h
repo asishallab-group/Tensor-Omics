@@ -14,3 +14,8 @@
 #define M_NAN ieee_value(1.0_real64, ieee_quiet_nan)
 #define M_NEG_INF ieee_value(1.0_real64, ieee_negative_inf)
 #define M_POS_INF ieee_value(1.0_real64, ieee_positive_inf)
+
+#define M_DOC_DEFAULT(DEFAULT_VAL) The default value is `DEFAULT_VAL`.
+#define M_DOC_NO_DEFAULT This argument will be ignored if not present.
+#define M_DOC_REQUIRED_IF_MODE(MODULE, MODE) This optional argument needs to be passed if used mode is [[MODULE(module):MODE(variable)]].
+#define M_DOC_REQUIRED_IF_METHOD(MODULE, METHOD) This optional argument needs to be passed if used method is [[MODULE(module):METHOD(variable)]].

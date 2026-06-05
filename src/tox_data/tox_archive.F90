@@ -713,7 +713,8 @@ contains
         end if
     end subroutine extract_and_parse_manifest
 
-    !> Save standard tox data
+    !> category: C-interface
+    !| Save standard tox data
     subroutine save_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, &
                             expression_file, gene_to_family, gene_to_family_file, &
                             family_ids, family_ids_file, family_centroids, &
@@ -724,6 +725,7 @@ contains
         !! Zip filename
         character(len=*), intent(in), optional :: gene_ids(:)
         !! Gene ids array, will be saved if provided
+        !! M_DOC_NO_DEFAULT
         character(len=*), intent(in), optional :: family_ids(:)
         !! Family ids array, will be saved if provided
         real(real64), intent(in), optional :: expression(:,:)

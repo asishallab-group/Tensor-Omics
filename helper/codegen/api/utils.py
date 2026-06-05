@@ -4,7 +4,12 @@ class Indentable(str):
         return super(cls, cls).__new__(cls, *args, **kwargs)
 
     def __rshift__(self, level):
-        return level * " " + self.replace("\n", "\n" + level * " ")
+        indented = ""
+        for line in self.split("\n"):
+            if line:
+                indented += level * " " + line
+            indented += "\n"
+        return Indentable(indented)
 
 
 class Serializer:
@@ -41,6 +46,9 @@ class Serializer:
     def Procedure_Argument(self, spec):
         raise NotImplementedError()
 
+    def Procedure_Arguments(self, spec):
+        raise NotImplementedError()
+
     def C_Wrapper_Argument(self, spec):
         raise NotImplementedError()
 
@@ -65,3 +73,25 @@ class CodeGenerator:
                 return serialier_func(self, spec)
             except NotImplementedError as e:
                 raise NotImplementedError(f"No implementation for Serializer.{cls.__name__}(self, spec)")
+
+
+class Macros:
+    """Class for Macros"""
+    def __init__(self, macro_file: str, regex_escaped=True):
+        from pcpp.pcmd import CmdPreprocessor
+        from re import escape
+
+        self.preprocessor = CmdPreprocessor(["", macro_file])
+        if regex_escaped:
+            for macro in self.preprocessor.macros.values():
+                for token in macro.value:
+                    token.value = escape(token.value)
+
+    def __format__(self, spec):
+        tokens = self.preprocessor.tokenize(spec)
+        expanded = self.preprocessor.expand_macros(tokens)
+        return "".join(i.value for i in expanded)
+
+
+regex_escaped_preprocessor = Macros("src/macros.h")
+preprocessor = Macros("src/macros.h", False)

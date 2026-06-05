@@ -98,7 +98,7 @@ contains
     clamped = max(min_val, min(val, max_val))
   end function clamp_int
 
-  !> Compute logarithm for any base
+  !> Compute logarithm for any base M_DEFAULT_VAL(asd, dsa, 1)
   pure subroutine logx(val, base, exponent, ierr)
       real(real64), intent(in) :: val
         !! Value (`x` in \( b^y = x \))
