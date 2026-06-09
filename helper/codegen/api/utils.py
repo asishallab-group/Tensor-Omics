@@ -8,6 +8,33 @@ class Indentable(str):
         return Indentable(indented)
 
 
+class Snippet:
+    """Class for VS Code compatible Snippet"""
+    def __init__(self, key, prefix, body, description):
+        self.key = key
+        self.prefix = prefix
+        self.body = body
+        self.description = description
+
+    @classmethod
+    def create_setup_snippet(cls, language, language_short, snippet_type, routine_name, module_name, body, description):
+        return cls(
+            key=f"{language} setup for '{routine_name}' from module '{module_name}'",
+            prefix=f"{snippet_type}:{language_short}_setup_{routine_name}",
+            body=body.split("\n"),
+            description=description
+        )
+
+    @classmethod
+    def create_call_snippet(cls, language, language_short, snippet_type, routine_name, module_name, body, description):
+        return cls(
+            key=f"{language} call of '{routine_name}' from module '{module_name}'",
+            prefix=f"{snippet_type}:{language_short}_{routine_name}",
+            body=body.split("\n"),
+            description=description
+        )
+
+
 class Serializer:
     @classmethod
     def dump(self, *args, **kwargs):

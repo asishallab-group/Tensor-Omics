@@ -46,10 +46,10 @@ class Python_Serializer(Serializer):
             case "doc":
                 ndim = len(self.dimension)
                 if ndim > 0:
-                    if ndim == 1:
+                    if ndim == 1 and self.name == "character":
                         string = "str"
                     else:
-                        string = "ndarray"
+                        string = f"ndarray[{format(self, "dtype")}] of shape {format(self.dimension, "shape")} in column-major layout (order='F')"
                 else:
                     match self.name:
                         case "integer":

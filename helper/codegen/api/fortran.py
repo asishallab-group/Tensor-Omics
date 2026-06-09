@@ -19,7 +19,11 @@ class Modules(CodeGenerator, tuple):
     """Collection of Module objects"""
     def __new__(cls):
         proj = Project()
-        mods = super().__new__(cls, map(Module, proj.modules))
+
+        # sort modules for deterministic order
+        sorted_mods = sorted(proj.modules, key=lambda x: x.name)
+
+        mods = super().__new__(cls, map(Module, sorted_mods))
         mods.project = proj
         return mods
 
