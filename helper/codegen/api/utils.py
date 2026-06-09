@@ -1,18 +1,18 @@
 class Indentable(str):
     """Wrapper class to easily indent code blocks"""
     def __new__(cls, *args, **kwargs):
-        return super(cls, cls).__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
 
     def __rshift__(self, level):
-        indented = ""
-        for line in self.split("\n"):
-            if line:
-                indented += level * " " + line
-            indented += "\n"
+        indented = "\n".join(level * " " + line for line in self.split("\n") if line)
         return Indentable(indented)
 
 
 class Serializer:
+    @classmethod
+    def dump(self, *args, **kwargs):
+        raise NotImplementedError()
+
     def Module(self, spec):
         raise NotImplementedError()
 

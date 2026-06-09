@@ -19,7 +19,9 @@ class Modules(CodeGenerator, tuple):
     """Collection of Module objects"""
     def __new__(cls):
         proj = Project()
-        return super(cls, cls).__new__(cls, map(Module, proj.modules))
+        mods = super().__new__(cls, map(Module, proj.modules))
+        mods.project = proj
+        return mods
 
 
 class Project(CodeGenerator, _Project):
@@ -43,7 +45,7 @@ class Project(CodeGenerator, _Project):
 class Dimension(CodeGenerator, tuple):
     """Representation of the dimension attribute of a variable"""
     def __new__(cls, arg: List[str, ...] = ()):
-        return super(cls, cls).__new__(cls, arg)
+        return super().__new__(cls, arg)
 
     @classmethod
     def from_fortran_variable(cls, arg: FortranVariable):
@@ -88,6 +90,7 @@ class Fortran_Type(CodeGenerator):
         self.name = type_name
         self.kind = kind
         self.len = length
+        self.is_fixed_length = False if length is None else re.match(r"\d+", length)
         self.dimension = dimension
         self.intent = intent
         self.needs_conversion = self.name in ("character", "logical")
@@ -97,7 +100,7 @@ class Fortran_Type(CodeGenerator):
         type = re.match(r"\s*([^ \(]+).*", arg.full_type, re.IGNORECASE).group(1).lower()
 
         if type == "character":
-            len_match = re.match(r".*\blen\s*=\s*(\*|[^\),]+).*", arg.full_type, re.IGNORECASE)
+            len_match = re.match(r".*\blen\s*=\s*(\*|[^\), ]+).*", arg.full_type, re.IGNORECASE)
             if len_match is None:
                 raise SyntaxError("Dummy arguments of type 'character' need to be declared with a named 'len' type paramter, like 'character(len=42)'")
             length = len_match.group(1)
@@ -143,6 +146,7 @@ class DocList(CodeGenerator):
 
             warnings.warn(warning + "\033[0m")
 
+        doc_list = [line.lstrip() for line in doc_list]
         return cls(doc_list, ty)
 
     def __getitem__(self, idx):
@@ -164,14 +168,14 @@ class DocList(CodeGenerator):
 class Procedure_Argument(CodeGenerator):
     """Wrapper class for procedure arguments"""
 
-    def __init__(self, argument: FortranVariable):
+    def __init__(self, argument: FortranVariable, proc: Procedure):
         self.name = argument.name
         self.doc_list = DocList.from_fortran(argument)
         self.attribs = argument.attribs
         self.optional = argument.optional
         self.type = Fortran_Type.from_fortran_variable(argument)
         self.is_temporary = self.name.startswith("tmp_")
-        self.is_dim_arg = self.name.startswith("n_") and len(self.type.dimension) == 0
+        self.parent = proc
 
     @property
     def default_value(self) -> int | str | bool | float | None:
@@ -183,11 +187,18 @@ class Procedure_Argument(CodeGenerator):
 
         return None
 
+    @property
+    def is_dim_arg_for(self) -> Self | None:
+        if len(self.type.dimension) == 0:
+            for arg in self.parent.args:
+                if self.name in arg.type.dimension:
+                    return arg
+
 
 class Procedure_Arguments(CodeGenerator, tuple):
     """Collection of Procedure_Argument objects"""
-    def __new__(cls, args: List[FortranVariable]):
-        return super(cls, cls).__new__(cls, map(Procedure_Argument, args))
+    def __new__(cls, args: List[FortranVariable], proc: Procedure):
+        return super().__new__(cls, (Procedure_Argument(arg, proc) for arg in args))
 
 
 class Procedure(CodeGenerator):
@@ -195,7 +206,7 @@ class Procedure(CodeGenerator):
     def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
         self.name = procedure.name
         self.meta = procedure.meta
-        self.args = Procedure_Arguments(procedure.args)
+        self.args = Procedure_Arguments(procedure.args, self)
         self.doc_list = DocList.from_fortran(procedure)
         self.retvar = getattr(procedure, "retvar", None)
         self.type = "subroutine" if self.retvar is None else "function"

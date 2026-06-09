@@ -46,9 +46,9 @@ class C_Wrapper_Serializer(Serializer):
     def DocList(self, spec):
         match self.type:
             case "argument":
-                formatted = f"!!{"\n!!".join(self.doc_list)}"
+                formatted = f"!! {"\n!! ".join(self.doc_list)}"
             case "procedure" | "module":
-                formatted = f"!>{"\n!|".join(self.doc_list)}"
+                formatted = f"!> {"\n!| ".join(self.doc_list)}"
         return Indentable(formatted)
 
     def Dimension(self, spec):
@@ -140,8 +140,8 @@ class C_Wrapper_Serializer(Serializer):
     def C_Wrapper_Arguments(self, spec):
         match spec:
             case "dummy":
-                formatted_dim_args = "\n".join(format(arg, "dummy") for arg in self if arg.is_dim_arg)
-                formatted_other = "\n".join(format(arg, "dummy") for arg in self if not arg.is_dim_arg)
+                formatted_dim_args = "\n".join(format(arg, "dummy") for arg in self if arg.is_dim_arg_for is not None)
+                formatted_other = "\n".join(format(arg, "dummy") for arg in self if arg.is_dim_arg_for is None)
                 formatted = formatted_dim_args + "\n" + formatted_other
             case "locals_type_conversion" | "type_conversion_inputs":
                 formatted = "\n".join(format(arg, spec) for arg in self if arg.type.needs_conversion)

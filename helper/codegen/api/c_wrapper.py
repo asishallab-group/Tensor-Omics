@@ -3,33 +3,31 @@ from .utils import CodeGenerator
 from typing import List, Tuple
 from enum import Enum
 import re
-from pathlib import Path
-import os
-
 
 NAME_SUFFIX = "_c"
 
 
 class C_Wrapper_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
-    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, is_dim_arg: bool, default_value=None, only_c_arg=False):
+    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: C_Wrapper_Argument | Procedure_Argument = None):
         self.name = name
         self.doc = doc
         self.type = type
         self.default_value = default_value
+        self.optional = optional
         self.only_c_arg = only_c_arg
         self.is_temporary = is_temporary
-        self.is_dim_arg = is_dim_arg
+        self.is_dim_arg_for = is_dim_arg_for
 
     @classmethod
-    def create_dim_arg(cls, name: str, orig_name: str, doc: str, only_c_arg=True):
+    def create_dim_arg(cls, name: str, doc: str, only_c_arg=True, is_dim_arg_for=None):
         return cls(
             name=name,
-            doc=[f" {doc}"],
+            doc=DocList([f" {doc}"], type="argument"),
             type=Fortran_Type("integer", intent=Intent.IN, kind="int32"),
             only_c_arg=only_c_arg,
             is_temporary=False,
-            is_dim_arg=True
+            is_dim_arg_for=is_dim_arg_for
         )
 
     @classmethod
@@ -42,29 +40,34 @@ class C_Wrapper_Argument(CodeGenerator):
             if dim == ":":
                 extra_arg = cls.create_dim_arg(
                     f"n_{arg.name}_elements" + dim_name_suffix,
-                    arg.name,
                     f"Size of the {dim_idx + 1}. dimension/extent of `{arg.name}`"
                 )
                 dimension[dim_idx] = extra_arg.name
                 extra_dim_args.append(extra_arg)
 
-        if arg.type.name == "character" and arg.type.len != "1":
-            extra_arg = cls.create_dim_arg(
-                f"{arg.name}_strlen",
-                arg.name,
-                f"String length of '{arg.name}'"
-            )
-            extra_dim_args.insert(0, extra_arg)
-            dimension.insert(0, extra_arg.name)
+        if arg.type.name == "character":
+            if arg.type.len == "*":
+                extra_arg = cls.create_dim_arg(
+                    f"{arg.name}_strlen",
+                    f"String length of '{arg.name}'"
+                )
+                extra_dim_args.insert(0, extra_arg)
+                dimension.insert(0, extra_arg.name)
+            else:
+                dimension.insert(0, arg.type.len)
 
         argument = cls(
             name=arg.name,
             doc=arg.doc_list,
             type=Fortran_Type(arg.type.name, intent=arg.type.intent, kind=arg.type.kind, dimension=Dimension(dimension), length=arg.type.len),
             is_temporary=arg.is_temporary,
-            is_dim_arg=arg.is_dim_arg,
+            is_dim_arg_for=arg.is_dim_arg_for,
             default_value=arg.default_value,
+            optional=arg.optional
         )
+
+        for dim_arg in extra_dim_args:
+            dim_arg.is_dim_arg_for = argument
 
         return argument, tuple(extra_dim_args)
 
@@ -89,8 +92,7 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
                 doc=DocList.from_fortran(retvar),
                 type=ret_type,
                 only_c_arg=True,
-                is_temporary=False,
-                is_dim_arg=False
+                is_temporary=False
             )
             arguments.append(result_argument)
 
@@ -100,11 +102,10 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
                 doc=DocList([" Error code"], "argument"),
                 type=Fortran_Type("integer", Intent.OUT, kind="int32"),
                 only_c_arg=True,
-                is_temporary=False,
-                is_dim_arg=False
+                is_temporary=False
             ))
 
-        return super(cls, cls).__new__(cls, arguments)
+        return super().__new__(cls, arguments)
 
 
 class C_Wrapper(CodeGenerator):
@@ -164,7 +165,9 @@ class C_Wrapper_Modules(CodeGenerator, tuple):
                 if len(c_module) > 0:
                     c_modules.append(c_module)
 
-        return super(cls, cls).__new__(cls, c_modules)
+        mods = super().__new__(cls, c_modules)
+        mods.project = modules.project
+        return mods
 
     def dump(self, out_dir: str):
         out_dir = Path(out_dir)
