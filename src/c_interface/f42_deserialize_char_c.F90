@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!> Module for C-wrappers for [[f42_deserialize_char(module)]]
+!>  Module for C-wrappers for [[f42_deserialize_char(module)]]
 !| Module for deserializing character arrays from files
 module f42_deserialize_char_c
     use safeguard
@@ -13,45 +13,40 @@ module f42_deserialize_char_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
 contains
 
-    !> C-wrapper for [[f42_deserialize_char(module):deserialize_char_1d(subroutine)]]
-    !| Directly deserialize a 1D character array from a file (array already allocated)
-    subroutine deserialize_char_1d_c(arr, arr_strlen, n_arr_elements, filename, filename_strlen, ierr) bind(C, name="deserialize_char_1d_c")
-        use f42_deserialize_char, only: deserialize_char_1d
-        integer(c_int), intent(in), target :: arr_strlen
-            !! String length of 'arr'
-        integer(c_int), intent(in), target :: n_arr_elements
-            !! Size of the 1. dimension/extent of `arr`
+    !> C-wrapper for [[f42_deserialize_char(module):deserialize_char_nd(subroutine)]]
+    !| 
+    !| Subroutine to deserialize a flat character array from a file
+    subroutine deserialize_char_nd_c(flat, flat_strlen, n_flat_elements, filename, filename_strlen, ierr) bind(C, name="deserialize_char_nd_c")
+        use f42_deserialize_char, only: deserialize_char_nd
+        integer(c_int), intent(in), target :: flat_strlen
+            !!  String length of 'flat'
+        integer(c_int), intent(in), target :: n_flat_elements
+            !!  Size of the 1. dimension/extent of `flat`
         integer(c_int), intent(in), target :: filename_strlen
-            !! String length of 'filename'
-        character(len=1, kind=c_char), intent(out), dimension(arr_strlen, n_arr_elements), target :: arr
-            !! Pre-allocated array to read the data into
+            !!  String length of 'filename'
+        character(len=1, kind=c_char), intent(out), dimension(flat_strlen, n_flat_elements), target :: flat
+            !! Output flat character array
         character(len=1, kind=c_char), intent(in), dimension(filename_strlen), target :: filename
-            !! Name of the file to read from
+            !! Name of the file to read
         integer(c_int), intent(out), target :: ierr
             !! Error code
-
-        character(len=:), allocatable, dimension(:, :) :: arr_f
-        character(len=:), allocatable, dimension(:) :: filename_f
-
+        character(len=:), allocatable, dimension(:) :: flat_f
+        character(len=:), allocatable :: filename_f
         M_CHECK_IERR_NON_NULL
-        M_CHECK_NON_NULL(arr)
-        M_CHECK_NON_NULL(arr_strlen)
-        M_CHECK_NON_NULL(n_arr_elements)
+        M_CHECK_NON_NULL(flat)
+        M_CHECK_NON_NULL(flat_strlen)
+        M_CHECK_NON_NULL(n_flat_elements)
         M_CHECK_NON_NULL(filename)
         M_CHECK_NON_NULL(filename_strlen)
-
-        M_ALLOCATE(character(len=*) :: arr_f(arr_strlen, n_arr_elements))
-        call string_as_c_char_1d(filename, filename_f)
-
-        call deserialize_char_1d(arr_f, filename_f, ierr)
-
-        call c_char_2d_as_string(arr, arr_f)
-
-    end subroutine deserialize_char_1d_c
-
+        M_ALLOCATE(character(len=flat_strlen) :: flat_f(n_flat_elements))
+        call c_char_1d_as_string(filename, filename_f, ierr)
+        if (is_err(ierr)) return
+        call deserialize_char_nd(flat_f, filename_f, ierr)
+        call string_as_c_char_2d(flat_f, flat)
+    end subroutine deserialize_char_nd_c
 
 end module f42_deserialize_char_c
 #endif

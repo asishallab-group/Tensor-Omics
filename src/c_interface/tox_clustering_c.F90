@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!> Module for C-wrappers for [[tox_clustering(module)]]
+!>  Module for C-wrappers for [[tox_clustering(module)]]
 module tox_clustering_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
@@ -12,10 +12,11 @@ module tox_clustering_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
 contains
 
     !> C-wrapper for [[tox_clustering(module):cluster_factor_trajectories_k_means(subroutine)]]
+    !| 
     !| Performs k-means clustering on factor trajectories, so factor evolution over time
     subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")
         use tox_clustering, only: cluster_factor_trajectories_k_means
@@ -32,11 +33,11 @@ contains
         real(c_double), intent(inout), dimension(n_factors, n_clusters), target :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
-            !!
+            !! 
             !! The final values will be the final centroids of the clusters
         integer(c_int), intent(out), dimension(n_samples * n_timepoints), target :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-            !!
+            !! 
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(c_int), intent(out), dimension(n_clusters), target :: label_counts
             !! holds the number of points having the respective label assigned
@@ -44,9 +45,6 @@ contains
             !! Error code
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
-
-
-
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_clusters)
         M_CHECK_NON_NULL(trajectories)
@@ -57,15 +55,8 @@ contains
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
         M_CHECK_NON_NULL(max_iterations)
-
-
-
         call cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
-
-
-
     end subroutine cluster_factor_trajectories_k_means_c
-
 
 end module tox_clustering_c
 #endif

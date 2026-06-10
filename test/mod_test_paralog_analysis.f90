@@ -349,7 +349,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when calculating work array size")
@@ -406,7 +406,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, subf_min_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, subf_min_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating work array size")
@@ -471,7 +471,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating work array size")
@@ -537,7 +537,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating work array size")
@@ -602,7 +602,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating work array size")
@@ -667,7 +667,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
@@ -704,7 +704,7 @@ contains
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
@@ -920,7 +920,7 @@ contains
         paralog_angles(1:4) = 2 * threshold
         paralog_angles(n_genes) = 2 * threshold
 
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         n_in_filtered = 0
         do i_paralog = 1, n_genes
             if (mask_check_state(masks(:, 1), i_paralog)) then
@@ -979,7 +979,7 @@ contains
 
             allocate(work_arr_paralog_subsets(1, work_array_size + 1))
             work_arr_paralog_subsets = 0
-            call detect_patterns(ancestor, paralogs, n_genes, n_dims, SUBFUNC_PATTERN, mask_all_active, size(mask_all_active), n_results, max_subset_size_all_active, work_arr_paralog_subsets, work_array_size + 1, active_mask, temp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm=subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array=subfunc_temp_work_array, ierr=ierr)
+            call detect_patterns(ancestor, paralogs, n_genes, n_dims, MODE_SUBFUNC_PATTERN, mask_all_active, size(mask_all_active), n_results, max_subset_size_all_active, work_arr_paralog_subsets, work_array_size + 1, active_mask, temp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm=subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array=subfunc_temp_work_array, ierr=ierr)
 
             ! masks have at least one active bit -> non-zero
             ! masks also won't be reset to zero, as new added masks overwrite them anyway.

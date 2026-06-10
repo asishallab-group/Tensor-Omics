@@ -1,7 +1,6 @@
 from .api.utils import CodeGenerator, Serializer, Indentable
 from .api.c_wrapper import C_Wrapper_Modules
 from .api.fortran import Intent
-from pathlib import Path
 
 
 INDENT = 4
@@ -37,11 +36,13 @@ class Python_Serializer(Serializer):
             case "argtypes":
                 ndim = len(self.dimension)
                 if ndim == 0:
-                    string = f"ctypes.C_POINTER({format(self, "ctypes")})"
+                    string = f"ctypes.POINTER({format(self, "ctypes")})"
                 else:
                     dtype = format(self, "dtype")
                     dtype = "" if not dtype else ", dtype=" + dtype
                     flags = "F_CONTIGUOUS" if ndim > 1 else "C_CONTIGUOUS"
+                    if self.name == "character":
+                        ndim -= 1
                     string = f"np.ctypeslib.ndpointer(ndim={ndim}, flags='{flags}'{dtype})"
             case "doc":
                 ndim = len(self.dimension)
@@ -66,7 +67,7 @@ class Python_Serializer(Serializer):
                 ndim = len(self.dimension)
                 if ndim > 0:
                     if self.name == "character":
-                        string = f"np.zeros({format(self.dimension, "char_shape")}, dtype={format(self, "dtype")}, order='F')"
+                        string = f"np.zeros({format(self.dimension[1:], "shape")}, dtype={format(self, "dtype")}, order='F')"
                     else:
                         string = f"np.empty({format(self.dimension, "shape")}, dtype={format(self, "dtype")}, order='F')"
                 else:
@@ -81,8 +82,6 @@ class Python_Serializer(Serializer):
         match spec:
             case "shape":
                 string = f"({", ".join(self)})"
-            case "char_shape":
-                string = f"({", ".join(self[1:])})"
             case "char_len":
                 string = self[0]
 
@@ -109,12 +108,12 @@ class Python_Serializer(Serializer):
                     string = f"""{self.name} : {format(self.type, "doc")}{optional}
 {format(self.doc) >> INDENT}"""
             case "arglist":
-                if self.type.intent is not Intent.OUT and self.is_dim_arg_for is None:
+                if self.type.intent is not Intent.OUT and self.is_dim_arg_for is None and not self.is_shape_arg:
                     string = self.name
                     if self.default_value is not None:
                         string += "=" + str(self.default_value)
             case "ensure_numpy_array":
-                if self.is_dim_arg_for is None and len(self.type.dimension) > 0:
+                if self.is_dim_arg_for is None and len(self.type.dimension) > 0 and not self.is_shape_arg:
                     if self.type.name == "character":
                         string = f"{self.name} = np.asarray({self.name})"
                     else:
@@ -123,6 +122,10 @@ class Python_Serializer(Serializer):
                             dtype = ", dtype=" + dtype
                         mem_layout = "fortran" if len(self.type.dimension) > 1 else "contiguous"
                         string = f"{self.name} = np.as{mem_layout}array({self.name}{dtype})"
+
+                shape_arg = self.shape_arg
+                if shape_arg is not None:
+                    string += f"\n{shape_arg.name} = np.ascontiguousarray({self.name}.shape, dtype=np.int32)"
             case "allocate":
                 if self.type.intent is Intent.OUT:
                     string = f"{self.name} = {format(self.type, "init_val")}"
@@ -141,7 +144,10 @@ class Python_Serializer(Serializer):
                 string = format(self.type, "argtypes")
             case "call_args":
                 if len(self.type.dimension) == 0:
-                    string = f"ctypes.byref({format(self.type, "ctypes")}({self.name}))"
+                    if self.type.intent is not Intent.OUT:
+                        string = f"ctypes.byref({format(self.type, "ctypes")}({self.name}))"
+                    else:
+                        string = f"ctypes.byref({self.name})"
                 else:
                     string = self.name
             case "readonly":
@@ -169,7 +175,7 @@ class Python_Serializer(Serializer):
                 else:
                     dict_elements = ",\n".join(f'"{arg.name}": {arg.name}' for arg in outputs)
                     string += f"""{{
-{Indentable(dict_elements) >> 4}
+{Indentable(dict_elements) >> INDENT}
 }}"""
 
         return Indentable(string)
@@ -196,12 +202,12 @@ class Python_Serializer(Serializer):
 {format(self.arguments, "allocate") >> INDENT}
 
     # define ctypes interface
-    tox.{self.name}.argtypes(
+    tox.{self.name}.argtypes = (
 {format(self.arguments, "argtypes") >> 2 * INDENT}
     )
     tox.{self.name}.restype = None
 
-    {self.name}(
+    tox.{self.name}(
 {format(self.arguments, "call_args") >> 2 * INDENT}
     )
 
@@ -222,6 +228,9 @@ class Python_Serializer(Serializer):
 
     @classmethod
     def dump(cls, c_wrapper_modules: C_Wrapper_Modules, out_file: str = "python/tensoromics_functions.py", lib_path: str = "build/libtensor-omics.so"):
+        from pathlib import Path
+
+        c_wrapper_modules.use(cls)
         out_file = Path(out_file)
         if not out_file.parent.is_dir():
             raise ValueError(f"out_file's directory '{out_file.parent}' does not exist")

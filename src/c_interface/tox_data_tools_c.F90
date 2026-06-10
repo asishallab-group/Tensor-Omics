@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!> Module for C-wrappers for [[tox_data_tools(module)]]
+!>  Module for C-wrappers for [[tox_data_tools(module)]]
 module tox_data_tools_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
@@ -12,35 +12,36 @@ module tox_data_tools_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
 contains
 
     !> C-wrapper for [[tox_data_tools(module):read_expression_vectors_tsv(subroutine)]]
+    !| 
     !| Read expression vectors from csv/tsv files
     subroutine read_expression_vectors_tsv_c(file_list, file_list_strlen, n_file_list_elements, gene_ids, gene_ids_strlen, n_gene_ids_elements, expression_vectors, n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2, n_header_rows, gene_col, value_cols, n_value_cols_elements, start_row, ierr, delimiter) bind(C, name="read_expression_vectors_tsv_c")
         use tox_data_tools, only: read_expression_vectors_tsv
         integer(c_int), intent(in), target :: file_list_strlen
-            !! String length of 'file_list'
+            !!  String length of 'file_list'
         integer(c_int), intent(in), target :: n_file_list_elements
-            !! Size of the 1. dimension/extent of `file_list`
+            !!  Size of the 1. dimension/extent of `file_list`
         integer(c_int), intent(in), target :: gene_ids_strlen
-            !! String length of 'gene_ids'
+            !!  String length of 'gene_ids'
         integer(c_int), intent(in), target :: n_gene_ids_elements
-            !! Size of the 1. dimension/extent of `gene_ids`
+            !!  Size of the 1. dimension/extent of `gene_ids`
         integer(c_int), intent(in), target :: n_expression_vectors_elements_dim_1
-            !! Size of the 1. dimension/extent of `expression_vectors`
+            !!  Size of the 1. dimension/extent of `expression_vectors`
         integer(c_int), intent(in), target :: n_expression_vectors_elements_dim_2
-            !! Size of the 2. dimension/extent of `expression_vectors`
-        integer(c_int), intent(in), target :: n_header_rows
-            !! Number of header rows to skip
+            !!  Size of the 2. dimension/extent of `expression_vectors`
         integer(c_int), intent(in), target :: n_value_cols_elements
-            !! Size of the 1. dimension/extent of `value_cols`
+            !!  Size of the 1. dimension/extent of `value_cols`
         character(len=1, kind=c_char), intent(in), dimension(file_list_strlen, n_file_list_elements), target :: file_list
             !! List of files to read from
         character(len=1, kind=c_char), intent(in), dimension(gene_ids_strlen, n_gene_ids_elements), target :: gene_ids
             !! Array of gene IDS
         real(c_double), intent(inout), dimension(n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2), target :: expression_vectors
             !! Array of expression vectors
+        integer(c_int), intent(in), target :: n_header_rows
+            !! Number of header rows to skip
         integer(c_int), intent(in), target :: gene_col
             !! Index of column with gene_ids
         integer(c_int), intent(in), dimension(n_value_cols_elements), target :: value_cols
@@ -49,14 +50,12 @@ contains
             !! Row in the expression vectors to start in
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=1, kind=c_char), intent(in), target :: delimiter
+        character(len=1, kind=c_char), intent(in), dimension(1), target :: delimiter
             !! optional delimiter
             !! The default value is `'\t'`.
-
-        character(len=:), allocatable, dimension(:, :) :: file_list_f
-        character(len=:), allocatable, dimension(:, :) :: gene_ids_f
+        character(len=:), allocatable, dimension(:) :: file_list_f
+        character(len=:), allocatable, dimension(:) :: gene_ids_f
         character(len=:), allocatable :: delimiter_f
-
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(file_list)
         M_CHECK_NON_NULL(file_list_strlen)
@@ -73,18 +72,14 @@ contains
         M_CHECK_NON_NULL(n_value_cols_elements)
         M_CHECK_NON_NULL(start_row)
         M_CHECK_NON_NULL(delimiter)
-
-        call string_as_c_char_2d(file_list, file_list_f)
-        call string_as_c_char_2d(gene_ids, gene_ids_f)
-        M_ALLOCATE(character(len=1) :: delimiter_f)
-        call char_as_c_char(delimiter, delimiter_f)
-
+        call c_char_2d_as_string(file_list, file_list_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(delimiter, delimiter_f, ierr)
+        if (is_err(ierr)) return
         call read_expression_vectors_tsv(file_list_f, gene_ids_f, expression_vectors, n_header_rows, gene_col, value_cols, start_row, ierr, delimiter_f)
-
-
-
     end subroutine read_expression_vectors_tsv_c
-
 
 end module tox_data_tools_c
 #endif

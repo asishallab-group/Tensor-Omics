@@ -9,59 +9,124 @@ dll_path = os.path.abspath("build/libtensor-omics.so")
 tox = ctypes.CDLL(dll_path)
 
 
-def deserialize_char_1d(
+def deserialize_char_nd(
         filename
         ):
     """
-    Directly deserialize a 1D character array from a file (array already allocated)
+    Subroutine to deserialize a flat character array from a file
 
     Parameters
     ----------
     filename : str
-        Name of the file to read from
+        Name of the file to read
     """
 
     # ensure all array inputs are numpy arrays
-    arr = np.asarray(arr)
+    flat = np.asarray(flat)
     filename = np.asarray(filename)
 
     # extract dimension arguments
-    arr_strlen = arr.dtype.itemsize // arr.dtype.alignment
-    n_arr_elements = arr.shape[0]
+    flat_strlen = flat.dtype.itemsize // flat.dtype.alignment
+    n_flat_elements = flat.shape[0]
     filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
 
     # Create temporaries and/or outputs
-    arr = np.zeros((n_arr_elements), dtype=f"S{arr_strlen}", order='F')
+    flat = np.zeros((n_flat_elements), dtype=f"S{flat_strlen}", order='F')
     filename = filename.astype(f"S{filename_strlen}", order="F")
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.deserialize_char_1d_c.argtypes(
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=f"S{arr_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+    tox.deserialize_char_nd_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{flat_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
-    tox.deserialize_char_1d_c.restype = None
+    tox.deserialize_char_nd_c.restype = None
 
-    deserialize_char_1d_c(
-        arr,
-        ctypes.byref(ctypes.c_int(arr_strlen)),
-        ctypes.byref(ctypes.c_int(n_arr_elements)),
+    tox.deserialize_char_nd_c(
+        flat,
+        ctypes.byref(ctypes.c_int(flat_strlen)),
+        ctypes.byref(ctypes.c_int(n_flat_elements)),
         filename,
         ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(ierr)
     )
 
     # throw error on error
     check_err_code(ierr.value)
 
     # Mark all arrays as read-only
-    arr.setflags(write=False)
+    flat.setflags(write=False)
 
-    return arr
+    return flat
+
+
+def serialize_char_nd(
+        flat,
+        filename
+        ):
+    """
+    Serialize a character array of arbitrary dimensions to a binary file.
+    The file will contain a magic number, type code, dimension, shape, character length, and the array data.
+    @note This routine is only called by R and serializes only flat character arrays to the memory
+
+    Parameters
+    ----------
+    flat : ndarray[f"S{flat_strlen}"] of shape (flat_strlen, *) in column-major layout (order='F')
+        flat array to save
+    flat_shape : ndarray[np.int32] of shape (n_flat_shape_elements) in column-major layout (order='F')
+        dimensions of the array
+    filename : str
+        output filename
+    """
+
+    # ensure all array inputs are numpy arrays
+    flat = np.asarray(flat)
+    flat_shape = np.ascontiguousarray(flat.shape, dtype=np.int32)
+    filename = np.asarray(filename)
+
+    # extract dimension arguments
+    flat_strlen = flat.dtype.itemsize // flat.dtype.alignment
+    n_flat_shape_elements = flat_shape.shape[0]
+    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
+
+    # Create temporaries and/or outputs
+    flat = flat.astype(f"S{flat_strlen}", order="F")
+    filename = filename.astype(f"S{filename_strlen}", order="F")
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    tox.serialize_char_nd_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{flat_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.serialize_char_nd_c.restype = None
+
+    tox.serialize_char_nd_c(
+        flat,
+        ctypes.byref(ctypes.c_int(flat_strlen)),
+        flat_shape,
+        ctypes.byref(ctypes.c_int(n_flat_shape_elements)),
+        filename,
+        ctypes.byref(ctypes.c_int(filename_strlen)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return None
 
 
 def serialize_int_3d(
@@ -95,25 +160,25 @@ def serialize_int_3d(
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.serialize_int_3d_c.argtypes(
+    tox.serialize_int_3d_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.serialize_int_3d_c.restype = None
 
-    serialize_int_3d_c(
+    tox.serialize_int_3d_c(
         arr,
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_1)),
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_2)),
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_3)),
         filename,
         ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(ierr)
     )
 
     # throw error on error
@@ -156,25 +221,25 @@ def serialize_logical_3d(
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.serialize_logical_3d_c.argtypes(
+    tox.serialize_logical_3d_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.serialize_logical_3d_c.restype = None
 
-    serialize_logical_3d_c(
+    tox.serialize_logical_3d_c(
         arr,
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_1)),
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_2)),
         ctypes.byref(ctypes.c_int(n_arr_elements_dim_3)),
         filename,
         ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(ierr)
     )
 
     # throw error on error
@@ -223,19 +288,19 @@ def serialize_real_nd(
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.serialize_real_nd_c.argtypes(
+    tox.serialize_real_nd_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.serialize_real_nd_c.restype = None
 
-    serialize_real_nd_c(
+    tox.serialize_real_nd_c(
         arr,
         ctypes.byref(ctypes.c_int(n_arr_elements)),
         dims,
@@ -243,7 +308,7 @@ def serialize_real_nd(
         ctypes.byref(ctypes.c_int(ndim)),
         filename,
         ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(ierr)
     )
 
     # throw error on error
@@ -352,46 +417,46 @@ def save_tox_data(
     shift_vectors_file = shift_vectors_file.astype(f"S{shift_vectors_file_strlen}", order="F")
 
     # define ctypes interface
-    tox.save_tox_data_c.argtypes(
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{zip_filename_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=f"S{gene_ids_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{gene_ids_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
+    tox.save_tox_data_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{zip_filename_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{gene_ids_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{gene_ids_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{expression_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{expression_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{gene_to_family_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=f"S{family_ids_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{family_ids_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{gene_to_family_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{family_ids_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{family_ids_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{family_centroids_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{family_centroids_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{shift_vectors_file_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{shift_vectors_file_strlen}"),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.save_tox_data_c.restype = None
 
-    save_tox_data_c(
+    tox.save_tox_data_c(
         zip_filename,
         ctypes.byref(ctypes.c_int(zip_filename_strlen)),
-        ctypes.byref(ctypes.c_int(ierr)),
+        ctypes.byref(ierr),
         gene_ids,
         ctypes.byref(ctypes.c_int(gene_ids_strlen)),
         ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
@@ -471,21 +536,21 @@ def cluster_factor_trajectories_k_means(
     max_iterations = ctypes.c_int(max_iterations)
 
     # define ctypes interface
-    tox.cluster_factor_trajectories_k_means_c.argtypes(
-        ctypes.C_POINTER(ctypes.c_int),
+    tox.cluster_factor_trajectories_k_means_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.cluster_factor_trajectories_k_means_c.restype = None
 
-    cluster_factor_trajectories_k_means_c(
+    tox.cluster_factor_trajectories_k_means_c(
         ctypes.byref(ctypes.c_int(n_clusters)),
         trajectories,
         ctypes.byref(ctypes.c_int(n_factors)),
@@ -494,7 +559,7 @@ def cluster_factor_trajectories_k_means(
         centroids,
         labels,
         label_counts,
-        ctypes.byref(ctypes.c_int(ierr)),
+        ctypes.byref(ierr),
         ctypes.byref(ctypes.c_int(max_iterations))
     )
 
@@ -573,27 +638,27 @@ def read_expression_vectors_tsv(
     delimiter = delimiter.astype(f"S{1}", order="F")
 
     # define ctypes interface
-    tox.read_expression_vectors_tsv_c.argtypes(
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=f"S{file_list_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=f"S{gene_ids_strlen}"),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
+    tox.read_expression_vectors_tsv_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{file_list_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{gene_ids_strlen}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=f"S{1}")
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{1}")
     )
     tox.read_expression_vectors_tsv_c.restype = None
 
-    read_expression_vectors_tsv_c(
+    tox.read_expression_vectors_tsv_c(
         file_list,
         ctypes.byref(ctypes.c_int(file_list_strlen)),
         ctypes.byref(ctypes.c_int(n_file_list_elements)),
@@ -608,7 +673,7 @@ def read_expression_vectors_tsv(
         value_cols,
         ctypes.byref(ctypes.c_int(n_value_cols_elements)),
         ctypes.byref(ctypes.c_int(start_row)),
-        ctypes.byref(ctypes.c_int(ierr)),
+        ctypes.byref(ierr),
         delimiter
     )
 
@@ -644,19 +709,19 @@ def mask_get_first_successor_idx(
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.mask_get_first_successor_idx_c.argtypes(
+    tox.mask_get_first_successor_idx_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.mask_get_first_successor_idx_c.restype = None
 
-    mask_get_first_successor_idx_c(
+    tox.mask_get_first_successor_idx_c(
         bit_mask,
         ctypes.byref(ctypes.c_int(n_bit_mask_elements)),
-        ctypes.byref(ctypes.c_int(idx)),
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(idx),
+        ctypes.byref(ierr)
     )
 
     # throw error on error
@@ -743,31 +808,31 @@ def detect_patterns(
     ierr = ctypes.c_int(0)
 
     # define ctypes interface
-    tox.detect_patterns_c.argtypes(
+    tox.detect_patterns_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
-        ctypes.C_POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_double),
-        ctypes.C_POINTER(ctypes.c_double),
-        ctypes.C_POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        ctypes.C_POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.detect_patterns_c.restype = None
 
-    detect_patterns_c(
+    tox.detect_patterns_c(
         ancestor,
         genes,
         ctypes.byref(ctypes.c_int(n_genes)),
@@ -775,7 +840,7 @@ def detect_patterns(
         ctypes.byref(ctypes.c_int(pattern)),
         filtered_paralogs_mask,
         ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(ctypes.c_int(n_results)),
+        ctypes.byref(n_results),
         ctypes.byref(ctypes.c_int(max_subset_size)),
         work_arr_paralog_subsets,
         ctypes.byref(ctypes.c_int(n_paralog_subsets)),
@@ -787,7 +852,7 @@ def detect_patterns(
         subfunc_paralog_norms,
         subfunc_sorted_paralog_norms_perm,
         subfunc_temp_work_array,
-        ctypes.byref(ctypes.c_int(ierr))
+        ctypes.byref(ierr)
     )
 
     # throw error on error

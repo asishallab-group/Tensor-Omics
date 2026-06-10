@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!> Module for C-wrappers for [[tox_archive(module)]]
+!>  Module for C-wrappers for [[tox_archive(module)]]
 module tox_archive_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
@@ -12,49 +12,50 @@ module tox_archive_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
 contains
 
     !> C-wrapper for [[tox_archive(module):save_tox_data(subroutine)]]
+    !| 
     !| Save standard tox data
     subroutine save_tox_data_c(zip_filename, zip_filename_strlen, ierr, gene_ids, gene_ids_strlen, n_gene_ids_elements, gene_ids_file, gene_ids_file_strlen, expression, n_expression_elements_dim_1, n_expression_elements_dim_2, expression_file, expression_file_strlen, gene_to_family, n_gene_to_family_elements, gene_to_family_file, gene_to_family_file_strlen, family_ids, family_ids_strlen, n_family_ids_elements, family_ids_file, family_ids_file_strlen, family_centroids, n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2, family_centroids_file, family_centroids_file_strlen, shift_vectors, n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2, shift_vectors_file, shift_vectors_file_strlen) bind(C, name="save_tox_data_c")
         use tox_archive, only: save_tox_data
         integer(c_int), intent(in), target :: zip_filename_strlen
-            !! String length of 'zip_filename'
+            !!  String length of 'zip_filename'
         integer(c_int), intent(in), target :: gene_ids_strlen
-            !! String length of 'gene_ids'
+            !!  String length of 'gene_ids'
         integer(c_int), intent(in), target :: n_gene_ids_elements
-            !! Size of the 1. dimension/extent of `gene_ids`
+            !!  Size of the 1. dimension/extent of `gene_ids`
         integer(c_int), intent(in), target :: gene_ids_file_strlen
-            !! String length of 'gene_ids_file'
+            !!  String length of 'gene_ids_file'
         integer(c_int), intent(in), target :: n_expression_elements_dim_1
-            !! Size of the 1. dimension/extent of `expression`
+            !!  Size of the 1. dimension/extent of `expression`
         integer(c_int), intent(in), target :: n_expression_elements_dim_2
-            !! Size of the 2. dimension/extent of `expression`
+            !!  Size of the 2. dimension/extent of `expression`
         integer(c_int), intent(in), target :: expression_file_strlen
-            !! String length of 'expression_file'
+            !!  String length of 'expression_file'
         integer(c_int), intent(in), target :: n_gene_to_family_elements
-            !! Size of the 1. dimension/extent of `gene_to_family`
+            !!  Size of the 1. dimension/extent of `gene_to_family`
         integer(c_int), intent(in), target :: gene_to_family_file_strlen
-            !! String length of 'gene_to_family_file'
+            !!  String length of 'gene_to_family_file'
         integer(c_int), intent(in), target :: family_ids_strlen
-            !! String length of 'family_ids'
+            !!  String length of 'family_ids'
         integer(c_int), intent(in), target :: n_family_ids_elements
-            !! Size of the 1. dimension/extent of `family_ids`
+            !!  Size of the 1. dimension/extent of `family_ids`
         integer(c_int), intent(in), target :: family_ids_file_strlen
-            !! String length of 'family_ids_file'
+            !!  String length of 'family_ids_file'
         integer(c_int), intent(in), target :: n_family_centroids_elements_dim_1
-            !! Size of the 1. dimension/extent of `family_centroids`
+            !!  Size of the 1. dimension/extent of `family_centroids`
         integer(c_int), intent(in), target :: n_family_centroids_elements_dim_2
-            !! Size of the 2. dimension/extent of `family_centroids`
+            !!  Size of the 2. dimension/extent of `family_centroids`
         integer(c_int), intent(in), target :: family_centroids_file_strlen
-            !! String length of 'family_centroids_file'
+            !!  String length of 'family_centroids_file'
         integer(c_int), intent(in), target :: n_shift_vectors_elements_dim_1
-            !! Size of the 1. dimension/extent of `shift_vectors`
+            !!  Size of the 1. dimension/extent of `shift_vectors`
         integer(c_int), intent(in), target :: n_shift_vectors_elements_dim_2
-            !! Size of the 2. dimension/extent of `shift_vectors`
+            !!  Size of the 2. dimension/extent of `shift_vectors`
         integer(c_int), intent(in), target :: shift_vectors_file_strlen
-            !! String length of 'shift_vectors_file'
+            !!  String length of 'shift_vectors_file'
         character(len=1, kind=c_char), intent(in), dimension(zip_filename_strlen), target :: zip_filename
             !! Zip filename
         integer(c_int), intent(out), target :: ierr
@@ -84,17 +85,15 @@ contains
             !! Shift vectors array, will be saved if provided
         character(len=1, kind=c_char), intent(in), dimension(shift_vectors_file_strlen), target :: shift_vectors_file
             !! Name of the shift vectors file
-
-        character(len=:), allocatable, dimension(:) :: zip_filename_f
-        character(len=:), allocatable, dimension(:, :) :: gene_ids_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_file_f
-        character(len=:), allocatable, dimension(:) :: expression_file_f
-        character(len=:), allocatable, dimension(:) :: gene_to_family_file_f
-        character(len=:), allocatable, dimension(:, :) :: family_ids_f
-        character(len=:), allocatable, dimension(:) :: family_ids_file_f
-        character(len=:), allocatable, dimension(:) :: family_centroids_file_f
-        character(len=:), allocatable, dimension(:) :: shift_vectors_file_f
-
+        character(len=:), allocatable :: zip_filename_f
+        character(len=:), allocatable, dimension(:) :: gene_ids_f
+        character(len=:), allocatable :: gene_ids_file_f
+        character(len=:), allocatable :: expression_file_f
+        character(len=:), allocatable :: gene_to_family_file_f
+        character(len=:), allocatable, dimension(:) :: family_ids_f
+        character(len=:), allocatable :: family_ids_file_f
+        character(len=:), allocatable :: family_centroids_file_f
+        character(len=:), allocatable :: shift_vectors_file_f
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(zip_filename)
         M_CHECK_NON_NULL(zip_filename_strlen)
@@ -127,23 +126,26 @@ contains
         M_CHECK_NON_NULL(n_shift_vectors_elements_dim_2)
         M_CHECK_NON_NULL(shift_vectors_file)
         M_CHECK_NON_NULL(shift_vectors_file_strlen)
-
-        call string_as_c_char_1d(zip_filename, zip_filename_f)
-        call string_as_c_char_2d(gene_ids, gene_ids_f)
-        call string_as_c_char_1d(gene_ids_file, gene_ids_file_f)
-        call string_as_c_char_1d(expression_file, expression_file_f)
-        call string_as_c_char_1d(gene_to_family_file, gene_to_family_file_f)
-        call string_as_c_char_2d(family_ids, family_ids_f)
-        call string_as_c_char_1d(family_ids_file, family_ids_file_f)
-        call string_as_c_char_1d(family_centroids_file, family_centroids_file_f)
-        call string_as_c_char_1d(shift_vectors_file, shift_vectors_file_f)
-
+        call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(gene_ids_file, gene_ids_file_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(expression_file, expression_file_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(gene_to_family_file, gene_to_family_file_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_2d_as_string(family_ids, family_ids_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(family_ids_file, family_ids_file_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(family_centroids_file, family_centroids_file_f, ierr)
+        if (is_err(ierr)) return
+        call c_char_1d_as_string(shift_vectors_file, shift_vectors_file_f, ierr)
+        if (is_err(ierr)) return
         call save_tox_data(zip_filename_f, ierr, gene_ids_f, gene_ids_file_f, expression, expression_file_f, gene_to_family, gene_to_family_file_f, family_ids_f, family_ids_file_f, family_centroids, family_centroids_file_f, shift_vectors, shift_vectors_file_f)
-
-
-
     end subroutine save_tox_data_c
-
 
 end module tox_archive_c
 #endif

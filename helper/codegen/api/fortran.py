@@ -7,6 +7,9 @@ import re
 from .utils import Indentable, CodeGenerator, regex_escaped_preprocessor
 
 
+SHAPE_ARG_SUFFIX = "_shape"
+
+
 class Module(CodeGenerator):
     """Class for a parsed Fortran Module"""
     def __init__(self, module: FortranModule):
@@ -65,6 +68,12 @@ class Dimension(CodeGenerator, tuple):
         else:
             # TODO: shape might include some funtion like 'int(n, int32)' -> results in wrong extent
             return cls([dim.strip() for dim in dims.split(",")])
+
+    def __getitem__(self, item):
+        result = super().__getitem__(item)
+        if isinstance(item, slice):
+            return Dimension(result)
+        return result
 
 
 class Intent(CodeGenerator, Enum):
@@ -180,6 +189,7 @@ class Procedure_Argument(CodeGenerator):
         self.type = Fortran_Type.from_fortran_variable(argument)
         self.is_temporary = self.name.startswith("tmp_")
         self.parent = proc
+        self.is_shape_arg = self.name.endswith(SHAPE_ARG_SUFFIX)
 
     @property
     def default_value(self) -> int | str | bool | float | None:
@@ -196,6 +206,18 @@ class Procedure_Argument(CodeGenerator):
         if len(self.type.dimension) == 0:
             for arg in self.parent.args:
                 if self.name in arg.type.dimension:
+                    return arg
+
+    @property
+    def shape_arg(self) -> Self | None:
+        if self.type.dimension == Dimension((":")):
+            shape_arg_name = self.name + SHAPE_ARG_SUFFIX
+            for arg in self.parent.args:
+                if arg.name == shape_arg_name:
+                    if len(arg.type.dimension) == 0:
+                        raise SyntaxError(f"Shape argument '{self.name}' must have a dimension attribute in {arg.parent.name} of {arg.parent.parent.name}")
+                    if arg.type.intent is not Intent.IN:
+                        raise SyntaxError(f"Shape argument '{self.name}' must have 'intent(in)' in {arg.parent.name} of {arg.parent.parent.name}")
                     return arg
 
 
