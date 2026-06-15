@@ -3615,3 +3615,84 @@ compute_empirical_p_values <- function(distribution, c_const) {
   result <- tox_empirical_p_values_rcpp(distribution, c_const)
   return(result)
 }
+
+#' Compute noise-model p-values
+#'
+#' @param cancer_means Numeric vector of cancer means.
+#' @param cancer_replicates Numeric matrix of cancer replicates
+#'   (samples x genes).
+#' @param healthy_means Numeric vector of healthy means.
+#' @param healthy_replicates Numeric matrix of healthy replicates
+#'   (samples x genes).
+#' @param obs_own Observed own statistics.
+#' @param obs_fam Observed family statistics.
+#' @param obs_orth Observed ortholog statistics.
+#' @param family_means Family mean expression values.
+#' @param ortholog_means Ortholog mean expression values.
+#' @param valid_genes_own Integer vector.
+#' @param valid_genes_fam Integer vector.
+#' @param valid_genes_orth Integer vector.
+#' @param family_sizes Integer vector of family sizes.
+#' @param is_ortholog_sum Integer total number of ortholog genes.
+#' @param gene_to_fam Integer vector mapping genes to families (1-based).
+#' @param norm_method Integer normalization method.
+#' @param n_draws Integer number of Monte Carlo draws.
+#' @param k_start Integer starting neighborhood size.
+#' @param k_step Integer adaptive increment.
+#' @param k_max Integer maximum neighborhood size.
+#' @param tau Numeric adaptive stopping threshold.
+#' @param max_pool_size Integer maximum residual pool size.
+#'
+#' @return A list with p-values, neighborhood sizes, n_success, and ierr.
+#' @export
+tox_compute_noise_pvalues_pipeline <- function(
+    cancer_means,
+    cancer_replicates,
+    healthy_means,
+    healthy_replicates,
+    obs_own,
+    obs_fam,
+    obs_orth,
+    family_means,
+    ortholog_means,
+    valid_genes_own,
+    valid_genes_fam,
+    valid_genes_orth,
+    family_sizes,
+    is_ortholog_sum,
+    gene_to_fam,
+    norm_method = 0L,
+    n_draws = 1000L,
+    k_start = 100L,
+    k_step = 100L,
+    k_max = 1000L,
+    tau = 0.01,
+    max_pool_size
+) {
+
+    result <- tox_compute_noise_pvalues_pipeline_rcpp(
+        cancer_means = cancer_means,
+        cancer_replicates = cancer_replicates,
+        healthy_means = healthy_means,
+        healthy_replicates = healthy_replicates,
+        obs_own = obs_own,
+        obs_fam = obs_fam,
+        obs_orth = obs_orth,
+        family_means = family_means,
+        ortholog_means = ortholog_means,
+        valid_genes_own = as.integer(valid_genes_own),
+        valid_genes_fam = as.integer(valid_genes_fam),
+        valid_genes_orth = as.integer(valid_genes_orth),
+        family_sizes = as.integer(family_sizes),
+        is_ortholog_sum = as.integer(is_ortholog_sum),
+        gene_to_fam = as.integer(gene_to_fam),
+        norm_method = as.integer(norm_method),
+        n_draws = as.integer(n_draws),
+        k_start = as.integer(k_start),
+        k_step = as.integer(k_step),
+        k_max = as.integer(k_max),
+        tau = as.numeric(tau),
+        max_pool_size = as.integer(max_pool_size)
+    )
+    return(result)
+}
