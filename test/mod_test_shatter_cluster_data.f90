@@ -4,9 +4,9 @@ module mod_test_shatter_cluster_data
 
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use asserts
-	use test_suite, only: test_case
-    use tox_errors, only: is_ok
-    use tox_shatter_cluster_data, only: calculate_label_sphere_radius, &
+    use test_suite, only: test_case
+    use tox_errors, only: is_ok, ERR_OK
+    use tox_shatter_cluster_data, only: calculate_density_radius, &
                                         calculate_labels_as_density
 
     implicit none
@@ -22,62 +22,20 @@ contains
 
     !> Get array registry of all available suite tests.
     function get_all_tests_shatter_cluster_data() result(all_tests)
-        type(test_case), allocatable :: all_tests(:)  
-        
-        allocate(all_tests(2))  
-        
-        all_tests(1) = test_case("test_sphere_radius_basic", test_sphere_radius_basic)
+        type(test_case), allocatable :: all_tests(:)
+
+        allocate (all_tests(2))
+
+        all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
     end function get_all_tests_shatter_cluster_data
 
-    !> Run all tests inside this module.
-    subroutine run_all_tests_shatter_cluster_data()
-        type(test_case) :: all_tests(2)
-        integer(int32) :: i_test
-
-        all_tests = get_all_tests_shatter_cluster_data()
-        
-        do i_test = 1, size(all_tests)
-            call all_tests(i_test)%test_proc()
-            print *, " ", trim(all_tests(i_test)%name), " passed."
-        end do
-        print *, "All shatter_cluster_data tests passed successfully."
-    end subroutine run_all_tests_shatter_cluster_data
-
-    !> Run specialized subset selection tests by name.
-    subroutine run_named_tests_shatter_cluster_data(test_names)
-        character(len=*), intent(in) :: test_names(:)
-        !! Array of targeting string names to process
-
-        type(test_case) :: all_tests(2)
-        integer(int32) :: i_name
-        integer(int32) :: j_test
-        logical :: found
-
-        all_tests = get_all_tests_shatter_cluster_data()
-        
-        do i_name = 1, size(test_names)
-            found = .false.
-            do j_test = 1, size(all_tests)
-                if (trim(test_names(i_name)) == trim(all_tests(j_test)%name)) then
-                    call all_tests(j_test)%test_proc()
-                    print *, " ", trim(test_names(i_name)), " passed."
-                    found = .true.
-                    exit
-                end if
-            end do
-            if (.not. found) then
-                print *, "Unknown test: ", trim(test_names(i_name))
-            end if
-        end do
-    end subroutine run_named_tests_shatter_cluster_data
-
-    !> Validates baseline sphere radius configuration with 10 vectors.
-    subroutine test_sphere_radius_basic()
+    !> Validates baseline density radius configuration with 10 vectors.
+    subroutine test_density_radius_basic()
         ! 1. Arrange
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 10_int32
-        
+
         real(real64) :: vectors(n_dims, n_vecs)
         real(real64) :: tmp_mean_vec(n_dims)
         real(real64) :: tmp_distances(n_vecs)
@@ -92,24 +50,24 @@ contains
         end do
 
         ! 2. Act
-        call calculate_label_sphere_radius(vectors, n_dims, n_vecs, &
-                                           tmp_mean_vec, tmp_distances, tmp_perm, &
-                                           radius, 0.50_real64, ierr)
+        call calculate_density_radius(vectors, n_dims, n_vecs, &
+                                      tmp_mean_vec, tmp_distances, tmp_perm, &
+                                      radius, 0.50_real64, ierr)
 
         ! 3. Assert
-        call assert_true(is_ok(ierr), "test_sphere_radius_basic: ierr success control check")
-        call assert_in_range_real(radius, 0.0_real64, 10.0_real64, "test_sphere_radius_basic: radius range verification")
-    end subroutine test_sphere_radius_basic
+        call assert_equal_int(ierr, ERR_OK, "test_density_radius_basic: ierr success control check")
+        call assert_in_range_real(radius, 0.0_real64, 10.0_real64, "test_density_radius_basic: radius range verification")
+    end subroutine test_density_radius_basic
 
     !> Validates cluster neighborhood density counting logic with a 10-vector landscape.
     subroutine test_density_labels_basic()
         ! 1. Arrange
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 10_int32
-        
+
         real(real64) :: vectors(n_dims, n_vecs)
         integer(int32) :: kd_indices(n_vecs)
-        real(real64) :: label_values(1, n_vecs)
+        real(real64) :: label_densities(n_vecs)
         integer(int32) :: ierr
         integer(int32) :: i_chk
 
@@ -125,8 +83,8 @@ contains
         vectors(:, 7) = [10.0_real64, 10.0_real64]
         vectors(:, 8) = [20.0_real64, 20.0_real64]
         vectors(:, 9) = [30.0_real64, 30.0_real64]
-        vectors(:, 10)= [40.0_real64, 40.0_real64]
-        
+        vectors(:, 10) = [40.0_real64, 40.0_real64]
+
         ! Map linear KD indexing track
         do i_chk = 1, n_vecs
             kd_indices(i_chk) = i_chk
@@ -134,19 +92,21 @@ contains
 
         ! 2. Act
         call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         kd_indices, label_values, ierr)
+                                         kd_indices, label_densities, ierr)
 
         ! 3. Assert
-        call assert_true(is_ok(ierr), "test_density_labels_basic: ierr execution check")
-        
+        call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: ierr execution check")
+
         ! Members 1 to 6 should find exactly 6 neighbors (including itself)
+        ! FIX: Changed the tolerance parameters to 0.0_real64 to specify zero tolerance for integer counts
         do i_chk = 1, 6
-            call assert_equal_real(label_values(1, i_chk), 6.0_real64, 1.0e-12_real64, "Dense cluster tracking verification")
+            call assert_equal_real(label_densities(i_chk), 6.0_real64, 0.0_real64, "Dense cluster tracking verification")
         end do
-        
+
         ! Members 7 to 10 should find exactly 1 neighbor (only itself)
+        ! FIX: Changed the tolerance parameters to 0.0_real64 to specify zero tolerance for integer counts
         do i_chk = 7, 10
-            call assert_equal_real(label_values(1, i_chk), 1.0_real64, 1.0e-12_real64, "Isolated point density verification")
+            call assert_equal_real(label_densities(i_chk), 1.0_real64, 0.0_real64, "Isolated point density verification")
         end do
     end subroutine test_density_labels_basic
 
