@@ -12,12 +12,6 @@ module mod_test_shatter_cluster_data
     implicit none
     public
 
-    !> Abstract interface for all unit test procedures
-    abstract interface
-        subroutine test_interface()
-        end subroutine test_interface
-    end interface
-
 contains
 
     !> Get array registry of all available suite tests.
@@ -98,13 +92,13 @@ contains
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: ierr execution check")
 
         ! Members 1 to 6 should find exactly 6 neighbors (including itself)
-        ! FIX: Changed the tolerance parameters to 0.0_real64 to specify zero tolerance for integer counts
+        ! Enforces absolute zero-tolerance on exact integer density counts
         do i_chk = 1, 6
             call assert_equal_real(label_densities(i_chk), 6.0_real64, 0.0_real64, "Dense cluster tracking verification")
         end do
 
         ! Members 7 to 10 should find exactly 1 neighbor (only itself)
-        ! FIX: Changed the tolerance parameters to 0.0_real64 to specify zero tolerance for integer counts
+        ! Enforces absolute zero-tolerance on exact integer density counts
         do i_chk = 7, 10
             call assert_equal_real(label_densities(i_chk), 1.0_real64, 0.0_real64, "Isolated point density verification")
         end do
