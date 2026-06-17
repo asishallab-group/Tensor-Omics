@@ -136,6 +136,14 @@ class DocList(CodeGenerator):
         while len(self.doc_list) > 0 and self.doc_list[-1] == "":
             self.doc_list.pop()
 
+        self.meta = {
+            "required_if_mode": None,
+            "optional_output": None,
+        }
+        for line in self.doc_list:
+            if (match := re.match(regex_escaped_preprocessor.expand("DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))"), line)) is not None:
+                self.meta["required_if_mode"] = match
+
     @classmethod
     def from_fortran(cls, unit: FortranModule | FortranSubroutine | FortranFunction | FortranVariable | FortranModuleProcedureImplementation):
         match type(unit).__name__:

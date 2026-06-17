@@ -20,7 +20,7 @@ class C_Wrapper_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
     def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, c_wrapper: C_Wrapper, mode_vars: Tuple[Tuple[Variable_Name, Module_Name, Mode_String], ...] = None, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: Tuple[C_Wrapper_Argument | Procedure_Argument] = (), shape_arg: C_Wrapper_Argument | Procedure_Argument = None, is_shape_arg=False):
         self.name = name
-        self.doc = doc
+        self.doc_list = doc
         self.type = type
         self.default_value = default_value
         self.optional = optional
@@ -204,7 +204,7 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
 class C_Wrapper(CodeGenerator):
     """Includes all relevant information about a C wrapper, meaning its C name, arguments and argument docstrings"""
     def __init__(self, procedure: Procedure):
-        self.doc = procedure.doc_list
+        self.doc_list = procedure.doc_list
         self.orig_procedure = procedure
 
         match procedure.type:
@@ -230,7 +230,7 @@ class C_Wrapper_Module(CodeGenerator):
     def __init__(self, module: Module):
         self.name = module.name + NAME_SUFFIX
         self.orig_module = module
-        self.doc = module.doc_list
+        self.doc_list = module.doc_list
         self.c_wrappers = []
         for procedure in module.procedures:
             if procedure.meta.category == "C-interface":

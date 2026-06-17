@@ -111,15 +111,15 @@ class Python_Serializer(Serializer):
                     optional = ", optional" if self.optional else ""
                     in_place = ", modified in-place" if self.type.intent is Intent.INOUT else ""
                     string = f"""{self.name} : {format(self.type, "doc_params")}{in_place}{optional}
-{format(self.doc) >> INDENT}"""
+{format(self.doc_list) >> INDENT}"""
             case "doc_returns":
                 if self.type.intent is Intent.OUT:
                     string = f"""{self.name} : {format(self.type, "doc_params")}
-{format(self.doc) >> INDENT}"""
+{format(self.doc_list) >> INDENT}"""
             case "arglist":
                 if self.type.intent is not Intent.OUT and len(tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)) == 0 and not self.is_shape_arg:
                     string = self.name
-                    if self.default_value is not None:
+                    if self.optional:
                         string += "=" + str(self.default_value)
             case "ensure_numpy_array":
                 if self.type.intent is not Intent.OUT and len(self.is_dim_arg_for) == 0 and len(self.type.dimension) > 0 and not self.is_shape_arg:
@@ -135,6 +135,12 @@ class Python_Serializer(Serializer):
                 shape_arg = self.shape_arg
                 if shape_arg is not None:
                     string += f"\n{shape_arg.name} = np.ascontiguousarray({self.name}.shape, dtype=np.int32)"
+
+                if self.optional and self.default_value is None:
+                    string = f"""if {self.name} is not None:
+{Indentable(string) >> INDENT}
+"""
+
             case "allocate":
                 if self.type.intent is Intent.OUT:
                     string = f"{self.name} = {format(self.type, "init_val")}"
@@ -152,6 +158,9 @@ class Python_Serializer(Serializer):
                         string = f"{self.name} = {parent.name}.shape[{parent.type.dimension.index(self.name) - (parent.type.name == "character")}]"
             case "argtypes":
                 string = format(self.type, "argtypes")
+                if self.optional and self.default_value is None:
+                    # allow null
+                    string = f"nullable({string})"
             case "call_args":
                 if len(self.type.dimension) == 0:
                     if self.type.intent is not Intent.OUT:
@@ -161,7 +170,7 @@ class Python_Serializer(Serializer):
                 else:
                     string = self.name
             case "readonly":
-                if self.type.intent is not Intent.IN:
+                if self.type.intent is not Intent.IN and not self.is_temporary:
                     if len(self.type.dimension) > 1 or (self.name != "character" and len(self.type.dimension) > 0):
                         string = f"{self.name}.setflags(write=False)"
         return Indentable(string)
@@ -208,7 +217,7 @@ class Python_Serializer(Serializer):
 {format(self.arguments, "arglist") >> INDENT * 2}
         ):
     """
-{format(self.doc) >> INDENT}
+{format(self.doc_list) >> INDENT}
 
     Parameters
     ----------
@@ -229,6 +238,13 @@ class Python_Serializer(Serializer):
 {format(self.arguments, "allocate") >> INDENT}
 
     # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {{'from_param': from_param}})
+
     tox.{self.name}.argtypes = (
 {format(self.arguments, "argtypes") >> 2 * INDENT}
     )

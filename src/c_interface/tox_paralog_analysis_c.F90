@@ -33,68 +33,8 @@ contains
         M_CHECK_NON_NULL(bit_mask)
         M_CHECK_NON_NULL(n_bit_mask_elements)
         M_CHECK_NON_NULL(idx)
-        idx = mask_get_first_successor_idx(bit_mask)
+        idx = mask_get_first_successor_idx(bit_mask = bit_mask)
     end subroutine mask_get_first_successor_idx_c
-
-    !> summary: C-wrapper for [[tox_paralog_analysis(module):detect_dosage_effect(subroutine)]]
-    !| Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
-    subroutine detect_dosage_effect_c(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma) bind(C, name="detect_dosage_effect_c")
-        use tox_paralog_analysis, only: detect_dosage_effect
-        use tox_paralog_analysis
-        integer(c_int), intent(in), target :: n_genes
-            !! number of vectors in `genes`
-        integer(c_int), intent(in), target :: n_dims
-            !! size of `ancestor` vector and vectors in `genes`
-        integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! It is recommended to compute this argument using [[tox_paralog_analysis(module):mask_chunk_count]]'s output `count`.
-        integer(c_int), intent(in), target :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! It is *VERY IMPORTANT* to compute this argument using [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]]'s output `work_array_size`.
-        real(c_double), intent(in), dimension(n_dims), target :: ancestor
-            !! expression vector of ancestral ortholog
-        real(c_double), intent(in), dimension(n_dims, n_genes), target :: genes
-            !! expression vectors of genes
-        integer(c_int), intent(in), dimension(n_mask_chunks), target :: filtered_paralogs_mask
-            !! bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
-            !! It is recommended to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
-        integer(c_int), intent(out), target :: n_results
-            !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-        integer(c_int), intent(in), target :: max_subset_size
-            !! maximum subset size of checked gene subsets.
-            !! It is *VERY IMPORTANT* to compute this argument using [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]]'s output `max_subset_size`.
-        integer(c_int), intent(out), dimension(n_mask_chunks, n_paralog_subsets), target :: work_arr_paralog_subsets
-            !! working array to hold bitmask encoded subsets for detection.
-            !! @note
-            !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
-            !! @endnote
-        integer(c_int), intent(out), dimension(n_mask_chunks), target :: active_mask
-            !! working array to hold the extended subsets
-        real(c_double), intent(out), dimension(n_dims), target :: temp_paralog_vector
-            !! vector used for pruning subsets
-        integer(c_int), intent(out), target :: ierr
-            !! error code
-        real(c_double), intent(in), target :: max_angle
-            !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned, default is Pi
-        real(c_double), intent(in), target :: gain_gamma
-            !! positive magnitude gain for dosage effect, default 0.1
-        M_CHECK_IERR_NON_NULL
-        M_CHECK_NON_NULL(ancestor)
-        M_CHECK_NON_NULL(genes)
-        M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_dims)
-        M_CHECK_NON_NULL(filtered_paralogs_mask)
-        M_CHECK_NON_NULL(n_mask_chunks)
-        M_CHECK_NON_NULL(n_results)
-        M_CHECK_NON_NULL(max_subset_size)
-        M_CHECK_NON_NULL(work_arr_paralog_subsets)
-        M_CHECK_NON_NULL(n_paralog_subsets)
-        M_CHECK_NON_NULL(active_mask)
-        M_CHECK_NON_NULL(temp_paralog_vector)
-        M_CHECK_NON_NULL(max_angle)
-        M_CHECK_NON_NULL(gain_gamma)
-        call detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma)
-    end subroutine detect_dosage_effect_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):filter_paralogs_by_pattern_dosage_effect(subroutine)]]
     !| This subroutine prefilters the genes for dosage effect,
@@ -126,7 +66,7 @@ contains
         M_CHECK_NON_NULL(gene_to_fam)
         M_CHECK_NON_NULL(masks)
         M_CHECK_NON_NULL(n_mask_chunks)
-        call filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern_dosage_effect(gene_angles = gene_angles, threshold = threshold, n_genes = n_genes, n_families = n_families, gene_to_fam = gene_to_fam, masks = masks, n_mask_chunks = n_mask_chunks, ierr = ierr)
     end subroutine filter_paralogs_by_pattern_dosage_effect_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]]
@@ -153,7 +93,7 @@ contains
             !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
         integer(c_int), intent(in), dimension(n_mask_chunks), target :: filtered_paralogs_mask
             !! Output mask with all genes disabled that did not pass the filter
-            !! It is recommended to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
+            !! M_DM_FROM_JUST_INFO to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         M_CHECK_IERR_NON_NULL
@@ -162,7 +102,7 @@ contains
         M_CHECK_NON_NULL(work_array_size)
         M_CHECK_NON_NULL(filtered_paralogs_mask)
         M_CHECK_NON_NULL(n_mask_chunks)
-        call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr)
+        call calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = n_genes, work_array_size = work_array_size, filtered_paralogs_mask = filtered_paralogs_mask, n_mask_chunks = n_mask_chunks, ierr = ierr)
     end subroutine calc_work_arr_paralog_subsets_size_c
 
 end module tox_paralog_analysis_c

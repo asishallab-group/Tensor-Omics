@@ -74,31 +74,81 @@ class C_Wrapper_Serializer(Serializer):
         return f", intent({self.name.lower()})"
 
     def Procedure_Argument(self, spec):
-        pass
-
-    def Procedure_Arguments(self, spec):
         match spec:
             case "arglist":
-                arglist = []
-                for arg in self:
-                    if arg.is_mode_arg:
-                        arglist.append(arg.name + MAPPED_MODE_SUFFIX)
-                    elif arg.type.needs_conversion:
-                        arglist.append(arg.name + TYPE_CONVERSION_SUFFIX)
-                    else:
-                        arglist.append(arg.name)
-                return Indentable(", ".join(arglist))
+                if self.is_mode_arg:
+                    arg = f"{self.name} = {self.name + MAPPED_MODE_SUFFIX}"
+                elif self.type.needs_conversion:
+                    arg = f"{self.name} = {self.name + TYPE_CONVERSION_SUFFIX}"
+                else:
+                    arg = f"{self.name} = {self.name}"
+                return Indentable(arg)
             case _:
                 raise ValueError(f"Unsupported format spec '{spec}'")
 
     def Procedure(self, spec):
         match spec:
             case "call":
-                call = f"{self.name}({format(self.args, "arglist")})"
-                if self.retvar is None:
-                    call = "call " + call
-                else:
-                    call = f"{self.retvar} = {call}"
+                # arguments that will always be part of the call, either because non-optional or having a default value
+                fixed_args = list(arg for arg in self.args if not arg.optional or arg.default_value is not None)
+
+                # arguments whose presence depends on other args
+                required_if_args = tuple(arg for arg in self.args if arg.doc_list.meta["required_if_mode"] is not None)
+                required_if_args_targets = {}
+                for required_if_arg in required_if_args:
+                    meta = required_if_arg.doc_list.meta["required_if_mode"]
+                    mode = meta.group("mode_var_name")
+                    if mode not in required_if_args_targets:
+                        required_if_args_targets[mode] = {}
+
+                    mode_var = meta.group("mode_var")
+                    if mode_var not in required_if_args_targets[mode]:
+                        required_if_args_targets[mode][mode_var] = []
+
+                    required_if_args_targets[mode][mode_var].append(required_if_arg)
+
+                # optional outputs
+                optional_outputs = tuple(arg for arg in self.args if arg.doc_list.meta["optional_output"] is not None)
+
+                call_prefix = "call" if self.retvar is None else f"{self.retvar} ="
+
+                def optional_variants(args, n_remaining):
+                    if n_remaining > 0:
+                        if len(args) == n_remaining:
+                            call_without_optionals = "else\n" + (optional_variants([], 0) >> INDENT) + "\n"
+                        current = args[0]
+                        if type(current) is str:
+                            mode = current
+                            items = list(required_if_args_targets[mode].items())
+                            variant = ""
+                            while len(items) > 1:
+                                mode_var, mode_args = items.pop()
+                                condition = f"{mode + MAPPED_MODE_SUFFIX} == {mode_var}"
+                                variant += f"""if ({mode + MAPPED_MODE_SUFFIX} == {mode_var}) then
+{optional_variants(args[1:] + mode_args, n_remaining - 1) >> INDENT}
+else """
+                            mode_var, mode_args = items.pop()
+                            condition = f"{mode + MAPPED_MODE_SUFFIX} == {mode_var}"
+                            variant += f"""if ({mode + MAPPED_MODE_SUFFIX} == {mode_var}) then
+{optional_variants(args[1:] + mode_args, n_remaining - 1) >> INDENT}
+{call_without_optionals}end if"""
+                        elif meta["optional_output"] is not None:
+                            variant = f"""
+if (present{current}) then
+{optional_variants(args[1:] + [current], n_remaining - 1) >> INDENT}
+else if (.not. present({current}))
+{optional_variants(args[1:], n_remaining - 1) >> INDENT}
+{call_without_optionals}end if
+"""
+                    else:
+                        variant = f"{call_prefix} {self.name}({", ".join(format(arg, "arglist") for arg in fixed_args + args)})"
+
+                    return Indentable(variant)
+
+                optional_variant_args = list(optional_outputs)
+                optional_variant_args.extend(required_if_args_targets.keys())
+
+                call = optional_variants(optional_variant_args, len(optional_variant_args))
                 return Indentable(call)
             case _:
                 raise ValueError(f"Unsupported format spec '{spec}'")
@@ -109,7 +159,7 @@ class C_Wrapper_Serializer(Serializer):
         match spec:
             case "dummy":
                 arg_str = f"{format(self.type, "dummy")}, target :: {self.name}\n"
-                arg_str += format(self.doc, "argument") >> INDENT
+                arg_str += format(self.doc_list, "argument") >> INDENT
             case "locals_type_conversion":
                 if self.type.needs_conversion:
                     arg_str = f"{format(self.type, "locals_type_conversion")} :: {type_conversion_name}"
@@ -156,11 +206,18 @@ class C_Wrapper_Serializer(Serializer):
                         arg_str += f"\n\nselect case ({self.name}_f)"
                         for mode_name, module_name, mode_str in self.mode_vars:
                             arg_str += f"""\n    case ("{mode_str}")
-        {self.name}{MAPPED_MODE_SUFFIX} = {mode_name}"""
+            {self.name}{MAPPED_MODE_SUFFIX} = {mode_name}"""
                         arg_str += "\n    case default"
                         arg_str += "\n        call set_err(ierr, ERR_INVALID_INPUT)"
                         arg_str += "\n        return"
                         arg_str += "\nend select"
+
+                    elif self.doc_list.meta["required_if_mode"] is not None:
+                        required_if_mode = self.doc_list.meta["required_if_mode"]
+                        arg_str = f"""if ({required_if_mode.group("mode_var_name") + MAPPED_MODE_SUFFIX} == {required_if_mode.group("mode_var")}) then
+    M_CHECK_NON_NULL({self.name})
+{Indentable(arg_str) >> INDENT}
+end if"""
             case "type_conversion_outputs":
                 if self.type.needs_conversion and self.type.intent is not Intent.IN:
                     shape_arg = self.shape_arg
@@ -191,8 +248,12 @@ class C_Wrapper_Serializer(Serializer):
                 formatted_dim_args = "\n".join(format(arg, "dummy") for arg in self if len(arg.is_dim_arg_for) > 0)
                 formatted_other = "\n".join(format(arg, "dummy") for arg in self if len(arg.is_dim_arg_for) == 0)
                 formatted = formatted_dim_args + "\n" + formatted_other
-            case "locals_type_conversion" | "type_conversion_inputs":
+            case "locals_type_conversion" | "mode_var_conversion":
                 formatted = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
+            case "type_conversion_inputs":
+                mode_vars = "\n".join(filter(bool, (format(arg, spec) for arg in self if arg.mode_vars is not None)))
+                non_mode_vars = "\n".join(filter(bool, (format(arg, spec) for arg in self if arg.mode_vars is None)))
+                formatted = mode_vars + "\n" + non_mode_vars
             case "type_conversion_outputs":
                 formatted = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "arglist":
@@ -200,8 +261,9 @@ class C_Wrapper_Serializer(Serializer):
             case "null_validation":
                 formatted = "M_CHECK_IERR_NON_NULL"
                 for arg in self:
-                    if arg.name != "ierr":
+                    if arg.name != "ierr" and not arg.optional:
                         formatted += f"\nM_CHECK_NON_NULL({arg.name})"
+
             case _:
                 raise ValueError(f"Unsupported format spec '{spec}'")
 
@@ -211,7 +273,7 @@ class C_Wrapper_Serializer(Serializer):
         orig_proc = self.orig_procedure
         module_name = orig_proc.parent.name
         ford_link = f"[[{module_name}(module):{orig_proc.name}({orig_proc.type})]]"
-        doc = [f"summary: C-wrapper for {ford_link}"] + self.doc
+        doc = [f"summary: C-wrapper for {ford_link}"] + self.doc_list
 
         wrapper = f"""{format(doc, "subroutine")}
 subroutine {self.name}({format(self.arguments, "arglist")}) bind(C, name="{self.name}")
@@ -228,7 +290,7 @@ end subroutine {self.name}"""
         return Indentable(wrapper)
 
     def C_Wrapper_Module(self, spec):
-        doc = [f"summary: Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc
+        doc = [f"summary: Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc_list
         return f"""#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 

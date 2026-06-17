@@ -20,8 +20,7 @@ module tox_data_tools
 
 contains
 
-!> category: C-interface
-!| Read expression vectors from csv/tsv files
+!> Read expression vectors from csv/tsv files
 subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
                              n_header_rows, gene_col, value_cols, start_row, ierr, delimiter)
     use f42_xxh3_hashmap
@@ -44,7 +43,7 @@ subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 
     !! Error code
     character(len=1), intent(in), optional :: delimiter
     !! optional delimiter
-    !! M_DOC_DEFAULT('\t')
+    !! DM_DEFAULT('\t')
 
     integer(int32) :: i, j, k, unit, ios, idx, n_genes, expected_idx, n_value_cols
     integer(int32) :: current_sample, n_columns_in_file, n_valid_cols

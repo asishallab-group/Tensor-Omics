@@ -43,7 +43,7 @@ contains
         M_CHECK_NON_NULL(gene_indices)
         M_CHECK_NON_NULL(n_selected_genes)
         M_CHECK_NON_NULL(centroid)
-        call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr)
+        call mean_vector(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_indices = gene_indices, n_selected_genes = n_selected_genes, centroid = centroid, ierr = ierr)
     end subroutine mean_vector_c
 
     !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid(subroutine)]]
@@ -76,6 +76,7 @@ contains
             !! Error code: 0 - success, non-zero = error
         integer(c_int), intent(in), dimension(n_genes), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
+            !! This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids(module):MODE_GROUP_ORTHOLOGS(variable)]].
         character(len=:), allocatable :: mode_f
         integer(int32) :: mode_int_f
         logical, allocatable, dimension(:) :: ortholog_set_f
@@ -88,21 +89,27 @@ contains
         M_CHECK_NON_NULL(centroid_matrix)
         M_CHECK_NON_NULL(mode)
         M_CHECK_NON_NULL(tmp_selected_indices)
-        M_CHECK_NON_NULL(ortholog_set)
         call c_char_1d_as_string(mode, mode_f, ierr)
         if (is_err(ierr)) return
         select case (mode_f)
             case ("group_orthologs")
-                mode_int_f = MODE_GROUP_ORTHOLOGS
+                    mode_int_f = MODE_GROUP_ORTHOLOGS
             case ("group_all")
-                mode_int_f = MODE_GROUP_ALL
+                    mode_int_f = MODE_GROUP_ALL
             case default
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        M_ALLOCATE(ortholog_set_f(n_genes))
-        call c_int_as_logical(ortholog_set, ortholog_set_f)
-        call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode_int_f, tmp_selected_indices, ierr, ortholog_set_f)
+        if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
+            M_CHECK_NON_NULL(ortholog_set)
+            M_ALLOCATE(ortholog_set_f(n_genes))
+            call c_int_as_logical(ortholog_set, ortholog_set_f)
+        end if
+        if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
+            call group_centroid(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_to_family = gene_to_family, n_families = n_families, centroid_matrix = centroid_matrix, mode = mode_int_f, tmp_selected_indices = tmp_selected_indices, ierr = ierr, ortholog_set = ortholog_set_f)
+        else
+            call group_centroid(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_to_family = gene_to_family, n_families = n_families, centroid_matrix = centroid_matrix, mode = mode_int_f, tmp_selected_indices = tmp_selected_indices, ierr = ierr)
+        end if
     end subroutine group_centroid_c
 
 end module tox_gene_centroids_c

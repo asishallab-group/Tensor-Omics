@@ -103,6 +103,7 @@ contains
       !! Error code: 0 - success, non-zero = error
     logical, intent(in), optional :: ortholog_set(n_genes)
       !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
+      !! DM_REQUIRED_IF_MODE(mode, tox_gene_centroids, MODE_GROUP_ORTHOLOGS)
 
     ! Local variables
     integer(int32) :: i, j, n_selected

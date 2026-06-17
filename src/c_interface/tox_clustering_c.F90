@@ -56,7 +56,7 @@ contains
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
         M_CHECK_NON_NULL(max_iterations)
-        call cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
+        call cluster_factor_trajectories_k_means(n_clusters = n_clusters, trajectories = trajectories, n_factors = n_factors, n_samples = n_samples, n_timepoints = n_timepoints, centroids = centroids, labels = labels, label_counts = label_counts, ierr = ierr, max_iterations = max_iterations)
     end subroutine cluster_factor_trajectories_k_means_c
 
 end module tox_clustering_c

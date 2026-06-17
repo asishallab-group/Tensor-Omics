@@ -54,8 +54,7 @@ contains
         end do
     end subroutine detect_neofunctionalization
 
-    !> category: C-interface
-    !| Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
+    !> Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
     pure subroutine detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
