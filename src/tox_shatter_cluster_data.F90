@@ -6,7 +6,7 @@ module tox_shatter_cluster_data
 
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, &
-                          ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT
+                          validate_all_in_range_int, ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance, only: euclidean_distance
     use f42_utils, only: sort_real_heapsort, calc_percentile
@@ -171,7 +171,7 @@ contains
         !! Label-sphere radius
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree sequence array computed using [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        real(real64), intent(out) :: label_densities(:)
+        real(real64), intent(out) :: label_densities(n_vectors)
         !! Output densities vector tracking each vector's scalar density slot
         integer(int32), intent(out) :: ierr
         !! Error code tracker (always final parameter)
@@ -183,21 +183,13 @@ contains
         call validate_dimension_size(n_vectors, ierr)
         if (is_err(ierr)) return
 
-        ! Validate user index boundaries upfront to prevent running core checks
-        if (any(kd_indices < 1) .or. any(kd_indices > n_vectors)) then
-            call set_err(ierr, ERR_INVALID_INPUT)
-            return
-        end if
+        ! Boundary check
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
+        if (is_err(ierr)) return
 
         ! Validate metric boundaries are non-negative
         call validate_in_range_real(r, ierr, min=0.0_real64, max=huge(1.0_real64))
         if (is_err(ierr)) return
-
-        ! Vector size verification matching n_vectors
-        if (size(label_densities) /= n_vectors) then
-            call set_err(ierr, ERR_DIM_MISMATCH)
-            return
-        end if
 
         ! Safely hand execution down to the pure layer
         call calculate_labels_as_density_helper(vectors, n_dimensions, n_vectors, r, &
