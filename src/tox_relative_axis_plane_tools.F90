@@ -119,8 +119,7 @@ contains
       call project_selected_vecs_onto_rap(projections, n_selected_axes, n_selected_vecs)
    end subroutine omics_field_RAP_projection
 
-   !> category: C-interface
-   !| Projects selected vectors onto its RAP
+   !> Projects selected vectors onto its RAP
    pure subroutine project_selected_vecs_onto_rap(selected_vecs, n_selected_axes, n_selected_vecs)
       real(real64), dimension(n_selected_axes, n_selected_vecs), intent(inout) :: selected_vecs
          !! matrix with vectors for selected axes
@@ -151,8 +150,8 @@ contains
 
    !> category: C-interface
    !| Compute the signed clock hand angle between two RAP-projected and normalized vectors.
-   !! Calculates the signed rotation angle between two normalized vectors in RAP space.
-   !! For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
+   !| Calculates the signed rotation angle between two normalized vectors in RAP space.
+   !| For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
    pure subroutine clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)
       real(real64), dimension(n_dims), intent(in) :: v1
          !! First normalized vector in RAP space
@@ -228,8 +227,8 @@ contains
 
    !> category: C-interface
    !| Compute signed rotation angles between RAP-projected and normalized vector pairs.
-   !! Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-   !! This measures both magnitude and directionality of angular separation in RAP space.
+   !| Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
+   !| This measures both magnitude and directionality of angular separation in RAP space.
    pure subroutine clock_hand_angles_for_shift_vectors(origins, targets, n_dims, n_vecs, &
                                                       vecs_selection_mask, &
                                                       n_selected_vecs, selected_axes_for_signed, &
@@ -276,7 +275,7 @@ contains
 
    !> category: C-interface
    !| Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
-   !! Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.
+   !| Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.
    pure subroutine compute_relative_axis_contributions(vec, n_axes, contributions, ierr)
       use, intrinsic :: ieee_arithmetic
       real(real64), dimension(n_axes), intent(in) :: vec
@@ -323,7 +322,7 @@ contains
 
    !> category: C-interface
    !| Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
-   !! Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
+   !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
    pure subroutine relative_axes_changes_from_shift_vector(vec, n_axes, contributions, ierr)
       real(real64), dimension(n_axes), intent(in) :: vec
          !! RAP-projected and normalized shift vector
@@ -339,7 +338,7 @@ contains
 
    !> category: C-interface
    !| Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
-   !! Wrapper for single RAP-projected expression vectors
+   !| Wrapper for single RAP-projected expression vectors
    pure subroutine relative_axes_expression_from_expression_vector(vec, n_axes, contributions, ierr)
       real(real64), dimension(n_axes), intent(in) :: vec
          !! RAP-projected and normalized expression vector
