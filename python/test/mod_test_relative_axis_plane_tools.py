@@ -4,7 +4,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from tensoromics_functions import tox_vector_RAP_projection, tox_field_RAP_projection
+from tox import omics_vector_RAP_projection, omics_field_RAP_projection
 
 
 def test_omics_vector_RAP_projection_call():
@@ -19,7 +19,7 @@ def test_omics_vector_RAP_projection_call():
     axes_selection_mask = np.zeros(n_axes, dtype=np.int32)
     axes_selection_mask[np.random.choice(n_axes, n_selected_axes, replace=False)] = 1
 
-    projections = tox_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+    projections = omics_vector_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
 
     for i_vec in range(projections.shape[1]):
         col = projections[:, i_vec]
@@ -39,7 +39,7 @@ def test_omics_field_RAP_projection_call():
     axes_selection_mask = np.zeros(n_axes, dtype=np.int32)
     axes_selection_mask[np.random.choice(n_axes, n_selected_axes, replace=False)] = 1
 
-    projections = tox_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
+    projections = omics_field_RAP_projection(vecs, vecs_selection_mask, axes_selection_mask)
 
     for i_vec in range(projections.shape[1]):
         col = projections[:, i_vec]

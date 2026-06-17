@@ -224,6 +224,9 @@ class Procedure_Argument(CodeGenerator):
                 default_val_expr = default_val_expr.replace("_int32", "")
                 default_val_expr = default_val_expr.replace("_real64", "")
 
+                default_val_expr = default_val_expr.replace(".true.", "")
+                default_val_expr = default_val_expr.replace(".false.", "")
+
                 self.default_value = eval(default_val_expr)
 
     @property

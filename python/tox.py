@@ -705,3 +705,227 @@ def calc_work_arr_paralog_subsets_size(
 
 
     return work_array_size
+
+
+def omics_vector_RAP_projection(
+        vecs,
+        vecs_selection_mask,
+        n_selected_vecs,
+        axes_selection_mask,
+        n_selected_axes
+        ):
+    """
+    Parameters
+    ----------
+    vecs : ndarray[np.float64] of shape (n_axes, n_vecs) in column-major layout (order='F')
+        matrix with expression vectors
+    vecs_selection_mask : ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
+        `.true.` for vectors where projection is to be computed
+    axes_selection_mask : ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
+        `.true.` for axes to be included in RAP
+
+    Returns
+    -------
+    projections : ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
+        projected vectors
+
+    Notes
+    -----
+    Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
+    """
+
+    # ensure all array inputs are numpy arrays
+    vecs = np.asfortranarray(vecs, dtype=np.float64)
+    vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.int32)
+    axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_axes = vecs.shape[0]
+    n_vecs = vecs.shape[1]
+
+    # Create temporaries and/or outputs
+    projections = np.empty((n_selected_axes, n_selected_vecs), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.omics_vector_RAP_projection_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.omics_vector_RAP_projection_c.restype = None
+
+    tox.omics_vector_RAP_projection_c(
+        vecs,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        ctypes.byref(ctypes.c_int(n_vecs)),
+        vecs_selection_mask,
+        ctypes.byref(ctypes.c_int(n_selected_vecs)),
+        axes_selection_mask,
+        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        projections,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    projections.setflags(write=False)
+
+    return projections
+
+
+def omics_field_RAP_projection(
+        vecs,
+        vecs_selection_mask,
+        n_selected_vecs,
+        axes_selection_mask,
+        n_selected_axes
+        ):
+    """
+    Parameters
+    ----------
+    vecs : ndarray[np.float64] of shape (2 * n_axes, n_vecs) in column-major layout (order='F')
+        matrix with vector fields, first n rows mean vector origin, last n rows vector targets
+    vecs_selection_mask : ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
+        `.true.` for vectors where projection is to be computed
+    axes_selection_mask : ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
+        `.true.` for axes to be included in RAP
+
+    Returns
+    -------
+    projections : ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
+        projected vectors
+
+    Notes
+    -----
+    Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+    """
+
+    # ensure all array inputs are numpy arrays
+    vecs = np.asfortranarray(vecs, dtype=np.float64)
+    vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.int32)
+    axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_axes = axes_selection_mask.shape[0]
+    n_vecs = vecs.shape[1]
+
+    # Create temporaries and/or outputs
+    projections = np.empty((n_selected_axes, n_selected_vecs), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.omics_field_RAP_projection_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.omics_field_RAP_projection_c.restype = None
+
+    tox.omics_field_RAP_projection_c(
+        vecs,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        ctypes.byref(ctypes.c_int(n_vecs)),
+        vecs_selection_mask,
+        ctypes.byref(ctypes.c_int(n_selected_vecs)),
+        axes_selection_mask,
+        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        projections,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    projections.setflags(write=False)
+
+    return projections
+
+
+def project_selected_vecs_onto_rap(
+        selected_vecs
+        ):
+    """
+    Parameters
+    ----------
+    selected_vecs : ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F'), modified in-place
+        matrix with vectors for selected axes
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Projects selected vectors onto its RAP
+    """
+
+    # ensure all array inputs are numpy arrays
+    selected_vecs = np.asfortranarray(selected_vecs, dtype=np.float64)
+
+    # extract dimension arguments
+    n_selected_axes = selected_vecs.shape[0]
+    n_selected_vecs = selected_vecs.shape[1]
+
+    # Create temporaries and/or outputs
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.project_selected_vecs_onto_rap_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.project_selected_vecs_onto_rap_c.restype = None
+
+    tox.project_selected_vecs_onto_rap_c(
+        selected_vecs,
+        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        ctypes.byref(ctypes.c_int(n_selected_vecs)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    selected_vecs.setflags(write=False)
+
+    return None
