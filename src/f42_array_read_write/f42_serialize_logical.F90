@@ -69,8 +69,7 @@ contains
     close(unit)
   end subroutine
 
-  !> category: C-interface
-  !| Serialize a 3D logical array to a binary file.
+  !> Serialize a 3D logical array to a binary file.
   !| The file will contain a magic number, type code, dimension, shape, and the array data.
   subroutine serialize_logical_3d(arr, filename, ierr)
     logical, intent(in) :: arr(:,:,:)

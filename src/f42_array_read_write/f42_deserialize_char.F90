@@ -13,10 +13,12 @@ module f42_deserialize_char
           deserialize_char_4d, deserialize_char_5d
 
 contains
-  !> category: C-interface
-  !| Subroutine to deserialize a flat character array from a file
-  subroutine deserialize_char_nd(flat, filename, ierr)
-    character(len=*), intent(out) :: flat(:)
+  !> summary: Subroutine to deserialize a flat character array from a file
+  subroutine deserialize_char_nd(flat, flat_len, filename, ierr)
+    integer(int32), intent(in) :: flat_len
+      !! String length for `flat`
+      !! DM_FROM(type_code, get_array_metadata, f42_array_utils, AUTO)
+    character(len=flat_len), intent(out) :: flat(:)
       !! Output flat character array
     character(len=*), intent(in) :: filename
       !! Name of the file to read

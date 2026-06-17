@@ -1,10 +1,9 @@
 from ford.fortran_project import Project as _Project
 from ford.settings import load_toml_settings, load_markdown_settings
 from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable, FortranModuleProcedureImplementation, FortranModule
-import warnings
 from enum import Enum
 import re
-from .utils import Indentable, CodeGenerator, regex_escaped_preprocessor
+from .utils import Indentable, CodeGenerator, regex_escaped_preprocessor, warn
 
 
 SHAPE_ARG_SUFFIX = "_shape"
@@ -151,13 +150,7 @@ class DocList(CodeGenerator):
 
         doc_list = unit.doc_list
         if len(doc_list) == 0 or (len(doc_list) == 1 and doc_list[0] == ""):
-            warning = f"\n\033[38;5;226mNo docstring for '\033[38;5;208m{unit.name}\033[38;5;226m'"
-            parent = unit
-            while type(parent) is not FortranModule:
-                parent = parent.parent
-                warning += f" in '\033[38;5;208m{parent.name}\033[38;5;226m'"
-
-            warnings.warn(warning + "\033[0m")
+            warn("No Ford documentation", unit)
 
         doc_list = [line.lstrip() for line in doc_list]
         return cls(doc_list, ty)
@@ -190,23 +183,28 @@ class Procedure_Argument(CodeGenerator):
         self.is_temporary = self.name.startswith("tmp_")
         self.parent = proc
         self.is_shape_arg = self.name.endswith(SHAPE_ARG_SUFFIX)
+        self.is_mode_arg = self.name == "mode" or self.name.endswith("_mode")
 
     @property
     def default_value(self) -> int | str | bool | float | None:
-        if len(self.doc_list) > 0:
-            doc_str = self.doc_list[-1]
-            regex = format(regex_escaped_preprocessor, ".*M_DOC_DEFAULT((?P<default_val>.*)).*")
-            if (match := re.match(regex, doc_str)) is not None:
-                return match.group("default_val")
+        return
+        # if len(self.doc_list) > 0:
+        # TODO
+        #     doc_str = self.doc_list[-1]
+        #     regex = format(regex_escaped_preprocessor, ".*M_DOC_DEFAULT((?P<default_val>.*)).*")
+        #     if (match := re.match(regex, doc_str)) is not None:
+        #         return match.group("default_val")
 
         return None
 
     @property
-    def is_dim_arg_for(self) -> Self | None:
+    def is_dim_arg_for(self) -> Tuple[Self, ...]:
+        dim_args = []
         if len(self.type.dimension) == 0:
             for arg in self.parent.args:
                 if self.name in arg.type.dimension:
-                    return arg
+                    dim_args.append(arg)
+        return tuple(dim_args)
 
     @property
     def shape_arg(self) -> Self | None:
@@ -232,6 +230,8 @@ class Procedure(CodeGenerator):
     def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
         self.name = procedure.name
         self.meta = procedure.meta
+        if not self.meta.summary:
+            warn("No summary meta tag (!! summary: ...)", procedure)
         self.args = Procedure_Arguments(procedure.args, self)
         self.doc_list = DocList.from_fortran(procedure)
         self.retvar = getattr(procedure, "retvar", None)

@@ -168,8 +168,7 @@ contains
     close(unit)
   end subroutine
 
-  !> category: C-interface
-  !| Serialize a character array of arbitrary dimensions to a binary file.
+  !> Serialize a character array of arbitrary dimensions to a binary file.
   !| The file will contain a magic number, type code, dimension, shape, character length, and the array data.
   !| @note This routine is only called by R and serializes only flat character arrays to the memory
   subroutine serialize_char_nd(flat, flat_shape, filename, ierr)

@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!>  Module for C-wrappers for [[tox_archive(module)]]
+!> summary: Module for C-wrappers for [[tox_archive(module)]]
 module tox_archive_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
@@ -12,14 +12,15 @@ module tox_archive_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    implicit none
 contains
 
-    !> C-wrapper for [[tox_archive(module):save_tox_data(subroutine)]]
-    !| 
+    !> summary: C-wrapper for [[tox_archive(module):save_tox_data(subroutine)]]
     !| Save standard tox data
     subroutine save_tox_data_c(zip_filename, zip_filename_strlen, ierr, gene_ids, gene_ids_strlen, n_gene_ids_elements, gene_ids_file, gene_ids_file_strlen, expression, n_expression_elements_dim_1, n_expression_elements_dim_2, expression_file, expression_file_strlen, gene_to_family, n_gene_to_family_elements, gene_to_family_file, gene_to_family_file_strlen, family_ids, family_ids_strlen, n_family_ids_elements, family_ids_file, family_ids_file_strlen, family_centroids, n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2, family_centroids_file, family_centroids_file_strlen, shift_vectors, n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2, shift_vectors_file, shift_vectors_file_strlen) bind(C, name="save_tox_data_c")
         use tox_archive, only: save_tox_data
+        use tox_archive
         integer(c_int), intent(in), target :: zip_filename_strlen
             !!  String length of 'zip_filename'
         integer(c_int), intent(in), target :: gene_ids_strlen
@@ -62,7 +63,7 @@ contains
             !! Error code
         character(len=1, kind=c_char), intent(in), dimension(gene_ids_strlen, n_gene_ids_elements), target :: gene_ids
             !! Gene ids array, will be saved if provided
-            !! This argument will be ignored if not present.
+            !! M_DOC_NO_DEFAULT
         character(len=1, kind=c_char), intent(in), dimension(gene_ids_file_strlen), target :: gene_ids_file
             !! Name of the gene ids file
         real(c_double), intent(in), dimension(n_expression_elements_dim_1, n_expression_elements_dim_2), target :: expression

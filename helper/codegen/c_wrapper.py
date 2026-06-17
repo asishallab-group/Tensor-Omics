@@ -4,6 +4,7 @@ from .api.c_wrapper import C_Wrapper_Modules
 
 INDENT = 4
 TYPE_CONVERSION_SUFFIX = "_f"
+MAPPED_MODE_SUFFIX = "_int_f"
 
 
 class C_Wrapper_Serializer(Serializer):
@@ -78,7 +79,15 @@ class C_Wrapper_Serializer(Serializer):
     def Procedure_Arguments(self, spec):
         match spec:
             case "arglist":
-                return Indentable(", ".join(arg.name + arg.type.needs_conversion * TYPE_CONVERSION_SUFFIX for arg in self))
+                arglist = []
+                for arg in self:
+                    if arg.is_mode_arg:
+                        arglist.append(arg.name + MAPPED_MODE_SUFFIX)
+                    elif arg.type.needs_conversion:
+                        arglist.append(arg.name + TYPE_CONVERSION_SUFFIX)
+                    else:
+                        arglist.append(arg.name)
+                return Indentable(", ".join(arglist))
             case _:
                 raise ValueError(f"Unsupported format spec '{spec}'")
 
@@ -96,44 +105,62 @@ class C_Wrapper_Serializer(Serializer):
 
     def C_Wrapper_Argument(self, spec):
         type_conversion_name = self.name + TYPE_CONVERSION_SUFFIX
+        arg_str = ""
         match spec:
             case "dummy":
                 arg_str = f"{format(self.type, "dummy")}, target :: {self.name}\n"
                 arg_str += format(self.doc, "argument") >> INDENT
             case "locals_type_conversion":
-                arg_str = f"{format(self.type, "locals_type_conversion")} :: {type_conversion_name}"
+                if self.type.needs_conversion:
+                    arg_str = f"{format(self.type, "locals_type_conversion")} :: {type_conversion_name}"
+                    if self.mode_vars is not None:
+                        arg_str += f"\ninteger(int32) :: {self.name}{MAPPED_MODE_SUFFIX}"
             case "type_conversion_inputs":
-                shape_arg = self.shape_arg
-                if shape_arg is None:
-                    if self.type.name == "character":
-                        shape = self.type.dimension[1:]
+                if self.type.needs_conversion:
+                    shape_arg = self.shape_arg
+                    if shape_arg is None:
+                        if self.type.name == "character":
+                            shape = self.type.dimension[1:]
+                        else:
+                            shape = self.type.dimension
+                        c_name = self.name
                     else:
-                        shape = self.type.dimension
-                    c_name = self.name
-                else:
-                    shape = shape_arg.type.dimension
-                    if self.type.name == "character":
-                        c_name = f"{self.name}(:, 1:size({shape_arg.name}, kind=int32))"
-                    else:
-                        c_name = f"{self.name}(1:size({shape_arg.name}, kind=int32))"
+                        shape = shape_arg.type.dimension
+                        if self.type.name == "character":
+                            c_name = f"{self.name}(:, 1:size({shape_arg.name}, kind=int32))"
+                        else:
+                            c_name = f"{self.name}(1:size({shape_arg.name}, kind=int32))"
 
-                if self.type.intent is Intent.OUT:
-                    if self.type.name == "character":
-                        arg_str = f"M_ALLOCATE(character(len={self.type.dimension[0]}) :: {type_conversion_name}{format(shape, "tuple")})"
+                    if self.type.intent is Intent.OUT:
+                        if self.type.name == "character":
+                            arg_str = f"M_ALLOCATE(character(len={self.type.dimension[0]}) :: {type_conversion_name}{format(shape, "tuple")})"
+                        else:
+                            arg_str = f"M_ALLOCATE({type_conversion_name}{format(shape, "tuple")})"
                     else:
-                        arg_str = f"M_ALLOCATE({type_conversion_name}{format(shape, "tuple")})"
-                else:
-                    match self.type.name:
-                        case "logical":
-                            arg_str = f"call c_int_as_logical({c_name}, {type_conversion_name})"
-                        case "character":
-                            ndims = len(self.type.dimension)
-                            if ndims == 0:
-                                arg_str = f"call c_char_as_char({c_name}, {type_conversion_name})"
-                            elif ndims < 3:
-                                arg_str = f"call c_char_{ndims}d_as_string({c_name}, {type_conversion_name}, ierr)\nif (is_err(ierr)) return"
-                        case _:
-                            raise ValueError(f"Unsupported conversion for '{self.name}'")
+                        match self.type.name:
+                            case "logical":
+                                arg_str = f"M_ALLOCATE({type_conversion_name}{format(shape, "tuple")})"
+                                arg_str += f"\ncall c_int_as_logical({c_name}, {type_conversion_name})"
+                            case "character":
+                                ndims = len(self.type.dimension)
+                                if ndims == 0:
+                                    arg_str = f"call c_char_as_char({c_name}, {type_conversion_name})"
+                                elif ndims < 3:
+                                    arg_str = f"call c_char_{ndims}d_as_string({c_name}, {type_conversion_name}, ierr)\nif (is_err(ierr)) return"
+                                else:
+                                    raise ValueError(f"String conversion for {ndims}D arrays not supported yet in tox conversions")
+                            case _:
+                                raise ValueError(f"Unsupported conversion for '{self.name}'")
+
+                    if self.mode_vars is not None:
+                        arg_str += f"\n\nselect case ({self.name}_f)"
+                        for mode_name, module_name, mode_str in self.mode_vars:
+                            arg_str += f"""\n    case ("{mode_str}")
+        {self.name}{MAPPED_MODE_SUFFIX} = {mode_name}"""
+                        arg_str += "\n    case default"
+                        arg_str += "\n        call set_err(ierr, ERR_INVALID_INPUT)"
+                        arg_str += "\n        return"
+                        arg_str += "\nend select"
             case "type_conversion_outputs":
                 if self.type.needs_conversion and self.type.intent is not Intent.IN:
                     shape_arg = self.shape_arg
@@ -161,11 +188,11 @@ class C_Wrapper_Serializer(Serializer):
     def C_Wrapper_Arguments(self, spec):
         match spec:
             case "dummy":
-                formatted_dim_args = "\n".join(format(arg, "dummy") for arg in self if arg.is_dim_arg_for is not None)
-                formatted_other = "\n".join(format(arg, "dummy") for arg in self if arg.is_dim_arg_for is None)
+                formatted_dim_args = "\n".join(format(arg, "dummy") for arg in self if len(arg.is_dim_arg_for) > 0)
+                formatted_other = "\n".join(format(arg, "dummy") for arg in self if len(arg.is_dim_arg_for) == 0)
                 formatted = formatted_dim_args + "\n" + formatted_other
             case "locals_type_conversion" | "type_conversion_inputs":
-                formatted = "\n".join(format(arg, spec) for arg in self if arg.type.needs_conversion)
+                formatted = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "type_conversion_outputs":
                 formatted = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "arglist":
@@ -184,11 +211,12 @@ class C_Wrapper_Serializer(Serializer):
         orig_proc = self.orig_procedure
         module_name = orig_proc.parent.name
         ford_link = f"[[{module_name}(module):{orig_proc.name}({orig_proc.type})]]"
-        doc = [f"C-wrapper for {ford_link}", ""] + self.doc
+        doc = [f"summary: C-wrapper for {ford_link}"] + self.doc
 
         wrapper = f"""{format(doc, "subroutine")}
 subroutine {self.name}({format(self.arguments, "arglist")}) bind(C, name="{self.name}")
     use {module_name}, only: {self.orig_procedure.name}
+    use {module_name}
 {format(self.arguments, "dummy") >> INDENT}
 {format(self.arguments, "locals_type_conversion") >> INDENT}
 {format(self.arguments, "null_validation") >> INDENT}
@@ -200,7 +228,7 @@ end subroutine {self.name}"""
         return Indentable(wrapper)
 
     def C_Wrapper_Module(self, spec):
-        doc = [f" Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc
+        doc = [f"summary: Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc
         return f"""#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
@@ -215,7 +243,8 @@ module {self.name}
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    implicit none
 contains
 
 {"\n\n".join(format(c_wrapper) >> INDENT for c_wrapper in self)}

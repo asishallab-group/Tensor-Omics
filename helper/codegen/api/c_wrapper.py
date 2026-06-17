@@ -1,15 +1,24 @@
 from .fortran import Module, Procedure, Procedure_Argument, DocList, Dimension, Intent, Fortran_Type, Procedure
-from .utils import CodeGenerator
+from .utils import CodeGenerator, regex_escaped_preprocessor
 from typing import List, Tuple
 from enum import Enum
 import re
 
 NAME_SUFFIX = "_c"
 
+MODE_TABLE_HEAD_RE = re.compile(r"\s*\|\s*Mode\s*\|\s*Value\s*\|\s*")
+MODE_TABLE_ALIGN_RE = re.compile(r"\s*\|:?-+:?\|:?-+:?\|\s*")
+MODE_FORD_LINK_RE = re.compile(r"\[\[(?P<module_name>[a-z_]+)\(module\):(?P<mode_name>[A-Z_]+)\(variable\)\]\]")
+MODE_TABLE_ROW_RE = re.compile(r"\s*\|[^\|]+\|\s*" + MODE_FORD_LINK_RE.pattern + r"\s*\|\s*")
+
+Variable_Name = str
+Mode_String = str
+Module_Name = str
+
 
 class C_Wrapper_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
-    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, c_wrapper: C_Wrapper, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: C_Wrapper_Argument | Procedure_Argument = None, shape_arg: C_Wrapper_Argument | Procedure_Argument = None, is_shape_arg=False):
+    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, c_wrapper: C_Wrapper, mode_vars: Tuple[Tuple[Variable_Name, Module_Name, Mode_String], ...] = None, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: Tuple[C_Wrapper_Argument | Procedure_Argument] = (), shape_arg: C_Wrapper_Argument | Procedure_Argument = None, is_shape_arg=False):
         self.name = name
         self.doc = doc
         self.type = type
@@ -21,6 +30,7 @@ class C_Wrapper_Argument(CodeGenerator):
         self._shape_arg = shape_arg
         self.parent = c_wrapper
         self.is_shape_arg = is_shape_arg
+        self.mode_vars = mode_vars
 
     @classmethod
     def create_dim_arg(cls, name: str, doc: str, c_wrapper: C_Wrapper, only_c_arg=True, is_dim_arg_for=None):
@@ -65,36 +75,84 @@ class C_Wrapper_Argument(CodeGenerator):
                 )
                 extra_dim_args.insert(0, extra_arg)
                 dimension.insert(0, extra_arg.name)
+            elif arg.type.len == ":":
+                raise AssertionError(f"Deferred length not allowed for '{arg.name}' in '{arg.parent.name}' of '{arg.parent.parent.name}'")
             else:
                 dimension.insert(0, arg.type.len)
 
+        doc_list = arg.doc_list
+
+        if arg.is_mode_arg:
+            state = "doc"
+            converted_doc_list = []
+            mode_vars = []
+            for doc in doc_list:
+                match state:
+                    case "doc":
+                        if MODE_TABLE_HEAD_RE.match(doc):
+                            state = "mode_spec_align"
+                    case "mode_spec_align":
+                        if MODE_TABLE_ALIGN_RE.match(doc):
+                            state = "mode_spec_rows"
+                        else:
+                            raise AssertionError(f"Expected some pattern like '|------|------|' for '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'")
+                    case "mode_spec_rows":
+                        if (match := MODE_TABLE_ROW_RE.match(doc)) is not None:
+                            mode_name = match.group("mode_name")
+                            module_name = match.group("module_name")
+                            mode_string = mode_name.removeprefix("MODE_").lower()
+                            mode_vars.append((mode_name, module_name, mode_string))
+                            doc = MODE_FORD_LINK_RE.sub(f' "{mode_string}"  ', doc)
+                        else:
+                            state = "done"
+
+                converted_doc_list.append(doc)
+
+            assert len(mode_vars) > 0, f"""Found mode argument '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'. In Ford doc comment, expected markdown table like:
+!! |    Mode   |   Value  |
+!! |-----------|----------|
+!! | bla mode  | MODE_BLA |
+!! ...
+"""
+            mode_vars = tuple(mode_vars)
+            doc_list = DocList(converted_doc_list, "argument")
+            assert arg.type.name == "integer", f"Found mode argument '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'. Must be integer, got: {arg.type.name}"
+            max_mode_len = str(max(len(mode_str) for _, _, mode_str in mode_vars))
+            arg_type = Fortran_Type("character", intent=Intent.IN, dimension=Dimension([max_mode_len, *dimension]), length=max_mode_len)
+        else:
+            arg_type = Fortran_Type(arg.type.name, intent=arg.type.intent, kind=arg.type.kind, dimension=Dimension(dimension), length=arg.type.len)
+            mode_vars = None
+
         argument = cls(
             name=arg.name,
-            doc=arg.doc_list,
-            type=Fortran_Type(arg.type.name, intent=arg.type.intent, kind=arg.type.kind, dimension=Dimension(dimension), length=arg.type.len),
+            doc=doc_list,
+            type=arg_type,
             is_temporary=arg.is_temporary,
             is_dim_arg_for=arg.is_dim_arg_for,
             is_shape_arg=arg.is_shape_arg,
             shape_arg=shape_arg,
             default_value=arg.default_value,
             optional=arg.optional,
-            c_wrapper=c_wrapper
+            c_wrapper=c_wrapper,
+            mode_vars=mode_vars
         )
 
+        is_dim_arg_for = (argument,)
         for dim_arg in extra_dim_args:
-            dim_arg._is_dim_arg_for = argument
+            dim_arg._is_dim_arg_for = is_dim_arg_for
 
         return argument, tuple(extra_dim_args)
 
     @property
     def is_dim_arg_for(self):
-        arg = self._is_dim_arg_for
-        if type(arg) is Procedure_Argument:
-            for c_arg in self.parent.arguments:
-                if c_arg.name == arg.name:
-                    return c_arg
-        else:
-            return arg
+        dim_args = list(self._is_dim_arg_for)
+        for i_arg, arg in enumerate(dim_args):
+            if type(arg) is Procedure_Argument:
+                for c_arg in self.parent.arguments:
+                    if c_arg.name == arg.name:
+                        dim_args[i_arg] = arg
+
+        return tuple(dim_args)
 
     @property
     def shape_arg(self):

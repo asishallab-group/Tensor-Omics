@@ -28,7 +28,7 @@ class Python_Serializer(Serializer):
                     case "logical":
                         string = "np.int32"
                     case "real":
-                        string = "np.real64"
+                        string = "np.float64"
                     case "complex":
                         string = "np.complex128"
                     case "character":
@@ -44,13 +44,14 @@ class Python_Serializer(Serializer):
                     if self.name == "character":
                         ndim -= 1
                     string = f"np.ctypeslib.ndpointer(ndim={ndim}, flags='{flags}'{dtype})"
-            case "doc":
+            case "doc_params":
                 ndim = len(self.dimension)
                 if ndim > 0:
                     if ndim == 1 and self.name == "character":
                         string = "str"
                     else:
-                        string = f"ndarray[{format(self, "dtype")}] of shape {format(self.dimension, "shape")} in column-major layout (order='F')"
+                        dimension = self.dimension[1:] if self.name == "character" else self.dimension
+                        string = f"ndarray[{format(self, "dtype")}] of shape {format(dimension, "shape")} in column-major layout (order='F')"
                 else:
                     match self.name:
                         case "integer":
@@ -81,7 +82,10 @@ class Python_Serializer(Serializer):
     def Dimension(self, spec):
         match spec:
             case "shape":
-                string = f"({", ".join(self)})"
+                string = f"({", ".join(self)}"
+                if len(self) == 1:
+                    string += ","
+                string += ")"
             case "char_len":
                 string = self[0]
 
@@ -102,18 +106,23 @@ class Python_Serializer(Serializer):
     def C_Wrapper_Argument(self, spec):
         string = ""
         match spec:
-            case "doc":
-                if self.type.intent is not Intent.OUT and self.is_dim_arg_for is None:
+            case "doc_params":
+                if self.type.intent is not Intent.OUT and len(self.is_dim_arg_for) == 0:
                     optional = ", optional" if self.optional else ""
-                    string = f"""{self.name} : {format(self.type, "doc")}{optional}
+                    in_place = ", modified in-place" if self.type.intent is Intent.INOUT else ""
+                    string = f"""{self.name} : {format(self.type, "doc_params")}{in_place}{optional}
+{format(self.doc) >> INDENT}"""
+            case "doc_returns":
+                if self.type.intent is Intent.OUT:
+                    string = f"""{self.name} : {format(self.type, "doc_params")}
 {format(self.doc) >> INDENT}"""
             case "arglist":
-                if self.type.intent is not Intent.OUT and self.is_dim_arg_for is None and not self.is_shape_arg:
+                if self.type.intent is not Intent.OUT and len(tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)) == 0 and not self.is_shape_arg:
                     string = self.name
                     if self.default_value is not None:
                         string += "=" + str(self.default_value)
             case "ensure_numpy_array":
-                if self.is_dim_arg_for is None and len(self.type.dimension) > 0 and not self.is_shape_arg:
+                if self.type.intent is not Intent.OUT and len(self.is_dim_arg_for) == 0 and len(self.type.dimension) > 0 and not self.is_shape_arg:
                     if self.type.name == "character":
                         string = f"{self.name} = np.asarray({self.name})"
                     else:
@@ -131,11 +140,12 @@ class Python_Serializer(Serializer):
                     string = f"{self.name} = {format(self.type, "init_val")}"
                 elif self.type.name == "character" and len(self.type.dimension) > 0:
                     string = f'{self.name} = {self.name}.astype({format(self.type, "dtype")}, order="F")'
-                elif len(self.type.dimension) == 0 and self.is_dim_arg_for is None:
+                elif len(self.type.dimension) == 0 and len(self.is_dim_arg_for) == 0:
                     string = f"{self.name} = {format(self.type, "ctypes")}({self.name})"
             case "create_dim_args":
-                parent = self.is_dim_arg_for
-                if parent is not None:
+                parents = tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)
+                if len(parents) > 0:
+                    parent = parents[0]
                     if parent.type.name == "character" and parent.type.dimension[0] == self.name:
                         string = f"{self.name} = {parent.name}.dtype.itemsize // {parent.name}.dtype.alignment"
                     else:
@@ -158,14 +168,14 @@ class Python_Serializer(Serializer):
 
     def C_Wrapper_Arguments(self, spec):
         match spec:
-            case "doc" | "allocate" | "ensure_numpy_array" | "create_dim_args":
+            case "doc_params" | "allocate" | "ensure_numpy_array" | "create_dim_args":
                 string = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "argtypes" | "call_args" | "arglist":
                 string = ",\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "readonly":
                 string = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "return":
-                outputs = tuple(arg for arg in self if arg.type.intent is not Intent.IN and arg.name != "ierr")
+                outputs = tuple(arg for arg in self if arg.type.intent is Intent.OUT and arg.name != "ierr" and not arg.is_temporary)
                 n_outputs = len(outputs)
                 string = "return "
                 if n_outputs == 0:
@@ -177,6 +187,19 @@ class Python_Serializer(Serializer):
                     string += f"""{{
 {Indentable(dict_elements) >> INDENT}
 }}"""
+            case "doc_returns":
+                outputs = tuple(arg for arg in self if arg.type.intent is Intent.OUT and arg.name != "ierr")
+                outputs_doc = tuple(format(arg, "doc_returns") for arg in outputs)
+                n_outputs = len(outputs)
+                if n_outputs == 0:
+                    string = "None"
+                elif n_outputs == 1:
+                    string = outputs_doc[0]
+                else:
+                    dict_elements = ",\n".join(outputs_doc)
+                    string = f"""results : dict
+{Indentable(dict_elements) >> INDENT}
+"""
 
         return Indentable(string)
 
@@ -189,7 +212,11 @@ class Python_Serializer(Serializer):
 
     Parameters
     ----------
-{format(self.arguments, "doc") >> INDENT}
+{format(self.arguments, "doc_params") >> INDENT}
+
+    Returns
+    -------
+{format(self.arguments, "doc_returns") >> INDENT}
     """
 
     # ensure all array inputs are numpy arrays

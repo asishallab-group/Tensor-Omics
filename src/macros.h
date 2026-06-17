@@ -15,7 +15,11 @@
 #define M_NEG_INF ieee_value(1.0_real64, ieee_negative_inf)
 #define M_POS_INF ieee_value(1.0_real64, ieee_positive_inf)
 
-#define M_DOC_DEFAULT(DEFAULT_VAL) The default value is `DEFAULT_VAL`.
-#define M_DOC_NO_DEFAULT This argument will be ignored if not present.
-#define M_DOC_REQUIRED_IF_MODE(MODULE, MODE) This optional argument needs to be passed if used mode is [[MODULE(module):MODE(variable)]].
-#define M_DOC_REQUIRED_IF_METHOD(MODULE, METHOD) This optional argument needs to be passed if used method is [[MODULE(module):METHOD(variable)]].
+#define DM_DEFAULT(DEFAULT_VAL) The default value is `DEFAULT_VAL`.
+#define DM_NO_DEFAULT This argument will be ignored if not present.
+#define DM_REQUIRED_IF_MODE(MODULE, MODE) This optional argument needs to be passed if used mode is [[MODULE(module):MODE(variable)]].
+#define DM_REQUIRED_IF_METHOD(MODULE, METHOD) This optional argument needs to be passed if used method is [[MODULE(module):METHOD(variable)]].
+
+#define DM_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_FROM_##MODE to compute this argument using [[MODULE(module):PROCEDURE]]'s output `ARGUMENT`.
+#define DM_FROM_AUTO It is *VERY IMPORTANT*
+#define DM_FROM_JUST_INFO It is recommended

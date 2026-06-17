@@ -1,3 +1,15 @@
+import warnings
+
+
+def warn(msg, entity):
+    warning = f"\n\033[38;5;226m{msg} for '\033[38;5;210m{entity.name}\033[38;5;226m'"
+    parent = entity
+    while (parent := getattr(parent, "parent", None)) is not None:
+        warning += f" in '\033[38;5;208m{parent.name}\033[38;5;226m'"
+
+    warnings.warn(warning + "\033[0m")
+
+
 class Indentable(str):
     """Wrapper class to easily indent code blocks"""
     def __new__(cls, *args, **kwargs):
@@ -106,16 +118,16 @@ class Macros:
     """Class for Macros"""
     def __init__(self, macro_file: str, regex_escaped=True):
         from pcpp.pcmd import CmdPreprocessor
-        from re import escape
-
         self.preprocessor = CmdPreprocessor(["", macro_file])
+
         if regex_escaped:
+            from re import escape
             for macro in self.preprocessor.macros.values():
                 for token in macro.value:
                     token.value = escape(token.value)
 
-    def __format__(self, spec):
-        tokens = self.preprocessor.tokenize(spec)
+    def expand(self, text: str):
+        tokens = self.preprocessor.tokenize(text)
         expanded = self.preprocessor.expand_macros(tokens)
         return "".join(i.value for i in expanded)
 

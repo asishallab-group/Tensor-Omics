@@ -70,8 +70,7 @@ contains
     close(unit)
   end subroutine
 
-  !> category: C-interface
-  !| Serialize a 3D integer(int32) array to a binary file.
+  !> Serialize a 3D integer(int32) array to a binary file.
   !| The file will contain a magic number, type code, dimension, shape, and the array data.
   subroutine serialize_int_3d(arr, filename, ierr)
     integer(int32), intent(in) :: arr(:,:,:)

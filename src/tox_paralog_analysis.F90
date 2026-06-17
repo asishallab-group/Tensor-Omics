@@ -7,7 +7,7 @@ module tox_paralog_analysis
     use f42_utils, only: add_vector, subtract_vector, norm, angle_between, above
     implicit none
 
-    integer(int32), parameter :: DOSAGE_PATTERN = 0
+    integer(int32), parameter :: MODE_DOSAGE_PATTERN = 0
     integer(int32), parameter :: MODE_SUBFUNC_PATTERN = 1
 
 contains
@@ -54,7 +54,8 @@ contains
         end do
     end subroutine detect_neofunctionalization
 
-    !> Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
+    !> category: C-interface
+    !| Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
     pure subroutine detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
@@ -62,6 +63,7 @@ contains
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
+            !! DM_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -69,9 +71,11 @@ contains
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
-            !! maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+            !! maximum subset size of checked gene subsets.
+            !! DM_FROM(max_subset_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis, AUTO)
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
+            !! DM_FROM(work_array_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis, AUTO)
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -79,6 +83,7 @@ contains
             !! @endnote
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+            !! DM_FROM(masks(:, family_idx), filter_paralogs_by_pattern, tox_paralog_analysis, JUST_INFO)
         integer(int32), dimension(n_mask_chunks), intent(out) :: active_mask
             !! working array to hold the extended subsets
         real(real64), dimension(n_dims), intent(out) :: temp_paralog_vector
@@ -90,7 +95,7 @@ contains
         real(real64), intent(in), optional :: max_angle
             !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned, default is Pi
 
-        call detect_patterns(ancestor, genes, n_genes, n_dims, DOSAGE_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle=max_angle, dosage_gain_gamma=gain_gamma, ierr=ierr)
+        call detect_patterns(ancestor, genes, n_genes, n_dims, MODE_DOSAGE_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle=max_angle, dosage_gain_gamma=gain_gamma, ierr=ierr)
     end subroutine detect_dosage_effect
 
     !> Identifies subsets of paralogs exhibiting significant angles to the `ancestor`
@@ -136,8 +141,7 @@ contains
         call detect_patterns(ancestor, genes, n_genes, n_dims, MODE_SUBFUNC_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=paralog_norms, subfunc_sorted_paralog_norms_perm=sorted_paralog_norms_perm, subfunc_temp_work_array=temp_work_array, ierr=ierr)
     end subroutine detect_subfunctionalization
 
-    !> category: C-interface
-    !| Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    !> Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
     pure subroutine detect_patterns(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)
         use f42_utils, only: PI
 
@@ -312,7 +316,7 @@ contains
         call set_ok(ierr)
 
         select case (pattern)
-        case (DOSAGE_PATTERN)
+        case (MODE_DOSAGE_PATTERN)
             block
                 use f42_utils, only: PI
                 real(real64) :: subset_angle, gain, max_angle
@@ -623,7 +627,8 @@ contains
         call filter_paralogs_by_pattern(MODE_SUBFUNC_PATTERN, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
     end subroutine filter_paralogs_by_pattern_subfunctionalization
 
-    !> This subroutine prefilters the genes for dosage effect,
+    !> category: C-interface
+    !| This subroutine prefilters the genes for dosage effect,
     !| as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     pure subroutine filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         integer(int32), intent(in) :: n_genes
@@ -643,11 +648,11 @@ contains
         integer(int32), intent(out) :: ierr
             !! error code
 
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern(MODE_DOSAGE_PATTERN, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
     end subroutine filter_paralogs_by_pattern_dosage_effect
 
     !> This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
-    pure subroutine filter_paralogs_by_pattern(pattern, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+    pure subroutine filter_paralogs_by_pattern(mode_pattern, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         use f42_utils, only: PI
 
         integer(int32), intent(in) :: n_genes
@@ -656,13 +661,13 @@ contains
             !! number of families
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-        integer(int32), intent(in) :: pattern
+        integer(int32), intent(in) :: mode_pattern
             !! used pattern for detection
             !!
-            !! |       Pattern        | Value |
-            !! |----------------------|-------|
-            !! |    Dosage Effect     |   0   |
-            !! | Subfunctionalization |   1   |
+            !! |       Pattern        |                                Value                                |
+            !! |----------------------|---------------------------------------------------------------------|
+            !! |    Dosage Effect     |   [[tox_paralog_analysis(module):MODE_DOSAGE_PATTERN(variable)]]    |
+            !! | Subfunctionalization |   [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]]   |
             !!
         real(real64), dimension(n_genes), intent(in) :: gene_angles
             !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
@@ -690,8 +695,8 @@ contains
 
         masks = 0_int32
 
-        select case (pattern)
-        case (DOSAGE_PATTERN)
+        select case (mode_pattern)
+        case (MODE_DOSAGE_PATTERN)
             ! only genes with angles below the gene-family median or lower five percentile are marked active
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) <= threshold) then
@@ -715,7 +720,8 @@ contains
         end select
     end subroutine filter_paralogs_by_pattern
 
-    !> The `detect_*` subroutines need a work array for the to be tested subsets.
+    !> category: C-interface
+    !| The `detect_*` subroutines need a work array for the to be tested subsets.
     !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
     !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
     !|
@@ -736,6 +742,7 @@ contains
             !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! Output mask with all genes disabled that did not pass the filter
+            !! DM_FROM(masks(:, family_idx), filter_paralogs_by_pattern, tox_paralog_analysis, JUST_INFO)
         integer(int32), intent(out) :: ierr
             !! Error code
 

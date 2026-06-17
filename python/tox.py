@@ -9,317 +9,6 @@ dll_path = os.path.abspath("build/libtensor-omics.so")
 tox = ctypes.CDLL(dll_path)
 
 
-def deserialize_char_nd(
-        filename
-        ):
-    """
-    Subroutine to deserialize a flat character array from a file
-
-    Parameters
-    ----------
-    filename : str
-        Name of the file to read
-    """
-
-    # ensure all array inputs are numpy arrays
-    flat = np.asarray(flat)
-    filename = np.asarray(filename)
-
-    # extract dimension arguments
-    flat_strlen = flat.dtype.itemsize // flat.dtype.alignment
-    n_flat_elements = flat.shape[0]
-    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
-
-    # Create temporaries and/or outputs
-    flat = np.zeros((n_flat_elements), dtype=f"S{flat_strlen}", order='F')
-    filename = filename.astype(f"S{filename_strlen}", order="F")
-    ierr = ctypes.c_int(0)
-
-    # define ctypes interface
-    tox.deserialize_char_nd_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{flat_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
-    )
-    tox.deserialize_char_nd_c.restype = None
-
-    tox.deserialize_char_nd_c(
-        flat,
-        ctypes.byref(ctypes.c_int(flat_strlen)),
-        ctypes.byref(ctypes.c_int(n_flat_elements)),
-        filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr)
-    )
-
-    # throw error on error
-    check_err_code(ierr.value)
-
-    # Mark all arrays as read-only
-    flat.setflags(write=False)
-
-    return flat
-
-
-def serialize_char_nd(
-        flat,
-        filename
-        ):
-    """
-    Serialize a character array of arbitrary dimensions to a binary file.
-    The file will contain a magic number, type code, dimension, shape, character length, and the array data.
-    @note This routine is only called by R and serializes only flat character arrays to the memory
-
-    Parameters
-    ----------
-    flat : ndarray[f"S{flat_strlen}"] of shape (flat_strlen, *) in column-major layout (order='F')
-        flat array to save
-    flat_shape : ndarray[np.int32] of shape (n_flat_shape_elements) in column-major layout (order='F')
-        dimensions of the array
-    filename : str
-        output filename
-    """
-
-    # ensure all array inputs are numpy arrays
-    flat = np.asarray(flat)
-    flat_shape = np.ascontiguousarray(flat.shape, dtype=np.int32)
-    filename = np.asarray(filename)
-
-    # extract dimension arguments
-    flat_strlen = flat.dtype.itemsize // flat.dtype.alignment
-    n_flat_shape_elements = flat_shape.shape[0]
-    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
-
-    # Create temporaries and/or outputs
-    flat = flat.astype(f"S{flat_strlen}", order="F")
-    filename = filename.astype(f"S{filename_strlen}", order="F")
-    ierr = ctypes.c_int(0)
-
-    # define ctypes interface
-    tox.serialize_char_nd_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{flat_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
-    )
-    tox.serialize_char_nd_c.restype = None
-
-    tox.serialize_char_nd_c(
-        flat,
-        ctypes.byref(ctypes.c_int(flat_strlen)),
-        flat_shape,
-        ctypes.byref(ctypes.c_int(n_flat_shape_elements)),
-        filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr)
-    )
-
-    # throw error on error
-    check_err_code(ierr.value)
-
-    # Mark all arrays as read-only
-
-
-    return None
-
-
-def serialize_int_3d(
-        arr,
-        filename
-        ):
-    """
-    Serialize a 3D integer(int32) array to a binary file.
-    The file will contain a magic number, type code, dimension, shape, and the array data.
-
-    Parameters
-    ----------
-    arr : ndarray[np.int32] of shape (n_arr_elements_dim_1, n_arr_elements_dim_2, n_arr_elements_dim_3) in column-major layout (order='F')
-        array to save
-    filename : str
-        output filename
-    """
-
-    # ensure all array inputs are numpy arrays
-    arr = np.asfortranarray(arr, dtype=np.int32)
-    filename = np.asarray(filename)
-
-    # extract dimension arguments
-    n_arr_elements_dim_1 = arr.shape[0]
-    n_arr_elements_dim_2 = arr.shape[1]
-    n_arr_elements_dim_3 = arr.shape[2]
-    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
-
-    # Create temporaries and/or outputs
-    filename = filename.astype(f"S{filename_strlen}", order="F")
-    ierr = ctypes.c_int(0)
-
-    # define ctypes interface
-    tox.serialize_int_3d_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.int32),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
-    )
-    tox.serialize_int_3d_c.restype = None
-
-    tox.serialize_int_3d_c(
-        arr,
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_2)),
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_3)),
-        filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr)
-    )
-
-    # throw error on error
-    check_err_code(ierr.value)
-
-    # Mark all arrays as read-only
-
-
-    return None
-
-
-def serialize_logical_3d(
-        arr,
-        filename
-        ):
-    """
-    Serialize a 3D logical array to a binary file.
-    The file will contain a magic number, type code, dimension, shape, and the array data.
-
-    Parameters
-    ----------
-    arr : ndarray[np.int32] of shape (n_arr_elements_dim_1, n_arr_elements_dim_2, n_arr_elements_dim_3) in column-major layout (order='F')
-        array to save
-    filename : str
-        output filename
-    """
-
-    # ensure all array inputs are numpy arrays
-    arr = np.asfortranarray(arr, dtype=np.int32)
-    filename = np.asarray(filename)
-
-    # extract dimension arguments
-    n_arr_elements_dim_1 = arr.shape[0]
-    n_arr_elements_dim_2 = arr.shape[1]
-    n_arr_elements_dim_3 = arr.shape[2]
-    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
-
-    # Create temporaries and/or outputs
-    filename = filename.astype(f"S{filename_strlen}", order="F")
-    ierr = ctypes.c_int(0)
-
-    # define ctypes interface
-    tox.serialize_logical_3d_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.int32),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
-    )
-    tox.serialize_logical_3d_c.restype = None
-
-    tox.serialize_logical_3d_c(
-        arr,
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_2)),
-        ctypes.byref(ctypes.c_int(n_arr_elements_dim_3)),
-        filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr)
-    )
-
-    # throw error on error
-    check_err_code(ierr.value)
-
-    # Mark all arrays as read-only
-
-
-    return None
-
-
-def serialize_real_nd(
-        arr,
-        dims,
-        ndim,
-        filename
-        ):
-    """
-    Writes serialized real array from R to file with metdata.
-
-    Parameters
-    ----------
-    arr : ndarray[np.real64] of shape (n_arr_elements) in column-major layout (order='F')
-        array to save
-    dims : ndarray[np.int32] of shape (n_dims_elements) in column-major layout (order='F')
-        Dimensions of the array
-    ndim : int
-        Number of dimensions
-    filename : str
-        filename
-    """
-
-    # ensure all array inputs are numpy arrays
-    arr = np.ascontiguousarray(arr, dtype=np.real64)
-    dims = np.ascontiguousarray(dims, dtype=np.int32)
-    filename = np.asarray(filename)
-
-    # extract dimension arguments
-    n_arr_elements = arr.shape[0]
-    n_dims_elements = dims.shape[0]
-    filename_strlen = filename.dtype.itemsize // filename.dtype.alignment
-
-    # Create temporaries and/or outputs
-    ndim = ctypes.c_int(ndim)
-    filename = filename.astype(f"S{filename_strlen}", order="F")
-    ierr = ctypes.c_int(0)
-
-    # define ctypes interface
-    tox.serialize_real_nd_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{filename_strlen}"),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
-    )
-    tox.serialize_real_nd_c.restype = None
-
-    tox.serialize_real_nd_c(
-        arr,
-        ctypes.byref(ctypes.c_int(n_arr_elements)),
-        dims,
-        ctypes.byref(ctypes.c_int(n_dims_elements)),
-        ctypes.byref(ctypes.c_int(ndim)),
-        filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr)
-    )
-
-    # throw error on error
-    check_err_code(ierr.value)
-
-    # Mark all arrays as read-only
-
-
-    return None
-
-
 def save_tox_data(
         zip_filename,
         gene_ids,
@@ -342,46 +31,50 @@ def save_tox_data(
     ----------
     zip_filename : str
         Zip filename
-    gene_ids : ndarray[f"S{gene_ids_strlen}"] of shape (gene_ids_strlen, n_gene_ids_elements) in column-major layout (order='F'), optional
+    gene_ids : ndarray[f"S{gene_ids_strlen}"] of shape (n_gene_ids_elements,) in column-major layout (order='F'), optional
         Gene ids array, will be saved if provided
-        This argument will be ignored if not present.
+        M_DOC_NO_DEFAULT
     gene_ids_file : str, optional
         Name of the gene ids file
-    expression : ndarray[np.real64] of shape (n_expression_elements_dim_1, n_expression_elements_dim_2) in column-major layout (order='F'), optional
+    expression : ndarray[np.float64] of shape (n_expression_elements_dim_1, n_expression_elements_dim_2) in column-major layout (order='F'), optional
         Expression vectors array, will be saved if provided
     expression_file : str, optional
         Name of the expression file
-    gene_to_family : ndarray[np.int32] of shape (n_gene_to_family_elements) in column-major layout (order='F'), optional
+    gene_to_family : ndarray[np.int32] of shape (n_gene_to_family_elements,) in column-major layout (order='F'), optional
         Gene to family mapping array, will be saved if provided
     gene_to_family_file : str, optional
         Name of the gene to family mapping file
-    family_ids : ndarray[f"S{family_ids_strlen}"] of shape (family_ids_strlen, n_family_ids_elements) in column-major layout (order='F'), optional
+    family_ids : ndarray[f"S{family_ids_strlen}"] of shape (n_family_ids_elements,) in column-major layout (order='F'), optional
         Family ids array, will be saved if provided
     family_ids_file : str, optional
         Name of the family ids file
-    family_centroids : ndarray[np.real64] of shape (n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2) in column-major layout (order='F'), optional
+    family_centroids : ndarray[np.float64] of shape (n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2) in column-major layout (order='F'), optional
         Family centroids array, will be saved if provided
     family_centroids_file : str, optional
         Name of the family centroids file
-    shift_vectors : ndarray[np.real64] of shape (n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2) in column-major layout (order='F'), optional
+    shift_vectors : ndarray[np.float64] of shape (n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2) in column-major layout (order='F'), optional
         Shift vectors array, will be saved if provided
     shift_vectors_file : str, optional
         Name of the shift vectors file
+
+    Returns
+    -------
+    None
     """
 
     # ensure all array inputs are numpy arrays
     zip_filename = np.asarray(zip_filename)
     gene_ids = np.asarray(gene_ids)
     gene_ids_file = np.asarray(gene_ids_file)
-    expression = np.asfortranarray(expression, dtype=np.real64)
+    expression = np.asfortranarray(expression, dtype=np.float64)
     expression_file = np.asarray(expression_file)
     gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
     gene_to_family_file = np.asarray(gene_to_family_file)
     family_ids = np.asarray(family_ids)
     family_ids_file = np.asarray(family_ids_file)
-    family_centroids = np.asfortranarray(family_centroids, dtype=np.real64)
+    family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
     family_centroids_file = np.asarray(family_centroids_file)
-    shift_vectors = np.asfortranarray(shift_vectors, dtype=np.real64)
+    shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
     shift_vectors_file = np.asarray(shift_vectors_file)
 
     # extract dimension arguments
@@ -426,7 +119,7 @@ def save_tox_data(
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{gene_ids_file_strlen}"),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{expression_file_strlen}"),
@@ -440,12 +133,12 @@ def save_tox_data(
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{family_ids_file_strlen}"),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{family_centroids_file_strlen}"),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{shift_vectors_file_strlen}"),
@@ -507,21 +200,28 @@ def cluster_factor_trajectories_k_means(
 
     Parameters
     ----------
-    trajectories : ndarray[np.real64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
+    trajectories : ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
         matrix with data points to cluster
-    centroids : ndarray[np.real64] of shape (n_factors, n_clusters) in column-major layout (order='F')
+    centroids : ndarray[np.float64] of shape (n_factors, n_clusters) in column-major layout (order='F'), modified in-place
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
         The final values will be the final centroids of the clusters
     max_iterations : int
         number of maximum iterations of the clustering
+
+    Returns
+    -------
+    results : dict
+        labels : ndarray[np.int32] of shape (n_samples * n_timepoints,) in column-major layout (order='F')
+            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+            each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
+        label_counts : ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
+            holds the number of points having the respective label assigned
     """
 
     # ensure all array inputs are numpy arrays
-    trajectories = np.asfortranarray(trajectories, dtype=np.real64)
-    centroids = np.asfortranarray(centroids, dtype=np.real64)
-    labels = np.ascontiguousarray(labels, dtype=np.int32)
-    label_counts = np.ascontiguousarray(label_counts, dtype=np.int32)
+    trajectories = np.asfortranarray(trajectories, dtype=np.float64)
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
 
     # extract dimension arguments
     n_clusters = centroids.shape[1]
@@ -530,19 +230,19 @@ def cluster_factor_trajectories_k_means(
     n_timepoints = trajectories.shape[2]
 
     # Create temporaries and/or outputs
-    labels = np.empty((n_samples * n_timepoints), dtype=np.int32, order='F')
-    label_counts = np.empty((n_clusters), dtype=np.int32, order='F')
+    labels = np.empty((n_samples * n_timepoints,), dtype=np.int32, order='F')
+    label_counts = np.empty((n_clusters,), dtype=np.int32, order='F')
     ierr = ctypes.c_int(0)
     max_iterations = ctypes.c_int(max_iterations)
 
     # define ctypes interface
     tox.cluster_factor_trajectories_k_means_c.argtypes = (
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=3, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
@@ -572,7 +272,6 @@ def cluster_factor_trajectories_k_means(
     label_counts.setflags(write=False)
 
     return {
-        "centroids": centroids,
         "labels": labels,
         "label_counts": label_counts
     }
@@ -586,36 +285,40 @@ def read_expression_vectors_tsv(
         gene_col,
         value_cols,
         start_row,
-        delimiter='\t'
+        delimiter
         ):
     """
     Read expression vectors from csv/tsv files
 
     Parameters
     ----------
-    file_list : ndarray[f"S{file_list_strlen}"] of shape (file_list_strlen, n_file_list_elements) in column-major layout (order='F')
+    file_list : ndarray[f"S{file_list_strlen}"] of shape (n_file_list_elements,) in column-major layout (order='F')
         List of files to read from
-    gene_ids : ndarray[f"S{gene_ids_strlen}"] of shape (gene_ids_strlen, n_gene_ids_elements) in column-major layout (order='F')
+    gene_ids : ndarray[f"S{gene_ids_strlen}"] of shape (n_gene_ids_elements,) in column-major layout (order='F')
         Array of gene IDS
-    expression_vectors : ndarray[np.real64] of shape (n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2) in column-major layout (order='F')
+    expression_vectors : ndarray[np.float64] of shape (n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2) in column-major layout (order='F'), modified in-place
         Array of expression vectors
     n_header_rows : int
         Number of header rows to skip
     gene_col : int
         Index of column with gene_ids
-    value_cols : ndarray[np.int32] of shape (n_value_cols_elements) in column-major layout (order='F')
+    value_cols : ndarray[np.int32] of shape (n_value_cols_elements,) in column-major layout (order='F')
         Indicies of columns containing values
     start_row : int
         Row in the expression vectors to start in
     delimiter : str, optional
         optional delimiter
-        The default value is `'\t'`.
+        M_DOC_DEFAULT('\t')
+
+    Returns
+    -------
+    None
     """
 
     # ensure all array inputs are numpy arrays
     file_list = np.asarray(file_list)
     gene_ids = np.asarray(gene_ids)
-    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.real64)
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
     value_cols = np.ascontiguousarray(value_cols, dtype=np.int32)
     delimiter = np.asarray(delimiter)
 
@@ -645,7 +348,7 @@ def read_expression_vectors_tsv(
         np.ctypeslib.ndpointer(ndim=1, flags='F_CONTIGUOUS', dtype=f"S{gene_ids_strlen}"),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
@@ -683,7 +386,162 @@ def read_expression_vectors_tsv(
     # Mark all arrays as read-only
     expression_vectors.setflags(write=False)
 
-    return expression_vectors
+    return None
+
+
+def mean_vector(
+        expression_vectors,
+        gene_indices
+        ):
+    """
+    Computes the element-wise mean for a given set of vectors.
+
+    Parameters
+    ----------
+    expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
+        The input matrix of all gene expression vectors (n_axes x n_genes).
+    gene_indices : ndarray[np.int32] of shape (n_selected_genes,) in column-major layout (order='F')
+        An array containing the column indices of the selected genes in 'expression_vectors'.
+
+    Returns
+    -------
+    centroid : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+        The output vector representing the computed centroid.
+    """
+
+    # ensure all array inputs are numpy arrays
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
+    gene_indices = np.ascontiguousarray(gene_indices, dtype=np.int32)
+
+    # extract dimension arguments
+    n_axes = expression_vectors.shape[0]
+    n_genes = expression_vectors.shape[1]
+    n_selected_genes = gene_indices.shape[0]
+
+    # Create temporaries and/or outputs
+    centroid = np.empty((n_axes,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    tox.mean_vector_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.mean_vector_c.restype = None
+
+    tox.mean_vector_c(
+        expression_vectors,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        gene_indices,
+        ctypes.byref(ctypes.c_int(n_selected_genes)),
+        centroid,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    centroid.setflags(write=False)
+
+    return centroid
+
+
+def group_centroid(
+        expression_vectors,
+        gene_to_family,
+        n_families,
+        mode,
+        ortholog_set=None
+        ):
+    """
+    Iterates over families, filters gene indices, and computes centroids.
+
+    Parameters
+    ----------
+    expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
+        The input matrix of all gene expression vectors (n_axes x n_genes).
+    gene_to_family : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        An array mapping each gene (by index) to a family ID.
+    mode : str
+        used mode for grouping
+        |       Mode       |                             Value                               |
+        |------------------|-----------------------------------------------------------------|
+        | Group Orthologs  |   "group_orthologs"    |
+        |    Group all     |      "group_all"       |
+    ortholog_set : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
+        A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
+
+    Returns
+    -------
+    results : dict
+        centroid_matrix : ndarray[np.float64] of shape (n_axes, n_families) in column-major layout (order='F')
+            The output matrix (n_axes x n_families) to store the computed centroids.,
+        tmp_selected_indices : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+            An output array for storing indices.
+    """
+
+    # ensure all array inputs are numpy arrays
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
+    gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
+    mode = np.asarray(mode)
+    if ortholog_set is None:
+        ortholog_set = [0] * expression_vectors.shape[1]
+    ortholog_set = np.ascontiguousarray(ortholog_set, dtype=np.int32)
+    print(ortholog_set)
+
+    # extract dimension arguments
+    n_axes = expression_vectors.shape[0]
+    n_genes = expression_vectors.shape[1]
+
+    # Create temporaries and/or outputs
+    centroid_matrix = np.empty((n_axes, n_families), dtype=np.float64, order='F')
+    mode = mode.astype(f"S{15}", order="F")
+    tmp_selected_indices = np.empty((n_genes,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    tox.group_centroid_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{15}"),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32)
+    )
+    tox.group_centroid_c.restype = None
+
+    tox.group_centroid_c(
+        expression_vectors,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        gene_to_family,
+        ctypes.byref(ctypes.c_int(n_families)),
+        centroid_matrix,
+        mode,
+        tmp_selected_indices,
+        ctypes.byref(ierr),
+        ortholog_set
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    centroid_matrix.setflags(write=False)
+    tmp_selected_indices.setflags(write=False)
+
+    return centroid_matrix
 
 
 def mask_get_first_successor_idx(
@@ -694,8 +552,13 @@ def mask_get_first_successor_idx(
 
     Parameters
     ----------
-    bit_mask : ndarray[np.int32] of shape (n_bit_mask_elements) in column-major layout (order='F')
+    bit_mask : ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
         chunked mask to mark active genes
+
+    Returns
+    -------
+    idx : int
+        index of last active gene
     """
 
     # ensure all array inputs are numpy arrays
@@ -733,85 +596,75 @@ def mask_get_first_successor_idx(
     return idx
 
 
-def detect_patterns(
+def detect_dosage_effect(
         ancestor,
         genes,
-        pattern,
         filtered_paralogs_mask,
         max_subset_size,
-        dosage_max_angle,
-        dosage_gain_gamma,
-        subfunc_rdi_threshold,
-        subfunc_paralog_norms,
-        subfunc_sorted_paralog_norms_perm
+        n_paralog_subsets,
+        max_angle,
+        gain_gamma
         ):
     """
-    Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
 
     Parameters
     ----------
-    ancestor : ndarray[np.real64] of shape (n_dims) in column-major layout (order='F')
+    ancestor : ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
         expression vector of ancestral ortholog
-    genes : ndarray[np.real64] of shape (n_dims, n_genes) in column-major layout (order='F')
+    genes : ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
         expression vectors of genes
-    pattern : int
-        used pattern for detection
-        |       Pattern        | Value |
-        |----------------------|-------|
-        |    Dosage Effect     |   0   |
-        | Subfunctionalization |   1   |
-    filtered_paralogs_mask : ndarray[np.int32] of shape (n_mask_chunks) in column-major layout (order='F')
+    filtered_paralogs_mask : ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
         bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        It is recommended to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
     max_subset_size : int
-        maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    dosage_max_angle : float, optional
+        maximum subset size of checked gene subsets.
+        It is *VERY IMPORTANT* to compute this argument using [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]]'s output `max_subset_size`.
+    max_angle : float, optional
         in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned, default is Pi
-    dosage_gain_gamma : float, optional
-        in dosage mode required positive magnitude gain for dosage, default 0.1
-    subfunc_rdi_threshold : float, optional
-        max allowed residual distance from `ancestor`
-    subfunc_paralog_norms : ndarray[np.real64] of shape (n_genes) in column-major layout (order='F'), optional
-        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
-    subfunc_sorted_paralog_norms_perm : ndarray[np.int32] of shape (n_genes) in column-major layout (order='F'), optional
-        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-        This optional argument needs to be passed if used mode is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+    gain_gamma : float, optional
+        positive magnitude gain for dosage effect, default 0.1
+
+    Returns
+    -------
+    results : dict
+        n_results : int
+            number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
+        work_arr_paralog_subsets : ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.
+            @note
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+            @endnote,
+        active_mask : ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+            working array to hold the extended subsets,
+        temp_paralog_vector : ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+            vector used for pruning subsets
     """
 
     # ensure all array inputs are numpy arrays
-    ancestor = np.ascontiguousarray(ancestor, dtype=np.real64)
-    genes = np.asfortranarray(genes, dtype=np.real64)
+    ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
     filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
-    work_arr_paralog_subsets = np.asfortranarray(work_arr_paralog_subsets, dtype=np.int32)
-    active_mask = np.ascontiguousarray(active_mask, dtype=np.int32)
-    temp_paralog_vector = np.ascontiguousarray(temp_paralog_vector, dtype=np.real64)
-    subfunc_paralog_norms = np.ascontiguousarray(subfunc_paralog_norms, dtype=np.real64)
-    subfunc_sorted_paralog_norms_perm = np.ascontiguousarray(subfunc_sorted_paralog_norms_perm, dtype=np.int32)
-    subfunc_temp_work_array = np.ascontiguousarray(subfunc_temp_work_array, dtype=np.real64)
 
     # extract dimension arguments
     n_genes = genes.shape[1]
     n_dims = ancestor.shape[0]
     n_mask_chunks = filtered_paralogs_mask.shape[0]
-    n_paralog_subsets = work_arr_paralog_subsets.shape[1]
 
     # Create temporaries and/or outputs
-    pattern = ctypes.c_int(pattern)
     n_results = ctypes.c_int(0)
     max_subset_size = ctypes.c_int(max_subset_size)
     work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets), dtype=np.int32, order='F')
-    active_mask = np.empty((n_mask_chunks), dtype=np.int32, order='F')
-    temp_paralog_vector = np.empty((n_dims), dtype=np.real64, order='F')
-    dosage_max_angle = ctypes.c_double(dosage_max_angle)
-    dosage_gain_gamma = ctypes.c_double(dosage_gain_gamma)
-    subfunc_rdi_threshold = ctypes.c_double(subfunc_rdi_threshold)
-    subfunc_temp_work_array = np.empty((n_genes), dtype=np.real64, order='F')
+    active_mask = np.empty((n_mask_chunks,), dtype=np.int32, order='F')
+    temp_paralog_vector = np.empty((n_dims,), dtype=np.float64, order='F')
     ierr = ctypes.c_int(0)
+    max_angle = ctypes.c_double(max_angle)
+    gain_gamma = ctypes.c_double(gain_gamma)
 
     # define ctypes interface
-    tox.detect_patterns_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.real64),
-        ctypes.POINTER(ctypes.c_int),
+    tox.detect_dosage_effect_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
@@ -821,23 +674,18 @@ def detect_patterns(
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
-        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.real64),
-        ctypes.POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_double)
     )
-    tox.detect_patterns_c.restype = None
+    tox.detect_dosage_effect_c.restype = None
 
-    tox.detect_patterns_c(
+    tox.detect_dosage_effect_c(
         ancestor,
         genes,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_dims)),
-        ctypes.byref(ctypes.c_int(pattern)),
         filtered_paralogs_mask,
         ctypes.byref(ctypes.c_int(n_mask_chunks)),
         ctypes.byref(n_results),
@@ -846,13 +694,9 @@ def detect_patterns(
         ctypes.byref(ctypes.c_int(n_paralog_subsets)),
         active_mask,
         temp_paralog_vector,
-        ctypes.byref(ctypes.c_double(dosage_max_angle)),
-        ctypes.byref(ctypes.c_double(dosage_gain_gamma)),
-        ctypes.byref(ctypes.c_double(subfunc_rdi_threshold)),
-        subfunc_paralog_norms,
-        subfunc_sorted_paralog_norms_perm,
-        subfunc_temp_work_array,
-        ctypes.byref(ierr)
+        ctypes.byref(ierr),
+        ctypes.byref(ctypes.c_double(max_angle)),
+        ctypes.byref(ctypes.c_double(gain_gamma))
     )
 
     # throw error on error
@@ -862,12 +706,153 @@ def detect_patterns(
     work_arr_paralog_subsets.setflags(write=False)
     active_mask.setflags(write=False)
     temp_paralog_vector.setflags(write=False)
-    subfunc_temp_work_array.setflags(write=False)
 
     return {
         "n_results": n_results,
         "work_arr_paralog_subsets": work_arr_paralog_subsets,
         "active_mask": active_mask,
-        "temp_paralog_vector": temp_paralog_vector,
-        "subfunc_temp_work_array": subfunc_temp_work_array
+        "temp_paralog_vector": temp_paralog_vector
     }
+
+
+def filter_paralogs_by_pattern_dosage_effect(
+        gene_angles,
+        threshold,
+        n_families,
+        gene_to_fam,
+        n_mask_chunks
+        ):
+    """
+    This subroutine prefilters the genes for dosage effect,
+    as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
+
+    Parameters
+    ----------
+    gene_angles : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        vector, holding the angles between ancestor and genes (0<=angle<=Pi)
+    threshold : float
+        filter threshold
+    gene_to_fam : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
+
+    Returns
+    -------
+    masks : ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
+        bit mask that will have indices of genes kept by pattern set to 1, else 0
+    """
+
+    # ensure all array inputs are numpy arrays
+    gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = gene_angles.shape[0]
+
+    # Create temporaries and/or outputs
+    threshold = ctypes.c_double(threshold)
+    masks = np.empty((n_mask_chunks, n_families), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    tox.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.filter_paralogs_by_pattern_dosage_effect_c.restype = None
+
+    tox.filter_paralogs_by_pattern_dosage_effect_c(
+        gene_angles,
+        ctypes.byref(ctypes.c_double(threshold)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        masks,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    masks.setflags(write=False)
+
+    return masks
+
+
+def calc_work_arr_paralog_subsets_size(
+        max_subset_size,
+        n_genes,
+        filtered_paralogs_mask
+        ):
+    """
+    The `detect_*` subroutines need a work array for the to be tested subsets.
+    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+    This subroutine calculates the needed size for the work array.
+
+    Parameters
+    ----------
+    max_subset_size : int, modified in-place
+        maximum size that a subset must not exceed.
+        @warning
+        If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+        Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+        @endwarning
+    n_genes : int
+        number of genes
+    filtered_paralogs_mask : ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+        Output mask with all genes disabled that did not pass the filter
+        It is recommended to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
+
+    Returns
+    -------
+    work_array_size : int
+        The calculated needed work array size in absolute worst case scenario. Look into source for details.
+    """
+
+    # ensure all array inputs are numpy arrays
+    filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+    # Create temporaries and/or outputs
+    max_subset_size = ctypes.c_int(max_subset_size)
+    n_genes = ctypes.c_int(n_genes)
+    work_array_size = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    tox.calc_work_arr_paralog_subsets_size_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.calc_work_arr_paralog_subsets_size_c.restype = None
+
+    tox.calc_work_arr_paralog_subsets_size_c(
+        ctypes.byref(ctypes.c_int(max_subset_size)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(work_array_size),
+        filtered_paralogs_mask,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return work_array_size

@@ -1,7 +1,7 @@
 #ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
-!>  Module for C-wrappers for [[tox_data_tools(module)]]
+!> summary: Module for C-wrappers for [[tox_data_tools(module)]]
 module tox_data_tools_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_double_complex
@@ -12,14 +12,15 @@ module tox_data_tools_c
     use tox_conversions, only: string_as_c_char_1d, c_char_1d_as_string
     use tox_conversions, only: string_as_c_char_2d, c_char_2d_as_string
 
-    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL
+    use tox_errors, only: ERR_POINTER_NULL, is_err, set_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    implicit none
 contains
 
-    !> C-wrapper for [[tox_data_tools(module):read_expression_vectors_tsv(subroutine)]]
-    !| 
+    !> summary: C-wrapper for [[tox_data_tools(module):read_expression_vectors_tsv(subroutine)]]
     !| Read expression vectors from csv/tsv files
     subroutine read_expression_vectors_tsv_c(file_list, file_list_strlen, n_file_list_elements, gene_ids, gene_ids_strlen, n_gene_ids_elements, expression_vectors, n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2, n_header_rows, gene_col, value_cols, n_value_cols_elements, start_row, ierr, delimiter) bind(C, name="read_expression_vectors_tsv_c")
         use tox_data_tools, only: read_expression_vectors_tsv
+        use tox_data_tools
         integer(c_int), intent(in), target :: file_list_strlen
             !!  String length of 'file_list'
         integer(c_int), intent(in), target :: n_file_list_elements
@@ -52,7 +53,7 @@ contains
             !! Error code
         character(len=1, kind=c_char), intent(in), dimension(1), target :: delimiter
             !! optional delimiter
-            !! The default value is `'\t'`.
+            !! M_DOC_DEFAULT('\t')
         character(len=:), allocatable, dimension(:) :: file_list_f
         character(len=:), allocatable, dimension(:) :: gene_ids_f
         character(len=:), allocatable :: delimiter_f
