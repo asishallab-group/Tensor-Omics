@@ -4,6 +4,7 @@ from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable,
 from enum import Enum
 import re
 from .utils import Indentable, CodeGenerator, regex_escaped_preprocessor, warn
+import numpy as np
 
 
 SHAPE_ARG_SUFFIX = "_shape"
@@ -141,7 +142,7 @@ class DocList(CodeGenerator):
             "optional_output": None,
         }
         for line in self.doc_list:
-            if (match := re.match(regex_escaped_preprocessor.expand("DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))"), line)) is not None:
+            if (match := re.match(regex_escaped_preprocessor.expand(r"DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))"), line)) is not None:
                 self.meta["required_if_mode"] = match
 
     @classmethod
@@ -191,19 +192,39 @@ class Procedure_Argument(CodeGenerator):
         self.is_temporary = self.name.startswith("tmp_")
         self.parent = proc
         self.is_shape_arg = self.name.endswith(SHAPE_ARG_SUFFIX)
-        self.is_mode_arg = self.name == "mode" or self.name.endswith("_mode")
+        self.is_mode_arg = self.name == "mode" or self.name.endswith("_mode") or self.name == "method" or self.name.endswith("_method")
 
-    @property
-    def default_value(self) -> int | str | bool | float | None:
-        return
-        # if len(self.doc_list) > 0:
-        # TODO
-        #     doc_str = self.doc_list[-1]
-        #     regex = format(regex_escaped_preprocessor, ".*M_DOC_DEFAULT((?P<default_val>.*)).*")
-        #     if (match := re.match(regex, doc_str)) is not None:
-        #         return match.group("default_val")
+        # determine default value
+        self.default_value = None
+        if len(self.doc_list) > 0:
+            doc_str = self.doc_list[-1]
+            regex = regex_escaped_preprocessor.expand(r".*DM_DEFAULT((?P<default_val>.*)).*")
+            if self.name == "max_iterations":
+                print(regex)
+                print(doc_str)
+            if (match := re.match(regex, doc_str)) is not None:
+                default_val_expr = match.group("default_val")
 
-        return None
+                default_val_expr = default_val_expr.replace("acos", "np.arccos")
+                default_val_expr = default_val_expr.replace("acosh", "np.arccosh")
+                default_val_expr = default_val_expr.replace("asin", "np.arcsin")
+                default_val_expr = default_val_expr.replace("asinh", "np.arcsinh")
+                default_val_expr = default_val_expr.replace("atan", "np.arctan")
+                default_val_expr = default_val_expr.replace("atan2", "np.arctan2")
+                default_val_expr = default_val_expr.replace("atanh", "np.arctanh")
+                default_val_expr = default_val_expr.replace("cos", "np.cos")
+                default_val_expr = default_val_expr.replace("cosh", "np.cosh")
+                default_val_expr = default_val_expr.replace("sin", "np.sin")
+                default_val_expr = default_val_expr.replace("sinh", "np.sinh")
+                default_val_expr = default_val_expr.replace("tan", "np.tan")
+                default_val_expr = default_val_expr.replace("tanh", "np.tanh")
+                default_val_expr = default_val_expr.replace("achar", "chr")
+                default_val_expr = default_val_expr.replace("char", "chr")
+
+                default_val_expr = default_val_expr.replace("_int32", "")
+                default_val_expr = default_val_expr.replace("_real64", "")
+
+                self.default_value = eval(default_val_expr)
 
     @property
     def is_dim_arg_for(self) -> Tuple[Self, ...]:

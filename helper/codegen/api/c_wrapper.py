@@ -6,10 +6,11 @@ import re
 
 NAME_SUFFIX = "_c"
 
-MODE_TABLE_HEAD_RE = re.compile(r"\s*\|\s*Mode\s*\|\s*Value\s*\|\s*")
+MODE_TABLE_HEAD_RE = re.compile(r"\s*\|\s*(?:Mode|Method)\s*\|\s*Value\s*\|\s*")
 MODE_TABLE_ALIGN_RE = re.compile(r"\s*\|:?-+:?\|:?-+:?\|\s*")
 MODE_FORD_LINK_RE = re.compile(r"\[\[(?P<module_name>[a-z_]+)\(module\):(?P<mode_name>[A-Z_]+)\(variable\)\]\]")
 MODE_TABLE_ROW_RE = re.compile(r"\s*\|[^\|]+\|\s*" + MODE_FORD_LINK_RE.pattern + r"\s*\|\s*")
+MODE_VAR_PREFIX_RE = re.compile(r"^(?:MODE|METHOD)_")
 
 Variable_Name = str
 Mode_String = str
@@ -100,7 +101,7 @@ class C_Wrapper_Argument(CodeGenerator):
                         if (match := MODE_TABLE_ROW_RE.match(doc)) is not None:
                             mode_name = match.group("mode_name")
                             module_name = match.group("module_name")
-                            mode_string = mode_name.removeprefix("MODE_").lower()
+                            mode_string = MODE_VAR_PREFIX_RE.sub("", mode_name).lower()
                             mode_vars.append((mode_name, module_name, mode_string))
                             doc = MODE_FORD_LINK_RE.sub(f' "{mode_string}"  ', doc)
                         else:
@@ -113,6 +114,9 @@ class C_Wrapper_Argument(CodeGenerator):
 !! |-----------|----------|
 !! | bla mode  | MODE_BLA |
 !! ...
+
+Possible variants:
+ - Mode->Method, MODE_BLA->METHOD_BLA
 """
             mode_vars = tuple(mode_vars)
             doc_list = DocList(converted_doc_list, "argument")

@@ -37,13 +37,16 @@ contains
             !! holds the number of points having the respective label assigned
         integer(int32), intent(out) :: ierr
             !! Error code
-        integer(int32), intent(in) :: max_iterations
+        integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering
+            !! DM_DEFAULT(300_int32)
     
         call k_means_clustering(n_clusters, trajectories, n_samples * n_timepoints, n_factors, centroids, labels, label_counts, ierr, max_iterations)
     end subroutine cluster_factor_trajectories_k_means
 
-    !> k-means clustering algorithm:
+    !> category: C-interface
+    !| summary: performs k-means clustering on `data_points`
+    !| k-means clustering algorithm:
     !|
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
@@ -71,7 +74,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), intent(in), optional :: max_iterations
-            !! number of maximum iterations of the clustering, default 300
+            !! number of maximum iterations of the clustering
+            !! DM_DEFAULT(300_int32)
 
         integer(int32) :: label, iteration, i_point, max_iter
         logical :: labels_changed
@@ -186,7 +190,8 @@ contains
         end do
     end subroutine k_means_assign_cluster_helper
 
-    !> Perform linkage clustering on a distance matrix.
+    !> category: C-interface
+    !| summary: Perform linkage clustering on a distance matrix.
     !|
     !| @note
     !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
@@ -213,11 +218,11 @@ contains
         integer(int32), intent(in) :: method
             !! used algorithm
             !!
-            !! |      Method      | Value |
-            !! |------------------|-------|
-            !! | Average / UPGMA  |   0   |
-            !! | Weighted / WPGMA |   1   |
-            !! |      Ward        |   2   |
+            !! |      Method      |                      Value                     |
+            !! |------------------|------------------------------------------------|
+            !! | Average / UPGMA  |   [[tox_clustering(module):METHOD_AVERAGE(variable)]]    |
+            !! | Weighted / WPGMA |   [[tox_clustering(module):METHOD_WEIGHTED(variable)]]   |
+            !! |      Ward        |   [[tox_clustering(module):METHOD_WARD(variable)]]       |
             !!
         integer(int32), intent(out) :: ierr
             !! Error code

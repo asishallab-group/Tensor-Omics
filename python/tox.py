@@ -12,11 +12,9 @@ tox = ctypes.CDLL(dll_path)
 def cluster_factor_trajectories_k_means(
         trajectories,
         centroids,
-        max_iterations
+        max_iterations=300
         ):
     """
-    Performs k-means clustering on factor trajectories, so factor evolution over time
-
     Parameters
     ----------
     trajectories : ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
@@ -25,8 +23,9 @@ def cluster_factor_trajectories_k_means(
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
         The final values will be the final centroids of the clusters
-    max_iterations : int
+    max_iterations : int, optional
         number of maximum iterations of the clustering
+        The default value is `300_int32`.
 
     Returns
     -------
@@ -36,6 +35,10 @@ def cluster_factor_trajectories_k_means(
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
         label_counts : ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
+
+    Notes
+    -----
+    Performs k-means clustering on factor trajectories, so factor evolution over time
     """
 
     # ensure all array inputs are numpy arrays
@@ -103,13 +106,219 @@ def cluster_factor_trajectories_k_means(
     }
 
 
+def k_means_clustering(
+        data_points,
+        centroids,
+        max_iterations=300
+        ):
+    """
+    performs k-means clustering on `data_points`
+
+
+    Parameters
+    ----------
+    data_points : ndarray[np.float64] of shape (n_dims, n_points) in column-major layout (order='F')
+        matrix with data points to cluster
+    centroids : ndarray[np.float64] of shape (n_dims, n_clusters) in column-major layout (order='F'), modified in-place
+        matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+        The centroids should be unique. This is not checked in this routine.
+        The final values will be the final centroids of the clusters
+    max_iterations : int, optional
+        number of maximum iterations of the clustering
+        The default value is `300_int32`.
+
+    Returns
+    -------
+    results : dict
+        labels : ndarray[np.int32] of shape (n_points,) in column-major layout (order='F')
+            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+            each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
+        label_counts : ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
+            holds the number of points having the respective label assigned
+
+    Notes
+    -----
+    k-means clustering algorithm:
+    1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    2. Recalculates the centroids using the mean of its assigned points
+    3. repeat 1-2 until assignment remains unchanged
+    """
+
+    # ensure all array inputs are numpy arrays
+    data_points = np.asfortranarray(data_points, dtype=np.float64)
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
+
+    # extract dimension arguments
+    n_clusters = centroids.shape[1]
+    n_points = data_points.shape[1]
+    n_dims = data_points.shape[0]
+
+    # Create temporaries and/or outputs
+    labels = np.empty((n_points,), dtype=np.int32, order='F')
+    label_counts = np.empty((n_clusters,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+    max_iterations = ctypes.c_int(max_iterations)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.k_means_clustering_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.k_means_clustering_c.restype = None
+
+    tox.k_means_clustering_c(
+        ctypes.byref(ctypes.c_int(n_clusters)),
+        data_points,
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_int(n_dims)),
+        centroids,
+        labels,
+        label_counts,
+        ctypes.byref(ierr),
+        ctypes.byref(ctypes.c_int(max_iterations))
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    centroids.setflags(write=False)
+    labels.setflags(write=False)
+    label_counts.setflags(write=False)
+
+    return {
+        "labels": labels,
+        "label_counts": label_counts
+    }
+
+
+def linkage_clustering(
+        distances,
+        method
+        ):
+    """
+    Perform linkage clustering on a distance matrix.
+
+
+    Parameters
+    ----------
+    distances : ndarray[np.float64] of shape (n_points, n_points) in column-major layout (order='F'), modified in-place
+        symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+        @note
+        This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
+        So there is no need to copy an existing distance matrix, just pass the original.
+        @endnote
+    method : str
+        used algorithm
+        |      Method      |                      Value                     |
+        |------------------|------------------------------------------------|
+        | Average / UPGMA  |    "average"      |
+        | Weighted / WPGMA |    "weighted"     |
+        |      Ward        |    "ward"         |
+
+    Returns
+    -------
+    results : dict
+        merge_i : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+            holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes,
+        merge_j : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+            holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes,
+        heights : ndarray[np.float64] of shape (n_points - 1,) in column-major layout (order='F')
+            height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter,
+        cluster_sizes : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+            size of cluster at iteration k
+
+    Notes
+    -----
+    @note
+    This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
+    So there is no need to copy an existing distance matrix, just pass the original.
+    @endnote
+    """
+
+    # ensure all array inputs are numpy arrays
+    distances = np.asfortranarray(distances, dtype=np.float64)
+    method = np.asarray(method)
+
+    # extract dimension arguments
+    n_points = distances.shape[0]
+
+    # Create temporaries and/or outputs
+    merge_i = np.empty((n_points - 1,), dtype=np.int32, order='F')
+    merge_j = np.empty((n_points - 1,), dtype=np.int32, order='F')
+    heights = np.empty((n_points - 1,), dtype=np.float64, order='F')
+    cluster_sizes = np.empty((n_points - 1,), dtype=np.int32, order='F')
+    method = method.astype(f"S{8}", order="F")
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.linkage_clustering_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{8}"),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.linkage_clustering_c.restype = None
+
+    tox.linkage_clustering_c(
+        distances,
+        ctypes.byref(ctypes.c_int(n_points)),
+        merge_i,
+        merge_j,
+        heights,
+        cluster_sizes,
+        method,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    distances.setflags(write=False)
+    merge_i.setflags(write=False)
+    merge_j.setflags(write=False)
+    heights.setflags(write=False)
+    cluster_sizes.setflags(write=False)
+
+    return {
+        "merge_i": merge_i,
+        "merge_j": merge_j,
+        "heights": heights,
+        "cluster_sizes": cluster_sizes
+    }
+
+
 def mean_vector(
         expression_vectors,
         gene_indices
         ):
     """
-    Computes the element-wise mean for a given set of vectors.
-
     Parameters
     ----------
     expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
@@ -121,6 +330,10 @@ def mean_vector(
     -------
     centroid : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         The output vector representing the computed centroid.
+
+    Notes
+    -----
+    Computes the element-wise mean for a given set of vectors.
     """
 
     # ensure all array inputs are numpy arrays
@@ -182,8 +395,6 @@ def group_centroid(
         ortholog_set=None
         ):
     """
-    Iterates over families, filters gene indices, and computes centroids.
-
     Parameters
     ----------
     expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
@@ -207,6 +418,10 @@ def group_centroid(
             The output matrix (n_axes x n_families) to store the computed centroids.,
         tmp_selected_indices : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
             An output array for storing indices.
+
+    Notes
+    -----
+    Iterates over families, filters gene indices, and computes centroids.
     """
 
     # ensure all array inputs are numpy arrays
@@ -274,8 +489,6 @@ def mask_get_first_successor_idx(
         bit_mask
         ):
     """
-    Helper function that returns the index after the last active gene in `bit_mask`, so the first succeeding gene.
-
     Parameters
     ----------
     bit_mask : ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
@@ -285,6 +498,10 @@ def mask_get_first_successor_idx(
     -------
     idx : int
         index of last active gene
+
+    Notes
+    -----
+    Helper function that returns the index after the last active gene in `bit_mask`, so the first succeeding gene.
     """
 
     # ensure all array inputs are numpy arrays
@@ -337,9 +554,6 @@ def filter_paralogs_by_pattern_dosage_effect(
         n_mask_chunks
         ):
     """
-    This subroutine prefilters the genes for dosage effect,
-    as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
-
     Parameters
     ----------
     gene_angles : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
@@ -353,6 +567,11 @@ def filter_paralogs_by_pattern_dosage_effect(
     -------
     masks : ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
         bit mask that will have indices of genes kept by pattern set to 1, else 0
+
+    Notes
+    -----
+    This subroutine prefilters the genes for dosage effect,
+    as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     """
 
     # ensure all array inputs are numpy arrays
@@ -413,11 +632,6 @@ def calc_work_arr_paralog_subsets_size(
         filtered_paralogs_mask
         ):
     """
-    The `detect_*` subroutines need a work array for the to be tested subsets.
-    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
-    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
-    This subroutine calculates the needed size for the work array.
-
     Parameters
     ----------
     max_subset_size : int, modified in-place
@@ -436,6 +650,13 @@ def calc_work_arr_paralog_subsets_size(
     -------
     work_array_size : int
         The calculated needed work array size in absolute worst case scenario. Look into source for details.
+
+    Notes
+    -----
+    The `detect_*` subroutines need a work array for the to be tested subsets.
+    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+    This subroutine calculates the needed size for the work array.
     """
 
     # ensure all array inputs are numpy arrays

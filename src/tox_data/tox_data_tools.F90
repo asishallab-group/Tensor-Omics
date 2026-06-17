@@ -43,7 +43,7 @@ subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 
     !! Error code
     character(len=1), intent(in), optional :: delimiter
     !! optional delimiter
-    !! DM_DEFAULT('\t')
+    !! DM_DEFAULT(achar(9))
 
     integer(int32) :: i, j, k, unit, ios, idx, n_genes, expected_idx, n_value_cols
     integer(int32) :: current_sample, n_columns_in_file, n_valid_cols

@@ -213,12 +213,23 @@ class Python_Serializer(Serializer):
         return Indentable(string)
 
     def C_Wrapper(self, spec):
+        summary = self.orig_procedure.meta.summary
+        if summary:
+            summary = f"""\n    {summary}\n\n"""
+        else:
+            summary = ""
+        if len(self.doc_list) > 0:
+            notes = f"""
+    Notes
+    -----
+{format(self.doc_list) >> INDENT}
+"""
+        else:
+            notes = ""
         return f'''def {self.orig_procedure.name}(
 {format(self.arguments, "arglist") >> INDENT * 2}
         ):
-    """
-{format(self.doc_list) >> INDENT}
-
+    """{summary}
     Parameters
     ----------
 {format(self.arguments, "doc_params") >> INDENT}
@@ -226,7 +237,7 @@ class Python_Serializer(Serializer):
     Returns
     -------
 {format(self.arguments, "doc_returns") >> INDENT}
-    """
+{notes}    """
 
     # ensure all array inputs are numpy arrays
 {format(self.arguments, "ensure_numpy_array") >> INDENT}
