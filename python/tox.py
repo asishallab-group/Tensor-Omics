@@ -9,6 +9,976 @@ dll_path = os.path.abspath("build/libtensor-omics.so")
 tox = ctypes.CDLL(dll_path)
 
 
+def get_sorted_value(
+        values,
+        sorted_indices,
+        position
+        ):
+    """
+    Parameters
+    ----------
+    values : ndarray[np.float64] of shape (n_values_elements,) in column-major layout (order='F')
+        Input real array
+    sorted_indices : ndarray[np.int32] of shape (n_sorted_indices_elements,) in column-major layout (order='F')
+        Permutation index array
+    position : int
+        Sorted position (1-based)
+
+    Returns
+    -------
+    sorted_value : float
+
+    Notes
+    -----
+    Get the value at the sorted position.
+    """
+
+    # ensure all array inputs are numpy arrays
+    values = np.ascontiguousarray(values, dtype=np.float64)
+    sorted_indices = np.ascontiguousarray(sorted_indices, dtype=np.int32)
+
+    # extract dimension arguments
+    n_values_elements = values.shape[0]
+    n_sorted_indices_elements = sorted_indices.shape[0]
+
+
+    # Create temporaries and/or outputs
+    position = ctypes.c_int(position)
+    ierr = ctypes.c_int(0)
+    sorted_value = ctypes.c_double(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.get_sorted_value_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double)
+    )
+    tox.get_sorted_value_c.restype = None
+
+    tox.get_sorted_value_c(
+        values,
+        ctypes.byref(ctypes.c_int(n_values_elements)),
+        sorted_indices,
+        ctypes.byref(ctypes.c_int(n_sorted_indices_elements)),
+        ctypes.byref(position),
+        ctypes.byref(ierr),
+        ctypes.byref(sorted_value)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return sorted_value.value
+
+
+def build_bst_index(
+        values
+        ):
+    """
+    Parameters
+    ----------
+    values : ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
+        Input real array to be indexed
+
+    Returns
+    -------
+    results : dict
+        sorted_indices : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+            Output permutation index,
+        tmp_left_stack : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+            Manual stack for left indices,
+        tmp_right_stack : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+            Manual stack for right indices
+
+    Notes
+    -----
+    Build the BST index by sorting indices using values in x.
+    """
+
+    # ensure all array inputs are numpy arrays
+    values = np.ascontiguousarray(values, dtype=np.float64)
+
+    # extract dimension arguments
+    num_values = values.shape[0]
+
+
+    # Create temporaries and/or outputs
+    sorted_indices = np.empty((num_values,), dtype=np.int32, order='F')
+    tmp_left_stack = np.empty((num_values,), dtype=np.int32, order='F')
+    tmp_right_stack = np.empty((num_values,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.build_bst_index_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.build_bst_index_c.restype = None
+
+    tox.build_bst_index_c(
+        values,
+        ctypes.byref(ctypes.c_int(num_values)),
+        sorted_indices,
+        tmp_left_stack,
+        tmp_right_stack,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    sorted_indices.setflags(write=False)
+
+    return sorted_indices
+
+
+def bst_range_query(
+        values,
+        sorted_indices,
+        lower_bound,
+        upper_bound
+        ):
+    """
+    Parameters
+    ----------
+    values : ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
+        Input real array
+    sorted_indices : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+        Permutation index array (sorted)
+    lower_bound : float
+        Lower bound of range (inclusive)
+    upper_bound : float
+        Upper bound of range (inclusive)
+
+    Returns
+    -------
+    results : dict
+        output_indices : ndarray[np.int32] of shape (num_matches,) in column-major layout (order='F')
+            Output array of matching indices
+            The first `num_matches` elements will hold the results.,
+        num_matches : int
+            Number of matches found
+
+    Notes
+    -----
+    Perform a 1D range query over the sorted index.
+    """
+
+    # ensure all array inputs are numpy arrays
+    values = np.ascontiguousarray(values, dtype=np.float64)
+    sorted_indices = np.ascontiguousarray(sorted_indices, dtype=np.int32)
+
+    # extract dimension arguments
+    num_values = values.shape[0]
+
+
+    # Create temporaries and/or outputs
+    lower_bound = ctypes.c_double(lower_bound)
+    upper_bound = ctypes.c_double(upper_bound)
+    output_indices = np.empty((num_values,), dtype=np.int32, order='F')
+    num_matches = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.bst_range_query_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.bst_range_query_c.restype = None
+
+    tox.bst_range_query_c(
+        values,
+        sorted_indices,
+        ctypes.byref(ctypes.c_int(num_values)),
+        ctypes.byref(lower_bound),
+        ctypes.byref(upper_bound),
+        output_indices,
+        ctypes.byref(num_matches),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    output_indices.setflags(write=False)
+
+    return {
+        "output_indices": output_indices[..., :num_matches.value],
+        "num_matches": num_matches.value
+    }
+
+
+def build_kd_index(
+        points,
+        dimension_order
+        ):
+    """
+    Parameters
+    ----------
+    points : ndarray[np.float64] of shape (num_dimensions, num_points) in column-major layout (order='F')
+        Data points
+    dimension_order : ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
+        Dimension order (by variance)
+
+    Returns
+    -------
+    results : dict
+        kd_indices : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+            Output index array (k-d tree order),
+        tmp_workspace : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+            Workspace array,
+        tmp_value_buffer : ndarray[np.float64] of shape (num_points,) in column-major layout (order='F')
+            Workspace for sorting,
+        tmp_permutation : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+            Workspace for sorting,
+        tmp_left_stack : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+            Workspace for sorting,
+        tmp_right_stack : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+            Workspace for sorting,
+        tmp_recursion_stack : ndarray[np.int32] of shape (3, num_points) in column-major layout (order='F')
+            Stack for l, r, depth
+
+    Notes
+    -----
+    Build a k-d tree index using a stack-based, non-recursive approach.
+    Initialize kd_indices to 1:num_points (original indices)
+    Choose split dimension by cycling through dimension_order
+    Find median index
+    Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
+    Push right and left intervals onto stack
+    """
+
+    # ensure all array inputs are numpy arrays
+    points = np.asfortranarray(points, dtype=np.float64)
+    dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
+
+    # extract dimension arguments
+    num_dimensions = points.shape[0]
+    num_points = points.shape[1]
+
+
+    # Create temporaries and/or outputs
+    kd_indices = np.empty((num_points,), dtype=np.int32, order='F')
+    tmp_workspace = np.empty((num_points,), dtype=np.int32, order='F')
+    tmp_value_buffer = np.empty((num_points,), dtype=np.float64, order='F')
+    tmp_permutation = np.empty((num_points,), dtype=np.int32, order='F')
+    tmp_left_stack = np.empty((num_points,), dtype=np.int32, order='F')
+    tmp_right_stack = np.empty((num_points,), dtype=np.int32, order='F')
+    tmp_recursion_stack = np.empty((3, num_points), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.build_kd_index_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.build_kd_index_c.restype = None
+
+    tox.build_kd_index_c(
+        points,
+        ctypes.byref(ctypes.c_int(num_dimensions)),
+        ctypes.byref(ctypes.c_int(num_points)),
+        kd_indices,
+        dimension_order,
+        tmp_workspace,
+        tmp_value_buffer,
+        tmp_permutation,
+        tmp_left_stack,
+        tmp_right_stack,
+        tmp_recursion_stack,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    kd_indices.setflags(write=False)
+
+    return kd_indices
+
+
+def build_spherical_kd(
+        vectors,
+        dimension_order
+        ):
+    """
+    Parameters
+    ----------
+    vectors : ndarray[np.float64] of shape (num_dimensions, num_vectors) in column-major layout (order='F')
+        Input unit vectors
+    dimension_order : ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
+        Dimension order
+
+    Returns
+    -------
+    results : dict
+        sphere_indices : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+            Output index array,
+        tmp_workspace : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+            Workspace array,
+        tmp_value_buffer : ndarray[np.float64] of shape (num_vectors,) in column-major layout (order='F')
+            Value buffer,
+        tmp_permutation : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+            Permutation array,
+        tmp_left_stack : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+            Left stack,
+        tmp_right_stack : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+            Right stack,
+        tmp_recursion_stack : ndarray[np.int32] of shape (3, num_vectors) in column-major layout (order='F')
+            Stack for recursive calls
+
+    Notes
+    -----
+    Build spherical k-d tree index
+    """
+
+    # ensure all array inputs are numpy arrays
+    vectors = np.asfortranarray(vectors, dtype=np.float64)
+    dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
+
+    # extract dimension arguments
+    num_dimensions = vectors.shape[0]
+    num_vectors = vectors.shape[1]
+
+
+    # Create temporaries and/or outputs
+    sphere_indices = np.empty((num_vectors,), dtype=np.int32, order='F')
+    tmp_workspace = np.empty((num_vectors,), dtype=np.int32, order='F')
+    tmp_value_buffer = np.empty((num_vectors,), dtype=np.float64, order='F')
+    tmp_permutation = np.empty((num_vectors,), dtype=np.int32, order='F')
+    tmp_left_stack = np.empty((num_vectors,), dtype=np.int32, order='F')
+    tmp_right_stack = np.empty((num_vectors,), dtype=np.int32, order='F')
+    tmp_recursion_stack = np.empty((3, num_vectors), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.build_spherical_kd_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.build_spherical_kd_c.restype = None
+
+    tox.build_spherical_kd_c(
+        vectors,
+        ctypes.byref(ctypes.c_int(num_dimensions)),
+        ctypes.byref(ctypes.c_int(num_vectors)),
+        sphere_indices,
+        dimension_order,
+        tmp_workspace,
+        tmp_value_buffer,
+        tmp_permutation,
+        tmp_left_stack,
+        tmp_right_stack,
+        tmp_recursion_stack,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    sphere_indices.setflags(write=False)
+
+    return sphere_indices
+
+
+def get_kd_point(
+        points,
+        kd_indices,
+        position,
+        n_point_values_elements
+        ):
+    """
+    Parameters
+    ----------
+    points : ndarray[np.float64] of shape (n_points_elements_dim_1, n_points_elements_dim_2) in column-major layout (order='F')
+        Input points
+    kd_indices : ndarray[np.int32] of shape (n_kd_indices_elements,) in column-major layout (order='F')
+        KD index array
+    position : int
+        Position in index
+
+    Returns
+    -------
+    point_values : ndarray[np.float64] of shape (n_point_values_elements,) in column-major layout (order='F')
+        Output point values
+
+    Notes
+    -----
+    Get point from KD index
+    """
+
+    # ensure all array inputs are numpy arrays
+    points = np.asfortranarray(points, dtype=np.float64)
+    kd_indices = np.ascontiguousarray(kd_indices, dtype=np.int32)
+
+    # extract dimension arguments
+    n_points_elements_dim_1 = points.shape[0]
+    n_points_elements_dim_2 = points.shape[1]
+    n_kd_indices_elements = kd_indices.shape[0]
+
+
+    # Create temporaries and/or outputs
+    position = ctypes.c_int(position)
+    point_values = np.empty((n_point_values_elements,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.get_kd_point_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.get_kd_point_c.restype = None
+
+    tox.get_kd_point_c(
+        points,
+        ctypes.byref(ctypes.c_int(n_points_elements_dim_1)),
+        ctypes.byref(ctypes.c_int(n_points_elements_dim_2)),
+        kd_indices,
+        ctypes.byref(ctypes.c_int(n_kd_indices_elements)),
+        ctypes.byref(position),
+        point_values,
+        ctypes.byref(ctypes.c_int(n_point_values_elements)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    point_values.setflags(write=False)
+
+    return point_values
+
+
+def which(
+        mask,
+        n,
+        n_idx_out_elements,
+        m_max
+        ):
+    """
+    Parameters
+    ----------
+    mask : ndarray[np.int32] of shape (n_mask_elements,) in column-major layout (order='F')
+        Logical array of size n.
+    n : int
+        Size of the mask.
+    m_max : int
+        Maximum size of idx_out.
+
+    Returns
+    -------
+    results : dict
+        idx_out : ndarray[np.int32] of shape (n_idx_out_elements,) in column-major layout (order='F')
+            Integer array to store the indices of true values.,
+        m_out : int
+            Actual size of idx_out (number of true values found).
+
+    Notes
+    -----
+    Finds the indices of the true values in a logical mask.
+    """
+
+    # ensure all array inputs are numpy arrays
+    mask = np.ascontiguousarray(mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_mask_elements = mask.shape[0]
+
+
+    # Create temporaries and/or outputs
+    n = ctypes.c_int(n)
+    idx_out = np.empty((n_idx_out_elements,), dtype=np.int32, order='F')
+    m_max = ctypes.c_int(m_max)
+    m_out = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.which_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.which_c.restype = None
+
+    tox.which_c(
+        mask,
+        ctypes.byref(ctypes.c_int(n_mask_elements)),
+        ctypes.byref(n),
+        idx_out,
+        ctypes.byref(ctypes.c_int(n_idx_out_elements)),
+        ctypes.byref(m_max),
+        ctypes.byref(m_out),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    idx_out.setflags(write=False)
+
+    return {
+        "idx_out": idx_out,
+        "m_out": m_out.value
+    }
+
+
+def loess_smooth_2d(
+        x_ref,
+        y_ref,
+        indices_used,
+        x_query,
+        kernel_sigma,
+        kernel_cutoff
+        ):
+    """
+    Parameters
+    ----------
+    x_ref : ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
+        Reference x-coordinates.
+    y_ref : ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
+        Reference y-coordinates (length n_total).
+    indices_used : ndarray[np.int32] of shape (n_used,) in column-major layout (order='F')
+        Indices of reference points used for smoothing (only valid indices).
+    x_query : ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
+        Target x-coordinates to smooth.
+    kernel_sigma : float
+        Bandwidth parameter for the kernel.
+    kernel_cutoff : float
+        Cutoff for the kernel.
+
+    Returns
+    -------
+    y_out : ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
+        Output smoothed values (length n_target).
+
+    Notes
+    -----
+    Performs LOESS smoothing on a set of data points.
+    Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
+    The user must pre-filter data and provide only valid indices in indices_used.
+    """
+
+    # ensure all array inputs are numpy arrays
+    x_ref = np.ascontiguousarray(x_ref, dtype=np.float64)
+    y_ref = np.ascontiguousarray(y_ref, dtype=np.float64)
+    indices_used = np.ascontiguousarray(indices_used, dtype=np.int32)
+    x_query = np.ascontiguousarray(x_query, dtype=np.float64)
+
+    # extract dimension arguments
+    n_total = x_ref.shape[0]
+    n_target = x_query.shape[0]
+    n_used = indices_used.shape[0]
+
+
+    # Create temporaries and/or outputs
+    kernel_sigma = ctypes.c_double(kernel_sigma)
+    kernel_cutoff = ctypes.c_double(kernel_cutoff)
+    y_out = np.empty((n_target,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.loess_smooth_2d_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.loess_smooth_2d_c.restype = None
+
+    tox.loess_smooth_2d_c(
+        ctypes.byref(ctypes.c_int(n_total)),
+        ctypes.byref(ctypes.c_int(n_target)),
+        x_ref,
+        y_ref,
+        indices_used,
+        ctypes.byref(ctypes.c_int(n_used)),
+        x_query,
+        ctypes.byref(kernel_sigma),
+        ctypes.byref(kernel_cutoff),
+        y_out,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    y_out.setflags(write=False)
+
+    return y_out
+
+
+def compute_edf_expert(
+        values,
+        perm
+        ):
+    """
+    Parameters
+    ----------
+    values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        Array of observed data values (e.g., contributions or spikes).
+    perm : ndarray[np.int32] of shape (n_values,) in column-major layout (order='F')
+        Pre-sorted permutation indices (must be sorted by values[perm]).
+
+    Returns
+    -------
+    results : dict
+        unique_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+            Sorted unique data values.,
+        cdf_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+            Corresponding cumulative frequencies between 0 and 1.,
+        n_unique : int
+            Number of unique values found (actual size of output arrays)
+
+    Notes
+    -----
+    Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
+    Returns the sorted unique values and their cumulative frequencies in [0,1].
+    Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
+    The number of unique values can be determined by finding the last non-zero cdf_value.
+    """
+
+    # ensure all array inputs are numpy arrays
+    values = np.ascontiguousarray(values, dtype=np.float64)
+    perm = np.ascontiguousarray(perm, dtype=np.int32)
+
+    # extract dimension arguments
+    n_values = values.shape[0]
+
+
+    # Create temporaries and/or outputs
+    unique_values = np.empty((n_values,), dtype=np.float64, order='F')
+    cdf_values = np.empty((n_values,), dtype=np.float64, order='F')
+    n_unique = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.compute_edf_expert_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.compute_edf_expert_c.restype = None
+
+    tox.compute_edf_expert_c(
+        values,
+        ctypes.byref(ctypes.c_int(n_values)),
+        perm,
+        unique_values,
+        cdf_values,
+        ctypes.byref(n_unique),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    unique_values.setflags(write=False)
+    cdf_values.setflags(write=False)
+
+    return {
+        "unique_values": unique_values,
+        "cdf_values": cdf_values,
+        "n_unique": n_unique.value
+    }
+
+
+def compute_edf(
+        values
+        ):
+    """
+    Parameters
+    ----------
+    values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        Array of observed data values (e.g., contributions or spikes).
+
+    Returns
+    -------
+    results : dict
+        unique_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+            Sorted unique data values.,
+        cdf_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+            Corresponding cumulative frequencies between 0 and 1.,
+        n_unique : int
+            Number of unique values found (actual size of output arrays)
+
+    Notes
+    -----
+    Helper routine that sorts and calls compute_edf.
+    Allocates workspace internally and performs sorting before computing EDF.
+    Use this for convenience; use compute_edf directly for custom sorting.
+    """
+
+    # ensure all array inputs are numpy arrays
+    values = np.ascontiguousarray(values, dtype=np.float64)
+
+    # extract dimension arguments
+    n_values = values.shape[0]
+
+
+    # Create temporaries and/or outputs
+    unique_values = np.empty((n_values,), dtype=np.float64, order='F')
+    cdf_values = np.empty((n_values,), dtype=np.float64, order='F')
+    n_unique = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.compute_edf_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.compute_edf_c.restype = None
+
+    tox.compute_edf_c(
+        values,
+        ctypes.byref(ctypes.c_int(n_values)),
+        unique_values,
+        cdf_values,
+        ctypes.byref(n_unique),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    unique_values.setflags(write=False)
+    cdf_values.setflags(write=False)
+
+    return {
+        "unique_values": unique_values,
+        "cdf_values": cdf_values,
+        "n_unique": n_unique.value
+    }
+
+
+def compute_empirical_p_values(
+        rdi,
+        sorted_rdi,
+        perm,
+        c_const
+        ):
+    """
+    Parameters
+    ----------
+    rdi : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        Number of genes being processed.
+    sorted_rdi : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        empirical distribution D
+    perm : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        Constant used in the computation, typically 1
+    c_const : float
+        Output array to store the computed p-values for each gene.
+
+    Returns
+    -------
+    p_values : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        empirical distribution D with non negative values
+
+    Notes
+    -----
+    Calculate empirical p-values for scaled expression distances (RDI).
+    Implements:
+    P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    Assumptions / preconditions:
+    - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+    """
+
+    # ensure all array inputs are numpy arrays
+    rdi = np.ascontiguousarray(rdi, dtype=np.float64)
+    sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
+    perm = np.ascontiguousarray(perm, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = rdi.shape[0]
+
+
+    # Create temporaries and/or outputs
+    p_values = np.empty((n_genes,), dtype=np.float64, order='F')
+    c_const = ctypes.c_double(c_const)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.compute_empirical_p_values_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.compute_empirical_p_values_c.restype = None
+
+    tox.compute_empirical_p_values_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        rdi,
+        sorted_rdi,
+        perm,
+        p_values,
+        ctypes.byref(c_const),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    p_values.setflags(write=False)
+
+    return p_values
+
+
 def cluster_factor_trajectories_k_means(
         trajectories,
         centroids,
@@ -90,7 +1060,7 @@ def cluster_factor_trajectories_k_means(
         labels,
         label_counts,
         ctypes.byref(ierr),
-        ctypes.byref(ctypes.c_int(max_iterations))
+        ctypes.byref(max_iterations)
     )
 
     # throw error on error
@@ -191,7 +1161,7 @@ def k_means_clustering(
         labels,
         label_counts,
         ctypes.byref(ierr),
-        ctypes.byref(ctypes.c_int(max_iterations))
+        ctypes.byref(max_iterations)
     )
 
     # throw error on error
@@ -490,6 +1460,508 @@ def group_centroid(
     return centroid_matrix
 
 
+def tox_loess_required_workspace(
+        d,
+        nvmax,
+        setlf
+        ):
+    """
+    Parameters
+    ----------
+    d : int
+        Dimensionality of the data
+    nvmax : int
+        Maximum neighborhood size
+    setlf : bool
+        Save matrix factorization flag
+
+    Returns
+    -------
+    results : dict
+        int_workspace_size : int
+            Required size of the integer workspace array,
+        real_workspace_size : int
+            Required size of the real workspace array
+
+    Notes
+    -----
+    Recommend workspace sizes based on Netlib exact formulas.
+    Computes the required sizes for integer and real workspace arrays.
+    These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+    """
+
+    # ensure all array inputs are numpy arrays
+
+
+    # extract dimension arguments
+
+
+
+    # Create temporaries and/or outputs
+    d = ctypes.c_int(d)
+    nvmax = ctypes.c_int(nvmax)
+    int_workspace_size = ctypes.c_int(0)
+    real_workspace_size = ctypes.c_int(0)
+    setlf = ctypes.c_int(setlf)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.tox_loess_required_workspace_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.tox_loess_required_workspace_c.restype = None
+
+    tox.tox_loess_required_workspace_c(
+        ctypes.byref(d),
+        ctypes.byref(nvmax),
+        ctypes.byref(int_workspace_size),
+        ctypes.byref(real_workspace_size),
+        ctypes.byref(setlf),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return {
+        "int_workspace_size": int_workspace_size.value,
+        "real_workspace_size": real_workspace_size.value
+    }
+
+
+def loess_fit_plain(
+        x,
+        y,
+        w,
+        eval_points,
+        span,
+        degree,
+        nvmax,
+        infl,
+        setlf,
+        int_workspace,
+        real_workspace,
+        diagl
+        ):
+    """
+    Parameters
+    ----------
+    x : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Predictor variable array
+    y : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Response variable array
+    w : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Weight array for data points
+    eval_points : ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
+        Evaluation points (x values at which the fitted curve is computed)
+    span : float
+        Smoothing parameter for LOESS
+    degree : int
+        Degree of the LOESS polynomial
+    nvmax : int
+        Maximum neighborhood size
+    infl : bool
+        Influence calculation flag
+    setlf : bool
+        Save matrix factorization flag
+    int_workspace : ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
+        Integer workspace array
+    real_workspace : ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
+        Real workspace array
+    diagl : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+        Diagonal elements of the hat matrix
+
+    Returns
+    -------
+    fitted_values : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Fitted (smoothed) values of y at the evaluation points
+
+    Notes
+    -----
+    Perform plain LOESS fitting.
+    Fits a LOESS model to the data using the specified smoothing parameter.
+    Outputs the smoothed response variable array.
+    """
+
+    # ensure all array inputs are numpy arrays
+    x = np.ascontiguousarray(x, dtype=np.float64)
+    y = np.ascontiguousarray(y, dtype=np.float64)
+    w = np.ascontiguousarray(w, dtype=np.float64)
+    eval_points = np.asfortranarray(eval_points, dtype=np.float64)
+    int_workspace = np.ascontiguousarray(int_workspace, dtype=np.int32)
+    real_workspace = np.ascontiguousarray(real_workspace, dtype=np.float64)
+    diagl = np.ascontiguousarray(diagl, dtype=np.float64)
+
+    # extract dimension arguments
+    n = x.shape[0]
+    int_workspace_size = int_workspace.shape[0]
+    real_workspace_size = real_workspace.shape[0]
+
+
+    # Create temporaries and/or outputs
+    span = ctypes.c_double(span)
+    degree = ctypes.c_int(degree)
+    nvmax = ctypes.c_int(nvmax)
+    infl = ctypes.c_int(infl)
+    setlf = ctypes.c_int(setlf)
+    fitted_values = np.empty((n,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.loess_fit_plain_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.loess_fit_plain_c.restype = None
+
+    tox.loess_fit_plain_c(
+        ctypes.byref(ctypes.c_int(n)),
+        x,
+        y,
+        w,
+        eval_points,
+        ctypes.byref(span),
+        ctypes.byref(degree),
+        ctypes.byref(nvmax),
+        ctypes.byref(infl),
+        ctypes.byref(setlf),
+        int_workspace,
+        ctypes.byref(ctypes.c_int(int_workspace_size)),
+        real_workspace,
+        ctypes.byref(ctypes.c_int(real_workspace_size)),
+        diagl,
+        fitted_values,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    int_workspace.setflags(write=False)
+    real_workspace.setflags(write=False)
+    diagl.setflags(write=False)
+    fitted_values.setflags(write=False)
+
+    return fitted_values
+
+
+def loess_fit_robust(
+        x,
+        y,
+        w,
+        eval_points,
+        span,
+        degree,
+        nvmax,
+        infl,
+        setlf,
+        n_iters,
+        int_workspace,
+        real_workspace,
+        diagl,
+        robust_weights,
+        combined_weights,
+        residuals,
+        permutation_indices
+        ):
+    """
+    Parameters
+    ----------
+    x : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Predictor variable array
+    y : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Response variable array
+    w : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Weight array for data points
+    eval_points : ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
+        Evaluation points (x values at which the fitted curve is computed)
+    span : float
+        Smoothing parameter for LOESS
+    degree : int
+        Degree of the LOESS polynomial
+    nvmax : int
+        Maximum neighborhood size
+    infl : bool
+        Influence calculation flag
+    setlf : bool
+        Save matrix factorization flag
+    n_iters : int
+        Number of robust iterations
+    int_workspace : ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
+        Integer workspace array
+    real_workspace : ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
+        Real workspace array
+    diagl : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+        Diagonal elements of the hat matrix
+    robust_weights : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+        Robust bisquare weights (updated each iteration, initialized to 1.0)
+    combined_weights : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+        Combined weights: product of user weights and robust weights (w(i) * robust_weights(i))
+    residuals : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+        Residuals (y - fitted_values), used to compute bisquare robust weights
+    permutation_indices : ndarray[np.int32] of shape (n,) in column-major layout (order='F'), modified in-place
+        Permutation indices array (from NetLib bisquare weight computation)
+
+    Returns
+    -------
+    fitted_values : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+        Fitted (smoothed) values of y at the evaluation points
+
+    Notes
+    -----
+    Perform robust LOESS fitting with bisquare reweighting.
+    Fits a LOESS model to the data using robust iterations to handle outliers.
+    The robust fitting process iterates n_iters times, each iteration:
+    - Combines original weights with robust weights (down-weights from previous iteration)
+    - Runs LOESS fitting with combined weights
+    - Computes residuals (y - fitted values)
+    - Updates robust weights using bisquare function (suppresses large residuals)
+    """
+
+    # ensure all array inputs are numpy arrays
+    x = np.ascontiguousarray(x, dtype=np.float64)
+    y = np.ascontiguousarray(y, dtype=np.float64)
+    w = np.ascontiguousarray(w, dtype=np.float64)
+    eval_points = np.asfortranarray(eval_points, dtype=np.float64)
+    int_workspace = np.ascontiguousarray(int_workspace, dtype=np.int32)
+    real_workspace = np.ascontiguousarray(real_workspace, dtype=np.float64)
+    diagl = np.ascontiguousarray(diagl, dtype=np.float64)
+    robust_weights = np.ascontiguousarray(robust_weights, dtype=np.float64)
+    combined_weights = np.ascontiguousarray(combined_weights, dtype=np.float64)
+    residuals = np.ascontiguousarray(residuals, dtype=np.float64)
+    permutation_indices = np.ascontiguousarray(permutation_indices, dtype=np.int32)
+
+    # extract dimension arguments
+    n = x.shape[0]
+    int_workspace_size = int_workspace.shape[0]
+    real_workspace_size = real_workspace.shape[0]
+
+
+    # Create temporaries and/or outputs
+    span = ctypes.c_double(span)
+    degree = ctypes.c_int(degree)
+    nvmax = ctypes.c_int(nvmax)
+    infl = ctypes.c_int(infl)
+    setlf = ctypes.c_int(setlf)
+    n_iters = ctypes.c_int(n_iters)
+    fitted_values = np.empty((n,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.loess_fit_robust_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.loess_fit_robust_c.restype = None
+
+    tox.loess_fit_robust_c(
+        ctypes.byref(ctypes.c_int(n)),
+        x,
+        y,
+        w,
+        eval_points,
+        ctypes.byref(span),
+        ctypes.byref(degree),
+        ctypes.byref(nvmax),
+        ctypes.byref(infl),
+        ctypes.byref(setlf),
+        ctypes.byref(n_iters),
+        int_workspace,
+        ctypes.byref(ctypes.c_int(int_workspace_size)),
+        real_workspace,
+        ctypes.byref(ctypes.c_int(real_workspace_size)),
+        diagl,
+        robust_weights,
+        combined_weights,
+        residuals,
+        permutation_indices,
+        fitted_values,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    int_workspace.setflags(write=False)
+    real_workspace.setflags(write=False)
+    diagl.setflags(write=False)
+    robust_weights.setflags(write=False)
+    combined_weights.setflags(write=False)
+    residuals.setflags(write=False)
+    permutation_indices.setflags(write=False)
+    fitted_values.setflags(write=False)
+
+    return fitted_values
+
+
+def loess(
+        x,
+        y,
+        span,
+        degree,
+        mode,
+        n_iters
+        ):
+    """
+    Parameters
+    ----------
+    x : ndarray[np.float64] of shape (n_x_elements,) in column-major layout (order='F')
+        Predictor variable array
+    y : ndarray[np.float64] of shape (n_y_elements,) in column-major layout (order='F')
+        Response variable array
+    span : float
+        Smoothing parameter for LOESS
+    degree : int
+        Degree of the LOESS polynomial
+    mode : str
+        Mode of operation
+        |    Mode   |   Value  |
+        |-----------|----------|
+        | robust fitting |  "robust"   |
+        | plain fitting  |  "plain"    |
+    n_iters : int
+        Number of robust iterations (only used when mode = 1)
+
+    Returns
+    -------
+    fitted_values : ndarray[np.float64] of shape (size(y),) in column-major layout (order='F')
+        Fitted (smoothed) values of y
+
+    Notes
+    -----
+    Wrapper subroutine for LOESS fitting (plain or robust).
+    This subroutine selects between plain and robust LOESS fitting based on the mode.
+    It dynamically allocates the required arrays and computes workspace sizes.
+    """
+
+    # ensure all array inputs are numpy arrays
+    x = np.ascontiguousarray(x, dtype=np.float64)
+    y = np.ascontiguousarray(y, dtype=np.float64)
+    mode = np.asarray(mode)
+
+    # extract dimension arguments
+    n_x_elements = x.shape[0]
+    n_y_elements = y.shape[0]
+
+
+    # Create temporaries and/or outputs
+    span = ctypes.c_double(span)
+    degree = ctypes.c_int(degree)
+    fitted_values = np.empty((size(y),), dtype=np.float64, order='F')
+    mode = mode.astype(f"S{6}", order="F")
+    n_iters = ctypes.c_int(n_iters)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.loess_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{6}"),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.loess_c.restype = None
+
+    tox.loess_c(
+        x,
+        ctypes.byref(ctypes.c_int(n_x_elements)),
+        y,
+        ctypes.byref(ctypes.c_int(n_y_elements)),
+        ctypes.byref(span),
+        ctypes.byref(degree),
+        fitted_values,
+        mode,
+        ctypes.byref(n_iters),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    fitted_values.setflags(write=False)
+
+    return fitted_values
+
+
 def mask_get_first_successor_idx(
         bit_mask
         ):
@@ -549,7 +2021,7 @@ def mask_get_first_successor_idx(
     # Mark all arrays as read-only
 
 
-    return idx
+    return idx.value
 
 
 def filter_paralogs_by_pattern_dosage_effect(
@@ -615,7 +2087,7 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     tox.filter_paralogs_by_pattern_dosage_effect_c(
         gene_angles,
-        ctypes.byref(ctypes.c_double(threshold)),
+        ctypes.byref(threshold),
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_families)),
         gene_to_fam,
@@ -698,8 +2170,8 @@ def calc_work_arr_paralog_subsets_size(
     tox.calc_work_arr_paralog_subsets_size_c.restype = None
 
     tox.calc_work_arr_paralog_subsets_size_c(
-        ctypes.byref(ctypes.c_int(max_subset_size)),
-        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(max_subset_size),
+        ctypes.byref(n_genes),
         ctypes.byref(work_array_size),
         filtered_paralogs_mask,
         ctypes.byref(ctypes.c_int(n_mask_chunks)),
@@ -712,7 +2184,7 @@ def calc_work_arr_paralog_subsets_size(
     # Mark all arrays as read-only
 
 
-    return work_array_size
+    return work_array_size.value
 
 
 def omics_vector_RAP_projection(
@@ -952,7 +2424,7 @@ def clock_hand_angle_between_vectors(
     # Mark all arrays as read-only
 
 
-    return signed_angle
+    return signed_angle.value
 
 
 def clock_hand_angles_for_shift_vectors(

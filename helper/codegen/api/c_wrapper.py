@@ -113,7 +113,7 @@ class C_Wrapper_Argument(CodeGenerator):
             assert len(mode_vars) > 0, f"""Found mode argument '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'. In Ford doc comment, expected markdown table like:
 !! |    Mode   |   Value  |
 !! |-----------|----------|
-!! | bla mode  | MODE_BLA |
+!! | bla mode  | [[bla_module(module):MODE_BLA(variable)]] |
 !! ...
 
 Possible variants:
@@ -236,6 +236,7 @@ class C_Wrapper(CodeGenerator):
                 name = procedure.name
 
         self.name = name + NAME_SUFFIX
+        self.stripped_name = name
         self.arguments = C_Wrapper_Arguments(procedure, self)
 
 

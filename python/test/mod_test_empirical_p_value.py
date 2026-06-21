@@ -11,7 +11,7 @@ import ctypes
 # Path configuration to import your functions
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
+from tox import (
     compute_empirical_p_values
 )
 

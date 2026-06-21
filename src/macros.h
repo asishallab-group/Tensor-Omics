@@ -32,3 +32,7 @@
 #define DM_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) M_DM_FROM_##MODE to compute this argument using [[MODULE(module):PROCEDURE]]'s output `ARGUMENT`.
 #define DM_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_FROM_JUST_INFO It is recommended
+
+! Use for output array arguments whose result count is specified by another output argument, like `output(n), n_results` where `0<=n_results=n`, so actual output is slice `output(:n_results)`
+! Note that `ARGUMENT` should be related to the last extent `output(:, :, ..., :ARGUMENT)`.
+#define DM_RESULT_SIZE_IS(ARGUMENT) The first `ARGUMENT` elements will hold the results.

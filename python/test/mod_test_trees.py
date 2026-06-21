@@ -3,7 +3,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
+from tox import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
 
 # --- Test Cases ---
 def test_bst():
@@ -18,7 +18,7 @@ def test_bst():
 
     # Range query using the wrapper function
     res = bst_range_query(x, ix + 1, 1.5, 3.5)
-    matching_indices = res["matching_indices"] - 1
+    matching_indices = res["output_indices"] - 1
     print(f"Range [1.5, 3.5] matches: {matching_indices} (values: {x[matching_indices]})")
 
 def test_kdtree():
@@ -129,7 +129,7 @@ def test_spherical_kdtree_edge_cases():
     # Empty spherical data
     try:
         empty_vectors = np.empty((3, 0), dtype=np.float64, order='F')
-        sphere_ix = build_spherical_kd(empty_vectors) - 1
+        sphere_ix = build_spherical_kd(empty_vectors, [1, 2, 3]) - 1
         print("Empty spherical data: No error (expected behavior)")
     except Exception as e:
         print(f"Empty spherical data: Exception caught: {e}")
@@ -168,7 +168,7 @@ def test_performance():
     large_vectors = large_vectors / np.linalg.norm(large_vectors, axis=0)
     large_vectors = np.asfortranarray(large_vectors)
     
-    sphere_indices = build_spherical_kd(large_vectors)
+    sphere_indices = build_spherical_kd(large_vectors, [1, 2, 3])
     print(f"Large spherical KD-Tree built successfully for {large_vectors.shape[1]} vectors")
 
 def run_all_tests():

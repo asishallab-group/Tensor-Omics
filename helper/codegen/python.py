@@ -1,6 +1,6 @@
 from .api.utils import CodeGenerator, Serializer, Indentable
 from .api.c_wrapper import C_Wrapper_Modules
-from .api.fortran import Intent
+from .api.fortran import Intent, Dimension
 
 
 INDENT = 4
@@ -114,8 +114,12 @@ class Python_Serializer(Serializer):
 {format(self.doc_list) >> INDENT}"""
             case "doc_returns":
                 if self.type.intent is Intent.OUT:
+                    orig_dim = self.type.dimension
+                    if (match := self.doc_list.meta["result_size_is"]) is not None:
+                        self.type.dimension = Dimension((*orig_dim[:-1], match.group("n_results")))
                     string = f"""{self.name} : {format(self.type, "doc_params")}
 {format(self.doc_list) >> INDENT}"""
+                    self.type.dimension = orig_dim
             case "arglist":
                 if self.type.intent is not Intent.OUT and len(tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)) == 0 and not self.is_shape_arg and self.is_mask_count_arg_for is None:
                     string = self.name
@@ -167,7 +171,7 @@ class Python_Serializer(Serializer):
                     string = f"nullable({string})"
             case "call_args":
                 if len(self.type.dimension) == 0:
-                    if self.type.intent is not Intent.OUT:
+                    if self.type.intent is not Intent.OUT and len(self.is_dim_arg_for) > 0:
                         string = f"ctypes.byref({format(self.type, "ctypes")}({self.name}))"
                     else:
                         string = f"ctypes.byref({self.name})"
@@ -177,6 +181,14 @@ class Python_Serializer(Serializer):
                 if self.type.intent is not Intent.IN and not self.is_temporary:
                     if len(self.type.dimension) > 1 or (self.name != "character" and len(self.type.dimension) > 0):
                         string = f"{self.name}.setflags(write=False)"
+            case "return":
+                if len(self.type.dimension) == 0:
+                    string = f"{self.name}.value"
+                elif (match := self.doc_list.meta["result_size_is"]) is not None:
+                    string = f"{self.name}[..., :{match.group("n_results")}.value]"
+                else:
+                    string = f"{self.name}"
+
         return Indentable(string)
 
     def C_Wrapper_Arguments(self, spec):
@@ -194,9 +206,9 @@ class Python_Serializer(Serializer):
                 if n_outputs == 0:
                     string += "None"
                 elif n_outputs == 1:
-                    string += outputs[0].name
+                    string += format(outputs[0], "return")
                 else:
-                    dict_elements = ",\n".join(f'"{arg.name}": {arg.name}' for arg in outputs)
+                    dict_elements = ",\n".join(f'"{arg.name}": {format(arg, "return")}' for arg in outputs)
                     string += f"""{{
 {Indentable(dict_elements) >> INDENT}
 }}"""
@@ -230,7 +242,8 @@ class Python_Serializer(Serializer):
 """
         else:
             notes = ""
-        return f'''def {self.orig_procedure.name}(
+
+        return f'''def {self.stripped_name}(
 {format(self.arguments, "arglist") >> INDENT * 2}
         ):
     """{summary}

@@ -13,17 +13,18 @@ module f42_binary_search_tree
   public :: build_bst_index, get_sorted_value, bst_range_query
 contains
   
-  !> Build the BST index by sorting indices using values in x.
-  pure subroutine build_bst_index(values, num_values, sorted_indices, left_stack, right_stack, ierr)
+  !> category: C-interface
+  !| Build the BST index by sorting indices using values in x.
+  pure subroutine build_bst_index(values, num_values, sorted_indices, tmp_left_stack, tmp_right_stack, ierr)
     integer(int32), intent(in) :: num_values           
     !! Number of elements in values array
     real(real64), intent(in) :: values(num_values)      
     !! Input real array to be indexed
     integer(int32), intent(out) :: sorted_indices(num_values)  
     !! Output permutation index
-    integer(int32), intent(out) :: left_stack(num_values)    
+    integer(int32), intent(out) :: tmp_left_stack(num_values)    
     !! Manual stack for left indices
-    integer(int32), intent(out) :: right_stack(num_values)   
+    integer(int32), intent(out) :: tmp_right_stack(num_values)   
     !! Manual stack for right indices
     integer(int32), intent(out) :: ierr                   
     !! Error code
@@ -37,10 +38,11 @@ contains
     do idx = 1, num_values
       sorted_indices(idx) = idx
     end do
-    call sort_array(values, sorted_indices, left_stack, right_stack)
+    call sort_array(values, sorted_indices, tmp_left_stack, tmp_right_stack)
   end subroutine build_bst_index
 
-  !> Get the value at the sorted position.
+  !> category: C-interface
+  !| Get the value at the sorted position.
   function get_sorted_value(values, sorted_indices, position, ierr) result(sorted_value)
     real(real64), intent(in) :: values(:)              
     !! Input real array
@@ -68,7 +70,8 @@ contains
     sorted_value = values(sorted_indices(position))
   end function get_sorted_value
 
-  !> Perform a 1D range query over the sorted index.
+  !> category: C-interface
+  !| Perform a 1D range query over the sorted index.
   pure subroutine bst_range_query(values, sorted_indices, num_values, lower_bound, upper_bound, &
                             output_indices, num_matches, ierr)
 
@@ -84,6 +87,7 @@ contains
     !! Upper bound of range (inclusive)
     integer(int32), intent(out) :: output_indices(num_values)  
     !! Output array of matching indices
+    !! DM_RESULT_SIZE_IS(num_matches)
     integer(int32), intent(out) :: num_matches         
     !! Number of matches found
     integer(int32), intent(out) :: ierr                
@@ -113,72 +117,3 @@ contains
   end subroutine bst_range_query
 
 end module f42_binary_search_tree
-
-
-
-!> Wrapper using C for getting range query usable by python
-pure subroutine bst_range_query_C(values, sorted_indices, num_values, lower_bound, upper_bound, &
-                            output_indices, num_matches, ierr) bind(C, name='bst_range_query_C')
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use f42_binary_search_tree, only: bst_range_query
-  M_USE_NULL_VALIDATION
-  implicit none
-  real(c_double), intent(in), target :: values(num_values)    
-  !! Input real array (C-style)
-  integer(c_int), intent(in), target :: sorted_indices(num_values)  
-  !! Permutation index array (C-style)
-  integer(c_int), intent(in), target :: num_values               
-  !! Number of elements
-  real(c_double), intent(in), target :: lower_bound              
-  !! Lower bound of range
-  real(c_double), intent(in), target :: upper_bound              
-  !! Upper bound of range
-  integer(c_int), intent(out), target :: output_indices(num_values)  
-  !! Output array (C-style)
-  integer(c_int), intent(out), target :: num_matches        
-  !! Number of matches found
-  integer(c_int), intent(out), target :: ierr                
-  !! Error code
-
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(num_values)
-  M_CHECK_NON_NULL(lower_bound)
-  M_CHECK_NON_NULL(upper_bound)
-  M_CHECK_NON_NULL(values)
-  M_CHECK_NON_NULL(sorted_indices)
-  M_CHECK_NON_NULL(output_indices)
-  M_CHECK_NON_NULL(num_matches)
-
-  call bst_range_query(values, sorted_indices, num_values, lower_bound, upper_bound, &
-                      output_indices, num_matches, ierr)
-end subroutine bst_range_query_C
-
-!> Wrapper using C for building BST index usable by python
-pure subroutine build_bst_index_C(values, num_values, sorted_indices, left_stack, right_stack, ierr) &
-                            bind(C, name='build_bst_index_C')
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use f42_binary_search_tree
-  M_USE_NULL_VALIDATION
-  implicit none
-  integer(c_int), intent(in), target :: num_values               
-  !! Number of elements
-  real(c_double), intent(in), target :: values(num_values)    
-  !! Input real array (C-style)
-  integer(c_int), intent(out), target :: sorted_indices(num_values)  
-  !! Output permutation index (C-style)
-  integer(c_int), intent(out), target :: left_stack(num_values)    
-  !! Manual stack for left indices
-  integer(c_int), intent(out), target :: right_stack(num_values)   
-  !! Manual stack for right indices
-  integer(c_int), intent(out), target :: ierr                
-  !! Error code
-
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(num_values)
-  M_CHECK_NON_NULL(values)
-  M_CHECK_NON_NULL(sorted_indices)
-  M_CHECK_NON_NULL(left_stack)
-  M_CHECK_NON_NULL(right_stack)
-
-  call build_bst_index(values, num_values, sorted_indices, left_stack, right_stack, ierr)
-end subroutine build_bst_index_C

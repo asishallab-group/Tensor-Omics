@@ -183,7 +183,7 @@ else if (.not. present({current}))
                         else:
                             c_name = f"{self.name}(1:size({shape_arg.name}, kind=int32))"
 
-                    if self.type.intent is Intent.OUT:
+                    if self.type.intent is Intent.OUT and len(self.type.dimension) > 0:
                         if self.type.name == "character":
                             arg_str = f"M_ALLOCATE(character(len={self.type.dimension[0]}) :: {type_conversion_name}{format(shape, "tuple")})"
                         else:
@@ -191,8 +191,11 @@ else if (.not. present({current}))
                     else:
                         match self.type.name:
                             case "logical":
-                                arg_str = f"M_ALLOCATE({type_conversion_name}{format(shape, "tuple")})"
-                                arg_str += f"\ncall c_int_as_logical({c_name}, {type_conversion_name})"
+                                if len(self.type.dimension) > 0:
+                                    arg_str = f"M_ALLOCATE({type_conversion_name}{format(shape, "tuple")})\n"
+                                else:
+                                    arg_str = ""
+                                arg_str += f"call c_int_as_logical({c_name}, {type_conversion_name})"
                             case "character":
                                 ndims = len(self.type.dimension)
                                 if ndims == 0:

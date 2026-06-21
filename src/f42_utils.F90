@@ -851,7 +851,8 @@ contains
   end function real_greater
 
   
-  !> Finds the indices of the true values in a logical mask.
+  !> category: C-interface
+  !| Finds the indices of the true values in a logical mask.
   pure subroutine which(mask, n, idx_out, m_max, m_out, ierr)
     !| Logical array of size n.
     logical, intent(in) :: mask(:)
@@ -899,7 +900,8 @@ contains
     m_out = count
   end subroutine which
 
-  !> Performs LOESS smoothing on a set of data points.
+  !> category: C-interface
+  !| Performs LOESS smoothing on a set of data points.
   !| Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
   !| The user must pre-filter data and provide only valid indices in indices_used.
   pure subroutine loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
@@ -1024,7 +1026,8 @@ contains
     end do
   end subroutine loess_smooth_2d
 
-  !> Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
+  !> category: C-interface
+  !| Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
   !| Returns the sorted unique values and their cumulative frequencies in [0,1].
   !| Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
   !| The number of unique values can be determined by finding the last non-zero cdf_value.
@@ -1090,7 +1093,8 @@ contains
     end do
   end subroutine compute_edf
 
-  !> Helper routine that sorts and calls compute_edf.
+  !> category: C-interface
+  !| Helper routine that sorts and calls compute_edf.
   !| Allocates workspace internally and performs sorting before computing EDF.
   !| Use this for convenience; use compute_edf directly for custom sorting.
   pure subroutine compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
@@ -1243,7 +1247,8 @@ contains
     call calc_percentile(array, perm, percentile, value, ierr)
   end subroutine calc_percentile_alloc
 
-  !> Calculate empirical p-values for scaled expression distances (RDI).
+  !> category: C-interface
+  !| Calculate empirical p-values for scaled expression distances (RDI).
   !|
   !| Implements:
   !|   P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
@@ -1328,191 +1333,3 @@ contains
 
 
 end module f42_utils
-
-
-
-
-! === C WRAPPERS ===
-
-!> C wrapper for which.
-!| Converts integer mask to logical and calls which.
-pure subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
-  use, intrinsic :: iso_c_binding, only: c_int
-  use, intrinsic :: iso_fortran_env, only: int32
-  use f42_utils, only: which
-  use tox_conversions, only: c_int_as_logical
-  M_USE_NULL_VALIDATION
-  implicit none
-  !| Size of the mask.
-  integer(c_int), intent(in), target :: n
-  !| Maximum size of idx_out.
-  integer(c_int), intent(in), target :: m_max
-  !| Integer mask array (0/1 values).
-  integer(c_int), intent(in), target :: mask(n)
-  !| Output array for indices of true values.
-  integer(c_int), intent(out), target :: idx_out(m_max)
-  !| Actual size of idx_out (number of true values found).
-  integer(c_int), intent(out), target :: m_out
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out), target :: ierr
-  logical :: mask_f(n)
-  integer(int32) :: ierr_f
-  
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n)
-  M_CHECK_NON_NULL(m_max)
-  M_CHECK_NON_NULL(mask)
-  M_CHECK_NON_NULL(idx_out)
-  
-  ! Use tox_conversions utility for c_int to logical conversion
-  call c_int_as_logical(mask, mask_f)
-  call which(mask_f, n, idx_out, m_max, m_out, ierr_f)
-  ierr = ierr_f
-end subroutine which_c
-
-!> C wrapper for loess_smooth_2d.
-!| Direct wrapper - user must pre-filter indices in C before calling.
-pure subroutine loess_smooth_2d_c(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr) bind(C, name="loess_smooth_2d_c")
-  use, intrinsic :: iso_c_binding, only : c_int, c_double
-  use, intrinsic :: iso_fortran_env, only: int32
-  use f42_utils, only: loess_smooth_2d
-  M_USE_NULL_VALIDATION
-  implicit none
-  !| Total number of reference points.
-  integer(c_int), intent(in), target :: n_total
-  !| Number of target points to smooth.
-  integer(c_int), intent(in), target :: n_target
-  !| Reference x-coordinates.
-  real(c_double), intent(in), target :: x_ref(n_total)
-  !| Reference y-coordinates (length n_total).
-  real(c_double), intent(in), target :: y_ref(n_total)
-  !| Indices of reference points used for smoothing (pre-filtered).
-  integer(c_int), intent(in), target :: indices_used(n_used)
-  !| Number of indices actually used for smoothing.
-  integer(c_int), intent(in), target :: n_used
-  !| Target x-coordinates to smooth.
-  real(c_double), intent(in), target :: x_query(n_target)
-  !| Bandwidth parameter for the kernel.
-  real(c_double), intent(in), target :: kernel_sigma
-  !| Cutoff for the kernel.
-  real(c_double), intent(in), target :: kernel_cutoff
-  !| Output smoothed values (length n_target).
-  real(c_double), intent(out), target :: y_out(n_target)
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out), target :: ierr
-
-  integer(int32) :: ierr_f
-  
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_total)
-  M_CHECK_NON_NULL(n_target)
-  M_CHECK_NON_NULL(x_ref)
-  M_CHECK_NON_NULL(y_ref)
-  M_CHECK_NON_NULL(indices_used)
-  M_CHECK_NON_NULL(n_used)
-  M_CHECK_NON_NULL(x_query)
-  M_CHECK_NON_NULL(kernel_sigma)
-  M_CHECK_NON_NULL(kernel_cutoff)
-  M_CHECK_NON_NULL(y_out)
-  
-  call loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-    kernel_sigma, kernel_cutoff, y_out, ierr_f)
-  ierr = ierr_f
-
-end subroutine loess_smooth_2d_c
-
-!> IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.
-!| The Fortran routine will operate directly on the memory provided by the caller.
-
-!> C wrapper for compute_edf.
-!| Allocates workspace internally and exposes a simple interface with C types.
-!| The number of unique values is returned via n_unique output parameter.
-subroutine compute_edf_c(values, n_values, unique_values, cdf_values, n_unique, ierr) &
-  bind(C, name="compute_edf_c")
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  use f42_utils, only: compute_edf_alloc
-  M_USE_NULL_VALIDATION
-  implicit none
-  !| Number of values in the input array.
-  integer(c_int), intent(in), target :: n_values
-  !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in), target :: values(n_values)
-  !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out), target :: unique_values(n_values)
-  !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out), target :: cdf_values(n_values)
-  !| Number of unique values found.
-  integer(c_int), intent(out), target :: n_unique
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out), target :: ierr
-
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_values)
-  M_CHECK_NON_NULL(values)
-  M_CHECK_NON_NULL(unique_values)
-  M_CHECK_NON_NULL(cdf_values)
-
-  call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
-end subroutine compute_edf_c
-
-!> Expert C wrapper for compute_edf.
-!| Direct interface to compute_edf for users who have already sorted their data
-!| or have a custom permutation vector. This skips the internal sorting step
-!| for better performance when the caller has full control.
-subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_values, n_unique, ierr) &
-    bind(C, name="compute_edf_expert_c")
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use, intrinsic :: iso_fortran_env, only: int32, real64
-  use f42_utils, only: compute_edf
-  M_USE_NULL_VALIDATION
-  implicit none
-  !| Number of values in the input array.
-  integer(c_int), intent(in), target :: n_values
-  !| Array of observed data values (e.g., contributions or spikes).
-  real(c_double), intent(in), target :: values(n_values)
-  !| Pre-sorted permutation indices (must be sorted by values[perm]).
-  !| Caller is responsible for sorting this array before calling.
-  integer(c_int), intent(in), target :: perm(n_values)
-  !| Sorted unique data values (sized to n_values).
-  real(c_double), intent(out), target :: unique_values(n_values)
-  !| Corresponding cumulative frequencies between 0 and 1 (sized to n_values).
-  real(c_double), intent(out), target :: cdf_values(n_values)
-  !| Number of unique values found.
-  integer(c_int), intent(out), target :: n_unique
-  !| Error code: 0=ok, 201=invalid input, 202=empty input
-  integer(c_int), intent(out), target :: ierr
-
-  M_CHECK_IERR_NON_NULL
-  M_CHECK_NON_NULL(n_values)
-  M_CHECK_NON_NULL(values)
-  M_CHECK_NON_NULL(perm)
-  M_CHECK_NON_NULL(unique_values)
-  M_CHECK_NON_NULL(cdf_values)
-
-  call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
-end subroutine compute_edf_expert_c
-
-!> C-compatible wrapper for compute_empirical_p_values
-subroutine compute_empirical_p_values_c(n_genes, rdi, sorted_rdi, perm, p_values, c_const) bind(C, name="empirical_p_values_c")
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use f42_utils, only: compute_empirical_p_values
-  implicit none
-
-  integer(c_int), intent(in), target :: n_genes
-  !| Number of genes being processed.
-  real(c_double), intent(in), target :: rdi(n_genes)
-  !| empirical distribution D
-  real(c_double), intent(in), target :: sorted_rdi(n_genes)
-  !| empirical distribution D with non negative values
-  integer(c_int), intent(in), target :: perm(n_genes)
-  !| Permutation array with sorted indices for sorted_rdi
-  real(c_double), intent(out), target :: p_values(n_genes)
-  !| Output array to store the computed p-values for each gene.
-  real(c_double), intent(in), target :: c_const
-  !| Constant used in the computation, typically 1
-
-  call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
-
-end subroutine compute_empirical_p_values_c

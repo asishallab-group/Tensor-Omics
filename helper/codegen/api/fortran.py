@@ -128,6 +128,11 @@ class Fortran_Type(CodeGenerator):
 
 class DocList(CodeGenerator):
     """Class for managing parsed Ford documentation. Each line is one element"""
+    DM_RE = {
+        "required_if_mode": re.compile(regex_escaped_preprocessor.expand(r"DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))")),
+        "result_size_is": re.compile(regex_escaped_preprocessor.expand(r"DM_RESULT_SIZE_IS((?P<n_results>.*))")),
+    }
+
     def __init__(self, doc_list: List[str, ...], type: str):
         if type not in ("module", "procedure", "argument"):
             raise ValueError("type must be one of: 'module', 'procedure', 'argument'")
@@ -137,13 +142,13 @@ class DocList(CodeGenerator):
         while len(self.doc_list) > 0 and self.doc_list[-1] == "":
             self.doc_list.pop()
 
-        self.meta = {
-            "required_if_mode": None,
-            "optional_output": None,
-        }
+        self.meta = {key: None for key in self.DM_RE}
+        self.meta["optional_output"] = None
+
         for line in self.doc_list:
-            if (match := re.match(regex_escaped_preprocessor.expand(r"DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))"), line)) is not None:
-                self.meta["required_if_mode"] = match
+            for key, regex in self.DM_RE.items():
+                if (match := regex.match(line)) is not None:
+                    self.meta[key] = match
 
     @classmethod
     def from_fortran(cls, unit: FortranModule | FortranSubroutine | FortranFunction | FortranVariable | FortranModuleProcedureImplementation):
