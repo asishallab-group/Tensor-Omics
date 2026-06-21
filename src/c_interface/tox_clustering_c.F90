@@ -67,7 +67,7 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call cluster_factor_trajectories_k_means(&
+        call  cluster_factor_trajectories_k_means(&
             n_clusters = n_clusters,&
             trajectories = trajectories,&
             n_factors = n_factors,&
@@ -132,7 +132,7 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call k_means_clustering(&
+        call  k_means_clustering(&
             n_clusters = n_clusters,&
             data_points = data_points,&
             n_points = n_points,&
@@ -212,7 +212,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        call linkage_clustering(&
+        call  linkage_clustering(&
             distances = distances,&
             n_points = n_points,&
             merge_i = merge_i,&

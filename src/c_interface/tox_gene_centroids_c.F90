@@ -51,7 +51,7 @@ contains
         M_CHECK_NON_NULL(gene_indices)
         M_CHECK_NON_NULL(n_selected_genes)
         M_CHECK_NON_NULL(centroid)
-        call mean_vector(&
+        call  mean_vector(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
@@ -105,8 +105,8 @@ contains
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
             !! This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids(module):MODE_GROUP_ORTHOLOGS(variable)]].
         character(len=:), allocatable :: mode_f
-        integer(int32) :: mode_int_f
         logical, allocatable, dimension(:) :: ortholog_set_f
+        integer(int32) :: mode_int_f
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(expression_vectors)
         M_CHECK_NON_NULL(n_axes)
@@ -133,7 +133,7 @@ contains
             call c_int_as_logical(ortholog_set, ortholog_set_f)
         end if
         if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
-            call group_centroid(&
+            call  group_centroid(&
                 expression_vectors = expression_vectors,&
                 n_axes = n_axes,&
                 n_genes = n_genes,&
@@ -146,7 +146,7 @@ contains
                 ortholog_set = ortholog_set_f&
             )
         else
-            call group_centroid(&
+            call  group_centroid(&
                 expression_vectors = expression_vectors,&
                 n_axes = n_axes,&
                 n_genes = n_genes,&

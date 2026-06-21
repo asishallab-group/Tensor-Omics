@@ -50,7 +50,7 @@ contains
         M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(setlf)
         call c_int_as_logical(setlf, setlf_f)
-        call tox_loess_required_workspace(&
+        call  tox_loess_required_workspace(&
             d = d,&
             nvmax = nvmax,&
             int_workspace_size = int_workspace_size,&
@@ -139,7 +139,7 @@ contains
         M_CHECK_NON_NULL(fitted_values)
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
-        call loess_fit_plain(&
+        call  loess_fit_plain(&
             n = n,&
             x = x,&
             y = y,&
@@ -264,7 +264,7 @@ contains
         M_CHECK_NON_NULL(fitted_values)
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
-        call loess_fit_robust(&
+        call  loess_fit_robust(&
             n = n,&
             x = x,&
             y = y,&
@@ -356,7 +356,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        call loess_alloc(&
+        call  loess_alloc(&
             x = x,&
             y = y,&
             span = span,&

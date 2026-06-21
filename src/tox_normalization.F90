@@ -13,7 +13,8 @@ module tox_normalization
 
 contains
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> category: C-interface
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Normalizes an input vector to unit length in-place
     pure subroutine normalize_unit_length(vector, n_dims, ierr)
         integer(int32), intent(in) :: n_dims
@@ -835,24 +836,3 @@ subroutine normalization_pipeline_c(n_genes, n_replicates, expr, log_transformed
 
     call normalization_pipeline_alloc(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile_f, ierr)
 end subroutine normalization_pipeline_c
-
-!> C wrapper for [[tox_normalization(module):normalize_unit_length(subroutine)]]
-pure subroutine normalize_unit_length_c(vector, n_dims, ierr) bind(C, name="normalize_unit_length_c")
-    use tox_normalization, only: normalize_unit_length
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_dims
-        !! number of elements in `vector`
-    real(c_double), dimension(n_dims), intent(inout), target :: vector
-        !! Vector that will be normalized to unit length
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(vector)
-
-    call normalize_unit_length(vector, n_dims, ierr)
-end subroutine normalize_unit_length_c

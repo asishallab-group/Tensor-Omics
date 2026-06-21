@@ -88,7 +88,7 @@ contains
         M_CHECK_NON_NULL(sorted_indices)
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
-        call build_bst_index(&
+        call  build_bst_index(&
             values = values,&
             num_values = num_values,&
             sorted_indices = sorted_indices,&
@@ -137,7 +137,7 @@ contains
         M_CHECK_NON_NULL(upper_bound)
         M_CHECK_NON_NULL(output_indices)
         M_CHECK_NON_NULL(num_matches)
-        call bst_range_query(&
+        call  bst_range_query(&
             values = values,&
             sorted_indices = sorted_indices,&
             num_values = num_values,&

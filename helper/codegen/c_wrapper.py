@@ -110,7 +110,13 @@ class C_Wrapper_Serializer(Serializer):
                 # optional outputs
                 optional_outputs = tuple(arg for arg in self.args if arg.doc_list.meta["optional_output"] is not None)
 
-                call_prefix = "call" if self.retvar is None else f"{self.retvar} ="
+                if self.retvar is None:
+                    call_prefix = "call "
+                else:
+                    if self.retvar.type.needs_conversion:
+                        call_prefix = f"{self.retvar.name + TYPE_CONVERSION_SUFFIX} ="
+                    else:
+                        call_prefix = f"{self.retvar.name} ="
 
                 def optional_variants(args, n_remaining):
                     if n_remaining > 0:
@@ -165,8 +171,9 @@ else if (.not. present({current}))
             case "locals_type_conversion":
                 if self.type.needs_conversion:
                     arg_str = f"{format(self.type, "locals_type_conversion")} :: {type_conversion_name}"
-                    if self.mode_vars is not None:
-                        arg_str += f"\ninteger(int32) :: {self.name}{MAPPED_MODE_SUFFIX}"
+            case "mode_var_conversion":
+                if self.mode_vars is not None:
+                    arg_str = f"integer(int32) :: {self.name}{MAPPED_MODE_SUFFIX}"
             case "type_conversion_inputs":
                 if self.type.needs_conversion:
                     shape_arg = self.shape_arg
@@ -288,6 +295,7 @@ subroutine {self.name}(&
     use {module_name}
 {format(self.arguments, "dummy") >> INDENT}
 {format(self.arguments, "locals_type_conversion") >> INDENT}
+{format(self.arguments, "mode_var_conversion") >> INDENT}
 {format(self.arguments, "null_validation") >> INDENT}
 {format(self.arguments, "type_conversion_inputs") >> INDENT}
 {format(orig_proc, "call") >> INDENT}

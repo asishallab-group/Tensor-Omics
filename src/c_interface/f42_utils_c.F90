@@ -59,7 +59,7 @@ contains
         M_CHECK_NON_NULL(m_out)
         M_ALLOCATE(mask_f(n_mask_elements))
         call c_int_as_logical(mask, mask_f)
-        call which(&
+        call  which(&
             mask = mask_f,&
             n = n,&
             idx_out = idx_out,&
@@ -121,7 +121,7 @@ contains
         M_CHECK_NON_NULL(kernel_sigma)
         M_CHECK_NON_NULL(kernel_cutoff)
         M_CHECK_NON_NULL(y_out)
-        call loess_smooth_2d(&
+        call  loess_smooth_2d(&
             n_total = n_total,&
             n_target = n_target,&
             x_ref = x_ref,&
@@ -173,7 +173,7 @@ contains
         M_CHECK_NON_NULL(unique_values)
         M_CHECK_NON_NULL(cdf_values)
         M_CHECK_NON_NULL(n_unique)
-        call compute_edf(&
+        call  compute_edf(&
             values = values,&
             n_values = n_values,&
             perm = perm,&
@@ -216,7 +216,7 @@ contains
         M_CHECK_NON_NULL(unique_values)
         M_CHECK_NON_NULL(cdf_values)
         M_CHECK_NON_NULL(n_unique)
-        call compute_edf_alloc(&
+        call  compute_edf_alloc(&
             values = values,&
             n_values = n_values,&
             unique_values = unique_values,&
@@ -269,7 +269,7 @@ contains
         M_CHECK_NON_NULL(perm)
         M_CHECK_NON_NULL(p_values)
         M_CHECK_NON_NULL(c_const)
-        call compute_empirical_p_values(&
+        call  compute_empirical_p_values(&
             n_genes = n_genes,&
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&

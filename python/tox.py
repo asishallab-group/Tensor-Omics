@@ -17,9 +17,9 @@ def get_sorted_value(
     """
     Parameters
     ----------
-    values : ndarray[np.float64] of shape (n_values_elements,) in column-major layout (order='F')
+    values : np.ndarray[np.float64] of shape (n_values_elements,) in column-major layout (order='F')
         Input real array
-    sorted_indices : ndarray[np.int32] of shape (n_sorted_indices_elements,) in column-major layout (order='F')
+    sorted_indices : np.ndarray[np.int32] of shape (n_sorted_indices_elements,) in column-major layout (order='F')
         Permutation index array
     position : int
         Sorted position (1-based)
@@ -91,17 +91,17 @@ def build_bst_index(
     """
     Parameters
     ----------
-    values : ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
+    values : np.ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
         Input real array to be indexed
 
     Returns
     -------
     results : dict
-        sorted_indices : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+        sorted_indices : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
             Output permutation index,
-        tmp_left_stack : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+        tmp_left_stack : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
             Manual stack for left indices,
-        tmp_right_stack : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+        tmp_right_stack : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
             Manual stack for right indices
 
     Notes
@@ -167,9 +167,9 @@ def bst_range_query(
     """
     Parameters
     ----------
-    values : ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
+    values : np.ndarray[np.float64] of shape (num_values,) in column-major layout (order='F')
         Input real array
-    sorted_indices : ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+    sorted_indices : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
         Permutation index array (sorted)
     lower_bound : float
         Lower bound of range (inclusive)
@@ -179,7 +179,7 @@ def bst_range_query(
     Returns
     -------
     results : dict
-        output_indices : ndarray[np.int32] of shape (num_matches,) in column-major layout (order='F')
+        output_indices : np.ndarray[np.int32] of shape (num_matches,) in column-major layout (order='F')
             Output array of matching indices
             The first `num_matches` elements will hold the results.,
         num_matches : int
@@ -255,27 +255,27 @@ def build_kd_index(
     """
     Parameters
     ----------
-    points : ndarray[np.float64] of shape (num_dimensions, num_points) in column-major layout (order='F')
+    points : np.ndarray[np.float64] of shape (num_dimensions, num_points) in column-major layout (order='F')
         Data points
-    dimension_order : ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
+    dimension_order : np.ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
         Dimension order (by variance)
 
     Returns
     -------
     results : dict
-        kd_indices : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+        kd_indices : np.ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
             Output index array (k-d tree order),
-        tmp_workspace : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+        tmp_workspace : np.ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
             Workspace array,
-        tmp_value_buffer : ndarray[np.float64] of shape (num_points,) in column-major layout (order='F')
+        tmp_value_buffer : np.ndarray[np.float64] of shape (num_points,) in column-major layout (order='F')
             Workspace for sorting,
-        tmp_permutation : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+        tmp_permutation : np.ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
             Workspace for sorting,
-        tmp_left_stack : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+        tmp_left_stack : np.ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
             Workspace for sorting,
-        tmp_right_stack : ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
+        tmp_right_stack : np.ndarray[np.int32] of shape (num_points,) in column-major layout (order='F')
             Workspace for sorting,
-        tmp_recursion_stack : ndarray[np.int32] of shape (3, num_points) in column-major layout (order='F')
+        tmp_recursion_stack : np.ndarray[np.int32] of shape (3, num_points) in column-major layout (order='F')
             Stack for l, r, depth
 
     Notes
@@ -362,27 +362,27 @@ def build_spherical_kd(
     """
     Parameters
     ----------
-    vectors : ndarray[np.float64] of shape (num_dimensions, num_vectors) in column-major layout (order='F')
+    vectors : np.ndarray[np.float64] of shape (num_dimensions, num_vectors) in column-major layout (order='F')
         Input unit vectors
-    dimension_order : ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
+    dimension_order : np.ndarray[np.int32] of shape (num_dimensions,) in column-major layout (order='F')
         Dimension order
 
     Returns
     -------
     results : dict
-        sphere_indices : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+        sphere_indices : np.ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
             Output index array,
-        tmp_workspace : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+        tmp_workspace : np.ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
             Workspace array,
-        tmp_value_buffer : ndarray[np.float64] of shape (num_vectors,) in column-major layout (order='F')
+        tmp_value_buffer : np.ndarray[np.float64] of shape (num_vectors,) in column-major layout (order='F')
             Value buffer,
-        tmp_permutation : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+        tmp_permutation : np.ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
             Permutation array,
-        tmp_left_stack : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+        tmp_left_stack : np.ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
             Left stack,
-        tmp_right_stack : ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
+        tmp_right_stack : np.ndarray[np.int32] of shape (num_vectors,) in column-major layout (order='F')
             Right stack,
-        tmp_recursion_stack : ndarray[np.int32] of shape (3, num_vectors) in column-major layout (order='F')
+        tmp_recursion_stack : np.ndarray[np.int32] of shape (3, num_vectors) in column-major layout (order='F')
             Stack for recursive calls
 
     Notes
@@ -466,16 +466,16 @@ def get_kd_point(
     """
     Parameters
     ----------
-    points : ndarray[np.float64] of shape (n_points_elements_dim_1, n_points_elements_dim_2) in column-major layout (order='F')
+    points : np.ndarray[np.float64] of shape (n_points_elements_dim_1, n_points_elements_dim_2) in column-major layout (order='F')
         Input points
-    kd_indices : ndarray[np.int32] of shape (n_kd_indices_elements,) in column-major layout (order='F')
+    kd_indices : np.ndarray[np.int32] of shape (n_kd_indices_elements,) in column-major layout (order='F')
         KD index array
     position : int
         Position in index
 
     Returns
     -------
-    point_values : ndarray[np.float64] of shape (n_point_values_elements,) in column-major layout (order='F')
+    point_values : np.ndarray[np.float64] of shape (n_point_values_elements,) in column-major layout (order='F')
         Output point values
 
     Notes
@@ -549,7 +549,7 @@ def which(
     """
     Parameters
     ----------
-    mask : ndarray[np.int32] of shape (n_mask_elements,) in column-major layout (order='F')
+    mask : np.ndarray[np.int32] of shape (n_mask_elements,) in column-major layout (order='F')
         Logical array of size n.
     n : int
         Size of the mask.
@@ -559,7 +559,7 @@ def which(
     Returns
     -------
     results : dict
-        idx_out : ndarray[np.int32] of shape (n_idx_out_elements,) in column-major layout (order='F')
+        idx_out : np.ndarray[np.int32] of shape (n_idx_out_elements,) in column-major layout (order='F')
             Integer array to store the indices of true values.,
         m_out : int
             Actual size of idx_out (number of true values found).
@@ -637,13 +637,13 @@ def loess_smooth_2d(
     """
     Parameters
     ----------
-    x_ref : ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
+    x_ref : np.ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
         Reference x-coordinates.
-    y_ref : ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
+    y_ref : np.ndarray[np.float64] of shape (n_total,) in column-major layout (order='F')
         Reference y-coordinates (length n_total).
-    indices_used : ndarray[np.int32] of shape (n_used,) in column-major layout (order='F')
+    indices_used : np.ndarray[np.int32] of shape (n_used,) in column-major layout (order='F')
         Indices of reference points used for smoothing (only valid indices).
-    x_query : ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
+    x_query : np.ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
         Target x-coordinates to smooth.
     kernel_sigma : float
         Bandwidth parameter for the kernel.
@@ -652,7 +652,7 @@ def loess_smooth_2d(
 
     Returns
     -------
-    y_out : ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
+    y_out : np.ndarray[np.float64] of shape (n_target,) in column-major layout (order='F')
         Output smoothed values (length n_target).
 
     Notes
@@ -733,17 +733,17 @@ def compute_edf_expert(
     """
     Parameters
     ----------
-    values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+    values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
         Array of observed data values (e.g., contributions or spikes).
-    perm : ndarray[np.int32] of shape (n_values,) in column-major layout (order='F')
+    perm : np.ndarray[np.int32] of shape (n_values,) in column-major layout (order='F')
         Pre-sorted permutation indices (must be sorted by values[perm]).
 
     Returns
     -------
     results : dict
-        unique_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        unique_values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
             Sorted unique data values.,
-        cdf_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        cdf_values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
             Corresponding cumulative frequencies between 0 and 1.,
         n_unique : int
             Number of unique values found (actual size of output arrays)
@@ -819,15 +819,15 @@ def compute_edf(
     """
     Parameters
     ----------
-    values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+    values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
         Array of observed data values (e.g., contributions or spikes).
 
     Returns
     -------
     results : dict
-        unique_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        unique_values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
             Sorted unique data values.,
-        cdf_values : ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
+        cdf_values : np.ndarray[np.float64] of shape (n_values,) in column-major layout (order='F')
             Corresponding cumulative frequencies between 0 and 1.,
         n_unique : int
             Number of unique values found (actual size of output arrays)
@@ -902,18 +902,18 @@ def compute_empirical_p_values(
     """
     Parameters
     ----------
-    rdi : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+    rdi : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
         Number of genes being processed.
-    sorted_rdi : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+    sorted_rdi : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
         empirical distribution D
-    perm : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+    perm : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
         Constant used in the computation, typically 1
     c_const : float
         Output array to store the computed p-values for each gene.
 
     Returns
     -------
-    p_values : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+    p_values : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
         empirical distribution D with non negative values
 
     Notes
@@ -987,9 +987,9 @@ def cluster_factor_trajectories_k_means(
     """
     Parameters
     ----------
-    trajectories : ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
+    trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
         matrix with data points to cluster
-    centroids : ndarray[np.float64] of shape (n_factors, n_clusters) in column-major layout (order='F'), modified in-place
+    centroids : np.ndarray[np.float64] of shape (n_factors, n_clusters) in column-major layout (order='F'), modified in-place
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
         The final values will be the final centroids of the clusters
@@ -1000,10 +1000,10 @@ def cluster_factor_trajectories_k_means(
     Returns
     -------
     results : dict
-        labels : ndarray[np.int32] of shape (n_samples * n_timepoints,) in column-major layout (order='F')
+        labels : np.ndarray[np.int32] of shape (n_samples * n_timepoints,) in column-major layout (order='F')
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
-        label_counts : ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
+        label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
 
     Notes
@@ -1088,9 +1088,9 @@ def k_means_clustering(
 
     Parameters
     ----------
-    data_points : ndarray[np.float64] of shape (n_dims, n_points) in column-major layout (order='F')
+    data_points : np.ndarray[np.float64] of shape (n_dims, n_points) in column-major layout (order='F')
         matrix with data points to cluster
-    centroids : ndarray[np.float64] of shape (n_dims, n_clusters) in column-major layout (order='F'), modified in-place
+    centroids : np.ndarray[np.float64] of shape (n_dims, n_clusters) in column-major layout (order='F'), modified in-place
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
         The final values will be the final centroids of the clusters
@@ -1101,10 +1101,10 @@ def k_means_clustering(
     Returns
     -------
     results : dict
-        labels : ndarray[np.int32] of shape (n_points,) in column-major layout (order='F')
+        labels : np.ndarray[np.int32] of shape (n_points,) in column-major layout (order='F')
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
-        label_counts : ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
+        label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
 
     Notes
@@ -1188,7 +1188,7 @@ def linkage_clustering(
 
     Parameters
     ----------
-    distances : ndarray[np.float64] of shape (n_points, n_points) in column-major layout (order='F'), modified in-place
+    distances : np.ndarray[np.float64] of shape (n_points, n_points) in column-major layout (order='F'), modified in-place
         symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
         @note
         This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
@@ -1205,13 +1205,13 @@ def linkage_clustering(
     Returns
     -------
     results : dict
-        merge_i : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+        merge_i : np.ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
             holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes,
-        merge_j : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+        merge_j : np.ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
             holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes,
-        heights : ndarray[np.float64] of shape (n_points - 1,) in column-major layout (order='F')
+        heights : np.ndarray[np.float64] of shape (n_points - 1,) in column-major layout (order='F')
             height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter,
-        cluster_sizes : ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
+        cluster_sizes : np.ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
             size of cluster at iteration k
 
     Notes
@@ -1294,14 +1294,14 @@ def mean_vector(
     """
     Parameters
     ----------
-    expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
+    expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
-    gene_indices : ndarray[np.int32] of shape (n_selected_genes,) in column-major layout (order='F')
+    gene_indices : np.ndarray[np.int32] of shape (n_selected_genes,) in column-major layout (order='F')
         An array containing the column indices of the selected genes in 'expression_vectors'.
 
     Returns
     -------
-    centroid : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    centroid : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         The output vector representing the computed centroid.
 
     Notes
@@ -1371,9 +1371,9 @@ def group_centroid(
     """
     Parameters
     ----------
-    expression_vectors : ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
+    expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
-    gene_to_family : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+    gene_to_family : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
         An array mapping each gene (by index) to a family ID.
     mode : str
         used mode for grouping
@@ -1381,16 +1381,16 @@ def group_centroid(
         |------------------|-----------------------------------------------------------------|
         | Group Orthologs  |   "group_orthologs"    |
         |    Group all     |      "group_all"       |
-    ortholog_set : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
+    ortholog_set : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
         A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids(module):MODE_GROUP_ORTHOLOGS(variable)]].
 
     Returns
     -------
     results : dict
-        centroid_matrix : ndarray[np.float64] of shape (n_axes, n_families) in column-major layout (order='F')
+        centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families) in column-major layout (order='F')
             The output matrix (n_axes x n_families) to store the computed centroids.,
-        tmp_selected_indices : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        tmp_selected_indices : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
             An output array for storing indices.
 
     Notes
@@ -1561,13 +1561,13 @@ def loess_fit_plain(
     """
     Parameters
     ----------
-    x : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    x : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Predictor variable array
-    y : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    y : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Response variable array
-    w : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    w : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Weight array for data points
-    eval_points : ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
+    eval_points : np.ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
         Evaluation points (x values at which the fitted curve is computed)
     span : float
         Smoothing parameter for LOESS
@@ -1579,16 +1579,16 @@ def loess_fit_plain(
         Influence calculation flag
     setlf : bool
         Save matrix factorization flag
-    int_workspace : ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
+    int_workspace : np.ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
         Integer workspace array
-    real_workspace : ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
+    real_workspace : np.ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
         Real workspace array
-    diagl : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+    diagl : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
         Diagonal elements of the hat matrix
 
     Returns
     -------
-    fitted_values : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    fitted_values : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Fitted (smoothed) values of y at the evaluation points
 
     Notes
@@ -1705,13 +1705,13 @@ def loess_fit_robust(
     """
     Parameters
     ----------
-    x : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    x : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Predictor variable array
-    y : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    y : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Response variable array
-    w : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    w : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Weight array for data points
-    eval_points : ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
+    eval_points : np.ndarray[np.float64] of shape (n, 1) in column-major layout (order='F')
         Evaluation points (x values at which the fitted curve is computed)
     span : float
         Smoothing parameter for LOESS
@@ -1725,24 +1725,24 @@ def loess_fit_robust(
         Save matrix factorization flag
     n_iters : int
         Number of robust iterations
-    int_workspace : ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
+    int_workspace : np.ndarray[np.int32] of shape (int_workspace_size,) in column-major layout (order='F'), modified in-place
         Integer workspace array
-    real_workspace : ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
+    real_workspace : np.ndarray[np.float64] of shape (real_workspace_size,) in column-major layout (order='F'), modified in-place
         Real workspace array
-    diagl : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+    diagl : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
         Diagonal elements of the hat matrix
-    robust_weights : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+    robust_weights : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
         Robust bisquare weights (updated each iteration, initialized to 1.0)
-    combined_weights : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+    combined_weights : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
         Combined weights: product of user weights and robust weights (w(i) * robust_weights(i))
-    residuals : ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
+    residuals : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F'), modified in-place
         Residuals (y - fitted_values), used to compute bisquare robust weights
-    permutation_indices : ndarray[np.int32] of shape (n,) in column-major layout (order='F'), modified in-place
+    permutation_indices : np.ndarray[np.int32] of shape (n,) in column-major layout (order='F'), modified in-place
         Permutation indices array (from NetLib bisquare weight computation)
 
     Returns
     -------
-    fitted_values : ndarray[np.float64] of shape (n,) in column-major layout (order='F')
+    fitted_values : np.ndarray[np.float64] of shape (n,) in column-major layout (order='F')
         Fitted (smoothed) values of y at the evaluation points
 
     Notes
@@ -1871,9 +1871,9 @@ def loess(
     """
     Parameters
     ----------
-    x : ndarray[np.float64] of shape (n_x_elements,) in column-major layout (order='F')
+    x : np.ndarray[np.float64] of shape (n_x_elements,) in column-major layout (order='F')
         Predictor variable array
-    y : ndarray[np.float64] of shape (n_y_elements,) in column-major layout (order='F')
+    y : np.ndarray[np.float64] of shape (n_y_elements,) in column-major layout (order='F')
         Response variable array
     span : float
         Smoothing parameter for LOESS
@@ -1890,7 +1890,7 @@ def loess(
 
     Returns
     -------
-    fitted_values : ndarray[np.float64] of shape (size(y),) in column-major layout (order='F')
+    fitted_values : np.ndarray[np.float64] of shape (size(y),) in column-major layout (order='F')
         Fitted (smoothed) values of y
 
     Notes
@@ -1962,13 +1962,71 @@ def loess(
     return fitted_values
 
 
+def normalize_unit_length(
+        vector
+        ):
+    """
+    Parameters
+    ----------
+    vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F'), modified in-place
+        Vector that will be normalized to unit length
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Normalizes an input vector to unit length in-place
+    """
+
+    # ensure all array inputs are numpy arrays
+    vector = np.ascontiguousarray(vector, dtype=np.float64)
+
+    # extract dimension arguments
+    n_dims = vector.shape[0]
+
+
+    # Create temporaries and/or outputs
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.normalize_unit_length_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.normalize_unit_length_c.restype = None
+
+    tox.normalize_unit_length_c(
+        vector,
+        ctypes.byref(ctypes.c_int(n_dims)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    vector.setflags(write=False)
+
+    return None
+
+
 def mask_get_first_successor_idx(
         bit_mask
         ):
     """
     Parameters
     ----------
-    bit_mask : ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
+    bit_mask : np.ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
         chunked mask to mark active genes
 
     Returns
@@ -2024,6 +2082,748 @@ def mask_get_first_successor_idx(
     return idx.value
 
 
+def mask_check_state(
+        bit_mask,
+        i_gene
+        ):
+    """
+    Parameters
+    ----------
+    bit_mask : np.ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
+        chunked mask to mark active paralogs
+    i_gene : int
+        index of paralog to be marked active
+
+    Returns
+    -------
+    state : bool
+        check result
+
+    Notes
+    -----
+    Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
+    """
+
+    # ensure all array inputs are numpy arrays
+    bit_mask = np.ascontiguousarray(bit_mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_bit_mask_elements = bit_mask.shape[0]
+
+
+    # Create temporaries and/or outputs
+    i_gene = ctypes.c_int(i_gene)
+    state = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.mask_check_state_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.mask_check_state_c.restype = None
+
+    tox.mask_check_state_c(
+        bit_mask,
+        ctypes.byref(ctypes.c_int(n_bit_mask_elements)),
+        ctypes.byref(i_gene),
+        ctypes.byref(state),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return state.value
+
+
+def detect_neofunctionalization(
+        ancestors,
+        genes,
+        gene_to_fam,
+        thresholds
+        ):
+    """
+    Parameters
+    ----------
+    ancestors : np.ndarray[np.float64] of shape (n_axes, n_families) in column-major layout (order='F')
+        RAP projected unit length expression vector of ancestral ortholog
+    genes : np.ndarray[np.float64] of shape (n_axes, n_genes) in column-major layout (order='F')
+        RAP projected unit length expression vectors of genes
+    gene_to_fam : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        mapping of gene index to family index
+    thresholds : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+        threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
+
+    Returns
+    -------
+    neofunc : np.ndarray[np.int32] of shape (n_genes, n_axes) in column-major layout (order='F')
+        `.true.` if neofunctionalization has been detected for the respective axes
+
+    Notes
+    -----
+    Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.
+    """
+
+    # ensure all array inputs are numpy arrays
+    ancestors = np.asfortranarray(ancestors, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+    thresholds = np.ascontiguousarray(thresholds, dtype=np.float64)
+
+    # extract dimension arguments
+    n_families = ancestors.shape[1]
+    n_axes = ancestors.shape[0]
+    n_genes = genes.shape[1]
+
+
+    # Create temporaries and/or outputs
+    neofunc = np.empty((n_genes, n_axes), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.detect_neofunctionalization_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.detect_neofunctionalization_c.restype = None
+
+    tox.detect_neofunctionalization_c(
+        ancestors,
+        ctypes.byref(ctypes.c_int(n_families)),
+        genes,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        gene_to_fam,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        thresholds,
+        neofunc,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    neofunc.setflags(write=False)
+
+    return neofunc
+
+
+def detect_dosage_effect(
+        ancestor,
+        genes,
+        filtered_paralogs_mask,
+        max_subset_size,
+        n_paralog_subsets,
+        max_angle=3.141592653589793,
+        gain_gamma=0.1
+        ):
+    """
+    Parameters
+    ----------
+    ancestor : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+        expression vector of ancestral ortholog
+    genes : np.ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
+        expression vectors of genes
+    filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        M_DM_FROM_JUST_INFO to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
+    max_subset_size : int
+        maximum subset size of checked gene subsets.
+        M_DM_FROM_AUTO to compute this argument using [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]]'s output `max_subset_size`.
+    max_angle : float, optional
+        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+        The default value is `pi`.
+    gain_gamma : float, optional
+        positive magnitude gain for dosage effect
+        The default value is `0.1_real64`.
+
+    Returns
+    -------
+    results : dict
+        n_results : int
+            number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.
+            @note
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+            @endnote
+            The first `n_results` elements will hold the results.,
+        active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+            working array to hold the extended subsets,
+        temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+            vector used for pruning subsets
+
+    Notes
+    -----
+    Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
+    """
+
+    # ensure all array inputs are numpy arrays
+    ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = genes.shape[1]
+    n_dims = ancestor.shape[0]
+    n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+
+    # Create temporaries and/or outputs
+    n_results = ctypes.c_int(0)
+    max_subset_size = ctypes.c_int(max_subset_size)
+    work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets), dtype=np.int32, order='F')
+    active_mask = np.empty((n_mask_chunks,), dtype=np.int32, order='F')
+    temp_paralog_vector = np.empty((n_dims,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+    max_angle = ctypes.c_double(max_angle)
+    gain_gamma = ctypes.c_double(gain_gamma)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.detect_dosage_effect_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double)
+    )
+    tox.detect_dosage_effect_c.restype = None
+
+    tox.detect_dosage_effect_c(
+        ancestor,
+        genes,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_dims)),
+        filtered_paralogs_mask,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(n_results),
+        ctypes.byref(max_subset_size),
+        work_arr_paralog_subsets,
+        ctypes.byref(ctypes.c_int(n_paralog_subsets)),
+        active_mask,
+        temp_paralog_vector,
+        ctypes.byref(ierr),
+        ctypes.byref(max_angle),
+        ctypes.byref(gain_gamma)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    work_arr_paralog_subsets.setflags(write=False)
+    active_mask.setflags(write=False)
+    temp_paralog_vector.setflags(write=False)
+
+    return {
+        "n_results": n_results.value,
+        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value],
+        "active_mask": active_mask,
+        "temp_paralog_vector": temp_paralog_vector
+    }
+
+
+def detect_subfunctionalization(
+        ancestor,
+        genes,
+        rdi_threshold,
+        filtered_paralogs_mask,
+        max_subset_size,
+        n_paralog_subsets,
+        paralog_norms,
+        sorted_paralog_norms_perm
+        ):
+    """
+    Parameters
+    ----------
+    ancestor : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+        expression vector of ancestral ortholog
+    genes : np.ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
+        expression vectors of genes
+    rdi_threshold : float
+        max allowed residual distance from `ancestor`
+    filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+    max_subset_size : int
+        maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+    paralog_norms : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
+    sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
+
+    Returns
+    -------
+    results : dict
+        n_results : int
+            number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.
+            @note
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+            @endnote
+            The first `n_results` elements will hold the results.,
+        active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+            working array to hold the extended subsets,
+        temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+            vector used for pruning subsets,
+        temp_work_array : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+            needed for efficient check of minimum value after a certain index
+
+    Notes
+    -----
+    Identifies subsets of paralogs exhibiting significant angles to the `ancestor`
+    """
+
+    # ensure all array inputs are numpy arrays
+    ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
+    paralog_norms = np.ascontiguousarray(paralog_norms, dtype=np.float64)
+    sorted_paralog_norms_perm = np.ascontiguousarray(sorted_paralog_norms_perm, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = genes.shape[1]
+    n_dims = ancestor.shape[0]
+    n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+
+    # Create temporaries and/or outputs
+    rdi_threshold = ctypes.c_double(rdi_threshold)
+    n_results = ctypes.c_int(0)
+    max_subset_size = ctypes.c_int(max_subset_size)
+    work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets), dtype=np.int32, order='F')
+    active_mask = np.empty((n_mask_chunks,), dtype=np.int32, order='F')
+    temp_paralog_vector = np.empty((n_dims,), dtype=np.float64, order='F')
+    temp_work_array = np.empty((n_genes,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.detect_subfunctionalization_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_double),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.detect_subfunctionalization_c.restype = None
+
+    tox.detect_subfunctionalization_c(
+        ancestor,
+        genes,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_dims)),
+        ctypes.byref(rdi_threshold),
+        filtered_paralogs_mask,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(n_results),
+        ctypes.byref(max_subset_size),
+        work_arr_paralog_subsets,
+        ctypes.byref(ctypes.c_int(n_paralog_subsets)),
+        active_mask,
+        temp_paralog_vector,
+        paralog_norms,
+        sorted_paralog_norms_perm,
+        temp_work_array,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    work_arr_paralog_subsets.setflags(write=False)
+    active_mask.setflags(write=False)
+    temp_paralog_vector.setflags(write=False)
+    temp_work_array.setflags(write=False)
+
+    return {
+        "n_results": n_results.value,
+        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value],
+        "active_mask": active_mask,
+        "temp_paralog_vector": temp_paralog_vector,
+        "temp_work_array": temp_work_array
+    }
+
+
+def detect_patterns(
+        ancestor,
+        genes,
+        pattern_mode,
+        filtered_paralogs_mask,
+        max_subset_size,
+        n_paralog_subsets,
+        dosage_max_angle=3.141592653589793,
+        dosage_gain_gamma=0.1,
+        subfunc_rdi_threshold=None,
+        subfunc_paralog_norms=None,
+        subfunc_sorted_paralog_norms_perm=None
+        ):
+    """
+    Parameters
+    ----------
+    ancestor : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+        expression vector of ancestral ortholog
+    genes : np.ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
+        expression vectors of genes
+    pattern_mode : str
+        used pattern for detection
+        |       Mode           |                               Value                                |
+        |----------------------|--------------------------------------------------------------------|
+        |    Dosage Effect     |    "dosage_pattern"     |
+        | Subfunctionalization |    "subfunc_pattern"    |
+    filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+    max_subset_size : int
+        maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+    dosage_max_angle : float, optional
+        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+        The default value is `pi`.
+    dosage_gain_gamma : float, optional
+        in dosage mode required positive magnitude gain for dosage
+        The default value is `0.1_real64`.
+    subfunc_rdi_threshold : float, optional
+        max allowed residual distance from `ancestor`
+        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+    subfunc_paralog_norms : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F'), optional
+        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
+        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+    subfunc_sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
+        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
+        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+
+    Returns
+    -------
+    results : dict
+        n_results : int
+            number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.
+            @note
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+            @endnote
+            The first `n_results` elements will hold the results.,
+        active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+            working array to hold the extended subsets,
+        temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+            vector used for pruning subsets,
+        subfunc_temp_work_array : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+            in subfunctionalization mode needed for efficient check of minimum value after a certain index
+            This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+
+    Notes
+    -----
+    Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    """
+
+    # ensure all array inputs are numpy arrays
+    ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    pattern_mode = np.asarray(pattern_mode)
+    filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
+    if subfunc_paralog_norms is not None:
+        subfunc_paralog_norms = np.ascontiguousarray(subfunc_paralog_norms, dtype=np.float64)
+    if subfunc_sorted_paralog_norms_perm is not None:
+        subfunc_sorted_paralog_norms_perm = np.ascontiguousarray(subfunc_sorted_paralog_norms_perm, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = genes.shape[1]
+    n_dims = ancestor.shape[0]
+    n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+
+    # Create temporaries and/or outputs
+    pattern_mode = pattern_mode.astype(f"S{15}", order="F")
+    n_results = ctypes.c_int(0)
+    max_subset_size = ctypes.c_int(max_subset_size)
+    work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets), dtype=np.int32, order='F')
+    active_mask = np.empty((n_mask_chunks,), dtype=np.int32, order='F')
+    temp_paralog_vector = np.empty((n_dims,), dtype=np.float64, order='F')
+    dosage_max_angle = ctypes.c_double(dosage_max_angle)
+    dosage_gain_gamma = ctypes.c_double(dosage_gain_gamma)
+    subfunc_rdi_threshold = ctypes.c_double(subfunc_rdi_threshold)
+    subfunc_temp_work_array = np.empty((n_genes,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.detect_patterns_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{15}"),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        nullable(ctypes.POINTER(ctypes.c_double)),
+        nullable(np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64)),
+        nullable(np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32)),
+        nullable(np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64)),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.detect_patterns_c.restype = None
+
+    tox.detect_patterns_c(
+        ancestor,
+        genes,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_dims)),
+        pattern_mode,
+        filtered_paralogs_mask,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(n_results),
+        ctypes.byref(max_subset_size),
+        work_arr_paralog_subsets,
+        ctypes.byref(ctypes.c_int(n_paralog_subsets)),
+        active_mask,
+        temp_paralog_vector,
+        ctypes.byref(dosage_max_angle),
+        ctypes.byref(dosage_gain_gamma),
+        ctypes.byref(subfunc_rdi_threshold),
+        subfunc_paralog_norms,
+        subfunc_sorted_paralog_norms_perm,
+        subfunc_temp_work_array,
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    work_arr_paralog_subsets.setflags(write=False)
+    active_mask.setflags(write=False)
+    temp_paralog_vector.setflags(write=False)
+    subfunc_temp_work_array.setflags(write=False)
+
+    return {
+        "n_results": n_results.value,
+        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value],
+        "active_mask": active_mask,
+        "temp_paralog_vector": temp_paralog_vector,
+        "subfunc_temp_work_array": subfunc_temp_work_array
+    }
+
+
+def mask_chunk_count(
+        n_genes
+        ):
+    """
+    Parameters
+    ----------
+    n_genes : int
+        number of genes
+
+    Returns
+    -------
+    count : int
+        number of 32 bit chunks a mask needs to encode `n_genes` genes
+        Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+
+    Notes
+    -----
+    This subroutine easily determines the needed chunk count for subset bit masks, as an integer has only 32 bits.
+    """
+
+    # ensure all array inputs are numpy arrays
+
+
+    # extract dimension arguments
+
+
+
+    # Create temporaries and/or outputs
+    n_genes = ctypes.c_int(n_genes)
+    count = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.mask_chunk_count_c.argtypes = (
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.mask_chunk_count_c.restype = None
+
+    tox.mask_chunk_count_c(
+        ctypes.byref(n_genes),
+        ctypes.byref(count),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+
+
+    return count.value
+
+
+def filter_paralogs_by_pattern_subfunctionalization(
+        gene_angles,
+        threshold,
+        n_families,
+        gene_to_fam,
+        n_mask_chunks
+        ):
+    """
+    Parameters
+    ----------
+    gene_angles : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        vector, holding the angles between ancestor and genes (0<=angle<=Pi)
+    threshold : float
+        filter threshold
+    gene_to_fam : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
+
+    Returns
+    -------
+    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
+        bit mask that will have indices of genes kept by pattern set to 1, else 0
+
+    Notes
+    -----
+    This subroutine prefilters the genes for subfunctionalization,
+    as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
+    """
+
+    # ensure all array inputs are numpy arrays
+    gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = gene_angles.shape[0]
+
+
+    # Create temporaries and/or outputs
+    threshold = ctypes.c_double(threshold)
+    masks = np.empty((n_mask_chunks, n_families), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.filter_paralogs_by_pattern_subfunctionalization_c.restype = None
+
+    tox.filter_paralogs_by_pattern_subfunctionalization_c(
+        gene_angles,
+        ctypes.byref(threshold),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        masks,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    masks.setflags(write=False)
+
+    return masks
+
+
 def filter_paralogs_by_pattern_dosage_effect(
         gene_angles,
         threshold,
@@ -2034,16 +2834,16 @@ def filter_paralogs_by_pattern_dosage_effect(
     """
     Parameters
     ----------
-    gene_angles : ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+    gene_angles : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
         vector, holding the angles between ancestor and genes (0<=angle<=Pi)
     threshold : float
         filter threshold
-    gene_to_fam : ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+    gene_to_fam : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
         a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
 
     Returns
     -------
-    masks : ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
+    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
         bit mask that will have indices of genes kept by pattern set to 1, else 0
 
     Notes
@@ -2105,6 +2905,97 @@ def filter_paralogs_by_pattern_dosage_effect(
     return masks
 
 
+def filter_paralogs_by_pattern(
+        pattern_mode,
+        gene_angles,
+        threshold,
+        n_families,
+        gene_to_fam,
+        n_mask_chunks
+        ):
+    """
+    Parameters
+    ----------
+    pattern_mode : str
+        used pattern for detection
+        |       Mode           |                               Value                                |
+        |----------------------|--------------------------------------------------------------------|
+        |    Dosage Effect     |    "dosage_pattern"     |
+        | Subfunctionalization |    "subfunc_pattern"    |
+    gene_angles : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
+        vector, holding the angles between ancestor and genes (0<=angle<=Pi)
+    threshold : float
+        filter threshold
+    gene_to_fam : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
+        a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
+
+    Returns
+    -------
+    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families) in column-major layout (order='F')
+        bit mask that will have indices of genes kept by pattern set to 1, else 0
+
+    Notes
+    -----
+    This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
+    """
+
+    # ensure all array inputs are numpy arrays
+    pattern_mode = np.asarray(pattern_mode)
+    gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    # extract dimension arguments
+    n_genes = gene_angles.shape[0]
+
+
+    # Create temporaries and/or outputs
+    pattern_mode = pattern_mode.astype(f"S{15}", order="F")
+    threshold = ctypes.c_double(threshold)
+    masks = np.empty((n_mask_chunks, n_families), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.filter_paralogs_by_pattern_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{15}"),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.filter_paralogs_by_pattern_c.restype = None
+
+    tox.filter_paralogs_by_pattern_c(
+        pattern_mode,
+        gene_angles,
+        ctypes.byref(threshold),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        masks,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    masks.setflags(write=False)
+
+    return masks
+
+
 def calc_work_arr_paralog_subsets_size(
         max_subset_size,
         n_genes,
@@ -2121,7 +3012,7 @@ def calc_work_arr_paralog_subsets_size(
         @endwarning
     n_genes : int
         number of genes
-    filtered_paralogs_mask : ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
+    filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
         Output mask with all genes disabled that did not pass the filter
         M_DM_FROM_JUST_INFO to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
 
@@ -2187,6 +3078,76 @@ def calc_work_arr_paralog_subsets_size(
     return work_array_size.value
 
 
+def mask_set_state(
+        n_bit_mask_elements,
+        i_gene,
+        state
+        ):
+    """
+    Parameters
+    ----------
+    i_gene : int
+        index of paralog to be marked active
+    state : bool
+        state the bit should be set to
+
+    Returns
+    -------
+    bit_mask : np.ndarray[np.int32] of shape (n_bit_mask_elements,) in column-major layout (order='F')
+        chunked mask to mark active paralogs
+
+    Notes
+    -----
+    Sets the state of a bit/gene in `bit_mask`
+    """
+
+    # ensure all array inputs are numpy arrays
+
+
+    # extract dimension arguments
+
+
+
+    # Create temporaries and/or outputs
+    bit_mask = np.empty((n_bit_mask_elements,), dtype=np.int32, order='F')
+    i_gene = ctypes.c_int(i_gene)
+    state = ctypes.c_int(state)
+    ierr = ctypes.c_int(0)
+
+    # define ctypes interface
+    def nullable(ty):
+        @classmethod
+        def from_param(cls, obj):
+            if obj is not None:
+                return ty.from_param(obj)
+        return type(ty.__name__, (ty,), {'from_param': from_param})
+
+    tox.mask_set_state_c.argtypes = (
+        np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)
+    )
+    tox.mask_set_state_c.restype = None
+
+    tox.mask_set_state_c(
+        bit_mask,
+        ctypes.byref(ctypes.c_int(n_bit_mask_elements)),
+        ctypes.byref(i_gene),
+        ctypes.byref(state),
+        ctypes.byref(ierr)
+    )
+
+    # throw error on error
+    check_err_code(ierr.value)
+
+    # Mark all arrays as read-only
+    bit_mask.setflags(write=False)
+
+    return bit_mask
+
+
 def omics_vector_RAP_projection(
         vecs,
         vecs_selection_mask,
@@ -2195,16 +3156,16 @@ def omics_vector_RAP_projection(
     """
     Parameters
     ----------
-    vecs : ndarray[np.float64] of shape (n_axes, n_vecs) in column-major layout (order='F')
+    vecs : np.ndarray[np.float64] of shape (n_axes, n_vecs) in column-major layout (order='F')
         matrix with expression vectors
-    vecs_selection_mask : ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
+    vecs_selection_mask : np.ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
         `.true.` for vectors where projection is to be computed
-    axes_selection_mask : ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
+    axes_selection_mask : np.ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
         `.true.` for axes to be included in RAP
 
     Returns
     -------
-    projections : ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
+    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
         projected vectors
 
     Notes
@@ -2277,16 +3238,16 @@ def omics_field_RAP_projection(
     """
     Parameters
     ----------
-    vecs : ndarray[np.float64] of shape (2 * n_axes, n_vecs) in column-major layout (order='F')
+    vecs : np.ndarray[np.float64] of shape (2 * n_axes, n_vecs) in column-major layout (order='F')
         matrix with vector fields, first n rows mean vector origin, last n rows vector targets
-    vecs_selection_mask : ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
+    vecs_selection_mask : np.ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
         `.true.` for vectors where projection is to be computed
-    axes_selection_mask : ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
+    axes_selection_mask : np.ndarray[np.int32] of shape (n_axes,) in column-major layout (order='F')
         `.true.` for axes to be included in RAP
 
     Returns
     -------
-    projections : ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
+    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs) in column-major layout (order='F')
         projected vectors
 
     Notes
@@ -2359,11 +3320,11 @@ def clock_hand_angle_between_vectors(
     """
     Parameters
     ----------
-    v1 : ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+    v1 : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
         First normalized vector in RAP space
-    v2 : ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
+    v2 : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
         Second normalized vector in RAP space
-    selected_axes_for_signed : ndarray[np.int32] of shape (3,) in column-major layout (order='F')
+    selected_axes_for_signed : np.ndarray[np.int32] of shape (3,) in column-major layout (order='F')
         Indices of 3 axes to use for directionality calculation (ignored if n_dims <= 3)
 
     Returns
@@ -2436,18 +3397,18 @@ def clock_hand_angles_for_shift_vectors(
     """
     Parameters
     ----------
-    origins : ndarray[np.float64] of shape (n_dims, n_vecs) in column-major layout (order='F')
+    origins : np.ndarray[np.float64] of shape (n_dims, n_vecs) in column-major layout (order='F')
         First set of RAP-projected, normalized vectors (e.g. expression centroids)
-    targets : ndarray[np.float64] of shape (n_dims, n_vecs) in column-major layout (order='F')
+    targets : np.ndarray[np.float64] of shape (n_dims, n_vecs) in column-major layout (order='F')
         Second set of RAP-projected, normalized vectors (e.g. paralogs)
-    vecs_selection_mask : ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
+    vecs_selection_mask : np.ndarray[np.int32] of shape (n_vecs,) in column-major layout (order='F')
         .true. for vector pairs where angle should be computed
-    selected_axes_for_signed : ndarray[np.int32] of shape (3,) in column-major layout (order='F')
+    selected_axes_for_signed : np.ndarray[np.int32] of shape (3,) in column-major layout (order='F')
         Indices of 3 axes to use for directionality calculation (ignored if n_dims <= 3)
 
     Returns
     -------
-    signed_angles : ndarray[np.float64] of shape (n_selected_vecs,) in column-major layout (order='F')
+    signed_angles : np.ndarray[np.float64] of shape (n_selected_vecs,) in column-major layout (order='F')
         Signed rotation angles between vector pairs in radians [-π, π]
 
     Notes
@@ -2520,12 +3481,12 @@ def compute_relative_axis_contributions(
     """
     Parameters
     ----------
-    vec : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    vec : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         RAP-projected and normalized vector (expression or shift)
 
     Returns
     -------
-    contributions : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    contributions : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         Fractional contribution of each axis (output), values in [0,1], sum to 1
 
     Notes
@@ -2583,12 +3544,12 @@ def relative_axes_changes_from_shift_vector(
     """
     Parameters
     ----------
-    vec : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    vec : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         RAP-projected and normalized shift vector
 
     Returns
     -------
-    contributions : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    contributions : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         Fractional contribution of each axis (output), values in [0,1], sum to 1
 
     Notes
@@ -2646,12 +3607,12 @@ def relative_axes_expression_from_expression_vector(
     """
     Parameters
     ----------
-    vec : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    vec : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         RAP-projected and normalized expression vector
 
     Returns
     -------
-    contributions : ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
+    contributions : np.ndarray[np.float64] of shape (n_axes,) in column-major layout (order='F')
         Fractional contribution of each axis (output), values in [0,1], sum to 1
 
     Notes

@@ -190,12 +190,10 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
 
         if procedure.retvar is not None:
             retvar = procedure.retvar
-            ret_type = Fortran_Type.from_fortran_variable(retvar)
-            ret_type.intent = Intent.OUT
             result_argument = C_Wrapper_Argument(
                 name=retvar.name,
-                doc=DocList.from_fortran(retvar),
-                type=ret_type,
+                doc=retvar.doc_list,
+                type=retvar.type,
                 only_c_arg=True,
                 is_temporary=False,
                 c_wrapper=c_wrapper

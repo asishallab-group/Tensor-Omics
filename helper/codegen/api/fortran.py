@@ -229,6 +229,8 @@ class Procedure_Argument(CodeGenerator):
                 default_val_expr = default_val_expr.replace(".true.", "")
                 default_val_expr = default_val_expr.replace(".false.", "")
 
+                default_val_expr = default_val_expr.replace("pi", str(np.pi))
+
                 self.default_value = eval(default_val_expr)
 
     @property
@@ -278,5 +280,8 @@ class Procedure(CodeGenerator):
         self.args = Procedure_Arguments(procedure.args, self)
         self.doc_list = DocList.from_fortran(procedure)
         self.retvar = getattr(procedure, "retvar", None)
+        if type(self.retvar) is FortranVariable:
+            self.retvar = Procedure_Argument(self.retvar, self)
+            self.retvar.type.intent = Intent.OUT
         self.type = "subroutine" if self.retvar is None else "function"
         self.parent = procedure.parent

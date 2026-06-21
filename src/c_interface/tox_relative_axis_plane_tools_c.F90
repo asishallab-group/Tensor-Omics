@@ -65,7 +65,7 @@ contains
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
         M_ALLOCATE(axes_selection_mask_f(n_axes))
         call c_int_as_logical(axes_selection_mask, axes_selection_mask_f)
-        call omics_vector_RAP_projection(&
+        call  omics_vector_RAP_projection(&
             vecs = vecs,&
             n_axes = n_axes,&
             n_vecs = n_vecs,&
@@ -126,7 +126,7 @@ contains
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
         M_ALLOCATE(axes_selection_mask_f(n_axes))
         call c_int_as_logical(axes_selection_mask, axes_selection_mask_f)
-        call omics_field_RAP_projection(&
+        call  omics_field_RAP_projection(&
             vecs = vecs,&
             n_axes = n_axes,&
             n_vecs = n_vecs,&
@@ -171,7 +171,7 @@ contains
         M_CHECK_NON_NULL(n_dims)
         M_CHECK_NON_NULL(signed_angle)
         M_CHECK_NON_NULL(selected_axes_for_signed)
-        call clock_hand_angle_between_vectors(&
+        call  clock_hand_angle_between_vectors(&
             v1 = v1,&
             v2 = v2,&
             n_dims = n_dims,&
@@ -228,7 +228,7 @@ contains
         M_CHECK_NON_NULL(signed_angles)
         M_ALLOCATE(vecs_selection_mask_f(n_vecs))
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
-        call clock_hand_angles_for_shift_vectors(&
+        call  clock_hand_angles_for_shift_vectors(&
             origins = origins,&
             targets = targets,&
             n_dims = n_dims,&
@@ -264,7 +264,7 @@ contains
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
-        call compute_relative_axis_contributions(&
+        call  compute_relative_axis_contributions(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
@@ -295,7 +295,7 @@ contains
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
-        call relative_axes_changes_from_shift_vector(&
+        call  relative_axes_changes_from_shift_vector(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
@@ -326,7 +326,7 @@ contains
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
-        call relative_axes_expression_from_expression_vector(&
+        call  relative_axes_expression_from_expression_vector(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&

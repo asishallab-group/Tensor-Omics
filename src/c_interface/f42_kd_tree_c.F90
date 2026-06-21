@@ -75,7 +75,7 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
-        call build_kd_index(&
+        call  build_kd_index(&
             points = points,&
             num_dimensions = num_dimensions,&
             num_points = num_points,&
@@ -145,7 +145,7 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
-        call build_spherical_kd(&
+        call  build_spherical_kd(&
             vectors = vectors,&
             num_dimensions = num_dimensions,&
             num_vectors = num_vectors,&
@@ -203,7 +203,7 @@ contains
         M_CHECK_NON_NULL(position)
         M_CHECK_NON_NULL(point_values)
         M_CHECK_NON_NULL(n_point_values_elements)
-        call get_kd_point(&
+        call  get_kd_point(&
             points = points,&
             kd_indices = kd_indices,&
             position = position,&

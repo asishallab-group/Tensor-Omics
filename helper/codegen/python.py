@@ -51,7 +51,7 @@ class Python_Serializer(Serializer):
                         string = "str"
                     else:
                         dimension = self.dimension[1:] if self.name == "character" else self.dimension
-                        string = f"ndarray[{format(self, "dtype")}] of shape {format(dimension, "shape")} in column-major layout (order='F')"
+                        string = f"np.ndarray[{format(self, "dtype")}] of shape {format(dimension, "shape")} in column-major layout (order='F')"
                 else:
                     match self.name:
                         case "integer":
@@ -126,22 +126,23 @@ class Python_Serializer(Serializer):
                     if self.optional:
                         string += "=" + str(self.default_value)
             case "ensure_numpy_array":
-                if self.type.intent is not Intent.OUT and len(self.is_dim_arg_for) == 0 and len(self.type.dimension) > 0 and not self.is_shape_arg:
-                    if self.type.name == "character":
-                        string = f"{self.name} = np.asarray({self.name})"
-                    else:
-                        dtype = format(self.type, "dtype")
-                        if dtype:
-                            dtype = ", dtype=" + dtype
-                        mem_layout = "fortran" if len(self.type.dimension) > 1 else "contiguous"
-                        string = f"{self.name} = np.as{mem_layout}array({self.name}{dtype})"
+                if len(self.type.dimension) > 0 and self.type.intent is not Intent.OUT:
+                    if len(self.is_dim_arg_for) == 0 and not self.is_shape_arg:
+                        if self.type.name == "character":
+                            string = f"{self.name} = np.asarray({self.name})"
+                        else:
+                            dtype = format(self.type, "dtype")
+                            if dtype:
+                                dtype = ", dtype=" + dtype
+                            mem_layout = "fortran" if len(self.type.dimension) > 1 else "contiguous"
+                            string = f"{self.name} = np.as{mem_layout}array({self.name}{dtype})"
 
-                shape_arg = self.shape_arg
-                if shape_arg is not None:
-                    string += f"\n{shape_arg.name} = np.ascontiguousarray({self.name}.shape, dtype=np.int32)"
+                    shape_arg = self.shape_arg
+                    if shape_arg is not None:
+                        string += f"\n{shape_arg.name} = np.ascontiguousarray({self.name}.shape, dtype=np.int32)"
 
-                if self.optional and self.default_value is None:
-                    string = f"""if {self.name} is not None:
+                    if self.optional and self.default_value is None:
+                        string = f"""if {self.name} is not None:
 {Indentable(string) >> INDENT}
 """
 
@@ -152,6 +153,7 @@ class Python_Serializer(Serializer):
                     string = f'{self.name} = {self.name}.astype({format(self.type, "dtype")}, order="F")'
                 elif len(self.type.dimension) == 0 and len(self.is_dim_arg_for) == 0:
                     string = f"{self.name} = {format(self.type, "ctypes")}({self.name})"
+
             case "create_dim_args":
                 parents = tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)
                 if len(parents) > 0:
