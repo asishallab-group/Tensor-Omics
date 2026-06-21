@@ -3,7 +3,8 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tox import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
+from tensor_omics.f42_binary_search_tree import build_bst_index, bst_range_query
+from tensor_omics.f42_kd_tree import build_kd_index, build_spherical_kd
 
 # --- Test Cases ---
 def test_bst():

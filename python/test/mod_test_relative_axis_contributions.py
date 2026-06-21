@@ -7,7 +7,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from tox import (
+from tensor_omics.tox_relative_axis_plane_tools import (
     relative_axes_changes_from_shift_vector,
     relative_axes_expression_from_expression_vector
 )

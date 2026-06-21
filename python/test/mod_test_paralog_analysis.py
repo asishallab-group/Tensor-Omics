@@ -5,7 +5,7 @@ import os
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tox import (
+from tensor_omics.tox_paralog_analysis import (
     mask_check_state,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
@@ -13,9 +13,10 @@ from tox import (
     detect_dosage_effect,
     detect_subfunctionalization,
     mask_chunk_count,
-    detect_neofunctionalization,
-    normalize_unit_length
+    detect_neofunctionalization
 )
+
+from tensor_omics.tox_normalization import normalize_unit_length
 
 
 def test_paralog_functions():

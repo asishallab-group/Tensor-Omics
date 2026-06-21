@@ -94,6 +94,9 @@ class Serializer:
     def C_Wrapper_Arguments(self, spec):
         raise NotImplementedError()
 
+    def Error_Handling(self, spec):
+        raise NotImplementedError()
+
 
 class CodeGenerator:
     @classmethod

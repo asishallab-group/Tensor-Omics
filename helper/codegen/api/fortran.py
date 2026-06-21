@@ -10,6 +10,46 @@ import numpy as np
 SHAPE_ARG_SUFFIX = "_shape"
 
 
+def eval_expr(expr: str):
+    expr = expr.lower()
+
+    expr = expr.replace("acos", "np.arccos")
+    expr = expr.replace("acosh", "np.arccosh")
+    expr = expr.replace("asin", "np.arcsin")
+    expr = expr.replace("asinh", "np.arcsinh")
+    expr = expr.replace("atan", "np.arctan")
+    expr = expr.replace("atan2", "np.arctan2")
+    expr = expr.replace("atanh", "np.arctanh")
+    expr = expr.replace("cos", "np.cos")
+    expr = expr.replace("cosh", "np.cosh")
+    expr = expr.replace("sin", "np.sin")
+    expr = expr.replace("sinh", "np.sinh")
+    expr = expr.replace("tan", "np.tan")
+    expr = expr.replace("tanh", "np.tanh")
+    expr = expr.replace("achar", "chr")
+    expr = expr.replace("char", "chr")
+
+    expr = expr.replace("_int32", "")
+    expr = expr.replace("_real64", "")
+
+    expr = expr.replace(".true.", "")
+    expr = expr.replace(".false.", "")
+
+    expr = expr.replace("pi", str(np.pi))
+
+    return eval(expr)
+
+
+class Error_Handling(CodeGenerator):
+    """Class for everything related to error handling"""
+    def __init__(self, project: Project):
+        tox_errors = project.find("tox_errors")
+        self.error_codes = {
+            int(eval_expr(var.initial)): DocList(var.doc_list, "variable")
+            for var in tox_errors.variables if var.parameter and var.name.startswith("ERR_")
+        }
+
+
 class Module(CodeGenerator):
     """Class for a parsed Fortran Module"""
     def __init__(self, module: FortranModule):
@@ -28,6 +68,8 @@ class Modules(CodeGenerator, tuple):
 
         mods = super().__new__(cls, map(Module, sorted_mods))
         mods.project = proj
+
+        mods.error_handling = Error_Handling(proj)
         return mods
 
 
@@ -134,8 +176,8 @@ class DocList(CodeGenerator):
     }
 
     def __init__(self, doc_list: List[str, ...], type: str):
-        if type not in ("module", "procedure", "argument"):
-            raise ValueError("type must be one of: 'module', 'procedure', 'argument'")
+        if type not in ("module", "procedure", "argument", "variable"):
+            raise ValueError("type must be one of: 'module', 'procedure', 'argument', 'variable")
         self.doc_list = list(doc_list)
         self.type = type
 
@@ -205,33 +247,7 @@ class Procedure_Argument(CodeGenerator):
             doc_str = self.doc_list[-1]
             regex = regex_escaped_preprocessor.expand(r".*DM_DEFAULT((?P<default_val>.*)).*")
             if (match := re.match(regex, doc_str)) is not None:
-                default_val_expr = match.group("default_val")
-
-                default_val_expr = default_val_expr.replace("acos", "np.arccos")
-                default_val_expr = default_val_expr.replace("acosh", "np.arccosh")
-                default_val_expr = default_val_expr.replace("asin", "np.arcsin")
-                default_val_expr = default_val_expr.replace("asinh", "np.arcsinh")
-                default_val_expr = default_val_expr.replace("atan", "np.arctan")
-                default_val_expr = default_val_expr.replace("atan2", "np.arctan2")
-                default_val_expr = default_val_expr.replace("atanh", "np.arctanh")
-                default_val_expr = default_val_expr.replace("cos", "np.cos")
-                default_val_expr = default_val_expr.replace("cosh", "np.cosh")
-                default_val_expr = default_val_expr.replace("sin", "np.sin")
-                default_val_expr = default_val_expr.replace("sinh", "np.sinh")
-                default_val_expr = default_val_expr.replace("tan", "np.tan")
-                default_val_expr = default_val_expr.replace("tanh", "np.tanh")
-                default_val_expr = default_val_expr.replace("achar", "chr")
-                default_val_expr = default_val_expr.replace("char", "chr")
-
-                default_val_expr = default_val_expr.replace("_int32", "")
-                default_val_expr = default_val_expr.replace("_real64", "")
-
-                default_val_expr = default_val_expr.replace(".true.", "")
-                default_val_expr = default_val_expr.replace(".false.", "")
-
-                default_val_expr = default_val_expr.replace("pi", str(np.pi))
-
-                self.default_value = eval(default_val_expr)
+                self.default_value = eval_expr(match.group("default_val"))
 
     @property
     def is_mask_count_arg_for(self) -> Self | None:

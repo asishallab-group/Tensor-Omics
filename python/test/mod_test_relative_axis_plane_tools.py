@@ -4,7 +4,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from tox import omics_vector_RAP_projection, omics_field_RAP_projection
+from tensor_omics.tox_relative_axis_plane_tools import omics_vector_RAP_projection, omics_field_RAP_projection
 
 
 def test_omics_vector_RAP_projection_call():

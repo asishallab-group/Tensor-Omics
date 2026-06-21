@@ -97,7 +97,7 @@ contains
             !! DM_DEFAULT(0.1_real64)
         real(real64), intent(in), optional :: max_angle
             !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! DM_DEFAULT(pi)
+            !! DM_DEFAULT(PI)
 
         call detect_patterns(ancestor, genes, n_genes, n_dims, MODE_DOSAGE_PATTERN, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle=max_angle, dosage_gain_gamma=gain_gamma, ierr=ierr)
     end subroutine detect_dosage_effect
@@ -195,7 +195,7 @@ contains
             !! DM_DEFAULT(0.1_real64)
         real(real64), intent(in), optional :: dosage_max_angle
             !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! DM_DEFAULT(pi)
+            !! DM_DEFAULT(PI)
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
             !! in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis, MODE_SUBFUNC_PATTERN)
@@ -319,7 +319,7 @@ contains
             !! DM_DEFAULT(0.1_real64)
         real(real64), intent(in), optional :: dosage_max_angle
             !! in dosage mode maximum angle in radians that a subset candidate must not exceed, otherwise pruned
-            !! DM_DEFAULT(pi)
+            !! DM_DEFAULT(PI)
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
             !! in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
         integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm

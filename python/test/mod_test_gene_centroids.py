@@ -10,7 +10,7 @@ import sys
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
-from tox import group_centroid
+from tensor_omics.tox_gene_centroids import group_centroid
 
 def test_basic_all_mode():
     n_families = 2

@@ -6,4 +6,4 @@ from codegen.python import Python_Serializer
 c_mods = C_Wrapper_Modules(Modules())
 
 C_Wrapper_Serializer.dump(c_mods, out_dir="src")
-Python_Serializer.dump(c_mods, out_file="python/tox.py")
+Python_Serializer.dump(c_mods, out_dir="python/tensor_omics")

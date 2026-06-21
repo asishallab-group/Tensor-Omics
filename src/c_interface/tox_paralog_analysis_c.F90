@@ -193,7 +193,7 @@ contains
             !! error code
         real(c_double), intent(in), target :: max_angle
             !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! The default value is `pi`.
+            !! The default value is `PI`.
         real(c_double), intent(in), target :: gain_gamma
             !! positive magnitude gain for dosage effect
             !! The default value is `0.1_real64`.
@@ -391,7 +391,7 @@ contains
             !! vector used for pruning subsets
         real(c_double), intent(in), target :: dosage_max_angle
             !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! The default value is `pi`.
+            !! The default value is `PI`.
         real(c_double), intent(in), target :: dosage_gain_gamma
             !! in dosage mode required positive magnitude gain for dosage
             !! The default value is `0.1_real64`.

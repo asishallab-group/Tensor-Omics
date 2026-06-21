@@ -128,14 +128,17 @@ class Python_Serializer(Serializer):
             case "ensure_numpy_array":
                 if len(self.type.dimension) > 0 and self.type.intent is not Intent.OUT:
                     if len(self.is_dim_arg_for) == 0 and not self.is_shape_arg:
-                        if self.type.name == "character":
-                            string = f"{self.name} = np.asarray({self.name})"
+                        if self.type.intent is Intent.INOUT:
+                            string = f'assert type({self.name}) is np.ndarray and {self.name}.flags.f_contiguous and {self.name}.dtype == {format(self.type, "dtype")}, "\'{self.name}\' must be column-major numpy array (order=\'F\')"'
                         else:
-                            dtype = format(self.type, "dtype")
-                            if dtype:
-                                dtype = ", dtype=" + dtype
-                            mem_layout = "fortran" if len(self.type.dimension) > 1 else "contiguous"
-                            string = f"{self.name} = np.as{mem_layout}array({self.name}{dtype})"
+                            if self.type.name == "character":
+                                string = f"{self.name} = np.asarray({self.name})"
+                            else:
+                                dtype = format(self.type, "dtype")
+                                if dtype:
+                                    dtype = ", dtype=" + dtype
+                                mem_layout = "fortran" if len(self.type.dimension) > 1 else "contiguous"
+                                string = f"{self.name} = np.as{mem_layout}array({self.name}{dtype})"
 
                     shape_arg = self.shape_arg
                     if shape_arg is not None:
@@ -187,7 +190,7 @@ class Python_Serializer(Serializer):
                 if len(self.type.dimension) == 0:
                     string = f"{self.name}.value"
                 elif (match := self.doc_list.meta["result_size_is"]) is not None:
-                    string = f"{self.name}[..., :{match.group("n_results")}.value]"
+                    string = f"{self.name}[..., :{match.group("n_results")}.value].copy()"
                 else:
                     string = f"{self.name}"
 
@@ -300,17 +303,41 @@ class Python_Serializer(Serializer):
     def C_Wrapper_Modules(self, spec):
         return "\n\n".join(format(mod) for mod in self)
 
+    def Error_Handling(self, spec):
+        return f"""CODES = {{
+{Indentable(",\n".join(f'{code}: "{" ".join(doc_list).strip()}"' for code, doc_list in self.error_codes.items() if code != 0)) >> INDENT}
+}}
+
+def check_err_code(ierr: int):
+    if ierr == 0:
+        return
+
+    msg = CODES.get(ierr, f"Unmapped error code: {{ierr}}")
+    raise RuntimeError(msg)
+"""
+
     @classmethod
-    def dump(cls, c_wrapper_modules: C_Wrapper_Modules, out_file: str = "python/tensoromics_functions.py", lib_path: str = "build/libtensor-omics.so"):
+    def dump(cls, c_wrapper_modules: C_Wrapper_Modules, out_dir: str = "python/tensor_omics", lib_path: str = "build/libtensor-omics.so"):
         from pathlib import Path
+        from os import mkdir
 
         c_wrapper_modules.use(cls)
-        out_file = Path(out_file)
-        if not out_file.parent.is_dir():
-            raise ValueError(f"out_file's directory '{out_file.parent}' does not exist")
+        out_dir = Path(out_dir)
+        if not out_dir.parent.is_dir():
+            raise ValueError(f"out_dir's directory '{out_dir.parent}' does not exist")
 
-        with open(out_file, "w") as tox:
-            tox.write(f"""from error_handling import check_err_code
+        if out_dir.is_dir():
+            from shutil import rmtree
+            rmtree(out_dir)
+
+        mkdir(out_dir)
+
+        with open(out_dir.joinpath("error_handling.py"), "w") as error_handling:
+            error_handling.write(format(c_wrapper_modules.error_handling))
+
+        for module in c_wrapper_modules:
+            with open(out_dir.joinpath(module.stripped_name + ".py"), "w") as module_file:
+                module_file.write(f"""from .error_handling import check_err_code
 
 import numpy as np
 import ctypes
@@ -321,4 +348,4 @@ dll_path = os.path.abspath("{lib_path}")
 tox = ctypes.CDLL(dll_path)
 
 
-{format(c_wrapper_modules)}""")
+{format(module)}""")

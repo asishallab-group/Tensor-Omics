@@ -242,6 +242,7 @@ class C_Wrapper_Module(CodeGenerator):
     """Includes a bunch of wrappers that should appear in one c interfacing module"""
     def __init__(self, module: Module):
         self.name = module.name + NAME_SUFFIX
+        self.stripped_name = module.name
         self.orig_module = module
         self.doc_list = module.doc_list
         self.c_wrappers = []
@@ -273,4 +274,5 @@ class C_Wrapper_Modules(CodeGenerator, tuple):
 
         mods = super().__new__(cls, c_modules)
         mods.project = modules.project
+        mods.error_handling = modules.error_handling
         return mods
