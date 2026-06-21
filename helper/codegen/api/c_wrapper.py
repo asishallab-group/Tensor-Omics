@@ -19,7 +19,7 @@ Module_Name = str
 
 class C_Wrapper_Argument(CodeGenerator):
     """Includes all relevant information about an argument, meaning its type, dimension, name, docstring and default value if optional"""
-    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, c_wrapper: C_Wrapper, mode_vars: Tuple[Tuple[Variable_Name, Module_Name, Mode_String], ...] = None, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: Tuple[C_Wrapper_Argument | Procedure_Argument] = (), shape_arg: C_Wrapper_Argument | Procedure_Argument = None, is_shape_arg=False):
+    def __init__(self, name: str, doc: DocList, type: Fortran_Type, is_temporary: bool, c_wrapper: C_Wrapper, mode_vars: Tuple[Tuple[Variable_Name, Module_Name, Mode_String], ...] = None, default_value=None, optional=False, only_c_arg=False, is_dim_arg_for: Tuple[C_Wrapper_Argument | Procedure_Argument] = (), shape_arg: C_Wrapper_Argument | Procedure_Argument = None, is_shape_arg=False, is_mask_count_arg_for: Procedure_Argument | None = None):
         self.name = name
         self.doc_list = doc
         self.type = type
@@ -29,6 +29,7 @@ class C_Wrapper_Argument(CodeGenerator):
         self.is_temporary = is_temporary
         self._is_dim_arg_for = is_dim_arg_for
         self._shape_arg = shape_arg
+        self._is_mask_count_arg_for = is_mask_count_arg_for
         self.parent = c_wrapper
         self.is_shape_arg = is_shape_arg
         self.mode_vars = mode_vars
@@ -138,7 +139,8 @@ Possible variants:
             default_value=arg.default_value,
             optional=arg.optional,
             c_wrapper=c_wrapper,
-            mode_vars=mode_vars
+            mode_vars=mode_vars,
+            is_mask_count_arg_for=arg.is_mask_count_arg_for
         )
 
         is_dim_arg_for = (argument,)
@@ -157,6 +159,14 @@ Possible variants:
                         dim_args[i_arg] = arg
 
         return tuple(dim_args)
+
+    @property
+    def is_mask_count_arg_for(self):
+        arg = self._is_mask_count_arg_for
+        if type(arg) is Procedure_Argument:
+            for c_arg in self.parent.arguments:
+                if c_arg.name == arg.name:
+                    return c_arg
 
     @property
     def shape_arg(self):

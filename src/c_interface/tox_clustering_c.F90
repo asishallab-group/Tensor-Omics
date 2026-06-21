@@ -18,7 +18,18 @@ contains
 
     !> summary: C-wrapper for [[tox_clustering(module):cluster_factor_trajectories_k_means(subroutine)]]
     !| Performs k-means clustering on factor trajectories, so factor evolution over time
-    subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")
+    subroutine cluster_factor_trajectories_k_means_c(&
+            n_clusters,&
+            trajectories,&
+            n_factors,&
+            n_samples,&
+            n_timepoints,&
+            centroids,&
+            labels,&
+            label_counts,&
+            ierr,&
+            max_iterations&
+            ) bind(C, name="cluster_factor_trajectories_k_means_c")
         use tox_clustering, only: cluster_factor_trajectories_k_means
         use tox_clustering
         integer(c_int), intent(in), target :: n_clusters
@@ -56,7 +67,18 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call cluster_factor_trajectories_k_means(n_clusters = n_clusters, trajectories = trajectories, n_factors = n_factors, n_samples = n_samples, n_timepoints = n_timepoints, centroids = centroids, labels = labels, label_counts = label_counts, ierr = ierr, max_iterations = max_iterations)
+        call cluster_factor_trajectories_k_means(&
+            n_clusters = n_clusters,&
+            trajectories = trajectories,&
+            n_factors = n_factors,&
+            n_samples = n_samples,&
+            n_timepoints = n_timepoints,&
+            centroids = centroids,&
+            labels = labels,&
+            label_counts = label_counts,&
+            ierr = ierr,&
+            max_iterations = max_iterations&
+        )
     end subroutine cluster_factor_trajectories_k_means_c
 
     !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering(subroutine)]]
@@ -65,7 +87,17 @@ contains
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
-    subroutine k_means_clustering_c(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="k_means_clustering_c")
+    subroutine k_means_clustering_c(&
+            n_clusters,&
+            data_points,&
+            n_points,&
+            n_dims,&
+            centroids,&
+            labels,&
+            label_counts,&
+            ierr,&
+            max_iterations&
+            ) bind(C, name="k_means_clustering_c")
         use tox_clustering, only: k_means_clustering
         use tox_clustering
         integer(c_int), intent(in), target :: n_clusters
@@ -100,7 +132,17 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call k_means_clustering(n_clusters = n_clusters, data_points = data_points, n_points = n_points, n_dims = n_dims, centroids = centroids, labels = labels, label_counts = label_counts, ierr = ierr, max_iterations = max_iterations)
+        call k_means_clustering(&
+            n_clusters = n_clusters,&
+            data_points = data_points,&
+            n_points = n_points,&
+            n_dims = n_dims,&
+            centroids = centroids,&
+            labels = labels,&
+            label_counts = label_counts,&
+            ierr = ierr,&
+            max_iterations = max_iterations&
+        )
     end subroutine k_means_clustering_c
 
     !> summary: C-wrapper for [[tox_clustering(module):linkage_clustering(subroutine)]]
@@ -108,7 +150,16 @@ contains
     !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
     !| So there is no need to copy an existing distance matrix, just pass the original.
     !| @endnote
-    subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr) bind(C, name="linkage_clustering_c")
+    subroutine linkage_clustering_c(&
+            distances,&
+            n_points,&
+            merge_i,&
+            merge_j,&
+            heights,&
+            cluster_sizes,&
+            method,&
+            ierr&
+            ) bind(C, name="linkage_clustering_c")
         use tox_clustering, only: linkage_clustering
         use tox_clustering
         integer(c_int), intent(in), target :: n_points
@@ -161,7 +212,16 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        call linkage_clustering(distances = distances, n_points = n_points, merge_i = merge_i, merge_j = merge_j, heights = heights, cluster_sizes = cluster_sizes, method = method_int_f, ierr = ierr)
+        call linkage_clustering(&
+            distances = distances,&
+            n_points = n_points,&
+            merge_i = merge_i,&
+            merge_j = merge_j,&
+            heights = heights,&
+            cluster_sizes = cluster_sizes,&
+            method = method_int_f,&
+            ierr = ierr&
+        )
     end subroutine linkage_clustering_c
 
 end module tox_clustering_c

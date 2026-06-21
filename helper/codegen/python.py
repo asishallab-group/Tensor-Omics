@@ -117,7 +117,7 @@ class Python_Serializer(Serializer):
                     string = f"""{self.name} : {format(self.type, "doc_params")}
 {format(self.doc_list) >> INDENT}"""
             case "arglist":
-                if self.type.intent is not Intent.OUT and len(tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)) == 0 and not self.is_shape_arg:
+                if self.type.intent is not Intent.OUT and len(tuple(arg for arg in self.is_dim_arg_for if arg.type.intent is not Intent.OUT)) == 0 and not self.is_shape_arg and self.is_mask_count_arg_for is None:
                     string = self.name
                     if self.optional:
                         string += "=" + str(self.default_value)
@@ -156,6 +156,10 @@ class Python_Serializer(Serializer):
                         string = f"{self.name} = {parent.name}.dtype.itemsize // {parent.name}.dtype.alignment"
                     else:
                         string = f"{self.name} = {parent.name}.shape[{parent.type.dimension.index(self.name) - (parent.type.name == "character")}]"
+            case "create_mask_count_args":
+                parent = self.is_mask_count_arg_for
+                if parent is not None:
+                    string = f"{self.name} = {parent.name}.sum(axis=-1)"
             case "argtypes":
                 string = format(self.type, "argtypes")
                 if self.optional and self.default_value is None:
@@ -177,7 +181,7 @@ class Python_Serializer(Serializer):
 
     def C_Wrapper_Arguments(self, spec):
         match spec:
-            case "doc_params" | "allocate" | "ensure_numpy_array" | "create_dim_args":
+            case "doc_params" | "allocate" | "ensure_numpy_array" | "create_dim_args" | "create_mask_count_args":
                 string = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "argtypes" | "call_args" | "arglist":
                 string = ",\n".join(filter(bool, (format(arg, spec) for arg in self)))
@@ -244,6 +248,7 @@ class Python_Serializer(Serializer):
 
     # extract dimension arguments
 {format(self.arguments, "create_dim_args") >> INDENT}
+{format(self.arguments, "create_mask_count_args") >> INDENT}
 
     # Create temporaries and/or outputs
 {format(self.arguments, "allocate") >> INDENT}

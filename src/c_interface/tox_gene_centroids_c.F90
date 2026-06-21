@@ -19,7 +19,15 @@ contains
 
     !> summary: C-wrapper for [[tox_gene_centroids(module):mean_vector(subroutine)]]
     !| Computes the element-wise mean for a given set of vectors.
-    subroutine mean_vector_c(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr) bind(C, name="mean_vector_c")
+    subroutine mean_vector_c(&
+            expression_vectors,&
+            n_axes,&
+            n_genes,&
+            gene_indices,&
+            n_selected_genes,&
+            centroid,&
+            ierr&
+            ) bind(C, name="mean_vector_c")
         use tox_gene_centroids, only: mean_vector
         use tox_gene_centroids
         integer(c_int), intent(in), target :: n_axes
@@ -43,12 +51,31 @@ contains
         M_CHECK_NON_NULL(gene_indices)
         M_CHECK_NON_NULL(n_selected_genes)
         M_CHECK_NON_NULL(centroid)
-        call mean_vector(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_indices = gene_indices, n_selected_genes = n_selected_genes, centroid = centroid, ierr = ierr)
+        call mean_vector(&
+            expression_vectors = expression_vectors,&
+            n_axes = n_axes,&
+            n_genes = n_genes,&
+            gene_indices = gene_indices,&
+            n_selected_genes = n_selected_genes,&
+            centroid = centroid,&
+            ierr = ierr&
+        )
     end subroutine mean_vector_c
 
     !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid(subroutine)]]
     !| Iterates over families, filters gene indices, and computes centroids.
-    subroutine group_centroid_c(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_selected_indices, ierr, ortholog_set) bind(C, name="group_centroid_c")
+    subroutine group_centroid_c(&
+            expression_vectors,&
+            n_axes,&
+            n_genes,&
+            gene_to_family,&
+            n_families,&
+            centroid_matrix,&
+            mode,&
+            tmp_selected_indices,&
+            ierr,&
+            ortholog_set&
+            ) bind(C, name="group_centroid_c")
         use tox_gene_centroids, only: group_centroid
         use tox_gene_centroids
         integer(c_int), intent(in), target :: n_axes
@@ -106,9 +133,30 @@ contains
             call c_int_as_logical(ortholog_set, ortholog_set_f)
         end if
         if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
-            call group_centroid(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_to_family = gene_to_family, n_families = n_families, centroid_matrix = centroid_matrix, mode = mode_int_f, tmp_selected_indices = tmp_selected_indices, ierr = ierr, ortholog_set = ortholog_set_f)
+            call group_centroid(&
+                expression_vectors = expression_vectors,&
+                n_axes = n_axes,&
+                n_genes = n_genes,&
+                gene_to_family = gene_to_family,&
+                n_families = n_families,&
+                centroid_matrix = centroid_matrix,&
+                mode = mode_int_f,&
+                tmp_selected_indices = tmp_selected_indices,&
+                ierr = ierr,&
+                ortholog_set = ortholog_set_f&
+            )
         else
-            call group_centroid(expression_vectors = expression_vectors, n_axes = n_axes, n_genes = n_genes, gene_to_family = gene_to_family, n_families = n_families, centroid_matrix = centroid_matrix, mode = mode_int_f, tmp_selected_indices = tmp_selected_indices, ierr = ierr)
+            call group_centroid(&
+                expression_vectors = expression_vectors,&
+                n_axes = n_axes,&
+                n_genes = n_genes,&
+                gene_to_family = gene_to_family,&
+                n_families = n_families,&
+                centroid_matrix = centroid_matrix,&
+                mode = mode_int_f,&
+                tmp_selected_indices = tmp_selected_indices,&
+                ierr = ierr&
+            )
         end if
     end subroutine group_centroid_c
 

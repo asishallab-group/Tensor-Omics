@@ -141,7 +141,9 @@ else if (.not. present({current}))
 {call_without_optionals}end if
 """
                     else:
-                        variant = f"{call_prefix} {self.name}({", ".join(format(arg, "arglist") for arg in fixed_args + args)})"
+                        variant = f"""{call_prefix} {self.name}(&
+{",&\n".join(format(arg, "arglist") >> INDENT for arg in fixed_args + args)}&
+)"""
 
                     return Indentable(variant)
 
@@ -257,7 +259,7 @@ end if"""
             case "type_conversion_outputs":
                 formatted = "\n".join(filter(bool, (format(arg, spec) for arg in self)))
             case "arglist":
-                formatted = ", ".join(arg.name for arg in self)
+                formatted = ",&\n".join(arg.name for arg in self)
             case "null_validation":
                 formatted = "M_CHECK_IERR_NON_NULL"
                 for arg in self:
@@ -276,7 +278,9 @@ end if"""
         doc = [f"summary: C-wrapper for {ford_link}"] + self.doc_list
 
         wrapper = f"""{format(doc, "subroutine")}
-subroutine {self.name}({format(self.arguments, "arglist")}) bind(C, name="{self.name}")
+subroutine {self.name}(&
+{format(self.arguments, "arglist") >> 2 * INDENT}&
+        ) bind(C, name="{self.name}")
     use {module_name}, only: {self.orig_procedure.name}
     use {module_name}
 {format(self.arguments, "dummy") >> INDENT}

@@ -199,9 +199,6 @@ class Procedure_Argument(CodeGenerator):
         if len(self.doc_list) > 0:
             doc_str = self.doc_list[-1]
             regex = regex_escaped_preprocessor.expand(r".*DM_DEFAULT((?P<default_val>.*)).*")
-            if self.name == "max_iterations":
-                print(regex)
-                print(doc_str)
             if (match := re.match(regex, doc_str)) is not None:
                 default_val_expr = match.group("default_val")
 
@@ -228,6 +225,15 @@ class Procedure_Argument(CodeGenerator):
                 default_val_expr = default_val_expr.replace(".false.", "")
 
                 self.default_value = eval(default_val_expr)
+
+    @property
+    def is_mask_count_arg_for(self) -> Self | None:
+        match = re.match(r"n_selected_(?P<mask_arg_name>.*)", self.name)
+        if match is not None:
+            mask_arg_name = match.group("mask_arg_name")
+            for arg in self.parent.args:
+                if re.match(f"{mask_arg_name}_(?:selection_)?mask", arg.name) is not None:
+                    return arg
 
     @property
     def is_dim_arg_for(self) -> Tuple[Self, ...]:
