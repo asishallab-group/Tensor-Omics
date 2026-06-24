@@ -32,6 +32,9 @@ program main
   use mod_test_clustering, only: get_all_tests_clustering
   use mod_test_data_integration, only: get_all_tests_data_integration
   use mod_test_shatter_cluster_data, only: get_all_tests_shatter_cluster_data
+  use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
+  use mod_test_normalize_by_std_dev, only: get_all_tests_normalize_by_std_dev
+  use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
   implicit none
 
   integer :: nargs
@@ -45,7 +48,7 @@ program main
   call add_suite("sorting", get_all_tests_sorting)
   call add_suite("get_outliers", get_all_tests_get_outliers)
   call add_suite("loess_smoothing", get_all_tests_loess_smoothing)
-  call add_suite("normalization", get_all_tests_normalize_by_std_dev)
+  call add_suite("normalize_by_std_dev", get_all_tests_normalize_by_std_dev)
   call add_suite("quantile_normalization", get_all_tests_quantile_normalization)
   call add_suite("log2_transformation", get_all_tests_log2_transformation)
   call add_suite("calc_tiss_avg", get_all_tests_tiss_avg)

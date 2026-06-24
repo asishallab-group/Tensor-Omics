@@ -331,33 +331,12 @@ validate_index_vector_and_position <- function(ix, position, name = deparse(subs
   invisible(TRUE)
 }
 
-validate_group_vectors <- function(group_s, group_c, n_cols,
-                                   name_s = deparse(substitute(group_s)),
-                                   name_c = deparse(substitute(group_c))) {
-  validate_logical_or_index_vector(group_s, name = name_s)
-  validate_logical_or_index_vector(group_c, name = name_c)
-  validate_same_length(group_s, group_c, name_s, name_c)
-  validate_nonempty(group_s, name_s)
-  validate_positive_integer_scalar(n_cols, "n_cols")
-
-  if (any(group_s != as.integer(group_s), na.rm = TRUE)) {
-    stop(sprintf("%s must contain integer-valued starts", name_s))
-  }
-  if (any(group_c != as.integer(group_c), na.rm = TRUE)) {
-    stop(sprintf("%s must contain integer-valued counts", name_c))
-  }
-
-  group_s <- as.integer(group_s)
-  group_c <- as.integer(group_c)
-
-  validate_index_bounds(group_s, low = 1L, high = as.integer(n_cols), name = name_s)
-  if (any(group_c <= 0L, na.rm = TRUE)) {
-    stop(sprintf("%s must contain positive counts", name_c))
-  }
-  if (any(group_s + group_c - 1L > as.integer(n_cols), na.rm = TRUE)) {
-    stop("group_s and group_c define ranges outside input columns")
-  }
-
+validate_group_vectors <- function(reps_per_tissue, n_reps,
+                                   name_reps_per_tissue = deparse(substitute(reps_per_tissue))) {
+  validate_integer_vector(reps_per_tissue, name = name_reps_per_tissue)
+  validate_nonempty(reps_per_tissue, name_reps_per_tissue)
+  validate_positive_integer_scalar(n_reps, "n_reps")
+  validate_index_bounds(reps_per_tissue, low = 1L, high = n_reps, name = name_reps_per_tissue)
   invisible(TRUE)
 }
 

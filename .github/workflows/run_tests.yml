@@ -1,0 +1,50 @@
+name: 'Run Tests'
+description: 'Runs all Fortran, R and Python Tests for a certain Fortran compiler'
+
+on:
+  workflow_call:
+    inputs:
+      compiler:
+        description: 'The Fortran compiler to run the tests with (ifx, gfortran)'
+        required: true
+        type: string
+      ref:
+        description: 'The git ref (branch, tag, commit SHA) to run the tests on'
+        required: true
+        type: string
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install Fortran Compiler
+        uses: ./.github/actions/install-Fortran
+        with:
+          compiler: ${{ inputs.compiler }}
+
+      - name: Run Fortran Tests
+        run: FC="${{ inputs.compiler }}" bash test_runner.sh
+
+      - name: Install R
+        uses: ./.github/actions/install-R
+
+      - name: Run R Tests
+        run: for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+
+      - name: Install Python
+        uses: ./.github/actions/install-Python
+        with:
+          packages: numpy pandas
+
+      - name: Run Python Tests
+        run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
+
+      - name: Run Snippet Generator
+        run: python helper/generate_snippets.py

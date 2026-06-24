@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">30 statements</a>
+                 title=" 0.1% of total for procedures.">14 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,13 +150,13 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_tiss_avg(n_gene, n_grps, group_s, group_c, input_matrix, output_matrix, ierr)  
+    <h2>public pure subroutine calc_tiss_avg(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr)  
 </h2>
     
 
-    <p>Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene. The input matrix is column-major, flattened as a 1D array.</p>
+    <p>Calculate tissue averages by averaging replicates within each tissue.
+For each tissue of tissue replicates, this subroutine computes the average
+expression per gene.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +172,7 @@ expression per gene. The input matrix is column-major, flattened as a 1D array.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene"></span>
+              <span class="anchor" id="variable-n_genes~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -179,14 +180,14 @@ expression per gene. The input matrix is column-major, flattened as a 1D array.<
               
             </td>
             <td>::</td>
-            <td><strong>n_gene</strong></td>
+            <td><strong>n_genes</strong></td>
             <td>
                 <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_grps~3"></span>
+              <span class="anchor" id="variable-n_tissues~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -194,74 +195,60 @@ expression per gene. The input matrix is column-major, flattened as a 1D array.<
               
             </td>
             <td>::</td>
-            <td><strong>n_grps</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
-                <p>Number of tissue groups</p>
+                <p>Number of tissues</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_s~2"></span>
+              <span class="anchor" id="variable-reps_per_tissue~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_tissues)
             </td>
             <td>::</td>
-            <td><strong>group_s</strong>(n_grps)</td>
+            <td><strong>reps_per_tissue</strong></td>
             <td>
-                <p>Start column index for each group (length: n_grps)</p>
+                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the <code>expr(1:2, i_gene)</code> related to the first tissue and <code>expr(3:, i_gene)</code> related to the second one.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-group_c~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>group_c</strong>(n_grps)</td>
-            <td>
-                <p>Number of columns per group (length: n_grps)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-input_matrix~5"></span>
+              <span class="anchor" id="variable-expr~14"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(sum(reps_per_tissue), n_genes)
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_gene*sum(group_c))</td>
+            <td><strong>expr</strong></td>
             <td>
-                <p>Flattened input matrix (length: n_gene * n_col)</p>
+                <p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix~4"></span>
+              <span class="anchor" id="variable-tissue_averages"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_tissues, n_genes)
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(n_gene*n_grps)</td>
+            <td><strong>tissue_averages</strong></td>
             <td>
-                <p>Flattened output matrix (length: n_gene * n_grps)</p>
+                <p>Tissue averages per gene</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~227"></span>
+              <span class="anchor" id="variable-ierr~108"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -308,7 +295,7 @@ expression per gene. The input matrix is column-major, flattened as a 1D array.<
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

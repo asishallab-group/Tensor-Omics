@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.8% of total for procedures.">94 statements</a>
+                 title=" 1.3% of total for procedures.">177 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,9 +149,21 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr)  
+    <h2>public  subroutine compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)  
 </h2>
-    
+        <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
+
 
     <p>Compute family scaling factors (dscale) to normalize distances.
 Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p>
@@ -170,7 +182,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~60"></span>
+              <span class="anchor" id="variable-n_genes"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -185,7 +197,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~24"></span>
+              <span class="anchor" id="variable-n_families"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -200,7 +212,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~12"></span>
+              <span class="anchor" id="variable-distances"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -215,7 +227,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~23"></span>
+              <span class="anchor" id="variable-gene_to_fam"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -240,7 +252,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
             <td>::</td>
             <td><strong>dscale</strong>(n_families)</td>
             <td>
-                <p>Output: array of scaling factors per family</p>
+                
             </td>
         </tr>
         <tr>
@@ -248,14 +260,14 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
               <span class="anchor" id="variable-loess_x"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>loess_x</strong>(n_families)</td>
             <td>
-                <p>Reference x-coordinates.</p>
+                <p>Reference x-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
@@ -263,14 +275,14 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
               <span class="anchor" id="variable-loess_y"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>loess_y</strong>(n_families)</td>
             <td>
-                <p>Reference y-coordinates (length n_total).</p>
+                <p>Reference y-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
@@ -285,42 +297,57 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
             <td>::</td>
             <td><strong>indices_used</strong>(n_families)</td>
             <td>
-                <p>Indices of reference points used for smoothing.</p>
+                <p>Indices of reference points used for smoothing</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm_tmp"></span>
+              <span class="anchor" id="variable-tmp_perm"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>perm_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong>(n_genes)</td>
             <td>
                 <p>Permutation array for sorting gene distances</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left_tmp"></span>
+              <span class="anchor" id="variable-tmp_stack_left"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_stack_left</strong>(n_genes)</td>
             <td>
                 <p>Stack array for left indices during sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right_tmp"></span>
+              <span class="anchor" id="variable-tmp_stack_right"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_right</strong>(n_genes)</td>
+            <td>
+                <p>Stack array for right indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_iv"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -328,14 +355,164 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
               
             </td>
             <td>::</td>
-            <td><strong>stack_right_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_iv</strong>(liv)</td>
             <td>
-                <p>Stack array for right indices during sorting</p>
+                <p>Integer workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_distances"></span>
+              <span class="anchor" id="variable-liv"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>liv</strong></td>
+            <td>
+                <p>Length of integer workspace</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_wv"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_wv</strong>(lv)</td>
+            <td>
+                <p>Real workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lv"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lv</strong></td>
+            <td>
+                <p>Length of real workspace</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_diagl"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_diagl</strong>(n_families)</td>
+            <td>
+                <p>Diagonal elements of the weight matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_w_init"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_w_init</strong>(n_families)</td>
+            <td>
+                <p>Initial weights for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_z_mat"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_z_mat</strong>(n_families,1)</td>
+            <td>
+                <p>Z matrix for LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_rw"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_rw</strong>(n_families)</td>
+            <td>
+                <p>Residuals for robust LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_ww"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_ww</strong></td>
+            <td>
+                <p>Working weights array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_res"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_res</strong></td>
+            <td>
+                <p>Residuals array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pi"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pi</strong>(:)</td>
+            <td>
+                <p>Permutation indices for robust LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_yhat"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -343,14 +520,119 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
               
             </td>
             <td>::</td>
-            <td><strong>family_distances</strong>(n_genes)</td>
+            <td><strong>tmp_yhat</strong>(:)</td>
             <td>
-                <p>Pre-allocated work array for family distances (dimension n_genes)</p>
+                <p>Output array for LOESS predictions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~280"></span>
+              <span class="anchor" id="variable-span"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+                <p>Span parameter for LOESS smoothing</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+                <p>Degree of the LOESS polynomial</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>mode</strong></td>
+            <td>
+                <p>Mode for LOESS fitting (0=plain, 1=robust)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_iters"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_iters</strong></td>
+            <td>
+                <p>Number of iterations for robust LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-low_sd_cutoff"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>low_sd_cutoff</strong></td>
+            <td>
+                <p>cutoff used to filter families with low std</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-excluded_low_sd"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>excluded_low_sd</strong>(n_families)</td>
+            <td>
+                <p>Mask to save those families that have low sd</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_means_aux"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>tmp_means_aux</strong>(n_families)</td>
+            <td>
+                <p>Work array for saving raw means</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -360,7 +642,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0=ok, 201=invalid family indices</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -397,7 +679,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

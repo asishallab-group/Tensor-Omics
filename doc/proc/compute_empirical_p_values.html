@@ -10,7 +10,7 @@
     <meta name="author" content="TensorOmics Developers" >
     <link rel="icon" href="../favicon.png">
 
-    <title>normalize_by_std_dev &ndash; TensorOmics</title>
+    <title>compute_empirical_p_values &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>normalize_by_std_dev
+    <h1>compute_empirical_p_values
       <small>Subroutine</small>
       
     </h1>
@@ -88,21 +88,21 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">26 statements</a>
+                 title=" 0.2% of total for procedures.">29 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization.F90"> Source File</a>
+              <a href="../src/f42_utils.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
-            <li class="breadcrumb-item active" aria-current="page">normalize_by_std_dev</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+            <li class="breadcrumb-item active" aria-current="page">compute_empirical_p_values</li>
           </ol>
         </nav>
       </div>
@@ -149,12 +149,17 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine normalize_by_std_dev(n_genes, n_tissues, input_matrix, output_matrix, ierr)  
+    <h2>public pure subroutine compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)  
 </h2>
     
 
-    <p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
-across tissues (not classical standard deviation).</p>
+    <p>Calculate empirical p-values for scaled expression distances (RDI).</p>
+<p>Implements:
+  P(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
+<p>Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+<p>Assumptions / preconditions:
+- sorted_rdi(1:n_genes) contains the empirical distribution D.
+- If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution</p>
 
 
     <h3>Arguments</h3>
@@ -170,7 +175,7 @@ across tissues (not classical standard deviation).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~51"></span>
+              <span class="anchor" id="variable-n_genes~52"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -180,27 +185,12 @@ across tissues (not classical standard deviation).</p>
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
+                
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-                <p>Number of tissues (columns)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-input_matrix~2"></span>
+              <span class="anchor" id="variable-rdi~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -208,14 +198,44 @@ across tissues (not classical standard deviation).</p>
               
             </td>
             <td>::</td>
-            <td><strong>input_matrix</strong>(n_genes*n_tissues)</td>
+            <td><strong>rdi</strong>(n_genes)</td>
             <td>
-                <p>Flattened input matrix of gene expression values (column-major)</p>
+                <p>Number of genes being processed.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_matrix"></span>
+              <span class="anchor" id="variable-sorted_rdi~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td>
+                <p>empirical distribution D</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~24"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_genes)</td>
+            <td>
+                <p>Constant used in the computation, typically 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-p_values~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -223,24 +243,24 @@ across tissues (not classical standard deviation).</p>
               
             </td>
             <td>::</td>
-            <td><strong>output_matrix</strong>(n_genes*n_tissues)</td>
+            <td><strong>p_values</strong>(n_genes)</td>
             <td>
-                <p>Output normalized matrix (same shape as input)</p>
+                <p>empirical distribution D with non negative values</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~224"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-c_const"></span>
+              real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>ierr</strong></td>
+            <td><strong>c_const</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Output array to store the computed p-values for each gene.</p>
             </td>
         </tr>
     </tbody>
@@ -277,7 +297,7 @@ across tissues (not classical standard deviation).</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

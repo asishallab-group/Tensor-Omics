@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">15 statements</a>
+                 title=" 0.5% of total for procedures.">62 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right) bind(C, name="compute_rdi_c")  
+    <h2> subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr) bind(C, name="compute_rdi_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,6 +158,7 @@
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +184,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~67"></span>
+              <span class="anchor" id="variable-n_genes~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +199,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~29"></span>
+              <span class="anchor" id="variable-n_families~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -208,12 +209,12 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of genes</p>
+                <p>Total number of families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~18"></span>
+              <span class="anchor" id="variable-distances~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -228,7 +229,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~29"></span>
+              <span class="anchor" id="variable-gene_to_fam~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -243,7 +244,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~7"></span>
+              <span class="anchor" id="variable-dscale~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -288,7 +289,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~9"></span>
+              <span class="anchor" id="variable-perm~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -303,7 +304,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~7"></span>
+              <span class="anchor" id="variable-stack_left~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -318,7 +319,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~7"></span>
+              <span class="anchor" id="variable-stack_right~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -329,6 +330,21 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
             <td><strong>stack_right</strong>(n_genes)</td>
             <td>
                 <p>Output stack array for right indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~18"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -365,7 +381,7 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

@@ -1,4 +1,3 @@
-
 #> f42_helper-import_libs: Import necessary packages
 library(Rcpp)
 
@@ -200,7 +199,8 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
     is_outlier = result$is_outlier,
     loess_x = result$loess_x,
     loess_y = result$loess_y,
-    loess_n = result$loess_n
+    loess_n = result$loess_n,
+    p_values = result$p_values
   ))
 
 }
@@ -248,69 +248,60 @@ tox_compute_family_scaling <- function(distances, gene_to_fam, n_families) {
   ))
 }
 
-#> tox_get_outliers:compute_family_scaling_expert_c: Compute family scaling factors using LOESS smoothing (Expert Version)
-#' Compute family scaling factors using LOESS smoothing (Expert Version)
+#> tox_get_outliers:compute_family_scaling_expert_c: Compute family scaling factors for outlier detection (expert version)
+#' Compute Family Scaling (Expert Version)
 #'
-#' Expert version of compute_family_scaling with user-provided work arrays.
-#' This version requires pre-allocated work arrays for maximum performance and control.
-#' Use this when you need fine-grained control over memory allocation or are calling
-#' this function many times in a tight loop.
+#' This function computes family scaling factors using the expert version of the Fortran subroutine.
+#' It automatically calculates the required workspace sizes (`lv` and `liv`) using `tox_loess_required_workspace`.
 #'
-#' @param distances Numeric vector of gene distances
-#' @param gene_to_fam Integer vector mapping genes to family indices
-#' @param n_families Integer number of families
-#' @param perm_tmp Pre-allocated permutation array for sorting (n_genes)
-#' @param stack_left_tmp Pre-allocated stack array for sorting (n_genes)
-#' @param stack_right_tmp Pre-allocated stack array for sorting (n_genes)
-#' @param family_distances Pre-allocated work array for family distances (n_genes)
-#' @return A list with:
-#' \describe{
-#'   \item{dscale}{Numeric vector of scaling factors for each family}
-#'   \item{loess_x}{Numeric vector of family median distances}
-#'   \item{loess_y}{Numeric vector of family standard deviations}
-#'   \item{indices_used}{Integer vector of number of genes used per family}
-#'   \item{perm_tmp}{Final state of permutation array}
-#'   \item{stack_left_tmp}{Final state of left stack array}
-#'   \item{stack_right_tmp}{Final state of right stack array}
-#'   \item{family_distances}{Final state of family distances array}
+#' @param distances Numeric vector of distances for each gene.
+#' @param gene_to_fam Integer vector mapping genes to family indices.
+#' @param n_families Integer, total number of families.
+#' @param perm_tmp Integer vector for temporary permutation storage.
+#' @param stack_left_tmp Integer vector for temporary left stack storage.
+#' @param stack_right_tmp Integer vector for temporary right stack storage.
+#' @param span Numeric, smoothing parameter for LOESS (default: 0.7).
+#' @param degree Integer, degree of polynomial for LOESS (default: 2).
+#' @param mode Integer, mode for LOESS (default: 1).
+#' @param n_iters Integer, number of iterations for LOESS (default: 3).
+#' @return A list with components:
+#'   - dscale: Scaling factors for each family.
+#'   - loess_x: Family median distances.
+#'   - loess_y: Family standard deviations.
+#'   - indices_used: Number of genes used per family.
+#'   - ierr: Error code (0 = success).
 tox_compute_family_scaling_expert <- function(distances, gene_to_fam, n_families,
                                               perm_tmp, stack_left_tmp, stack_right_tmp,
-                                              family_distances) {
-  # Input Validation
-  validate_numeric_vector(distances)
-  n_genes <- length(distances)
-  validate_length_equals_n(gene_to_fam, n_genes)
-  validate_length_equals_n(perm_tmp, n_genes)
-  validate_length_equals_n(stack_left_tmp, n_genes)
-  validate_length_equals_n(stack_right_tmp, n_genes)
-  validate_length_equals_n(family_distances, n_genes)
+                                              span, degree, mode, n_iters) {
+  # Validate inputs
+  distances <- as.numeric(distances)
+  gene_to_fam <- as.integer(gene_to_fam)
+  perm_tmp <- as.integer(perm_tmp)
+  stack_left_tmp <- as.integer(stack_left_tmp)
+  stack_right_tmp <- as.integer(stack_right_tmp)
 
+  # Calculate workspace sizes
+  workspace <- tox_loess_required_workspace(d = 1, nvmax = n_families, setlf = FALSE)
+  liv <- workspace$liv
+  lv <- workspace$lv
 
-  # Call the Rcpp forwarder
-  result <- tox_compute_family_scaling_expert_rcpp(n_families,
-                                                   distances,
-                                                   gene_to_fam,
-                                                   perm_tmp,
-                                                   stack_left_tmp,
-                                                   stack_right_tmp,
-                                                   family_distances
+  # Initialize workspace arrays
+  iv <- integer(liv)
+  wv <- numeric(lv)
+
+  # Call the Rcpp function
+  result <- tox_compute_family_scaling_expert_rcpp(
+    distances, gene_to_fam, n_families,
+    perm_tmp, stack_left_tmp, stack_right_tmp,
+    iv, liv, lv, span, degree, mode, n_iters
   )
 
-  # Check for errors
+
+   # Check for error
   check_err_code(result$ierr)
 
   # Return structured result
-  return(list(
-    dscale = result$dscale,
-    loess_x = result$loess_x,
-    loess_y = result$loess_y,
-    indices_used = result$indices_used,
-    perm_tmp     = result$perm_tmp,
-    stack_left_tmp   = result$stack_left_tmp,
-    stack_right_tmp  = result$stack_right_tmp,
-    family_distances = result$family_distances
-
-  ))
+  return(result)
 }
 
 #> tox_get_outliers:compute_rdi_c: Compute Relative Distance Index (RDI) for outlier detection
@@ -342,11 +333,9 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
                                  dscale
   )
 
+  check_err_code(result$ierr)
   # Return structured result
-  return(list(
-    rdi = result$rdi,
-    sorted_rdi = result$sorted_rdi
-  ))
+  return(result)
 }
 
 #> tox_get_outliers:identify_outliers_c: Identify outliers based on RDI percentile or threshold
@@ -371,11 +360,9 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
   # Call the Rcpp forwarder
   result <- tox_identify_outliers_rcpp(rdi, percentile)
 
+  check_err_code(result$ierr)
   # Return structured result
-  return(list(
-    is_outlier = result$is_outlier,
-    threshold = result$threshold
-  ))
+  return(result)
 
 }
 
@@ -383,32 +370,50 @@ tox_identify_outliers <- function(rdi, percentile = 95.0) {
 # NORMALIZATION FUNCTIONS
 # ===================================================================
 
-#> tox_normalization:normalize_by_std_dev_c: Normalize gene expression values by standard deviation
+#> tox_normalization:root_mean_sq_normalization_c: Normalize gene expression values by standard deviation
+#' Normalize gene expression values by standard deviation
 #'
-#' 
-#' This function wraps the Fortran subroutine `normalize_by_std_dev`
+#' This function wraps the Fortran subroutine `root_mean_sq_normalization`
 #' to normalize each gene's expression across tissues by the standard deviation.
 #'
-#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.
+#' @param expr A numeric matrix with genes as columns and tissues as rows.
 #' @return A normalized numeric matrix with the same dimensions and names as the input.
- 
-tox_normalize_by_std_dev <- function(input_matrix) {
+#' @details
+#' - The input matrix is flattened into a column-major vector.
+#' - Calls a Fortran routine that normalizes each gene across tissues.
+#' - Restores the original row and column names after normalization.
+#'
+#' @examples
+#' normalized_matrix <- tox_root_mean_sq_normalization(expr)
+tox_root_mean_sq_normalization <- function(expr) {
+  result <- tox_root_mean_sq_normalization_rcpp(expr)
+  check_err_code(result$ierr)
+  return(result$normalized_expr)
+}
 
-  # Input Validation
-  validate_numeric_matrix_values(input_matrix)
+#> tox_normalization:normalize_by_std_dev_c: Normalize gene expression values by standard deviation using loess
+#' Normalize gene expression values by standard deviation
+#'
+#' This function wraps the Fortran subroutine `root_mean_sq_normalization`
+#' to normalize each gene's expression across tissues by the standard deviation.
+#'
+#' @param expr A numeric matrix with genes as columns and tissues as rows.
+#' @return A normalized numeric matrix with the same dimensions and names as the input.
+#' @details
+#' - The input matrix is flattened into a column-major vector.
+#' - Calls a Fortran routine that normalizes each gene across tissues.
+#' - Restores the original row and column names after normalization.
+#'
+#' @examples
+#' normalized_matrix <- tox_root_mean_sq_normalization(expr)
+tox_normalize_by_std_dev <- function(expr, span = 0.7, degree = 2) {
+  result <- tox_normalize_by_std_dev_rcpp(expr, span, degree)
 
-  n_genes <- nrow(input_matrix)
-  n_tissues <- ncol(input_matrix)
-  
-  # Call the Rcpp forwarder
-  result <- tox_normalize_by_std_dev_rcpp(input_matrix)
-
-  # Check for errors
   check_err_code(result$ierr)
 
-  # Return the normalized matrix with original dimensions and names
-  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
+  return(result$normalized_expr)
 }
+
 
 #> tox_normalization:quantile_normalization_c: Quantile normalization of gene expression values
 #' Quantile normalization of gene expression values
@@ -416,26 +421,22 @@ tox_normalize_by_std_dev <- function(input_matrix) {
 #' This function wraps the Fortran subroutine `quantile_normalization`
 #' to apply quantile normalization across all tissue columns.
 #'
-#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.
+#' @param expr A numeric matrix with genes as columns and tissues as rows.
 #' @return A quantile-normalized numeric matrix with the same dimensions and names as the input.
+#' @details
+#' - The input matrix is flattened into a column-major vector.
+#' - The Fortran subroutine sorts and aligns the distributions across tissues.
+#' - After normalization, the original row and column names are restored.
 #'
-#' 
-tox_quantile_normalization <- function(input_matrix) {
+#' @examples
+#' normalized_matrix <- tox_quantile_normalization(expr)
+tox_quantile_normalization <- function(expr) {
+  validate_matrix(expr)
+  result <- tox_quantile_normalization_rcpp(expr)
 
-  # Input Validation
-  validate_matrix(input_matrix)
-
-  n_genes <- nrow(input_matrix)
-  n_tissues <- ncol(input_matrix)
-
-  # Call the Rcpp forwarder
-  result <- tox_quantile_normalization_rcpp(input_matrix)
- 
-  # Check for errors
   check_err_code(result$ierr)
-  
-  # Return the normalized matrix with original dimensions and names
-  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
+
+  return(result$normalized_expr)
 }
 
 #> tox_normalization:log2_transformation_c: Apply log2(x + 1) transformation to gene expression values
@@ -444,47 +445,23 @@ tox_quantile_normalization <- function(input_matrix) {
 #' This function wraps the Fortran subroutine `log2_transformation`
 #' to apply a log2(x + 1) transformation to each element in the input matrix.
 #'
-#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.
-#' @return A numeric matrix with log2-transformed expression values, with the same dimensions and names as the input.
+#' @param expr A numeric matrix with genes as columns and tissues as rows.
+#' @return A numeric matrix with log2-transformed expression values,
+#' preserving the same dimensions and names as the input.
+#' @details
+#' - The input matrix is flattened into a column-major vector.
+#' - The Fortran subroutine applies a log2(x+1) transformation to each value.
+#' - After transformation, the original row and column names are restored.
 #'
-tox_log2_transformation <- function(input_matrix) {
+#' @examples
+#' log_matrix <- tox_log2_transformation(expr)
+tox_log2_transformation <- function(expr) {
+  validate_matrix(expr)
+  result <- tox_log2_transformation_rcpp(expr)
 
-  # Input Validation
-  validate_matrix(input_matrix)
-
-  n_genes <- nrow(input_matrix)
-  n_tissues <- ncol(input_matrix)
-
-  # Call the Rcpp forwarder
-  result <- tox_log2_transformation_rcpp(input_matrix)
-  
-  # Check for errors 
-  check_err_code(result$ierr)
-  
-  # Return the log2-transformed matrix with original dimensions and names
-  return(matrix(result$output_vector, nrow = n_genes, ncol = n_tissues, dimnames = dimnames(input_matrix)))
-}
-
-#> tox_normalization:normalize_unit_length_c: Normalize a vector to unit length
-#' Normalize a numeric vector to unit length
-#'
-#' @param vector Numeric vector
-#' @return Numeric vector with unit norm
-#' 
-tox_normalize_unit_length <- function(vector) {
-  
-  # Input Validation
-  validate_numeric_vector(vector)
-  validate_nonempty(vector)
-
-  # Call the Rcpp forwarder
-  result <- tox_normalize_unit_length_rcpp(vector)
-  
-  # Check for errors
   check_err_code(result$ierr)
 
-  # Return the normalized vector
-  return(result$vector)
+  return(result$transformed_expr)
 }
 
 #> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue group
@@ -493,123 +470,93 @@ tox_normalize_unit_length <- function(vector) {
 #' This function wraps the Fortran subroutine `calc_tiss_avg`
 #' to compute the mean expression value for replicates grouped by tissue.
 #'
-#' @param df A data frame or matrix with genes as rows and tissue replicates as columns.
-#' @return A data frame with genes as rows and averaged tissues as columns.
-#' 
-tox_calculate_tissue_averages <- function(df) {
-  
-  # Input Validation
-  validate_matrix(df)
+#' @param expr A matrix with genes as columns and tissue replicates as rows.
+#' @return A matrix with genes as columns and averaged tissues as rows.
+#' @details
+#' - Replicate columns are grouped based on their parsed tissue group names.
+#' - The input matrix is sorted according to groups before being processed.
+#' - Calls a Fortran subroutine that calculates averages within each group.
+#' - The result restores the original gene IDs as row names.
+#'
+#' @examples
+#' averaged_df <- tox_calculate_tissue_averages(expr)
+tox_calculate_tissue_averages <- function(expr) {
+  validate_matrix(expr)
 
-  tissue_groups <- vapply(colnames(df), tox_parse_tissue_group, FUN.VALUE = character(1), USE.NAMES = FALSE)
+  tissue_groups <- as.character(sapply(rownames(expr), tox_parse_tissue_group))
   unique_groups <- unique(tissue_groups)
-
   n_groups <- length(unique_groups)
   group_starts <- integer(n_groups)
   group_counts <- integer(n_groups)
-  df_sorted <- df[, order(tissue_groups)]
+  expr_sorted <- expr[order(tissue_groups), ]
   sorted_tissue_groups <- tissue_groups[order(tissue_groups)]
-  current_group <- sorted_tissue_groups[1]
+  current_group <- as.character(sorted_tissue_groups[1])
   group_starts[1] <- 1
   group_counts[1] <- 1
   group_idx <- 1
   for (i in 2:length(sorted_tissue_groups)) {
-    if (!is.na(sorted_tissue_groups[i]) && !is.na(current_group) && sorted_tissue_groups[i] == current_group) {
+    if (!is.na(sorted_tissue_groups[i]) && !is.na(current_group) && as.character(sorted_tissue_groups[i]) == as.character(current_group)) {
       group_counts[group_idx] <- group_counts[group_idx] + 1
     } else {
       group_idx <- group_idx + 1
       group_starts[group_idx] <- i
       group_counts[group_idx] <- 1
-      current_group <- sorted_tissue_groups[i]
+      current_group <- as.character(sorted_tissue_groups[i])
     }
   }
-  # Call the Rcpp forwarder
-  result <- tox_calc_tiss_avg_rcpp(df_sorted,
-                                   group_starts,
-                                   group_counts
-  )
+  result <- tox_calc_tiss_avg_rcpp(expr, reps_per_tissue=group_counts)
 
-  # Check for errors
   check_err_code(result$ierr)
 
-  n_genes <- nrow(df_sorted)
-  n_cols <- length(result$output_vector) / n_genes
-  output_matrix <- matrix(result$output_vector, nrow = n_genes, ncol = n_cols)
+  output_matrix <- result$tissue_averages
 
-  colnames(output_matrix) <- unique_groups
-  rownames(output_matrix) <- rownames(df_sorted)
-
-  # Return the averaged matrix as a data frame
+  rownames(output_matrix) <- unique_groups
+  colnames(output_matrix) <- colnames(expr)
   return(as.data.frame(output_matrix))
 }
 
 
 #> tox_normalization:calc_fchange_c: Calculate log2 fold changes between control and condition columns
 #' Calculate log2 fold changes based on control and condition patterns
-#' @param df A data frame with genes as rows and tissues/conditions as columns.
+#' @param expr A matrix with genes as columns and tissues/conditions as rows.
 #' @param control_pattern A string pattern to detect control columns.
 #' @param condition_patterns A character vector with patterns to detect condition columns.
-#' @return A data frame with log2 fold changes for each gene and condition, with genes as rows and conditions as columns.
-tox_calculate_fold_changes <- function(df, control_pattern, condition_patterns) {
-  # Input Validation
-  
-  validate_matrix(df)
+tox_calculate_fold_changes <- function(expr, control_pattern, condition_patterns) {
+  validate_matrix(expr)
   validate_string_scalar(control_pattern)
-  validate_character_vector(condition_patterns) 
- 
+  validate_character_vector(condition_patterns)
 
   # --- Identify control and condition columns ---
-  indices_info <- tox_prepare_indices_by_patterns(df, control_pattern, condition_patterns)
-  control_cols <- indices_info$control_cols
-  condition_cols <- indices_info$condition_cols
+  indices_info <- tox_prepare_indices_by_patterns(expr, control_pattern, condition_patterns)
+  control_tissues <- indices_info$control_tissues
+  condition_tissues <- indices_info$condition_tissues
   condition_labels <- indices_info$condition_labels
 
-  n_pairs <- length(control_cols)
-  
-  # Call the Rcpp forwarder
-  result <- tox_calc_fchange_rcpp(df,
-                                  control_cols,
-                                  condition_cols
-  )
-    
-  # Check for errors
-  check_err_code(result$ierr)
-  
-  n_genes <- nrow(df)
-  output_matrix <- matrix(result$output_vector, nrow = n_genes, ncol = n_pairs)
+  result <- tox_calc_fchange_rcpp(expr, control_tissues, condition_tissues)
 
-  colnames(output_matrix) <- condition_labels
-  rownames(output_matrix) <- rownames(df)
-  
-  # Return the fold change matrix as a data frame
+  check_err_code(result$ierr)
+
+  output_matrix <- result$fold_changes
+  rownames(output_matrix) <- condition_labels
+  colnames(output_matrix) <- colnames(expr)
+
   return(as.data.frame(output_matrix))
 }
 
 
 #> tox_normalization:normalization_pipeline_c: Complete normalization pipeline for gene expression data (up to log2(x+1))
 #' Complete normalization pipeline for gene expression data (up to log2(x+1))
-#' @param input_matrix Numeric matrix (genes x tissues)
-#' @param group_s Integer vector: start column index for each replicate group (1-based)
-#' @param group_c Integer vector: number of columns per replicate group
-#' 
-#' @return Numeric matrix with log2-transformed average expression values for each tissue group (genes x groups).
-tox_normalization_pipeline <- function(input_matrix, group_s, group_c) {
-  # Input Validation
-  validate_matrix(input_matrix)
-  
-  validate_group_vectors(group_s, group_c, ncol(input_matrix))
+#' @param expr Numeric matrix (genes x tissues)
+#' @param reps_per_tissue Integer vector: number of tissues per replicate group
+tox_normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2, use_quantile = 0) {
+  validate_matrix(expr)
+  validate_group_vectors(reps_per_tissue, nrow(expr))
 
-  # Call the Rcpp forwarder
-  result <- tox_normalization_pipeline_rcpp(input_matrix,
-                                            group_s,
-                                            group_c
-  )
-  
-  # Check for errors
+  result <- tox_normalization_pipeline_rcpp(expr, reps_per_tissue, span, degree, use_quantile)
+
   check_err_code(result$ierr)
-  
-  # Return the normalized matrix with original row names and new column names based on group_s and group_c
-  return(matrix(result$buf_log, nrow = nrow(input_matrix), ncol = length(group_s)))
+
+  return(result$normalized_expr)
 }
 
 # ===================================================================
@@ -770,7 +717,7 @@ tox_parse_tissue_group <- function(colname) {
 #' This function examines the input matrix for common data quality issues
 #' that could cause problems in downstream analysis.
 #'
-#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.
+#' @param input_matrix A numeric matrix with genes as columns and tissues as rows.
 #' @param show_details Logical indicating whether to show detailed information.
 #' @return A list with diagnostic information about the data quality.
 #' @examples
@@ -873,7 +820,7 @@ tox_diagnose_data_quality <- function(input_matrix, show_details = TRUE) {
 #' This function handles NA, NaN, Inf values and genes that are all zeros
 #' to prepare data for Fortran normalization routines.
 #'
-#' @param df_matrix A numeric matrix with genes as rows and tissues as columns
+#' @param df_matrix A numeric matrix with genes as columns and tissues as rowss
 #' @param remove_all_zero_genes Logical, whether to remove genes that are all zeros
 #' @param na_strategy Strategy for handling NA values: "remove_genes", "remove_samples", "impute_zero", "impute_mean"
 #' @param min_expression_threshold Minimum expression value to consider (values below this become 0)
@@ -1015,34 +962,34 @@ tox_clean_data_for_normalization <- function(df_matrix,
 }
 
 
-#> f42_helper: Prepare control and condition column indices based on naming patterns
-#' Prepare control and condition column indices based on naming patterns
+#> f42_helper: Prepare control and condition tissue indices based on naming patterns
+#' Prepare control and condition tissue indices based on naming patterns
 #'
-#' This helper function searches for columns in the input dataframe that match
+#' This helper function searches for tissues in the input dataframe that match
 #' specified control and condition patterns. It builds the mapping necessary 
 #' to calculate fold changes.
 #'
-#' @param df A data frame with expression data, genes as rows and tissues/conditions as columns.
-#' @param control_pattern A string pattern used to identify control columns.
-#' @param condition_patterns A character vector with patterns used to identify condition columns.
+#' @param df A data frame with expression data, genes as columns and tissues/conditions as rows.
+#' @param control_pattern A string pattern used to identify control tissues.
+#' @param condition_patterns A character vector with patterns used to identify condition tissues.
 #' @return A list containing:
 #' \describe{
-#'   \item{control_cols}{Indices of control columns}
-#'   \item{condition_cols}{Indices of condition columns}
+#'   \item{control_cols}{Indices of control tissues}
+#'   \item{condition_cols}{Indices of condition tissues}
 #'   \item{condition_labels}{Column names for the resulting fold changes}
 #' }
 #'
 #' @examples
 #' indices_info <- tox_prepare_indices_by_patterns(df, control_pattern = "dietM", condition_patterns = c("dietP"))
 tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patterns) {
-  colnames_df <- colnames(df)
+  rownames_df <- rownames(df)
 
-  control_cols <- integer(0)         # Will store control column indices
-  condition_cols <- integer(0)       # Will store condition column indices
+  control_tissues <- integer(0)         # Will store control tissue indices
+  condition_tissues <- integer(0)       # Will store condition tissue indices
   condition_labels <- character(0)   # Labels for resulting logFC columns
 
   # --- Find all control columns matching control_pattern ---
-  control_candidates <- grep(control_pattern, colnames_df, value = TRUE)
+  control_candidates <- grep(control_pattern, rownames_df, value = TRUE)
 
   if (length(control_candidates) == 0) {
     stop("No control columns found matching pattern: ", control_pattern)
@@ -1054,21 +1001,21 @@ tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patte
 
     for (cond_pattern in condition_patterns) {
       pattern_to_match <- paste0("^", tissue_prefix, "_", cond_pattern)
-      matching_conditions <- grep(pattern_to_match, colnames_df, value = TRUE)
+      matching_conditions <- grep(pattern_to_match, rownames_df, value = TRUE)
 
       for (condition in matching_conditions) {
-        control_cols <- c(control_cols, which(colnames_df == control))
-        condition_cols <- c(condition_cols, which(colnames_df == condition))
+        control_tissues <- c(control_tissues, which(rownames_df == control))
+        condition_tissues <- c(condition_tissues, which(rownames_df == condition))
         condition_labels <- c(condition_labels, paste0(condition, "_logFC"))
       }
     }
   }
 
-  if (length(control_cols) == 0) {
+  if (length(control_tissues) == 0) {
     stop("No valid control-condition pairs found!")
   }
 
-  return(list(control_cols = control_cols, condition_cols = condition_cols, condition_labels = condition_labels))
+  return(list(control_tissues = control_tissues, condition_tissues = condition_tissues, condition_labels = condition_labels))
 }
 
 ##################################################
@@ -3557,4 +3504,114 @@ tox_which <- function(mask, m_max = length(mask)) {
   }
 
   return(result$idx_out[seq_len(n_take)])
+}
+
+#> tox_loess:tox_loess_required_workspace_c: Recommend workspace sizes based on Netlib exact formulas
+#' Recommend workspace sizes based on Netlib exact formulas
+#'
+#' @param d Integer, dimensionality of the data (usually 1)
+#' @param nvmax Integer, maximum neighborhood size
+#' @param setlf Logical, flag to save matrix factorization
+#'
+#' @return A list containing `liv` (integer workspace size) and `lv` (real workspace size)
+#'
+tox_loess_required_workspace <- function(d, nvmax, setlf) {
+
+  result <- tox_loess_required_workspace_rcpp(as.integer(d), as.integer(nvmax), as.logical(setlf))
+  check_err_code(result$ierr)
+  return(result)
+}
+
+#> tox_loess:loess_fit_plain_c: Perform plain LOESS fitting
+#' Perform plain LOESS fitting
+#'
+#' @param x,y,w,z Numeric vectors of input data
+#' @param span Numeric, smoothing parameter
+#' @param degree Integer, degree of polynomial (0, 1, or 2)
+#' @param nvmax Integer, maximum neighborhood size
+#' @param infl,setlf Logical, flags for influence and factorization
+#' @param iv Integer vector, workspace array
+#' @param wv Numeric vector, workspace array
+#'
+#' @return Numeric vector of smoothed response values (yhat)
+#'
+loess_fit_plain <- function(x, y, w, z, span, degree, nvmax, infl, setlf, iv, wv) {
+
+  result <- loess_fit_plain_rcpp(
+    as.numeric(x), as.numeric(y), as.numeric(w), as.numeric(z),
+    as.numeric(span), as.integer(degree), as.integer(nvmax),
+    as.logical(infl), as.logical(setlf),
+    as.integer(iv), as.numeric(wv)
+  )
+
+  check_err_code(result$ierr)
+  return(result$yhat)
+}
+
+#> tox_loess:loess_fit_robust_c: Perform robust LOESS fitting with bisquare reweighting
+#' Perform robust LOESS fitting with bisquare reweighting
+#'
+#' @param n_iters Integer, number of robust iterations
+#' @param rw,ww,res Numeric vectors, additional arrays for robust fitting
+#' @param pi Integer vector, permutation indices
+#'
+#' @return Numeric vector of smoothed response values (yhat)
+#'
+loess_fit_robust <- function(x, y, w, z, span, degree, nvmax, infl, setlf, n_iters, iv, wv, rw, ww, res, pi) {
+  # R-layer validation
+  # validate_loess_robust_inputs(...)
+
+  result <- loess_fit_robust_rcpp(
+    as.numeric(x), as.numeric(y), as.numeric(w), as.numeric(z),
+    as.numeric(span), as.integer(degree), as.integer(nvmax),
+    as.logical(infl), as.logical(setlf), as.integer(n_iters),
+    as.integer(iv), as.numeric(wv),
+    as.numeric(rw), as.numeric(ww), as.numeric(res), as.integer(pi)
+  )
+
+  check_err_code(result$ierr)
+  return(result$yhat)
+}
+
+#> tox_loess:tox_loess_c: High-level wrapper for LOESS fitting (plain or robust)
+#' High-level wrapper for LOESS fitting (plain or robust)
+#'
+#' @param x,y Numeric vectors of input data
+#' @param span Numeric, smoothing parameter (default 0.7)
+#' @param degree Integer, polynomial degree (default 2)
+#' @param mode Integer, 0 for plain, 1 for robust
+#' @param n_iters Integer, number of robust iterations (default 3)
+#'
+#' @return Numeric vector of smoothed response variable array
+#'
+tox_loess <- function(x, y, span = 0.7, degree = 2, mode = 1, n_iters = 3) {
+
+  validate_same_length(x, y)
+
+  result <- tox_loess_rcpp(
+    as.numeric(x), as.numeric(y), as.numeric(span), 
+    as.integer(degree), as.integer(mode), as.integer(n_iters)
+  )
+
+  check_err_code(result$ierr)
+  return(result$yhat)
+}
+
+#> f42_utils:compute_empirical_p_values_c: Compute empirical p-values
+#' Calculate empirical p-values for a given distribution
+#' Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+#' @param distribution A numeric vector representing the distribution of values.
+#' @param c_const A constant used in the computation, typically 1.
+#'
+#' @return A numeric vector of p-values corresponding to the input distribution.
+#' @export
+#'
+#' @examples
+#' distribution <- c(0.5, 1.2, 0.8, 0.3)
+#' c_const <- 1
+#' p_values <- compute_empirical_p_values(distribution, c_const)
+#' print(p_values)
+compute_empirical_p_values <- function(distribution, c_const) {
+  result <- tox_empirical_p_values_rcpp(distribution, c_const)
+  return(result)
 }

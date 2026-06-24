@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">25 statements</a>
+                 title=" 0.2% of total for procedures.">24 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,15 +150,14 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)  
+    <h2>public pure subroutine calc_fchange(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr)  
 </h2>
     
 
-    <p>Calculate <code>log2 fold changes</code> between condition and control columns.
+    <p>Calculate <code>log2 fold changes</code> between condition and control groups.
 For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
-by subtracting the expression value in the control column from the corresponding
-value in the condition column, for all genes.</p>
-<p>The input matrix must be column-major and flattened as a 1D array.</p>
+by subtracting the expression value in the control group from the corresponding
+value in the condition group, for all genes.</p>
 
 
     <h3>Arguments</h3>
@@ -173,7 +173,7 @@ value in the condition column, for all genes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~54"></span>
+              <span class="anchor" id="variable-n_genes~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -188,7 +188,7 @@ value in the condition column, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_cols"></span>
+              <span class="anchor" id="variable-n_tissues~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -196,9 +196,9 @@ value in the condition column, for all genes.</p>
               
             </td>
             <td>::</td>
-            <td><strong>n_cols</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
-                <p>Number of columns in the input matrix</p>
+                <p>Number of tissues</p>
             </td>
         </tr>
         <tr>
@@ -218,67 +218,67 @@ value in the condition column, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-control_cols"></span>
+              <span class="anchor" id="variable-control_tissues"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_pairs)
             </td>
             <td>::</td>
-            <td><strong>control_cols</strong>(n_pairs)</td>
+            <td><strong>control_tissues</strong></td>
             <td>
-                <p>Control column indices (length n_pairs)</p>
+                <p>Control tissue indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cond_cols"></span>
+              <span class="anchor" id="variable-condition_tissues"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_pairs)
             </td>
             <td>::</td>
-            <td><strong>cond_cols</strong>(n_pairs)</td>
+            <td><strong>condition_tissues</strong></td>
             <td>
-                <p>Condition column indices (length n_pairs)</p>
+                <p>Condition tissue indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_matrix"></span>
+              <span class="anchor" id="variable-expr~16"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_tissues, n_genes)
             </td>
             <td>::</td>
-            <td><strong>i_matrix</strong>(n_genes*n_cols)</td>
+            <td><strong>expr</strong></td>
             <td>
-                <p>Input matrix, flattened (length: n_genes × n_cols)</p>
+                <p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-o_matrix"></span>
+              <span class="anchor" id="variable-fold_changes"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_pairs, n_genes)
             </td>
             <td>::</td>
-            <td><strong>o_matrix</strong>(n_genes*n_pairs)</td>
+            <td><strong>fold_changes</strong></td>
             <td>
-                <p>Output matrix for fold changes (length: n_genes × n_pairs)</p>
+                <p>Output matrix for fold changes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~228"></span>
+              <span class="anchor" id="variable-ierr~109"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -325,7 +325,7 @@ value in the condition column, for all genes.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

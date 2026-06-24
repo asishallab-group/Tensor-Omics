@@ -7,6 +7,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 # Load library
 dll_path = os.path.abspath("build/libtensor-omics.so")
 ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
+ctypes.CDLL("libzip.so", mode=ctypes.RTLD_GLOBAL)
+ctypes.CDLL("libxxhash.so", mode=ctypes.RTLD_GLOBAL)
 lib = ctypes.CDLL(dll_path)
 
 

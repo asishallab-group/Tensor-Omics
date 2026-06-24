@@ -88,7 +88,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.6% of total for procedures.">69 statements</a>
+                 title=" 1.2% of total for procedures.">160 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +148,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, perm_tmp, stack_left_tmp, stack_right_tmp, family_distances, ierr) bind(C, name="compute_family_scaling_expert_c")  
+    <h2> subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr) bind(C, name="compute_family_scaling_expert_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -166,9 +166,9 @@
     </div>
 
 
-    <p>C wrapper for compute_family_scaling (expert version with pre-allocated arrays).
+    <p>C wrapper for compute_family_scaling expert version.
 Calls compute_family_scaling with C-compatible types for external interface.
-This version requires pre-allocated work arrays for maximum performance and control.</p>
+This wrapper is designed for external use, providing additional arguments for advanced configurations.</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +184,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~65"></span>
+              <span class="anchor" id="variable-n_genes~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -199,7 +199,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~27"></span>
+              <span class="anchor" id="variable-n_families~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -209,12 +209,12 @@ This version requires pre-allocated work arrays for maximum performance and cont
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of genes</p>
+                <p>Total number of families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~16"></span>
+              <span class="anchor" id="variable-distances~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -229,7 +229,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~27"></span>
+              <span class="anchor" id="variable-gene_to_fam~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -244,7 +244,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~5"></span>
+              <span class="anchor" id="variable-dscale~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -259,7 +259,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~4"></span>
+              <span class="anchor" id="variable-loess_x~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -274,7 +274,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~4"></span>
+              <span class="anchor" id="variable-loess_y~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -289,7 +289,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~3"></span>
+              <span class="anchor" id="variable-indices_used~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(inout),</td>
@@ -304,7 +304,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm_tmp~3"></span>
+              <span class="anchor" id="variable-tmp_perm~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(inout),</td>
@@ -312,14 +312,14 @@ This version requires pre-allocated work arrays for maximum performance and cont
               target
             </td>
             <td>::</td>
-            <td><strong>perm_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong>(n_genes)</td>
             <td>
-                <p>Permutation array for sorting gene distances</p>
+                <p>Temporary array for permutation</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left_tmp~3"></span>
+              <span class="anchor" id="variable-tmp_stack_left~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(inout),</td>
@@ -327,14 +327,14 @@ This version requires pre-allocated work arrays for maximum performance and cont
               target
             </td>
             <td>::</td>
-            <td><strong>stack_left_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_stack_left</strong>(n_genes)</td>
             <td>
-                <p>Stack array for left indices during sorting</p>
+                <p>Temporary array for left stack</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right_tmp~3"></span>
+              <span class="anchor" id="variable-tmp_stack_right~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(inout),</td>
@@ -342,14 +342,254 @@ This version requires pre-allocated work arrays for maximum performance and cont
               target
             </td>
             <td>::</td>
-            <td><strong>stack_right_tmp</strong>(n_genes)</td>
+            <td><strong>tmp_stack_right</strong>(n_genes)</td>
             <td>
-                <p>Stack array for right indices during sorting</p>
+                <p>Temporary array for right stack</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_distances~3"></span>
+              <span class="anchor" id="variable-tmp_iv~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_iv</strong>(liv)</td>
+            <td>
+                <p>Integer workspace array for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-liv~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>liv</strong></td>
+            <td>
+                <p>Length of integer workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_wv~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_wv</strong>(lv)</td>
+            <td>
+                <p>Real workspace array for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lv~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>lv</strong></td>
+            <td>
+                <p>Length of real workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_diagl~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_diagl</strong>(n_genes)</td>
+            <td>
+                <p>Diagonal elements for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_w_init~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_w_init</strong>(n_genes)</td>
+            <td>
+                <p>Initial weights for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_z_mat~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_z_mat</strong>(n_genes,1)</td>
+            <td>
+                <p>Z matrix for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_rw~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_rw</strong>(n_genes)</td>
+            <td>
+                <p>Residual weights for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_ww~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_ww</strong>(n_genes)</td>
+            <td>
+                <p>Working weights for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_res~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_res</strong>(n_genes)</td>
+            <td>
+                <p>Residuals for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pi~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pi</strong>(n_genes)</td>
+            <td>
+                <p>Pi values for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_yhat~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_yhat</strong>(n_genes)</td>
+            <td>
+                <p>Temporary array for predicted values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+                <p>Span parameter for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+                <p>Degree of polynomial for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>mode</strong></td>
+            <td>
+                <p>Mode for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_iters~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_iters</strong></td>
+            <td>
+                <p>Number of iterations for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-low_sd_cutoff~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -357,14 +597,44 @@ This version requires pre-allocated work arrays for maximum performance and cont
               target
             </td>
             <td>::</td>
-            <td><strong>family_distances</strong>(n_genes)</td>
+            <td><strong>low_sd_cutoff</strong></td>
             <td>
-                <p>Pre-allocated work array for family distances (dimension n_genes)</p>
+                <p>cutoff used to filter families with low std</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~283"></span>
+              <span class="anchor" id="variable-excluded_low_sd~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>excluded_low_sd</strong>(n_families)</td>
+            <td>
+                <p>Mask to save those families that have low sd</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_means_aux~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_means_aux</strong>(n_families)</td>
+            <td>
+                <p>Work array for saving raw means</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -374,7 +644,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0=ok, 201=invalid family indices</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -411,7 +681,7 @@ This version requires pre-allocated work arrays for maximum performance and cont
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on "2026-05-21 12:09 +0000"             </p>
           </div>
         </div>
         <br>

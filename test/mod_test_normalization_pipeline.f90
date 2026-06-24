@@ -1,10 +1,10 @@
-! filepath: test/mod_test_normalization_pipeline.f90
 !> Unit test suite for normalization_pipeline routine.
 module mod_test_normalization_pipeline
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
   use test_suite, only: test_case
+  use tox_errors
   implicit none
   public
 
@@ -25,84 +25,106 @@ contains
 
   !> Basic test: pipeline with small matrix, no fold change
   subroutine test_pipeline_basic()
-    integer(int32), parameter :: n_genes = 2, n_tissues = 2, n_grps = 2, max_stack = 10
-    real(real64), dimension(n_genes * n_tissues) :: input_matrix, buf_stddev, buf_quant
-    real(real64), dimension(n_genes * n_grps) :: buf_avg, buf_log
-    real(real64), dimension(n_genes) :: temp_col, rank_means
-    integer(int32), dimension(n_genes) :: perm
-    integer(int32), dimension(max_stack) :: stack_left, stack_right
-    integer(int32), dimension(n_grps) :: group_s, group_c
-    integer(int32) :: ierr
+    integer(int32), parameter :: n_genes = 10, n_tissues = 6, n_groups = 2
+    real(real64), dimension(n_tissues, n_genes) :: expr
+    real(real64), dimension(n_groups, n_genes) :: log_transformed_expr
+    integer(int32), dimension(n_groups) :: group_sizes
+    real(real64) :: span
+    integer(int32) :: degree, ierr, i, j
 
-    input_matrix = [1.0d0, 2.0d0, 3.0d0, 4.0d0] ! 2x2 matrix, col-major
-    group_s = [1,2]; group_c = [1,1]
+    do i = 1, n_genes
+      do j = 1, n_tissues
+        expr(j, i) = dble(i) + dble(j) * 0.25d0
+      end do
+    end do
+    group_sizes = [3,3]
+    span = 0.75d0
+    degree = 2
 
-    call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-    call assert_equal_int(ierr, 0, "normalization_pipeline returned error")
-    call assert_no_nan_real(buf_log, n_genes * n_grps, "test_pipeline_basic: NaN in output")
-    call assert_equal_int(size(buf_log), n_genes * n_grps, "test_pipeline_basic: output size incorrect")
-    call assert_true(all(buf_log >= 0.0d0), "test_pipeline_basic: output should be non-negative")
+    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_basic: normalization_pipeline returned error")
+    call assert_no_nan_real(log_transformed_expr, n_genes * n_groups, "test_pipeline_basic: NaN in output")
+    call assert_equal_int(size(log_transformed_expr), n_genes * n_groups, "test_pipeline_basic: output size incorrect")
+    call assert_true(all(log_transformed_expr >= 0.0d0), "test_pipeline_basic: output should be non-negative")
   end subroutine test_pipeline_basic
 
   !> Edge case test: zero input, check output shape and values
   subroutine test_pipeline_edge_cases()
-    integer(int32), parameter :: n_genes = 2, n_tissues = 2, n_grps = 2, max_stack = 10
-    real(real64), dimension(n_genes * n_tissues) :: input_matrix, buf_stddev, buf_quant
-    real(real64), dimension(n_genes * n_grps) :: buf_avg, buf_log
-    real(real64), dimension(n_genes) :: temp_col, rank_means
-    integer(int32), dimension(n_genes) :: perm
-    integer(int32), dimension(max_stack) :: stack_left, stack_right
-    integer(int32), dimension(n_grps) :: group_s, group_c
-    integer(int32) :: ierr
+    integer(int32), parameter :: n_genes = 10, n_tissues = 6, n_groups = 2
+    real(real64), dimension(n_tissues, n_genes) :: expr
+    real(real64), dimension(n_groups, n_genes) :: log_transformed_expr
+    integer(int32), dimension(n_groups) :: group_sizes
+    real(real64) :: span
+    integer(int32) :: degree, ierr
 
-    input_matrix = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
-    group_s = [1,2]; group_c = [1,1]
+    expr = 0.0d0
+    group_sizes = [3,3]
+    span = 0.75d0
+    degree = 2
 
-    call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-    call assert_equal_int(ierr, 0, "normalization_pipeline returned error")
-    call assert_no_nan_real(buf_log, n_genes * n_grps, "test_pipeline_edge_cases: NaN in output")
-    call assert_true(all(buf_log == 0.0d0), "test_pipeline_edge_cases: output should be all zeros for zero input")
+    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_pipeline_edge_cases: expected error for zero-variance input")
   end subroutine test_pipeline_edge_cases
 
   !> Test: pipeline output matches manual stepwise normalization (no fold change)
   subroutine test_pipeline_vs_manual()
-    integer(int32), parameter :: n_genes = 2, n_tissues = 2, n_grps = 2, max_stack = 10
-    real(real64), dimension(n_genes * n_tissues) :: input_matrix, buf_stddev, buf_quant
-    real(real64), dimension(n_genes * n_grps) :: buf_avg, buf_log, manual_out
-    real(real64), dimension(n_genes) :: temp_col, rank_means
-    integer(int32), dimension(n_genes) :: perm
-    integer(int32), dimension(max_stack) :: stack_left, stack_right
-    integer(int32), dimension(n_grps) :: group_s, group_c
-    integer(int32) :: ierr
+    integer(int32), parameter :: n_genes = 10, n_tissues = 6, n_groups = 2
+    real(real64), dimension(n_tissues, n_genes) :: expr, stddev, quantile
+    real(real64), dimension(n_groups, n_genes) :: log_transformed_expr
+    real(real64), dimension(n_groups, n_genes) :: tiss_avg, log2trans, buf_avg_no_quant, log_transformed_expr_no_quant, log2trans_no_quant
+    integer(int32), dimension(n_groups) :: group_sizes
+    real(real64), dimension(n_genes) :: rank_means, tmp_col
+    integer(int32), dimension(n_genes) :: tmp_perm
+    real(real64) :: span
+    integer(int32) :: degree, ierr, i, j
 
-    input_matrix = [1.0d0, 2.0d0, 3.0d0, 4.0d0]
-    group_s = [1,2]; group_c = [1,1]
+    ! Build varied data with non-zero variance per gene
+    do i = 1, n_genes
+      do j = 1, n_tissues
+        expr(j, i) = dble(i) * 2.0d0 + dble(j) * 0.5d0
+      end do
+    end do
+    group_sizes = [3,3]
+    span = 0.75d0
+    degree = 2
 
-    ! Manual stepwise normalization
-    call normalize_by_std_dev(n_genes, n_tissues, input_matrix, buf_stddev, ierr)
-    call assert_equal_int(ierr, 0, "normalize_by_std_dev returned error")
-    call quantile_normalization(n_genes, n_tissues, buf_stddev, buf_quant, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization returned error")
-    call calc_tiss_avg(n_genes, n_grps, group_s, group_c, buf_quant, buf_avg, ierr)
-    call assert_equal_int(ierr, 0, "calc_tiss_avg returned error")
-    call log2_transformation(n_genes, n_tissues, buf_avg, manual_out, ierr)
-    call assert_equal_int(ierr, 0, "log2_transformation returned error")
+    call normalize_by_std_dev_alloc(n_genes, n_tissues, expr, stddev, span, degree, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: normalize_by_std_dev returned error")
+
+    call quantile_normalization(n_genes, n_tissues, stddev, quantile, rank_means, tmp_col, tmp_perm, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: quantile_normalization returned error")
+    call calc_tiss_avg(n_genes, n_groups, group_sizes, quantile, tiss_avg, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: calc_tiss_avg returned error")
+    call log2_transformation(n_genes, n_groups, tiss_avg, log2trans, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: log2_transformation returned error")
+
+    ! Manual stepwise normalization without quantile
+    call calc_tiss_avg(n_genes, n_groups, group_sizes, stddev, buf_avg_no_quant, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: calc_tiss_avg (no quantile) returned error")
+    call log2_transformation(n_genes, n_groups, buf_avg_no_quant, log2trans_no_quant, ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: log2_transformation (no quantile) returned error")
 
     ! Pipeline normalization
-    call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-    call assert_equal_int(ierr, 0, "normalization_pipeline returned error")
-    call assert_true(all(abs(buf_log - manual_out) < 1.0d-12), "test_pipeline_vs_manual: pipeline and manual outputs differ")
+    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: normalization_pipeline returned error")
+    call assert_equal_array_real(log_transformed_expr, log2trans, size(log_transformed_expr, kind=int32), 1d-12, "test_pipeline_vs_manual: test_pipeline_vs_manual: pipeline and manual outputs differ")
+
+    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr_no_quant, group_sizes, n_groups, span, degree, ierr=ierr)
+    call assert_equal_int(ierr, ERR_OK, "test_pipeline_vs_manual: normalization_pipeline (no quantile) returned error")
+    call assert_equal_array_real(log_transformed_expr_no_quant, log2trans_no_quant, size(log_transformed_expr_no_quant, kind=int32), 1d-12, "test_pipeline_vs_manual: pipeline and manual outputs differ (no quantile)")
   end subroutine test_pipeline_vs_manual
 
   !> Test with empty input matrix.
   subroutine test_pipeline_empty_matrix()
-    integer(int32) :: n_genes, n_tissues, n_grps, max_stack, ierr
-    real(real64), dimension(0) :: input_matrix, buf_stddev, buf_quant, buf_avg, buf_log
-    real(real64), dimension(0) :: temp_col, rank_means
-    integer(int32), dimension(0) :: perm, stack_left, stack_right, group_s, group_c
-    n_genes = 0; n_tissues = 0; n_grps = 0; max_stack = 0
-    call normalization_pipeline(n_genes, n_tissues, input_matrix, buf_stddev, buf_quant, buf_avg, buf_log, temp_col, rank_means, perm, stack_left, stack_right, max_stack, group_s, group_c, n_grps, ierr)
-    call assert_equal_int(ierr, 202, "normalization_pipeline should return error for empty input")
+    integer(int32) :: n_genes, n_tissues, n_groups, degree, ierr
+    real(real64) :: span
+    real(real64), dimension(1) :: expr, log_transformed_expr
+    integer(int32), dimension(1) :: group_sizes
+    n_genes = 0; n_tissues = 0; n_groups = 0
+    span = 0.75d0
+    degree = 2
+    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, ierr=ierr)
+    call assert_equal_int(ierr, ERR_EMPTY_INPUT, "normalization_pipeline should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_pipeline_empty_matrix
 

@@ -1,3 +1,9 @@
+/*.mod
+/*.o
+/*.[fF]90
+*.a
+*.so
+
 # ignore generated fpm.toml
 fpm.toml
 

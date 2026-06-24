@@ -33,6 +33,47 @@ module f42_utils
   real(real64), parameter :: EPS = epsilon(1.0_real64)
 contains
 
+    pure real(real64) function mean(vec)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the mean value from
+
+        mean = sum(vec) / real(size(vec, kind=int32), real64)
+    end function mean
+
+    pure real(real64) function std_dev(vec, do_bessel_correction)
+        real(real64), dimension(:), intent(in) :: vec
+            !! Vector to compute the standard deviation value from
+        logical, intent(in), optional :: do_bessel_correction
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`
+            !!
+            !! |    Case     |                                                Formula                                                      |
+            !! |-------------|-------------------------------------------------------------------------------------------------------------|
+            !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
+            !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
+
+        logical :: bessel
+        integer(int32) :: n_elements, i_element
+        real(real64) :: mean_val, squares_sum
+
+        M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
+
+        mean_val = mean(vec)
+        n_elements = size(vec, kind=int32)
+        if (bessel) then
+            squares_sum = 0.0_real64
+            do concurrent (i_element = 1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
+                squares_sum = squares_sum + (vec(i_element) - mean_val) ** 2
+            end do
+            std_dev = sqrt(squares_sum / real(n_elements - 1, kind=real64))
+        else
+            squares_sum = 0.0_real64
+            do concurrent (i_element = 1:n_elements) shared(vec) reduce(+:squares_sum)
+                squares_sum = squares_sum + vec(i_element) ** 2
+            end do
+            std_dev = sqrt(max(0.0_real64, squares_sum / real(n_elements, kind=real64) - mean_val ** 2))
+        end if
+    end function std_dev
+
   !> Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
   pure real(real64) function clamp_real(val, min_val, max_val) result(clamped)
     real(real64), intent(in) :: val
@@ -120,7 +161,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -137,7 +177,6 @@ contains
           !! Output permutation array
 
       integer(int32) :: i, rand_idx
-      real(real64) :: rand_val
       
       ! Fisher-Yates shuffle
       do i = size(vec, kind=int32), 2, -1
@@ -1204,6 +1243,90 @@ contains
     call calc_percentile(array, perm, percentile, value, ierr)
   end subroutine calc_percentile_alloc
 
+  !> Calculate empirical p-values for scaled expression distances (RDI).
+  !|
+  !| Implements:
+  !|   P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+  !|
+  !| Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+  !|
+  !| Assumptions / preconditions:
+  !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
+  !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+  pure subroutine compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+    integer(int32), intent(in) :: n_genes
+    !| Number of genes being processed.
+    real(real64), intent(in) :: rdi(n_genes)
+    !| empirical distribution D
+    real(real64), intent(in) :: sorted_rdi(n_genes)   
+    !| empirical distribution D with non negative values
+    real(real64), intent(out) :: p_values(n_genes)
+    !| Output array to store the computed p-values for each gene.
+    real(real64), intent(in) :: c_const
+    !| Constant used in the computation, typically 1
+    integer(int32), intent(in) :: perm(n_genes)
+    !| Permutation array with sorted indices for sorted_rdi
+
+    integer(int32) :: i, first_ge, count_ge
+    real(real64) :: denom, d
+
+    denom = real(n_genes, real64) + c_const
+    if (denom <= 0.0_real64) then
+      p_values = 1.0_real64
+      return
+    end if
+
+    do i = 1, n_genes
+      d = rdi(i)
+
+      ! Invalid / negative => not an outlier: p = 1
+      if (d < 0.0_real64) then
+        p_values(i) = 1.0_real64
+        cycle
+      end if
+
+      first_ge = lower_bound_ge(sorted_rdi, perm, n_genes, d)
+
+      if (first_ge <= n_genes) then
+        count_ge = n_genes - first_ge + 1_int32
+      else
+        count_ge = 0_int32
+      end if
+
+      p_values(i) = (real(count_ge, real64) + c_const) / denom
+    end do
+
+  end subroutine compute_empirical_p_values
+
+  !> First position pos in [1..n] such that sorted_rdi(perm(pos)) >= x. Returns n+1 if none.
+  pure integer(int32) function lower_bound_ge(vals, p, n, x) result(pos)
+    real(real64), intent(in) :: vals(n)
+    !| Input array of values to be searched
+    integer(int32), intent(in) :: p(n)
+    !| Permutation array with sorted indices
+    integer(int32), intent(in) :: n
+    !| Number of elements in the `vals` and `p` arrays
+    real(real64), intent(in) :: x
+    !| Input value to be searched for or compared against within `vals`
+
+    integer(int32) :: l, h, mid
+
+    l = 1_int32
+    h = n
+    pos = n + 1_int32
+
+    do while (l <= h)
+      mid = l + (h - l) / 2_int32
+      if (vals(p(mid)) >= x) then
+        pos = mid
+        h = mid - 1_int32
+      else
+        l = mid + 1_int32
+      end if
+    end do
+  end function lower_bound_ge
+
+
 end module f42_utils
 
 
@@ -1370,3 +1493,26 @@ subroutine compute_edf_expert_c(values, n_values, perm, unique_values, cdf_value
 
   call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
 end subroutine compute_edf_expert_c
+
+!> C-compatible wrapper for compute_empirical_p_values
+subroutine compute_empirical_p_values_c(n_genes, rdi, sorted_rdi, perm, p_values, c_const) bind(C, name="empirical_p_values_c")
+  use, intrinsic :: iso_c_binding, only: c_int, c_double
+  use f42_utils, only: compute_empirical_p_values
+  implicit none
+
+  integer(c_int), intent(in), target :: n_genes
+  !| Number of genes being processed.
+  real(c_double), intent(in), target :: rdi(n_genes)
+  !| empirical distribution D
+  real(c_double), intent(in), target :: sorted_rdi(n_genes)
+  !| empirical distribution D with non negative values
+  integer(c_int), intent(in), target :: perm(n_genes)
+  !| Permutation array with sorted indices for sorted_rdi
+  real(c_double), intent(out), target :: p_values(n_genes)
+  !| Output array to store the computed p-values for each gene.
+  real(c_double), intent(in), target :: c_const
+  !| Constant used in the computation, typically 1
+
+  call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+
+end subroutine compute_empirical_p_values_c

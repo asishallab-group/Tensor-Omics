@@ -1,310 +1,258 @@
-! filepath: test/mod_test_quantile_normalization.f90
 !> Unit test suite for quantile_normalization routine.
 module mod_test_quantile_normalization
-  use asserts
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-  use tox_normalization
-  use test_suite, only: test_case
-  implicit none
-  public
+    use asserts
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use tox_normalization
+    use test_suite, only: test_case
+    use tox_errors
+    implicit none
+    public
 
-  
+    real(real64) :: TOL = 1d-12
+    
 contains
 
-  !> Get array of all available tests.
-  function get_all_tests_quantile_normalization() result(all_tests)
-    type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(13))
+    !> Get array of all available tests.
+    function get_all_tests_quantile_normalization() result(all_tests)
+        type(test_case),allocatable :: all_tests(:)
+        allocate(all_tests(9))
 
-    all_tests(1) = test_case("test_qn_preserves_dimensions", test_qn_preserves_dimensions)
-    all_tests(2) = test_case("test_qn_identical_rows", test_qn_identical_rows)
-    all_tests(3) = test_case("test_qn_no_nans_and_standardizes", test_qn_no_nans_and_standardizes)
-    all_tests(4) = test_case("test_qn_single_row", test_qn_single_row)
-    all_tests(5) = test_case("test_qn_single_column", test_qn_single_column)
-    all_tests(6) = test_case("test_qn_all_equal", test_qn_all_equal)
-    all_tests(7) = test_case("test_qn_large_random", test_qn_large_random)
-    all_tests(8) = test_case("test_qn_negative_values", test_qn_negative_values)
-    all_tests(9) = test_case("test_qn_zero_matrix", test_qn_zero_matrix)
-    all_tests(10) = test_case("test_qn_sorted_input", test_qn_sorted_input)
-    all_tests(11) = test_case("test_qn_reverse_sorted", test_qn_reverse_sorted)
-    all_tests(12) = test_case("test_qn_edge_cases", test_qn_edge_cases)
-    all_tests(13) = test_case("test_qn_empty_matrix", test_qn_empty_matrix)
-  end function get_all_tests_quantile_normalization
+        all_tests(1) = test_case("test_error_zero_dimensions", test_error_zero_dimensions)
+        all_tests(2) = test_case("test_error_negative_dimensions", test_error_negative_dimensions)
+        all_tests(3) = test_case("test_trivial_1x1", test_trivial_1x1)
+        all_tests(4) = test_case("test_single_tissue", test_single_tissue)
+        all_tests(5) = test_case("test_single_gene", test_single_gene)
+        all_tests(6) = test_case("test_simple_2x3", test_simple_2x3)
+        all_tests(7) = test_case("test_ties", test_ties)
+        all_tests(8) = test_case("test_already_normalized", test_already_normalized)
+        all_tests(9) = test_case("test_random", test_random)
+    end function get_all_tests_quantile_normalization
 
-  
-  
+    ! ============================================================
+    ! Small helper: stable, simple insertion sort for tests
+    ! ============================================================
+    subroutine sort_real_ascending(a, n)
+        real(real64), intent(inout) :: a(n)
+        integer(int32), intent(in)  :: n
+        integer :: i, j
+        real(real64) :: key
+        do i = 2, n
+            key = a(i)
+            j = i - 1
+            do while (j >= 1 .and. a(j) > key)
+                a(j+1) = a(j)
+                j = j - 1
+            end do
+            a(j+1) = key
+        end do
+    end subroutine
 
-  !> Test that quantile normalization preserves matrix dimensions.
-  subroutine test_qn_preserves_dimensions()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(2,3) :: mat, result
-    real(real64) :: temp_col(2), rank_means(2)
-    integer(int32) :: perm(2), stack_left(10), stack_right(10)
-    nrow = 2; ncol = 3; max_stack = 10
-    mat(:,1) = [0.1d0, 0.2d0]
-    mat(:,2) = [0.3d0, 0.4d0]
-    mat(:,3) = [0.5d0, 0.6d0]
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_int(size(result,1), nrow, "qn_preserves_dimensions: row count not preserved")
-    call assert_equal_int(size(result,2), ncol, "qn_preserves_dimensions: col count not preserved")
-  end subroutine test_qn_preserves_dimensions
 
-  !> Test that quantile normalization handles identical rows correctly.
-  subroutine test_qn_identical_rows()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(2,3) :: mat, result, expected
-    real(real64) :: temp_col(2), rank_means(2)
-    integer(int32) :: perm(2), stack_left(10), stack_right(10)
-    nrow = 2; ncol = 3; max_stack = 10
-    mat(1,:) = [5.0d0, 5.0d0, 5.0d0]
-    mat(2,:) = [5.0d0, 5.0d0, 5.0d0]
-    expected = mat
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 6, 1d-12, "qn_identical_rows: identical rows not preserved")
-    call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_identical_rows: result has non-finite values")
-  end subroutine test_qn_identical_rows
+    ! ============================================================
+    ! Test 1: Error handling — zero dimensions
+    ! ============================================================
+    subroutine test_error_zero_dimensions()
+        real(real64) :: expr(1,1), norm(1,1), tmp(1), means(1)
+        integer(int32) :: perm(1), ierr
 
-  !> Test that quantile normalization produces finite values and standardizes distributions.
-  subroutine test_qn_no_nans_and_standardizes()
-    integer(int32) :: nrow, ncol, i, max_stack, ierr
-    real(real64), dimension(2,3) :: mat, result
-    real(real64), allocatable :: sorted_cols(:,:)
-    real(real64) :: temp_col(2), rank_means(2)
-    integer(int32) :: perm(2), stack_left(10), stack_right(10)
-    nrow = 2; ncol = 3; max_stack = 10
-    mat(:,1) = [2.0d0, 0.0d0]
-    mat(:,2) = [5.0d0, 3.0d0]
-    mat(:,3) = [7.0d0, 1.0d0]
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_true(.not. any(reshape(isnan_mat(result), [size(result)])), "qn_no_nans_and_standardizes: result has NaN")
-    call assert_true(all(reshape(isfinite_mat(result), [size(result)])), &
-                        "qn_no_nans_and_standardizes: result has non-finite values")
-    call assert_equal_int(size(result,1), nrow, "qn_no_nans_and_standardizes: row count not preserved")
-    call assert_equal_int(size(result,2), ncol, "qn_no_nans_and_standardizes: col count not preserved")
-    allocate(sorted_cols(nrow, ncol))
-    do i = 1, ncol
-        sorted_cols(:,i) = sort_vec(result(:,i))
-    end do
-    do i = 2, ncol
-        call assert_equal_array_real(sorted_cols(:,i), sorted_cols(:,1), nrow, 1d-6, &
-                                    "qn_no_nans_and_standardizes: column distributions differ")
-    end do
-    deallocate(sorted_cols)
-  end subroutine test_qn_no_nans_and_standardizes
+        expr = 1.0_real64
 
-  !> Test quantile normalization with single row matrix.
-  subroutine test_qn_single_row()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(1,4) :: mat, result, expected
-    real(real64) :: temp_col(1), rank_means(1)
-    integer(int32) :: perm(1), stack_left(10), stack_right(10)
-    real(real64) :: row_mean
-    nrow = 1; ncol = 4; max_stack = 10
-    mat(1,:) = [1.0d0, 2.0d0, 3.0d0, 4.0d0]
-    row_mean = sum(mat(1,:)) / ncol
-    expected(1,:) = row_mean
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 4, 1d-12, "qn_single_row: values should all equal row mean")
-    call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_single_row: result has non-finite values")
-  end subroutine test_qn_single_row
+        call quantile_normalization(0, 1, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "n_genes=0 must trigger ERR_EMPTY_INPUT")
 
-  !> Test quantile normalization with single column matrix.
-  subroutine test_qn_single_column()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(3,1) :: mat, result, expected
-    real(real64) :: temp_col(3), rank_means(3)
-    integer(int32) :: perm(3), stack_left(10), stack_right(10)
-    nrow = 3; ncol = 1; max_stack = 10
-    mat(:,1) = [7.0d0, 2.0d0, 5.0d0]
-    expected = mat
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 3, 1d-12, "qn_single_column: single column should remain unchanged")
-  end subroutine test_qn_single_column
+        call quantile_normalization(1, 0, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_EMPTY_INPUT, "n_tissues=0 must trigger ERR_EMPTY_INPUT")
+    end subroutine
 
-  !> Test quantile normalization with all equal values.
-  subroutine test_qn_all_equal()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(4,4) :: mat, result, expected
-    real(real64) :: temp_col(4), rank_means(4)
-    integer(int32) :: perm(4), stack_left(10), stack_right(10)
-    nrow = 4; ncol = 4; max_stack = 10
-    mat = 3.14d0
-    expected = mat
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 16, 1d-12, "qn_all_equal: all equal values not preserved")
-  end subroutine test_qn_all_equal
 
-  !> Test quantile normalization with large random matrix.
-  subroutine test_qn_large_random()
-    integer(int32), parameter :: nrow=10, ncol=10
-    integer(int32) :: i, max_stack, ierr
-    real(real64), dimension(nrow,ncol) :: mat, result
-    real(real64), allocatable :: sorted_cols(:,:)
-    real(real64) :: temp_col(nrow), rank_means(nrow)
-    integer(int32) :: perm(nrow), stack_left(100), stack_right(100)
-    integer(int32) :: n_seed
-    integer(int32), allocatable :: seed_array(:)
-    max_stack = 100
-    call random_seed(size=n_seed)
-    allocate(seed_array(n_seed))
-    seed_array = 42
-    call random_seed(put=seed_array)
-    deallocate(seed_array)
-    call random_number(mat)
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    allocate(sorted_cols(nrow, ncol))
-    do i = 1, ncol
-        sorted_cols(:,i) = sort_vec(result(:,i))
-    end do
-    do i = 2, ncol
-        call assert_equal_array_real(sorted_cols(:,i), sorted_cols(:,1), nrow, 1d-6, &
-                                "qn_large_random: random matrix column distributions differ")
-    end do
-    call assert_no_nan_real(result, nrow*ncol, "qn_large_random: NaN in result")
-    deallocate(sorted_cols)
-  end subroutine test_qn_large_random
+    ! ============================================================
+    ! Test 2: Error handling — negative dimensions
+    ! ============================================================
+    subroutine test_error_negative_dimensions()
+        real(real64) :: expr(1,1), norm(1,1), tmp(1), means(1)
+        integer(int32) :: perm(1), ierr
 
-  !> Test quantile normalization with negative values.
-  subroutine test_qn_negative_values()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(2,3) :: mat, result
-    real(real64) :: temp_col(2), rank_means(2)
-    integer(int32) :: perm(2), stack_left(10), stack_right(10)
-    nrow = 2; ncol = 3; max_stack = 10
-    mat(:,1) = [-1.0d0, -2.0d0]
-    mat(:,2) = [-3.0d0, -4.0d0]
-    mat(:,3) = [-5.0d0, -6.0d0]
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_no_nan_real(result, 6, "qn_negative_values: NaN in result")
-    call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_negative_values: non-finite values in result")
-  end subroutine test_qn_negative_values
+        expr = 1.0_real64
 
-  !> Test quantile normalization with zero matrix.
-  subroutine test_qn_zero_matrix()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(3,3) :: mat, result, expected
-    real(real64) :: temp_col(3), rank_means(3)
-    integer(int32) :: perm(3), stack_left(10), stack_right(10)
-    nrow = 3; ncol = 3; max_stack = 10
-    mat = 0.0d0
-    expected = 0.0d0
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 9, 1d-12, "qn_zero_matrix: zero matrix not preserved")
-  end subroutine test_qn_zero_matrix
+        call quantile_normalization(-3, 1, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "negative n_genes must trigger ERR_INVALID_INPUT")
 
-  !> Test quantile normalization with pre-sorted input.
-  subroutine test_qn_sorted_input()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(3,3) :: mat, result
-    real(real64) :: temp_col(3), rank_means(3)
-    integer(int32) :: perm(3), stack_left(10), stack_right(10)
-    nrow = 3; ncol = 3; max_stack = 10
-    mat(:,1) = [1.0d0, 2.0d0, 3.0d0]
-    mat(:,2) = [1.0d0, 2.0d0, 3.0d0]
-    mat(:,3) = [1.0d0, 2.0d0, 3.0d0]
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, mat, 9, 1d-12, "qn_sorted_input: sorted input not preserved")
-  end subroutine test_qn_sorted_input
+        call quantile_normalization(1, -5, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "negative n_tissues must trigger ERR_INVALID_INPUT")
+    end subroutine
 
-  !> Test quantile normalization with reverse sorted input.
-  subroutine test_qn_reverse_sorted()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(3,3) :: mat, result, expected
-    real(real64) :: temp_col(3), rank_means(3)
-    integer(int32) :: perm(3), stack_left(10), stack_right(10)
-    nrow = 3; ncol = 3; max_stack = 10
-    mat(:,1) = [3.0d0, 3.0d0, 3.0d0]
-    mat(:,2) = [2.0d0, 2.0d0, 2.0d0]
-    mat(:,3) = [1.0d0, 1.0d0, 1.0d0]
-    expected = 2.0d0
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_equal_array_real(result, expected, 9, 1d-12, "qn_reverse_sorted: reverse sorted input not normalized to mean")
-  end subroutine test_qn_reverse_sorted
 
-  !> Test edge cases for quantile normalization.
-  subroutine test_qn_edge_cases()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(2,2) :: mat, result
-    real(real64) :: temp_col(2), rank_means(2)
-    integer(int32) :: perm(2), stack_left(10), stack_right(10)
-    nrow = 2; ncol = 2; max_stack = 10
-    mat = reshape([1e-10, 1e10, 1e-5, 1e5], [2,2])
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 0, "quantile_normalization_r returned error")
-    call assert_no_nan_real(result, 4, "qn_edge_cases: NaN in result")
-    call assert_true(all(reshape(isfinite_mat(result), [size(result)])), "qn_edge_cases: non-finite values in result")
-  end subroutine test_qn_edge_cases
+    ! ============================================================
+    ! Test 3: Trivial 1×1 case
+    ! ============================================================
+    subroutine test_trivial_1x1()
+        real(real64) :: expr(1,1), norm(1,1), tmp(1), means(1)
+        integer(int32) :: perm(1), ierr
 
-  !> Test with empty input matrix.
-  subroutine test_qn_empty_matrix()
-    integer(int32) :: nrow, ncol, max_stack, ierr
-    real(real64), dimension(0,0) :: mat, result
-    real(real64), dimension(0) :: temp_col, rank_means
-    integer(int32), dimension(0) :: perm, stack_left, stack_right
-    nrow = 0; ncol = 0; max_stack = 0
-    call quantile_normalization(nrow, ncol, mat, result, temp_col, rank_means, perm, stack_left, stack_right, max_stack, ierr)
-    call assert_equal_int(ierr, 202, "quantile_normalization_r should return error for empty input")
-    ! No further assertion needed: just check no crash
-  end subroutine test_qn_empty_matrix
+        expr(1,1) = 42.0_real64
 
-  !> Helper function to check if all values are finite (matrix version).
-  function isfinite_mat(arr) result(mask)
-    real(real64), intent(in) :: arr(:,:)
-    logical :: mask(size(arr,1), size(arr,2))
-    integer(int32) :: i, j
-    do i = 1, size(arr,1)
-      do j = 1, size(arr,2)
-        mask(i,j) = abs(arr(i,j)) < huge(arr(i,j)) .and. arr(i,j) == arr(i,j)
-      end do
-    end do
-  end function isfinite_mat
+        call quantile_normalization(1, 1, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "1x1: ierr must be OK")
+        call assert_equal_real(norm(1,1), 42.0_real64, TOL, "1x1: value must remain unchanged")
+        call assert_equal_real(means(1), 42.0_real64, TOL, "1x1: rank_means must equal value")
+        call assert_permutation(perm, 1, "1x1: permutation must be [1]")
+    end subroutine
 
-  !> Helper function to check for NaN values (matrix version).
-  function isnan_mat(arr) result(mask)
-    real(real64), intent(in) :: arr(:,:)
-    logical :: mask(size(arr,1), size(arr,2))
-    integer(int32) :: i, j
-    do i = 1, size(arr,1)
-      do j = 1, size(arr,2)
-        mask(i,j) = ieee_is_nan(arr(i,j))
-      end do
-    end do
-  end function isnan_mat
 
-  !> Helper function to sort a vector (simple bubble sort).
-  function sort_vec(vec) result(sorted)
-    real(real64), intent(in) :: vec(:)
-    real(real64) :: sorted(size(vec))
-    integer(int32) :: i, j
-    sorted = vec
-    do i = 1, size(vec)-1
-      do j = i+1, size(vec)
-        if (sorted(j) < sorted(i)) then
-          call swap(sorted(i), sorted(j))
-        end if
-      end do
-    end do
-  end function sort_vec
+    ! ============================================================
+    ! Test 4: 1×N case (single tissue)
+    ! ============================================================
+    subroutine test_single_tissue()
+        integer(int32), parameter :: n_genes=4, n_tissues=1
+        real(real64) :: expr(1,n_genes), norm(1,n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+        real(real64) :: sorted(n_genes)
 
-  !> Helper subroutine to swap two real values.
-  subroutine swap(a, b)
-    real(real64), intent(inout) :: a, b
-    real(real64) :: tmp
-    tmp = a
-    a = b
-    b = tmp
-  end subroutine swap
+        expr = reshape([3.0, 1.0, 4.0, 2.0], [1,n_genes])
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "1×N: ierr must be OK")
+
+        sorted = expr(1,[2,4,1,3])
+        call assert_equal_array_real(means, sorted, n_genes, TOL, "1×N: rank_means must equal sorted row")
+
+        ! Each tissue must be permutation of rank_means
+        call assert_equal_array_real(norm(1,[2,4,1,3]), means, n_genes, TOL, "1×N: result must match rank_means")
+    end subroutine
+
+
+    ! ============================================================
+    ! Test 5: N×1 case (single gene)
+    ! ============================================================
+    subroutine test_single_gene()
+        integer(int32), parameter :: n_genes=1, n_tissues=4
+        real(real64) :: expr(n_tissues,1), norm(n_tissues,1)
+        real(real64) :: tmp(1), means(1)
+        integer(int32) :: perm(1), ierr
+
+        expr(:,1) = [10.0_real64, 20.0_real64, 30.0_real64, 40.0_real64]
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "N×1: ierr must be OK")
+
+        ! All tissues get the same single rank mean
+        call assert_equal_real(means(1), sum(expr(:,1))/n_tissues, TOL, "N×1: rank mean must be average")
+        call assert_equal_array_real(norm(:,1), [means(1),means(1),means(1),means(1)], &
+                                     n_tissues, TOL, "N×1: normalized column must be constant")
+    end subroutine
+
+
+    ! ============================================================
+    ! Test 6: Simple 2×3 example with hand-computed expected values
+    ! ============================================================
+    subroutine test_simple_2x3()
+        integer(int32), parameter :: n_genes=3, n_tissues=2
+        real(real64) :: expr(n_tissues,n_genes), norm(n_tissues,n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+        real(real64) :: s1(3), s2(3), expected_means(3)
+
+        expr(1, :) = [3.0_real64,1.0_real64,2.0_real64]
+        expr(2, :) = [6.0_real64,4.0_real64,5.0_real64]
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "2×3: ierr must be OK")
+
+        expected_means = [2.5_real64, 3.5_real64, 4.5_real64]
+        call assert_equal_array_real(means, expected_means, n_genes, TOL, "2×3: rank_means correct")
+
+        ! Check each tissue is permutation of rank_means
+        s1 = norm(1,:)
+        s2 = norm(2,:)
+        call sort_real_ascending(s1, n_genes)
+        call sort_real_ascending(s2, n_genes)
+
+        call assert_equal_array_real(s1, expected_means, n_genes, TOL, "2×3: tissue 1 normalized correctly")
+        call assert_equal_array_real(s2, expected_means, n_genes, TOL, "2×3: tissue 2 normalized correctly")
+    end subroutine
+
+
+    ! ============================================================
+    ! Test 7: Ties
+    ! ============================================================
+    subroutine test_ties()
+        integer(int32), parameter :: n_genes=4, n_tissues=2
+        real(real64) :: expr(n_tissues,n_genes), norm(n_tissues,n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+        real(real64) :: s1(4), s2(4)
+
+        expr = reshape([1.0,2.0,2.0,3.0,  5.0,7.0,7.0,9.0], [n_tissues,n_genes])
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "ties: ierr must be OK")
+
+        s1 = norm(1,:)
+        s2 = norm(2,:)
+        call sort_real_ascending(s1, n_genes)
+        call sort_real_ascending(s2, n_genes)
+
+        call assert_equal_array_real(s1, means, n_genes, TOL, "ties: tissue 1 sorted equals rank_means")
+        call assert_equal_array_real(s2, means, n_genes, TOL, "ties: tissue 2 sorted equals rank_means")
+    end subroutine
+
+
+    ! ============================================================
+    ! Test 8: Already normalized input
+    ! ============================================================
+    subroutine test_already_normalized()
+        integer(int32), parameter :: n_genes=5, n_tissues=3
+        real(real64) :: expr(n_tissues,n_genes), norm(n_tissues,n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+        real(real64) :: sorted(n_genes)
+
+        sorted = [1.0,2.0,3.0,4.0,5.0]
+        expr(1,:) = sorted
+        expr(2,:) = sorted
+        expr(3,:) = sorted
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "already normalized: ierr must be OK")
+
+        call assert_equal_array_real(means, sorted, n_genes, TOL, "already normalized: rank_means unchanged")
+        call assert_equal_array_real(norm(1,:), sorted, n_genes, TOL, "already normalized: row 1 unchanged")
+        call assert_equal_array_real(norm(2,:), sorted, n_genes, TOL, "already normalized: row 2 unchanged")
+        call assert_equal_array_real(norm(3,:), sorted, n_genes, TOL, "already normalized: row 3 unchanged")
+    end subroutine
+
+
+    ! ============================================================
+    ! Test 9: Random deterministic input
+    ! ============================================================
+    subroutine test_random()
+        integer(int32), parameter :: n_genes=10, n_tissues=4
+        real(real64) :: expr(n_tissues,n_genes), norm(n_tissues,n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+        real(real64) :: row(n_genes)
+        integer :: t,i
+
+        ! Deterministic pseudo-random values
+        do t = 1, n_tissues
+            expr(t,:) = [( real(t*i,real64), i=1,n_genes )]
+        end do
+
+        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call assert_equal_int(ierr, ERR_OK, "random: ierr must be OK")
+
+        call assert_sorted_real(means, n_genes, "random: rank_means must be sorted")
+
+        do t = 1, n_tissues
+            row = norm(t,:)
+            call sort_real_ascending(row, n_genes)
+            call assert_equal_array_real(row, means, n_genes, TOL, "random: each tissue matches rank_means")
+        end do
+
+        call assert_no_nan_real(means, n_genes, "random: no NaN in rank_means")
+        call assert_no_inf_real(means, n_genes, "random: no Inf in rank_means")
+    end subroutine
 
 end module mod_test_quantile_normalization

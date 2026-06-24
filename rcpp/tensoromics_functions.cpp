@@ -1,14 +1,249 @@
 #include <Rcpp.h>
+
 using namespace Rcpp;
-
-
- 
 
 // ===================================================================
 // FORTRAN FUNCTIONS
 // ===================================================================
 
 extern "C" {
+
+void root_mean_sq_normalization_c(
+  int* n_genes,
+  int* n_replicates,
+  double* expr,
+  double* normalized_expr,
+  int* ierr
+);
+
+void normalize_by_std_dev_c(
+  int* n_genes,
+  int* n_replicates,
+  double* expr,
+  double* normalized_expr,
+  double* span,
+  int* degree,
+  int* ierr
+);
+
+void quantile_normalization_c(
+  int* n_genes,
+  int* n_replicates,
+  double* expr,
+  double* normalized_expr,
+  double* rank_means,
+  double* temp_col,
+  int* perm,
+  int* ierr
+);
+
+void log2_transformation_c(
+  int* n_genes,
+  int* n_tissues,
+  double* expr,
+  double* transformed_expr,
+  int* ierr
+);
+
+void calc_tiss_avg_c(
+  int* n_genes,
+  int* n_tissues,
+  int* reps_per_tissue,
+  double* expr,
+  double* tissue_averages,
+  int* ierr
+);
+
+void calc_fchange_c(
+  int* n_genes,
+  int* n_tissues,
+  int* n_pairs,
+  int* control_tissues,
+  int* condition_tissues,
+  double* expr,
+  double* normalized_expr,
+  int* ierr
+);
+
+void normalization_pipeline_c(
+  int* n_genes,
+  int* n_replicates,
+  double* expr,
+  double* log_transformed_expr,
+  int* reps_per_tissue,
+  int* n_tissues,
+  double* span,
+  int* degree,
+  int* use_quantile,
+  int* ierr
+);
+
+void compute_family_scaling_c(
+  int* n_genes,
+  int* n_families,
+  double* distances,
+  int* gene_to_fam,
+  double* dscale,
+  double* loess_x,
+  double* loess_y,
+  int* indices_used,
+  int* ierr
+);
+
+void compute_family_scaling_expert_c(
+  int* n_genes,
+  int* n_families,
+  double* distances,
+  int* gene_to_fam,
+  double* dscale,
+  double* loess_x,
+  double* loess_y,
+  int* indices_used,
+  int* tmp_perm,
+  int* tmp_stack_left,
+  int* tmp_stack_right,
+  int* tmp_iv,
+  int* liv,
+  double* tmp_wv,
+  int* lv,
+  double* tmp_diagl,
+  double* tmp_w_init,
+  double* tmp_z_mat,
+  double* tmp_rw,
+  double* tmp_ww,
+  double* tmp_res,
+  int* tmp_pi,
+  double* tmp_yhat,
+  double* span,
+  int* degree,
+  int* mode,
+  int* n_iters,
+  double* low_sd_cutoff,
+  int* excluded_low_sd,
+  double* tmp_means_aux,
+  int* ierr
+);
+
+void compute_rdi_c(
+  int* n_genes,
+  int* n_families,
+  double* distances,
+  int* gene_to_fam,
+  double* dscale,
+  double* rdi,
+  double* sorted_rdi,
+  int* perm,
+  int* stack_left,
+  int* stack_right,
+  int* ierr
+);
+
+void identify_outliers_c(
+  int* n_genes,
+  double* rdi,
+  double* sorted_rdi,
+  int* perm,
+  int* is_outlier_int,
+  double* threshold,
+  double* p_values,
+  double* percentile,
+  int* ierr
+);
+
+void detect_outliers_c(
+  int* n_genes,
+  int* n_families,
+  double* distances,
+  int* gene_to_fam,
+  double* work_array,
+  int* perm,
+  int* stack_left,
+  int* stack_right,
+  int* is_outlier_int,
+  double* loess_x,
+  double* loess_y,
+  int* loess_n,
+  double* p_values,
+  int* ierr,
+  double* percentile
+);
+
+void tox_loess_required_workspace_c(
+  int* d,
+  int* nvmax,
+  int* liv,
+  int* lv,
+  int* setlf,
+  int* ierr
+);
+  
+void loess_fit_plain_c(
+  int* n,
+  double* x,
+  double* y,
+  double* w,
+  double* z,
+  double* span,
+  int* degree,
+  int* nvmax,
+  int* infl,
+  int* setlf,
+  int* iv,
+  int* liv,
+  double* wv,
+  int* lv,
+  double* diagl,
+  double* yhat,
+  int* ierr
+);
+
+void loess_fit_robust_c(
+  int* n,
+  double* x,
+  double* y,
+  double* w,
+  double* z,
+  double* span,
+  int* degree,
+  int* nvmax,
+  int* infl,
+  int* setlf,
+  int* n_iters,
+  int* iv,
+  int* liv,
+  double* wv,
+  int* lv,
+  double* diagl,
+  double* rw,
+  double* ww,
+  double* res,
+  int* pi,
+  double* yhat,
+  int* ierr
+);
+
+void tox_loess_c(
+  double* x,
+  double* y,
+  int* n,
+  double* span,
+  int* degree,
+  double* yhat,
+  int* mode,
+  int* n_iters,
+  int* ierr
+);
+
+void empirical_p_values_c(
+  int* n_genes,
+  double* rdi,
+  double* sorted_rdi,
+  int* perm,
+  double* p_values,
+  double* c_const,
+  int* ierr
+);
+
 void compute_edf_c(
   const double* values,
   const int* n_values,
@@ -239,60 +474,9 @@ void omics_field_RAP_projection_c(
   int* ierr
 );
 
-void normalize_by_std_dev_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void quantile_normalization_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  int* ierr
-);
-
-void log2_transformation_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
 void normalize_unit_length_c(
   double* vector,
   const int* n_dims,
-  int* ierr
-);
-
-void calc_tiss_avg_c(
-  const int* n_genes,
-  const int* n_grps,
-  const int* group_s,
-  const int* group_c,
-  const double* input_matrix,
-  double* output_matrix,
-  int* ierr
-);
-
-void calc_fchange_c(
-  const int* n_genes,
-  const int* n_cols,
-  const int* n_pairs,
-  const int* control_cols,
-  const int* cond_cols,
-  const double* input_matrix,
-  double* output_matrix,
   int* ierr
 );
 
@@ -517,28 +701,6 @@ void construct_neighborhoods_c(
   int* ierr
 );
 
-    
-
-void normalization_pipeline_c(
-  const int* n_genes,
-  const int* n_tissues,
-  const double* input_matrix,
-  double* buf_stddev,
-  double* buf_quant,
-  double* buf_avg,
-  double* buf_log,
-  double* temp_col,
-  double* rank_means,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  const int* max_stack,
-  const int* group_s,
-  const int* group_c,
-  const int* n_grps,
-  int* ierr
-);
-
 void normalize_variable_timeseries_C(
   const double* v,
   double* v_norm,
@@ -564,73 +726,6 @@ void normalize_all_trajectories_C(
   const int* n_timepoints,
   int* ierr,
   int* status
-);
-
-void compute_family_scaling_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* ierr
-);
-
-void compute_family_scaling_expert_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* dscale,
-  double* loess_x,
-  double* loess_y,
-  int* indices_used,
-  int* perm_tmp,
-  int* stack_left_tmp,
-  int* stack_right_tmp,
-  double* family_distances,
-  int* ierr
-);
-
-void compute_rdi_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  const double* dscale,
-  double* rdi,
-  double* sorted_rdi,
-  int* perm,
-  int* stack_left,
-  int* stack_right
-);
-
-void identify_outliers_c(
-  const int* n_genes,
-  const double* rdi,
-  const double* sorted_rdi,
-  int* is_outlier_int,
-  double* threshold,
-  const double* percentile
-);
-
-void detect_outliers_c(
-  const int* n_genes,
-  const int* n_families,
-  const double* distances,
-  const int* gene_to_fam,
-  double* work_array,
-  int* perm,
-  int* stack_left,
-  int* stack_right,
-  int* is_outlier_int,
-  double* loess_x,
-  double* loess_y,
-  int* loess_n,
-  const double* percentile,
-  int* ierr
 );
 
 void euclidean_distance_c(
@@ -2057,89 +2152,6 @@ List tox_calculate_tissue_versatility_rcpp(NumericMatrix expression_vectors,
 }
 
 
-//' Normalize gene expression values by standard deviation
-//'
-//' @param input Numeric matrix (genes x tissues)
-//' @return List with normalized output matrix 
-// [[Rcpp::export]]
-List tox_normalize_by_std_dev_rcpp(NumericMatrix input) {
-
-    int n_genes = input.nrow();
-    int n_tissues = input.ncol();
-    NumericMatrix output(n_genes, n_tissues);
-    int ierr = 0;
-
-    normalize_by_std_dev_c(&n_genes,
-                           &n_tissues,
-                           input.begin(),
-                           output.begin(),
-                           &ierr);
-
-    return List::create(Named("output_vector") = output,
-                        Named("ierr") = ierr);
-}
-
-
-//' Perform quantile normalization of gene expression values
-//'
-//' @param input Numeric matrix (genes x tissues)
-//' @return List with quantile-normalized output matrix and intermediate results
-// [[Rcpp::export]]
-List tox_quantile_normalization_rcpp(NumericMatrix input) {
-
-    int n_genes = input.nrow();
-    int n_tissues = input.ncol();
-
-    int max_stack = static_cast<int>(std::ceil(std::log2(n_genes)) + 10);
-
-    NumericMatrix output(n_genes, n_tissues);
-    NumericVector temp_col(n_genes);
-    NumericVector rank_means(n_genes);
-    IntegerVector perm(n_genes);
-    IntegerVector stack_left(max_stack);
-    IntegerVector stack_right(max_stack);
-    int ierr = 0;
-
-    quantile_normalization_c(&n_genes,
-                             &n_tissues,
-                             input.begin(),
-                             output.begin(),
-                             temp_col.begin(),
-                             rank_means.begin(),
-                             perm.begin(),
-                             stack_left.begin(),
-                             stack_right.begin(),
-                             &max_stack,
-                             &ierr);
-
-    return List::create(Named("output_vector") = output,
-                        Named("rank_means") = rank_means,
-                        Named("perm") = perm,
-                        Named("ierr") = ierr);
-}
-
-//' Apply log2(x + 1) transformation to gene expression values
-//'
-//' @param input Numeric matrix (genes x tissues)
-//' @return List with log2-transformed output matrix
-// [[Rcpp::export]]
-List tox_log2_transformation_rcpp(NumericMatrix input) {
-
-    int n_genes = input.nrow();
-    int n_tissues = input.ncol();
-    NumericMatrix output(n_genes, n_tissues);
-    int ierr = 0;
-
-    log2_transformation_c(&n_genes,
-                          &n_tissues,
-                          input.begin(),
-                          output.begin(),
-                          &ierr);
-
-    return List::create(Named("output_vector") = output,
-                        Named("ierr") = ierr);
-}
-
 //' Normalize a numeric vector to unit length
 //'
 //' @param vector Numeric vector
@@ -2191,122 +2203,6 @@ List tox_compute_baselines_factor_dependent_rcpp(NumericVector factor,
                       Named("dependent_baseline") = dependent_baseline,
                       Named("ierr") = ierr);
 }
-
-//' Calculate average expression across replicates for each tissue group
-//'
-//' @param input Numeric matrix (genes x samples)
-//' @param group_s Integer vector: start column index for each group
-//' @param group_c Integer vector: number of columns per group
-//' @return List with averaged output matrix 
-// [[Rcpp::export]]
-List tox_calc_tiss_avg_rcpp(NumericMatrix input,
-                            IntegerVector group_s,
-                            IntegerVector group_c) {
-
-    int n_gene = input.nrow();
-    int n_grps = group_s.size();
-    NumericMatrix output(n_gene, n_grps);
-    int ierr = 0;
-
-    calc_tiss_avg_c(&n_gene,
-                    &n_grps,
-                    group_s.begin(),
-                    group_c.begin(),
-                    input.begin(),
-                    output.begin(),
-                    &ierr);
-
-    return List::create(Named("output_vector") = output,
-                        Named("ierr") = ierr);
-}
-
-
-//' Calculate fold change between control and condition columns
-//'
-//' @param input Numeric matrix (genes x samples)
-//' @param control_cols Integer vector of control column indices
-//' @param cond_cols Integer vector of condition column indices
-//' @return List with fold change output matrix 
-// [[Rcpp::export]]
-List tox_calc_fchange_rcpp(NumericMatrix input,
-                           IntegerVector control_cols,
-                           IntegerVector cond_cols) {
-
-    int n_genes = input.nrow();
-    int n_cols = input.ncol();
-    int n_pairs = control_cols.size();
-    NumericMatrix output(n_genes, n_pairs);
-    int ierr = 0;
-
-    calc_fchange_c(&n_genes,
-                   &n_cols,
-                   &n_pairs,
-                   control_cols.begin(),
-                   cond_cols.begin(),
-                   input.begin(),
-                   output.begin(),
-                   &ierr);
-
-    return List::create(Named("output_vector") = output,
-                        Named("ierr") = ierr);
-}
-
-
-//' Complete normalization pipeline for gene expression data
-//'
-//' @param input Numeric matrix (genes x tissues)
-//' @param group_s Integer vector: start column index for each group
-//' @param group_c Integer vector: number of columns per group
-//' @return List with pipeline output matrices
-// [[Rcpp::export]]
-List tox_normalization_pipeline_rcpp(NumericMatrix input,
-                                     IntegerVector group_s,
-                                     IntegerVector group_c) {
-
-    int n_genes = input.nrow();
-    int n_tissues = input.ncol();
-    int n_grps = group_s.size();
-
-    int max_stack = static_cast<int>(std::ceil(std::log2(n_genes)) + 10);
-
-    NumericMatrix buf_stddev(n_genes, n_tissues);
-    NumericMatrix buf_quant(n_genes, n_tissues);
-    NumericMatrix buf_avg(n_genes, n_grps);
-    NumericMatrix buf_log(n_genes, n_grps);
-    NumericVector temp_col(n_genes);
-    NumericVector rank_means(n_genes);
-    IntegerVector perm(n_genes);
-    IntegerVector stack_left(max_stack);
-    IntegerVector stack_right(max_stack);
-    int ierr = 0;
-
-    normalization_pipeline_c(&n_genes,
-                             &n_tissues,
-                             input.begin(),
-                             buf_stddev.begin(),
-                             buf_quant.begin(),
-                             buf_avg.begin(),
-                             buf_log.begin(),
-                             temp_col.begin(),
-                             rank_means.begin(),
-                             perm.begin(),
-                             stack_left.begin(),
-                             stack_right.begin(),
-                             &max_stack,
-                             group_s.begin(),
-                             group_c.begin(),
-                             &n_grps,
-                             &ierr);
-
-    return List::create(Named("buf_stddev") = buf_stddev,
-                        Named("buf_quant") = buf_quant,
-                        Named("buf_avg") = buf_avg,
-                        Named("buf_log") = buf_log,
-                        Named("rank_means") = rank_means,
-                        Named("perm") = perm,
-                        Named("ierr") = ierr);
-}
-
 
 //' Normalize a single time series using min-max scaling
 //'
@@ -2837,209 +2733,6 @@ List tox_filter_paralogs_by_pattern_subfunctionalization_rcpp(NumericVector gene
   }
 
 
-//' Compute family scaling factors using LOESS smoothing
-//'
-//' @param distances Numeric vector of gene distances
-//' @param gene_to_fam Integer vector mapping genes to family indices
-//' @param n_families Integer number of families
-//' @return List with scaling factors, and loess fit
-// [[Rcpp::export]]
-List tox_compute_family_scaling_rcpp(NumericVector distances,
-                                     IntegerVector gene_to_fam,
-                                     int n_families) {
-    int n_genes = distances.size();
-    NumericVector dscale(n_families);
-    NumericVector loess_x(n_families);
-    NumericVector loess_y(n_families);
-    IntegerVector indices_used(n_families);
-    int ierr = 0;
-
-    compute_family_scaling_c(&n_genes,
-                             &n_families,
-                             distances.begin(),
-                             gene_to_fam.begin(),
-                             dscale.begin(),
-                             loess_x.begin(),
-                             loess_y.begin(),
-                             indices_used.begin(),
-                             &ierr);
-
-    return List::create(Named("dscale") = dscale,
-                        Named("loess_x") = loess_x,
-                        Named("loess_y") = loess_y,
-                        Named("indices_used") = indices_used,
-                        Named("ierr") = ierr);
-}
-
-//' Expert version of compute_family_scaling with user-provided work arrays
-//'
-//' @param n_families Integer number of families
-//' @param distances Numeric vector of gene distances
-//' @param gene_to_fam Integer vector mapping genes to family indices
-//' @param perm_tmp Pre-allocated permutation array
-//' @param stack_left_tmp Pre-allocated stack array (left)
-//' @param stack_right_tmp Pre-allocated stack array (right)
-//' @param family_distances Pre-allocated work array for family distances
-//' @return List with scaling factors, loess fit, amd work array
-// [[Rcpp::export]]
-List tox_compute_family_scaling_expert_rcpp(int n_families,
-                                            NumericVector distances,
-                                            IntegerVector gene_to_fam,
-                                            IntegerVector perm_tmp,
-                                            IntegerVector stack_left_tmp,
-                                            IntegerVector stack_right_tmp,
-                                            NumericVector family_distances) {
-    int n_genes = distances.size();
-    NumericVector dscale(n_families);
-    NumericVector loess_x(n_families);
-    NumericVector loess_y(n_families);
-    IntegerVector indices_used(n_families);
-    int ierr = 0;
-
-    compute_family_scaling_expert_c(&n_genes,
-                                    &n_families,
-                                    distances.begin(),
-                                    gene_to_fam.begin(),
-                                    dscale.begin(),
-                                    loess_x.begin(),
-                                    loess_y.begin(),
-                                    indices_used.begin(),
-                                    perm_tmp.begin(),
-                                    stack_left_tmp.begin(),
-                                    stack_right_tmp.begin(),
-                                    family_distances.begin(),
-                                    &ierr);
-
-    return List::create(Named("dscale") = dscale,
-                        Named("loess_x") = loess_x,
-                        Named("loess_y") = loess_y,
-                        Named("indices_used") = indices_used,
-                        Named("perm_tmp") = perm_tmp,
-                        Named("stack_left_tmp") = stack_left_tmp,
-                        Named("stack_right_tmp") = stack_right_tmp,
-                        Named("family_distances") = family_distances,
-                        Named("ierr") = ierr);
-}
-
-
-//' Compute Residual Distance Index (RDI) for genes and identify outliers
-//'
-//'@param distances Numeric vector of gene distances
-//' @param gene_to_fam Integer vector mapping genes to family indices
-//' @param dscale Numeric vector of family scaling factors
-//'@return List with RDI values, sorted RDI, permutation, and stack arrays
-// [[Rcpp::export]]
-List tox_compute_rdi_rcpp(NumericVector distances,
-                          IntegerVector gene_to_fam,
-                          NumericVector dscale) {
-
-    int n_genes = distances.size();
-    int n_families = dscale.size();
-    NumericVector rdi(n_genes);
-    NumericVector sorted_rdi(n_genes);
-    IntegerVector perm(n_genes);
-    IntegerVector stack_left(n_genes);
-    IntegerVector stack_right(n_genes);
-
-    compute_rdi_c(&n_genes,
-                  &n_families,
-                  distances.begin(),
-                  gene_to_fam.begin(),
-                  dscale.begin(),
-                  rdi.begin(),
-                  sorted_rdi.begin(),
-                  perm.begin(),
-                  stack_left.begin(),
-                  stack_right.begin());
-
-    return List::create(Named("rdi") = rdi,
-                        Named("sorted_rdi") = sorted_rdi,
-                        Named("perm") = perm,
-                        Named("stack_left") = stack_left,
-                        Named("stack_right") = stack_right);
-}
-//' Identify outliers based on RDI percentiles
-//'
-//' @param rdi Numeric vector of RDI values
-//' @param percentile Percentile threshold
-//' @return List with logical outlier vector and threshold value
-// [[Rcpp::export]]
-List tox_identify_outliers_rcpp(NumericVector rdi,
-                                double percentile) {
-    int n_genes = rdi.size();
-    NumericVector sorted_rdi = clone(rdi);
-    std::sort(sorted_rdi.begin(), sorted_rdi.end());
-    IntegerVector is_outlier_int(n_genes);
-    double threshold = 0.0;
-
-    identify_outliers_c(&n_genes,
-                        rdi.begin(),
-                        sorted_rdi.begin(),
-                        is_outlier_int.begin(),
-                        &threshold,
-                        &percentile);
-
-    // Convert integer 0/1 flags to logical vector for R
-    LogicalVector is_outlier(n_genes);
-    for (int i = 0; i < n_genes; ++i) {
-        is_outlier[i] = (is_outlier_int[i] != 0);
-    }
-
-    return List::create(Named("is_outlier") = is_outlier,
-                        Named("threshold") = threshold);
-}
-
-//' Complete outlier detection workflow
-//'
-//' @param distances Numeric vector of gene distances
-//' @param gene_to_fam Integer vector mapping genes to family indices
-//' @param n_families Integer number of families
-//' @param percentile Percentile threshold for outlier detection
-//' @return List with outlier flags, and loess fit
-// [[Rcpp::export]]
-List tox_detect_outliers_rcpp(NumericVector distances,
-                              IntegerVector gene_to_fam,
-                              int n_families,
-                              double percentile) {
-
-    int n_genes = distances.size();
-    NumericVector work_array(n_genes);
-    IntegerVector perm(n_genes);
-    IntegerVector stack_left(n_genes);
-    IntegerVector stack_right(n_genes);
-    IntegerVector is_outlier_int(n_genes);
-    NumericVector loess_x(n_families);
-    NumericVector loess_y(n_families);
-    IntegerVector loess_n(n_families);
-    int ierr = 0;
-
-    detect_outliers_c(&n_genes,
-                      &n_families,
-                      distances.begin(),
-                      gene_to_fam.begin(),
-                      work_array.begin(),
-                      perm.begin(),
-                      stack_left.begin(),
-                      stack_right.begin(),
-                      is_outlier_int.begin(),
-                      loess_x.begin(),
-                      loess_y.begin(),
-                      loess_n.begin(),
-                      &percentile,
-                      &ierr);
-
-    // Convert integer flags to logical vector for R
-    LogicalVector is_outlier(n_genes);
-    for (int i = 0; i < n_genes; ++i) {
-        is_outlier[i] = (is_outlier_int[i] != 0);
-    }
-
-    return List::create(Named("is_outlier") = is_outlier,
-                        Named("loess_x") = loess_x,
-                        Named("loess_y") = loess_y,
-                        Named("loess_n") = loess_n,
-                        Named("ierr") = ierr);
-}
 //' Build a k-d tree index for efficient nearest neighbor search
 //'
 //' @param X Numeric matrix of data points (dimensions x points)
@@ -4595,4 +4288,471 @@ List tox_compute_edf_expert_rcpp(NumericVector values,
                          Named("cdf_values") = cdf_values,
                          Named("n_unique") = n_unique,
                          Named("ierr") = ierr);
+}
+
+/**
+ * Calculate normalization by standard deviation
+ */
+// [[Rcpp::export]]
+List tox_root_mean_sq_normalization_rcpp(NumericMatrix expr) {
+    int n_genes = expr.ncol();
+    int n_replicates = expr.nrow();
+    NumericMatrix output(n_replicates, n_genes);
+    int ierr = 0;
+
+    root_mean_sq_normalization_c(&n_genes, &n_replicates, expr.begin(), output.begin(), &ierr);
+
+    return List::create(
+        Named("normalized_expr") = output,
+        Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+List tox_normalize_by_std_dev_rcpp(NumericMatrix expr, double span, int degree) {
+    int n_genes = expr.ncol();
+    int n_replicates = expr.nrow();
+    NumericMatrix output(n_replicates, n_genes);
+    NumericVector loess_x(n_genes);
+    NumericVector loess_y(n_genes);
+    NumericVector yhat_global(n_genes);
+    IntegerVector indices_used(n_genes);
+    int ierr = 0;
+
+    normalize_by_std_dev_c(&n_genes, &n_replicates, expr.begin(), output.begin(), &span, &degree, &ierr);
+
+    return List::create(
+        Named("normalized_expr") = output,
+        Named("ierr") = ierr
+    );
+}
+
+/**
+ * Perform quantile normalization
+ */
+// [[Rcpp::export]]
+List tox_quantile_normalization_rcpp(NumericMatrix expr) {
+    int n_genes = expr.ncol();
+    int n_tissues = expr.nrow();
+
+    int max_stack = static_cast<int>(std::ceil(std::log2(n_genes)) + 10);
+
+    NumericMatrix output(n_tissues, n_genes);
+    NumericVector temp_col(n_genes);
+    NumericVector rank_means(n_genes);
+    IntegerVector perm(n_genes);
+    IntegerVector stack_left(max_stack);
+    IntegerVector stack_right(max_stack);
+    int ierr = 0;
+
+    quantile_normalization_c(&n_genes, &n_tissues, expr.begin(), output.begin(),
+                             rank_means.begin(), temp_col.begin(), perm.begin(), &ierr);
+
+    return List::create(
+        Named("normalized_expr")     = output,
+        Named("rank_means") = rank_means,
+        Named("perm")       = perm,
+        Named("ierr")       = ierr
+    );
+}
+
+/**
+ * Perform log2 transformation
+ */
+// [[Rcpp::export]]
+List tox_log2_transformation_rcpp(NumericMatrix expr) {
+    int n_genes = expr.ncol();
+    int n_tissues = expr.nrow();
+    NumericMatrix output(n_tissues, n_genes);
+    int ierr = 0;
+
+    log2_transformation_c(&n_genes, &n_tissues, expr.begin(), output.begin(), &ierr);
+
+    return List::create(
+        Named("transformed_expr") = output,
+        Named("ierr") = ierr
+    );
+}
+
+/**
+ * Calculate tissue averages
+ */
+// [[Rcpp::export]]
+List tox_calc_tiss_avg_rcpp(NumericMatrix expr, IntegerVector reps_per_tissue) {
+    int n_gene = expr.ncol();
+    int n_tissues = reps_per_tissue.size();
+    NumericMatrix output(n_tissues, n_gene);
+    int ierr = 0;
+
+    calc_tiss_avg_c(&n_gene, &n_tissues, reps_per_tissue.begin(), expr.begin(), output.begin(), &ierr);
+    return List::create(
+        Named("tissue_averages") = output,
+        Named("ierr") = ierr
+    );
+}
+
+/**
+ * Calculate fold change
+ */
+// [[Rcpp::export]]
+List tox_calc_fchange_rcpp(NumericMatrix expr, IntegerVector control_tissues, IntegerVector condition_tissues) {
+    int n_genes = expr.ncol();
+    int n_tissues = expr.nrow();
+    int n_pairs = control_tissues.size();
+    NumericMatrix output(n_pairs, n_genes);
+    int ierr = 0;
+
+    calc_fchange_c(&n_genes, &n_tissues, &n_pairs, control_tissues.begin(), condition_tissues.begin(), expr.begin(), output.begin(), &ierr);
+    return List::create(
+        Named("fold_changes") = output,
+        Named("ierr") = ierr
+    );
+}
+
+/**
+ * Perform normalization pipeline
+ */
+// [[Rcpp::export]]
+List tox_normalization_pipeline_rcpp(NumericMatrix expr, IntegerVector reps_per_tissue, double span, int degree, int use_quantile) {
+    int n_genes = expr.ncol();
+    int n_replicates = expr.nrow();
+    int n_tissues = reps_per_tissue.size();
+
+    NumericMatrix log_transformed_expr(n_tissues, n_genes);
+    int ierr = 0;
+
+    normalization_pipeline_c(&n_genes, &n_replicates, expr.begin(),
+                              log_transformed_expr.begin(),
+                              reps_per_tissue.begin(), &n_tissues,
+                              &span, &degree, &use_quantile, &ierr);
+
+    return List::create(
+        Named("normalized_expr") = log_transformed_expr,
+        Named("ierr") = ierr
+    );
+}
+
+// ===================================================================
+// OUTLIER DETECTION WRAPPERS
+// ===================================================================
+
+// [[Rcpp::export]]
+List tox_compute_family_scaling_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families) {
+  int n_genes = distances.size();
+  NumericVector dscale(n_families);
+  NumericVector loess_x(n_families);
+  NumericVector loess_y(n_families);
+  IntegerVector indices_used(n_families);
+  int ierr = 0;
+
+  compute_family_scaling_c(
+    &n_genes, &n_families,
+    distances.begin(),
+    gene_to_fam.begin(),
+    dscale.begin(),
+    loess_x.begin(),
+    loess_y.begin(),
+    indices_used.begin(),
+    &ierr
+  );
+
+  return List::create(
+    Named("dscale") = dscale,
+    Named("loess_x") = loess_x,
+    Named("loess_y") = loess_y,
+    Named("indices_used") = indices_used,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_compute_family_scaling_expert_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families,
+                                            IntegerVector perm_tmp, IntegerVector stack_left_tmp, IntegerVector stack_right_tmp,
+                                            IntegerVector iv, int liv, int lv, double span, int degree, int mode, int n_iters) {
+    int n_genes = distances.size();
+    NumericVector dscale(n_families);
+    NumericVector loess_x(n_families);
+    NumericVector loess_y(n_families);
+    IntegerVector indices_used(n_families);
+    IntegerVector excluded_low_sd(n_families);
+    NumericVector wv(lv);
+    NumericVector diagl(n_genes);
+    NumericVector w_init(n_genes);
+    NumericVector z_mat(n_genes);
+    NumericVector rw(n_genes);
+    NumericVector ww(n_genes);
+    NumericVector res(n_genes);
+    NumericVector yhat_tmp(n_genes);
+    IntegerVector pi(n_genes);
+    NumericVector means_aux(n_families);  
+
+    double low_sd_cutoff = 0.0;
+    int ierr = 0;
+
+    compute_family_scaling_expert_c(
+        &n_genes, &n_families,
+        distances.begin(),
+        gene_to_fam.begin(),
+        dscale.begin(),
+        loess_x.begin(), loess_y.begin(), indices_used.begin(),
+        perm_tmp.begin(), stack_left_tmp.begin(), stack_right_tmp.begin(),
+        iv.begin(), &liv,   
+        wv.begin(), &lv,    
+        diagl.begin(), w_init.begin(), z_mat.begin(),
+        rw.begin(), ww.begin(), res.begin(), pi.begin(), yhat_tmp.begin(),
+        &span, &degree, &mode, &n_iters, &low_sd_cutoff, excluded_low_sd.begin(), means_aux.begin(),
+        &ierr
+    );
+
+    return List::create(
+        Named("dscale") = dscale,
+        Named("loess_x") = loess_x,
+        Named("loess_y") = loess_y,
+        Named("indices_used") = indices_used,
+        Named("excluded_low_sd") = excluded_low_sd,
+        Named("means_aux") = means_aux,
+        Named("low_sd_cutoff") = low_sd_cutoff,
+        Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+List tox_compute_rdi_rcpp(NumericVector distances, IntegerVector gene_to_fam, NumericVector dscale) {
+  int n_genes = distances.size();
+  int n_families = dscale.size();
+  NumericVector rdi(n_genes);
+  NumericVector sorted_rdi(n_genes);
+  IntegerVector perm(n_genes);
+  IntegerVector stack_left(n_genes);
+  IntegerVector stack_right(n_genes);
+  int ierr = 0;
+
+  compute_rdi_c(
+    &n_genes, &n_families,
+    distances.begin(),
+    gene_to_fam.begin(),
+    dscale.begin(),
+    rdi.begin(), sorted_rdi.begin(),
+    perm.begin(), stack_left.begin(), stack_right.begin(), &ierr
+  );
+  return List::create(
+    Named("rdi") = rdi,
+    Named("sorted_rdi") = sorted_rdi,
+    Named("perm") = perm,
+    Named("stack_left") = stack_left,
+    Named("stack_right") = stack_right,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
+  int n_genes = rdi.size();
+  NumericVector sorted_rdi = clone(rdi);
+
+  // clamp negatives to 0 
+  std::transform(sorted_rdi.begin(), sorted_rdi.end(), sorted_rdi.begin(),
+                 [](double v) { return v < 0.0 ? 0.0 : v; });
+
+  // 0-based indices
+  IntegerVector perm(n_genes);
+  std::iota(perm.begin(), perm.end(), 0);
+
+  std::sort(perm.begin(), perm.end(), [&](int i, int j) {
+    return sorted_rdi[i] < sorted_rdi[j];
+  });
+
+  // 1-based 
+  for (int k = 0; k < n_genes; ++k) perm[k] += 1;
+
+  IntegerVector is_outlier_int(n_genes);
+  double threshold = 0.0;
+  NumericVector p_values(n_genes);
+  int ierr = 0;
+
+  identify_outliers_c(
+    &n_genes,
+    rdi.begin(), sorted_rdi.begin(), perm.begin(),
+    is_outlier_int.begin(),
+    &threshold, p_values.begin(),
+    &percentile, &ierr
+  );
+
+  // Convert integer 0/1 flags to logical vector for R
+  LogicalVector is_outlier(n_genes);
+  for (int i = 0; i < n_genes; ++i) {
+    is_outlier[i] = (is_outlier_int[i] != 0);
+  }
+
+  return List::create(
+    Named("is_outlier") = is_outlier,
+    Named("threshold") = threshold,
+    Named("p_values") = p_values,
+    Named("perm") = perm,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families, double percentile) {
+  int n_genes = distances.size();
+  NumericVector work_array(n_genes);
+  NumericVector p_values(n_genes);
+  IntegerVector perm(n_genes);
+  IntegerVector stack_left(n_genes);
+  IntegerVector stack_right(n_genes);
+  IntegerVector is_outlier_int(n_genes);
+  NumericVector loess_x(n_families);
+  NumericVector loess_y(n_families);
+  IntegerVector loess_n(n_families);
+  int ierr = 0;
+
+  detect_outliers_c(
+    &n_genes, &n_families,
+    distances.begin(), gene_to_fam.begin(),
+    work_array.begin(),
+    perm.begin(), stack_left.begin(), stack_right.begin(),
+    is_outlier_int.begin(),
+    loess_x.begin(), loess_y.begin(), loess_n.begin(),
+    p_values.begin(), &ierr,
+    &percentile
+  );
+
+  // Convert integer flags to logical vector for R
+  LogicalVector is_outlier(n_genes);
+  for (int i = 0; i < n_genes; ++i) {
+    is_outlier[i] = (is_outlier_int[i] != 0);
+  }
+
+  return List::create(
+    Named("is_outlier") = is_outlier,
+    Named("loess_x") = loess_x,
+    Named("loess_y") = loess_y,
+    Named("loess_n") = loess_n,
+    Named("p_values") = p_values,
+    Named("ierr") = ierr
+  );
+}
+
+// [[Rcpp::export]]
+List tox_loess_required_workspace_rcpp(int d, int nvmax, bool setlf) {
+    int liv = 0;
+    int lv = 0;
+    int setlf_int = setlf ? 1 : 0;
+    int ierr = 0;
+
+    tox_loess_required_workspace_c(&d, &nvmax, &liv, &lv, &setlf_int, &ierr);
+
+    return List::create(
+        Named("liv") = liv,
+        Named("lv")  = lv,
+        Named("ierr")  = ierr
+    );
+}
+
+// [[Rcpp::export]]
+List loess_fit_plain_rcpp(NumericVector x, NumericVector y, NumericVector w, NumericVector z,
+                         double span, int degree, int nvmax, bool infl, bool setlf,
+                         IntegerVector iv, NumericVector wv) {
+    int n = x.length();
+    int liv = iv.length();
+    int lv = wv.length();
+    int infl_int = infl ? 1 : 0;
+    int setlf_int = setlf ? 1 : 0;
+    int ierr = 0;
+
+    NumericVector yhat(n);
+    NumericVector diagl(n); // Array auxiliar para la matriz hat
+
+    loess_fit_plain_c(&n, x.begin(), y.begin(), w.begin(), z.begin(),
+                      &span, &degree, &nvmax, &infl_int, &setlf_int,
+                      iv.begin(), &liv, wv.begin(), &lv,
+                      diagl.begin(), yhat.begin(), &ierr);
+
+    return List::create(
+        Named("yhat") = yhat,
+        Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+List loess_fit_robust_rcpp(NumericVector x, NumericVector y, NumericVector w, NumericVector z,
+                          double span, int degree, int nvmax, bool infl, bool setlf, int n_iters,
+                          IntegerVector iv, NumericVector wv, NumericVector rw, 
+                          NumericVector ww, NumericVector res, IntegerVector pi) {
+    int n = x.length();
+    int liv = iv.length();
+    int lv = wv.length();
+    int infl_int = infl ? 1 : 0;
+    int setlf_int = setlf ? 1 : 0;
+    int ierr = 0;
+
+    NumericVector yhat(n);
+    NumericVector diagl(n);
+
+    loess_fit_robust_c(&n, x.begin(), y.begin(), w.begin(), z.begin(),
+                       &span, &degree, &nvmax, &infl_int, &setlf_int,
+                       &n_iters, iv.begin(), &liv, wv.begin(), &lv,
+                       diagl.begin(), rw.begin(), ww.begin(), res.begin(), pi.begin(),
+                       yhat.begin(), &ierr);
+
+    return List::create(
+        Named("yhat") = yhat,
+        Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+List tox_loess_rcpp(NumericVector x, NumericVector y, double span, int degree, 
+                   int mode, int n_iters) {
+    int n = x.length();
+    int ierr = 0;
+    NumericVector yhat(n);
+
+    tox_loess_c(x.begin(), y.begin(), &n, &span, &degree, 
+                yhat.begin(), &mode, &n_iters, &ierr);
+
+    return List::create(
+        Named("yhat") = yhat,
+        Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+NumericVector tox_empirical_p_values_rcpp(
+    Rcpp::NumericVector distribution,
+    double c_const
+) {
+    int n_genes = distribution.size();
+    Rcpp::NumericVector p_values(n_genes);
+    NumericVector sorted_rdi = clone(distribution);
+
+    // clamp negatives to 0 
+    std::transform(sorted_rdi.begin(), sorted_rdi.end(), sorted_rdi.begin(),
+                    [](double v) { return v < 0.0 ? 0.0 : v; });
+
+    // 0-based indices
+    IntegerVector perm(n_genes);
+    std::iota(perm.begin(), perm.end(), 0);
+
+    std::sort(perm.begin(), perm.end(), [&](int i, int j) {
+        return sorted_rdi[i] < sorted_rdi[j];
+    });
+
+    // 1-based 
+    for (int k = 0; k < n_genes; ++k) perm[k] += 1;
+    
+    int ierr = 0;
+
+    empirical_p_values_c(
+        &n_genes,
+        distribution.begin(),
+        sorted_rdi.begin(),
+        perm.begin(),
+        p_values.begin(),
+        &c_const,
+        &ierr
+    );
+
+    return p_values;
 }
