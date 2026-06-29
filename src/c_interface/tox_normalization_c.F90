@@ -35,7 +35,7 @@ contains
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vector)
         M_CHECK_NON_NULL(n_dims)
-        call  normalize_unit_length(&
+        call normalize_unit_length(&
             vector = vector,&
             n_dims = n_dims,&
             ierr = ierr&

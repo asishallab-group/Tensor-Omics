@@ -1,13 +1,56 @@
 import warnings
+warnings.simplefilter("ignore")
+
+
+def eval_expr(expr: str):
+    expr = expr.lower()
+
+    expr = expr.replace("acos", "np.arccos")
+    expr = expr.replace("acosh", "np.arccosh")
+    expr = expr.replace("asin", "np.arcsin")
+    expr = expr.replace("asinh", "np.arcsinh")
+    expr = expr.replace("atan", "np.arctan")
+    expr = expr.replace("atan2", "np.arctan2")
+    expr = expr.replace("atanh", "np.arctanh")
+    expr = expr.replace("cos", "np.cos")
+    expr = expr.replace("cosh", "np.cosh")
+    expr = expr.replace("sin", "np.sin")
+    expr = expr.replace("sinh", "np.sinh")
+    expr = expr.replace("tan", "np.tan")
+    expr = expr.replace("tanh", "np.tanh")
+    expr = expr.replace("achar", "chr")
+    expr = expr.replace("char", "chr")
+
+    expr = expr.replace("_int32", "")
+    expr = expr.replace("_real64", "")
+
+    expr = expr.replace(".true.", "")
+    expr = expr.replace(".false.", "")
+
+    expr = expr.replace("pi", str(np.pi))
+
+    return eval(expr)
 
 
 def warn(msg, entity):
-    warning = f"\n\033[38;5;226m{msg} for '\033[38;5;210m{entity.name}\033[38;5;226m'"
+    warnings.warn(extend_err_msg(f"\n\033[38;5;226m{msg}", entity))
+
+
+def error(cls, msg, entity):
+    raise cls(extend_err_msg(f"\n\033[38;5;196m{msg}", entity))
+
+
+def extend_err_msg(msg, entity):
+    extended = f"{msg}\033[38;5;226m for '\033[38;5;210m{entity.name}\033[38;5;226m'"
+    for parent in iter_parents(entity):
+        extended += f" in '\033[38;5;208m{parent.name}\033[38;5;226m'"
+    return extended + "\033[0m"
+
+
+def iter_parents(entity):
     parent = entity
     while (parent := getattr(parent, "parent", None)) is not None:
-        warning += f" in '\033[38;5;208m{parent.name}\033[38;5;226m'"
-
-    warnings.warn(warning + "\033[0m")
+        yield parent
 
 
 class Indentable(str):
@@ -67,6 +110,38 @@ class Serializer:
     def Fortran_Type(self, spec):
         raise NotImplementedError()
 
+    def FordLink(self, spec):
+        return str(self)
+
+    def TextAlignment(self, length):
+        length = int(length)
+        match self:
+            case self.CENTER:
+                return ":" + "-" * (length - 2) + ":"
+            case self.RIGHT:
+                return "-" * (length - 1) + ":"
+            case self.LEFT:
+                return "-" * length
+
+    def FordTable(self, spec):
+        from .doc import DocLine, DocList
+        header = tuple(format(col, spec) for col in self.header)
+        rows = tuple(tuple(format(col, spec) for col in row) for row in self.rows)
+        col_widths = tuple(max(len(header_col), max(map(len, rows_col))) for header_col, rows_col in zip(header, zip(*rows)))
+
+        header = " | ".join(col.center(width, " ") for col, width in zip(header, col_widths))
+        align = "|".join(format(a, str(width + 2)) for a, width in zip(self.align, col_widths))
+        rows = tuple(" | ".join(col.center(width, " ") for col, width in zip(row, col_widths)) for row in rows)
+
+        header = f"| {header} |"
+        formatted = format(DocList(self.parent, [
+            DocLine(self.header[0].parent, self.header[0].idx, (header,)),
+            DocLine(self.header[0].parent, self.header[0].idx + 1, (f"|{align}|",)),
+            *(DocLine(self.header[0].parent, idx, (f"| {row} |",)) for idx, row in enumerate(rows, self.header[0].idx + 2)),
+        ], self.parent.type), spec)
+        start = formatted.find(header)
+        return formatted[start:]
+
     def DocList(self, spec):
         raise NotImplementedError()
 
@@ -110,11 +185,14 @@ class CodeGenerator:
             return Indentable("")
         else:
             cls = type(self)
-            serialier_func = getattr(serializer, cls.__name__)
+            serializer_func = getattr(serializer, cls.__name__)
             try:
-                return serialier_func(self, spec)
+                return serializer_func(self, spec)
             except NotImplementedError as e:
-                raise NotImplementedError(f"No implementation for Serializer.{cls.__name__}(self, spec)")
+                if not str(e):
+                    raise NotImplementedError(f"No implementation for Serializer.{cls.__name__}(self, spec)")
+                else:
+                    raise e
 
 
 class Macros:

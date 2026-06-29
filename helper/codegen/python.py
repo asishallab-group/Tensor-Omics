@@ -76,8 +76,8 @@ class Python_Serializer(Serializer):
 
         return Indentable(string)
 
-    def DocList(self, spec):
-        return Indentable("\n".join(self.doc_list))
+    def DocList(self, sep="\n"):
+        return Indentable(sep.join(format(line) for line in self.doc_list))
 
     def Dimension(self, spec):
         match spec:
@@ -304,15 +304,16 @@ class Python_Serializer(Serializer):
         return "\n\n".join(format(mod) for mod in self)
 
     def Error_Handling(self, spec):
-        return f"""CODES = {{
-{Indentable(",\n".join(f'{code}: "{" ".join(doc_list).strip()}"' for code, doc_list in self.error_codes.items() if code != 0)) >> INDENT}
+        return f"""ERROR_CODES = {{
+{Indentable(",\n".join(f'{code}: "{format(doc_list, " ").strip()}"' for code, doc_list in self.error_codes.items() if code != 0)) >> INDENT}
 }}
+
 
 def check_err_code(ierr: int):
     if ierr == 0:
         return
 
-    msg = CODES.get(ierr, f"Unmapped error code: {{ierr}}")
+    msg = ERROR_CODES.get(ierr, f"Unmapped error code: {{ierr}}")
     raise RuntimeError(msg)
 """
 

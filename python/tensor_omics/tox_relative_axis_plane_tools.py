@@ -195,9 +195,7 @@ def clock_hand_angle_between_vectors(
 
     Notes
     -----
-    Compute the signed clock hand angle between two RAP-projected and normalized vectors.
-    Calculates the signed rotation angle between two normalized vectors in RAP space.
-    For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
+    Compute the signed clock hand angle between two RAP-projected and normalized vectors.Calculates the signed rotation angle between two normalized vectors in RAP space.For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
     """
 
     # ensure all array inputs are numpy arrays
@@ -274,9 +272,7 @@ def clock_hand_angles_for_shift_vectors(
 
     Notes
     -----
-    Compute signed rotation angles between RAP-projected and normalized vector pairs.
-    Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-    This measures both magnitude and directionality of angular separation in RAP space.
+    Compute signed rotation angles between RAP-projected and normalized vector pairs.Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.This measures both magnitude and directionality of angular separation in RAP space.
     """
 
     # ensure all array inputs are numpy arrays
@@ -352,8 +348,7 @@ def compute_relative_axis_contributions(
 
     Notes
     -----
-    Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
-    Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.
+    Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.
     """
 
     # ensure all array inputs are numpy arrays
@@ -415,8 +410,7 @@ def relative_axes_changes_from_shift_vector(
 
     Notes
     -----
-    Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
-    Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
+    Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
     """
 
     # ensure all array inputs are numpy arrays
@@ -478,8 +472,7 @@ def relative_axes_expression_from_expression_vector(
 
     Notes
     -----
-    Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
-    Wrapper for single RAP-projected expression vectors
+    Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.Wrapper for single RAP-projected expression vectors
     """
 
     # ensure all array inputs are numpy arrays

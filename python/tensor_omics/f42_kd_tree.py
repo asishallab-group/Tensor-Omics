@@ -41,12 +41,7 @@ def build_kd_index(
 
     Notes
     -----
-    Build a k-d tree index using a stack-based, non-recursive approach.
-    Initialize kd_indices to 1:num_points (original indices)
-    Choose split dimension by cycling through dimension_order
-    Find median index
-    Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
-    Push right and left intervals onto stack
+    Build a k-d tree index using a stack-based, non-recursive approach.Initialize kd_indices to 1:num_points (original indices)Choose split dimension by cycling through dimension_orderFind median indexPartition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))Push right and left intervals onto stack
     """
 
     # ensure all array inputs are numpy arrays

@@ -126,9 +126,7 @@ def loess_smooth_2d(
 
     Notes
     -----
-    Performs LOESS smoothing on a set of data points.
-    Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
-    The user must pre-filter data and provide only valid indices in indices_used.
+    Performs LOESS smoothing on a set of data points.Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.The user must pre-filter data and provide only valid indices in indices_used.
     """
 
     # ensure all array inputs are numpy arrays
@@ -219,10 +217,7 @@ def compute_edf_expert(
 
     Notes
     -----
-    Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
-    Returns the sorted unique values and their cumulative frequencies in [0,1].
-    Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
-    The number of unique values can be determined by finding the last non-zero cdf_value.
+    Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.Returns the sorted unique values and their cumulative frequencies in [0,1].Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.The number of unique values can be determined by finding the last non-zero cdf_value.
     """
 
     # ensure all array inputs are numpy arrays
@@ -303,9 +298,7 @@ def compute_edf(
 
     Notes
     -----
-    Helper routine that sorts and calls compute_edf.
-    Allocates workspace internally and performs sorting before computing EDF.
-    Use this for convenience; use compute_edf directly for custom sorting.
+    Helper routine that sorts and calls compute_edf.Allocates workspace internally and performs sorting before computing EDF.Use this for convenience; use compute_edf directly for custom sorting.
     """
 
     # ensure all array inputs are numpy arrays
@@ -387,13 +380,7 @@ def compute_empirical_p_values(
 
     Notes
     -----
-    Calculate empirical p-values for scaled expression distances (RDI).
-    Implements:
-    P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
-    Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
-    Assumptions / preconditions:
-    - sorted_rdi(1:n_genes) contains the empirical distribution D.
-    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+    Calculate empirical p-values for scaled expression distances (RDI).Implements:P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )Because distances are non-negative, a one-sided upper-tail empirical p-value is used.Assumptions / preconditions:- sorted_rdi(1:n_genes) contains the empirical distribution D.- If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
     """
 
     # ensure all array inputs are numpy arrays

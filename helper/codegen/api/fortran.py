@@ -3,7 +3,8 @@ from ford.settings import load_toml_settings, load_markdown_settings
 from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable, FortranModuleProcedureImplementation, FortranModule
 from enum import Enum
 import re
-from .utils import Indentable, CodeGenerator, regex_escaped_preprocessor, warn
+from .utils import Indentable, CodeGenerator, warn, error
+from .doc import DocList, FordTable
 import numpy as np
 
 
@@ -45,7 +46,7 @@ class Error_Handling(CodeGenerator):
     def __init__(self, project: Project):
         tox_errors = project.find("tox_errors")
         self.error_codes = {
-            int(eval_expr(var.initial)): DocList(var.doc_list, "variable")
+            int(eval_expr(var.initial)): DocList(var, var.doc_list, "variable")
             for var in tox_errors.variables if var.parameter and var.name.startswith("ERR_")
         }
 
@@ -54,19 +55,19 @@ class Module(CodeGenerator):
     """Class for a parsed Fortran Module"""
     def __init__(self, module: FortranModule):
         self.name = module.name
-        self.doc_list = DocList.from_fortran(module)
+        self.doc_list = DocList.from_fortran(self, module)
         self.procedures = tuple(map(Procedure, module.routines))
 
 
 class Modules(CodeGenerator, tuple):
     """Collection of Module objects"""
-    def __new__(cls):
-        proj = Project()
+    def __new__(cls, exclude_directories=[]):
+        proj = Project(exclude_directories)
 
         # sort modules for deterministic order
         sorted_mods = sorted(proj.modules, key=lambda x: x.name)
 
-        mods = super().__new__(cls, map(Module, sorted_mods))
+        mods = super(Modules, cls).__new__(cls, map(Module, sorted_mods))
         mods.project = proj
 
         mods.error_handling = Error_Handling(proj)
@@ -75,7 +76,7 @@ class Modules(CodeGenerator, tuple):
 
 class Project(CodeGenerator, _Project):
     """Class for the parsed codebase"""
-    def __init__(self):
+    def __init__(self, exclude_directories=[]):
         directory = "."
 
         # load settings from fpm.toml
@@ -86,6 +87,8 @@ class Project(CodeGenerator, _Project):
             with open("ford.yml", "r") as f:
                 proj_settings, _ = load_markdown_settings(directory, f.read(), f.name)
 
+        proj_settings.exclude_dir.extend(exclude_directories)
+
         super(Project, self).__init__(proj_settings)
 
         self.correlate()
@@ -94,7 +97,7 @@ class Project(CodeGenerator, _Project):
 class Dimension(CodeGenerator, tuple):
     """Representation of the dimension attribute of a variable"""
     def __new__(cls, arg: List[str, ...] = ()):
-        return super().__new__(cls, arg)
+        return super(Dimension, cls).__new__(cls, arg)
 
     @classmethod
     def from_fortran_variable(cls, arg: FortranVariable):
@@ -168,86 +171,33 @@ class Fortran_Type(CodeGenerator):
             raise ValueError(f"{e} of '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'")
 
 
-class DocList(CodeGenerator):
-    """Class for managing parsed Ford documentation. Each line is one element"""
-    DM_RE = {
-        "required_if_mode": re.compile(regex_escaped_preprocessor.expand(r"DM_REQUIRED_IF_MODE((?P<mode_var_name>.*), (?P<mode_var_module_name>.*), (?P<mode_var>.*))")),
-        "result_size_is": re.compile(regex_escaped_preprocessor.expand(r"DM_RESULT_SIZE_IS((?P<n_results>.*))")),
-    }
-
-    def __init__(self, doc_list: List[str, ...], type: str):
-        if type not in ("module", "procedure", "argument", "variable"):
-            raise ValueError("type must be one of: 'module', 'procedure', 'argument', 'variable")
-        self.doc_list = list(doc_list)
-        self.type = type
-
-        while len(self.doc_list) > 0 and self.doc_list[-1] == "":
-            self.doc_list.pop()
-
-        self.meta = {key: None for key in self.DM_RE}
-        self.meta["optional_output"] = None
-
-        for line in self.doc_list:
-            for key, regex in self.DM_RE.items():
-                if (match := regex.match(line)) is not None:
-                    self.meta[key] = match
-
-    @classmethod
-    def from_fortran(cls, unit: FortranModule | FortranSubroutine | FortranFunction | FortranVariable | FortranModuleProcedureImplementation):
-        match type(unit).__name__:
-            case "FortranModule":
-                ty = "module"
-            case "FortranSubroutine" | "FortranFunction":
-                ty = "procedure"
-            case "FortranVariable":
-                ty = "argument"
-            case _:
-                raise TypeError(f"DocList doesn't support '{type(unit).__name__}'")
-
-        doc_list = unit.doc_list
-        if len(doc_list) == 0 or (len(doc_list) == 1 and doc_list[0] == ""):
-            warn("No Ford documentation", unit)
-
-        doc_list = [line.lstrip() for line in doc_list]
-        return cls(doc_list, ty)
-
-    def __getitem__(self, idx):
-        return self.doc_list[idx]
-
-    def __setitem__(self, idx, value):
-        self.doc_list[idx] = value
-
-    def __add__(self, other: list):
-        return DocList([*self.doc_list, *other], self.type)
-
-    def __radd__(self, other: list):
-        return DocList([*other, *self.doc_list], self.type)
-
-    def __len__(self):
-        return len(self.doc_list)
-
-
 class Procedure_Argument(CodeGenerator):
     """Wrapper class for procedure arguments"""
 
+    # e.g. mode or mode_<arg>, or method or method_<arg>
+    MODE_ARG_RE = re.compile(rf"^(?P<alias>{"|".join(map(str.lower, FordTable.MODE_ALIASES))})(?:_.+)?$")
+
     def __init__(self, argument: FortranVariable, proc: Procedure):
+        self.parent = proc
         self.name = argument.name
-        self.doc_list = DocList.from_fortran(argument)
+        self.doc_list = DocList.from_fortran(self, argument)
         self.attribs = argument.attribs
         self.optional = argument.optional
         self.type = Fortran_Type.from_fortran_variable(argument)
         self.is_temporary = self.name.startswith("tmp_")
-        self.parent = proc
         self.is_shape_arg = self.name.endswith(SHAPE_ARG_SUFFIX)
-        self.is_mode_arg = self.name == "mode" or self.name.endswith("_mode") or self.name == "method" or self.name.endswith("_method")
+
+        mode_arg_match = self.MODE_ARG_RE.match(self.name)
+        self.is_mode_arg = mode_arg_match is not None
+        if self.is_mode_arg:
+            if self.doc_list.meta["mode_table"] is None:
+                alias = mode_arg_match.group("alias").capitalize()
+                error(SyntaxError, FordTable.mode_var_table_example(alias), self)
 
         # determine default value
-        self.default_value = None
-        if len(self.doc_list) > 0:
-            doc_str = self.doc_list[-1]
-            regex = regex_escaped_preprocessor.expand(r".*DM_DEFAULT((?P<default_val>.*)).*")
-            if (match := re.match(regex, doc_str)) is not None:
-                self.default_value = eval_expr(match.group("default_val"))
+        self.default_value = self.doc_list.meta["default"]
+        if self.default_value is not None:
+            self.default_value = eval_expr(self.default_value)
 
     @property
     def is_mask_count_arg_for(self) -> Self | None:
@@ -283,21 +233,21 @@ class Procedure_Argument(CodeGenerator):
 class Procedure_Arguments(CodeGenerator, tuple):
     """Collection of Procedure_Argument objects"""
     def __new__(cls, args: List[FortranVariable], proc: Procedure):
-        return super().__new__(cls, (Procedure_Argument(arg, proc) for arg in args))
+        return super(Procedure_Arguments, cls).__new__(cls, (Procedure_Argument(arg, proc) for arg in args))
 
 
 class Procedure(CodeGenerator):
     """Wrapper class for Fortran procedures"""
     def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
+        self.parent = procedure.parent
         self.name = procedure.name
         self.meta = procedure.meta
         if not self.meta.summary:
             warn("No summary meta tag (!! summary: ...)", procedure)
         self.args = Procedure_Arguments(procedure.args, self)
-        self.doc_list = DocList.from_fortran(procedure)
+        self.doc_list = DocList.from_fortran(self, procedure)
         self.retvar = getattr(procedure, "retvar", None)
         if type(self.retvar) is FortranVariable:
             self.retvar = Procedure_Argument(self.retvar, self)
             self.retvar.type.intent = Intent.OUT
         self.type = "subroutine" if self.retvar is None else "function"
-        self.parent = procedure.parent

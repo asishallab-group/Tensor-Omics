@@ -10,6 +10,8 @@ module tox_get_outliers
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     implicit none
 
+    integer(int32), parameter :: MODE_PLAIN = 0
+    integer(int32), parameter :: MODE_ROBUST = 1
 contains
 
     !> Compute family scaling factors (dscale) to normalize distances.
@@ -85,7 +87,13 @@ contains
         integer(int32), intent(in)   :: degree
             !! Degree of the LOESS polynomial
         integer(int32), intent(in)   :: mode
-            !! Mode for LOESS fitting (0=plain, 1=robust)
+            !! Mode for LOESS fitting
+            !!
+            !! |       Mode     |                             Value                   |
+            !! |----------------|-----------------------------------------------------|
+            !! | Plain fitting  |  [[tox_get_outliers(module):MODE_PLAIN(variable)]]  |
+            !! | Robust Fitting |  [[tox_get_outliers(module):MODE_ROBUST(variable)]] |
+            !!
         integer(int32), intent(in)   :: n_iters
             !! Number of iterations for robust LOESS fitting
         real(real64), intent(out) :: low_sd_cutoff
@@ -242,7 +250,7 @@ contains
         tmp_w_init(1:n_valid) = 1.0_real64
         tmp_z_mat(1:n_valid, 1) = loess_x(1:n_valid)
 
-        if (mode == 0) then
+        if (mode == MODE_PLAIN) then
             ! If you have a plain routine, call it; otherwise keep robust always.
             call loess_fit_plain( &
                 n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat(1:n_valid, 1:1), &
@@ -343,7 +351,6 @@ contains
         ! LOESS params (defaults)
         real(real64), parameter :: span = 0.7_real64
         integer(int32), parameter :: degree = 2_int32
-        integer(int32), parameter :: mode = 1_int32
         integer(int32), parameter :: n_iters = 3_int32
         logical, parameter :: setlf = .false.
 
@@ -376,7 +383,7 @@ contains
             n_genes, n_families, distances, gene_to_fam, dscale, &
             loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
             tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, &
-            span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
+            span, degree, MODE_ROBUST, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
 
         deallocate (tmp_iv, tmp_wv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat)
 
@@ -843,6 +850,12 @@ subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_
         !! Degree of polynomial for LOESS
     integer(c_int), intent(in), target :: mode
         !! Mode for LOESS
+        !!
+        !! |       Mode     |                             Value                   |
+        !! |----------------|-----------------------------------------------------|
+        !! | Plain fitting  |  [[tox_get_outliers(module):MODE_PLAIN(variable)]]  |
+        !! | Robust Fitting |  [[tox_get_outliers(module):MODE_ROBUST(variable)]] |
+        !!
     integer(c_int), intent(in), target :: n_iters
         !! Number of iterations for LOESS
     real(c_double), intent(out), target :: low_sd_cutoff

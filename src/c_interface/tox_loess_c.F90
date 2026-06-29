@@ -41,7 +41,7 @@ contains
         integer(c_int), intent(in), target :: setlf
             !! Save matrix factorization flag
         integer(c_int), intent(out), target :: ierr
-            !!  Error code
+            !! Error code
         logical :: setlf_f
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(d)
@@ -50,7 +50,7 @@ contains
         M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(setlf)
         call c_int_as_logical(setlf, setlf_f)
-        call  tox_loess_required_workspace(&
+        call tox_loess_required_workspace(&
             d = d,&
             nvmax = nvmax,&
             int_workspace_size = int_workspace_size,&
@@ -139,7 +139,7 @@ contains
         M_CHECK_NON_NULL(fitted_values)
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
-        call  loess_fit_plain(&
+        call loess_fit_plain(&
             n = n,&
             x = x,&
             y = y,&
@@ -264,7 +264,7 @@ contains
         M_CHECK_NON_NULL(fitted_values)
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
-        call  loess_fit_robust(&
+        call loess_fit_robust(&
             n = n,&
             x = x,&
             y = y,&
@@ -309,9 +309,9 @@ contains
         use tox_loess, only: loess_alloc
         use tox_loess
         integer(c_int), intent(in), target :: n_x_elements
-            !!  Size of the 1. dimension/extent of `x`
+            !! Size of the 1. dimension/extent of `x`
         integer(c_int), intent(in), target :: n_y_elements
-            !!  Size of the 1. dimension/extent of `y`
+            !! Size of the 1. dimension/extent of `y`
         real(c_double), intent(in), dimension(n_x_elements), target :: x
             !! Predictor variable array
         real(c_double), intent(in), dimension(n_y_elements), target :: y
@@ -325,10 +325,10 @@ contains
         character(len=1, kind=c_char), intent(in), dimension(6), target :: mode
             !! Mode of operation
             !! 
-            !! |    Mode   |   Value  |
-            !! |-----------|----------|
-            !! | robust fitting |  "robust"   |
-            !! | plain fitting  |  "plain"    |
+            !! |      Mode      |  Value   |
+            !! |----------------|----------|
+            !! | robust fitting | "robust" |
+            !! | plain fitting  | "plain"  |
         integer(c_int), intent(in), target :: n_iters
             !! Number of robust iterations (only used when mode = 1)
         integer(c_int), intent(out), target :: ierr
@@ -356,7 +356,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        call  loess_alloc(&
+        call loess_alloc(&
             x = x,&
             y = y,&
             span = span,&

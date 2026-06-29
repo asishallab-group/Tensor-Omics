@@ -34,9 +34,7 @@ def tox_loess_required_workspace(
 
     Notes
     -----
-    Recommend workspace sizes based on Netlib exact formulas.
-    Computes the required sizes for integer and real workspace arrays.
-    These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+    Recommend workspace sizes based on Netlib exact formulas.Computes the required sizes for integer and real workspace arrays.These sizes depend on the dimensionality of the data and the maximum neighborhood size.
     """
 
     # ensure all array inputs are numpy arrays
@@ -142,9 +140,7 @@ def loess_fit_plain(
 
     Notes
     -----
-    Perform plain LOESS fitting.
-    Fits a LOESS model to the data using the specified smoothing parameter.
-    Outputs the smoothed response variable array.
+    Perform plain LOESS fitting.Fits a LOESS model to the data using the specified smoothing parameter.Outputs the smoothed response variable array.
     """
 
     # ensure all array inputs are numpy arrays
@@ -296,13 +292,7 @@ def loess_fit_robust(
 
     Notes
     -----
-    Perform robust LOESS fitting with bisquare reweighting.
-    Fits a LOESS model to the data using robust iterations to handle outliers.
-    The robust fitting process iterates n_iters times, each iteration:
-    - Combines original weights with robust weights (down-weights from previous iteration)
-    - Runs LOESS fitting with combined weights
-    - Computes residuals (y - fitted values)
-    - Updates robust weights using bisquare function (suppresses large residuals)
+    Perform robust LOESS fitting with bisquare reweighting.Fits a LOESS model to the data using robust iterations to handle outliers.The robust fitting process iterates n_iters times, each iteration:- Combines original weights with robust weights (down-weights from previous iteration)- Runs LOESS fitting with combined weights- Computes residuals (y - fitted values)- Updates robust weights using bisquare function (suppresses large residuals)
     """
 
     # ensure all array inputs are numpy arrays
@@ -429,11 +419,7 @@ def loess(
     degree : int
         Degree of the LOESS polynomial
     mode : str
-        Mode of operation
-        |    Mode   |   Value  |
-        |-----------|----------|
-        | robust fitting |  "robust"   |
-        | plain fitting  |  "plain"    |
+        Mode of operation|      Mode      |  Value   ||----------------|----------|| robust fitting | "robust" || plain fitting  | "plain"  |
     n_iters : int
         Number of robust iterations (only used when mode = 1)
 
@@ -444,9 +430,7 @@ def loess(
 
     Notes
     -----
-    Wrapper subroutine for LOESS fitting (plain or robust).
-    This subroutine selects between plain and robust LOESS fitting based on the mode.
-    It dynamically allocates the required arrays and computes workspace sizes.
+    Wrapper subroutine for LOESS fitting (plain or robust).This subroutine selects between plain and robust LOESS fitting based on the mode.It dynamically allocates the required arrays and computes workspace sizes.
     """
 
     # ensure all array inputs are numpy arrays

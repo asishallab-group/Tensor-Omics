@@ -8,9 +8,9 @@ module tox_trajectory_contribution_analysis
     implicit none
 
     ! Baseline computation modes
-    integer(int32), parameter :: BASELINE_RAW  = 1
-    integer(int32), parameter :: BASELINE_MIN  = 2
-    integer(int32), parameter :: BASELINE_MEAN = 3
+    integer(int32), parameter :: MODE_BASELINE_RAW  = 1
+    integer(int32), parameter :: MODE_BASELINE_MIN  = 2
+    integer(int32), parameter :: MODE_BASELINE_MEAN = 3
 
    
 contains
@@ -59,7 +59,14 @@ contains
         integer(int32), intent(in) :: sample_idx
             !! index of sample to compute the permutation contributions for
         integer(int32), intent(in) :: mode
-            !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+            !! Baseline mode
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         integer(int32), intent(in) :: n_permutations
             !! number of permutations to perform
         real(real64), dimension(n_timepoints, n_permutations), intent(out) :: local_contributions
@@ -177,7 +184,14 @@ contains
         real(real64), dimension(n_dims), intent(in) :: dependent
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: mode
-            !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+            !! Baseline mode
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         real(real64), dimension(n_dims), intent(out) :: local_contributions
             !! Per-element contributions
         real(real64), intent(out) :: total_contribution
@@ -209,7 +223,14 @@ contains
         real(real64), dimension(n_dims), intent(in) :: dependent
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: mode
-            !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+            !! Baseline mode
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         real(real64), dimension(n_dims), intent(out) :: local_contributions
             !! Per-element contributions
         real(real64), intent(out) :: total_contribution
@@ -247,7 +268,14 @@ contains
         integer(int32), dimension(n_selected_dependents), intent(in) :: dependent_indices
             !! indices of dependents to compute the contributions for
         integer(int32), intent(in) :: mode
-            !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+            !! Baseline mode
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         real(real64), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out) :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
         real(real64), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out) :: total_contributions
@@ -310,7 +338,14 @@ contains
         real(real64), dimension(n_timepoints), intent(in)  :: dependent
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: mode
-            !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+            !! Baseline mode
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         real(real64), intent(out) :: factor_baseline
             !! Computed baseline for factor
         real(real64), intent(out) :: dependent_baseline
@@ -328,17 +363,17 @@ contains
 
         select case (mode)
 
-        case (BASELINE_RAW)
+        case (MODE_BASELINE_RAW)
             ! Raw contributions: no centering
             factor_baseline = 0.0_real64
             dependent_baseline = 0.0_real64
 
-        case (BASELINE_MIN)
+        case (MODE_BASELINE_MIN)
             ! Minimum-centered contributions
             factor_baseline = minval(factor)
             dependent_baseline = minval(dependent)
 
-        case (BASELINE_MEAN)
+        case (MODE_BASELINE_MEAN)
             ! Mean-centered contributions
             factor_baseline = sum(factor) / real(n_timepoints, kind=real64)
             dependent_baseline = sum(dependent) / real(n_timepoints, kind=real64)
@@ -362,6 +397,13 @@ contains
             !! mode string ("min", "mean", "raw")
         integer(int32), intent(out) :: mode
             !! integer representation for the mode passed by `c_mode_str`
+            !!
+            !! |       Mode      |                                      Value                                     |
+            !! |-----------------|--------------------------------------------------------------------------------|
+            !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+            !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+            !!
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -374,11 +416,11 @@ contains
 
         select case (trim(mode_str_f))
             case ("raw")
-                mode = BASELINE_RAW
+                mode = MODE_BASELINE_RAW
             case ("min")
-                mode = BASELINE_MIN
+                mode = MODE_BASELINE_MIN
             case ("mean")
-                mode = BASELINE_MEAN
+                mode = MODE_BASELINE_MEAN
             case default
                 call set_err(ierr, ERR_INVALID_INPUT)
         end select
@@ -606,7 +648,14 @@ contains
         integer(int32), intent(in)  :: n_timepoints
         !! number of timepoints
         integer(int32), intent(in) :: mode
-        !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
         !! input position trajectories
 
@@ -719,7 +768,14 @@ contains
         integer(int32), intent(in)  :: n_timepoints
         !! number of timepoints
         integer(int32), intent(in) :: mode
-        !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
          !! input position trajectories
 
@@ -790,7 +846,14 @@ pure subroutine compute_all_contributions_c(trajectories, n_factors, n_samples, 
     integer(c_int), dimension(n_selected_dependents), intent(in), target :: dependent_indices
         !! indices of dependents to compute the contributions for
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-        !! Baseline mode: "raw", "min", "mean"
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
     real(c_double), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: local_contributions
         !! Per-timepoint contributions per sample-dependent-factor combination
     real(c_double), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: total_contributions
@@ -845,7 +908,14 @@ pure subroutine compute_contributions_c(factor, dependent, n_dims, mode, local_c
     real(c_double), dimension(n_dims), intent(in), target :: dependent
         !! Dependent variable time series
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-        !! Baseline mode: "raw", "min", "mean"
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
     real(c_double), dimension(n_dims), intent(out), target :: local_contributions
         !! Per-element contributions
     real(c_double), intent(out), target :: total_contribution
@@ -889,7 +959,14 @@ pure subroutine compute_baselines_factor_dependent_c(factor, dependent, n_timepo
     real(c_double), dimension(n_timepoints), intent(in),  target :: dependent
         !! Dependent variable time series, length n_timepoints
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-        !! Baseline mode: "raw", "min", "mean"
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
     real(c_double), intent(out), target :: factor_baseline
         !! Computed baseline for factor
     real(c_double), intent(out), target :: dependent_baseline
@@ -940,7 +1017,14 @@ subroutine perform_permutation_test_c(trajectories, n_factors, n_samples, n_time
     integer(c_int), intent(in), target :: sample_idx
         !! index of sample to compute the permutation contributions for
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-        !! Baseline mode: 1=RAW, 2=MIN, 3=MEAN
+        !! Baseline mode
+        !!
+        !! |       Mode      |                                      Value                                     |
+        !! |-----------------|--------------------------------------------------------------------------------|
+        !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+        !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+        !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+        !!
     integer(c_int), intent(in), target :: n_permutations
         !! number of permutations to perform
     real(c_double), dimension(n_timepoints, n_permutations), intent(out), target :: local_contributions
@@ -1120,7 +1204,14 @@ pure subroutine compute_velocity_acceleration_contributions_c(trajectories, n_fa
     integer(c_int), intent(in),  target :: n_timepoints
     !! number of timepoints
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-    !! Baseline mode: "raw", "min", "mean"
+    !! Baseline mode
+    !!
+    !! |       Mode      |                                      Value                                     |
+    !! |-----------------|--------------------------------------------------------------------------------|
+    !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+    !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+    !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+    !!
     integer(c_int), intent(out), target :: ierr
     !! error code
     real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in),  target :: trajectories
@@ -1193,8 +1284,14 @@ pure subroutine compute_velocity_acceleration_contributions_alloc_c(trajectories
     integer(c_int), intent(in),  target :: n_timepoints
     !! number of timepoints
     character(len=1, kind=c_char), dimension(*), intent(in), target :: mode
-    !! Baseline mode: "raw", "min", "mean"
-
+    !! Baseline mode
+    !!
+    !! |       Mode      |                                      Value                                     |
+    !! |-----------------|--------------------------------------------------------------------------------|
+    !! |  Raw baseline   |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_RAW(variable)]]  |
+    !! | Baseline by min |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MIN(variable)]]  |
+    !! | Baseline by max |  [[tox_trajectory_contribution_analysis(module):MODE_BASELINE_MEAN(variable)]] |
+    !!
     real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in),  target :: trajectories
     !! input trajectories
     real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: contrib_velocity

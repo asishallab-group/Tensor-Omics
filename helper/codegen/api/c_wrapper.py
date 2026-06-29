@@ -1,16 +1,13 @@
-from .fortran import Module, Procedure, Procedure_Argument, DocList, Dimension, Intent, Fortran_Type, Procedure
-from .utils import CodeGenerator, regex_escaped_preprocessor
+from .fortran import Module, Procedure, Procedure_Argument, Dimension, Intent, Fortran_Type, Procedure
+from .utils import CodeGenerator, extend_err_msg
+from .doc import DocList, FordTable, DocLine, FordLink
 from typing import List, Tuple
 from enum import Enum
 import re
 
 NAME_SUFFIX = "_c"
 
-MODE_TABLE_HEAD_RE = re.compile(r"\s*\|\s*(?:Mode|Method)\s*\|\s*Value\s*\|\s*")
-MODE_TABLE_ALIGN_RE = re.compile(r"\s*\|:?-+:?\|:?-+:?\|\s*")
-MODE_FORD_LINK_RE = re.compile(r"\[\[(?P<module_name>[a-z_]+)\(module\):(?P<mode_name>[A-Z_]+)\(variable\)\]\]")
-MODE_TABLE_ROW_RE = re.compile(r"\s*\|[^\|]+\|\s*" + MODE_FORD_LINK_RE.pattern + r"\s*\|\s*")
-MODE_VAR_PREFIX_RE = re.compile(r"^(?:MODE|METHOD)_")
+MODE_ALIASES = ("Mode", "Method")
 
 Variable_Name = str
 Mode_String = str
@@ -36,15 +33,19 @@ class C_Wrapper_Argument(CodeGenerator):
 
     @classmethod
     def create_dim_arg(cls, name: str, doc: str, c_wrapper: C_Wrapper, only_c_arg=True, is_dim_arg_for=None):
-        return cls(
+        arg = super(C_Wrapper_Argument, cls).__new__(cls)
+        doc_list = DocList(arg, [f"{doc}"], unit_type="argument")
+        cls.__init__(
+            arg,
             name=name,
-            doc=DocList([f" {doc}"], type="argument"),
+            doc=doc_list,
             type=Fortran_Type("integer", intent=Intent.IN, kind="int32"),
             only_c_arg=only_c_arg,
             is_temporary=False,
             is_dim_arg_for=is_dim_arg_for,
             c_wrapper=c_wrapper
         )
+        return arg
 
     @classmethod
     def from_proc_arg(cls, arg: Procedure_Argument, c_wrapper: C_Wrapper) -> Tuple[Self, Tuple[C_Wrapper_Argument]]:
@@ -85,44 +86,25 @@ class C_Wrapper_Argument(CodeGenerator):
         doc_list = arg.doc_list
 
         if arg.is_mode_arg:
-            state = "doc"
-            converted_doc_list = []
             mode_vars = []
-            for doc in doc_list:
-                match state:
-                    case "doc":
-                        if MODE_TABLE_HEAD_RE.match(doc):
-                            state = "mode_spec_align"
-                    case "mode_spec_align":
-                        if MODE_TABLE_ALIGN_RE.match(doc):
-                            state = "mode_spec_rows"
-                        else:
-                            raise AssertionError(f"Expected some pattern like '|------|------|' for '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'")
-                    case "mode_spec_rows":
-                        if (match := MODE_TABLE_ROW_RE.match(doc)) is not None:
-                            mode_name = match.group("mode_name")
-                            module_name = match.group("module_name")
-                            mode_string = MODE_VAR_PREFIX_RE.sub("", mode_name).lower()
-                            mode_vars.append((mode_name, module_name, mode_string))
-                            doc = MODE_FORD_LINK_RE.sub(f' "{mode_string}"  ', doc)
-                        else:
-                            state = "done"
+            converted_doc_list = doc_list.copy()
+            table = converted_doc_list.meta["mode_table"]
+            max_mode_len = 0
+            for _, mode_var in table.rows:
+                parts = mode_var.parts
+                if len(parts) == 1:
+                    link = parts[0]
+                    module_name = link.component
+                    mode_var_name = link.item
+                    mode_str = link.mode_name.lower()
+                    max_mode_len = max(max_mode_len, len(mode_str))
+                    mode_vars.append((mode_var_name, module_name, mode_str))
 
-                converted_doc_list.append(doc)
+                    mode_var.parts = (f'"{mode_str}"',)
 
-            assert len(mode_vars) > 0, f"""Found mode argument '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'. In Ford doc comment, expected markdown table like:
-!! |    Mode   |   Value  |
-!! |-----------|----------|
-!! | bla mode  | [[bla_module(module):MODE_BLA(variable)]] |
-!! ...
-
-Possible variants:
- - Mode->Method, MODE_BLA->METHOD_BLA
-"""
             mode_vars = tuple(mode_vars)
-            doc_list = DocList(converted_doc_list, "argument")
-            assert arg.type.name == "integer", f"Found mode argument '{arg.name}' in '{arg.parent.name}' in '{arg.parent.parent.name}'. Must be integer, got: {arg.type.name}"
-            max_mode_len = str(max(len(mode_str) for _, _, mode_str in mode_vars))
+            doc_list = converted_doc_list
+            max_mode_len = str(max_mode_len)
             arg_type = Fortran_Type("character", intent=Intent.IN, dimension=Dimension([max_mode_len, *dimension]), length=max_mode_len)
         else:
             arg_type = Fortran_Type(arg.type.name, intent=arg.type.intent, kind=arg.type.kind, dimension=Dimension(dimension), length=arg.type.len)
@@ -183,7 +165,11 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
         arguments = []
         ierr_seen = False
         for proc_arg in procedure.args:
-            arg, extra_dim_args = C_Wrapper_Argument.from_proc_arg(proc_arg, c_wrapper)
+            try:
+                arg, extra_dim_args = C_Wrapper_Argument.from_proc_arg(proc_arg, c_wrapper)
+            except Exception as e:
+                e.add_note(extend_err_msg("in Ford documentation", proc_arg))
+                raise e
             arguments.append(arg)
             arguments.extend(extra_dim_args)
             ierr_seen = ierr_seen or arg.name == "ierr"
@@ -201,16 +187,20 @@ class C_Wrapper_Arguments(CodeGenerator, tuple):
             arguments.append(result_argument)
 
         if not ierr_seen:
-            arguments.append(C_Wrapper_Argument(
+            arg = C_Wrapper_Argument(
                 name="ierr",
-                doc=DocList([" Error code"], "argument"),
+                doc=None,
                 type=Fortran_Type("integer", Intent.OUT, kind="int32"),
                 only_c_arg=True,
                 is_temporary=False,
                 c_wrapper=c_wrapper
-            ))
+            )
+            arg.doc_list = DocList(arg, ["Error code"], "argument")
+            arguments.append(arg)
 
-        return super().__new__(cls, arguments)
+        new = super(C_Wrapper_Arguments, cls).__new__(cls, arguments)
+        new.parent = c_wrapper
+        return new
 
 
 class C_Wrapper(CodeGenerator):

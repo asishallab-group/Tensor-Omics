@@ -30,9 +30,9 @@ contains
         use f42_binary_search_tree, only: get_sorted_value
         use f42_binary_search_tree
         integer(c_int), intent(in), target :: n_values_elements
-            !!  Size of the 1. dimension/extent of `values`
+            !! Size of the 1. dimension/extent of `values`
         integer(c_int), intent(in), target :: n_sorted_indices_elements
-            !!  Size of the 1. dimension/extent of `sorted_indices`
+            !! Size of the 1. dimension/extent of `sorted_indices`
         real(c_double), intent(in), dimension(n_values_elements), target :: values
             !! Input real array
         integer(c_int), intent(in), dimension(n_sorted_indices_elements), target :: sorted_indices
@@ -88,7 +88,7 @@ contains
         M_CHECK_NON_NULL(sorted_indices)
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
-        call  build_bst_index(&
+        call build_bst_index(&
             values = values,&
             num_values = num_values,&
             sorted_indices = sorted_indices,&
@@ -137,7 +137,7 @@ contains
         M_CHECK_NON_NULL(upper_bound)
         M_CHECK_NON_NULL(output_indices)
         M_CHECK_NON_NULL(num_matches)
-        call  bst_range_query(&
+        call bst_range_query(&
             values = values,&
             sorted_indices = sorted_indices,&
             num_values = num_values,&

@@ -51,7 +51,7 @@ contains
         M_CHECK_NON_NULL(gene_indices)
         M_CHECK_NON_NULL(n_selected_genes)
         M_CHECK_NON_NULL(centroid)
-        call  mean_vector(&
+        call mean_vector(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
@@ -93,10 +93,10 @@ contains
         character(len=1, kind=c_char), intent(in), dimension(15), target :: mode
             !! used mode for grouping
             !! 
-            !! |       Mode       |                             Value                               |
-            !! |------------------|-----------------------------------------------------------------|
-            !! | Group Orthologs  |   "group_orthologs"    |
-            !! |    Group all     |      "group_all"       |
+            !! |       Mode      |       Value       |
+            !! |-----------------|-------------------|
+            !! | Group Orthologs | "group_orthologs" |
+            !! |    Group all    |    "group_all"    |
         integer(c_int), intent(out), dimension(n_genes), target :: tmp_selected_indices
             !! An output array for storing indices.
         integer(c_int), intent(out), target :: ierr
@@ -127,37 +127,19 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
-            M_CHECK_NON_NULL(ortholog_set)
-            M_ALLOCATE(ortholog_set_f(n_genes))
-            call c_int_as_logical(ortholog_set, ortholog_set_f)
-        end if
-        if (mode_int_f == MODE_GROUP_ORTHOLOGS) then
-            call  group_centroid(&
-                expression_vectors = expression_vectors,&
-                n_axes = n_axes,&
-                n_genes = n_genes,&
-                gene_to_family = gene_to_family,&
-                n_families = n_families,&
-                centroid_matrix = centroid_matrix,&
-                mode = mode_int_f,&
-                tmp_selected_indices = tmp_selected_indices,&
-                ierr = ierr,&
-                ortholog_set = ortholog_set_f&
-            )
-        else
-            call  group_centroid(&
-                expression_vectors = expression_vectors,&
-                n_axes = n_axes,&
-                n_genes = n_genes,&
-                gene_to_family = gene_to_family,&
-                n_families = n_families,&
-                centroid_matrix = centroid_matrix,&
-                mode = mode_int_f,&
-                tmp_selected_indices = tmp_selected_indices,&
-                ierr = ierr&
-            )
-        end if
+        M_ALLOCATE(ortholog_set_f(n_genes))
+        call c_int_as_logical(ortholog_set, ortholog_set_f)
+        call group_centroid(&
+            expression_vectors = expression_vectors,&
+            n_axes = n_axes,&
+            n_genes = n_genes,&
+            gene_to_family = gene_to_family,&
+            n_families = n_families,&
+            centroid_matrix = centroid_matrix,&
+            mode = mode_int_f,&
+            tmp_selected_indices = tmp_selected_indices,&
+            ierr = ierr&
+        )
     end subroutine group_centroid_c
 
 end module tox_gene_centroids_c

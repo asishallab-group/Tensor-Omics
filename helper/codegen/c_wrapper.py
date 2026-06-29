@@ -51,9 +51,13 @@ class C_Wrapper_Serializer(Serializer):
     def DocList(self, spec):
         match self.type:
             case "argument":
-                formatted = f"!! {"\n!! ".join(self.doc_list)}"
+                doc_mark = "!! "
+                continue_mark = "!! "
             case "procedure" | "module":
-                formatted = f"!> {"\n!| ".join(self.doc_list)}"
+                doc_mark = "!> "
+                continue_mark = "!| "
+
+        formatted = f"{doc_mark}{f"\n{continue_mark}".join(format(line, spec) for line in self.doc_list)}"
         return Indentable(formatted)
 
     def Dimension(self, spec):
@@ -111,7 +115,7 @@ class C_Wrapper_Serializer(Serializer):
                 optional_outputs = tuple(arg for arg in self.args if arg.doc_list.meta["optional_output"] is not None)
 
                 if self.retvar is None:
-                    call_prefix = "call "
+                    call_prefix = "call"
                 else:
                     if self.retvar.type.needs_conversion:
                         call_prefix = f"{self.retvar.name + TYPE_CONVERSION_SUFFIX} ="
@@ -285,7 +289,7 @@ end if"""
         orig_proc = self.orig_procedure
         module_name = orig_proc.parent.name
         ford_link = f"[[{module_name}(module):{orig_proc.name}({orig_proc.type})]]"
-        doc = [f"summary: C-wrapper for {ford_link}"] + self.doc_list
+        doc = f"summary: C-wrapper for {ford_link}" + self.doc_list
 
         wrapper = f"""{format(doc, "subroutine")}
 subroutine {self.name}(&
@@ -305,7 +309,7 @@ end subroutine {self.name}"""
         return Indentable(wrapper)
 
     def C_Wrapper_Module(self, spec):
-        doc = [f"summary: Module for C-wrappers for [[{self.orig_module.name}(module)]]"] + self.doc_list
+        doc = f"summary: Module for C-wrappers for [[{self.orig_module.name}(module)]]" + self.doc_list
         return f"""#ifndef NO_C_INTERFACE
 #include <src/macros.h>
 
@@ -336,18 +340,17 @@ end module {self.name}
 
         c_wrapper_modules.use(cls)
         out_dir = Path(out_dir)
-        if not out_dir.is_dir():
-            raise ValueError("out_dir muste be a valid directory path")
+        if not out_dir.parent.is_dir():
+            raise ValueError(f"out_dir's directory '{out_dir.parent}' does not exist")
 
-        c_wrapper_dir = out_dir.joinpath("c_interface")
-        if c_wrapper_dir.is_dir():
+        if out_dir.is_dir():
             from shutil import rmtree
-            rmtree(c_wrapper_dir)
+            rmtree(out_dir)
 
-        mkdir(c_wrapper_dir)
+        mkdir(out_dir)
 
         for module in c_wrapper_modules:
-            module_file_path = c_wrapper_dir.joinpath(module.name + ".F90")
+            module_file_path = out_dir.joinpath(module.name + ".F90")
 
             with open(module_file_path, "w") as module_file:
                 module_file.write(format(module))

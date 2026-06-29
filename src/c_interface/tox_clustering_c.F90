@@ -67,7 +67,7 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call  cluster_factor_trajectories_k_means(&
+        call cluster_factor_trajectories_k_means(&
             n_clusters = n_clusters,&
             trajectories = trajectories,&
             n_factors = n_factors,&
@@ -76,8 +76,7 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
-            max_iterations = max_iterations&
+            ierr = ierr&
         )
     end subroutine cluster_factor_trajectories_k_means_c
 
@@ -132,7 +131,7 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
-        call  k_means_clustering(&
+        call k_means_clustering(&
             n_clusters = n_clusters,&
             data_points = data_points,&
             n_points = n_points,&
@@ -140,8 +139,7 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
-            max_iterations = max_iterations&
+            ierr = ierr&
         )
     end subroutine k_means_clustering_c
 
@@ -182,11 +180,11 @@ contains
         character(len=1, kind=c_char), intent(in), dimension(8), target :: method
             !! used algorithm
             !! 
-            !! |      Method      |                      Value                     |
-            !! |------------------|------------------------------------------------|
-            !! | Average / UPGMA  |    "average"      |
-            !! | Weighted / WPGMA |    "weighted"     |
-            !! |      Ward        |    "ward"         |
+            !! |      Method      |   Value    |
+            !! |------------------|------------|
+            !! | Average / UPGMA  | "average"  |
+            !! | Weighted / WPGMA | "weighted" |
+            !! |       Ward       |   "ward"   |
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=:), allocatable :: method_f
@@ -212,7 +210,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        call  linkage_clustering(&
+        call linkage_clustering(&
             distances = distances,&
             n_points = n_points,&
             merge_i = merge_i,&

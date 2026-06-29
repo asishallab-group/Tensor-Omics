@@ -1,4 +1,4 @@
-CODES = {
+ERROR_CODES = {
     101: "could not open file",
     102: "could not read magic number",
     103: "could not read array type code",
@@ -34,9 +34,10 @@ CODES = {
     9999: "unknown error"
 }
 
+
 def check_err_code(ierr: int):
     if ierr == 0:
         return
 
-    msg = CODES.get(ierr, f"Unmapped error code: {ierr}")
+    msg = ERROR_CODES.get(ierr, f"Unmapped error code: {ierr}")
     raise RuntimeError(msg)

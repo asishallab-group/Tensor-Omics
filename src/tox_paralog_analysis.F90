@@ -64,7 +64,7 @@ contains
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! DM_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -111,6 +111,7 @@ contains
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -158,6 +159,7 @@ contains
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -281,6 +283,7 @@ contains
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -485,6 +488,7 @@ contains
     pure subroutine take_active_mask_helper(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, active_mask, ierr)
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks in a mask
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         integer(int32), intent(in) :: n_subsets
             !! number of subsets that can be hold
         integer(int32), intent(in) :: n_results
@@ -530,6 +534,7 @@ contains
     pure subroutine add_to_results_helper(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, result, ierr)
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks in a mask
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         integer(int32), intent(in) :: n_subsets
             !! number of subsets that can be hold
         integer(int32), intent(inout) :: n_results
@@ -575,6 +580,7 @@ contains
     pure subroutine add_new_active_mask_helper(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, new_active_mask, ierr)
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks in a mask
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         integer(int32), intent(in) :: n_subsets
             !! number of subsets that can be hold
         integer(int32), intent(in) :: n_results
@@ -631,6 +637,10 @@ contains
             !! number of families
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, AUTO)
+            !! | Argument here | Argument there |
+            !! |---------------|----------------|
+            !! |    n_genes    |    n_genes     |
         real(real64), dimension(n_genes), intent(in) :: gene_angles
             !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
@@ -655,6 +665,10 @@ contains
             !! number of families
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, AUTO)
+            !! | Argument here | Argument there |
+            !! |---------------|----------------|
+            !! |    n_genes    |    n_genes     |
         real(real64), dimension(n_genes), intent(in) :: gene_angles
             !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
@@ -680,6 +694,10 @@ contains
             !! number of families
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, AUTO)
+            !! | Argument here | Argument there |
+            !! |---------------|----------------|
+            !! |    n_genes    |    n_genes     |
         integer(int32), intent(in) :: pattern_mode
             !! used pattern for detection
             !!
@@ -750,6 +768,7 @@ contains
             !! number of genes
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+            !! DM_OUTPUT_FROM(count, mask_chunk_count, tox_paralog_analysis, JUST_INFO)
         integer(int32), intent(inout) :: max_subset_size
             !! maximum size that a subset must not exceed.
             !! @warning

@@ -231,8 +231,8 @@ def detect_dosage_effect(
         filtered_paralogs_mask,
         max_subset_size,
         n_paralog_subsets,
-        max_angle=3.141592653589793,
-        gain_gamma=0.1
+        max_angle=None,
+        gain_gamma=None
         ):
     """
     Parameters
@@ -242,29 +242,21 @@ def detect_dosage_effect(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
-        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
-        M_DM_FROM_JUST_INFO to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
+        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculationDM_FROM(masks(:, family_idx), filter_paralogs_by_pattern, tox_paralog_analysis, JUST_INFO)
     max_subset_size : int
-        maximum subset size of checked gene subsets.
-        M_DM_FROM_AUTO to compute this argument using [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]]'s output `max_subset_size`.
+        maximum subset size of checked gene subsets.DM_FROM(max_subset_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis, AUTO)
     max_angle : float, optional
-        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        The default value is `PI`.
+        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise prunedThe default value is `PI`.
     gain_gamma : float, optional
-        positive magnitude gain for dosage effect
-        The default value is `0.1_real64`.
+        positive magnitude gain for dosage effectThe default value is `0.1_real64`.
 
     Returns
     -------
     results : dict
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
-            working array to hold bitmask encoded subsets for detection.
-            @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
-            @endnote
-            The first `n_results` elements will hold the results.,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.@noteEach bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks@endnoteThe first `n_results` elements will hold the results.,
         active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
             working array to hold the extended subsets,
         temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
@@ -318,8 +310,8 @@ def detect_dosage_effect(
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double)
+        nullable(ctypes.POINTER(ctypes.c_double)),
+        nullable(ctypes.POINTER(ctypes.c_double))
     )
     tox.detect_dosage_effect_c.restype = None
 
@@ -351,7 +343,7 @@ def detect_dosage_effect(
 
     return {
         "n_results": n_results.value,
-        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value].copy(),
+        "work_arr_paralog_subsets": work_arr_paralog_subsets,
         "active_mask": active_mask,
         "temp_paralog_vector": temp_paralog_vector
     }
@@ -390,12 +382,8 @@ def detect_subfunctionalization(
     results : dict
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
-            working array to hold bitmask encoded subsets for detection.
-            @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
-            @endnote
-            The first `n_results` elements will hold the results.,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.@noteEach bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks@endnoteThe first `n_results` elements will hold the results.,
         active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
             working array to hold the extended subsets,
         temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
@@ -491,7 +479,7 @@ def detect_subfunctionalization(
 
     return {
         "n_results": n_results.value,
-        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value].copy(),
+        "work_arr_paralog_subsets": work_arr_paralog_subsets,
         "active_mask": active_mask,
         "temp_paralog_vector": temp_paralog_vector,
         "temp_work_array": temp_work_array
@@ -505,8 +493,8 @@ def detect_patterns(
         filtered_paralogs_mask,
         max_subset_size,
         n_paralog_subsets,
-        dosage_max_angle=3.141592653589793,
-        dosage_gain_gamma=0.1,
+        dosage_max_angle=None,
+        dosage_gain_gamma=None,
         subfunc_rdi_threshold=None,
         subfunc_paralog_norms=None,
         subfunc_sorted_paralog_norms_perm=None
@@ -518,50 +506,36 @@ def detect_patterns(
         expression vector of ancestral ortholog
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes) in column-major layout (order='F')
         expression vectors of genes
-    pattern_mode : str
-        used pattern for detection
-        |       Mode           |                               Value                                |
-        |----------------------|--------------------------------------------------------------------|
-        |    Dosage Effect     |    "dosage_pattern"     |
-        | Subfunctionalization |    "subfunc_pattern"    |
+    pattern_mode : int
+        used pattern for detection|         Mode         |                              Value                              ||----------------------|-----------------------------------------------------------------||    Dosage Effect     |  [[tox_paralog_analysis(module):MODE_DOSAGE_PATTERN(variable)]] || Subfunctionalization | [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]] |
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
         bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
     max_subset_size : int
         maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
     dosage_max_angle : float, optional
-        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        The default value is `PI`.
+        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise prunedThe default value is `PI`.
     dosage_gain_gamma : float, optional
-        in dosage mode required positive magnitude gain for dosage
-        The default value is `0.1_real64`.
+        in dosage mode required positive magnitude gain for dosageThe default value is `0.1_real64`.
     subfunc_rdi_threshold : float, optional
-        max allowed residual distance from `ancestor`
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+        max allowed residual distance from `ancestor`This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
     subfunc_paralog_norms : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F'), optional
-        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` from `f42_utils` function for this)This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
     subfunc_sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
-        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestorThis optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
 
     Returns
     -------
     results : dict
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`,
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_results) in column-major layout (order='F')
-            working array to hold bitmask encoded subsets for detection.
-            @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
-            @endnote
-            The first `n_results` elements will hold the results.,
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets) in column-major layout (order='F')
+            working array to hold bitmask encoded subsets for detection.@noteEach bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks@endnoteThe first `n_results` elements will hold the results.,
         active_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
             working array to hold the extended subsets,
         temp_paralog_vector : np.ndarray[np.float64] of shape (n_dims,) in column-major layout (order='F')
             vector used for pruning subsets,
         subfunc_temp_work_array : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
-            in subfunctionalization mode needed for efficient check of minimum value after a certain index
-            This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
+            in subfunctionalization mode needed for efficient check of minimum value after a certain indexThis optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
 
     Notes
     -----
@@ -571,7 +545,6 @@ def detect_patterns(
     # ensure all array inputs are numpy arrays
     ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
     genes = np.asfortranarray(genes, dtype=np.float64)
-    pattern_mode = np.asarray(pattern_mode)
     filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
     if subfunc_paralog_norms is not None:
         subfunc_paralog_norms = np.ascontiguousarray(subfunc_paralog_norms, dtype=np.float64)
@@ -585,7 +558,7 @@ def detect_patterns(
 
 
     # Create temporaries and/or outputs
-    pattern_mode = pattern_mode.astype(f"S{15}", order="F")
+    pattern_mode = ctypes.c_int(pattern_mode)
     n_results = ctypes.c_int(0)
     max_subset_size = ctypes.c_int(max_subset_size)
     work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets), dtype=np.int32, order='F')
@@ -610,7 +583,7 @@ def detect_patterns(
         np.ctypeslib.ndpointer(ndim=2, flags='F_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{15}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int),
@@ -619,8 +592,8 @@ def detect_patterns(
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
-        ctypes.POINTER(ctypes.c_double),
-        ctypes.POINTER(ctypes.c_double),
+        nullable(ctypes.POINTER(ctypes.c_double)),
+        nullable(ctypes.POINTER(ctypes.c_double)),
         nullable(ctypes.POINTER(ctypes.c_double)),
         nullable(np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64)),
         nullable(np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32)),
@@ -634,7 +607,7 @@ def detect_patterns(
         genes,
         ctypes.byref(ctypes.c_int(n_genes)),
         ctypes.byref(ctypes.c_int(n_dims)),
-        pattern_mode,
+        ctypes.byref(pattern_mode),
         filtered_paralogs_mask,
         ctypes.byref(ctypes.c_int(n_mask_chunks)),
         ctypes.byref(n_results),
@@ -663,7 +636,7 @@ def detect_patterns(
 
     return {
         "n_results": n_results.value,
-        "work_arr_paralog_subsets": work_arr_paralog_subsets[..., :n_results.value].copy(),
+        "work_arr_paralog_subsets": work_arr_paralog_subsets,
         "active_mask": active_mask,
         "temp_paralog_vector": temp_paralog_vector,
         "subfunc_temp_work_array": subfunc_temp_work_array
@@ -682,8 +655,7 @@ def mask_chunk_count(
     Returns
     -------
     count : int
-        number of 32 bit chunks a mask needs to encode `n_genes` genes
-        Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
+        number of 32 bit chunks a mask needs to encode `n_genes` genesEach bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
 
     Notes
     -----
@@ -756,8 +728,7 @@ def filter_paralogs_by_pattern_subfunctionalization(
 
     Notes
     -----
-    This subroutine prefilters the genes for subfunctionalization,
-    as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
+    This subroutine prefilters the genes for subfunctionalization,as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     """
 
     # ensure all array inputs are numpy arrays
@@ -837,8 +808,7 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     Notes
     -----
-    This subroutine prefilters the genes for dosage effect,
-    as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
+    This subroutine prefilters the genes for dosage effect,as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     """
 
     # ensure all array inputs are numpy arrays
@@ -905,12 +875,8 @@ def filter_paralogs_by_pattern(
     """
     Parameters
     ----------
-    pattern_mode : str
-        used pattern for detection
-        |       Mode           |                               Value                                |
-        |----------------------|--------------------------------------------------------------------|
-        |    Dosage Effect     |    "dosage_pattern"     |
-        | Subfunctionalization |    "subfunc_pattern"    |
+    pattern_mode : int
+        used pattern for detection|         Mode         |                              Value                              ||----------------------|-----------------------------------------------------------------||    Dosage Effect     |  [[tox_paralog_analysis(module):MODE_DOSAGE_PATTERN(variable)]] || Subfunctionalization | [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]] |
     gene_angles : np.ndarray[np.float64] of shape (n_genes,) in column-major layout (order='F')
         vector, holding the angles between ancestor and genes (0<=angle<=Pi)
     threshold : float
@@ -929,7 +895,6 @@ def filter_paralogs_by_pattern(
     """
 
     # ensure all array inputs are numpy arrays
-    pattern_mode = np.asarray(pattern_mode)
     gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
 
@@ -938,7 +903,7 @@ def filter_paralogs_by_pattern(
 
 
     # Create temporaries and/or outputs
-    pattern_mode = pattern_mode.astype(f"S{15}", order="F")
+    pattern_mode = ctypes.c_int(pattern_mode)
     threshold = ctypes.c_double(threshold)
     masks = np.empty((n_mask_chunks, n_families), dtype=np.int32, order='F')
     ierr = ctypes.c_int(0)
@@ -952,7 +917,7 @@ def filter_paralogs_by_pattern(
         return type(ty.__name__, (ty,), {'from_param': from_param})
 
     tox.filter_paralogs_by_pattern_c.argtypes = (
-        np.ctypeslib.ndpointer(ndim=0, flags='C_CONTIGUOUS', dtype=f"S{15}"),
+        ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_double),
         ctypes.POINTER(ctypes.c_int),
@@ -965,7 +930,7 @@ def filter_paralogs_by_pattern(
     tox.filter_paralogs_by_pattern_c.restype = None
 
     tox.filter_paralogs_by_pattern_c(
-        pattern_mode,
+        ctypes.byref(pattern_mode),
         gene_angles,
         ctypes.byref(threshold),
         ctypes.byref(ctypes.c_int(n_genes)),
@@ -994,16 +959,11 @@ def calc_work_arr_paralog_subsets_size(
     Parameters
     ----------
     max_subset_size : int, modified in-place
-        maximum size that a subset must not exceed.
-        @warning
-        If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-        Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
-        @endwarning
+        maximum size that a subset must not exceed.@warningIf the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.@endwarning
     n_genes : int
         number of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,) in column-major layout (order='F')
-        Output mask with all genes disabled that did not pass the filter
-        M_DM_FROM_JUST_INFO to compute this argument using [[tox_paralog_analysis(module):filter_paralogs_by_pattern]]'s output `masks(:, family_idx)`.
+        Output mask with all genes disabled that did not pass the filterDM_FROM(masks(:, family_idx), filter_paralogs_by_pattern, tox_paralog_analysis, JUST_INFO)
 
     Returns
     -------
@@ -1012,10 +972,7 @@ def calc_work_arr_paralog_subsets_size(
 
     Notes
     -----
-    The `detect_*` subroutines need a work array for the to be tested subsets.
-    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
-    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
-    This subroutine calculates the needed size for the work array.
+    The `detect_*` subroutines need a work array for the to be tested subsets.In worst case, all need to be tried and subsets that cannot be extended will be kept as results.This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.This subroutine calculates the needed size for the work array.
     """
 
     # ensure all array inputs are numpy arrays

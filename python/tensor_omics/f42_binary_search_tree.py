@@ -179,9 +179,8 @@ def bst_range_query(
     Returns
     -------
     results : dict
-        output_indices : np.ndarray[np.int32] of shape (num_matches,) in column-major layout (order='F')
-            Output array of matching indices
-            The first `num_matches` elements will hold the results.,
+        output_indices : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+            Output array of matching indicesThe first `num_matches` elements will hold the results.,
         num_matches : int
             Number of matches found
 
@@ -243,6 +242,6 @@ def bst_range_query(
     output_indices.setflags(write=False)
 
     return {
-        "output_indices": output_indices[..., :num_matches.value].copy(),
+        "output_indices": output_indices,
         "num_matches": num_matches.value
     }

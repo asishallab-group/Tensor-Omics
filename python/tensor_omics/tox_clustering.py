@@ -12,7 +12,7 @@ tox = ctypes.CDLL(dll_path)
 def cluster_factor_trajectories_k_means(
         trajectories,
         centroids,
-        max_iterations=300
+        max_iterations=None
         ):
     """
     Parameters
@@ -20,19 +20,15 @@ def cluster_factor_trajectories_k_means(
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints) in column-major layout (order='F')
         matrix with data points to cluster
     centroids : np.ndarray[np.float64] of shape (n_factors, n_clusters) in column-major layout (order='F'), modified in-place
-        matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-        The centroids should be unique. This is not checked in this routine.
-        The final values will be the final centroids of the clusters
+        matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.The centroids should be unique. This is not checked in this routine.The final values will be the final centroids of the clusters
     max_iterations : int, optional
-        number of maximum iterations of the clustering
-        The default value is `300_int32`.
+        number of maximum iterations of the clusteringThe default value is `300_int32`.
 
     Returns
     -------
     results : dict
         labels : np.ndarray[np.int32] of shape (n_samples * n_timepoints,) in column-major layout (order='F')
-            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-            each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
+            array of labels, each index corresponds to the respective point's index, so first label is first point's label.each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
         label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
 
@@ -76,7 +72,7 @@ def cluster_factor_trajectories_k_means(
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
+        nullable(ctypes.POINTER(ctypes.c_int))
     )
     tox.cluster_factor_trajectories_k_means_c.restype = None
 
@@ -110,7 +106,7 @@ def cluster_factor_trajectories_k_means(
 def k_means_clustering(
         data_points,
         centroids,
-        max_iterations=300
+        max_iterations=None
         ):
     """
     performs k-means clustering on `data_points`
@@ -121,28 +117,21 @@ def k_means_clustering(
     data_points : np.ndarray[np.float64] of shape (n_dims, n_points) in column-major layout (order='F')
         matrix with data points to cluster
     centroids : np.ndarray[np.float64] of shape (n_dims, n_clusters) in column-major layout (order='F'), modified in-place
-        matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-        The centroids should be unique. This is not checked in this routine.
-        The final values will be the final centroids of the clusters
+        matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.The centroids should be unique. This is not checked in this routine.The final values will be the final centroids of the clusters
     max_iterations : int, optional
-        number of maximum iterations of the clustering
-        The default value is `300_int32`.
+        number of maximum iterations of the clusteringThe default value is `300_int32`.
 
     Returns
     -------
     results : dict
         labels : np.ndarray[np.int32] of shape (n_points,) in column-major layout (order='F')
-            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-            each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
+            array of labels, each index corresponds to the respective point's index, so first label is first point's label.each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
         label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
 
     Notes
     -----
-    k-means clustering algorithm:
-    1. Assigns each data point to one of `k` clusters whose centroid is clostest
-    2. Recalculates the centroids using the mean of its assigned points
-    3. repeat 1-2 until assignment remains unchanged
+    k-means clustering algorithm:1. Assigns each data point to one of `k` clusters whose centroid is clostest2. Recalculates the centroids using the mean of its assigned points3. repeat 1-2 until assignment remains unchanged
     """
 
     # ensure all array inputs are numpy arrays
@@ -178,7 +167,7 @@ def k_means_clustering(
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)
+        nullable(ctypes.POINTER(ctypes.c_int))
     )
     tox.k_means_clustering_c.restype = None
 
@@ -219,18 +208,9 @@ def linkage_clustering(
     Parameters
     ----------
     distances : np.ndarray[np.float64] of shape (n_points, n_points) in column-major layout (order='F'), modified in-place
-        symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
-        @note
-        This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-        So there is no need to copy an existing distance matrix, just pass the original.
-        @endnote
+        symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.@noteThis subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.So there is no need to copy an existing distance matrix, just pass the original.@endnote
     method : str
-        used algorithm
-        |      Method      |                      Value                     |
-        |------------------|------------------------------------------------|
-        | Average / UPGMA  |    "average"      |
-        | Weighted / WPGMA |    "weighted"     |
-        |      Ward        |    "ward"         |
+        used algorithm|      Method      |   Value    ||------------------|------------|| Average / UPGMA  | "average"  || Weighted / WPGMA | "weighted" ||       Ward       |   "ward"   |
 
     Returns
     -------
@@ -246,10 +226,7 @@ def linkage_clustering(
 
     Notes
     -----
-    @note
-    This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-    So there is no need to copy an existing distance matrix, just pass the original.
-    @endnote
+    @noteThis subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.So there is no need to copy an existing distance matrix, just pass the original.@endnote
     """
 
     # ensure all array inputs are numpy arrays

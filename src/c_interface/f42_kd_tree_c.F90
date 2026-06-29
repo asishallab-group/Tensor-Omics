@@ -75,7 +75,7 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
-        call  build_kd_index(&
+        call build_kd_index(&
             points = points,&
             num_dimensions = num_dimensions,&
             num_points = num_points,&
@@ -145,7 +145,7 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
-        call  build_spherical_kd(&
+        call build_spherical_kd(&
             vectors = vectors,&
             num_dimensions = num_dimensions,&
             num_vectors = num_vectors,&
@@ -177,13 +177,13 @@ contains
         use f42_kd_tree, only: get_kd_point
         use f42_kd_tree
         integer(c_int), intent(in), target :: n_points_elements_dim_1
-            !!  Size of the 1. dimension/extent of `points`
+            !! Size of the 1. dimension/extent of `points`
         integer(c_int), intent(in), target :: n_points_elements_dim_2
-            !!  Size of the 2. dimension/extent of `points`
+            !! Size of the 2. dimension/extent of `points`
         integer(c_int), intent(in), target :: n_kd_indices_elements
-            !!  Size of the 1. dimension/extent of `kd_indices`
+            !! Size of the 1. dimension/extent of `kd_indices`
         integer(c_int), intent(in), target :: n_point_values_elements
-            !!  Size of the 1. dimension/extent of `point_values`
+            !! Size of the 1. dimension/extent of `point_values`
         real(c_double), intent(in), dimension(n_points_elements_dim_1, n_points_elements_dim_2), target :: points
             !! Input points
         integer(c_int), intent(in), dimension(n_kd_indices_elements), target :: kd_indices
@@ -203,7 +203,7 @@ contains
         M_CHECK_NON_NULL(position)
         M_CHECK_NON_NULL(point_values)
         M_CHECK_NON_NULL(n_point_values_elements)
-        call  get_kd_point(&
+        call get_kd_point(&
             points = points,&
             kd_indices = kd_indices,&
             position = position,&
