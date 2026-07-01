@@ -6,6 +6,7 @@ module mod_test_shatter_cluster_data
     use asserts
     use test_suite, only: test_case
     use tox_errors, only: is_ok, ERR_OK
+    use f42_kd_tree, only: build_kd_index
     use tox_shatter_cluster_data, only: calculate_density_radius, &
                                         calculate_labels_as_density
 
@@ -60,10 +61,19 @@ contains
         integer(int32), parameter :: n_vecs = 10_int32
 
         real(real64) :: vectors(n_dims, n_vecs)
+        integer(int32) :: dimension_order(n_dims)
         integer(int32) :: kd_indices(n_vecs)
         real(real64) :: label_densities(n_vecs)
         integer(int32) :: ierr
         integer(int32) :: i_chk
+
+        ! Mandated tmp_ prefix workspaces to build a structurally valid KD-Tree
+        integer(int32) :: tmp_workspace(n_vecs)
+        real(real64) :: tmp_val_buf(n_vecs)
+        integer(int32) :: tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_l_stack(n_vecs)
+        integer(int32) :: tmp_r_stack(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
 
         ! Member 1 to 6: A tightly packed cluster near the origin
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -79,14 +89,20 @@ contains
         vectors(:, 9) = [30.0_real64, 30.0_real64]
         vectors(:, 10) = [40.0_real64, 40.0_real64]
 
-        ! Map linear KD indexing track
-        do i_chk = 1, n_vecs
-            kd_indices(i_chk) = i_chk
-        end do
+        ! Establish splitting order priority for coordinate dimensions
+        dimension_order(1) = 1_int32
+        dimension_order(2) = 2_int32
+
+        ! Construct a real balanced KD-Tree index layout using your module logic
+        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_rec_stack, ierr)
+
+        call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: tree construction check")
 
         ! 2. Act
         call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         kd_indices, label_densities, ierr)
+                                         dimension_order, kd_indices, label_densities, ierr)
 
         ! 3. Assert
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: ierr execution check")
