@@ -1011,10 +1011,12 @@ contains
         !! Pre-generated random indices into pool_control (required for Monte Carlo mode)
         real(real64), intent(out) :: p_value
         !! p-value (exact or Monte Carlo estimated)
-        integer(int32), intent(inout) :: ierr
+        integer(int32), intent(out) :: ierr
         !! Error code
 
         integer(int64) :: n_combinations
+
+        call set_ok(ierr)
 
         call validate_dimension_size(n_pool_case, ierr)
         call validate_dimension_size(n_pool_control, ierr)
@@ -1101,7 +1103,7 @@ contains
         tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, &
         tmp_strat_gene_seen_control, tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
         tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
-        rand_indices_case, rand_indices_control)
+        rand_indices_case, rand_indices_control, ierr)
 
         type(sorted_data_t), intent(in) :: sorted_case
         !! Sorted case gene data
@@ -1228,6 +1230,7 @@ contains
         !! Pre-generated random indices for case pool sampling (Monte Carlo mode)
         integer(int32), dimension(MONTE_CARLO_SAMPLES), intent(inout) :: rand_indices_control
         !! Pre-generated random indices for control pool sampling (Monte Carlo mode)
+        integer(int32), intent(out) :: ierr
 
         integer(int32) :: i_gene, family_id
         real(real64) :: mean_case_val, mean_control_val
@@ -1236,7 +1239,8 @@ contains
         integer(int32) :: case_stratum_count, control_stratum_count
         integer(int32) :: chosen_n_bins_case, chosen_n_bins_control
         logical :: strata_criteria_met_case, strata_criteria_met_control
-        integer(int32) :: dummy_ierr
+
+        call set_ok(ierr)
 
         pvalues_own = -1.0_real64
         pvalues_family = -1.0_real64
@@ -1327,7 +1331,8 @@ contains
                                         control_stratum_count, &
                                         observed_statistic_own_val, norm_method, &
                                         rand_indices_case, rand_indices_control, &
-                                        pvalues_own(i_gene), dummy_ierr)
+                                        pvalues_own(i_gene), ierr)
+                    if(is_err(ierr)) return
                     neighborhood_size_own_case(i_gene) = case_stratum_count
                     neighborhood_size_own_control(i_gene) = control_stratum_count
                 end if
@@ -1340,7 +1345,7 @@ contains
                                     cache%family_pool_sizes(family_id), &
                                     observed_statistic_family_val, norm_method, &
                                     rand_indices_case, rand_indices_control, &
-                                    pvalues_family(i_gene), dummy_ierr)
+                                    pvalues_family(i_gene), ierr)
                 neighborhood_size_family(i_gene) = cache%family_pool_sizes(family_id)
             end if
 
@@ -1351,7 +1356,7 @@ contains
                                     cache%orth_pool_sizes(family_id), &
                                     observed_statistic_ortholog_val, norm_method, &
                                     rand_indices_case, rand_indices_control, &
-                                    pvalues_ortholog(i_gene), dummy_ierr)
+                                    pvalues_ortholog(i_gene), ierr)
                 neighborhood_size_ortholog(i_gene) = cache%orth_pool_sizes(family_id)
             end if
 
@@ -1606,7 +1611,7 @@ contains
             tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, tmp_strat_gene_seen_control, &
             tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
             tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
-            rand_indices_case, rand_indices_control)
+            rand_indices_case, rand_indices_control, ierr)
 
     end subroutine compute_noise_pvalue_pipeline
 
@@ -1623,7 +1628,7 @@ end module noise_model
 !| Performs null-pointer checks via `M_CHECK_IERR_NON_NULL` / `M_CHECK_NON_NULL`,
 !| then delegates unconditionally to the validated Fortran entry point.
 !| No computation is performed here.
-pure subroutine compute_noise_pvalues_pipeline_c( &
+subroutine compute_noise_pvalues_pipeline_c( &
     means_case, replicates_case, n_genes_case, n_replicates_case, &
     means_control, replicates_control, n_genes_control, n_replicates_control, &
     observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &

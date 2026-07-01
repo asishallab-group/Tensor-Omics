@@ -34,6 +34,7 @@ program main
   use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
   use mod_test_normalize_by_std_dev, only: get_all_tests_normalize_by_std_dev
   use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
+  use mod_test_noise_model, only: get_all_tests_noise_model
   implicit none
 
   integer :: nargs
@@ -70,6 +71,7 @@ program main
   call add_suite("normalization_unit_length", get_all_tests_normalization_unit_length)
   call add_suite("clustering", get_all_tests_clustering)
   call add_suite("data_integration", get_all_tests_data_integration)
+  call add_suite("noise_model", get_all_tests_noise_model)
 
   nargs = command_argument_count()
 
