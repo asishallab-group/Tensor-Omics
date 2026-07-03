@@ -224,6 +224,9 @@ class DocLine:
     def copy(self):
         return DocLine(self.parent, self.idx, tuple(part.copy() if type(part) is not str else part for part in self.parts))
 
+    def __str__(self):
+        return "".join(map(str, self.parts))
+
     def __format__(self, spec):
         return "".join(format(p, spec) if type(p) is not str else p for p in self.parts)
 
@@ -300,7 +303,7 @@ class DocList(CodeGenerator):
         if len(doc_list) == 0 or (len(doc_list) == 1 and doc_list[0] == ""):
             warn("No Ford documentation", unit)
 
-        doc_list = [line.strip() for line in doc_list]
+        doc_list = [line[1:] if line.startswith(" ") else line for line in doc_list]
 
         return cls(parent, doc_list, ty)
 

@@ -1,5 +1,4 @@
 import warnings
-warnings.simplefilter("ignore")
 
 
 def eval_expr(expr: str):
@@ -53,13 +52,22 @@ def iter_parents(entity):
         yield parent
 
 
+def repeat(value, n_times=None):
+    if type(n_times) is int:
+        for i in range(n_times):
+            yield value
+    else:
+        while True:
+            yield value
+
+
 class Indentable(str):
     """Wrapper class to easily indent code blocks"""
     def __new__(cls, *args, **kwargs):
         return super().__new__(cls, *args, **kwargs)
 
     def __rshift__(self, level):
-        indented = "\n".join(level * " " + line for line in self.split("\n") if line)
+        indented = "\n".join(level * " " + line  if line else "" for line in self.split("\n"))
         return Indentable(indented)
 
 
@@ -124,7 +132,6 @@ class Serializer:
                 return "-" * length
 
     def FordTable(self, spec):
-        from .doc import DocLine, DocList
         header = tuple(format(col, spec) for col in self.header)
         rows = tuple(tuple(format(col, spec) for col in row) for row in self.rows)
         col_widths = tuple(max(len(header_col), max(map(len, rows_col))) for header_col, rows_col in zip(header, zip(*rows)))
@@ -134,13 +141,9 @@ class Serializer:
         rows = tuple(" | ".join(col.center(width, " ") for col, width in zip(row, col_widths)) for row in rows)
 
         header = f"| {header} |"
-        formatted = format(DocList(self.parent, [
-            DocLine(self.header[0].parent, self.header[0].idx, (header,)),
-            DocLine(self.header[0].parent, self.header[0].idx + 1, (f"|{align}|",)),
-            *(DocLine(self.header[0].parent, idx, (f"| {row} |",)) for idx, row in enumerate(rows, self.header[0].idx + 2)),
-        ], self.parent.type), spec)
-        start = formatted.find(header)
-        return formatted[start:]
+        align = f"|{align}|"
+
+        return Indentable("\n".join((header, align, *(f"| {row} |" for row in rows))))
 
     def DocList(self, spec):
         raise NotImplementedError()

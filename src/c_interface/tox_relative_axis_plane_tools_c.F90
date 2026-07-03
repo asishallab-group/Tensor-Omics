@@ -52,6 +52,7 @@ contains
             !! Error code
         logical, allocatable, dimension(:) :: vecs_selection_mask_f
         logical, allocatable, dimension(:) :: axes_selection_mask_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vecs)
         M_CHECK_NON_NULL(n_axes)
@@ -61,6 +62,7 @@ contains
         M_CHECK_NON_NULL(axes_selection_mask)
         M_CHECK_NON_NULL(n_selected_axes)
         M_CHECK_NON_NULL(projections)
+
         M_ALLOCATE(vecs_selection_mask_f(n_vecs))
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
         M_ALLOCATE(axes_selection_mask_f(n_axes))
@@ -76,6 +78,7 @@ contains
             projections = projections,&
             ierr = ierr&
         )
+
     end subroutine omics_vector_RAP_projection_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):omics_field_RAP_projection(subroutine)]]
@@ -113,6 +116,7 @@ contains
             !! Error code
         logical, allocatable, dimension(:) :: vecs_selection_mask_f
         logical, allocatable, dimension(:) :: axes_selection_mask_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vecs)
         M_CHECK_NON_NULL(n_axes)
@@ -122,6 +126,7 @@ contains
         M_CHECK_NON_NULL(axes_selection_mask)
         M_CHECK_NON_NULL(n_selected_axes)
         M_CHECK_NON_NULL(projections)
+
         M_ALLOCATE(vecs_selection_mask_f(n_vecs))
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
         M_ALLOCATE(axes_selection_mask_f(n_axes))
@@ -137,6 +142,7 @@ contains
             projections = projections,&
             ierr = ierr&
         )
+
     end subroutine omics_field_RAP_projection_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angle_between_vectors(subroutine)]]
@@ -165,12 +171,16 @@ contains
             !! Indices of 3 axes to use for directionality calculation (ignored if n_dims <= 3)
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(v1)
         M_CHECK_NON_NULL(v2)
         M_CHECK_NON_NULL(n_dims)
         M_CHECK_NON_NULL(signed_angle)
         M_CHECK_NON_NULL(selected_axes_for_signed)
+
+
         call clock_hand_angle_between_vectors(&
             v1 = v1,&
             v2 = v2,&
@@ -179,6 +189,7 @@ contains
             selected_axes_for_signed = selected_axes_for_signed,&
             ierr = ierr&
         )
+
     end subroutine clock_hand_angle_between_vectors_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angles_for_shift_vectors(subroutine)]]
@@ -217,6 +228,7 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         logical, allocatable, dimension(:) :: vecs_selection_mask_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(origins)
         M_CHECK_NON_NULL(targets)
@@ -226,6 +238,7 @@ contains
         M_CHECK_NON_NULL(n_selected_vecs)
         M_CHECK_NON_NULL(selected_axes_for_signed)
         M_CHECK_NON_NULL(signed_angles)
+
         M_ALLOCATE(vecs_selection_mask_f(n_vecs))
         call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
         call clock_hand_angles_for_shift_vectors(&
@@ -239,6 +252,7 @@ contains
             signed_angles = signed_angles,&
             ierr = ierr&
         )
+
     end subroutine clock_hand_angles_for_shift_vectors_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):compute_relative_axis_contributions(subroutine)]]
@@ -260,16 +274,21 @@ contains
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
+
+
         call compute_relative_axis_contributions(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
             ierr = ierr&
         )
+
     end subroutine compute_relative_axis_contributions_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):relative_axes_changes_from_shift_vector(subroutine)]]
@@ -291,16 +310,21 @@ contains
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
+
+
         call relative_axes_changes_from_shift_vector(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
             ierr = ierr&
         )
+
     end subroutine relative_axes_changes_from_shift_vector_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):relative_axes_expression_from_expression_vector(subroutine)]]
@@ -322,16 +346,21 @@ contains
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vec)
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(contributions)
+
+
         call relative_axes_expression_from_expression_vector(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
             ierr = ierr&
         )
+
     end subroutine relative_axes_expression_from_expression_vector_c
 
 end module tox_relative_axis_plane_tools_c

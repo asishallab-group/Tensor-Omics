@@ -28,6 +28,7 @@ def get_sorted_value(
     -------
     sorted_value : float
 
+
     Notes
     -----
     Get the value at the sorted position.
@@ -104,6 +105,7 @@ def build_bst_index(
         tmp_right_stack : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
             Manual stack for right indices
 
+
     Notes
     -----
     Build the BST index by sorting indices using values in x.
@@ -179,10 +181,11 @@ def bst_range_query(
     Returns
     -------
     results : dict
-        output_indices : np.ndarray[np.int32] of shape (num_values,) in column-major layout (order='F')
+        output_indices : np.ndarray[np.int32] of shape (num_matches,) in column-major layout (order='F')
             Output array of matching indicesThe first `num_matches` elements will hold the results.,
         num_matches : int
             Number of matches found
+
 
     Notes
     -----
@@ -242,6 +245,6 @@ def bst_range_query(
     output_indices.setflags(write=False)
 
     return {
-        "output_indices": output_indices,
+        "output_indices": output_indices[..., :num_matches.value].copy(),
         "num_matches": num_matches.value
     }

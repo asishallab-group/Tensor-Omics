@@ -32,14 +32,19 @@ contains
             !! Vector that will be normalized to unit length
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vector)
         M_CHECK_NON_NULL(n_dims)
+
+
         call normalize_unit_length(&
             vector = vector,&
             n_dims = n_dims,&
             ierr = ierr&
         )
+
     end subroutine normalize_unit_length_c
 
 end module tox_normalization_c

@@ -215,7 +215,7 @@ class C_Wrapper(CodeGenerator):
                 if procedure.name.endswith("_alloc"):
                     name = procedure.name.removesuffix("_alloc")
                 # non-alloc routines get the _expert suffix if there is an alloc variant
-                elif procedure.parent.find_child(f"{procedure.name}_alloc") is not None:
+                elif procedure.fortran_procedure.find_child(f"{procedure.name}_alloc") is not None:
                     name = f"{procedure.name}_expert"
                 # if no alloc variant, the base name is simply the subroutine name
                 else:

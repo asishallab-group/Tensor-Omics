@@ -12,7 +12,7 @@ tox = ctypes.CDLL(dll_path)
 def cluster_factor_trajectories_k_means(
         trajectories,
         centroids,
-        max_iterations=None
+        max_iterations=300
         ):
     """
     Parameters
@@ -31,6 +31,7 @@ def cluster_factor_trajectories_k_means(
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
         label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
+
 
     Notes
     -----
@@ -72,7 +73,7 @@ def cluster_factor_trajectories_k_means(
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
-        nullable(ctypes.POINTER(ctypes.c_int))
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.cluster_factor_trajectories_k_means_c.restype = None
 
@@ -106,7 +107,7 @@ def cluster_factor_trajectories_k_means(
 def k_means_clustering(
         data_points,
         centroids,
-        max_iterations=None
+        max_iterations=300
         ):
     """
     performs k-means clustering on `data_points`
@@ -128,6 +129,7 @@ def k_means_clustering(
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.each label is the index of its related cluster -> `1<=label<=n_clusters=k`,
         label_counts : np.ndarray[np.int32] of shape (n_clusters,) in column-major layout (order='F')
             holds the number of points having the respective label assigned
+
 
     Notes
     -----
@@ -167,7 +169,7 @@ def k_means_clustering(
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
         ctypes.POINTER(ctypes.c_int),
-        nullable(ctypes.POINTER(ctypes.c_int))
+        ctypes.POINTER(ctypes.c_int)
     )
     tox.k_means_clustering_c.restype = None
 
@@ -210,7 +212,11 @@ def linkage_clustering(
     distances : np.ndarray[np.float64] of shape (n_points, n_points) in column-major layout (order='F'), modified in-place
         symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.@noteThis subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.So there is no need to copy an existing distance matrix, just pass the original.@endnote
     method : str
-        used algorithm|      Method      |   Value    ||------------------|------------|| Average / UPGMA  | "average"  || Weighted / WPGMA | "weighted" ||       Ward       |   "ward"   |
+        used algorithm|      Method      |   Value    |
+        |------------------|------------|
+        | Average / UPGMA  | "average"  |
+        | Weighted / WPGMA | "weighted" |
+        |       Ward       |   "ward"   |
 
     Returns
     -------
@@ -223,6 +229,7 @@ def linkage_clustering(
             height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter,
         cluster_sizes : np.ndarray[np.int32] of shape (n_points - 1,) in column-major layout (order='F')
             size of cluster at iteration k
+
 
     Notes
     -----

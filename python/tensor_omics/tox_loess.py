@@ -32,6 +32,7 @@ def tox_loess_required_workspace(
         real_workspace_size : int
             Required size of the real workspace array
 
+
     Notes
     -----
     Recommend workspace sizes based on Netlib exact formulas.Computes the required sizes for integer and real workspace arrays.These sizes depend on the dimensionality of the data and the maximum neighborhood size.
@@ -419,7 +420,10 @@ def loess(
     degree : int
         Degree of the LOESS polynomial
     mode : str
-        Mode of operation|      Mode      |  Value   ||----------------|----------|| robust fitting | "robust" || plain fitting  | "plain"  |
+        Mode of operation|      Mode      |  Value   |
+        |----------------|----------|
+        | robust fitting | "robust" |
+        | plain fitting  | "plain"  |
     n_iters : int
         Number of robust iterations (only used when mode = 1)
 

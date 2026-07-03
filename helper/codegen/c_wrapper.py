@@ -57,7 +57,8 @@ class C_Wrapper_Serializer(Serializer):
                 doc_mark = "!> "
                 continue_mark = "!| "
 
-        formatted = f"{doc_mark}{f"\n{continue_mark}".join(format(line, spec) for line in self.doc_list)}"
+        joiner = "\n" + continue_mark
+        formatted = f"{doc_mark}{joiner.join(format(line, spec).replace("\n", joiner) for line in self.doc_list)}"
         return Indentable(formatted)
 
     def Dimension(self, spec):

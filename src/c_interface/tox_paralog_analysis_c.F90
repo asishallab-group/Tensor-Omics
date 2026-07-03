@@ -34,13 +34,18 @@ contains
             !! index of last active gene
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(bit_mask)
         M_CHECK_NON_NULL(n_bit_mask_elements)
         M_CHECK_NON_NULL(idx)
+
+
         idx = mask_get_first_successor_idx(&
             bit_mask = bit_mask&
         )
+
     end subroutine mask_get_first_successor_idx_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):mask_check_state(function)]]
@@ -65,11 +70,13 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         logical :: state_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(bit_mask)
         M_CHECK_NON_NULL(n_bit_mask_elements)
         M_CHECK_NON_NULL(i_gene)
         M_CHECK_NON_NULL(state)
+
         call c_int_as_logical(state, state_f)
         state_f = mask_check_state(&
             bit_mask = bit_mask,&
@@ -112,6 +119,7 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! error code
         logical, allocatable, dimension(:, :) :: neofunc_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(ancestors)
         M_CHECK_NON_NULL(n_families)
@@ -121,6 +129,7 @@ contains
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(thresholds)
         M_CHECK_NON_NULL(neofunc)
+
         M_ALLOCATE(neofunc_f(n_genes, n_axes))
         call detect_neofunctionalization(&
             ancestors = ancestors,&
@@ -197,6 +206,8 @@ contains
         real(c_double), intent(in), target :: gain_gamma
             !! positive magnitude gain for dosage effect
             !! The default value is `0.1_real64`.
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(ancestor)
         M_CHECK_NON_NULL(genes)
@@ -210,6 +221,8 @@ contains
         M_CHECK_NON_NULL(n_paralog_subsets)
         M_CHECK_NON_NULL(active_mask)
         M_CHECK_NON_NULL(temp_paralog_vector)
+
+
         call detect_dosage_effect(&
             ancestor = ancestor,&
             genes = genes,&
@@ -223,8 +236,11 @@ contains
             n_paralog_subsets = n_paralog_subsets,&
             active_mask = active_mask,&
             temp_paralog_vector = temp_paralog_vector,&
-            ierr = ierr&
+            ierr = ierr,&
+            max_angle = max_angle,&
+            gain_gamma = gain_gamma&
         )
+
     end subroutine detect_dosage_effect_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):detect_subfunctionalization(subroutine)]]
@@ -289,6 +305,8 @@ contains
             !! needed for efficient check of minimum value after a certain index
         integer(c_int), intent(out), target :: ierr
             !! error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(ancestor)
         M_CHECK_NON_NULL(genes)
@@ -306,6 +324,8 @@ contains
         M_CHECK_NON_NULL(paralog_norms)
         M_CHECK_NON_NULL(sorted_paralog_norms_perm)
         M_CHECK_NON_NULL(temp_work_array)
+
+
         call detect_subfunctionalization(&
             ancestor = ancestor,&
             genes = genes,&
@@ -325,6 +345,7 @@ contains
             temp_work_array = temp_work_array,&
             ierr = ierr&
         )
+
     end subroutine detect_subfunctionalization_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):detect_patterns(subroutine)]]
@@ -409,6 +430,8 @@ contains
             !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis(module):MODE_SUBFUNC_PATTERN(variable)]].
         integer(c_int), intent(out), target :: ierr
             !! error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(ancestor)
         M_CHECK_NON_NULL(genes)
@@ -423,22 +446,52 @@ contains
         M_CHECK_NON_NULL(n_paralog_subsets)
         M_CHECK_NON_NULL(active_mask)
         M_CHECK_NON_NULL(temp_paralog_vector)
-        call detect_patterns(&
-            ancestor = ancestor,&
-            genes = genes,&
-            n_genes = n_genes,&
-            n_dims = n_dims,&
-            pattern_mode = pattern_mode,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
-            n_mask_chunks = n_mask_chunks,&
-            n_results = n_results,&
-            max_subset_size = max_subset_size,&
-            work_arr_paralog_subsets = work_arr_paralog_subsets,&
-            n_paralog_subsets = n_paralog_subsets,&
-            active_mask = active_mask,&
-            temp_paralog_vector = temp_paralog_vector,&
-            ierr = ierr&
-        )
+
+
+        if (pattern_mode_int_f == MODE_SUBFUNC_PATTERN) then
+            call detect_patterns(&
+                ancestor = ancestor,&
+                genes = genes,&
+                n_genes = n_genes,&
+                n_dims = n_dims,&
+                pattern_mode = pattern_mode,&
+                filtered_paralogs_mask = filtered_paralogs_mask,&
+                n_mask_chunks = n_mask_chunks,&
+                n_results = n_results,&
+                max_subset_size = max_subset_size,&
+                work_arr_paralog_subsets = work_arr_paralog_subsets,&
+                n_paralog_subsets = n_paralog_subsets,&
+                active_mask = active_mask,&
+                temp_paralog_vector = temp_paralog_vector,&
+                dosage_max_angle = dosage_max_angle,&
+                dosage_gain_gamma = dosage_gain_gamma,&
+                ierr = ierr,&
+                subfunc_rdi_threshold = subfunc_rdi_threshold,&
+                subfunc_paralog_norms = subfunc_paralog_norms,&
+                subfunc_sorted_paralog_norms_perm = subfunc_sorted_paralog_norms_perm,&
+                subfunc_temp_work_array = subfunc_temp_work_array&
+            )
+        else
+            call detect_patterns(&
+                ancestor = ancestor,&
+                genes = genes,&
+                n_genes = n_genes,&
+                n_dims = n_dims,&
+                pattern_mode = pattern_mode,&
+                filtered_paralogs_mask = filtered_paralogs_mask,&
+                n_mask_chunks = n_mask_chunks,&
+                n_results = n_results,&
+                max_subset_size = max_subset_size,&
+                work_arr_paralog_subsets = work_arr_paralog_subsets,&
+                n_paralog_subsets = n_paralog_subsets,&
+                active_mask = active_mask,&
+                temp_paralog_vector = temp_paralog_vector,&
+                dosage_max_angle = dosage_max_angle,&
+                dosage_gain_gamma = dosage_gain_gamma,&
+                ierr = ierr&
+            )
+        end if
+
     end subroutine detect_patterns_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):mask_chunk_count(subroutine)]]
@@ -450,6 +503,7 @@ contains
             ) bind(C, name="mask_chunk_count_c")
         use tox_paralog_analysis, only: mask_chunk_count
         use tox_paralog_analysis
+
         integer(c_int), intent(in), target :: n_genes
             !! number of genes
         integer(c_int), intent(out), target :: count
@@ -458,13 +512,18 @@ contains
             !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32)` and represents the number of chunks
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(count)
+
+
         call mask_chunk_count(&
             n_genes = n_genes,&
             count = count&
         )
+
     end subroutine mask_chunk_count_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):filter_paralogs_by_pattern_subfunctionalization(subroutine)]]
@@ -502,6 +561,8 @@ contains
             !! bit mask that will have indices of genes kept by pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
             !! error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(gene_angles)
         M_CHECK_NON_NULL(threshold)
@@ -510,6 +571,8 @@ contains
         M_CHECK_NON_NULL(gene_to_fam)
         M_CHECK_NON_NULL(masks)
         M_CHECK_NON_NULL(n_mask_chunks)
+
+
         call filter_paralogs_by_pattern_subfunctionalization(&
             gene_angles = gene_angles,&
             threshold = threshold,&
@@ -520,6 +583,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+
     end subroutine filter_paralogs_by_pattern_subfunctionalization_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):filter_paralogs_by_pattern_dosage_effect(subroutine)]]
@@ -557,6 +621,8 @@ contains
             !! bit mask that will have indices of genes kept by pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
             !! error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(gene_angles)
         M_CHECK_NON_NULL(threshold)
@@ -565,6 +631,8 @@ contains
         M_CHECK_NON_NULL(gene_to_fam)
         M_CHECK_NON_NULL(masks)
         M_CHECK_NON_NULL(n_mask_chunks)
+
+
         call filter_paralogs_by_pattern_dosage_effect(&
             gene_angles = gene_angles,&
             threshold = threshold,&
@@ -575,6 +643,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+
     end subroutine filter_paralogs_by_pattern_dosage_effect_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):filter_paralogs_by_pattern(subroutine)]]
@@ -619,6 +688,8 @@ contains
             !! bit mask that will have indices of genes kept by pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
             !! error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(pattern_mode)
         M_CHECK_NON_NULL(gene_angles)
@@ -628,6 +699,8 @@ contains
         M_CHECK_NON_NULL(gene_to_fam)
         M_CHECK_NON_NULL(masks)
         M_CHECK_NON_NULL(n_mask_chunks)
+
+
         call filter_paralogs_by_pattern(&
             pattern_mode = pattern_mode,&
             gene_angles = gene_angles,&
@@ -639,6 +712,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+
     end subroutine filter_paralogs_by_pattern_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]]
@@ -676,12 +750,16 @@ contains
             !! DM_FROM(masks(:, family_idx), filter_paralogs_by_pattern, tox_paralog_analysis, JUST_INFO)
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(max_subset_size)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(work_array_size)
         M_CHECK_NON_NULL(filtered_paralogs_mask)
         M_CHECK_NON_NULL(n_mask_chunks)
+
+
         call calc_work_arr_paralog_subsets_size(&
             max_subset_size = max_subset_size,&
             n_genes = n_genes,&
@@ -690,6 +768,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+
     end subroutine calc_work_arr_paralog_subsets_size_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):mask_set_state(subroutine)]]
@@ -714,11 +793,13 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! error code
         logical :: state_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(bit_mask)
         M_CHECK_NON_NULL(n_bit_mask_elements)
         M_CHECK_NON_NULL(i_gene)
         M_CHECK_NON_NULL(state)
+
         call c_int_as_logical(state, state_f)
         call mask_set_state(&
             bit_mask = bit_mask,&
@@ -726,6 +807,7 @@ contains
             state = state_f,&
             ierr = ierr&
         )
+
     end subroutine mask_set_state_c
 
 end module tox_paralog_analysis_c

@@ -43,6 +43,8 @@ contains
             !! Error code
         real(c_double), intent(out), target :: sorted_value
             !! 
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(values)
         M_CHECK_NON_NULL(n_values_elements)
@@ -50,12 +52,15 @@ contains
         M_CHECK_NON_NULL(n_sorted_indices_elements)
         M_CHECK_NON_NULL(position)
         M_CHECK_NON_NULL(sorted_value)
+
+
         sorted_value = get_sorted_value(&
             values = values,&
             sorted_indices = sorted_indices,&
             position = position,&
             ierr = ierr&
         )
+
     end subroutine get_sorted_value_c
 
     !> summary: C-wrapper for [[f42_binary_search_tree(module):build_bst_index(subroutine)]]
@@ -82,12 +87,16 @@ contains
             !! Manual stack for right indices
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(values)
         M_CHECK_NON_NULL(num_values)
         M_CHECK_NON_NULL(sorted_indices)
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
+
+
         call build_bst_index(&
             values = values,&
             num_values = num_values,&
@@ -96,6 +105,7 @@ contains
             tmp_right_stack = tmp_right_stack,&
             ierr = ierr&
         )
+
     end subroutine build_bst_index_c
 
     !> summary: C-wrapper for [[f42_binary_search_tree(module):bst_range_query(subroutine)]]
@@ -129,6 +139,8 @@ contains
             !! Number of matches found
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(values)
         M_CHECK_NON_NULL(sorted_indices)
@@ -137,6 +149,8 @@ contains
         M_CHECK_NON_NULL(upper_bound)
         M_CHECK_NON_NULL(output_indices)
         M_CHECK_NON_NULL(num_matches)
+
+
         call bst_range_query(&
             values = values,&
             sorted_indices = sorted_indices,&
@@ -147,6 +161,7 @@ contains
             num_matches = num_matches,&
             ierr = ierr&
         )
+
     end subroutine bst_range_query_c
 
 end module f42_binary_search_tree_c

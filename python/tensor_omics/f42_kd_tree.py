@@ -39,6 +39,7 @@ def build_kd_index(
         tmp_recursion_stack : np.ndarray[np.int32] of shape (3, num_points) in column-major layout (order='F')
             Stack for l, r, depth
 
+
     Notes
     -----
     Build a k-d tree index using a stack-based, non-recursive approach.Initialize kd_indices to 1:num_points (original indices)Choose split dimension by cycling through dimension_orderFind median indexPartition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))Push right and left intervals onto stack
@@ -140,6 +141,7 @@ def build_spherical_kd(
             Right stack,
         tmp_recursion_stack : np.ndarray[np.int32] of shape (3, num_vectors) in column-major layout (order='F')
             Stack for recursive calls
+
 
     Notes
     -----

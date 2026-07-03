@@ -30,6 +30,7 @@ contains
             ) bind(C, name="tox_loess_required_workspace_c")
         use tox_loess, only: tox_loess_required_workspace
         use tox_loess
+
         integer(c_int), intent(in), target :: d
             !! Dimensionality of the data
         integer(c_int), intent(in), target :: nvmax
@@ -43,12 +44,14 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         logical :: setlf_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(d)
         M_CHECK_NON_NULL(nvmax)
         M_CHECK_NON_NULL(int_workspace_size)
         M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(setlf)
+
         call c_int_as_logical(setlf, setlf_f)
         call tox_loess_required_workspace(&
             d = d,&
@@ -57,6 +60,7 @@ contains
             real_workspace_size = real_workspace_size,&
             setlf = setlf_f&
         )
+
     end subroutine tox_loess_required_workspace_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain(subroutine)]]
@@ -120,6 +124,7 @@ contains
             !! Error code
         logical :: infl_f
         logical :: setlf_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n)
         M_CHECK_NON_NULL(x)
@@ -137,6 +142,7 @@ contains
         M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(diagl)
         M_CHECK_NON_NULL(fitted_values)
+
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
         call loess_fit_plain(&
@@ -158,6 +164,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+
     end subroutine loess_fit_plain_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust(subroutine)]]
@@ -240,6 +247,7 @@ contains
             !! Error code
         logical :: infl_f
         logical :: setlf_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n)
         M_CHECK_NON_NULL(x)
@@ -262,6 +270,7 @@ contains
         M_CHECK_NON_NULL(residuals)
         M_CHECK_NON_NULL(permutation_indices)
         M_CHECK_NON_NULL(fitted_values)
+
         call c_int_as_logical(infl, infl_f)
         call c_int_as_logical(setlf, setlf_f)
         call loess_fit_robust(&
@@ -288,6 +297,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+
     end subroutine loess_fit_robust_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_alloc(subroutine)]]
@@ -347,6 +357,7 @@ contains
         M_CHECK_NON_NULL(n_iters)
         call c_char_1d_as_string(mode, mode_f, ierr)
         if (is_err(ierr)) return
+
         select case (mode_f)
             case ("robust")
                     mode_int_f = MODE_ROBUST
@@ -356,6 +367,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
+
         call loess_alloc(&
             x = x,&
             y = y,&
@@ -366,6 +378,7 @@ contains
             n_iters = n_iters,&
             ierr = ierr&
         )
+
     end subroutine loess_c
 
 end module tox_loess_c

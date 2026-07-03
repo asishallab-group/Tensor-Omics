@@ -98,7 +98,10 @@ def group_centroid(
     gene_to_family : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
         An array mapping each gene (by index) to a family ID.
     mode : str
-        used mode for grouping|       Mode      |       Value       ||-----------------|-------------------|| Group Orthologs | "group_orthologs" ||    Group all    |    "group_all"    |
+        used mode for grouping|       Mode      |       Value       |
+        |-----------------|-------------------|
+        | Group Orthologs | "group_orthologs" |
+        |    Group all    |    "group_all"    |
     ortholog_set : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F'), optional
         A logical array indicating if a gene is part of a specific subset (e.g., orthologs).This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids(module):MODE_GROUP_ORTHOLOGS(variable)]].
 
@@ -109,6 +112,7 @@ def group_centroid(
             The output matrix (n_axes x n_families) to store the computed centroids.,
         tmp_selected_indices : np.ndarray[np.int32] of shape (n_genes,) in column-major layout (order='F')
             An output array for storing indices.
+
 
     Notes
     -----
@@ -121,6 +125,7 @@ def group_centroid(
     mode = np.asarray(mode)
     if ortholog_set is not None:
         ortholog_set = np.ascontiguousarray(ortholog_set, dtype=np.int32)
+
 
     # extract dimension arguments
     n_axes = expression_vectors.shape[0]

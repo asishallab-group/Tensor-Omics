@@ -58,6 +58,8 @@ contains
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
             !! The default value is `300_int32`.
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_clusters)
         M_CHECK_NON_NULL(trajectories)
@@ -67,6 +69,8 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
+
+
         call cluster_factor_trajectories_k_means(&
             n_clusters = n_clusters,&
             trajectories = trajectories,&
@@ -76,8 +80,10 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr&
+            ierr = ierr,&
+            max_iterations = max_iterations&
         )
+
     end subroutine cluster_factor_trajectories_k_means_c
 
     !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering(subroutine)]]
@@ -123,6 +129,8 @@ contains
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
             !! The default value is `300_int32`.
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_clusters)
         M_CHECK_NON_NULL(data_points)
@@ -131,6 +139,8 @@ contains
         M_CHECK_NON_NULL(centroids)
         M_CHECK_NON_NULL(labels)
         M_CHECK_NON_NULL(label_counts)
+
+
         call k_means_clustering(&
             n_clusters = n_clusters,&
             data_points = data_points,&
@@ -139,8 +149,10 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr&
+            ierr = ierr,&
+            max_iterations = max_iterations&
         )
+
     end subroutine k_means_clustering_c
 
     !> summary: C-wrapper for [[tox_clustering(module):linkage_clustering(subroutine)]]
@@ -199,6 +211,7 @@ contains
         M_CHECK_NON_NULL(method)
         call c_char_1d_as_string(method, method_f, ierr)
         if (is_err(ierr)) return
+
         select case (method_f)
             case ("average")
                     method_int_f = METHOD_AVERAGE
@@ -210,6 +223,7 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
+
         call linkage_clustering(&
             distances = distances,&
             n_points = n_points,&
@@ -220,6 +234,7 @@ contains
             method = method_int_f,&
             ierr = ierr&
         )
+
     end subroutine linkage_clustering_c
 
 end module tox_clustering_c

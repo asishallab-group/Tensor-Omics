@@ -63,6 +63,8 @@ contains
             !! Stack for l, r, depth
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(points)
         M_CHECK_NON_NULL(num_dimensions)
@@ -75,6 +77,8 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
+
+
         call build_kd_index(&
             points = points,&
             num_dimensions = num_dimensions,&
@@ -89,6 +93,7 @@ contains
             tmp_recursion_stack = tmp_recursion_stack,&
             ierr = ierr&
         )
+
     end subroutine build_kd_index_c
 
     !> summary: C-wrapper for [[f42_kd_tree(module):build_spherical_kd(subroutine)]]
@@ -133,6 +138,8 @@ contains
             !! Stack for recursive calls
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(vectors)
         M_CHECK_NON_NULL(num_dimensions)
@@ -145,6 +152,8 @@ contains
         M_CHECK_NON_NULL(tmp_left_stack)
         M_CHECK_NON_NULL(tmp_right_stack)
         M_CHECK_NON_NULL(tmp_recursion_stack)
+
+
         call build_spherical_kd(&
             vectors = vectors,&
             num_dimensions = num_dimensions,&
@@ -159,6 +168,7 @@ contains
             tmp_recursion_stack = tmp_recursion_stack,&
             ierr = ierr&
         )
+
     end subroutine build_spherical_kd_c
 
     !> summary: C-wrapper for [[f42_kd_tree(module):get_kd_point(subroutine)]]
@@ -194,6 +204,8 @@ contains
             !! Output point values
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(points)
         M_CHECK_NON_NULL(n_points_elements_dim_1)
@@ -203,6 +215,8 @@ contains
         M_CHECK_NON_NULL(position)
         M_CHECK_NON_NULL(point_values)
         M_CHECK_NON_NULL(n_point_values_elements)
+
+
         call get_kd_point(&
             points = points,&
             kd_indices = kd_indices,&
@@ -210,6 +224,7 @@ contains
             point_values = point_values,&
             ierr = ierr&
         )
+
     end subroutine get_kd_point_c
 
 end module f42_kd_tree_c

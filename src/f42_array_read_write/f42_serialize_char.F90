@@ -17,8 +17,9 @@ module f42_serialize_char
 
 contains
 
-  !> Serialize a 1D character array to a binary file.
-  !! The file will contain a magic number, type code, dimension, shape, character length, and the array data.
+  !> category: C-interface
+  !| Serialize a 1D character array to a binary file.
+  !| The file will contain a magic number, type code, dimension, shape, character length, and the array data.
   subroutine serialize_char_1d(arr, filename, ierr)
     character(len=*), contiguous, intent(in) :: arr(:)
     !! array to save

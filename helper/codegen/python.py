@@ -305,7 +305,7 @@ class Python_Serializer(Serializer):
 
     def Error_Handling(self, spec):
         return f"""ERROR_CODES = {{
-{Indentable(",\n".join(f'{code}: "{format(doc_list, " ").strip()}"' for code, doc_list in self.error_codes.items() if code != 0)) >> INDENT}
+{Indentable(",\n".join(f'{code}: "{format(doc_list, " ").strip()}"' for code, doc_list in self.error_codes.values() if code != 0)) >> INDENT}
 }}
 
 

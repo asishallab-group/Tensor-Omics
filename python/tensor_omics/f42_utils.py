@@ -33,6 +33,7 @@ def which(
         m_out : int
             Actual size of idx_out (number of true values found).
 
+
     Notes
     -----
     Finds the indices of the true values in a logical mask.
@@ -193,7 +194,7 @@ def loess_smooth_2d(
     return y_out
 
 
-def compute_edf_expert(
+def compute_edf(
         values,
         perm
         ):
@@ -214,6 +215,7 @@ def compute_edf_expert(
             Corresponding cumulative frequencies between 0 and 1.,
         n_unique : int
             Number of unique values found (actual size of output arrays)
+
 
     Notes
     -----
@@ -242,7 +244,7 @@ def compute_edf_expert(
                 return ty.from_param(obj)
         return type(ty.__name__, (ty,), {'from_param': from_param})
 
-    tox.compute_edf_expert_c.argtypes = (
+    tox.compute_edf_c.argtypes = (
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.float64),
         ctypes.POINTER(ctypes.c_int),
         np.ctypeslib.ndpointer(ndim=1, flags='C_CONTIGUOUS', dtype=np.int32),
@@ -251,9 +253,9 @@ def compute_edf_expert(
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)
     )
-    tox.compute_edf_expert_c.restype = None
+    tox.compute_edf_c.restype = None
 
-    tox.compute_edf_expert_c(
+    tox.compute_edf_c(
         values,
         ctypes.byref(ctypes.c_int(n_values)),
         perm,
@@ -295,6 +297,7 @@ def compute_edf(
             Corresponding cumulative frequencies between 0 and 1.,
         n_unique : int
             Number of unique values found (actual size of output arrays)
+
 
     Notes
     -----

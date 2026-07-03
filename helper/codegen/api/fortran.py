@@ -3,7 +3,7 @@ from ford.settings import load_toml_settings, load_markdown_settings
 from ford.sourceform import FortranSubroutine, FortranFunction, FortranVariable, FortranModuleProcedureImplementation, FortranModule
 from enum import Enum
 import re
-from .utils import Indentable, CodeGenerator, warn, error
+from .utils import Indentable, CodeGenerator, warn, error, repeat
 from .doc import DocList, FordTable
 import numpy as np
 
@@ -46,17 +46,19 @@ class Error_Handling(CodeGenerator):
     def __init__(self, project: Project):
         tox_errors = project.find("tox_errors")
         self.error_codes = {
-            int(eval_expr(var.initial)): DocList(var, var.doc_list, "variable")
+            var.name: (int(eval_expr(var.initial)), DocList(var, var.doc_list, "variable"))
             for var in tox_errors.variables if var.parameter and var.name.startswith("ERR_")
         }
 
 
 class Module(CodeGenerator):
     """Class for a parsed Fortran Module"""
-    def __init__(self, module: FortranModule):
+    def __init__(self, module: FortranModule, error_handling: Error_Handling):
         self.name = module.name
         self.doc_list = DocList.from_fortran(self, module)
-        self.procedures = tuple(map(Procedure, module.routines))
+        self.procedures = tuple(map(Procedure, module.routines, repeat(self)))
+        self.error_handling = error_handling
+        self.parent = module.parent
 
 
 class Modules(CodeGenerator, tuple):
@@ -67,10 +69,12 @@ class Modules(CodeGenerator, tuple):
         # sort modules for deterministic order
         sorted_mods = sorted(proj.modules, key=lambda x: x.name)
 
-        mods = super(Modules, cls).__new__(cls, map(Module, sorted_mods))
+        error_handling = Error_Handling(proj)
+
+        mods = super(Modules, cls).__new__(cls, map(Module, sorted_mods, repeat(error_handling)))
         mods.project = proj
 
-        mods.error_handling = Error_Handling(proj)
+        mods.error_handling = error_handling
         return mods
 
 
@@ -153,6 +157,10 @@ class Fortran_Type(CodeGenerator):
         self.intent = intent
         self.needs_conversion = self.name in ("character", "logical")
 
+    @property
+    def ndim(self):
+        return len(self.dimension)
+
     @classmethod
     def from_fortran_variable(cls, arg: FortranVariable):
         type = re.match(r"\s*([^ \(]+).*", arg.full_type, re.IGNORECASE).group(1).lower()
@@ -197,7 +205,7 @@ class Procedure_Argument(CodeGenerator):
         # determine default value
         self.default_value = self.doc_list.meta["default"]
         if self.default_value is not None:
-            self.default_value = eval_expr(self.default_value)
+            self.default_value = eval_expr(self.default_value.group("default_val"))
 
     @property
     def is_mask_count_arg_for(self) -> Self | None:
@@ -233,17 +241,20 @@ class Procedure_Argument(CodeGenerator):
 class Procedure_Arguments(CodeGenerator, tuple):
     """Collection of Procedure_Argument objects"""
     def __new__(cls, args: List[FortranVariable], proc: Procedure):
-        return super(Procedure_Arguments, cls).__new__(cls, (Procedure_Argument(arg, proc) for arg in args))
+        return super(Procedure_Arguments, cls).__new__(cls, map(Procedure_Argument, args, repeat(proc)))
 
 
 class Procedure(CodeGenerator):
     """Wrapper class for Fortran procedures"""
-    def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation):
-        self.parent = procedure.parent
+    def __init__(self, procedure: FortranSubroutine | FortranFunction | FortranModuleProcedureImplementation, parent: Module):
+        self.parent = parent
+        self.fortran_procedure = procedure
         self.name = procedure.name
         self.meta = procedure.meta
         if not self.meta.summary:
             warn("No summary meta tag (!! summary: ...)", procedure)
+        if not self.meta.author:
+            warn("No author meta tag (!! author: ...)", procedure)
         self.args = Procedure_Arguments(procedure.args, self)
         self.doc_list = DocList.from_fortran(self, procedure)
         self.retvar = getattr(procedure, "retvar", None)

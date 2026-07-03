@@ -49,6 +49,7 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code: 0=ok, 201=invalid input, 202=empty input
         logical, allocatable, dimension(:) :: mask_f
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(mask)
         M_CHECK_NON_NULL(n_mask_elements)
@@ -57,6 +58,7 @@ contains
         M_CHECK_NON_NULL(n_idx_out_elements)
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(m_out)
+
         M_ALLOCATE(mask_f(n_mask_elements))
         call c_int_as_logical(mask, mask_f)
         call which(&
@@ -67,6 +69,7 @@ contains
             m_out = m_out,&
             ierr = ierr&
         )
+
     end subroutine which_c
 
     !> summary: C-wrapper for [[f42_utils(module):loess_smooth_2d(subroutine)]]
@@ -110,6 +113,8 @@ contains
             !! Output smoothed values (length n_target).
         integer(c_int), intent(out), target :: ierr
             !! Error code: 0=ok, 201=invalid input, 202=empty input
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_total)
         M_CHECK_NON_NULL(n_target)
@@ -121,6 +126,8 @@ contains
         M_CHECK_NON_NULL(kernel_sigma)
         M_CHECK_NON_NULL(kernel_cutoff)
         M_CHECK_NON_NULL(y_out)
+
+
         call loess_smooth_2d(&
             n_total = n_total,&
             n_target = n_target,&
@@ -134,6 +141,7 @@ contains
             y_out = y_out,&
             ierr = ierr&
         )
+
     end subroutine loess_smooth_2d_c
 
     !> summary: C-wrapper for [[f42_utils(module):compute_edf(subroutine)]]
@@ -141,7 +149,7 @@ contains
     !| Returns the sorted unique values and their cumulative frequencies in [0,1].
     !| Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
     !| The number of unique values can be determined by finding the last non-zero cdf_value.
-    subroutine compute_edf_expert_c(&
+    subroutine compute_edf_c(&
             values,&
             n_values,&
             perm,&
@@ -149,7 +157,7 @@ contains
             cdf_values,&
             n_unique,&
             ierr&
-            ) bind(C, name="compute_edf_expert_c")
+            ) bind(C, name="compute_edf_c")
         use f42_utils, only: compute_edf
         use f42_utils
         integer(c_int), intent(in), target :: n_values
@@ -166,6 +174,8 @@ contains
             !! Number of unique values found (actual size of output arrays)
         integer(c_int), intent(out), target :: ierr
             !! Error code: 0=ok, 201=invalid input, 202=empty input
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(values)
         M_CHECK_NON_NULL(n_values)
@@ -173,6 +183,8 @@ contains
         M_CHECK_NON_NULL(unique_values)
         M_CHECK_NON_NULL(cdf_values)
         M_CHECK_NON_NULL(n_unique)
+
+
         call compute_edf(&
             values = values,&
             n_values = n_values,&
@@ -182,7 +194,8 @@ contains
             n_unique = n_unique,&
             ierr = ierr&
         )
-    end subroutine compute_edf_expert_c
+
+    end subroutine compute_edf_c
 
     !> summary: C-wrapper for [[f42_utils(module):compute_edf_alloc(subroutine)]]
     !| Helper routine that sorts and calls compute_edf.
@@ -210,12 +223,16 @@ contains
             !! Number of unique values found (actual size of output arrays)
         integer(c_int), intent(out), target :: ierr
             !! Error code: 0=ok, 201=invalid input, 202=empty input
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(values)
         M_CHECK_NON_NULL(n_values)
         M_CHECK_NON_NULL(unique_values)
         M_CHECK_NON_NULL(cdf_values)
         M_CHECK_NON_NULL(n_unique)
+
+
         call compute_edf_alloc(&
             values = values,&
             n_values = n_values,&
@@ -224,6 +241,7 @@ contains
             n_unique = n_unique,&
             ierr = ierr&
         )
+
     end subroutine compute_edf_c
 
     !> summary: C-wrapper for [[f42_utils(module):compute_empirical_p_values(subroutine)]]
@@ -262,6 +280,8 @@ contains
             !! Output array to store the computed p-values for each gene.
         integer(c_int), intent(out), target :: ierr
             !! Error code
+
+
         M_CHECK_IERR_NON_NULL
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(rdi)
@@ -269,6 +289,8 @@ contains
         M_CHECK_NON_NULL(perm)
         M_CHECK_NON_NULL(p_values)
         M_CHECK_NON_NULL(c_const)
+
+
         call compute_empirical_p_values(&
             n_genes = n_genes,&
             rdi = rdi,&
@@ -277,6 +299,7 @@ contains
             p_values = p_values,&
             c_const = c_const&
         )
+
     end subroutine compute_empirical_p_values_c
 
 end module f42_utils_c
