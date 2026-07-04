@@ -5,14 +5,14 @@
 
 Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise.
 
-Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
+Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C, using data-oriented parallel kernels and compiler-driven optimization (including vectorization and multicore execution when enabled). This makes the algorithms naturally decomposable into largely independent tasks, suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.
 
 ### Key Features
 
 * **Geometry-based analysis**: distances, angles, projections, and trajectory shifts are used as primary primitives.
 * **Explainable outputs**: results are interpretable in terms of vector geometry rather than opaque model coefficients.
 * **Multi-modal integration**: unifies transcriptomics, proteomics, metabolomics, clinical, or socioeconomic data within one framework.
-* **Parallel and federated**: implemented in Fortran/C with OpenMP, SIMD, and coarrays for efficient large-scale computation on distributed datasets.
+* **Parallel and federated**: implemented in Fortran/C with data-oriented parallel kernels and compiler-level optimization for efficient large-scale computation on distributed datasets.
 * **Robust to sparsity and noise**: percentile-based empirical thresholds and local geometric measures enable stability.
 * **Broad applications**: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.
 
@@ -76,7 +76,7 @@ run_all_tests.sh  # Run the full test suite (Fortran + Python + R)
 * **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows.
 * **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines. See `snippets/readme.md` for details.
 * **`/src`** contains performance-critical Fortran code compiled during the build process. All `.f90` files must include `precompiler_constants.f90`. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
-* **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Each subroutine's tests live in an independent module named `mod_<subroutine_name>.f90`. See `test/readme.md` for details.
+* **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Test files (`mod_test_*.f90`) generally correspond to full modules from `src/`, though newly added subroutines or utility functions from utils are sometimes isolated into their own test cases. See `test/readme.md` for details.
 * **`/helper`** is a temporary development aid for generating C wrappers (`helper_c_wrapper.py`), Rcpp wrappers (`helper_rcpp_wrapper.py`), and VS Code snippet files (`generate_snippets.py`). See `helper/readme.md` for details.
 
 ---
@@ -88,8 +88,12 @@ See [Install / Compilation](#install--compilation) for step-by-step setup instru
 | Requirement | Version | Notes |
 |---|---|---|
 | gfortran | ≥ 15 | Available natively on Arch Linux and macOS (Homebrew); use Docker on other systems |
-| Python | ≥ 3.7 + NumPy | Python integration |
+| fpm | ≥ 0.12.0 | Fortran package manager |
+| libzip | ≥ 1.11 | Required for archive handling |
+| xxhash (XXH3) | ≥ 0.8 | Required for hashing |
+| Python | ≥ 3.7 + NumPy + pandas | Python integration |
 | R | ≥ 3.6 + Rcpp | R integration |
+| gdb | optional | Needed only for `--debug` flag |
 
 [FORD](https://github.com/Fortran-FOSS-Programmers/ford) (`pip install ford`) is optional and only needed to regenerate the API documentation.
 
@@ -132,7 +136,7 @@ docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
 
 If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `/build/<compiler>/`, and creates a symbolic link to the resulting shared library (`libtensor-omics.so`) so that Python and R always find the same path.
 
-gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not available in standard package repositories.
+gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not yet available in standard package repositories (May 2026).
 
 **Arch Linux** (rolling release — always has the latest GCC):
 
@@ -148,22 +152,28 @@ brew install gcc
 
 On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use the [Docker path](#using-docker-recommended) instead.
 
-**Default** — gfortran without optimisation flags:
+**Default** — gfortran with baseline optimisation flags:
 
 ```bash
 ./build.sh
 ```
 
-**Maximum performance** — gfortran with optimisation flags:
+**Maximum performance** — gfortran with additional optimisation flags:
 
 ```bash
 ./build.sh --max-performance
 ```
 
-**Intel Fortran Compiler** — with maximum performance flags:
+**Debug build** — enables debug/checking flags (`-O0`, debug symbols, and runtime checks depending on compiler profile):
 
 ```bash
-./build.sh --max-performance FC=ifx
+./build.sh --debug
+```
+
+**Intel Fortran Compiler** — with additional optimisation flags:
+
+```bash
+FC=ifx ./build.sh --max-performance 
 ```
 
 ### Python integration
@@ -271,10 +281,12 @@ The test suite provides a scalable system for organizing and executing Fortran u
 ### Architecture
 
 1. **`run_tests.f90`** — main program handling command-line arguments and dispatching all test calls.
-2. **Test modules** — one file per tested subroutine, named `mod_<subroutine_name>.f90`.
+2. **`test_suite.f90`** — The core orchestration module. It defines abstract interfaces, registries, and runner subroutines to dynamically collect and execute tests across different suites.
+2. **Test modules** — Test files that generally correspond to complete modules in `src/`. They may also be dedicated to specific standalone or newly added subroutines, particularly those from utils.
 3. **`asserts.f90`** — assertion library for validating results.
 
-Test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
+* **Suite Registration:** Each test module must implement a public function named `get_all_<src_module_name>_tests` that matches the `get_all_interface` abstract interface defined in `test_suite.f90`. This function aggregates and returns an array of all `test_case` structures defined within that module.
+* Test modules must be named `mod_test_<module_name>.[fF]90.` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
 
 ### Running tests
 
@@ -291,6 +303,25 @@ Test modules must be named `mod_<subroutine_name>.f90` to ensure they are compil
 # Run specific tests within a suite
 ./test_runner.sh <suite_name> <test1,test2,test3>
 ```
+
+### Debugging tests
+
+If tests fail or you need to inspect variables at runtime, run the Fortran test runner in debug mode:
+
+```bash
+./test_runner.sh --debug
+```
+
+This launches the test executable under `gdb`, so you can set breakpoints, inspect variables and call stacks, and step through execution.
+
+You can also run specific suites or tests in debug mode:
+
+```bash
+./test_runner.sh --debug <suite_name>
+./test_runner.sh --debug <suite_name> <test1,test2,test3>
+```
+
+If `gdb` is not installed on your system, install it first. For command reference, see the [gdb manual](https://sourceware.org/gdb/current/onlinedocs/gdb/).
 
 ---
 
