@@ -166,7 +166,7 @@ contains
         allocate (nan_file(1))
         allocate (missing_col_file(1))
         allocate (gene_ids_false_inputs(10))
-        allocate (expr_vecs_false_inputs(6, n_genes))
+        allocate (expr_vecs_false_inputs(6, 10))
         allocate (invalid_struct_file(1))
         allocate (no_genes_file(1))
         allocate (empty_file(1))

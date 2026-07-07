@@ -46,8 +46,6 @@ contains
             if (present(got)) then
                 write (error_unit, "(A)", advance="no") COLOR_RED // "      got" // COLOR_CREAM // ": " // got
                 comma = .true.
-
-                if (present(at)) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
             end if
 
             if (present(expected)) then
@@ -72,7 +70,7 @@ contains
             write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
         end if
 
-        error stop 1
+        stop 1
     end subroutine assertion_error
 
     !> Assert that two complex numbers are equal within a tolerance.
@@ -101,8 +99,14 @@ contains
         integer(int32), intent(in) :: n
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
-        if (any(abs(a - b) > tol)) then
-            call assertion_error(msg, additional_msg="complex arrays differ", tol=""//tol)
+        integer(int32) :: i, n_diff
+        n_diff = count(abs(a - b) > tol)
+        if (n_diff > 0) then
+            do i = 1, n
+                if (abs(a(i) - b(i)) > tol) exit
+            end do
+            call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
+                got=""//a(i), expected=""//b(i), tol=""//tol, at=""//i)
         end if
     end subroutine
 
@@ -111,8 +115,14 @@ contains
         logical, intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
-        if (any(a .neqv. b)) then
-            call assertion_error(msg, additional_msg="logical arrays differ")
+        integer(int32) :: i, n_diff
+        n_diff = count(a .neqv. b)
+        if (n_diff > 0) then
+            do i = 1, n
+                if (a(i) .neqv. b(i)) exit
+            end do
+            call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
+                got=logical_to_str(a(i)), expected=logical_to_str(b(i)), at=""//i)
         end if
     end subroutine
 
@@ -174,8 +184,14 @@ contains
     subroutine assert_equal_array_int(a, b, n, msg)
         integer(int32), intent(in) :: a(n), b(n), n
         character(*), intent(in) :: msg
-        if (any(a /= b)) then
-            call assertion_error(msg, additional_msg="integer arrays differ")
+        integer(int32) :: i, n_diff
+        n_diff = count(a /= b)
+        if (n_diff > 0) then
+            do i = 1, n
+                if (a(i) /= b(i)) exit
+            end do
+            call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
+                got=""//a(i), expected=""//b(i), at=""//i)
         end if
     end subroutine
 
@@ -184,8 +200,14 @@ contains
         real(real64), intent(in) :: a(n), b(n), tol
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
-        if (any(abs(a - b) > tol)) then
-            call assertion_error(msg, additional_msg="real arrays differ", tol=""//tol)
+        integer(int32) :: i, n_diff
+        n_diff = count(abs(a - b) > tol)
+        if (n_diff > 0) then
+            do i = 1, n
+                if (abs(a(i) - b(i)) > tol) exit
+            end do
+            call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
+                got=""//a(i), expected=""//b(i), tol=""//tol, at=""//i)
         end if
     end subroutine
 
@@ -195,8 +217,14 @@ contains
         character(len=clen), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
         integer, intent(in) :: n
-        if (any(a /= b)) then
-            call assertion_error(msg, additional_msg="character arrays differ")
+        integer(int32) :: i, n_diff
+        n_diff = count(a /= b)
+        if (n_diff > 0) then
+            do i = 1, n
+                if (a(i) /= b(i)) exit
+            end do
+            call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
+                got="'" // trim(a(i)) // "'", expected="'" // trim(b(i)) // "'", at=""//i)
         end if
     end subroutine
 
@@ -209,7 +237,7 @@ contains
 
         do i = 1, n
             if (ieee_is_nan(a(i))) then
-                call assertion_error(msg, additional_msg="NaN detected")
+                call assertion_error(msg, additional_msg="NaN detected", got=""//a(i), at=""//i)
             end if
         end do
     end subroutine
@@ -222,7 +250,7 @@ contains
         integer :: i
         do i = 1, n
             if (abs(a(i)) > huge(1.0_real64)) then
-                call assertion_error(msg, additional_msg="Inf detected")
+                call assertion_error(msg, additional_msg="Inf detected", got=""//a(i), at=""//i)
             end if
         end do
     end subroutine
@@ -250,7 +278,8 @@ contains
         integer(int32), intent(in) :: arr(n), n, val
         character(*), intent(in) :: msg
         if (.not. any(arr == val)) then
-            call assertion_error(msg, additional_msg="value '" // val // "' not found")
+            call assertion_error(msg, additional_msg="value not found in array", &
+                expected=""//val, got=array_preview_int(arr, n))
         end if
     end subroutine
 
@@ -261,7 +290,8 @@ contains
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
-                call assertion_error(msg, additional_msg="not sorted", at=""//i)
+                call assertion_error(msg, additional_msg="not sorted", &
+                    got=arr(i - 1) // " > " // arr(i), at=""//i)
             end if
         end do
     end subroutine
@@ -274,7 +304,8 @@ contains
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
-                call assertion_error(msg, additional_msg="not sorted", at=""//i)
+                call assertion_error(msg, additional_msg="not sorted", &
+                    got=arr(i - 1) // " > " // arr(i), at=""//i)
             end if
         end do
     end subroutine
@@ -300,17 +331,18 @@ contains
     subroutine assert_string_contains(a, b, msg)
         character(*), intent(in) :: a, b, msg
         if (index(a, b) == 0) then
-            call assertion_error(msg, got="'" // trim(a) // "'", expected="'" // trim(b) // "'")
-            call assertion_error(msg, "substring not found", got="string '" // trim(a) // "'", expected="substring '" // trim(b) // "'")
+            call assertion_error(msg, additional_msg="substring not found", &
+                got="string '" // trim(a) // "'", expected="substring '" // trim(b) // "'")
         end if
     end subroutine
 
-    !> Assert that array a contains array b.
+    !> Assert that array a contains value b.
     subroutine assert_array_int_contains(a, b, n, msg)
         integer(int32), intent(in) :: n, a(n), b
         character(*), intent(in) :: msg
         if (findloc(a, b, 1) == 0) then
-            call assertion_error(msg, additional_msg="integer " // b // " not found in array")
+            call assertion_error(msg, additional_msg="value not found in array", &
+                expected=""//b, got=array_preview_int(a, n))
         end if
     end subroutine
 
@@ -320,9 +352,12 @@ contains
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
         integer :: i
+        real(real64) :: thresh
         do i = 1, n
-            if (abs(a(i) - b(i)) > atol + rtol*abs(b(i))) then
-                call assertion_error(msg, additional_msg="real arrays differ", at=""//i)
+            thresh = atol + rtol*abs(b(i))
+            if (abs(a(i) - b(i)) > thresh) then
+                call assertion_error(msg, additional_msg="|got - expected| = " // abs(a(i) - b(i)) // &
+                    " exceeds atol + rtol*|expected| = " // thresh, got=""//a(i), expected=""//b(i), at=""//i)
             end if
         end do
     end subroutine
@@ -362,7 +397,8 @@ contains
         found = .false.
         do i = 1, n
             if (arr(i) < 1 .or. arr(i) > n) then
-                call assertion_error(msg, additional_msg="value out of range for permutation", got=""//arr(i))
+                call assertion_error(msg, additional_msg="value out of range for permutation", &
+                    got=""//arr(i), expected="value in [1, " // n // "]", at=""//i)
             end if
             if (found(arr(i))) then
                 call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=""//i)
@@ -370,6 +406,36 @@ contains
             found(arr(i)) = .true.
         end do
     end subroutine
+
+    !> Renders a logical as ".true."/".false." for use in assertion diagnostics.
+    pure function logical_to_str(l) result(str_out)
+        logical, intent(in) :: l
+        character(len=:), allocatable :: str_out
+        if (l) then
+            str_out = ".true."
+        else
+            str_out = ".false."
+        end if
+    end function logical_to_str
+
+    !> Renders an integer array as "[a, b, c, ...]" for assertion diagnostics, truncating
+    !! long arrays so a failing "contains" assertion doesn't flood the terminal with a
+    !! wall of numbers that isn't any more informative than the first few elements.
+    function array_preview_int(arr, n) result(preview)
+        integer(int32), intent(in) :: n, arr(n)
+        character(len=:), allocatable :: preview
+        integer(int32), parameter :: max_shown = 15
+        integer(int32) :: i, n_shown
+
+        n_shown = min(n, max_shown)
+        preview = "["
+        do i = 1, n_shown
+            if (i > 1) preview = preview // ", "
+            preview = preview // arr(i)
+        end do
+        if (n > max_shown) preview = preview // ", ... (" // (n - max_shown) // " more)"
+        preview = preview // "]"
+    end function array_preview_int
 
     !> Very efficient digit counting function for an integer. Having the absolute value, it needs only 4 cycles and one assignment in worst case
     pure integer(int32) function digit_count_int32(val) result(digit_count)

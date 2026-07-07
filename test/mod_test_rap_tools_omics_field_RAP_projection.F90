@@ -226,14 +226,14 @@ contains
     !> Test non-square vecs
     subroutine test_non_square_vecs()
         real(real64), dimension(4, 2, 1) :: vecs
-        logical :: axes_mask(4), vecs_mask(2)
+        logical :: axes_mask(4), vecs_mask(1)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
         vecs(:, 1, 1) = [1.0, 2.0, 3.0, 4.0]
         vecs(:, 2, 1) = [4.0, 3.0, 2.0, 1.0]
         axes_mask = [.true., .true., .true., .true.]
-        vecs_mask = [.true., .true.]
+        vecs_mask = [.true.]
         n_selected_axes = count(axes_mask)
         n_selected_vecs = count(vecs_mask)
 
