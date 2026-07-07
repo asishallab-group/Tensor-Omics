@@ -270,9 +270,9 @@ contains
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
-            !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
+            !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
-            !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
+            !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point
         integer(int32), intent(out) :: ierr
@@ -297,9 +297,9 @@ contains
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins in range [-R,R]
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
-            !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
+            !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
-            !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
+            !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point
 
@@ -388,6 +388,8 @@ contains
 
         total_sample_count = real(sum(included_n_reps_S1) + sum(included_n_reps_S2), real64)
 
+        ! Guard against a zero total sample count (no replicate had a non-NaN residual at any reference
+        ! point in either study): fall back to all-zero weights instead of dividing by zero below.
         if (is_close(total_sample_count, 0.0_real64)) then
             weights = 0.0_real64
         else
@@ -683,9 +685,9 @@ pure subroutine compute_divergence_per_reference_point_c( &
     integer(c_int), intent(in), target :: n_bins
         !! Number of equally sized histogram bins in range [-R,R]
     real(c_double), dimension(n_points, n_bins), intent(in), target :: pmf_S1
-        !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
+        !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
     real(c_double), dimension(n_points, n_bins), intent(in), target :: pmf_S2
-        !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
+        !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
     real(c_double), dimension(n_points), intent(out), target :: js_divergences
         !! Jensen-Shannon divergence per reference point
     integer(c_int), intent(out), target :: ierr

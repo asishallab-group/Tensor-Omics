@@ -154,6 +154,8 @@ subroutine deserialize_logical_nd_c(arr, orig_shape, n_dims, filename, fn_len, i
     n_elements = size(arr, kind=c_int)
     M_ALLOCATE(arr_f(n_elements))
     call deserialize_logical_helper(arr_f, n_elements, orig_shape, filename_f, ierr)
+    ! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so
+    ! remap any error reported against it back onto `arr` (C-visible arg 1).
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
     if (is_err(ierr)) return
 

@@ -184,6 +184,11 @@ contains
         integer(int32) :: i_vec, i_axis
         real(real64) :: diagonal_component
 
+        ! The RAP is the hyperplane orthogonal to the space diagonal (1,1,...,1) through the origin,
+        ! i.e. the set of points whose coordinates sum to zero. Orthogonal projection of a vector v
+        ! onto that hyperplane is v - ((v . 1)/(1 . 1)) * 1, and since 1 . 1 = n_selected_axes and
+        ! every component of the diagonal unit direction is equal, this reduces to subtracting the
+        ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
         do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component) shared(n_selected_axes, selected_vecs)
 
             ! calculate diagonal component to be subtracted from vectors for projection
@@ -479,11 +484,22 @@ contains
     !| Compute orientation sign from cross product of two vectors, using selected axes
     pure function cross_product_orientation_sign(a, b, n_dims, selected_axes) result(orientation_sign)
         integer(int32), intent(in) :: n_dims
+            !! Dimension of both vectors `a` and `b`
         real(real64), intent(in) :: a(n_dims)
+            !! First vector
         real(real64), intent(in) :: b(n_dims)
+            !! Second vector
         integer(int32), intent(in) :: selected_axes(3)
+            !! Indices of the 3 axes of `a`/`b` to project onto for the cross product (all must be unique)
         real(real64) :: orientation_sign
+            !! `+1.0` or `-1.0`, the sign of the (selected-axes) cross product `a x b`
+
         real(real64) :: cross1, cross2, cross3
+
+        ! Only 3 components define a cross product, so for n_dims>3 we project both vectors onto the
+        ! 3 selected axes first, then compute the standard 3D cross product a x b on that subspace.
+        ! Only the sign of the (summed) result is used, to get the rotation direction from a to b -
+        ! the magnitude is not meaningful once the vectors have been projected down to 3 components.
         cross1 = a(selected_axes(2))*b(selected_axes(3)) - a(selected_axes(3))*b(selected_axes(2))
         cross2 = a(selected_axes(3))*b(selected_axes(1)) - a(selected_axes(1))*b(selected_axes(3))
         cross3 = a(selected_axes(1))*b(selected_axes(2)) - a(selected_axes(2))*b(selected_axes(1))

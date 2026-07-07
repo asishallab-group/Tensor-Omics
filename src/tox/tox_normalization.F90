@@ -102,6 +102,12 @@ contains
 
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
+        ! Reuse spare columns of the (n_genes, n_tissues) output buffer as scratch space for the
+        ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of allocating fresh
+        ! (n_genes)-sized temporaries, since those columns are still unwritten at this point and get
+        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output. Only
+        ! the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be reused this
+        ! way; any remaining scratch vectors are heap-allocated instead.
         log_transformed_expr_transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
         tmp_loess_x_ptr => log_transformed_expr_transposed_view(:, 1)
         select case (n_tissues)
@@ -228,6 +234,10 @@ contains
             tmp_loess_x(i_gene) = mean_val
             tmp_loess_y(i_gene) = std_dev(expr(:, i_gene))
 
+            ! Genes with zero variance across replicates carry no information about the mean-vs-sd
+            ! trend and would only produce a degenerate (division-by-zero) target for LOESS, so they
+            ! are dropped from the fit here. Since n_valid <= i_gene always, this compacts the arrays
+            ! in place (overwriting already-consumed slots) rather than needing a separate buffer.
             if (is_close(tmp_loess_y(i_gene), 0.0_real64)) cycle
 
             n_valid = n_valid + 1
@@ -236,6 +246,8 @@ contains
             tmp_indices_used(n_valid) = i_gene
         end do
 
+        ! Require a handful of points so the LOESS fit below is not driven by noise from too few
+        ! (mean, sd) pairs.
         if (n_valid < 5) then
             call set_err(ierr, ERR_INVALID_INPUT)
             return

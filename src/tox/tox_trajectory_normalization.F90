@@ -1,5 +1,7 @@
 #include <src/macros.h>
 
+!> Module for min-max normalization of factor trajectories over time.
+!| Each factor's time series is independently rescaled to `[0,1]` per sample/entity.
 module tox_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_NAN_INF, set_ok, set_err, is_err, validate_dimension_size, validate_all_in_range_real, ERR_DIVISION_BY_ZERO, ERR_ALLOC_FAIL
@@ -151,6 +153,7 @@ contains
 
 end module tox_trajectory_normalization
 
+!> C wrapper for normalize_variable_timeseries.
 pure subroutine normalize_variable_timeseries_c(v, v_norm, n_points, ierr, status) bind(C, name="normalize_variable_timeseries_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_variable_timeseries
@@ -178,6 +181,7 @@ pure subroutine normalize_variable_timeseries_c(v, v_norm, n_points, ierr, statu
 
 end subroutine normalize_variable_timeseries_c
 
+!> C wrapper for normalize_single_trajectory.
 pure subroutine normalize_single_trajectory_c(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status) bind(C, name="normalize_single_trajectory_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_single_trajectory
@@ -208,6 +212,7 @@ pure subroutine normalize_single_trajectory_c(trajectory, trajectory_norm, n_fac
 
 end subroutine normalize_single_trajectory_c
 
+!> C wrapper for normalize_all_trajectories_alloc.
 pure subroutine normalize_all_trajectories_c(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status) bind(C, name="normalize_all_trajectories_c")
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     use tox_trajectory_normalization, only: normalize_all_trajectories_alloc

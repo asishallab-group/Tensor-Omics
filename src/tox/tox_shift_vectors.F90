@@ -69,7 +69,8 @@ contains
 
         integer(int32) :: i_gene, fam_idx, i_tissue
 
-        ! For each gene do
+        ! Each gene's shift vector only depends on its own expression and its family's centroid,
+        ! so genes can be processed independently in any order.
         do concurrent (i_gene = 1:n_genes) local(fam_idx) shared(gene_to_fam, shift_vectors, family_centroids, expression_vectors, n_tissues)
             ! Get current centroid index from `i_gene`
             fam_idx = gene_to_fam(i_gene)
@@ -80,7 +81,9 @@ contains
                 shift_vectors(:, 1, i_gene) = family_centroids(:, fam_idx)
             end if
 
-            ! Substract family centroid from `expression_vector` and write it to second half of the `shift_vectors`
+            ! shift vector = gene's own expression minus its family centroid: it points from the
+            ! family's average expression towards this gene, i.e. the direction and magnitude by
+            ! which this paralog's expression has diverged from its family.
             do concurrent (i_tissue = 1:n_tissues) shared(shift_vectors, i_gene, expression_vectors, family_centroids, fam_idx)
                 shift_vectors(i_tissue, 2, i_gene) = expression_vectors(i_tissue, i_gene) - family_centroids(i_tissue, fam_idx)
             end do

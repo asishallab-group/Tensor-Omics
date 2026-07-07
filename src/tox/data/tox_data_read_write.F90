@@ -42,6 +42,7 @@ contains
         integer(int32), intent(in), contiguous :: gene_to_fam(:)
             !! Gene to family mapping to write
         integer(int32), intent(out) :: ierr
+            !! Error code (0 if successful)
 
         call serialize_int_1D(gene_to_fam, filename, ierr)
     end subroutine

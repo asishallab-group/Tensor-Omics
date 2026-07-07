@@ -1,5 +1,12 @@
 #include <src/macros.h>
 
+!> Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+!|
+!| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
+!| starting from single genes. At every extension step the candidate is scored against the pattern-specific
+!| criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
+!| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
+!| extended further, which keeps the combinatorial subset search tractable.
 module tox_paralog_analysis
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -938,14 +945,23 @@ pure subroutine detect_neofunctionalization_c(ancestors, n_families, genes, n_ax
 
     ! Arguments mapped to C types
     integer(c_int), intent(in), target :: n_axes
+        !! size of `ancestors` vector and vectors in `genes`
     integer(c_int), intent(in), target :: n_genes
+        !! number of vectors in `genes`
     integer(c_int), intent(in), target :: n_families
+        !! number of vectors in `ancestors`
     real(c_double), dimension(n_axes, n_families), intent(in), target :: ancestors
+        !! RAP projected unit length expression vector of ancestral ortholog
     real(c_double), dimension(n_axes, n_genes), intent(in), target :: genes
+        !! RAP projected unit length expression vectors of genes
     integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
+        !! M_GENE_TO_FAM_DOC(genes)
     real(c_double), dimension(n_axes), intent(in), target :: thresholds
+        !! threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
     integer(c_int), dimension(n_genes, n_axes), intent(out), target :: neofunc
+        !! non-zero if neofunctionalization has been detected for the respective axes, always zero for unassigned genes
     integer(c_int), intent(out), target :: ierr
+        !! Error code
 
     logical, dimension(:, :), allocatable :: neofunc_f
 

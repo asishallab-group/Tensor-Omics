@@ -96,7 +96,7 @@ contains
         call fjct_compute_jsd(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, ierr)
     end subroutine fjct_compute_jsd_alloc
 
-    !> Computes the compatibility score `global_js_divergence` between two studies per sub-neighborhood/family for a single gene family (`family_idx`), by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family
+    !> Computes the compatibility score `global_js_divergence` between two studies for a single sub-neighborhood/family, by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2` (typically all neighbors belonging to one gene family; see [[tox_data_integration_per_family(module):fjct_compute_jsd_alloc(subroutine)]] for the family-index-based entry point that builds these masks)
     pure module subroutine fjct_compute_jsd(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, ierr)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
@@ -156,8 +156,8 @@ contains
 
     !> Computes the per-family/per-sub-neighborhood contribution score that combines
     !|
-    !| 1. how divergent the family is between the studies (``), and
-    !| 2. how much residual support the family has overall (),
+    !| 1. how divergent the family is between the studies (`global_js_divergences`), and
+    !| 2. how much residual support the family has overall (`total_included_n_reps_per_f`),
     !|
     !| using the outputs from [[tox_data_integration_per_family(module):fjct_compute_jsd(subroutine)]], collected for the analyzed sub-neighborhoods.
     pure module subroutine fjct_compute_contribution_scores(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores, ierr)
@@ -187,8 +187,8 @@ contains
 
     !> (no input validation) Computes the per-family/per-sub-neighborhood contribution score that combines
     !|
-    !| 1. how divergent the family is between the studies (``), and
-    !| 2. how much residual support the family has overall (),
+    !| 1. how divergent the family is between the studies (`global_js_divergences`), and
+    !| 2. how much residual support the family has overall (`total_included_n_reps_per_f`),
     !|
     !| using the outputs from [[tox_data_integration_per_family(module):fjct_compute_jsd(subroutine)]], collected for the analyzed sub-neighborhoods.
     pure module subroutine fjct_compute_contribution_scores_helper(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores)
@@ -208,6 +208,9 @@ contains
 
         total_included_n_reps = real(sum(total_included_n_reps_per_f), kind=real64)
 
+        ! Guard against a zero (or near-zero) total support: without this early `return`, execution would
+        ! fall through into the loop below and divide by `total_included_n_reps`, producing Inf/NaN scores
+        ! for a family with no included replicates instead of the well-defined zero score.
         if (is_close(total_included_n_reps, 0.0_real64)) then
             support_weights = 0.0_real64
             contribution_scores = 0.0_real64

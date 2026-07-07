@@ -2,6 +2,15 @@
 #include <src/f42/serde/macros.h>
 
 !> Module for array utilities.
+!|
+!| Defines the shared on-disk binary layout used by all typed array
+!| serialize/deserialize modules (int/real/complex/logical/char) and the
+!| header read/write/validate helpers that implement it. The file header is
+!| a fixed sequence of unformatted stream records, written and read in this
+!| order: magic number ([[f42_serde_arrays_utils(module):ARRAY_FILE_MAGIC(variable)]]),
+!| type code, number of dimensions `ndim`, then `ndim` dimension sizes. The
+!| raw array payload follows immediately after the header, written as one
+!| contiguous block by the type-specific serializers.
 module f42_serde_arrays_utils
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -58,6 +67,12 @@ contains
         M_CHECK_IO_ERR(ERR_WRITE_DIMS)
     end subroutine write_file_header
 
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Opens `filename`, reads its header via [[f42_serde_arrays_utils(module):read_file_header_helper(subroutine)]],
+    !| and validates the stored type code and shape against the caller's expectations. On any
+    !| mismatch the unit is closed and an error is set; on success the unit is left open (positioned
+    !| right after the header, ready for the caller to read the payload) and it is the caller's
+    !| responsibility to close it.
     subroutine check_file_header(filename, expected_type_code, expected_shape, unit, ierr)
         character(len=*), intent(in) :: filename
             !! filename to read from
@@ -133,7 +148,9 @@ contains
         read (unit, iostat=ierr) magic
         M_CHECK_IO_ERR(ERR_READ_MAGIC)
 
-        ! check magic (error if not same)
+        ! Compare against the expected magic by storing the difference straight into ierr: this is
+        ! zero (== ERR_OK) only when the header matches, so the M_CHECK_IO_ERR check below (which
+        ! tests is_err(ierr)) doubles as the magic-number comparison without a separate if-block.
         ierr = magic - ARRAY_FILE_MAGIC
         M_CHECK_IO_ERR(ERR_INVALID_FORMAT)
 
@@ -143,6 +160,9 @@ contains
         read (unit, iostat=ierr) ndims
         M_CHECK_IO_ERR(ERR_READ_NDIMS)
 
+        ! Sanity-cap ndims before allocating dims(ndims): a corrupt or non-array file could yield an
+        ! arbitrary/negative value here, so reject anything outside a generous but bounded range
+        ! rather than risking a huge or invalid allocation request.
         if (ndims < 0 .or. ndims > 15) then
             call set_err(ierr, ERR_INVALID_FORMAT)
             close (unit)
@@ -213,6 +233,7 @@ subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, n
     character(kind=c_char, len=1), intent(in), target :: filename(fn_len)
         !! Array of ASCII characters representing the filename
     integer(c_int), intent(in), target :: dims_out_capacity
+        !! Capacity of the dims_out array
 
     ! Output
     integer(c_int), intent(out), target :: dims_out(dims_out_capacity)

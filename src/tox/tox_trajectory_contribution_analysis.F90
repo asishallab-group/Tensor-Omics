@@ -1,5 +1,12 @@
 #include <src/macros.h>
 
+!> Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+!|
+!| Contributions are computed per timepoint as the product of both series' deviations from a chosen
+!| baseline, for raw expression trajectories as well as for their velocity (first difference) and
+!| acceleration (second difference) derivatives. Statistical significance of an observed contribution can
+!| be assessed via a permutation test that recomputes the same contribution against a randomly chosen
+!| other sample.
 module tox_trajectory_contribution_analysis
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -13,8 +20,11 @@ module tox_trajectory_contribution_analysis
 #define CM_MODE_BASELINE_MIN 2_int32
 #define CM_MODE_BASELINE_MEAN 3_int32
     integer(int32), parameter :: BASELINE_RAW = CM_MODE_BASELINE_RAW
+        !! Baseline mode code: no centering, contributions are computed from raw values.
     integer(int32), parameter :: BASELINE_MIN = CM_MODE_BASELINE_MIN
+        !! Baseline mode code: contributions are centered on each series' minimum value.
     integer(int32), parameter :: BASELINE_MEAN = CM_MODE_BASELINE_MEAN
+        !! Baseline mode code: contributions are centered on each series' arithmetic mean.
 
 contains
 
@@ -331,6 +341,10 @@ contains
         call compute_baselines_factor_dependent(n_dims, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr)
         if (is_err(ierr)) return
 
+        ! Per-timepoint contribution is the product of both series' deviations from their baseline
+        ! (an uncentered/instantaneous covariance term): it is positive when factor and dependent move
+        ! together (both above or both below baseline) and negative when they move oppositely.
+        ! Summing over all timepoints gives the total co-variation between factor and dependent.
         total_contribution = 0.0_real64
         do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) reduce(+:total_contribution)
             local_contributions(i_dim) = (factor(i_dim) - factor_baseline) * (dependent(i_dim) - dependent_baseline)
@@ -804,6 +818,9 @@ contains
                 call compute_factor_velocity_from_trajectories_helper(trajectories, n_factors, n_samples, n_timepoints, i_dependent, i_sample, tmp_dependent)
 
                 do i_factor = 1, n_factors
+                    ! velocity has one fewer timepoint than the original series (finite differences
+                    ! consume one endpoint), so its contributions are written starting at output index 2
+                    ! to stay aligned with the original time axis; index 1 has no velocity and is left at zero.
                     velocity_contribution_series(1, i_factor, i_dependent, i_sample) = 0.0_real64
 
                     call compute_contributions_helper( &
@@ -832,6 +849,9 @@ contains
                 call compute_velocity_trajectory_helper(tmp_contributions, tmp_dependent, n_vel)
 
                 do i_factor = 1, n_factors
+                    ! acceleration has two fewer timepoints than the original series (a second finite
+                    ! difference), so its contributions are written starting at output index 3; the first
+                    ! two indices have no acceleration and are left at zero.
                     acceleration_contribution_series(1, i_factor, i_dependent, i_sample) = 0.0_real64
                     acceleration_contribution_series(2, i_factor, i_dependent, i_sample) = 0.0_real64
 

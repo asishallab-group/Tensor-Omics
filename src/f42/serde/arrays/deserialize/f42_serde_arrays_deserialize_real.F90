@@ -150,5 +150,7 @@ subroutine deserialize_real_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr
     if (is_err(ierr)) return
 
     call deserialize_real_helper(arr, size(arr, kind=c_int), orig_shape, filename_f, ierr)
+    ! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so
+    ! remap any error reported against it back onto `arr` (C-visible arg 1).
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
 end subroutine deserialize_real_nd_c

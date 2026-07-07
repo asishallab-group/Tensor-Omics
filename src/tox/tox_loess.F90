@@ -1,6 +1,12 @@
 #include <src/macros.h>
 
-!> AUTHOR_VIVIAN_BASS
+!> Wraps the netlib LOESS (`dloess`/`lowesd` family) Fortran routines for local polynomial regression smoothing.
+!| This module exposes the netlib subroutines through Fortran interfaces (see below) and provides
+!| higher-level wrappers ([[tox_loess(module):loess_fit_plain(subroutine)]], [[tox_loess(module):loess_fit_robust(subroutine)]],
+!| [[tox_loess(module):loess_alloc(subroutine)]]) that size the required integer/real workspace and
+!| handle degenerate inputs (a single data point, a near-constant `x`, or too few unique `x` values for
+!| the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
+!| netlib routines themselves are not re-documented here beyond their calling convention.
 module tox_loess
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -135,13 +141,17 @@ module tox_loess
 #define CM_MIN_INT_WORKSPACE_SIZE 10000_int32
 
     real(real64), parameter :: EPS_LOESS = 1.0e-12_real64
+        !! Minimum allowed LOESS `span` and a general-purpose small epsilon used across this module
+        !! (and by callers such as [[tox_get_outliers(module):compute_family_scaling(subroutine)]]) to
+        !! guard against division/log by (near-)zero.
 
 contains
 
     ! ============================================================
     ! Recommend workspace sizes based on Netlib exact formulas
     ! ============================================================
-    !> Recommend workspace sizes based on Netlib exact formulas.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Recommend workspace sizes based on Netlib exact formulas.
     !| Computes the required sizes for integer and real workspace arrays.
     !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
     subroutine tox_loess_required_workspace(d, nvmax, int_workspace_size, real_workspace_size, setlf)
@@ -176,9 +186,12 @@ contains
     ! ============================================================
     ! Plain LOESS fitting
     ! ============================================================
-    !> Perform plain LOESS fitting.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Perform plain LOESS fitting.
     !| Fits a LOESS model to the data using the specified smoothing parameter.
-    !| Outputs the smoothed response variable array.
+    !| Outputs the smoothed response variable array. Caller-provided workspace must already be
+    !| sized via [[tox_loess(module):tox_loess_required_workspace(subroutine)]]; no input validation
+    !| beyond `n`, `span`, `degree`, and workspace-size bounds is performed here.
     subroutine loess_fit_plain(n, x, y, w, eval_points, span, degree, nvmax, infl, setlf, int_workspace, int_workspace_size, real_workspace, real_workspace_size, diagl, fitted_values, ierr)
         integer(int32), intent(in) :: n
             !! Total number of data points
@@ -238,7 +251,9 @@ contains
             return
         end if
 
-        ! Validate effective points
+        ! `span` is a fraction of `n` points included in each local neighborhood; n_eff is that
+        ! neighborhood size. Require at least degree+3 points per neighborhood so the local
+        ! polynomial fit (degree+1 coefficients) is over-determined rather than exactly/under-determined.
         n_eff = max(2_int32, int(ceiling(span*real(n, real64))))
         call validate_in_range_int(n_eff, ierr, min=degree + 3_int32)
         if (is_err(ierr)) return
@@ -247,6 +262,9 @@ contains
         ! 1. Decomposition: Initialize workspace arrays and decompose the problem
         ! 2. Fitting: Fit the LOESS model and compute influence diagnostics
         ! 3. Evaluation: Evaluate the fitted model at eval_points to produce smoothed values
+        ! `106` is netlib's packed `iv(19)` model-selection code (family/surface/statistics digits);
+        ! it selects the netlib default (Gaussian family, direct surface, exact statistics) and is not
+        ! meant to be tuned per call.
         call loess_decomposition(106, int_workspace, int_workspace_size, real_workspace_size, real_workspace, 1_int32, n, span, degree, nvmax, setlf)
         call loess_fitting(x, y, w, diagl, infl, int_workspace, int_workspace_size, real_workspace_size, real_workspace)
         call loess_evaluation(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)
@@ -255,7 +273,8 @@ contains
     ! ============================================================
     ! Robust LOESS fitting
     ! ============================================================
-    !> Perform robust LOESS fitting with bisquare reweighting.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Perform robust LOESS fitting with bisquare reweighting.
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !|  - Combines original weights with robust weights (down-weights from previous iteration)
@@ -335,7 +354,9 @@ contains
             return
         end if
 
-        ! Validate effective points
+        ! `span` is a fraction of `n` points included in each local neighborhood; n_eff is that
+        ! neighborhood size. Require at least degree+3 points per neighborhood so the local
+        ! polynomial fit (degree+1 coefficients) is over-determined rather than exactly/under-determined.
         n_eff = max(2_int32, int(ceiling(span*real(n, real64))))
         call validate_in_range_int(n_eff, ierr, min=degree + 3_int32)
         if (is_err(ierr)) return
@@ -361,7 +382,8 @@ contains
                 combined_weights(i) = w(i)*robust_weights(i)
             end do
 
-            ! Perform LOESS fitting for this robust iteration
+            ! Perform LOESS fitting for this robust iteration.
+            ! `106` is netlib's packed `iv(19)` model-selection code, see loess_fit_plain for details.
             call loess_decomposition(106_int32, int_workspace, int_workspace_size, real_workspace_size, real_workspace, dim_val, n, span, degree, nvmax, setlf)
             call loess_fitting(x, y, combined_weights, diagl, infl, int_workspace, int_workspace_size, real_workspace_size, real_workspace)
             call loess_evaluation(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)
@@ -379,9 +401,13 @@ contains
     ! ============================================================
     ! Wrapper subroutine for LOESS fitting (plain or robust)
     ! ============================================================
-    !> Wrapper subroutine for LOESS fitting (plain or robust).
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Wrapper subroutine for LOESS fitting (plain or robust).
     !| This subroutine selects between plain and robust LOESS fitting based on the mode.
-    !| It dynamically allocates the required arrays and computes workspace sizes.
+    !| It dynamically allocates the required arrays and computes workspace sizes, and handles
+    !| degenerate inputs (single point, near-constant `x`, or fewer unique `x` values than the
+    !| polynomial degree requires) by falling back to an identity/copy mapping instead of calling
+    !| into netlib.
     !|
     !| Parameters:
     !| - mode: Specifies the type of LOESS fitting to perform.
@@ -467,12 +493,15 @@ contains
             return
         end if
 
+        ! A degree-d local polynomial needs at least d+1 distinct x-support points to be well-defined;
+        ! capped at 4 (the fixed size of uniq_x below) since degree never exceeds 2 in this codebase.
         need_uniq = min(4_int32, degree + 2_int32)
         uniq_count = 0_int32
         uniq_x = 0.0_real64
 
         do i = 1, n
-            ! tolerance to compare floats
+            ! Scale-relative tolerance (not a fixed epsilon) so comparisons remain meaningful
+            ! for x-values far from zero.
             tol = EPS_LOESS*max(1.0_real64, abs(x(i)))
 
             found = .false.

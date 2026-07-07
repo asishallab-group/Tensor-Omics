@@ -1,5 +1,10 @@
 #include <src/macros.h>
 
+!> k-d tree spatial index over fixed-dimensional point sets.
+!| Builds a k-d tree by recursively partitioning `kd_indices` around the median point along a
+!| caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
+!| is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
+!| index array rather than as linked nodes.
 module f42_kd_tree
     use safeguard
     use f42_utils, only: sort_array_heapsort, init_perm
@@ -246,7 +251,10 @@ contains
     end subroutine partial_sort_by_dimension_helper
 
     !> AUTHOR_AARON_SCHROEDER
-    !| Build spherical k-d tree index
+    !| Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors).
+    !| This is a thin, semantically-named wrapper: partitioning is identical to
+    !| [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]] (plain per-axis median splits);
+    !| callers are responsible for ensuring `points` are actually unit-normalized beforehand.
     pure subroutine build_spherical_kd_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Number of dimensions
@@ -265,7 +273,10 @@ contains
     end subroutine build_spherical_kd_alloc
 
     !> AUTHOR_AARON_SCHROEDER
-    !| Build spherical k-d tree index
+    !| Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors), with
+    !| caller-provided workspace (no internal allocation). See
+    !| [[f42_kd_tree(module):build_spherical_kd_alloc(subroutine)]] for the allocating variant and
+    !| a note on why this delegates to the plain (non-spherical) k-d partitioning.
     pure subroutine build_spherical_kd(vectors, n_dimensions, n_vectors, sphere_indices, &
                                        dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, &
                                        tmp_recursion_stack, ierr)
@@ -296,7 +307,8 @@ contains
     end subroutine build_spherical_kd
 
     !> AUTHOR_AARON_SCHROEDER
-    !| Get point from KD index
+    !| Retrieves the coordinate vector of the point stored at a given position of a built k-d
+    !| index, i.e. `point_values = points(:, kd_indices(position))`.
     pure subroutine get_kd_point(points, kd_indices, position, point_values, ierr)
         real(real64), dimension(:, :), intent(in) :: points
             !! Input points

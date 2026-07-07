@@ -1,5 +1,13 @@
 #include <src/macros.h>
 
+!> Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+!> and cross-array consistency).
+!|
+!| Complements [[tox_errors(module)]]'s generic per-argument validators
+!| (`validate_dimension_size`, `validate_in_range_int/real`, ...) with checks specific to the
+!| TensorOmics gene/family/expression/centroid/shift-vector data model, such as verifying that
+!| `shift_vectors` was actually derived from `expression_vectors` and `family_centroids` as
+!| expected. [[tox_data_validation(module):validate_all_data(subroutine)]] runs the full suite.
 module tox_data_validation
     use safeguard
     use iso_fortran_env, only: real64, int32
@@ -340,7 +348,10 @@ contains
 
     contains
 
-        !Possibly replace by existing asserts
+        ! Bespoke elementwise checks rather than tox_errors' validate_all_in_range_real: that
+        ! validator reports only the first offending element via a shared ierr, whereas here we
+        ! need the (i,j) position of every mismatch (up to nan_inf_count<=10) for the diagnostic
+        ! message below.
 
         logical function is_nan(x)
             real(real64), intent(in) :: x

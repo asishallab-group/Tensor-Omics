@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Module for deserializing character arrays from files
+!> Module for serializing character arrays into files
 module f42_serde_arrays_serialize_char
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -38,7 +38,7 @@ contains
         call write_file_header(filename, unit, len(arr, kind=int32), size(orig_shape, kind=int32), orig_shape, ierr)
         if (is_err(ierr)) return
 
-        ! Read the entire array as a contiguous block
+        ! Write the entire array as a contiguous block
         write (unit, iostat=ierr) arr
         if (is_err(ierr)) call set_err(ierr, ERR_WRITE_DATA)
 
@@ -160,8 +160,9 @@ subroutine serialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
     call c_char_2d_as_string(raw_chars, raw_chars_f, ierr)
     if (is_err(ierr)) return
 
-    ! serialize
     call serialize_char_helper(raw_chars_f, n_strings, orig_shape, filename_f, ierr)
+    ! n_strings (helper arg 2) is derived from `raw_chars` here rather than exposed as a C argument,
+    ! so remap any error reported against it back onto `raw_chars` (C-visible arg 1).
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
     if (is_err(ierr)) return
 

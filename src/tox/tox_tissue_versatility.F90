@@ -94,7 +94,9 @@ contains
         end if
 
         norm_diag = sqrt(real(n_selected_axes, real64))
-        ! Precompute normalization factor for tissue versatility
+        ! cos_phi against the space diagonal ranges from 1 (uniform expression across all selected
+        ! axes) down to 1/norm_diag (all expression concentrated in a single axis), so (1 - cos_phi)
+        ! ranges over [0, 1 - 1/norm_diag]. Dividing by that upper bound rescales versatility to [0, 1].
         norm_factor = 1.0_real64 - 1.0_real64/norm_diag
 
         ! Loop over selected expression vectors

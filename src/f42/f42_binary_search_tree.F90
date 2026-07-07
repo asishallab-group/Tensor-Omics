@@ -1,9 +1,8 @@
 #include <src/macros.h>
 
-!! Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
-!!
-!! This module provides routines to build a BST index (via sorting), access sorted values,
-!! and perform efficient range queries over a real-valued array.
+!> Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+!| This module provides routines to build a BST index (via sorting), access sorted values,
+!| and perform range queries over a real-valued array using the sorted index.
 module f42_binary_search_tree
     use safeguard
     use f42_utils, only: sort_array_heapsort, init_perm

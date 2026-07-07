@@ -199,8 +199,11 @@ contains
         if (ios /= 0) call set_err(ierr, ERR_ALLOC_FAIL)
     end subroutine check_io_stat
 
+    !> Validates that a dimension size is non-negative and non-zero.
+    !| Sets `ERR_INVALID_INPUT` if `n<0`, `ERR_EMPTY_INPUT` if `n==0`.
     pure subroutine validate_dimension_size(n, ierr, arg_pos)
         integer(int32), intent(in), optional :: n
+            !! dimension size to be validated
         integer(int32), intent(inout) :: ierr
             !! Error code
         integer(int32), intent(in), optional :: arg_pos
@@ -216,17 +219,16 @@ contains
     end subroutine
 
     !> validate that the actual type error matches the expected type error
-  !! Closes the connected unit in case of an error
+    !| Closes the connected unit in case of an error
     subroutine validate_type_code(actual, expected, unit, ierr, arg_pos)
         integer(int32), intent(in) :: actual
-        !! Actual type error read from file
+            !! Actual type error read from file
         integer(int32), intent(in) :: expected
-        !! Expected type error
+            !! Expected type error
         integer(int32), intent(in) :: unit
-        !! Unit connection
+            !! Unit connection
         integer(int32), intent(inout) :: ierr
             !! Error code
-        !! Error code
         integer(int32), intent(in), optional :: arg_pos
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
@@ -241,7 +243,6 @@ contains
         integer(int32), intent(in), optional :: val
             !! value to be validated
         integer(int32), intent(inout) :: ierr
-            !! Error code
             !! Error code
         integer(int32), intent(in), optional :: min
             !! lower bound for a value, default is lowest 32-bit integer -> -huge(1_int32)
@@ -276,7 +277,6 @@ contains
             !! Array to be validated
         integer(int32), intent(inout) :: ierr
             !! Error code
-            !! Error code
         integer(int32), intent(in), optional :: min
             !! lower bound for a value, default is lowest 32-bit integer -> -huge(1_int32)
         integer(int32), intent(in), optional :: max
@@ -309,7 +309,6 @@ contains
         real(real64), intent(in), optional :: val
             !! value to be validated
         integer(int32), intent(inout) :: ierr
-            !! Error code
             !! Error code
         real(real64), intent(in), optional :: min
             !! lower bound for a value, default is lowest 64-bit float -> -huge(1.0_real64)
@@ -359,7 +358,6 @@ contains
             !! Array to be validated
         integer(int32), intent(inout) :: ierr
             !! Error code
-            !! Error code
         real(real64), intent(in), optional :: min
             !! lower bound for a value, default is lowest 64-bit float -> -huge(1.0_real64)
         real(real64), intent(in), optional :: max
@@ -390,7 +388,6 @@ contains
         real(real64), dimension(n, n), intent(in), optional :: distances
             !! Matrix to be validated
         integer(int32), intent(inout) :: ierr
-            !! Error code
             !! Error code
         real(real64), intent(in), optional :: min
             !! lower bound for a distance value, default is zero to have only positives

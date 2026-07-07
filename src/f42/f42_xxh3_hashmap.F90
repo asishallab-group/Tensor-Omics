@@ -1,3 +1,9 @@
+!> AUTHOR_FRANZ_ERIC_SILL
+!| String-keyed hashmap (`character -> integer(int32)`) and hashset (`character` membership),
+!| implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
+!| algorithm for hashing. Both containers grow automatically via [[f42_xxh3_hashmap(module):resize_hashmap(subroutine)]]
+!| / [[f42_xxh3_hashmap(module):resize_hashset(subroutine)]] once the load factor exceeds
+!| [[f42_xxh3_hashmap(module):MAX_LOAD_FACTOR(variable)]].
 module f42_xxh3_hashmap
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_loc
@@ -11,44 +17,69 @@ module f42_xxh3_hashmap
     public :: hashmap_type, hashmap_create, hashmap_destroy, hashmap_get, hashmap_put
     public :: hashset_type, hashset_create, hashset_destroy, hashset_put, is_in_hashset
 
-    ! C interface for XXH3 hashing
+    !> External XXH3 64-bit hash function (from the bundled xxhash C library), used by
+    !| [[f42_xxh3_hashmap(module):xxh3_hash_fortran(function)]] to hash string keys.
     interface
         function xxh3_hash_c(key, length) bind(C, name="XXH3_64bits")
             use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_int64_t
             implicit none
             type(c_ptr), value :: key
+                !! C pointer to the start of the key's character data.
             integer(c_int), value :: length
+                !! Number of bytes to hash starting at `key`.
             integer(c_int64_t) :: xxh3_hash_c
+                !! The resulting 64-bit hash value.
         end function xxh3_hash_c
     end interface
 
-    ! Node type for separate chaining
+    !> Singly-linked list node used for separate chaining in [[f42_xxh3_hashmap(module):hashmap_type(type)]].
     type :: hashmap_node_type
         character(len=:), allocatable :: key
+            !! The stored (trimmed) string key.
         integer(int32) :: value
+            !! The value associated with `key`.
         type(hashmap_node_type), pointer :: next => null()
+            !! Next node in this bucket's chain, or null if this is the last node.
     end type hashmap_node_type
 
+    !> Singly-linked list node used for separate chaining in [[f42_xxh3_hashmap(module):hashset_type(type)]].
     type :: hashset_node_type
         character(len=:), allocatable :: key
+            !! The stored (trimmed) string key.
         type(hashset_node_type), pointer :: next => null()
+            !! Next node in this bucket's chain, or null if this is the last node.
     end type hashset_node_type
 
     ! Parameters
     integer, parameter :: DEFAULT_KEY_LENGTH = 256
+        !! Reserved for a future fixed-length key buffer; currently unused (keys are stored as
+        !! allocatable strings, not fixed-length buffers).
     real, parameter :: MAX_LOAD_FACTOR = 0.75
+        !! Fraction of buckets that may hold at least one entry (`count/size`) before a `put`
+        !! triggers a doubling resize. 0.75 is the conventional trade-off for chained hashing:
+        !! low enough to keep chain lengths near O(1), high enough to not waste much bucket space.
 
-    ! Hash table structure
+    !> Hashmap of `character` keys to `integer(int32)` values, using separate chaining over a
+    !| power-of-two-sized bucket array.
     type :: hashmap_type
         integer(int32) :: size = 0
+            !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
         integer(int32) :: count = 0
+            !! Number of key-value pairs currently stored.
         type(hashmap_node_type), pointer :: buckets(:) => null()
+            !! Bucket array; `buckets(i)%next` heads the chain for bucket `i` (the bucket
+            !! elements themselves only ever use their `next` pointer, never `key`/`value`).
     end type hashmap_type
 
+    !> Hashset of `character` keys, using separate chaining over a power-of-two-sized bucket array.
     type :: hashset_type
         integer(int32) :: size = 0
+            !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
         integer(int32) :: count = 0
+            !! Number of keys currently stored.
         type(hashset_node_type), pointer :: buckets(:) => null()
+            !! Bucket array; `buckets(i)%next` heads the chain for bucket `i` (the bucket
+            !! elements themselves only ever use their `next` pointer, never `key`).
     end type hashset_type
 
 contains
@@ -59,7 +90,9 @@ contains
         type(hashmap_type), intent(out) :: map
             !! Hashmap object to create
         integer(int32), intent(in), optional :: initial_size
-            !! Size of the hashmap
+            !! Desired initial element capacity; the actual bucket count is derived from this
+            !! (scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+            !! default: 1024 buckets
 
         integer(int32) :: table_size, i
 
@@ -91,12 +124,14 @@ contains
     !CLAUDE: table-size computation and bucket-nullification loop could be factored into a shared helper that
     !CLAUDE: returns the size, cutting this duplication (same pattern applies to resize_hashmap/resize_hashset).
     !> AUTHOR_AARON_SCHROEDER
-    !| Create the hashmap
+    !| Create the hashset
     subroutine hashset_create(map, initial_size)
         type(hashset_type), intent(out) :: map
-            !! Hashmap object to create
+            !! Hashset object to create
         integer(int32), intent(in), optional :: initial_size
-            !! Size of the hashmap
+            !! Desired initial element capacity; the actual bucket count is derived from this
+            !! (scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+            !! default: 1024 buckets
 
         integer(int32) :: table_size, i
 
@@ -200,6 +235,9 @@ contains
         else
             hash_val = xxh3_hash_c(c_loc(trimmed_key), key_len)
         end if
+        ! table_size is always a power of two (see next_power_of_two in hashmap_create/hashset_create),
+        ! so `hash mod table_size` can be computed as a bitmask AND against (table_size - 1) instead of
+        ! the more expensive integer modulo/division.
         hash_idx = int(iand(hash_val, int(table_size - 1, int64)) + 1, int32)
     end function xxh3_hash_fortran
 
@@ -302,9 +340,13 @@ contains
         if (debug_hashing) print *, "  Added new key, count:", set%count
     end subroutine hashset_put
 
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Checks whether `key` is a member of `hashset`.
     logical function is_in_hashset(hashset, key) result(res)
         type(hashset_type), intent(in) :: hashset
+            !! Hashset to query
         character(len=*), intent(in) :: key
+            !! Key to look for
         type(hashset_node_type), pointer :: current
         integer(int32) :: hash_idx
 

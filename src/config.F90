@@ -1,3 +1,6 @@
+!> Global, mutable runtime configuration flags (module variables, not parameters).
+!| Intended to be toggled by client code before calling into the library to enable
+!| diagnostic `print` output from the affected modules; both flags default to off.
 module config
     implicit none
     logical :: DEBUG = .false.

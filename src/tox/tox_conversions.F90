@@ -1,5 +1,8 @@
 #include <src/macros.h>
 
+!> Module with conversion helpers between Fortran-native types and their `iso_c_binding` counterparts.
+!| Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
+!| characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.
 module tox_conversions
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err

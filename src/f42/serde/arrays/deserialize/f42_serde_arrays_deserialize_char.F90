@@ -157,9 +157,10 @@ subroutine deserialize_char_nd_c(strings, string_len, orig_shape, n_dims, &
     call c_char_1d_as_string(filename, filename_f, ierr)
     if (is_err(ierr)) return
 
-    ! Deserialize
     M_ALLOCATE(character(len=string_len) :: strings_f(n_strings))
     call deserialize_char_helper(strings_f, n_strings, orig_shape, filename_f, ierr)
+    ! n_strings (helper arg 2) is derived from `strings` here rather than exposed as a C argument,
+    ! so remap any error reported against it back onto `strings` (C-visible arg 1).
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
     if (is_err(ierr)) return
 

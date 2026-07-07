@@ -1,5 +1,14 @@
 #include <src/macros.h>
 
+!> Zip-archive backed persistence for TensorOmics data sets.
+!|
+!| Wraps libzip (via C bindings declared in the interface block below) to create/extract zip
+!| archives whose members are [[tox_data_read_write(module)]]-serialized arrays, indexed by a
+!| plain-text `manifest.txt` mapping logical keys (e.g. `gene_ids`, `expression`) to member
+!| filenames. [[tox_data_archive(module):save_tox_data(subroutine)]] and
+!| [[tox_data_archive(module):read_tox_data(subroutine)]] are the standard entry points for the
+!| fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` and the
+!| `*_manifest*` routines below are the generic key/filename building blocks they are built on.
 module tox_data_archive
     use safeguard
     use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr
@@ -155,7 +164,8 @@ contains
             return
         end if
 
-        ! Open ZIP archive
+        ! ZIP_EXCLUSIVE makes zip_open fail (rather than truncate/overwrite) if zip_filename
+        ! already exists, so a stale archive is never silently clobbered by a repeated run.
         zip_handle = zip_open(trim(zip_filename)//c_null_char, ZIP_EXCLUSIVE, error)
         if (is_err(error)) then
             call set_err_once(ierr, ERR_FILE_OPEN)
@@ -328,12 +338,17 @@ contains
 
         character(kind=c_char, len=1), pointer :: name_ptr(:)
         integer(int32), parameter :: MAX_NAME_LENGTH = 4096  ! Reasonable maximum
-        ! Get name from ZIP
+        ! zip_get_name returns a pointer to a NUL-terminated C string of unknown length; we don't
+        ! have a real bound from libzip, so we map a fixed-size window over it and rely on
+        ! c_char_1d_as_string to stop at the first NUL byte. MAX_NAME_LENGTH must stay >= the
+        ! longest entry name any archive we read can contain.
         call c_f_pointer(zip_get_name(zip_handle, entry_index, 0), name_ptr, [MAX_NAME_LENGTH])
         call c_char_1d_as_string(name_ptr, entry_name, ierr)
     end subroutine get_zip_entry_name
 
-    ! Unified subroutine to extract a file from ZIP archive
+    !> AUTHOR_AARON_SCHROEDER
+    !| Extracts a single named entry from an open ZIP archive to a file of the same name on disk,
+    !| streaming it through a fixed-size buffer rather than reading it into memory whole.
     subroutine extract_file_from_zip(zip_handle, filename, ierr)
         use tox_conversions, only: int32_as_c_size
         type(c_ptr), intent(in) :: zip_handle
@@ -403,7 +418,10 @@ contains
         end if
     end subroutine extract_file_from_zip
 
-    ! Unified subroutine to add data to ZIP (handles both files and strings)
+    !> AUTHOR_AARON_SCHROEDER
+    !| Adds one entry to an open ZIP archive, sourced either from a file on disk
+    !| (`data_type=DATA_TYPE_FILE`, `data_source` is a path) or from an in-memory string
+    !| (`data_type=DATA_TYPE_STRING`, `data_source` is the literal content).
     subroutine add_data_to_zip(zip_handle, filename, data_source, data_type, ierr)
         use tox_conversions, only: int32_as_c_size
         implicit none
@@ -437,6 +455,12 @@ contains
             return
         end if
 
+        ! Each branch below allocates its payload with C malloc (not Fortran allocate) and then
+        ! hands it to zip_source_buffer with freep=1, which tells libzip it now owns the buffer
+        ! and must free() it once the source is consumed/closed. Do not deallocate c_data
+        ! ourselves after a successful zip_source_buffer call, or it will be double-freed; on the
+        ! error paths before that handoff happens, this subroutine is responsible for free()-ing
+        ! it manually instead.
         select case (data_type)
 
         case (DATA_TYPE_FILE)
@@ -460,6 +484,7 @@ contains
 
             if (file_size == 0) then
                 close (unit)
+                ! No buffer to hand over, so freep=0: there is nothing for libzip to free.
                 source = zip_source_buffer(zip_handle, c_null_ptr, 0_c_size_t, 0)
             else
                 c_data = malloc(data_len)
@@ -902,10 +927,17 @@ contains
         deallocate (keys, filenames)
 
     contains
+        !| Deletes one intermediate array file after it has been added to the archive. Failure to
+        !| remove it is only ever a warning (via the enclosing subroutine's `temp_ierr`, never
+        !| `ierr`), since a leftover temp file does not affect whether the archive itself was
+        !| written successfully.
         subroutine cleanup_temporary_files(file_present, filename, description)
             logical, intent(in) :: file_present
+                !! Whether this array was actually saved (and thus has a temp file to remove)
             character(len=*), intent(in) :: filename
+                !! Path of the temporary file to delete
             character(len=*), intent(in) :: description
+                !! Human-readable label used in the warning message if deletion fails
 
             if (file_present .and. len_trim(filename) > 0) then
                 call delete_file(filename, temp_ierr)
@@ -985,6 +1017,10 @@ contains
         extracted_family_centroids_file = ""
         extracted_shift_vectors_file = ""
 
+        ! This key vocabulary is the other half of the contract written by
+        ! [[tox_data_archive(module):save_tox_data(subroutine)]] -- the two must be kept in sync,
+        ! since a key renamed on one side but not the other would silently fall through to the
+        ! "non-standard key" branch below instead of failing loudly.
         do i_key = 1, size(keys)
             select case (trim(keys(i_key)))
             case ('gene_ids')
@@ -1013,6 +1049,14 @@ contains
         if (present(shift_vectors_file)) shift_vectors_file = extracted_shift_vectors_file
 
         ! Load the arrays that are requested and available
+        !
+        ! NOTE on `type_code` below: for numeric arrays it is one of the negative
+        ! M_INTEGER_TYPE_CODE / M_REAL_TYPE_CODE sentinels (see f42_serde_arrays_utils), but for
+        ! character arrays the on-disk header instead stores the fixed string length in that same
+        ! field (see serialize_char_helper), which is always >= 0. That is why the character
+        ! branches below check `type_code >= 0` (treating it as a length) while the numeric
+        ! branches check `type_code == REAL_TYPE_CODE`/`INTEGER_TYPE_CODE` (treating it as a
+        ! sentinel) -- the two checks are not testing the same kind of value.
         gene_ids_requested = present(gene_ids) .and. len_trim(extracted_gene_ids_file) > 0
         if (gene_ids_requested) then
             ! Get array metadata to determine size and character length

@@ -12,7 +12,8 @@ module tox_get_outliers
 
 contains
 
-    !> Compute family scaling factors (dscale) to normalize distances.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Compute family scaling factors (dscale) to normalize distances.
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling( &
         n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -166,6 +167,9 @@ contains
         end do
 
         call sort_array(loess_x(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
+        ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
+        ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
+        ! different absolute expression ranges.
         call calc_percentile(loess_x(1:n_valid), tmp_perm(1:n_valid), 5.0_real64, eps_mean, ierr)
         if (is_err(ierr)) return
 
@@ -183,8 +187,14 @@ contains
             std_median = loess_y(tmp_perm((n_valid + 1)/2))
         end if
 
+        ! Same idea as eps_mean above, scaled relative to the median stddev (1e-13 is a near-machine-
+        ! precision fraction) so the pseudo-count added to loess_y before log2 stays negligible except
+        ! when it is needed to keep near-zero stddevs away from log2(0).
         eps_sd = max(1.0e-13_real64*std_median, EPS_LOESS)
 
+        ! Fit the mean-vs-stddev trend in log2 space: intra-family distance stddev scales roughly
+        ! multiplicatively with the mean distance, so a log/log relationship is closer to linear
+        ! (homoscedastic) than the raw scale, which is what LOESS assumes.
         ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
         ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
         ! concurrent iterations would be an unsynchronized data race.
@@ -201,10 +211,16 @@ contains
             tmp_perm(i_valid) = i_valid
         end do
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
+        ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
+        ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
         call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 1.0_real64, low_sd_cutoff, ierr)
 
         if (is_err(ierr)) return
 
+        ! Compact loess_x/loess_y/indices_used in place, keeping only families at or above the low-sd
+        ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
+        ! subset only. excluded_low_sd flags which families were dropped from the fit (they still get a
+        ! dscale prediction from the resulting curve further below).
         excluded_low_sd = 1_int32
         k = 0
 
@@ -316,7 +332,8 @@ contains
 
     end subroutine compute_family_scaling
 
-    !> Helper routine that allocates internal arrays and calls compute_family_scaling.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Helper routine that allocates internal arrays and calls [[tox_get_outliers(module):compute_family_scaling(subroutine)]].
     !| This makes usage easier since users don't need to care about internal array requirements.
     subroutine compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
                                             loess_x, loess_y, indices_used, ierr)
@@ -394,7 +411,8 @@ contains
 
     end subroutine compute_family_scaling_alloc
 
-    !> Compute the hybrid RDI for each gene.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Compute the hybrid RDI (Relative Distance Index) for each gene.
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
                                 stack_left, stack_right)
@@ -455,7 +473,8 @@ contains
 
     end subroutine compute_rdi
 
-    !> Identify gene outliers based on the top percentile of RDI values.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Identify gene outliers based on the top percentile of RDI values.
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
     pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)
@@ -496,7 +515,9 @@ contains
             return
         end if
 
-        ! Calculate the position corresponding to the desired percentile
+        ! Nearest-rank percentile: round the fractional rank up to the next integer index into the
+        ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
+        ! interpolated one.
         perc_pos = (n_genes*percentile_val)/100.0_real64
         idx = ceiling(perc_pos)
         ! Clamp idx to valid range
@@ -515,7 +536,12 @@ contains
 
     end subroutine identify_outliers
 
-    !> Main routine to detect outliers using RDI and LOESS-based scaling.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Main routine to detect outliers using RDI and LOESS-based scaling.
+    !| Orchestrates the full pipeline: computes per-family scaling factors via
+    !| [[tox_get_outliers(module):compute_family_scaling_alloc(subroutine)]], derives the RDI per gene via
+    !| [[tox_get_outliers(module):compute_rdi(subroutine)]], then flags outliers via
+    !| [[tox_get_outliers(module):identify_outliers(subroutine)]].
     subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, &
                                tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
                                is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &

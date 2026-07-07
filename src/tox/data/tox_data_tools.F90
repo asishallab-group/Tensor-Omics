@@ -1,5 +1,11 @@
 #include <src/macros.h>
 
+!> Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+!> TSV/CSV files, OrthoFinder-style family files), plus small array-filtering helpers.
+!|
+!| These populate the raw `gene_ids` / `expression` / `gene_to_family` / `family_ids` arrays that
+!| [[tox_data_archive(module):save_tox_data(subroutine)]] later persists; unlike the archive/serde
+!| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools
     use safeguard
     use iso_fortran_env, only: real64, int32, iostat_end
@@ -133,7 +139,10 @@ contains
                 end if
             end do
 
-            ! Read first data line to determine number of columns in this file
+            ! Files in file_list may have differing column counts, so a value_cols position that
+            ! is valid for one file could be out of range for another. Peek at the first data line
+            ! to learn this file's column count, so it can be validated against value_cols below
+            ! before the main read loop starts indexing into each line's fields.
             read (unit, '(A)', iostat=ios) line
             call check_okay_ioerror(ios, ierr, ERR_READ_DATA, unit)
             if (is_err(ierr)) then
@@ -144,7 +153,8 @@ contains
             call split_string(line, test_fields, ierr, actual_delimiter)
             n_columns_in_file = size(test_fields)
 
-            ! Rewind to beginning of data section
+            ! Rewind to beginning of data section so the main read loop below re-reads (rather
+            ! than skips) the line just consumed for the column-count probe above.
             rewind (unit)
             do j = 1, n_header_rows
                 read (unit, '(A)', iostat=ios) line

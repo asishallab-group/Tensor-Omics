@@ -38,7 +38,7 @@ contains
         call write_file_header(filename, unit, LOGICAL_TYPE_CODE, size(orig_shape, kind=int32), orig_shape, ierr)
         if (is_err(ierr)) return
 
-        ! Read the entire array as a contiguous block
+        ! Write the entire array as a contiguous block
         write (unit, iostat=ierr) arr
         if (is_err(ierr)) call set_err(ierr, ERR_WRITE_DATA)
 
@@ -158,5 +158,7 @@ subroutine serialize_logical_nd_c(arr, orig_shape, n_dims, &
     call c_int_as_logical(arr, arr_f)
 
     call serialize_logical_helper(arr_f, n_elements, orig_shape, filename_f, ierr)
+    ! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so
+    ! remap any error reported against it back onto `arr` (C-visible arg 1).
     call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
 end subroutine serialize_logical_nd_c

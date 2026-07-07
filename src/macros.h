@@ -1,5 +1,8 @@
 #include <authors.h>
 
+! `ierr` is the only channel available to report an error back to the caller, so if its own
+! pointer is null there is no way to signal failure at all -- just return silently instead of
+! risking a null dereference by calling set_err(ierr, ...).
 #define M_CHECK_IERR_NON_NULL if (.not. c_associated(c_loc(ierr))) return
 
 !CLAUDE: c_loc's target must not have zero size per the Fortran standard. C wrapper subroutines call

@@ -1,5 +1,7 @@
 #include <src/macros.h>
 
+!> Module for clustering routines used in tensor-omics: k-means for factor/trajectory
+!| grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.
 module tox_clustering
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -439,6 +441,10 @@ contains
         ! Use column index for merged distances -> fill idx_A with infinity values
         ! update bottom triangle
         size_AB_real = real(size_B + size_A, real64)
+        ! Lance-Williams update formula for UPGMA/WPGMA: new d(AB,C) = (size_A*d(A,C) + size_B*d(B,C)) / (size_A+size_B).
+        ! For WPGMA (METHOD_WEIGHTED) the caller passes size_A=size_B=1 instead of the true cluster
+        ! sizes, which reduces this to the unweighted average (d(A,C)+d(B,C))/2, giving every
+        ! previous merge equal weight regardless of how many leaves it represents.
         do i_node = 1, n_points
             if (distances(i_node, i_node) >= 0.0_real64) then
                 ! i_node < idx_B < idx_A -> fill rows in both
@@ -495,7 +501,11 @@ contains
         real(real64) :: new_dist, new_dist_part_AC, new_dist_part_BC, new_dist_part_AB, size_AC_real, size_BC_real, size_ABC_real
 
         ! Merge distances
-        ! Update merged nodes with arithmetic mean distances
+        ! Lance-Williams update formula for Ward's minimum-variance method:
+        !   d(AB,C) = sqrt( ((size_A+size_C)*d(A,C)^2 + (size_B+size_C)*d(B,C)^2 - size_C*d(A,B)^2) / (size_A+size_B+size_C) )
+        ! This is the increase in within-cluster variance caused by merging A and B, expressed in
+        ! distance units via the square root (unlike xPGMA, the components are combined on squared
+        ! distances, not the distances themselves).
         ! Use column index for merged distances -> fill idx_A with infinity values
         ! update bottom triangle
         do i_node = 1, n_points
