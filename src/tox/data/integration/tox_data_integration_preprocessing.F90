@@ -109,7 +109,7 @@ contains
 
         do concurrent(i_gene=1:n_genes)
             do concurrent(i_rep=1:n_reps) shared(expr, resid, means, i_gene)
-                if (.not. ieee_is_nan(expr(i_rep, i_gene))) then
+                if ((.not. ieee_is_nan(expr(i_rep, i_gene))) .and. ieee_is_finite(expr(i_rep, i_gene))) then
                     resid(i_rep, i_gene) = expr(i_rep, i_gene) - means(i_gene)
                 else
                     resid(i_rep, i_gene) = M_NAN
@@ -316,6 +316,7 @@ contains
         call validate_dimension_size(n_neighbors, ierr)
         if (is_err(ierr)) return
 
+        !CLAUDE: `n_genes_S` (used as the allocation size below) is never validated here — only `n_neighbors` is checked before this point. `n_points`/`n_genes_S`/`n_reps_S` are only validated later inside `construct_neighborhoods`, after the allocations have already happened with the unvalidated size.
         M_ALLOCATE(tmp_distances(n_genes_S))
         M_ALLOCATE(tmp_distances_perm(n_genes_S))
 
@@ -402,6 +403,7 @@ contains
         integer(int32) :: i_point, i_gene, gene_idx
 
         ! Process each reference point
+        !CLAUDE: the kNN search per reference point is embarrassingly parallel (each i_point is independent), but this is a plain sequential `do` because `tmp_distances`/`tmp_distances_perm` are single shared scratch buffers reused/sorted in-place across iterations. Sizing them `(n_genes_S, n_points)` would let this become `do concurrent` and parallelize what is likely the hottest loop in the preprocessing pipeline.
         do i_point = 1, n_points
 
             ! Calculate distances.

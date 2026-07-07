@@ -345,11 +345,17 @@ contains
         dim_val = 1_int32
 
         ! Perform robust iterative refinement
+        !CLAUDE: loess_decomposition (lowesd) only depends on x/dim/n/span/degree/nvmax/setlf, none of which change
+        ! across robust iterations — only the weights change between iterations. Recomputing the full decomposition
+        ! (and re-zeroing the workspace) on every one of the n_iters passes is redundant work that could be hoisted
+        ! out of this loop and computed once.
         do it = 1, n_iters
             ! Reset workspace arrays for this iteration
             int_workspace = 0_int32
             real_workspace = 0.0_real64
 
+            !CLAUDE: this elementwise loop has no cross-iteration dependency and could be a `do concurrent` like the
+            ! equivalent loops in tox_normalization.F90/tox_get_outliers.F90, instead of a plain sequential loop.
             ! Combine original weights with robust weights for this iteration
             do i = 1, n
                 combined_weights(i) = w(i)*robust_weights(i)

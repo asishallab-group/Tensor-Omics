@@ -4,7 +4,7 @@
 module tox_normalization
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int
+    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
     use tox_loess, only: loess_alloc
 
@@ -95,6 +95,11 @@ contains
 
         if (is_err(ierr)) return
 
+        if (sum(reps_per_tissue) /= n_replicates) then
+            call set_err(ierr, ERR_SIZE_MISMATCH)
+            return
+        end if
+
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
         log_transformed_expr_transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
@@ -133,7 +138,6 @@ contains
         end if
 
         call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr_copy, log_transformed_expr)
-        if (is_err(ierr)) return
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
@@ -397,6 +401,9 @@ contains
         end do
 
         ! === Second pass: assign averaged values by rank ===
+        !CLAUDE: each tissue column is sorted twice (once in the first pass above, once here), doubling the
+        ! O(n_genes log n_genes) sort cost per tissue. The permutation from the first pass could be cached
+        ! (e.g. in an (n_genes, n_replicates) buffer) and reused here instead of re-sorting.
         do i_tissue = 1, n_replicates
             ! Prepare column and reset tmp_permutation
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
@@ -463,8 +470,11 @@ contains
         call set_ok(ierr)
 
         ! Loop through all elements in the flattened input matrix
-        do concurrent (i_gene = 1:n_genes) shared(n_tissues, expr, ierr)
-            do concurrent (i_group = 1:n_tissues) local(tmp_ierr, expr_val) shared(expr, ierr, i_gene)
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar written on the (rare/exceptional) error path -- writing it from concurrent
+        ! iterations would be an unsynchronized data race.
+        do i_gene = 1, n_genes
+            do i_group = 1, n_tissues
                 ! Apply the log2(x + 1) transformation
                 expr_val = expr(i_group, i_gene) + 1.0_real64
                 call logx(expr_val, 2.0_real64, expr(i_group, i_gene), tmp_ierr)
@@ -527,6 +537,9 @@ contains
         integer(int32) :: start_idx, stop_idx
 
         ! === Loop over each group ===
+        !CLAUDE: `sum(reps_per_tissue(:i_group-1))` is recomputed from scratch for every (i_gene, i_group) pair,
+        ! i.e. O(n_genes * n_tissues^2) total, even though it is invariant across i_gene and could be a single
+        ! O(n_tissues) prefix-sum computed once outside both loops.
         do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
             do concurrent (i_group = 1:n_tissues) local(start_idx, stop_idx, sum_val) shared(reps_per_tissue, expr, tissue_averages)
                 if (i_group == 1) then
@@ -580,6 +593,8 @@ contains
         call validate_dimension_size(n_genes, ierr)
         call validate_dimension_size(n_tissues, ierr)
         call validate_dimension_size(n_pairs, ierr)
+        call validate_all_in_range_int(control_tissues, n_pairs, ierr, min=1_int32, max=n_tissues)
+        call validate_all_in_range_int(condition_tissues, n_pairs, ierr, min=1_int32, max=n_tissues)
 
         if (is_err(ierr)) return
 

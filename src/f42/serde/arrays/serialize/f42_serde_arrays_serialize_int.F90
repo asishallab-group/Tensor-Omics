@@ -36,6 +36,7 @@ contains
         if (is_err(ierr)) return
 
         call write_file_header(filename, unit, INTEGER_TYPE_CODE, size(orig_shape, kind=int32), orig_shape, ierr)
+        if (is_err(ierr)) return
 
         ! Read the entire array as a contiguous block
         write (unit, iostat=ierr) arr

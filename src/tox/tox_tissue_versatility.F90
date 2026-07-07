@@ -46,8 +46,8 @@ contains
         call validate_dimension_size(n_selected_vectors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_selected_axes, ierr, arg_pos=7_int32)
         call validate_all_in_range_real(expression_vectors, size(expression_vectors, kind=int32), ierr, arg_pos=3_int32)
-        if (count(exp_vecs_selection_index, kind=int32) > n_selected_vectors) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
-        if (count(axes_selection, kind=int32) > n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
+        if (count(exp_vecs_selection_index, kind=int32) /= n_selected_vectors) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
+        if (count(axes_selection, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
 
         if (is_err(ierr)) return
 
@@ -99,6 +99,11 @@ contains
 
         ! Loop over selected expression vectors
         ! Note: If the expression vector is zero in all selected axes, tissue versatility (TV) is set to 1 (maximum specificity) and the angle is set to acos(0) = 90 degrees.
+        !CLAUDE: this per-gene loop is data-parallel (each i_vec is independent) but is forced sequential here only
+        ! because out_idx is an accumulating compaction counter. Since n_selected_vectors is already known, this
+        ! could be parallelized with `do concurrent` by precomputing an exclusive prefix sum of
+        ! exp_vecs_selection_index to get each vector's output slot directly, consistent with how other modules in
+        ! this codebase parallelize per-gene work.
         out_idx = 0
         do i_vec = 1, n_vectors
             if (.not. exp_vecs_selection_index(i_vec)) cycle  ! Skip if not selected

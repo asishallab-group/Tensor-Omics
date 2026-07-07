@@ -168,6 +168,7 @@ contains
             if (len_trim(filenames(i)) > 0) then
                 call add_data_to_zip(zip_handle, filenames(i), filenames(i), DATA_TYPE_FILE, ierr)
                 if (is_err(ierr)) then
+                    !CLAUDE: On error the partially-written zip_filename is never deleted from disk. Since it was opened with ZIP_EXCLUSIVE, a retry of create_zip_archive with the same name will now fail with "file already exists".
                     error = zip_close(zip_handle)
                     return
                 end if
@@ -254,6 +255,15 @@ contains
             call int32_as_c_int64(i_fortran, i_c)
             call get_zip_entry_name(zip_handle, i_c, filename, ierr)
             if (is_err(ierr)) then
+                error = zip_close(zip_handle)
+                return
+            end if
+
+            ! Reject entry names that could escape the extraction directory (zip-slip)
+            if (index(filename, "..") > 0 .or. &
+                (len_trim(filename) > 0 .and. (filename(1:1) == "/" .or. filename(1:1) == "\"))) then
+                call set_err_once(ierr, ERR_INVALID_INPUT)
+                if (DEBUG) print *, "Error: unsafe ZIP entry name rejected: ", trim(filename)
                 error = zip_close(zip_handle)
                 return
             end if
@@ -363,13 +373,6 @@ contains
 
         ! Read and write in chunks
         M_ALLOCATE(buffer(CHUNK_SIZE))
-        if (is_err(iostat)) then
-            call set_err_once(ierr, ERR_ALLOC_FAIL)
-            if (DEBUG) print *, "Error allocating buffer for: ", trim(filename)
-            close (unit, status='delete')
-            error = zip_fclose(file_handle)
-            return
-        end if
 
         call int32_as_c_size(CHUNK_SIZE, chunk_size_c)
         do
@@ -427,6 +430,7 @@ contains
         integer(c_size_t) :: data_len
 
         call set_ok(ierr)
+        c_data = c_null_ptr
 
         if (len_trim(data_source) == 0) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -445,7 +449,13 @@ contains
                 return
             end if
 
-            inquire (unit, size=file_size)
+            inquire (unit, size=file_size, iostat=iostat)
+            if (is_err(iostat) .or. file_size < 0) then
+                call set_err_once(ierr, ERR_READ_DATA)
+                if (DEBUG) print *, "Error: could not determine size of file: ", trim(data_source)
+                close (unit)
+                return
+            end if
             call int32_as_c_size(file_size, data_len)
 
             if (file_size == 0) then
@@ -494,7 +504,7 @@ contains
 
         if (.not. c_associated(source)) then
             call set_err_once(ierr, ERR_POINTER_NULL)
-            if (data_type == DATA_TYPE_FILE .or. data_type == DATA_TYPE_STRING) call free(c_data)
+            if (c_associated(c_data)) call free(c_data)
             return
         end if
 
@@ -577,6 +587,7 @@ contains
         integer(int32) :: unit, iostat, line_count, i, eq_pos
         character(len=1024) :: line  ! Increased buffer size
         character(len=:), allocatable :: temp_keys(:), temp_values(:)
+        !CLAUDE: MAX_LINES silently truncates the manifest at 100 entries with no error reported — a legitimately larger manifest (this is a "generic" key-value reader, not limited to the ~6 standard keys) would silently lose entries beyond the cap instead of failing loudly.
         integer(int32), parameter :: MAX_LINES = 100  ! Reasonable maximum
 
         call set_ok(ierr)
@@ -681,23 +692,17 @@ contains
 
             ! Read and write in chunks
             M_ALLOCATE(buffer(CHUNK_SIZE))
-            if (is_ok(iostat)) then
-                call int32_as_c_size(CHUNK_SIZE, chunk_size_c)
-                do
-                    bytes_read = zip_fread(file_handle, c_loc(buffer), chunk_size_c)
-                    if (bytes_read <= 0) exit
-                    write (unit, iostat=iostat) buffer(1:bytes_read)
-                    if (is_err(iostat)) then
-                        if (DEBUG) print *, "Error writing manifest file"
-                        call set_err_once(ierr, ERR_WRITE_DATA)
-                        exit
-                    end if
-                end do
-            else
-                call set_err_once(ierr, ERR_ALLOC_FAIL)
-                error = zip_close(zip_handle)
-                return
-            end if
+            call int32_as_c_size(CHUNK_SIZE, chunk_size_c)
+            do
+                bytes_read = zip_fread(file_handle, c_loc(buffer), chunk_size_c)
+                if (bytes_read <= 0) exit
+                write (unit, iostat=iostat) buffer(1:bytes_read)
+                if (is_err(iostat)) then
+                    if (DEBUG) print *, "Error writing manifest file"
+                    call set_err_once(ierr, ERR_WRITE_DATA)
+                    exit
+                end if
+            end do
 
             ! Clean up manifest extraction
             if (allocated(buffer)) deallocate (buffer)
@@ -708,6 +713,10 @@ contains
                 call set_err_once(ierr, ERR_FILE_CLOSE)
                 return
             end if
+
+            ! Preserve any error from the write loop above before it gets clobbered by
+            ! read_manifest_generic's own set_ok(ierr)
+            if (is_err(ierr)) return
 
             ! Parse the manifest file
             call read_manifest_generic("manifest.txt", keys, filenames, ierr)
@@ -954,6 +963,11 @@ contains
         character(len=:), allocatable :: extracted_gene_ids_file, extracted_expression_file, &
                                          extracted_gene_to_family_file, extracted_family_ids_file, &
                                          extracted_family_centroids_file, extracted_shift_vectors_file
+        integer(int32) :: temp_ierr
+        ! Sanity bounds for dims/type_code read from on-disk archive member metadata, to guard
+        ! against negative or absurdly large values from a corrupted/malicious archive
+        integer(int32), parameter :: MAX_REASONABLE_DIM = 100000000
+        integer(int32), parameter :: MAX_REASONABLE_CHARLEN = 100000
 
         call set_ok(ierr)
         max_dims = 5
@@ -1003,7 +1017,8 @@ contains
         if (gene_ids_requested) then
             ! Get array metadata to determine size and character length
             call get_array_metadata(extracted_gene_ids_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0) then
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0 .and. type_code <= MAX_REASONABLE_CHARLEN &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata with proper character length
                 M_ALLOCATE(character(len=type_code) :: gene_ids(dims(1)))
                 call load_gene_ids(gene_ids, extracted_gene_ids_file, ierr)
@@ -1018,7 +1033,9 @@ contains
         if (expression_requested) then
             ! Get array metadata to determine size
             call get_array_metadata(extracted_expression_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM &
+                .and. dims(2) >= 0 .and. dims(2) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata
                 M_ALLOCATE(expression(dims(1), dims(2)))
                 call load_expression_vectors(expression, extracted_expression_file, ierr)
@@ -1033,7 +1050,8 @@ contains
         if (gene_to_family_requested) then
             ! Get array metadata to determine size
             call get_array_metadata(extracted_gene_to_family_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 1 .and. type_code == INTEGER_TYPE_CODE) then
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code == INTEGER_TYPE_CODE &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata
                 M_ALLOCATE(gene_to_family(dims(1)))
                 call load_gene_to_family(gene_to_family, extracted_gene_to_family_file, ierr)
@@ -1048,7 +1066,8 @@ contains
         if (family_ids_requested) then
             ! Get array metadata to determine size and character length
             call get_array_metadata(extracted_family_ids_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0) then
+            if (is_ok(ierr) .and. ndims == 1 .and. type_code >= 0 .and. type_code <= MAX_REASONABLE_CHARLEN &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata with proper character length
                 M_ALLOCATE(character(len=type_code) :: family_ids(dims(1)))
                 call load_family_ids(family_ids, extracted_family_ids_file, ierr)
@@ -1062,7 +1081,9 @@ contains
         if (family_centroids_requested) then
             ! Get array metadata to determine size
             call get_array_metadata(extracted_family_centroids_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM &
+                .and. dims(2) >= 0 .and. dims(2) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata
                 M_ALLOCATE(family_centroids(dims(1), dims(2)))
                 call load_family_centroids(family_centroids, extracted_family_centroids_file, ierr)
@@ -1077,7 +1098,9 @@ contains
         if (shift_vectors_requested) then
             ! Get array metadata to determine size
             call get_array_metadata(extracted_shift_vectors_file, dims, max_dims, ndims, type_code, ierr)
-            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE) then
+            if (is_ok(ierr) .and. ndims == 2 .and. type_code == REAL_TYPE_CODE &
+                .and. dims(1) >= 0 .and. dims(1) <= MAX_REASONABLE_DIM &
+                .and. dims(2) >= 0 .and. dims(2) <= MAX_REASONABLE_DIM) then
                 ! Allocate array based on metadata
                 M_ALLOCATE(shift_vectors(dims(1), dims(2)))
                 call load_shift_vectors(shift_vectors, extracted_shift_vectors_file, ierr)
@@ -1088,13 +1111,17 @@ contains
             end if
         end if
 
-        if (len_trim(extracted_gene_ids_file) > 0) call delete_file(extracted_gene_ids_file, ierr)
-        if (len_trim(extracted_expression_file) > 0) call delete_file(extracted_expression_file, ierr)
-        if (len_trim(extracted_gene_to_family_file) > 0) call delete_file(extracted_gene_to_family_file, ierr)
-        if (len_trim(extracted_family_ids_file) > 0) call delete_file(extracted_family_ids_file, ierr)
-        if (len_trim(extracted_family_centroids_file) > 0) call delete_file(extracted_family_centroids_file, ierr)
-        if (len_trim(extracted_shift_vectors_file) > 0) call delete_file(extracted_shift_vectors_file, ierr)
-        call delete_file("manifest.txt", ierr)
+        ! Use a separate status variable for cleanup so a temp-file deletion failure does not
+        ! mask the overall success of the actual data load (mirrors save_tox_data's temp_ierr)
+        call set_ok(temp_ierr)
+        if (len_trim(extracted_gene_ids_file) > 0) call delete_file(extracted_gene_ids_file, temp_ierr)
+        if (len_trim(extracted_expression_file) > 0) call delete_file(extracted_expression_file, temp_ierr)
+        if (len_trim(extracted_gene_to_family_file) > 0) call delete_file(extracted_gene_to_family_file, temp_ierr)
+        if (len_trim(extracted_family_ids_file) > 0) call delete_file(extracted_family_ids_file, temp_ierr)
+        if (len_trim(extracted_family_centroids_file) > 0) call delete_file(extracted_family_centroids_file, temp_ierr)
+        if (len_trim(extracted_shift_vectors_file) > 0) call delete_file(extracted_shift_vectors_file, temp_ierr)
+        call delete_file("manifest.txt", temp_ierr)
+        if (DEBUG .and. is_err(temp_ierr)) print *, "Warning: failed to clean up one or more temporary extracted files"
 
         deallocate (keys, filenames)
     end subroutine read_tox_data

@@ -171,6 +171,9 @@ contains
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
+        do i_valid = 1, n_valid
+            tmp_perm(i_valid) = i_valid
+        end do
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         if (mod(n_valid, 2) == 0) then
             std_median = 0.5_real64*( &
@@ -182,7 +185,10 @@ contains
 
         eps_sd = max(1.0e-13_real64*std_median, EPS_LOESS)
 
-        do concurrent (i_valid = 1:n_valid) local(tmp_ierr) shared(loess_x, eps_mean, loess_y, eps_sd, ierr)
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
+        ! concurrent iterations would be an unsynchronized data race.
+        do i_valid = 1, n_valid
             call logx(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid), tmp_ierr)
             if (is_err(tmp_ierr)) ierr = tmp_ierr
             call logx(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid), tmp_ierr)
@@ -191,6 +197,9 @@ contains
 
         if (is_err(ierr)) return
 
+        do i_valid = 1, n_valid
+            tmp_perm(i_valid) = i_valid
+        end do
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 1.0_real64, low_sd_cutoff, ierr)
 
@@ -256,7 +265,10 @@ contains
 
         if (is_err(ierr)) return
 
-        do concurrent (i_family = 1:n_families) local(tmp_ierr) shared(tmp_means_aux, eps_mean, tmp_z_mat, xmin, xmax, ierr)
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
+        ! concurrent iterations would be an unsynchronized data race.
+        do i_family = 1, n_families
             if (tmp_means_aux(i_family) >= 0.0_real64) then
                 call logx(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1), tmp_ierr)
                 if (is_err(tmp_ierr)) then
@@ -476,6 +488,13 @@ contains
 
         ! Initialize output
         is_outlier = .false.
+
+        ! Guard against n_genes < 1: idx would otherwise be clamped to 0 below (idx<1 -> 1,
+        ! then idx>n_genes==0 -> 0), causing an out-of-bounds access at sorted_rdi(perm(idx)).
+        if (n_genes < 1) then
+            threshold = 0.0_real64
+            return
+        end if
 
         ! Calculate the position corresponding to the desired percentile
         perc_pos = (n_genes*percentile_val)/100.0_real64

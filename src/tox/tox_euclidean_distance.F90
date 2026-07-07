@@ -175,7 +175,7 @@ pure subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, &
         !! Expression vector dimension
     real(c_double), dimension(n_elements, n_genes), intent(in), target :: genes
         !! Gene expression matrix (n_elements × n_genes), column-major
-    real(c_double), dimension(n_elements, n_genes), intent(in), target :: centroids
+    real(c_double), dimension(n_elements, n_families), intent(in), target :: centroids
         !! Family centroid matrix (n_elements × n_families), column-major
     integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
         !! M_GENE_TO_FAM_DOC(genes)

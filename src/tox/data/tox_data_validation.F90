@@ -95,9 +95,6 @@ contains
                     ') Actual: (', size(family_centroids, 1), ',', size(family_centroids, 2), ')'
                 return
             end if
-        else
-            call set_err_once(ierr, ERR_INVALID_INPUT)
-            return
         end if
 
         ! Check shift_vectors array
@@ -230,6 +227,42 @@ contains
         call set_ok(ierr)
         n_genes = size(expression_vectors, 2)
         error_count = 0
+
+        ! Validate array shapes and fam_idx bounds before indexing below, since this is a public
+        ! entry point that may be called independently of validate_data_structure
+        if (size(expression_vectors, 1) /= n_samples) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            if (DEBUG) write (*, *) 'Error: expression_vectors size mismatch. Expected rows:', n_samples, &
+                ' Actual:', size(expression_vectors, 1)
+            return
+        end if
+
+        if (size(shift_vectors, 1) /= 2*n_samples .or. size(shift_vectors, 2) /= n_genes) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            if (DEBUG) write (*, *) 'Error: shift_vectors size mismatch. Expected: (', 2*n_samples, ',', n_genes, &
+                ') Actual: (', size(shift_vectors, 1), ',', size(shift_vectors, 2), ')'
+            return
+        end if
+
+        if (size(family_centroids, 1) /= n_samples) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            if (DEBUG) write (*, *) 'Error: family_centroids size mismatch. Expected rows:', n_samples, &
+                ' Actual:', size(family_centroids, 1)
+            return
+        end if
+
+        if (size(gene_to_fam) < n_genes) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            if (DEBUG) write (*, *) 'Error: gene_to_fam size mismatch. Expected at least:', n_genes, &
+                ' Actual:', size(gene_to_fam)
+            return
+        end if
+
+        if (any(gene_to_fam(1:n_genes) < 0) .or. any(gene_to_fam(1:n_genes) > size(family_centroids, 2))) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            if (DEBUG) write (*, *) 'Error: gene_to_fam contains values out of bounds for family_centroids columns'
+            return
+        end if
 
         ! Check for NaN and Inf values
         call check_for_nan_inf(shift_vectors, ierr)
@@ -663,7 +696,7 @@ subroutine validate_data_structure_c(n_genes, n_families, n_samples, &
     character(len=:), allocatable :: temp_str
     character(len=:), allocatable :: gene_ids(:)
     character(len=:), allocatable :: gene_family_ids(:)
-    integer :: i, ios
+    integer :: i, ios, ios2
 
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_genes)
@@ -681,9 +714,9 @@ subroutine validate_data_structure_c(n_genes, n_families, n_samples, &
     call set_ok(ierr)
 
     allocate (character(len=gene_ids_len) :: gene_ids(n_genes), stat=ios)
-    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios)
+    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios2)
 
-    if (.not. is_ok(ios)) then
+    if (.not. is_ok(ios) .or. .not. is_ok(ios2)) then
         call set_err_once(ierr, ERR_ALLOC_FAIL)
         return
     end if
@@ -743,7 +776,7 @@ subroutine validate_all_data_c(n_genes, n_families, n_samples, &
     character(len=:), allocatable :: temp_str
     character(len=:), allocatable :: gene_ids(:)
     character(len=:), allocatable :: gene_family_ids(:)
-    integer :: i, ios
+    integer :: i, ios, ios2
 
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_genes)
@@ -761,8 +794,8 @@ subroutine validate_all_data_c(n_genes, n_families, n_samples, &
     call set_ok(ierr)
 
     allocate (character(len=gene_len) :: gene_ids(n_genes), stat=ios)
-    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios)
-    if (.not. is_ok(ios)) then
+    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios2)
+    if (.not. is_ok(ios) .or. .not. is_ok(ios2)) then
         call set_err_once(ierr, ERR_ALLOC_FAIL)
         return
     end if

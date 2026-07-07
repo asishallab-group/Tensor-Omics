@@ -36,6 +36,7 @@ contains
         if (is_err(ierr)) return
 
         call check_file_header(filename, REAL_TYPE_CODE, orig_shape, unit, ierr)
+        if (is_err(ierr)) return
 
         ! Read the entire array as a contiguous block
         read (unit, iostat=ierr) arr

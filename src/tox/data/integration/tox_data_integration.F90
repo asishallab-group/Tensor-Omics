@@ -279,7 +279,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             integer(int32), intent(out) :: ierr
                 !! Error code
             integer(int32), intent(in), optional :: random_seed
@@ -321,7 +321,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors), intent(out) :: tmp_pool
                 !! Working array for shuffling the concatenated residuals from both studies per reference point
             real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
@@ -379,7 +379,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors), intent(out), target :: tmp_pool
                 !! Working array for shuffling the concatenated residuals from both studies per reference point
             real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1

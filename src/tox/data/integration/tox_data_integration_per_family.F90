@@ -211,6 +211,7 @@ contains
         if (is_close(total_included_n_reps, 0.0_real64)) then
             support_weights = 0.0_real64
             contribution_scores = 0.0_real64
+            return
         end if
 
         do concurrent(i_family=1:k_families) shared(support_weights, total_included_n_reps_per_f, total_included_n_reps, contribution_scores, global_js_divergences)

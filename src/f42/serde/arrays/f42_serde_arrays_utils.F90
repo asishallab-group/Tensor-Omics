@@ -89,9 +89,9 @@ contains
 
         call validate_type_code(type_code, expected_type_code, unit, ierr)
         if (ndim /= size(expected_shape, kind=int32)) then
-            call set_err(ierr, ERR_DIM_MISMATCH)
+            call set_err_once(ierr, ERR_DIM_MISMATCH)
         else if (any(expected_shape /= dims)) then
-            call set_err(ierr, ERR_DIM_MISMATCH)
+            call set_err_once(ierr, ERR_DIM_MISMATCH)
         end if
         if (is_err(ierr)) then
             close(unit)
@@ -120,7 +120,7 @@ contains
             !! number of dimensions
         integer(int32), intent(out) :: ierr
             !! error code
-        integer(int32), allocatable :: dims(:)
+        integer(int32), allocatable, intent(out) :: dims(:)
             !! dimensions of the array
 
         integer(int32) :: magic
@@ -142,6 +142,12 @@ contains
 
         read (unit, iostat=ierr) ndims
         M_CHECK_IO_ERR(ERR_READ_NDIMS)
+
+        if (ndims < 0 .or. ndims > 15) then
+            call set_err(ierr, ERR_INVALID_FORMAT)
+            close (unit)
+            return
+        end if
 
         M_ALLOCATE(dims(ndims))
         read (unit, iostat=ierr) dims

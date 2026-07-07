@@ -87,6 +87,9 @@ contains
         if (DEBUG) print *, "Hashmap created with size:", table_size
     end subroutine hashmap_create
 
+    !CLAUDE: hashmap_create and hashset_create are line-for-line identical except for the derived type; the
+    !CLAUDE: table-size computation and bucket-nullification loop could be factored into a shared helper that
+    !CLAUDE: returns the size, cutting this duplication (same pattern applies to resize_hashmap/resize_hashset).
     !> AUTHOR_AARON_SCHROEDER
     !| Create the hashmap
     subroutine hashset_create(map, initial_size)
@@ -190,7 +193,13 @@ contains
 
         key_len = len(trimmed_key)
 
-        hash_val = xxh3_hash_c(c_loc(trimmed_key), key_len)
+        ! An empty/all-blank key yields a zero-length `trimmed_key`; taking c_loc of a zero-size
+        ! target is not well-defined, so special-case it with a fixed hash instead of calling into C.
+        if (key_len == 0) then
+            hash_val = 0_int64
+        else
+            hash_val = xxh3_hash_c(c_loc(trimmed_key), key_len)
+        end if
         hash_idx = int(iand(hash_val, int(table_size - 1, int64)) + 1, int32)
     end function xxh3_hash_fortran
 
@@ -285,7 +294,7 @@ contains
 
         ! Key doesn't exist - create new node
         allocate (new_node)
-        new_node%key = key
+        new_node%key = trim(key)
         new_node%next => set%buckets(hash_idx)%next
         set%buckets(hash_idx)%next => new_node
         set%count = set%count + 1

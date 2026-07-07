@@ -95,9 +95,9 @@ contains
             return
         end if
 
-        if (size(gene_ids) < n_genes) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)
-            if (DEBUG) write (*, *) 'Error: gene_ids array is too small.'
+        if (size(expression_vectors, 2) /= n_genes) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            if (DEBUG) write (*, *) 'Error: expression_vectors column count does not match n_genes.'
             return
         end if
 
@@ -163,6 +163,8 @@ contains
                     valid_cols(n_valid_cols) = value_cols(k)
                 else
                     call set_err_once(ierr, ERR_INVALID_INPUT)
+                    call hashmap_destroy(gene_map)
+                    close (unit)
                     return
                 end if
             end do
@@ -178,6 +180,7 @@ contains
                 if (current_row > size(gene_ids)) then
                     call set_err_once(ierr, ERR_INVALID_INPUT)
                     if (DEBUG) write (*, *) 'Provided file contains more lines then expected'
+                    call hashmap_destroy(gene_map)
                     close (unit)
                     return
                 end if
@@ -197,6 +200,7 @@ contains
                     if (DEBUG) print *, 'row: ', current_row
                     call set_err_once(ierr, ERR_INVALID_INPUT)
                     call hashmap_destroy(gene_map)
+                    close (unit)
                     return
                 end if
 
@@ -376,7 +380,11 @@ contains
             ! Process all gene columns with Hashmap-Lookup
             do i = 2, size(fields)
                 call split_string(fields(i), genes, ierr, ',')
-                if (is_err(ierr)) return
+                if (is_err(ierr)) then
+                    call hashmap_destroy(gene_map)
+                    close (unit)
+                    return
+                end if
                 do j = 1, size(genes)
                     if (len_trim(genes(j)) == 0) cycle
 
@@ -448,8 +456,13 @@ contains
             field_ends(n) = len_trim(input)
         end if
 
-        ! Allocate output array
-        allocate (character(len=maxval(field_ends(1:n) - field_starts(1:n) + 1)) :: output(n), stat=ios)
+        ! Allocate output array (guard against empty/degenerate input, where n==0 and
+        ! maxval over the resulting zero-extent slices would be undefined)
+        if (n == 0) then
+            allocate (character(len=0) :: output(0), stat=ios)
+        else
+            allocate (character(len=maxval(field_ends(1:n) - field_starts(1:n) + 1)) :: output(n), stat=ios)
+        end if
         call check_io_stat(ios, ierr)
         if (is_err(ierr)) return
 
@@ -499,7 +512,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i, j, n_genes_total, n_samples, ios
+        integer(int32) :: i, j, n_genes_total, n_samples, ios, ios2, ios3
         character(len=len(gene_ids)), allocatable :: temp_gene_ids(:)
         real(real64), allocatable :: temp_expression_vectors(:, :)
         integer(int32), allocatable :: temp_gene_to_fam(:)
@@ -515,12 +528,12 @@ contains
         end if
 
         allocate (temp_gene_ids(n_genes_kept), stat=ios)
-        allocate (temp_expression_vectors(n_samples, n_genes_kept), stat=ios)
-        allocate (temp_gene_to_fam(n_genes_kept), stat=ios)
-        if (ios /= 0) then
-            ierr = ios
-            return
-        end if
+        call check_io_stat(ios, ierr)
+        allocate (temp_expression_vectors(n_samples, n_genes_kept), stat=ios2)
+        call check_io_stat(ios2, ierr)
+        allocate (temp_gene_to_fam(n_genes_kept), stat=ios3)
+        call check_io_stat(ios3, ierr)
+        if (is_err(ierr)) return
 
         j = 1
         do i = 1, n_genes_total

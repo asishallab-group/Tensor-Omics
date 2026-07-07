@@ -46,6 +46,7 @@ contains
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_selected_genes, ierr, min=0_int32, max=n_genes, arg_pos=5_int32)
+        call validate_all_in_range_int(gene_indices, n_selected_genes, ierr, min=1_int32, max=n_genes, arg_pos=4_int32)
 
         if (is_err(ierr)) return
 
@@ -77,6 +78,11 @@ contains
         centroid = 0.0_real64
         if (n_selected_genes == 0) return
 
+        !CLAUDE: loop order is transposed relative to the column-major layout of expression_vectors
+        !CLAUDE: (n_axes, n_genes): for a fixed i_axis, the inner loop strides across columns
+        !CLAUDE: (stride n_axes) to gather one value per gene. Swapping to iterate genes outer / axes
+        !CLAUDE: inner would let each selected gene's column be read contiguously and accumulated
+        !CLAUDE: straight into the length-n_axes centroid vector, which is much more cache-friendly.
         ! Compute the mean vector
         do concurrent (i_axis = 1:n_axes) local(sum_val) shared(gene_indices, centroid, n_selected_genes)
             sum_val = 0.0_real64
@@ -178,6 +184,12 @@ contains
         ! Local variables
         integer(int32) :: i_gene, i_family, n_selected
 
+        !CLAUDE: this rescans all n_genes for every family -> O(n_families * n_genes); a single
+        !CLAUDE: bucketing pass (count genes per family, then fill per-family index lists) would be
+        !CLAUDE: O(n_genes + n_families). Also, each family's centroid is independent work but the loop
+        !CLAUDE: is serial and reuses a single shared `tmp_group_indices` scratch buffer across
+        !CLAUDE: iterations, which would need to become per-iteration/private before this could be
+        !CLAUDE: parallelized over families.
         do i_family = 1, n_families
             ! Reset selected indices for the current family
             tmp_group_indices = 0

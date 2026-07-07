@@ -125,7 +125,9 @@ contains
         call set_ok(ierr)
         call set_ok(status)
 
+        call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_series(n_timepoints))

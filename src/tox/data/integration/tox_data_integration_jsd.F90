@@ -208,7 +208,14 @@ contains
         integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
         logical :: filter_neighbors
 
-        bin_width = 2.0_real64*shared_residual_range/real(n_bins, real64)
+        ! Guard against a zero range (e.g. `determine_shared_residual_range_helper` returns 0.0 when all
+        ! pooled residuals are NaN): fall back to a fixed bin width so every (clamped-to-zero) residual
+        ! deterministically lands in a single bin instead of dividing by zero below.
+        if (shared_residual_range <= 0.0_real64) then
+            bin_width = 1.0_real64
+        else
+            bin_width = 2.0_real64*shared_residual_range/real(n_bins, real64)
+        end if
         counts = 0_int32
         pmf = 0.0_real64
 
@@ -216,12 +223,12 @@ contains
 
         ! 1. assign the bins to the residuals (increase the respective count)
         ! outer loop cannot be concurrent, as counts of same residuals and bins but different neighbors might be changed at the same time
+        ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
+        ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
+        ! would be a data race under `do concurrent`.
         do concurrent(i_point=1:n_points) local(included_reps) shared(included_n_reps)
             included_reps = 0_int32
-            do concurrent(i_neighbor=1:n_neighbors) &
-                local(i_rep, clamped_residual, bin_idx) &
-                shared(filter_neighbors, n_reps, counts, neighborhood_residuals, shared_residual_range, bin_width) &
-                reduce(+:included_reps)
+            do i_neighbor = 1, n_neighbors
                 ! Exclude neighbor if desired
                 if (filter_neighbors) then
                     if (.not. neighbor_mask(i_neighbor, i_point)) cycle

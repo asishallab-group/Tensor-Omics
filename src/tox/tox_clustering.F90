@@ -50,6 +50,11 @@ contains
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
 
+        call set_ok(ierr)
+        call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
+        if (is_err(ierr)) return
+
         call k_means_clustering(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, ierr, max_iterations)
     end subroutine cluster_factor_trajectories_k_means
 
@@ -133,6 +138,11 @@ contains
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
 
+        ! initialize labels to a value outside the valid [1, n_clusters] range so the first
+        ! comparison below never reads undefined intent(out) memory and always triggers
+        ! labels_changed on the first iteration
+        labels = 0_int32
+
         iteration = 0_int32
         do while (iteration < max_iter)
             iteration = iteration + 1
@@ -180,13 +190,19 @@ contains
         integer(int32), dimension(n_clusters), intent(in) :: label_counts
             !! holds the number of points having the respective label assigned
 
-        integer(int32) :: i_point, label, i_dim
+        integer(int32) :: i_point, label, i_dim, i_cluster
 
         centroids = 0.0_real64
         do i_point = 1, n_points
             label = labels(i_point)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, label, data_points, label_counts)
-                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)/real(max(label_counts(label), 1_int32), real64)
+            do concurrent (i_dim = 1:n_dims) shared(centroids, label, data_points)
+                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)
+            end do
+        end do
+
+        do concurrent (i_cluster = 1:n_clusters) shared(centroids, label_counts)
+            do concurrent (i_dim = 1:n_dims) shared(centroids, i_cluster, label_counts)
+                centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(max(label_counts(i_cluster), 1_int32), real64)
             end do
         end do
     end subroutine k_means_recompute_cluster_centroids_helper
@@ -221,7 +237,8 @@ contains
         ! calculate distance to each centroid and assign to closest
         do i_cluster = 1, n_clusters
             squared_dist_to_centroid = 0.0_real64
-            do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
+            ! GFORTRAN BUG: do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
+            do i_dim = 1, n_dims
                 squared_dist_to_centroid = squared_dist_to_centroid + (data_points(i_dim, i_point) - centroids(i_dim, i_cluster))**2
             end do
 
@@ -317,6 +334,10 @@ contains
         integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label
         real(real64) :: dist_AB
 
+        !CLAUDE: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
+        !CLAUDE: one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
+        !CLAUDE: clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
+        !CLAUDE: would matter a lot for larger n_points.
         do i = 1, n_points - 1
             call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB)
 

@@ -167,7 +167,7 @@ contains
             call init_random(random_seed)
         end if
 
-        do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_factor, trajectories, factor_idx, random_sample)
+        do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_factor, trajectories, factor_idx, sample_idx)
             tmp_factor(i_timepoint) = trajectories(factor_idx, sample_idx, i_timepoint)
         end do
 
@@ -329,6 +329,7 @@ contains
         real(real64) :: factor_baseline, dependent_baseline
 
         call compute_baselines_factor_dependent(n_dims, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr)
+        if (is_err(ierr)) return
 
         total_contribution = 0.0_real64
         do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) reduce(+:total_contribution)
@@ -387,9 +388,11 @@ contains
         call validate_all_in_range_real(trajectories, size(trajectories, kind=int32), ierr)
         call validate_all_in_range_int(factor_indices, n_selected_factors, ierr, min=1, max=n_factors)
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, min=1, max=n_factors)
+        CM_VALIDATE_MODE_BASELINE(arg_pos=9_int32)
 
         if (is_err(ierr)) return
 
+        !CLAUDE: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers (e.g. `local()` in a do concurrent), which is worth considering given how aggressively do concurrent is used elsewhere in this file for sample loops.
         do i_sample = 1, n_samples
             ! create factor vectors for current sample
             do i_sel_factor = 1, n_selected_factors
@@ -673,8 +676,8 @@ contains
         n_vel = size(velocity, dim=1, kind=int32)
         if (n_vel < 2) return
 
-        do concurrent (i_sample = 1:n_samples)
-            do concurrent (i_factor = 1:n_factors)
+        do concurrent (i_sample = 1:n_samples) shared(velocity, acceleration, n_factors, n_vel)
+            do concurrent (i_factor = 1:n_factors) shared(velocity, acceleration, n_vel, i_sample)
                 call compute_velocity_trajectory_helper(velocity(:, i_factor, i_sample), &
                                                         acceleration(:, i_factor, i_sample), &
                                                         n_vel)
@@ -837,7 +840,7 @@ contains
                         tmp_contributions(1:n_acc), contrib_acceleration(i_factor, i_dependent, i_sample), tmp_ierr)
                     if (is_err(tmp_ierr)) ierr = tmp_ierr
 
-                    do i_timepoint = 3, n_timepoints
+                    do concurrent (i_timepoint = 3:n_timepoints) shared(acceleration_contribution_series, i_factor, i_dependent, i_sample, tmp_contributions)
                         acceleration_contribution_series(i_timepoint, i_factor, i_dependent, i_sample) = &
                             tmp_contributions(i_timepoint - 2)
                     end do

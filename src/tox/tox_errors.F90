@@ -193,7 +193,10 @@ contains
         integer(int32), intent(in) :: ios
         integer(int32), intent(inout) :: ierr
             !! Error code
-        if (is_err(ios)) call set_err(ierr, ERR_ALLOC_FAIL)
+        ! `ios` is a raw Fortran iostat value (not one of this module's encoded error codes), so it
+        ! must be compared directly against zero instead of going through `is_err`, which decodes its
+        ! argument via the create_err_code arg_pos scheme (mod 10000).
+        if (ios /= 0) call set_err(ierr, ERR_ALLOC_FAIL)
     end subroutine check_io_stat
 
     pure subroutine validate_dimension_size(n, ierr, arg_pos)
@@ -286,7 +289,10 @@ contains
         integer(int32) :: i_element
 
         if (present(array)) then
-            do concurrent(i_element=1:n_elements) shared(ierr, arg_pos, min, max, array, sentinel)
+            ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+            ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
+            ! writing it from concurrent iterations would be an unsynchronized data race.
+            do i_element = 1, n_elements
                 call validate_in_range_int(array(i_element), ierr, arg_pos, min, max, sentinel)
             end do
         end if
@@ -366,7 +372,10 @@ contains
         integer(int32) :: i_element
 
         if (present(array)) then
-            do concurrent(i_element=1:n_elements) shared(ierr, arg_pos, min, max, array, sentinel)
+            ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+            ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
+            ! writing it from concurrent iterations would be an unsynchronized data race.
+            do i_element = 1, n_elements
                 call validate_in_range_real(array(i_element), ierr, arg_pos, min, max, sentinel)
             end do
         end if
@@ -399,11 +408,15 @@ contains
             call validate_all_in_range_real(distances, n*n, ierr, arg_pos, actual_min, max)
             if (is_err(ierr)) return
 
-            do concurrent(i_col=1:n) shared(ierr, distances, arg_pos)
+            ! NOTE: kept as plain sequential loops (not `do concurrent`) because `ierr` is a shared
+            ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
+            ! writing it from concurrent iterations, doubled up across the outer (diagonal) and inner
+            ! (symmetry) checks, would be an unsynchronized data race.
+            do i_col = 1, n
                 if (distances(i_col, i_col) /= 0.0_real64) then
                     call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos)
                 else
-                    do concurrent(i_row=1:n) shared(ierr, i_col, distances, arg_pos)
+                    do i_row = 1, n
                         if (distances(i_row, i_col) /= distances(i_col, i_row)) then
                             call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos)
                         end if

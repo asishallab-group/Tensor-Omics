@@ -41,8 +41,8 @@ contains
         call validate_all_in_range_real(vecs, size(vecs, kind=int32), ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 
-        if (count(vecs_selection_mask, kind=int32) > n_selected_vecs) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        if (count(axes_selection_mask, kind=int32) > n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+        if (count(vecs_selection_mask, kind=int32) /= n_selected_vecs) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
 
         if (is_err(ierr)) return
 
@@ -121,8 +121,8 @@ contains
         call validate_all_in_range_real(fields, size(fields, kind=int32), ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 
-        if (count(fields_selection_mask, kind=int32) > n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        if (count(axes_selection_mask, kind=int32) > n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
 
         if (is_err(ierr)) return
 
@@ -341,7 +341,7 @@ contains
         call validate_selected_axes_for_signed_helper(selected_axes_for_signed, ierr, n_dims, arg_pos=6_int32)
         if (is_err(ierr)) return
 
-        if (count(fields_selection_mask, kind=int32) > n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
 
         if (is_err(ierr)) return
 

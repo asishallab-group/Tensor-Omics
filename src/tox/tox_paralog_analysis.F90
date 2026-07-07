@@ -113,8 +113,8 @@ contains
         call map_err_arg_pos(ierr, 11_int32, 10_int32) ! n_paralog_subsets
         call map_err_arg_pos(ierr, 12_int32, 11_int32) ! tmp_active_mask
         call map_err_arg_pos(ierr, 13_int32, 12_int32) ! tmp_paralog_vector
-        call map_err_arg_pos(ierr, 14_int32, 13_int32) ! max_angle
-        call map_err_arg_pos(ierr, 15_int32, 14_int32) ! gain_gamma
+        call map_err_arg_pos(ierr, 14_int32, 14_int32) ! max_angle
+        call map_err_arg_pos(ierr, 15_int32, 15_int32) ! gain_gamma
     end subroutine detect_dosage_effect
 
     !> AUTHOR_FRANZ_ERIC_SILL
@@ -348,6 +348,7 @@ contains
                 M_DEFAULT_VAL(dosage_max_angle, max_angle, PI)
 
                 !! prepare sum vector, so the extending gene just needs to be included in one operation and excluded after calculation
+                !CLAUDE: this rebuilds the subset's sum vector from scratch by scanning all n_genes on every call to generate_subsets_helper (once per active mask taken from the work array), instead of carrying the running sum forward from the parent subset that already had it computed. For large gene counts/subset counts this recomputation dominates the runtime of the whole subset-extension search.
                 tmp_paralog_vector = 0
                 do i_gene = 1, n_genes
                     if (mask_check_state(candidate_mask, i_gene)) then
@@ -931,7 +932,7 @@ pure subroutine detect_neofunctionalization_c(ancestors, n_families, genes, n_ax
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_paralog_analysis, only: detect_neofunctionalization
     use tox_errors, only: set_err, is_err, is_ok, set_ok, ERR_ALLOC_FAIL, validate_dimension_size
-    use tox_conversions, only: logical_as_c_int, c_int_as_logical
+    use tox_conversions, only: logical_as_c_int
     M_USE_NULL_VALIDATION
     implicit none
 
@@ -969,8 +970,6 @@ pure subroutine detect_neofunctionalization_c(ancestors, n_families, genes, n_ax
         call set_err(ierr, ERR_ALLOC_FAIL)
         return
     end if
-
-    call c_int_as_logical(neofunc, neofunc_f)
 
     ! Call the pure Fortran routine
     call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc_f, ierr)
@@ -1143,7 +1142,7 @@ pure subroutine filter_paralogs_by_pattern_subfunctionalization_c(gene_angles, t
 end subroutine filter_paralogs_by_pattern_subfunctionalization_c
 
 !> C-compatible wrapper for `filter_paralogs_by_pattern_dosage_effect`
-pure subroutine filter_paralogs_by_pattern_dosage_effect_c(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_dosage_effect")
+pure subroutine filter_paralogs_by_pattern_dosage_effect_c(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_dosage_effect_c")
     use tox_paralog_analysis, only: filter_paralogs_by_pattern_dosage_effect
     use, intrinsic :: iso_c_binding, only: c_double, c_int
     M_USE_NULL_VALIDATION
@@ -1179,7 +1178,7 @@ pure subroutine filter_paralogs_by_pattern_dosage_effect_c(gene_angles, threshol
 end subroutine filter_paralogs_by_pattern_dosage_effect_c
 
 !> C-compatible wrapper for `calc_work_arr_paralog_subsets_size`
-pure subroutine calc_work_arr_paralog_subsets_size_c(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size")
+pure subroutine calc_work_arr_paralog_subsets_size_c(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size_c")
     use tox_paralog_analysis, only: calc_work_arr_paralog_subsets_size
     use, intrinsic :: iso_c_binding, only: c_int
     M_USE_NULL_VALIDATION
@@ -1247,7 +1246,7 @@ pure subroutine mask_check_state_c(bit_mask, n_mask_chunks, i_gene, state, ierr)
     integer(c_int), dimension(n_mask_chunks), intent(in), target :: bit_mask
         !! chunked mask to mark active paralogs
     integer(c_int), intent(in), target :: i_gene
-        !! index of paralog to be checked, starting with 0
+        !! index of paralog to be checked, starting with 1
     integer(c_int), intent(out), target :: state
         !! check result
     integer(c_int), intent(out), target :: ierr

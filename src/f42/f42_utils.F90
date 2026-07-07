@@ -125,6 +125,13 @@ contains
 
         n = size(arr, kind=int32)
 
+        ! Guard against an empty array: there is no element to compare against, so
+        ! report the (only sensible) insertion position of 1.
+        if (n <= 0) then
+            idx = 1
+            return
+        end if
+
         ! NaN is sorted to the end -> If value and last element is NaN, return n, else it is not found
         if (ieee_is_nan(value)) then
             if (ieee_is_nan(arr(perm(n)))) then
@@ -370,6 +377,14 @@ contains
             !! input value
         integer(int32) :: power
             !! next greater value that is a power of two
+
+        ! Guard against n<=0: for n==0, `n-1==-1` has all bits set, so `leadz(-1)==0` and the
+        ! unguarded formula would compute `2**bit_size(n)`, an out-of-range shift. Negative n is
+        ! similarly undefined. The smallest power of two is 1, so clamp to that.
+        if (n <= 0) then
+            power = 1
+            return
+        end if
 
         power = 2**(bit_size(n) - leadz(n - 1))
     end function next_power_of_two
@@ -765,6 +780,11 @@ contains
     end subroutine quicksort_char
 
     !Internal heapsort implementations for real arrays.
+    !CLAUDE: heapify_real/heapify_integer/heapify_character (and heapsort_real/_integer/_character below) are
+    !CLAUDE: near-identical ~30-40 line copies differing only in the element type and comparison operator.
+    !CLAUDE: Given real already uses the `.greaterthan.` operator interface for NaN-aware comparisons, the
+    !CLAUDE: int/character variants could likely share one templated implementation (or at least the
+    !CLAUDE: sift-down logic factored out), reducing triplicated maintenance surface.
     !> AUTHOR_MOHAMED_AKDI
     !| Sorts indirectly using the permutation vector `perm`. Uses `heapify_real` to maintain heap property.
     pure subroutine heapsort_real(array, perm, n_arr, n_perm)

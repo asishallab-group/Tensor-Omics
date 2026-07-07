@@ -125,6 +125,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Helper function to find gene index
+    !CLAUDE: linear O(n) scan per lookup — if called repeatedly over many genes elsewhere (e.g. building a full mapping) this is O(n^2). tox_data_tools.F90 already uses an f42_xxh3_hashmap for this exact gene-id -> index lookup; consider reusing that instead of a second, slower implementation here.
     integer(int32) function get_gene_index(gene_ids, gene) result(idx)
         character(len=*), intent(in) :: gene_ids(:)
             !! gene ids array

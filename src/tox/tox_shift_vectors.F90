@@ -81,7 +81,7 @@ contains
             end if
 
             ! Substract family centroid from `expression_vector` and write it to second half of the `shift_vectors`
-            do concurrent (i_tissue = 1:n_tissues) shared(shift_vectors, i_gene, expression_vectors, family_centroids)
+            do concurrent (i_tissue = 1:n_tissues) shared(shift_vectors, i_gene, expression_vectors, family_centroids, fam_idx)
                 shift_vectors(i_tissue, 2, i_gene) = expression_vectors(i_tissue, i_gene) - family_centroids(i_tissue, fam_idx)
             end do
         end do

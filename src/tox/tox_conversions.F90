@@ -150,8 +150,11 @@ contains
 
         integer(int32) :: i_str
 
-        ! GFORTRAN BUG: do concurrent (i_str = 1:size(strings, 1)) shared(strings, c_char_array)
-        do i_str = 1, size(strings, 1)
+        ! Guard against a caller-provided c_char_array with fewer columns than there are strings:
+        ! only convert as many strings as fit, instead of writing out of bounds on
+        ! `c_char_array(:, i_str)` for i_str beyond its column count.
+        ! GFORTRAN BUG: do concurrent (i_str = 1:min(size(strings, 1), size(c_char_array, 2))) shared(strings, c_char_array)
+        do i_str = 1, min(size(strings, 1), size(c_char_array, 2))
             call string_as_c_char_1d(strings(i_str), c_char_array(:, i_str))
         end do
     end subroutine string_as_c_char_2d
