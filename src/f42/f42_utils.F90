@@ -795,11 +795,15 @@ contains
     end subroutine quicksort_char
 
     !Internal heapsort implementations for real arrays.
-    !CLAUDE: heapify_real/heapify_integer/heapify_character (and heapsort_real/_integer/_character below) are
-    !CLAUDE: near-identical ~30-40 line copies differing only in the element type and comparison operator.
-    !CLAUDE: Given real already uses the `.greaterthan.` operator interface for NaN-aware comparisons, the
-    !CLAUDE: int/character variants could likely share one templated implementation (or at least the
-    !CLAUDE: sift-down logic factored out), reducing triplicated maintenance surface.
+    !TODO future: heapify_real/heapify_integer/heapify_character (and heapsort_real/_integer/_character below) are
+    !             near-identical ~30-40 line copies differing only in the element type and comparison operator.
+    !             Given real already uses the `.greaterthan.` operator interface for NaN-aware comparisons, the
+    !             int/character variants could likely share one templated implementation (or at least the
+    !             sift-down logic factored out), reducing triplicated maintenance surface.
+    !             According to the current 2026 draft (https://j3-fortran.org/doc/year/26/26-007.pdf, section 16.3),
+    !             there is a template structure planned to create e.g. templated subroutines
+    !             with generic type specified at compile time.
+    !             This may also be suitable for other <procedure>_<type> procedures like array serialization.
     !> AUTHOR_MOHAMED_AKDI
     !| Sorts indirectly using the permutation vector `perm`. Uses `heapify_real` to maintain heap property.
     pure subroutine heapsort_real(array, perm, n_arr, n_perm)
