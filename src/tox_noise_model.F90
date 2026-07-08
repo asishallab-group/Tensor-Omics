@@ -2,8 +2,7 @@
 
 !!! TO DO
 !!! 1. Implement error code to argument number mapping
-!!! 2. Update log propagation
-!!! 3. Find solution for family based analysis
+!!! 2. Find solution for family based analysis
 
 !> Noise model for exact p-value computation comparing case and control gene expression.
 !|
@@ -62,6 +61,10 @@ module noise_model
     integer(int32), parameter :: MONTE_CARLO_SAMPLES = 10000_int32
         !! Number of samples for Monte Carlo p-value estimation
 
+    real(real64), parameter :: NOISE_LOG_OFFSET = 1.0_real64
+        !! Additive constant `c` in the log-space residual `log2(r + c) - log2(mu + c)`,
+        !! used when `norm_method /= 0` to keep the logarithm defined at zero expression
+
     !> Pre-computed residual pools for each gene family and its ortholog set.
     type :: family_cache_t
         real(real64), allocatable :: family_pools(:, :)
@@ -84,11 +87,21 @@ contains
 
     !> Core implementation: sort genes by mean and pack centred residuals.
     !|
+    !| When `norm_method == 0`, residuals are the plain linear-space deviation
+    !| `r_{i,g} - mu_g`. When `norm_method /= 0`, residuals are computed directly
+    !| in log2-expression space as
+    !| `epsilon_{i,g} = log2(r_{i,g} + c) - log2(mu_g + c)` (with `c = NOISE_LOG_OFFSET`),
+    !| rather than being derived post-hoc from the linear residual. This is the
+    !| single place the log transform is applied; `compute_pvalue_helper` and
+    !| `compute_pvalue_monte_carlo_helper` simply difference whatever scale the
+    !| pooled residuals already carry.
+    !|
     !| Fills `sorted_data` in-place. Does not allocate — all arrays inside
     !| `sorted_data` must already be allocated by the caller to the correct sizes,
     !| and `tmp_perm`, `tmp_stack_left`, `tmp_stack_right` must be pre-allocated
     !| work arrays of length `n_genes`.
     pure subroutine prepare_sorted_data_helper(means, replicates, n_samples, n_genes, &
+                                               norm_method, &
                                                sorted_data, &
                                                tmp_perm, tmp_stack_left, tmp_stack_right)
         integer(int32), intent(in) :: n_samples
@@ -99,6 +112,8 @@ contains
         !! Per-gene expression means (length n_genes)
         real(real64), dimension(n_samples, n_genes), intent(in) :: replicates
         !! Replicate expression matrix (n_samples x n_genes)
+        integer(int32), intent(in) :: norm_method
+        !! 0 = linear-scale residuals; non-zero = log2-space residuals
         type(sorted_data_t), intent(inout) :: sorted_data
         !! Sorted data structure to fill; all allocatable fields must be pre-allocated
         integer(int32), dimension(n_genes), intent(inout) :: tmp_perm
@@ -109,10 +124,14 @@ contains
         !! Work array: quicksort right-index stack (length n_genes)
 
         integer(int32) :: i_gene, i_sample, orig_idx
-        real(real64) :: gene_mean
+        real(real64) :: gene_mean, log2_mean, log2_factor
+        logical :: use_log_transform
 
         sorted_data%n_genes = n_genes
         sorted_data%max_resid_per_gene = n_samples
+
+        use_log_transform = (norm_method /= 0)
+        if (use_log_transform) log2_factor = 1.0_real64 / log(2.0_real64)
 
         do concurrent(i_gene=1:n_genes) shared(tmp_perm)
             tmp_perm(i_gene) = i_gene
@@ -127,9 +146,21 @@ contains
             sorted_data%n_residuals(i_gene) = n_samples
 
             gene_mean = sum(replicates(:, orig_idx)) / real(n_samples, real64)
-            do concurrent(i_sample=1:n_samples) shared(sorted_data, replicates, gene_mean, i_gene, orig_idx)
-                sorted_data%residuals_packed(i_sample, i_gene) = &
-                    replicates(i_sample, orig_idx) - gene_mean
+            if (use_log_transform) then
+                log2_mean = log(max(gene_mean, 0.0_real64) + NOISE_LOG_OFFSET) * log2_factor
+            end if
+
+            do concurrent(i_sample=1:n_samples) &
+                shared(sorted_data, replicates, gene_mean, log2_mean, log2_factor, &
+                       use_log_transform, i_gene, orig_idx)
+                if (use_log_transform) then
+                    sorted_data%residuals_packed(i_sample, i_gene) = &
+                        log(max(replicates(i_sample, orig_idx), 0.0_real64) + NOISE_LOG_OFFSET) &
+                        * log2_factor - log2_mean
+                else
+                    sorted_data%residuals_packed(i_sample, i_gene) = &
+                        replicates(i_sample, orig_idx) - gene_mean
+                end if
             end do
         end do
     end subroutine prepare_sorted_data_helper
@@ -138,7 +169,7 @@ contains
     !|
     !| This is the alloc-layer entry point. It allocates all fields of `sorted_data`
     !| and the internal work arrays, then delegates to `prepare_sorted_data_helper`.
-    subroutine prepare_sorted_data(means, replicates, n_samples, n_genes, sorted_data, ierr)
+    subroutine prepare_sorted_data(means, replicates, n_samples, n_genes, norm_method, sorted_data, ierr)
         integer(int32), intent(in) :: n_samples
         !! Number of replicates per gene
         integer(int32), intent(in) :: n_genes
@@ -147,6 +178,8 @@ contains
         !! Per-gene expression means (length n_genes)
         real(real64), dimension(n_samples, n_genes), intent(in) :: replicates
         !! Replicate expression matrix (n_samples x n_genes)
+        integer(int32), intent(in) :: norm_method
+        !! 0 = linear-scale residuals; non-zero = log2-space residuals (see `prepare_sorted_data_helper`)
         type(sorted_data_t), intent(out) :: sorted_data
         !! Sorted data structure; all fields are allocated here
         integer(int32), intent(out) :: ierr
@@ -173,7 +206,7 @@ contains
         M_ALLOCATE(tmp_stack_left(stack_size))
         M_ALLOCATE(tmp_stack_right(stack_size))
 
-        call prepare_sorted_data_helper(means, replicates, n_samples, n_genes, &
+        call prepare_sorted_data_helper(means, replicates, n_samples, n_genes, norm_method, &
                                         sorted_data, tmp_perm, tmp_stack_left, tmp_stack_right)
     end subroutine prepare_sorted_data
 
@@ -843,19 +876,18 @@ contains
     !|
     !| Builds the null distribution deterministically: for every residual
     !| `r_case` in `pool_case` and every residual `r_control` in `pool_control`,
-    !| the null statistic is `|r_case - r_control|` (or its log2-transformed form
-    !| when `norm_method /= 0`). The p-value is the fraction of these
-    !| `n_pool_case * n_pool_control` pairwise null statistics whose magnitude meets
-    !| or exceeds `observed_statistic_abs`, with the usual add-one continuity
+    !| the null statistic is `|r_case - r_control|`. The p-value is the fraction of
+    !| these `n_pool_case * n_pool_control` pairwise null statistics whose magnitude
+    !| meets or exceeds `observed_statistic_abs`, with the usual add-one continuity
     !| correction. Means are intentionally excluded: we are testing how much
     !| deviation is explained by noise alone.
     !|
-    !| When `norm_method /= 0` a log2 transform is applied:
-    !| `|log2(x_case+1) - log2(x_control+1)|`. Otherwise the difference is on the
-    !| original scale: `|x_case - x_control|`.
+    !| The pooled residuals are assumed to already be on whatever scale the
+    !| observed statistic uses (linear or log2) — see `prepare_sorted_data_helper`,
+    !| which is the single place the log transform is applied.
     pure subroutine compute_pvalue_helper(pool_case, n_pool_case, &
                                           pool_control, n_pool_control, &
-                                          observed_statistic_abs, norm_method, &
+                                          observed_statistic_abs, &
                                           p_value)
         integer(int32), intent(in) :: n_pool_case
         !! Size of the case residual pool
@@ -867,36 +899,20 @@ contains
         !! Control residual pool
         real(real64), intent(in) :: observed_statistic_abs
         !! Absolute value of the observed test statistic
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear scale; non-zero = log2(x+1) transform
         real(real64), intent(out) :: p_value
         !! Exact p-value
 
         integer(int32) :: i_case, i_control, count_ge
-        real(real64) :: log2_factor, x_case, x_control, null_dist
-        logical :: use_log_transform
+        real(real64) :: null_dist
         integer(int64) :: n_pairs
-
-        use_log_transform = (norm_method /= 0)
-        if (use_log_transform) log2_factor = 1.0_real64 / log(2.0_real64)
 
         count_ge = 0
         do concurrent(i_case=1:n_pool_case, i_control=1:n_pool_control) &
-            shared(pool_case, pool_control, use_log_transform, log2_factor, &
-                   observed_statistic_abs) &
+            shared(pool_case, pool_control, observed_statistic_abs) &
             reduce(+:count_ge) &
-            local(x_case, x_control, null_dist)
+            local(null_dist)
 
-            x_case    = pool_case(i_case)
-            x_control = pool_control(i_control)
-
-            if (use_log_transform) then
-                x_case    = max(x_case,    0.0_real64) + 1.0_real64
-                x_control = max(x_control, 0.0_real64) + 1.0_real64
-                null_dist = abs((log(x_case) - log(x_control)) * log2_factor)
-            else
-                null_dist = abs(x_case - x_control)
-            end if
+            null_dist = abs(pool_case(i_case) - pool_control(i_control))
 
             if (null_dist >= observed_statistic_abs) count_ge = count_ge + 1
         end do
@@ -918,10 +934,13 @@ contains
     !| independent case and control indices. This lets the caller call the RNG
     !| exactly once per gene, sharing the array across `own`, `family`, and
     !| `ortholog` p-value computations.
+    !|
+    !| As with `compute_pvalue_helper`, the pooled residuals are assumed to
+    !| already be on the correct scale (see `prepare_sorted_data_helper`).
     pure subroutine compute_pvalue_monte_carlo_helper( &
         pool_case, n_pool_case, &
         pool_control, n_pool_control, &
-        observed_statistic_abs, norm_method, &
+        observed_statistic_abs, &
         rand_array, &
         p_value)
         integer(int32), intent(in) :: n_pool_case
@@ -934,8 +953,6 @@ contains
         !! Control residual pool
         real(real64), intent(in) :: observed_statistic_abs
         !! Absolute value of the observed test statistic
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear scale; non-zero = log2(x+1) transform
         real(real64), dimension(MONTE_CARLO_SAMPLES), intent(in) :: rand_array
         !! Pre-generated uniform [0, 1) draws; one per sample, shared across
         !! all three p-value computations for this gene.
@@ -943,12 +960,8 @@ contains
         !! Monte Carlo p-value estimate
 
         integer(int32) :: i_sample, i_case, i_control, count_ge
-        real(real64) :: log2_factor, x_case, x_control, null_dist
-        logical :: use_log_transform
+        real(real64) :: null_dist
         integer(int64) :: n_pairs, flat_idx
-
-        use_log_transform = (norm_method /= 0)
-        if (use_log_transform) log2_factor = 1.0_real64 / log(2.0_real64)
 
         n_pairs = int(n_pool_case, int64) * int(n_pool_control, int64)
         count_ge = 0
@@ -958,16 +971,7 @@ contains
             i_case    = int(flat_idx / int(n_pool_control, int64), int32) + 1
             i_control = int(mod(flat_idx,  int(n_pool_control, int64)), int32) + 1
 
-            x_case    = pool_case(i_case)
-            x_control = pool_control(i_control)
-
-            if (use_log_transform) then
-                x_case    = max(x_case,    0.0_real64) + 1.0_real64
-                x_control = max(x_control, 0.0_real64) + 1.0_real64
-                null_dist = abs((log(x_case) - log(x_control)) * log2_factor)
-            else
-                null_dist = abs(x_case - x_control)
-            end if
+            null_dist = abs(pool_case(i_case) - pool_control(i_control))
 
             if (null_dist >= observed_statistic_abs) count_ge = count_ge + 1
         end do
@@ -988,7 +992,7 @@ contains
     !| so the RNG is invoked only once per gene (and only when actually needed).
     pure subroutine compute_pvalue(pool_case, n_pool_case, &
                                    pool_control, n_pool_control, &
-                                   observed_statistic, norm_method, &
+                                   observed_statistic, &
                                    rand_array, &
                                    p_value, ierr)
         integer(int32), intent(in) :: n_pool_case
@@ -1001,8 +1005,6 @@ contains
         !! Control residual pool
         real(real64), intent(in) :: observed_statistic
         !! Observed test statistic (sign is discarded; absolute value is used)
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear scale; non-zero = log2(x+1) transform
         real(real64), dimension(MONTE_CARLO_SAMPLES), intent(in) :: rand_array
         !! Uniform [0, 1) draws pre-generated by the caller; used only on the
         !! Monte Carlo path (ignored for exact enumeration).
@@ -1026,12 +1028,12 @@ contains
         if (n_combinations <= int(MAX_EXACT_COMBINATIONS, int64)) then
             call compute_pvalue_helper(pool_case, n_pool_case, &
                                        pool_control, n_pool_control, &
-                                       abs(observed_statistic), norm_method, &
+                                       abs(observed_statistic), &
                                        p_value)
         else
             call compute_pvalue_monte_carlo_helper(pool_case, n_pool_case, &
                                                    pool_control, n_pool_control, &
-                                                   abs(observed_statistic), norm_method, &
+                                                   abs(observed_statistic), &
                                                    rand_array, &
                                                    p_value)
         end if
@@ -1079,7 +1081,7 @@ contains
         family_means, ortholog_means, &
         compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
         family_sizes, gene_to_family, &
-        n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
+        n_genes, n_families, k_start, k_step, k_max, tau, &
         pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -1132,8 +1134,6 @@ contains
         !! Number of genes in each family
         integer(int32), dimension(n_genes), intent(in) :: gene_to_family
         !! Maps each gene index to its family index
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear scale; non-zero = log2(x+1) transform
         integer(int32), intent(in) :: k_start
         !! Minimum pool size before adaptive stopping is applied
         integer(int32), intent(in) :: k_step
@@ -1339,7 +1339,7 @@ contains
                     call compute_pvalue(tmp_own_stratum_pool_case(1:case_stratum_count), case_stratum_count, &
                                         tmp_own_stratum_pool_control(1:control_stratum_count), &
                                         control_stratum_count, &
-                                        observed_statistic_own_val, norm_method, &
+                                        observed_statistic_own_val, &
                                         rand_array, &
                                         pvalues_own(i_gene), ierr)
                     if (is_err(ierr)) return
@@ -1352,7 +1352,7 @@ contains
                 call compute_pvalue(tmp_pool_case(1:n_pool_case), n_pool_case, &
                                     cache%family_pools(1:cache%family_pool_sizes(family_id), family_id), &
                                     cache%family_pool_sizes(family_id), &
-                                    observed_statistic_family_val, norm_method, &
+                                    observed_statistic_family_val, &
                                     rand_array, &
                                     pvalues_family(i_gene), ierr)
                 if (is_err(ierr)) return
@@ -1363,7 +1363,7 @@ contains
                 call compute_pvalue(tmp_pool_case(1:n_pool_case), n_pool_case, &
                                     cache%orth_pools(1:cache%orth_pool_sizes(family_id), family_id), &
                                     cache%orth_pool_sizes(family_id), &
-                                    observed_statistic_ortholog_val, norm_method, &
+                                    observed_statistic_ortholog_val, &
                                     rand_array, &
                                     pvalues_ortholog(i_gene), ierr)
                 if (is_err(ierr)) return
@@ -1519,11 +1519,11 @@ contains
         if (is_err(ierr)) return
 
         call prepare_sorted_data(means_case, replicates_case, &
-                                 n_replicates_case, n_genes_case, sorted_case, sort_ierr)
+                                 n_replicates_case, n_genes_case, norm_method, sorted_case, sort_ierr)
         call set_err(ierr, sort_ierr)
 
         call prepare_sorted_data(means_control, replicates_control, &
-                                 n_replicates_control, n_genes_control, sorted_control, sort_ierr)
+                                 n_replicates_control, n_genes_control, norm_method, sorted_control, sort_ierr)
         call set_err(ierr, sort_ierr)
         if (is_err(ierr)) return
 
@@ -1601,7 +1601,7 @@ contains
             family_means, ortholog_means, &
             compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
             family_sizes, gene_to_family, &
-            n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
+            n_genes, n_families, k_start, k_step, k_max, tau, &
             pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
             max_pool_size, &
             neighborhood_size_own_case, neighborhood_size_own_control, &
