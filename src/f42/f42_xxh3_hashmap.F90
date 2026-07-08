@@ -1,4 +1,4 @@
-!> AUTHOR_FRANZ_ERIC_SILL
+!> AUTHOR_AARON_SCHROEDER
 !| String-keyed hashmap (`character -> integer(int32)`) and hashset (`character` membership),
 !| implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
 !| algorithm for hashing. Both containers grow automatically via [[f42_xxh3_hashmap(module):resize_hashmap(subroutine)]]
@@ -59,27 +59,28 @@ module f42_xxh3_hashmap
         !! triggers a doubling resize. 0.75 is the conventional trade-off for chained hashing:
         !! low enough to keep chain lengths near O(1), high enough to not waste much bucket space.
 
-    !> Hashmap of `character` keys to `integer(int32)` values, using separate chaining over a
-    !| power-of-two-sized bucket array.
-    type :: hashmap_type
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Base type for hashmap and hashset (currently)
+    type :: hashmap_base
         integer(int32) :: size = 0
             !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
         integer(int32) :: count = 0
             !! Number of key-value pairs currently stored.
+    end type hashmap_base
+
+    !> Hashmap of `character` keys to `integer(int32)` values, using separate chaining over a
+    !| power-of-two-sized bucket array.
+    type, extends(hashmap_base) :: hashmap_type
         type(hashmap_node_type), pointer :: buckets(:) => null()
             !! Bucket array; `buckets(i)%next` heads the chain for bucket `i` (the bucket
             !! elements themselves only ever use their `next` pointer, never `key`/`value`).
     end type hashmap_type
 
     !> Hashset of `character` keys, using separate chaining over a power-of-two-sized bucket array.
-    type :: hashset_type
-        integer(int32) :: size = 0
-            !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
-        integer(int32) :: count = 0
-            !! Number of keys currently stored.
+    type, extends(hashmap_base) :: hashset_type
         type(hashset_node_type), pointer :: buckets(:) => null()
             !! Bucket array; `buckets(i)%next` heads the chain for bucket `i` (the bucket
-            !! elements themselves only ever use their `next` pointer, never `key`).
+            !! elements themselves only ever use their `next` pointer, never `key`/`value`).
     end type hashset_type
 
 contains
@@ -88,6 +89,42 @@ contains
     !| Create the hashmap
     subroutine hashmap_create(map, initial_size)
         type(hashmap_type), intent(out) :: map
+            !! Hashmap object to create
+        integer(int32), intent(in), optional :: initial_size
+            !! Desired initial element capacity; the actual bucket count is derived from this
+            !! (scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+            !! default: 1024 buckets
+
+        call hashmap_base_create(map, initial_size)
+
+        ! Allocate buckets
+        allocate (map%buckets(map%size))
+
+        if (DEBUG) print *, "Hashmap created with size:", map%size
+    end subroutine hashmap_create
+
+    !> AUTHOR_AARON_SCHROEDER
+    !| Create the hashset
+    subroutine hashset_create(set, initial_size)
+        type(hashset_type), intent(out) :: set
+            !! Hashset object to create
+        integer(int32), intent(in), optional :: initial_size
+            !! Desired initial element capacity; the actual bucket count is derived from this
+            !! (scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+            !! default: 1024 buckets
+
+        call hashmap_base_create(set, initial_size)
+
+        ! Allocate buckets
+        allocate (set%buckets(set%size))
+
+        if (DEBUG) print *, "Hashset created with size:", set%size
+    end subroutine hashset_create
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Helper for creating hashmap-likes
+    subroutine hashmap_base_create(map, initial_size)
+        class(hashmap_base), intent(out) :: map
             !! Hashmap object to create
         integer(int32), intent(in), optional :: initial_size
             !! Desired initial element capacity; the actual bucket count is derived from this
@@ -106,58 +143,9 @@ contains
         ! Ensure minimum size
         table_size = max(table_size, 128)
 
-        ! Allocate buckets
-        allocate (map%buckets(table_size))
-
-        ! Initialize buckets to null
-        do i = 1, table_size
-            nullify (map%buckets(i)%next)
-        end do
-
         map%size = table_size
         map%count = 0
-
-        if (DEBUG) print *, "Hashmap created with size:", table_size
-    end subroutine hashmap_create
-
-    !CLAUDE: hashmap_create and hashset_create are line-for-line identical except for the derived type; the
-    !CLAUDE: table-size computation and bucket-nullification loop could be factored into a shared helper that
-    !CLAUDE: returns the size, cutting this duplication (same pattern applies to resize_hashmap/resize_hashset).
-    !> AUTHOR_AARON_SCHROEDER
-    !| Create the hashset
-    subroutine hashset_create(map, initial_size)
-        type(hashset_type), intent(out) :: map
-            !! Hashset object to create
-        integer(int32), intent(in), optional :: initial_size
-            !! Desired initial element capacity; the actual bucket count is derived from this
-            !! (scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
-            !! default: 1024 buckets
-
-        integer(int32) :: table_size, i
-
-        ! Calculate table size (power of two)
-        if (present(initial_size)) then
-            table_size = next_power_of_two(int(initial_size/MAX_LOAD_FACTOR, int32))
-        else
-            table_size = 1024  ! Default size
-        end if
-
-        ! Ensure minimum size
-        table_size = max(table_size, 128)
-
-        ! Allocate buckets
-        allocate (map%buckets(table_size))
-
-        ! Initialize buckets to null
-        do i = 1, table_size
-            nullify (map%buckets(i)%next)
-        end do
-
-        map%size = table_size
-        map%count = 0
-
-        if (DEBUG) print *, "Hashset created with size:", table_size
-    end subroutine hashset_create
+    end subroutine hashmap_base_create
 
     !> AUTHOR_AARON_SCHROEDER
     !| Destroy the hashmap
@@ -215,11 +203,11 @@ contains
     !| Compute XXH3 hash of a string
     function xxh3_hash_fortran(key, table_size) result(hash_idx)
         character(len=*), intent(in) :: key
-    !! key to hash
+            !! key to hash
         integer(int32), intent(in) :: table_size
-    !! table size
+            !! table size
         integer(int32) :: hash_idx
-    !! resulting hash
+            !! resulting hash
 
         integer(int64) :: hash_val
         integer :: key_len
@@ -340,7 +328,7 @@ contains
         if (debug_hashing) print *, "  Added new key, count:", set%count
     end subroutine hashset_put
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> AUTHOR_AARON_SCHROEDER
     !| Checks whether `key` is a member of `hashset`.
     logical function is_in_hashset(hashset, key) result(res)
         type(hashset_type), intent(in) :: hashset
