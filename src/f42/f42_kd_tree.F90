@@ -138,10 +138,10 @@ contains
             !! Find median index
             mid_idx = left_idx + (right_idx - left_idx)/2
 
-            !CLAUDE: this fully heapsorts the entire [left_idx:right_idx] subrange just to find the median split
-            !CLAUDE: point, at every level of the recursion. That makes the overall build O(n log^2 n) instead of
-            !CLAUDE: the O(n log n) achievable with a linear-time median-of-medians / quickselect partition (only
-            !CLAUDE: the median element needs to be correctly placed; the two sides don't need to be fully sorted).
+            !TODO optimize: this fully heapsorts the entire [left_idx:right_idx] subrange just to find the median split
+            !               point, at every level of the recursion. That makes the overall build O(n log^2 n) instead of
+            !               the O(n log n) achievable with a linear-time median-of-medians / quickselect partition (only
+            !               the median element needs to be correctly placed; the two sides don't need to be fully sorted).
             !! Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
             call partial_sort_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
                                            current_dim, tmp_workspace, tmp_value_buffer, tmp_permutation)
