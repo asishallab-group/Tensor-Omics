@@ -21,8 +21,7 @@ def check_err_code(ierr: int, arg_pos_map: dict = {}) -> None:
         117: "Could not write array data",
         121: "Could not add file to archive.",
         122: "Could not extract file from archive.",
-        123: "Manifest in zip file is missing.",
-        124: "Failed to close the file.",
+        123: "Failed to close the file.",
 
         # FORMAT ERRORS
         200: "Invalid format detected.",

@@ -45,9 +45,7 @@ module tox_errors
         !! Could not add file to archive
     integer(int32), parameter :: ERR_FILE_EXTRACT = 122
         !! Could not extract file from archive
-    integer(int32), parameter :: ERR_MISSING_MANIFEST = 123
-        !! Manifest in zip file is missing
-    integer(int32), parameter :: ERR_FILE_CLOSE = 124
+    integer(int32), parameter :: ERR_FILE_CLOSE = 123
         !! Failed to close the file
     !------------------------------
     ! 2xx: Format / Input validation

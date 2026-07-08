@@ -624,7 +624,7 @@ contains
 
         call read_tox_data("archive_4_f.test.zip", ierr)
 
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Reading empty archive should throw error 201")
+        call assert_equal_int(ierr, ERR_READ_DATA, "Reading empty archive should throw error")
 
         ! print *, "Empty archive test passed"
 

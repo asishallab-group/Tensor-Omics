@@ -27,7 +27,7 @@
 # src
 !src
 # src all contained dirs
-!src/**/*/
+!src/**/[a-z]*/
 !src/**/*.[Ff]90
 !src/**/macros.h
 

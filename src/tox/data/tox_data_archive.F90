@@ -15,7 +15,7 @@ module tox_data_archive
     use tox_data_read_write
     use tox_errors, only: set_ok, set_err_once, is_err, ERR_FILE_OPEN, ERR_ALLOC_FAIL, ERR_FILE_ADD, set_err
     use tox_errors, only: ERR_FILE_CLOSE, ERR_FILE_EXTRACT, ERR_INVALID_INPUT
-    use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA, ERR_MISSING_MANIFEST
+    use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA
     use iso_fortran_env, only: real64, int32, iostat_end
     use config, only: DEBUG
     implicit none
@@ -379,7 +379,7 @@ contains
         ! Open output file
         open (newunit=unit, file=trim(filename), access='stream', form='unformatted', &
               iostat=iostat, status='replace', action='write')
-        if (is_err(iostat)) then
+        if (iostat /= 0) then
             call set_err_once(ierr, ERR_FILE_OPEN)
             if (DEBUG) print *, "Error creating file: ", trim(filename)
             error = zip_fclose(file_handle)
@@ -395,7 +395,7 @@ contains
             if (bytes_read <= 0) exit
             if (bytes_read > 0) then
                 write (unit, iostat=iostat) buffer(1:bytes_read)
-                if (is_err(iostat)) then
+                if (iostat /= 0) then
                     call set_err_once(ierr, ERR_WRITE_DATA)
                     if (DEBUG) print *, "Error writing file: ", trim(filename)
                     exit
@@ -467,14 +467,14 @@ contains
             ! Open file
             open (newunit=unit, file=data_source, access='stream', form='unformatted', &
                   iostat=iostat, status='old')
-            if (is_err(iostat)) then
+            if (iostat /= 0) then
                 call set_err_once(ierr, ERR_FILE_OPEN)
                 if (DEBUG) print *, "Error opening file: ", trim(data_source)
                 return
             end if
 
             inquire (unit, size=file_size, iostat=iostat)
-            if (is_err(iostat) .or. file_size < 0) then
+            if (iostat /= 0 .or. file_size < 0) then
                 call set_err_once(ierr, ERR_READ_DATA)
                 if (DEBUG) print *, "Error: could not determine size of file: ", trim(data_source)
                 close (unit)
@@ -498,7 +498,7 @@ contains
                 read (unit, iostat=iostat) file_data
                 close (unit)
 
-                if (is_err(iostat)) then
+                if (iostat /= 0) then
                     call set_err_once(ierr, ERR_READ_DATA)
                     call free(c_data)
                     return
@@ -551,7 +551,7 @@ contains
 
     end subroutine add_data_to_zip
 
-    !> AUTHOR_AARON_SCHROEDER
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Write manifest from given key-value pairs
     subroutine write_manifest(keys, filenames, manifest_filename, ierr)
         character(len=*), intent(in) :: keys(:)
@@ -563,8 +563,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: unit, iostat, i
-        character(len=:), allocatable :: line
+        integer(int32) :: unit, iostat, i_key
 
         call set_ok(ierr)
 
@@ -577,17 +576,25 @@ contains
 
         ! Open the manifest file for writing
         open (newunit=unit, file=manifest_filename, status='replace', iostat=iostat)
-        if (is_err(iostat)) then
+        if (iostat /= 0) then
             call set_err_once(ierr, ERR_FILE_OPEN)
             if (DEBUG) print *, "Error creating manifest file: ", trim(manifest_filename)
             return
         end if
 
+        write(unit, '(I0)') size(keys)
+        write(unit, '(I0)') len(keys)
+        write(unit, '(I0)') len(filenames)
         ! Write each key-value pair to the manifest
-        do i = 1, size(keys)
-            if (len_trim(keys(i)) > 0 .and. len_trim(filenames(i)) > 0) then
-                line = trim(keys(i))//'='//trim(filenames(i))
-                write (unit, '(a)') trim(line)
+        do i_key = 1, size(keys)
+            if (len_trim(keys(i_key)) > 0 .and. len_trim(filenames(i_key)) > 0) then
+                write(unit, '(a)') trim(keys(i_key))
+                write(unit, '(a)') trim(filenames(i_key))
+            else
+                call set_err_once(ierr, ERR_INVALID_INPUT)
+                if (DEBUG) print *, "Error: keys and filenames must not be empty strings"
+                close (unit)
+                return
             end if
         end do
 
@@ -597,7 +604,7 @@ contains
         if (DEBUG) print *, "Manifest created successfully with ", size(keys), " entries"
     end subroutine write_manifest
 
-    !> AUTHOR_AARON_SCHROEDER
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Read manifest file and return key-value pairs
     subroutine read_manifest_generic(manifest_filename, keys, values, ierr)
         character(len=*), intent(in) :: manifest_filename
@@ -609,76 +616,37 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: unit, iostat, line_count, i, eq_pos
-        character(len=1024) :: line  ! Increased buffer size
-        character(len=:), allocatable :: temp_keys(:), temp_values(:)
-        !CLAUDE: MAX_LINES silently truncates the manifest at 100 entries with no error reported — a legitimately larger manifest (this is a "generic" key-value reader, not limited to the ~6 standard keys) would silently lose entries beyond the cap instead of failing loudly.
-        integer(int32), parameter :: MAX_LINES = 100  ! Reasonable maximum
+        integer(int32) :: unit, iostat, i_pair, strlen, n_pairs
 
         call set_ok(ierr)
 
-        ! Initialize temporary arrays with proper length
-        M_ALLOCATE(character(len=256) :: temp_keys(MAX_LINES))
-        M_ALLOCATE(character(len=256) :: temp_values(MAX_LINES))
-        line_count = 0
-
         ! Open the manifest file for reading
         open (newunit=unit, file=manifest_filename, status='old', iostat=iostat, action='read')
-        if (is_err(iostat)) then
+        if (iostat /= 0) then
             call set_err_once(ierr, ERR_FILE_OPEN)
             if (DEBUG) print *, "Error opening manifest file: ", trim(manifest_filename)
-            deallocate (temp_keys, temp_values)
             return
         end if
 
+#define CM_CORRUPTED then; call set_err_once(ierr, ERR_READ_DATA); if (DEBUG) print *, "Error reading manifest file: ", trim(manifest_filename); close(unit); return; end if
+#define CM_CHECK_CORRUPTED if (iostat /= 0) CM_CORRUPTED
+#define CM_READ(TARGET) read(unit, *, iostat=iostat) TARGET; CM_CHECK_CORRUPTED
+#define CM_READ_DIM(TARGET) CM_READ(TARGET); if (TARGET <= 0) CM_CORRUPTED
+
+        CM_READ_DIM(n_pairs)
+        CM_READ_DIM(strlen)
+        M_ALLOCATE(character(len=strlen) :: keys(n_pairs))
+        CM_READ_DIM(strlen)
+        M_ALLOCATE(character(len=strlen) :: values(n_pairs))
+
         ! Read each line and parse key-value pairs
-        do i = 1, MAX_LINES
-            read (unit, '(a)', iostat=iostat) line
-            if (iostat == iostat_end) exit  ! End of file
-            if (is_err(iostat)) then
-                call set_err_once(ierr, ERR_READ_DATA)
-                if (DEBUG) print *, "Error reading manifest file: ", trim(manifest_filename)
-                exit
-            end if
-
-            ! Skip empty lines and lines without '='
-            line = adjustl(line)
-            if (len_trim(line) == 0) cycle
-
-            eq_pos = index(line, '=')
-            if (eq_pos == 0) cycle  ! Skip lines without '='
-
-            ! Extract key and value
-            temp_keys(line_count + 1) = trim(adjustl(line(1:eq_pos - 1)))
-            temp_values(line_count + 1) = trim(adjustl(line(eq_pos + 1:)))
-
-            ! Only count if both key and value are non-empty
-            if (len_trim(temp_keys(line_count + 1)) > 0 .and. &
-                len_trim(temp_values(line_count + 1)) > 0) then
-                line_count = line_count + 1
-            end if
+        do i_pair = 1, n_pairs
+            CM_READ(keys(i_pair))
+            CM_READ(values(i_pair))
         end do
 
         close (unit)
-
-        ! Allocate output arrays with correct size
-        if (line_count > 0) then
-            M_ALLOCATE(character(len=256) :: keys(line_count))
-            M_ALLOCATE(character(len=256) :: values(line_count))
-            do i = 1, line_count
-                keys(i) = trim(temp_keys(i))
-                values(i) = trim(temp_values(i))
-            end do
-        else
-            M_ALLOCATE(character(len=256) :: keys(0))
-            M_ALLOCATE(character(len=256) :: values(0))
-            call set_err_once(ierr, ERR_INVALID_INPUT)
-            if (DEBUG) print *, "No valid key-value pairs found in manifest"
-        end if
-
-        deallocate (temp_keys, temp_values)
-
-        if (DEBUG) print *, "Read manifest with ", line_count, " entries"
+        if (DEBUG) print *, "Read manifest with ", n_pairs, " entries"
     end subroutine read_manifest_generic
 
     !> AUTHOR_AARON_SCHROEDER
@@ -703,57 +671,13 @@ contains
         integer(c_size_t) :: chunk_size_c
 
         ! Extract and parse the manifest file
-        file_handle = zip_fopen(zip_handle, "manifest.txt"//c_null_char, 0)
-        if (c_associated(file_handle)) then
-            ! Open output file for manifest
-            open (newunit=unit, file="manifest.txt", access='stream', form='unformatted', &
-                  iostat=iostat, status='replace', action='write')
-            if (is_err(iostat)) then
-                if (DEBUG) print *, "Error creating manifest file"
-                error = zip_fclose(file_handle)
-                call set_err_once(ierr, ERR_FILE_OPEN)
-                return
-            end if
+        call extract_file_from_zip(zip_handle, "manifest.txt", ierr)
+        if (is_err(ierr)) return
+        call read_manifest_generic("manifest.txt", keys, filenames, ierr)
 
-            ! Read and write in chunks
-            M_ALLOCATE(buffer(CHUNK_SIZE))
-            call int32_as_c_size(CHUNK_SIZE, chunk_size_c)
-            do
-                bytes_read = zip_fread(file_handle, c_loc(buffer), chunk_size_c)
-                if (bytes_read <= 0) exit
-                write (unit, iostat=iostat) buffer(1:bytes_read)
-                if (is_err(iostat)) then
-                    if (DEBUG) print *, "Error writing manifest file"
-                    call set_err_once(ierr, ERR_WRITE_DATA)
-                    exit
-                end if
-            end do
-
-            ! Clean up manifest extraction
-            if (allocated(buffer)) deallocate (buffer)
-            close (unit)
-            error = zip_fclose(file_handle)
-            if (is_err(error)) then
-                if (DEBUG) print *, "Error closing manifest file in ZIP"
-                call set_err_once(ierr, ERR_FILE_CLOSE)
-                return
-            end if
-
-            ! Preserve any error from the write loop above before it gets clobbered by
-            ! read_manifest_generic's own set_ok(ierr)
-            if (is_err(ierr)) return
-
-            ! Parse the manifest file
-            call read_manifest_generic("manifest.txt", keys, filenames, ierr)
-
-            if (is_err(ierr)) then
-                if (DEBUG) print *, "Error parsing manifest file"
-                return
-            end if
-
-        else
-            if (DEBUG) print *, "No manifest file found in ZIP archive"
-            call set_err_once(ierr, ERR_MISSING_MANIFEST)
+        if (is_err(ierr)) then
+            if (DEBUG) print *, "Error parsing manifest file"
+            return
         end if
     end subroutine extract_and_parse_manifest
 
