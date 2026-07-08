@@ -5,7 +5,7 @@
 !| and perform range queries over a real-valued array using the sorted index.
 module f42_binary_search_tree
     use safeguard
-    use f42_utils, only: sort_array_heapsort, init_perm
+    use f42_utils, only: sort_array_heapsort, init_perm, binary_search_insertion
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int, validate_in_range_real
     implicit none
@@ -84,18 +84,17 @@ contains
         call validate_in_range_real(lower_bound, ierr, max=upper_bound, arg_pos=4_int32)
         if (is_err(ierr)) return
 
-        !CLAUDE: this always scans from i_value=1, i.e. O(n) per query (only short-circuiting once past
-        !CLAUDE: upper_bound). Given `sorted_indices` is already sorted, the start of the range should be
-        !CLAUDE: located with a binary search (e.g. the same `lower_bound_ge` pattern used in f42_utils.F90's
-        !CLAUDE: compute_empirical_p_values) to get true O(log n + k) range queries, which is presumably the
-        !CLAUDE: whole point of building this sorted/BST index.
         n_matches = 0
-        do i_value = 1, n_values
-            if (values(sorted_indices(i_value)) >= lower_bound .and. &
-                values(sorted_indices(i_value)) <= upper_bound) then
+
+        ! find index of first value in range
+        i_value = binary_search_insertion(values, sorted_indices, lower_bound)
+        do while (i_value <= n_values)
+            ! check if value is in range and add to output, else exit loop
+            if (values(sorted_indices(i_value)) <= upper_bound) then
                 n_matches = n_matches + 1
                 output_indices(n_matches) = sorted_indices(i_value)
-            else if (values(sorted_indices(i_value)) > upper_bound) then
+                i_value = i_value + 1
+            else
                 exit
             end if
         end do
