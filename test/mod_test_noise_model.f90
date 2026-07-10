@@ -26,7 +26,7 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(12))
+        allocate(all_tests(13))
         all_tests(1)  = test_case("test_prepare_sorted_data",             test_prepare_sorted_data)
         all_tests(2)  = test_case("test_gather_residuals_helper",          test_gather_residuals_helper)
         all_tests(3)  = test_case("test_stratify_residuals",               test_stratify_residuals)
@@ -38,7 +38,8 @@ contains
         all_tests(9)  = test_case("test_full_pipeline",                    test_full_pipeline)
         all_tests(10) = test_case("test_both_sides_stratified",            test_both_sides_stratified)
         all_tests(11) = test_case("test_prepare_sorted_data_log_transform",  test_prepare_sorted_data_log_transform)
-        all_tests(12) = test_case("test_full_pipeline_all_normalizations",   test_full_pipeline_all_normalizations)
+        all_tests(12) = test_case("test_residuals_log_transform_centred",    test_residuals_log_transform_centred)
+        all_tests(13) = test_case("test_full_pipeline_all_normalizations",   test_full_pipeline_all_normalizations)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -154,8 +155,8 @@ contains
         real(real64) :: means(n_genes), replicates(n_samples, n_genes)
         type(sorted_data_t) :: sorted_data
         integer(int32) :: ierr, i
-        real(real64),    allocatable :: pooled(:), tmp_work(:)
-        integer(int32),  allocatable :: gene_id(:), tmp_gene_id(:)
+        real(real64),    allocatable :: pooled(:)
+        integer(int32),  allocatable :: gene_id(:)
         integer(int32) :: n_pooled, max_pool_size
         real(real64)   :: target_mean
         integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 30
@@ -170,14 +171,12 @@ contains
         call assert_equal_int(ierr, ERR_OK, "gather: prepare_sorted_data failed")
 
         max_pool_size = 50
-        allocate(pooled(max_pool_size), gene_id(max_pool_size), &
-                 tmp_work(max_pool_size), tmp_gene_id(max_pool_size))
+        allocate(pooled(max_pool_size), gene_id(max_pool_size))
 
         ! Target near gene 5 (mean = 10)
         target_mean = 10.0_real64
         call gather_residuals_helper(target_mean, sorted_data, k_start, k_step, k_max, tau, &
-                                     pooled, gene_id, n_pooled, max_pool_size, &
-                                     tmp_work, tmp_gene_id)
+                                     pooled, gene_id, n_pooled, max_pool_size)
 
         call assert_true(n_pooled >= k_start, &
                          "pool size should be at least k_start")
@@ -191,7 +190,7 @@ contains
                              "pooled("//str(i)//") is NaN")
         end do
 
-        deallocate(pooled, gene_id, tmp_work, tmp_gene_id)
+        deallocate(pooled, gene_id)
     end subroutine test_gather_residuals_helper
 
     ! =========================================================================
@@ -203,10 +202,15 @@ contains
         integer(int32) :: gene_id(n_pooled), bin_idx(n_pooled), chosen_bin_idx(n_pooled)
         integer(int32) :: tmp_c_g(n_pooled), tmp_bin_counts(STRATA_BIN_COUNT_SCHEDULE(1))
         integer(int32) :: tmp_gene_min_bin(n_genes), tmp_gene_max_bin(n_genes)
+        integer(int32) :: tmp_touched_gene_slots(n_pooled)
         logical        :: tmp_gene_seen(n_genes)
         real(real64)   :: tmp_bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
         integer(int32) :: chosen_n_bins, i
         logical        :: criteria_met
+
+        ! `check_stratification_accepted_helper` requires an all-`.false.` "seen" array
+        ! on entry (and leaves it that way on return).
+        tmp_gene_seen = .false.
 
         ! Residuals cycling through 5 distinct values; each gene owns 3 residuals
         do i = 1, n_pooled
@@ -217,6 +221,7 @@ contains
         call stratify_residuals_helper(pooled, gene_id, n_pooled, n_genes, &
                                        bin_idx, tmp_bin_edges, &
                                        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
+                                       tmp_touched_gene_slots, &
                                        tmp_c_g, tmp_bin_counts, &
                                        chosen_n_bins, chosen_bin_idx, bin_edges, criteria_met)
 
@@ -239,6 +244,7 @@ contains
         call stratify_residuals_helper(pooled, gene_id, n_pooled, n_genes, &
                                        bin_idx, tmp_bin_edges, &
                                        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
+                                       tmp_touched_gene_slots, &
                                        tmp_c_g, tmp_bin_counts, &
                                        chosen_n_bins, chosen_bin_idx, bin_edges, criteria_met)
         call assert_equal_int(chosen_n_bins, 2, &
@@ -649,14 +655,18 @@ contains
     !| Directly verifies the log-space residual formula introduced by
     !| `prepare_sorted_data_helper` when `norm_method /= 0`:
     !|
-    !|   epsilon_{i,g} = log2(r_{i,g} + 1) - log2(mu_g + 1)
+    !|   ghat_g        = (1/n) * sum_i log2(r_{i,g} + 1)   (Frechet mean in log2-space)
+    !|   epsilon_{i,g} = log2(r_{i,g} + 1) - ghat_g
     !|
-    !| computed from the pre-log replicate values and the pre-log gene mean —
-    !| NOT from the (already-differenced) linear residual, which was the bug.
+    !| computed from the pre-log replicate values and centred on the arithmetic
+    !| mean of the LOG-transformed replicates — NOT on `log2(mu_g + 1)` (the log
+    !| of the linear-space mean), which by Jensen's inequality does not generally
+    !| leave the residuals centred at zero. `test_residuals_log_transform_centred`
+    !| below checks that centering property directly.
     subroutine test_prepare_sorted_data_log_transform()
         integer(int32), parameter :: n_genes = 3, n_samples = 3
         real(real64) :: means(n_genes), replicates(n_samples, n_genes)
-        real(real64) :: expected_residual, log2_factor, gene_mean
+        real(real64) :: expected_residual, log2_factor, log2_gene_mean
         type(sorted_data_t) :: sorted_data
         integer(int32) :: ierr, i_sample, sorted_pos, orig_idx
 
@@ -674,10 +684,11 @@ contains
 
         do sorted_pos = 1, n_genes
             orig_idx = sorted_data%original_indices(sorted_pos)
-            gene_mean = sum(replicates(:, orig_idx)) / real(n_samples, real64)
+            log2_gene_mean = sum(log(replicates(:, orig_idx) + 1.0_real64)) &
+                              * log2_factor / real(n_samples, real64)
             do i_sample = 1, n_samples
-                expected_residual = (log(replicates(i_sample, orig_idx) + 1.0_real64) - &
-                                      log(gene_mean + 1.0_real64)) * log2_factor
+                expected_residual = log(replicates(i_sample, orig_idx) + 1.0_real64) * log2_factor &
+                                     - log2_gene_mean
                 call assert_equal_real(sorted_data%residuals_packed(i_sample, sorted_pos), &
                                        expected_residual, TOL, &
                                        "log-transform residual mismatch at gene "//str(orig_idx)// &
@@ -685,6 +696,38 @@ contains
             end do
         end do
     end subroutine test_prepare_sorted_data_log_transform
+
+    ! =========================================================================
+    ! test_residuals_log_transform_centred
+    ! =========================================================================
+    !| Confirms the Frechet-mean centering fix: per-gene log2-space residuals
+    !| must sum to (numerically) zero. Before this fix, centering on
+    !| `log2(mu_g + 1)` instead of the mean of the log-transformed replicates
+    !| left a systematic, Jensen's-gap-sized offset (only exactly zero when all
+    !| replicates of a gene are equal).
+    subroutine test_residuals_log_transform_centred()
+        integer(int32), parameter :: n_genes = 4, n_samples = 5
+        real(real64) :: means(n_genes), replicates(n_samples, n_genes)
+        type(sorted_data_t) :: sorted_data
+        integer(int32) :: ierr, i_gene, i_sample
+
+        do i_gene = 1, n_genes
+            means(i_gene) = 3.0_real64 + 4.0_real64 * real(i_gene, real64)
+            do i_sample = 1, n_samples
+                replicates(i_sample, i_gene) = means(i_gene) + &
+                    0.3_real64 * real(i_gene, real64) * sin(real(i_gene, real64) + real(i_sample, real64))
+            end do
+        end do
+
+        call prepare_sorted_data(means, replicates, n_samples, n_genes, 1, sorted_data, ierr)
+        call assert_equal_int(ierr, ERR_OK, "centred-residuals: prepare_sorted_data ierr should be OK")
+
+        do i_gene = 1, n_genes
+            call assert_equal_real(sum(sorted_data%residuals_packed(:, i_gene)), 0.0_real64, TOL, &
+                                   "log2-space residuals for sorted gene "//str(i_gene)// &
+                                   " should sum to 0 (Frechet-mean centering)")
+        end do
+    end subroutine test_residuals_log_transform_centred
 
     ! =========================================================================
     ! test_full_pipeline_all_normalizations
@@ -701,7 +744,9 @@ contains
     !| collapsed per-gene mean: the log2 transform itself is applied internally
     !| by `prepare_sorted_data_helper` (via `norm_method /= 0`), so residuals stay
     !| defined in pre-log expression space right up to the point they are logged,
-    !| matching `epsilon_{i,g} = log2(r_{i,g} + 1) - log2(mu_g + 1)`.
+    !| centred on the Frechet mean `(1/n) * sum_i log2(r_{i,g} + 1)` of the
+    !| log2-transformed replicates. `observed_own` below is computed on that same
+    !| coordinate for methods with `norm_method /= 0`.
     subroutine test_full_pipeline_all_normalizations()
         real(real64)   :: means_case_raw(N_GENES), means_control_raw(N_GENES)
         real(real64)   :: replicates_case_raw(N_SAMPLES, N_GENES)
@@ -709,6 +754,7 @@ contains
         real(real64)   :: replicates_case(N_SAMPLES, N_GENES), replicates_control(N_SAMPLES, N_GENES)
         real(real64)   :: normalize_tmp(N_SAMPLES, N_GENES)
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
+        real(real64)   :: log2_mean_case(N_GENES), log2_mean_control(N_GENES)
         integer(int32) :: family_sizes(N_FAMILIES), gene_to_family(N_GENES)
         real(real64)   :: family_means(N_FAMILIES), ortholog_means(N_FAMILIES)
         integer(int32) :: compute_own(N_GENES), compute_family(N_GENES), compute_ortholog(N_GENES)
@@ -808,11 +854,15 @@ contains
                     observed_own(i) = means_case(i) - means_control(i)
                 end do
             else
-                ! Observed statistic must live on the same log2 scale as the null
-                ! distribution built from log2-space residuals.
+                ! Observed statistic must live on the same log2 coordinate as the null
+                ! distribution: the Frechet mean of the log2-transformed replicates
+                ! (see `prepare_sorted_data_helper`), NOT log2(linear mean + 1).
                 do i = 1, N_GENES
-                    observed_own(i) = (log(max(means_case(i), 0.0_real64) + 1.0_real64) - &
-                                        log(max(means_control(i), 0.0_real64) + 1.0_real64)) * log2_factor
+                    log2_mean_case(i)    = sum(log(max(replicates_case(:, i), 0.0_real64) + 1.0_real64)) &
+                                            * log2_factor / real(N_SAMPLES, real64)
+                    log2_mean_control(i) = sum(log(max(replicates_control(:, i), 0.0_real64) + 1.0_real64)) &
+                                            * log2_factor / real(N_SAMPLES, real64)
+                    observed_own(i) = log2_mean_case(i) - log2_mean_control(i)
                 end do
             end if
             observed_family   = 0.0_real64
