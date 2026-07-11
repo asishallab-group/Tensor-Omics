@@ -232,7 +232,8 @@ Every non-trivial computation must be split into three layers. This separation k
 \begin{lstlisting}[language=Fortran]
 pure subroutine quantile_normalization_helper(expr, n_genes, n_replicates, &
     normalized_expr, rank_means, tmp_col, tmp_perm, ierr)
-  integer(int32), intent(in) :: n_genes, n_replicates
+  integer(int32), intent(in) :: n_genes
+  integer(int32), intent(in) :: n_replicates
   real(real64), intent(in)  :: expr(n_replicates, n_genes)
   real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
   real(real64), intent(in)  :: rank_means(n_replicates)
@@ -255,7 +256,8 @@ end subroutine
 \begin{lstlisting}[language=Fortran]
 subroutine quantile_normalization(expr, n_genes, n_replicates, &
     normalized_expr, rank_means, tmp_col, tmp_perm, ierr)
-  integer(int32), intent(in) :: n_genes, n_replicates
+  integer(int32), intent(in) :: n_genes
+  integer(int32), intent(in) :: n_replicates
   real(real64), intent(in)  :: expr(n_replicates, n_genes)
   real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
   real(real64), intent(in)  :: rank_means(n_replicates)
@@ -278,6 +280,7 @@ end subroutine
 
 \begin{itemize}
   \item Allocates all required work arrays using \texttt{M\_ALLOCATE}.
+  \item Validates all inputs using the \texttt{tox\_errors} validation routines.
   \item If the algorithm requires sorted inputs, performs sorting here.
   \item Calls the validated \texttt{foo} routine.
   \item \textbf{Never} \texttt{pure} (allocates memory).
@@ -288,7 +291,8 @@ end subroutine
 subroutine quantile_normalization_alloc(expr, n_genes, n_replicates, &
     normalized_expr, rank_means, ierr)
   use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_err, M_USE_ALLOCATION
-  integer(int32), intent(in) :: n_genes, n_replicates
+  integer(int32), intent(in) :: n_replicates
+  integer(int32), intent(in) :: n_genes
   real(real64), intent(in)  :: expr(n_replicates, n_genes)
   real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
   real(real64), intent(in)  :: rank_means(n_replicates)
@@ -345,6 +349,28 @@ Check \texttt{ierr} after every operation that can fail, and return immediately:
 call validate_dimension_size(n_genes, ierr)
 call validate_all_in_range_real(data, n_genes, ierr)
 if (is_err(ierr)) return
+\end{lstlisting}
+
+\subsection{Reporting the Failing Argument (\texttt{arg\_pos})}\label{sec:argpos}
+
+Every \texttt{validate\_*} routine, as well as \texttt{set\_err}, accepts an optional \texttt{arg\_pos} argument: the 1-based position of the offending argument in the public subroutine's own signature. Passing it lets callers across the language boundary (C, Python, R) report exactly which argument failed, instead of only an error code:
+
+\begin{lstlisting}[language=Fortran]
+call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
+call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
+if (n_clusters > n_points) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+
+call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
+call validate_all_in_range_real(centroids, size(centroids, kind=int32), ierr, arg_pos=5_int32)
+\end{lstlisting}
+
+\texttt{arg\_pos} must always match the argument's position in the public (non-\texttt{\_helper}) subroutine that callers actually invoke, never its position in whichever internal helper happens to run the validation.
+
+When the valid range of an argument is itself defined by \texttt{CM\_} macros (Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the validated range can never disagree:
+
+\begin{lstlisting}[language=Fortran]
+call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
 \end{lstlisting}
 
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
@@ -513,6 +539,56 @@ end do
 
 Avoid creating copies of input arrays. For large omics datasets (tens of thousands of genes, hundreds of tissues), an unexpected copy easily exceeds available memory. Design algorithms to work on slices and views of the original data.
 
+\subsection{Logical Masks}
+
+A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
+
+Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools.F90}, \texttt{omics\_vector\_RAP\_projection} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
+
+\begin{lstlisting}[language=Fortran]
+logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+    !! `.true.` for vectors where projection is to be computed
+...
+do i_vec = 1, n_vecs
+    if (vecs_selection_mask(i_vec)) then
+        ...
+        if (axes_selection_mask(i_axis)) then
+            projections(i_axis_proj, i_vec_proj) = vecs(i_axis, i_vec)
+            ...
+\end{lstlisting}
+
+Similarly, in \texttt{tox\_data\_integration\_jsd.F90}, an optional \texttt{neighbor\_mask} lets \texttt{build\_residual\_histograms\_helper} skip specific neighbors while iterating the original, unfiltered array:
+
+\begin{lstlisting}[language=Fortran]
+logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+    !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
+...
+filter_neighbors = present(neighbor_mask)
+...
+if (filter_neighbors) then
+    if (.not. neighbor_mask(i_neighbor, i_point)) cycle
+end if
+\end{lstlisting}
+
+No subset of \texttt{neighborhood\_residuals} is ever built — the mask only decides which iterations contribute.
+
+When a smaller, compacted array genuinely has to be produced (e.g. to hand a reduced gene list downstream), use \texttt{count(mask)} to size the allocation exactly once, rather than over-allocating or growing it as elements are found, as in \texttt{tox\_data\_tools.F90}:
+
+\begin{lstlisting}[language=Fortran]
+n_genes_kept = count(mask)
+allocate(temp_gene_ids(n_genes_kept), stat=ios)
+...
+do i = 1, n_genes_total
+    if (mask(i)) then
+        temp_gene_ids(j) = gene_ids(i)
+        ...
+        j = j + 1
+    end if
+end do
+\end{lstlisting}
+
+Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
+
 \subsection{Work Arrays (\texttt{tmp\_})}
 
 Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
@@ -558,7 +634,7 @@ Macro & Purpose \\
 \midrule
 \texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
 \texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
-\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
+\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
 \texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
 \texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
 \texttt{M\_NAN} & IEEE quiet NaN (double) \\
@@ -567,17 +643,37 @@ Macro & Purpose \\
 \bottomrule
 \end{tabular}
 
-\subsection{Module-Local Constants via \texttt{\#define}}
+\subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
 
-Define numerical constants that belong to a single module at the top of the file, after the \texttt{\#include}:
+Global, reusable macros live in \texttt{macros.h} with the \texttt{M\_} prefix. A constant that only makes sense within a single module does not belong there — adding it would clutter a file meant for cross-module reuse. Instead, define it locally, immediately after the \texttt{\#include} line, using the \texttt{CM\_} prefix (``Custom Macro''), and keep it next to the module's other constants (its \texttt{parameter} declarations):
 
 \begin{lstlisting}[language=Fortran]
-#include "macros.h"
-#define CM_LOESS_SPAN_DEFAULT 0.7_real64
-#define CM_LOESS_DEGREE_DEFAULT 2_int32
+#define CM_METHOD_AVERAGE 0
+#define CM_METHOD_WEIGHTED 1
+#define CM_METHOD_WARD 2
+
+integer(int32), parameter :: METHOD_AVERAGE  = CM_METHOD_AVERAGE
+integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
+integer(int32), parameter :: METHOD_WARD     = CM_METHOD_WARD
 \end{lstlisting}
 
-The \texttt{CM\_} prefix (``constant macro'') clearly distinguishes them from regular variables.
+\paragraph{Keeping FORD documentation in sync.} FORD does not resolve Fortran \texttt{parameter} values, but it does run the C preprocessor before generating docs, so a \texttt{CM\_} macro referenced inside a doc comment renders as-is. This lets a mode/method table stay anchored to the code instead of to a literal that can drift:
+
+\begin{lstlisting}[language=Fortran]
+!! |      Method      |          Value         |
+!! |------------------|------------------------|
+!! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
+!! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
+!! |      Ward        |   CM_METHOD_WARD       |
+\end{lstlisting}
+
+\paragraph{Use the macro in validation too.} When a \texttt{CM\_} macro defines the valid values or bounds of an argument, pass the macro itself to the corresponding \texttt{validate\_*} call instead of repeating the literal:
+
+\begin{lstlisting}[language=Fortran]
+call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
+\end{lstlisting}
+
+This keeps the default/bound, the validation, and the documentation all traceable to one definition — if a mode is added or reordered, only the \texttt{\#define} block needs to change.
 
 % =============================================================================
 \section{Derived Types (\texttt{type}): Use with Care}
@@ -945,66 +1041,109 @@ lib = ctypes.CDLL(dll_path)
 \subsection{Python Wrapper Pattern}
 
 \begin{lstlisting}[language=Python]
-#> tox_tissue_versatility:compute_tissue_versatility_c: Compute tissue versatility for gene expression vectors
-def compute_tissue_versatility(expression_vectors, gene_selection, axis_selection):
+#> tox_tissue_versatility:compute_tissue_versatility_c: Computes normalized tissue versatility for selected expression vectors
+def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection):
     """
-    Compute tissue versatility for each selected gene expression vector.
+    Calculate Tissue Versatility
 
     Args:
-        expression_vectors: 2D array (n_axes, n_genes), float64, C-contiguous.
-        gene_selection:     1D bool array (n_genes).
-        axis_selection:     1D bool array (n_axes).
+        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors).
+        vector_selection: Boolean or integer array indicating which vectors to process (length n_vectors).
+        axis_selection: Boolean or integer array indicating which axes to include in calculation (length n_axes).
 
     Returns:
-        tissue_versatilities: 1D array, length = count(gene_selection).
-        tissue_angles_deg:    1D array, length = count(gene_selection).
+        dict: {
+            'tissue_versatilities' (np.ndarray): Normalized tissue versatility values in [0,1] for selected vectors,
+            'tissue_angles_deg' (np.ndarray): Angles in degrees [0,90] for selected vectors
+        }
     """
-    expr   = np.asfortranarray(expression_vectors, dtype=np.float64)
-    n_axes, n_vectors = expr.shape
-    vecs_sel = np.ascontiguousarray(gene_selection.astype(np.int32))
-    axes_sel = np.ascontiguousarray(axis_selection.astype(np.int32))
-    n_sel_vecs = int(np.sum(gene_selection))
-    n_sel_axes = int(np.sum(axis_selection))
+    # Input validation
+    if not isinstance(expression_vectors, np.ndarray):
+        raise ValueError("expression_vectors must be a numpy array")
 
-    versatilities = np.zeros(n_sel_vecs, dtype=np.float64)
-    angles_deg    = np.zeros(n_sel_vecs, dtype=np.float64)
-    ierr          = ctypes.c_int(0)
+    if expression_vectors.ndim != 2:
+        raise ValueError("expression_vectors must be a 2D array")
 
-    fn = lib.compute_tissue_versatility_c
-    fn.restype = None
-    fn.argtypes = [
-        ctypes.POINTER(ctypes.c_int),                                        # n_axes
-        ctypes.POINTER(ctypes.c_int),                                        # n_vectors
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),      # expression_vectors
-        np.ctypeslib.ndpointer(dtype=np.int32,   flags="C_CONTIGUOUS"),      # vecs_selection
-        ctypes.POINTER(ctypes.c_int),                                        # n_selected_vectors
-        np.ctypeslib.ndpointer(dtype=np.int32,   flags="C_CONTIGUOUS"),      # axes_selection
-        ctypes.POINTER(ctypes.c_int),                                        # n_selected_axes
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),      # tissue_versatilities
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),      # tissue_angles_deg
-        ctypes.POINTER(ctypes.c_int),                                        # ierr
+    # Convert inputs to numpy arrays
+    expr_f = np.asfortranarray(expression_vectors, dtype=np.float64)
+    select_vec = np.ascontiguousarray(vector_selection, dtype=bool).astype(np.int32)
+    select_axes = np.ascontiguousarray(axis_selection, dtype=bool).astype(np.int32)
+
+    # Get dimensions
+    n_axes, n_vectors = expr_f.shape
+
+    # Validate dimensions
+    if len(select_vec) != n_vectors:
+        raise ValueError("vector_selection length must match number of columns in expression_vectors")
+    if len(select_axes) != n_axes:
+        raise ValueError("axis_selection length must match number of rows in expression_vectors")
+
+    # Calculate counts
+    n_selected_vectors = np.sum(vector_selection)
+    n_selected_axes = np.sum(axis_selection)
+
+    # Convert scalar parameters
+    n_axes_c = ctypes.c_int(n_axes)
+    n_vectors_c = ctypes.c_int(n_vectors)
+    n_selected_vectors_c = ctypes.c_int(n_selected_vectors)
+    n_selected_axes_c = ctypes.c_int(n_selected_axes)
+
+    # Prepare output arrays
+    tissue_versatilities = np.empty(n_selected_vectors, dtype=np.float64)
+    tissue_angles_deg = np.empty(n_selected_vectors, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    # Setup C/Fortran wrapper with proper type annotations
+    tv = lib.compute_tissue_versatility_c
+    tv.argtypes = [
+        ctypes.POINTER(ctypes.c_int),  # n_axes
+        ctypes.POINTER(ctypes.c_int),  # n_vectors
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors (Fortran order)
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # exp_vecs_selection_index
+        ctypes.POINTER(ctypes.c_int),  # n_selected_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # axes_selection
+        ctypes.POINTER(ctypes.c_int),  # n_selected_axes
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_versatilities
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_angles_deg
+        ctypes.POINTER(ctypes.c_int),  # ierr
     ]
-    fn(ctypes.byref(ctypes.c_int(n_axes)),
-       ctypes.byref(ctypes.c_int(n_vectors)),
-       expr, vecs_sel,
-       ctypes.byref(ctypes.c_int(n_sel_vecs)),
-       axes_sel,
-       ctypes.byref(ctypes.c_int(n_sel_axes)),
-       versatilities, angles_deg,
-       ctypes.byref(ierr))
+    tv.restype = None
 
+    # Call the C/Fortran wrapper
+    tv(
+        ctypes.byref(n_axes_c),
+        ctypes.byref(n_vectors_c),
+        expr_f,
+        select_vec,
+        ctypes.byref(n_selected_vectors_c),
+        select_axes,
+        ctypes.byref(n_selected_axes_c),
+        tissue_versatilities,
+        tissue_angles_deg,
+        ctypes.byref(ierr)
+    )
+
+    # Check for errors and throw informative messages
     check_err_code(ierr.value)
-    _readonly(versatilities, angles_deg)
-    return versatilities, angles_deg
+
+    # Mark outputs as read-only
+    _readonly(tissue_versatilities, tissue_angles_deg)
+
+    # Return structured result (no ierr since we checked for errors)
+    return {
+        'tissue_versatilities': tissue_versatilities,
+        'tissue_angles_deg': tissue_angles_deg
+    }
 \end{lstlisting}
 
 \subsection{Key Points}
 
 \begin{itemize}
-  \item 2D arrays passed to Fortran must be \textbf{Fortran-contiguous} (\texttt{np.asfortranarray}); 1D arrays can be C-contiguous.
+  \item Arrays with more than one dimension passed to Fortran must be \textbf{Fortran-contiguous}. Always create new arrays with \texttt{order='F'} (e.g.\ \texttt{np.empty(shape, order='F')}) so they are Fortran-contiguous from the start and no conversion copy is ever needed. Arrays coming from the caller must still be passed through \texttt{np.asfortranarray}: it only copies when the layout isn't already correct, so it stays cheap while guaranteeing the right layout for input we don't control.
   \item Scalar parameters must be passed \textbf{by reference} using \texttt{ctypes.byref(c\_int(value))}.
   \item All output arrays must be marked \textbf{read-only} after the call with \texttt{\_readonly(...)}. This prevents accidental mutation of the output buffer by any subsequent Python operation or third-party library (e.g.\ \texttt{matplotlib}, \texttt{scipy}) while the memory logically belongs to the Fortran result. Never pass a live, mutable NumPy array as an input to a wrapper if another thread or library could modify it during the same call.
   \item Check \texttt{ierr} immediately after every call via \texttt{check\_err\_code}.
+  \item Functions that return more than one value must return a \textbf{dictionary} keyed by output name (e.g.\ \texttt{return \{'tissue\_versatilities': ..., 'tissue\_angles\_deg': ...\}}). A function with a single output value returns it directly.
   \item The \texttt{\#>} comment above Python wrapper functions follows the project comment convention for documentation generators.
   \item \textbf{Respect the file format.} When adding new functions to \texttt{tensoromics\_functions.py}, follow the section structure already present (grouped by module, each function preceded by its \texttt{\#>} snippet header and docstring). Do not add isolated functions between unrelated blocks.
 \end{itemize}
