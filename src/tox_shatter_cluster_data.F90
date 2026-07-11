@@ -1,4 +1,5 @@
 #include "macros.h"
+#define CM_KD_TRAVERSAL_STACK_DEPTH 64
 
 !> Module for managing data structures and geometric calculations
 !! For shatter clustering operations within Tensor Omics.
@@ -41,6 +42,16 @@ contains
         integer(int32), allocatable :: tmp_perm(:)
 
         call set_ok(ierr)
+
+        ! Validate all input structural dimensions and data arrays
+        call validate_dimension_size(n_dimensions, ierr)
+        call validate_dimension_size(n_vectors, ierr)
+        call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
+        if (is_err(ierr)) return
+
+        ! Optional parameter range validation
+        call validate_in_range_real(mean_to_other_vecs_dist_quant, ierr, min=0.0_real64, max=1.0_real64)
+        if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_mean_vec(n_dimensions))
         M_ALLOCATE(tmp_distances(n_vectors))
@@ -169,7 +180,22 @@ contains
 
         call set_ok(ierr)
 
-        M_ALLOCATE(tmp_stack(3, 64, n_vectors))
+        ! Validate dimension sizes, metrics, and sequences across inputs
+        call validate_dimension_size(n_dimensions, ierr)
+        call validate_dimension_size(n_vectors, ierr)
+        call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
+        if (is_err(ierr)) return
+
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
+        if (is_err(ierr)) return
+
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
+        if (is_err(ierr)) return
+
+        call validate_in_range_real(r, ierr, min=0.0_real64)
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors))
 
         call calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
                                          dimension_order, kd_indices, tmp_stack, label_densities, ierr)
@@ -192,7 +218,7 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(3, 64, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output density tracker matching individual vector slots
@@ -205,6 +231,9 @@ contains
         call validate_dimension_size(n_dimensions, ierr)
         call validate_dimension_size(n_vectors, ierr)
         call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
+        if (is_err(ierr)) return
+
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
         if (is_err(ierr)) return
 
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
@@ -234,7 +263,7 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(3, 64, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output vector storing generated density scalars
