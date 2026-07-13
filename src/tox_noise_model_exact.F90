@@ -54,22 +54,19 @@ module noise_model_exact
         !! Total number of genes in the sorted structure
     end type sorted_data_t
 
-    integer(int32), parameter :: STRATA_N_SCHEDULE_STEPS = 5
+    integer(int32), parameter :: STRATA_N_SCHEDULE_STEPS = 10
         !! Number of candidate bin-count steps tried by `stratify_residuals_helper`
     integer(int32), parameter :: STRATA_BIN_COUNT_SCHEDULE(STRATA_N_SCHEDULE_STEPS) = &
-        [20_int32, 10_int32, 5_int32, 4_int32, 2_int32]
-        !! Candidate quantile bin counts, finest (5% per bin) to coarsest (50% per
+        [25_int32, 20_int32, 17_int32, 15_int32, 12_int32, 10_int32, 7_int32, 5_int32, 4_int32, 2_int32]
+        !! Candidate quantile bin counts, finest (4% per bin) to coarsest (50% per
         !! bin) first, tried in order until a step satisfies all acceptance
         !! criteria. The last entry (2 bins, 50% per bin) is a hard floor: it is
         !! accepted unconditionally if no earlier step succeeds.
     real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.1_real64
         !! Criterion 2: `Pr(c_g > 2)` must stay below this fraction
-    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 50_int32
+    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 40_int32
         !! Criterion 3: every occupied quantile interval must contain at least this
         !! many residuals to support a stable exact null distribution
-    ! Note: this exact variant needs neither MAX_EXACT_COMBINATIONS nor
-    ! MONTE_CARLO_SAMPLES — the sorted-pool tail count is exact at every pool size,
-    ! so there is no enumeration/Monte-Carlo threshold and no RNG.
 
     real(real64), parameter :: NOISE_LOG_OFFSET = 1.0_real64
         !! Additive constant `c` in the log-space residual
