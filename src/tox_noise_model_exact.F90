@@ -1261,8 +1261,20 @@ contains
         integer(int32) :: case_stratum_count, control_stratum_count
         integer(int32) :: chosen_n_bins_case, chosen_n_bins_control
         logical :: strata_criteria_met_case, strata_criteria_met_control
+        real(real64) :: own_scale_case, own_scale_control
 
         call set_ok(ierr)
+
+        ! Quick variance correction for the individual-vs-mean scale mismatch of the
+        ! `own` null: the observed statistic is a difference of MEANS (over
+        ! n_replicates each side), but the null is built from differences of
+        ! INDIVIDUAL residuals. Scaling each side's residuals by 1/sqrt(its own
+        ! replicate count) makes a pairwise-difference of the scaled pools carry
+        ! variance sigma_case^2/n_case + sigma_control^2/n_control — matching the
+        ! mean difference, per side, with NO equal-variance assumption. This fixes
+        ! the ~sqrt(n) over-width only; it does not reshape the null via the CLT.
+        own_scale_case    = 1.0_real64 / sqrt(real(sorted_case%max_resid_per_gene, real64))
+        own_scale_control = 1.0_real64 / sqrt(real(sorted_control%max_resid_per_gene, real64))
 
         pvalues_own = -1.0_real64
         pvalues_family = -1.0_real64
@@ -1350,6 +1362,12 @@ contains
                     tmp_own_stratum_pool_control(1:n_pool_control_own), control_stratum_count)
 
                 if (case_stratum_count >= 10 .and. control_stratum_count >= 10) then
+                    ! Scale each own stratum to mean-difference variance (see the
+                    ! own_scale_* definitions above). Observed statistic is left as-is.
+                    tmp_own_stratum_pool_case(1:case_stratum_count) = &
+                        tmp_own_stratum_pool_case(1:case_stratum_count) * own_scale_case
+                    tmp_own_stratum_pool_control(1:control_stratum_count) = &
+                        tmp_own_stratum_pool_control(1:control_stratum_count) * own_scale_control
                     call compute_pvalue(tmp_own_stratum_pool_case(1:case_stratum_count), case_stratum_count, &
                                         tmp_own_stratum_pool_control(1:control_stratum_count), &
                                         control_stratum_count, &
