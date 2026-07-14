@@ -1,4 +1,5 @@
 #include "macros.h"
+#define CM_KD_STACK_ENTRY_SIZE 3
 #define CM_KD_TRAVERSAL_STACK_DEPTH 64
 
 !> Module for managing data structures and geometric calculations
@@ -12,6 +13,7 @@ module tox_shatter_cluster_data
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance, only: euclidean_distance
     use f42_utils, only: sort_real_heapsort, calc_percentile
+    use f42_kd_tree, only: vicinity_vectors
     implicit none
     private
 
@@ -177,15 +179,17 @@ contains
         !! Error code
 
         integer(int32), allocatable :: tmp_stack(:, :, :)
+        logical, allocatable        :: tmp_vicinity_mask(:, :)
 
         call set_ok(ierr)
 
-        ! Validate dimension sizes, metrics, and sequences across inputs
+        ! Structural dimension checks
         call validate_dimension_size(n_dimensions, ierr)
         call validate_dimension_size(n_vectors, ierr)
         call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
         if (is_err(ierr)) return
 
+        ! Array and value range validation checks
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
         if (is_err(ierr)) return
 
@@ -195,16 +199,19 @@ contains
         call validate_in_range_real(r, ierr, min=0.0_real64)
         if (is_err(ierr)) return
 
-        M_ALLOCATE(tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors))
+        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors))
+        M_ALLOCATE(tmp_vicinity_mask(n_vectors, n_vectors))
 
         call calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
-                                         dimension_order, kd_indices, tmp_stack, label_densities, ierr)
+                                         dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask, &
+                                         label_densities, ierr)
 
     end subroutine calculate_labels_as_density_alloc
 
     !> Validated Entry Point for calculating label density distributions.
     subroutine calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
-                                           dimension_order, kd_indices, tmp_stack, label_densities, ierr)
+                                           dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask, &
+                                           label_densities, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Vector dimension (rows)
@@ -218,8 +225,10 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
+        logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors)
+        !! Preallocated workspace matrix storing vicinity search logical masks
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output density tracker matching individual vector slots
         integer(int32), intent(out) :: ierr
@@ -227,12 +236,13 @@ contains
 
         call set_ok(ierr)
 
-        ! Validate dimension sizes, metrics, and sequences across inputs
+        ! Structural dimension checks
         call validate_dimension_size(n_dimensions, ierr)
         call validate_dimension_size(n_vectors, ierr)
         call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
         if (is_err(ierr)) return
 
+        ! Array and value range validation checks
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
         if (is_err(ierr)) return
 
@@ -243,13 +253,15 @@ contains
         if (is_err(ierr)) return
 
         call calculate_labels_as_density_helper(vectors, n_dimensions, n_vectors, r, &
-                                                dimension_order, kd_indices, tmp_stack, label_densities, ierr)
+                                                dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask, &
+                                                label_densities, ierr)
 
     end subroutine calculate_labels_as_density
 
     !> Core Implementation for calculating label density coordinates.
     pure subroutine calculate_labels_as_density_helper(vectors, n_dimensions, n_vectors, r, &
-                                                       dimension_order, kd_indices, tmp_stack, label_densities, ierr)
+                                                       dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask, &
+                                                       label_densities, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Vector dimension (rows)
@@ -263,77 +275,29 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(3, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
+        logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors)
+        !! Preallocated workspace matrix storing vicinity search logical masks
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output vector storing generated density scalars
         integer(int32), intent(out) :: ierr
         !! Error code
 
-        integer(int32) :: i_vec, match_count, stack_top, left_idx, right_idx, &
-                          mid_idx, current_dim, current_depth, node_point_idx
-        real(real64)   :: dist, axis_delta
+        integer(int32) :: i_vec
 
         call set_ok(ierr)
 
         do concurrent(i_vec=1:n_vectors) &
-            shared(vectors, n_dimensions, n_vectors, r, dimension_order, kd_indices, tmp_stack, label_densities) &
-            local(match_count, stack_top, left_idx, right_idx, mid_idx, &
-                  current_dim, current_depth, node_point_idx, dist, axis_delta)
+            shared(vectors, n_dimensions, n_vectors, r, dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask, label_densities)
 
-            match_count = 0
-            stack_top = 1
+            ! Call the simplified K-D search wrapper
+            call vicinity_vectors(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
+                                  dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
+                                  tmp_vicinity_mask(:, i_vec))
 
-            ! Push implicit root parameters
-            tmp_stack(1, 1, i_vec) = 1
-            tmp_stack(2, 1, i_vec) = n_vectors
-            tmp_stack(3, 1, i_vec) = 0
-
-            ! Walk the implicit tree array layout
-            do while (stack_top > 0)
-                left_idx = tmp_stack(1, stack_top, i_vec)
-                right_idx = tmp_stack(2, stack_top, i_vec)
-                current_depth = tmp_stack(3, stack_top, i_vec)
-                stack_top = stack_top - 1
-
-                if (right_idx < left_idx) cycle
-
-                ! Identify tracking split dimension exact to building step logic
-                current_dim = dimension_order(mod(current_depth, n_dimensions) + 1)
-                mid_idx = left_idx + (right_idx - left_idx)/2
-                node_point_idx = kd_indices(mid_idx)
-
-                ! Assess full distance from target vector to current tree node point
-                call euclidean_distance(vectors(:, i_vec), vectors(:, node_point_idx), n_dimensions, dist)
-                if (dist <= r) then
-                    match_count = match_count + 1
-                end if
-
-                ! Calculate coordinate plane offset on split axis
-                axis_delta = vectors(current_dim, i_vec) - vectors(current_dim, node_point_idx)
-
-                ! Bounding box evaluation using the coordinates
-                if (axis_delta - r <= 0.0_real64) then
-                    if (left_idx <= mid_idx - 1) then
-                        stack_top = stack_top + 1
-                        tmp_stack(1, stack_top, i_vec) = left_idx
-                        tmp_stack(2, stack_top, i_vec) = mid_idx - 1
-                        tmp_stack(3, stack_top, i_vec) = current_depth + 1
-                    end if
-                end if
-
-                if (axis_delta + r >= 0.0_real64) then
-                    if (mid_idx + 1 <= right_idx) then
-                        stack_top = stack_top + 1
-                        tmp_stack(1, stack_top, i_vec) = mid_idx + 1
-                        tmp_stack(2, stack_top, i_vec) = right_idx
-                        tmp_stack(3, stack_top, i_vec) = current_depth + 1
-                    end if
-                end if
-            end do
-
-            ! Assign counted density cleanly back to array slot
-            label_densities(i_vec) = real(match_count, real64)
+            ! Accumulate density counts safely using the mask slice
+            label_densities(i_vec) = real(count(tmp_vicinity_mask(:, i_vec)), real64)
         end do
 
     end subroutine calculate_labels_as_density_helper
