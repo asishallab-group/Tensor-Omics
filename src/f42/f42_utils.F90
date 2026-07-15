@@ -419,20 +419,20 @@ contains
             !! Error code
 
         integer(int32) :: i_dim
-        real(real64) :: theta, dot_product, norm1, norm2, norm_product
+        real(real64) :: theta, dot_product, norm1_sq, norm2_sq, norm_product
 
         call set_ok(ierr)
 
         dot_product = 0.0_real64
-        norm1 = 0.0_real64
-        norm2 = 0.0_real64
-        do concurrent(i_dim=1:n_dims) shared(v1, v2) reduce(+:dot_product, norm1, norm2)
+        norm1_sq = 0.0_real64
+        norm2_sq = 0.0_real64
+        do concurrent(i_dim=1:n_dims) shared(v1, v2) reduce(+:dot_product, norm1_sq, norm2_sq)
             dot_product = dot_product + v1(i_dim)*v2(i_dim)
-            norm1 = norm1 + v1(i_dim)**2
-            norm2 = norm2 + v2(i_dim)**2
+            norm1_sq = norm1_sq + v1(i_dim)**2
+            norm2_sq = norm2_sq + v2(i_dim)**2
         end do
 
-        norm_product = sqrt(norm1)*sqrt(norm2)
+        norm_product = sqrt(norm1_sq)*sqrt(norm2_sq)
         if (is_close(norm_product, 0.0_real64)) then
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
@@ -1053,39 +1053,39 @@ contains
 
     !> AUTHOR_MOHAMED_AKDI
     !| Helper: NaN-aware comparisons for real(real64). Treats NaN as greater as every real number, while `NaN` equals `NaN`.
-    pure logical function real_less(a, b)
-        real(real64), intent(in) :: a
-            !! left side of the comparison `a < b`
-        real(real64), intent(in) :: b
-            !! right side of the comparison `a < b`
+    pure logical function real_less(lhs, rhs)
+        real(real64), intent(in) :: lhs
+            !! left side of the comparison `lhs < rhs`
+        real(real64), intent(in) :: rhs
+            !! right side of the comparison `lhs < rhs`
 
-        if (ieee_is_nan(a) .and. ieee_is_nan(b)) then
+        if (ieee_is_nan(lhs) .and. ieee_is_nan(rhs)) then
             real_less = .false.
-        else if (ieee_is_nan(a)) then
+        else if (ieee_is_nan(lhs)) then
             real_less = .false.
-        else if (ieee_is_nan(b)) then
+        else if (ieee_is_nan(rhs)) then
             real_less = .true.
         else
-            real_less = (a < b)
+            real_less = (lhs < rhs)
         end if
     end function real_less
 
     !> AUTHOR_MOHAMED_AKDI
     !| Helper: NaN-aware comparisons for real(real64). Treats NaN as greater as every real number, while `NaN` equals `NaN`.
-    pure logical function real_greater(a, b)
-        real(real64), intent(in) :: a
-            !! left side of the comparison `a > b`
-        real(real64), intent(in) :: b
-            !! right side of the comparison `a > b`
+    pure logical function real_greater(lhs, rhs)
+        real(real64), intent(in) :: lhs
+            !! left side of the comparison `lhs > rhs`
+        real(real64), intent(in) :: rhs
+            !! right side of the comparison `lhs > rhs`
 
-        if (ieee_is_nan(a) .and. ieee_is_nan(b)) then
+        if (ieee_is_nan(lhs) .and. ieee_is_nan(rhs)) then
             real_greater = .false.
-        else if (ieee_is_nan(a)) then
+        else if (ieee_is_nan(lhs)) then
             real_greater = .true.
-        else if (ieee_is_nan(b)) then
+        else if (ieee_is_nan(rhs)) then
             real_greater = .false.
         else
-            real_greater = (a > b)
+            real_greater = (lhs > rhs)
         end if
     end function real_greater
 
@@ -1511,7 +1511,7 @@ contains
                 cycle
             end if
 
-            first_ge = lower_bound_ge(sorted_rdi, perm, n_genes, d)
+            first_ge = binary_search_insertion(sorted_rdi, perm, d)
 
             if (first_ge <= n_genes) then
                 count_ge = n_genes - first_ge + 1_int32
@@ -1524,74 +1524,9 @@ contains
 
     end subroutine compute_empirical_p_values
 
-    !> AUTHOR_VIVIAN_BASS
-    !| First position pos in [1..n] such that sorted_rdi(perm(pos)) >= x. Returns n+1 if none.
-    pure integer(int32) function lower_bound_ge(vals, p, n, x) result(pos)
-        real(real64), intent(in) :: vals(n)
-            !! Input array of values to be searched
-        integer(int32), intent(in) :: p(n)
-            !! Permutation array with sorted indices
-        integer(int32), intent(in) :: n
-            !! Number of elements in the `vals` and `p` arrays
-        real(real64), intent(in) :: x
-            !! Input value to be searched for or compared against within `vals`
-
-        integer(int32) :: l, h, mid
-
-        l = 1_int32
-        h = n
-        pos = n + 1_int32
-
-        do while (l <= h)
-            mid = l + (h - l)/2_int32
-            if (vals(p(mid)) >= x) then
-                pos = mid
-                h = mid - 1_int32
-            else
-                l = mid + 1_int32
-            end if
-        end do
-    end function lower_bound_ge
-
 end module f42_utils
 
 ! === C WRAPPERS ===
-
-!> C wrapper for which.
-!| Converts integer mask to logical and calls which.
-pure subroutine which_c(mask, n, idx_out, m_max, m_out, ierr) bind(C, name="which_c")
-    use, intrinsic :: iso_c_binding, only: c_int
-    use, intrinsic :: iso_fortran_env, only: int32
-    use f42_utils, only: which
-    use tox_conversions, only: c_int_as_logical
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n
-        !! Size of the mask.
-    integer(c_int), intent(in), target :: m_max
-        !! Maximum size of idx_out.
-    integer(c_int), intent(in), target :: mask(n)
-        !! Integer mask array (0/1 values).
-    integer(c_int), intent(out), target :: idx_out(m_max)
-        !! Output array for indices of true values.
-    integer(c_int), intent(out), target :: m_out
-        !! Actual size of idx_out (number of true values found).
-    integer(c_int), intent(out), target :: ierr
-        !! Error code: 0=ok, 201=invalid input, 202=empty input
-    logical :: mask_f(n)
-    integer(int32) :: ierr_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n)
-    M_CHECK_NON_NULL(m_max)
-    M_CHECK_NON_NULL(mask)
-    M_CHECK_NON_NULL(idx_out)
-
-    ! Use tox_conversions utility for c_int to logical conversion
-    call c_int_as_logical(mask, mask_f)
-    call which(mask_f, n, idx_out, m_max, m_out, ierr_f)
-    ierr = ierr_f
-end subroutine which_c
 
 !> C wrapper for loess_smooth_2d.
 !| Direct wrapper - user must pre-filter indices in C before calling.

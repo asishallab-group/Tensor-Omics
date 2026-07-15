@@ -900,15 +900,6 @@ void build_kd_index_c(
   int* ierr
 );
 
-void which_c(
-  const int* mask,
-  const int* n,
-  int* idx_out,
-  const int* m_max,
-  int* m_out,
-  int* ierr
-);
-
 void loess_smooth_2d_c(
   const int* n_total,
   const int* n_target,
@@ -2781,37 +2772,6 @@ List tox_build_kd_index_rcpp(NumericMatrix X,
                      &ierr);
 
     return List::create(Named("kd_ix") = kd_ix,
-                        Named("ierr") = ierr);
-}
-
-//'Identify indices of non-zero elements in a mask vector
-//'
-//' @param mask Integer vector mask (0/1 values)
-//' @param m_max Maximum number of indices to return
-//' @return List with output indices and number of indices found
-// [[Rcpp::export]]
-List tox_which_rcpp(IntegerVector mask, 
-                    int m_max) {
-
-  int n = mask.size();
-
-    IntegerVector idx_out(m_max);
-    int m_out = 0;
-    int ierr = 0;
-
-    which_c(mask.begin(),
-            &n,
-            idx_out.begin(),
-            &m_max,
-            &m_out,
-            &ierr);
-
-    if (m_out > m_max) {
-      m_out = m_max;
-    }
-
-    return List::create(Named("idx_out") = idx_out,
-                        Named("m_out") = m_out,
                         Named("ierr") = ierr);
 }
 

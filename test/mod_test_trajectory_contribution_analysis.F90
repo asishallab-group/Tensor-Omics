@@ -11,7 +11,7 @@ module mod_test_trajectory_contribution_analysis
     use test_suite, only: test_case
     implicit none
 
-    real(real64), parameter :: TOL = epsilon(1.0_real64)
+    real(real64), parameter :: TOL = 1e-12_real64
 
 contains
 

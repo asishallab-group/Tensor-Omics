@@ -2029,60 +2029,6 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
     }
 
 
-#> f42_utils:which_c: 'which' utility for Python, like in R/MATLAB
-def tox_which(cond):
-    """
-    'which' utility for Python, like in R/MATLAB.
-
-    Args:
-        cond: Array of boolean/integer values (0/1).
-
-    Returns:
-        np.ndarray: 1-based indices of True values.
-    """
-    cond = np.ascontiguousarray(cond, dtype=np.int32)
-
-    # Check for invalid input
-    if np.any(np.isnan(cond.astype(float))):
-        raise ValueError("Input contains NaN values")
-    if np.any(np.isinf(cond.astype(float))):
-        raise ValueError("Input contains infinite values")
-    if not np.all((cond == 0) | (cond == 1)):
-        raise ValueError("Input must contain only 0 and 1 values")
-
-    n = cond.size
-    idx_out = np.zeros(n, dtype=np.int32)
-    m_max = n
-    m_out = np.zeros(1, dtype=np.int32)
-    error_code = ctypes.c_int(0)
-
-    # Setup C wrapper
-    which_c = lib.which_c
-    which_c.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # mask
-        ctypes.POINTER(ctypes.c_int),                 # n
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # idx_out
-        ctypes.POINTER(ctypes.c_int),                 # m_max
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),  # m_out
-        ctypes.POINTER(ctypes.c_int)  # error_code
-    ]
-    which_c.restype = None
-
-    # Call Fortran subroutine
-    which_c(
-        cond, ctypes.c_int(n), idx_out, ctypes.c_int(m_max), m_out,
-        ctypes.byref(error_code)
-    )
-
-    # Check for errors
-    check_err_code(error_code.value)
-
-    # Mark output as read-only
-    _readonly(idx_out)
-
-    return idx_out
-
-
 #> tox_shift_vectors:compute_shift_vector_field_c: Computes the shift vector field for each gene expression vector based on its family centroid
 def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid):
     """

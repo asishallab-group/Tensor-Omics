@@ -10,8 +10,6 @@ module mod_test_binary_search
     use test_suite, only: test_case
     implicit none
 
-    real(real64), parameter :: TOL = epsilon(1.0_real64)
-
 contains
 
     !> Get array of all available tests.

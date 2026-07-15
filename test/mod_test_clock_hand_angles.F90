@@ -3,13 +3,13 @@ module mod_test_clock_hand_angles
     use asserts
     use tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64
+    use f42_utils, only: PI
     use test_suite, only: test_case
     use tox_errors
     implicit none
     public
 
     ! Mathematical constants
-    real(real64), parameter :: PI = 3.141592653589793_real64
     real(real64), parameter :: TOL = 1e-12_real64
 
 contains

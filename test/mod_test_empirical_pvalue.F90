@@ -4,7 +4,7 @@
 
 module mod_test_empirical_pvalue
   use asserts
-  use f42_utils, only: lower_bound_ge, compute_empirical_p_values
+  use f42_utils, only: binary_search_insertion, compute_empirical_p_values
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite
@@ -66,13 +66,13 @@ contains
       s(1) = 2.0_real64
       perm(1) = 1_int32
 
-      pos = lower_bound_ge(s, perm, n, 1.0_real64)
+      pos = binary_search_insertion(s, perm, 1.0_real64)
       call assert_equal_int(pos, 1_int32, "lower_bound perm singleton: x<min -> pos=1")
 
-      pos = lower_bound_ge(s, perm, n, 2.0_real64)
+      pos = binary_search_insertion(s, perm, 2.0_real64)
       call assert_equal_int(pos, 1_int32, "lower_bound perm singleton: x==min -> pos=1")
 
-      pos = lower_bound_ge(s, perm, n, 3.0_real64)
+      pos = binary_search_insertion(s, perm, 3.0_real64)
       call assert_equal_int(pos, 2_int32, "lower_bound perm singleton: x>max -> pos=n+1")
     end subroutine test_lower_bound_ge_singleton
 
@@ -90,19 +90,19 @@ contains
       s = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
       perm = [1_int32, 2_int32, 3_int32, 4_int32, 5_int32]
 
-      pos = lower_bound_ge(s, perm, n, 0.5_real64)
+      pos = binary_search_insertion(s, perm, 0.5_real64)
       call assert_equal_int(pos, 1_int32, "lower_bound perm: x<min -> 1")
 
-      pos = lower_bound_ge(s, perm, n, 1.0_real64)
+      pos = binary_search_insertion(s, perm, 1.0_real64)
       call assert_equal_int(pos, 1_int32, "lower_bound perm: x==min -> 1")
 
-      pos = lower_bound_ge(s, perm, n, 2.5_real64)
+      pos = binary_search_insertion(s, perm, 2.5_real64)
       call assert_equal_int(pos, 3_int32, "lower_bound perm: x=2.5 -> first >=3 at pos=3")
 
-      pos = lower_bound_ge(s, perm, n, 5.0_real64)
+      pos = binary_search_insertion(s, perm, 5.0_real64)
       call assert_equal_int(pos, 5_int32, "lower_bound perm: x==max -> pos=n")
 
-      pos = lower_bound_ge(s, perm, n, 6.0_real64)
+      pos = binary_search_insertion(s, perm, 6.0_real64)
       call assert_equal_int(pos, 6_int32, "lower_bound perm: x>max -> n+1")
     end subroutine test_lower_bound_ge_increasing
 
@@ -121,13 +121,13 @@ contains
       ! Indices sorted by s: 2(0), 1(2), 4(2), 6(2), 5(5), 3(9)
       perm = [2_int32, 1_int32, 4_int32, 6_int32, 5_int32, 3_int32]
 
-      pos = lower_bound_ge(s, perm, n, 2.0_real64)
+      pos = binary_search_insertion(s, perm, 2.0_real64)
       call assert_equal_int(pos, 2_int32, "lower_bound perm duplicates: x=2 -> first 2 at pos=2")
 
-      pos = lower_bound_ge(s, perm, n, 3.0_real64)
+      pos = binary_search_insertion(s, perm, 3.0_real64)
       call assert_equal_int(pos, 5_int32, "lower_bound perm duplicates: x=3 -> first >=5 at pos=5")
 
-      pos = lower_bound_ge(s, perm, n, 9.0_real64)
+      pos = binary_search_insertion(s, perm, 9.0_real64)
       call assert_equal_int(pos, 6_int32, "lower_bound perm duplicates: x=9 -> pos=6")
     end subroutine test_lower_bound_ge_duplicates
 

@@ -5,8 +5,8 @@ module tox_get_outliers
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values
-    use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once, check_io_stat, is_err
+    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values, init_perm
+    use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     implicit none
 
@@ -162,9 +162,7 @@ contains
             return
         end if
 
-        do i_valid = 1, n_valid
-            tmp_perm(i_valid) = i_valid
-        end do
+        call init_perm(tmp_perm)
 
         call sort_array(loess_x(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
@@ -175,9 +173,7 @@ contains
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
-        do i_valid = 1, n_valid
-            tmp_perm(i_valid) = i_valid
-        end do
+        call init_perm(tmp_perm)
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         if (mod(n_valid, 2) == 0) then
             std_median = 0.5_real64*( &
@@ -207,9 +203,7 @@ contains
 
         if (is_err(ierr)) return
 
-        do i_valid = 1, n_valid
-            tmp_perm(i_valid) = i_valid
-        end do
+        call init_perm(tmp_perm)
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
         ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
@@ -365,7 +359,7 @@ contains
         real(real64), allocatable :: tmp_means_aux(:)
 
         ! LOESS workspace
-        integer(int32) :: liv, lv, istat
+        integer(int32) :: liv, lv
         integer(int32), allocatable :: tmp_iv(:), tmp_pi(:)
         real(real64), allocatable :: tmp_wv(:), tmp_diagl(:), tmp_w_init(:), tmp_z_mat(:, :), tmp_rw(:), tmp_ww(:), tmp_res(:), tmp_yhat(:)
 
@@ -377,23 +371,27 @@ contains
         logical, parameter :: setlf = .false.
 
         call set_ok(ierr)
-        call set_ok(istat)
 
         ! Workspace sizes
         call tox_loess_required_workspace(1_int32, n_families, liv, lv, setlf)
 
-        allocate (tmp_iv(liv), tmp_wv(lv), stat=istat)
-        call check_io_stat(istat, ierr)
-        if (is_err(ierr)) return
+        M_ALLOCATE(tmp_iv(liv))
+        M_ALLOCATE(tmp_wv(lv))
 
         ! For robust we also need arrays sized to n_valid (<= n_families).
-        allocate (tmp_diagl(n_families), tmp_w_init(n_families), tmp_z_mat(n_families, 1), &
-                  tmp_rw(n_families), tmp_ww(n_families), tmp_res(n_families), tmp_pi(n_families), &
-                  tmp_yhat(n_families), tmp_perm(n_genes), tmp_stack_left(n_genes), &
-                  tmp_stack_right(n_genes), excluded_low_sd(n_families), tmp_means_aux(n_families), stat=istat)
-
-        call check_io_stat(istat, ierr)
-        if (is_err(ierr)) return
+        M_ALLOCATE(tmp_diagl(n_families))
+        M_ALLOCATE(tmp_w_init(n_families))
+        M_ALLOCATE(tmp_z_mat(n_families, 1))
+        M_ALLOCATE(tmp_rw(n_families))
+        M_ALLOCATE(tmp_ww(n_families))
+        M_ALLOCATE(tmp_res(n_families))
+        M_ALLOCATE(tmp_pi(n_families))
+        M_ALLOCATE(tmp_yhat(n_families))
+        M_ALLOCATE(tmp_perm(n_genes))
+        M_ALLOCATE(tmp_stack_left(n_genes))
+        M_ALLOCATE(tmp_stack_right(n_genes))
+        M_ALLOCATE(excluded_low_sd(n_families))
+        M_ALLOCATE(tmp_means_aux(n_families))
 
         ! Initialize (important for netlib)
         tmp_iv = 1_int32
@@ -592,9 +590,7 @@ contains
         end if
 
         ! Always initialize permutation array
-        do i = 1, n_genes
-            tmp_perm(i) = i
-        end do
+        call init_perm(tmp_perm)
 
         call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
                                           loess_x, loess_y, loess_n, ierr)

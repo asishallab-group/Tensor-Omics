@@ -3477,37 +3477,6 @@ tox_compute_edf_expert <- function(values, perm) {
   ))
 }
 
-#> f42_utils:which_c: Get indices of TRUE or non-zero elements in a mask
-#' This function takes a logical or integer mask and returns the indices of the TRUE or non-zero elements, up to a specified maximum.
-#' @param mask A logical or integer vector serving as the mask for which to find indices.
-#' @param m_max An integer scalar specifying the maximum number of indices to return (default: length of mask).
-#' @return An integer vector of indices corresponding to TRUE or non-zero elements in `mask`.
-#' 
-tox_which <- function(mask, m_max = length(mask)) {
-  # Input Validation
-
-  if (is.logical(mask)) {
-    mask <- as.integer(mask)
-  }
-  validate_integer_vector(mask)
-  validate_positive_integer_scalar(m_max)
-
-  # Call the Rcpp forwarder
-  result <- tox_which_rcpp(mask = mask, m_max = m_max)
-
-  # Check for errors
-  check_err_code(result$ierr)
-
-  # Return indices of TRUE/non-zero elements (capped by m_max)
-  m_out <- as.integer(result$m_out)
-  n_take <- min(m_out, m_max, length(result$idx_out))
-  if (n_take <= 0L) {
-    return(integer(0))
-  }
-
-  return(result$idx_out[seq_len(n_take)])
-}
-
 #> tox_loess:tox_loess_required_workspace_c: Recommend workspace sizes based on Netlib exact formulas
 #' Recommend workspace sizes based on Netlib exact formulas
 #'
