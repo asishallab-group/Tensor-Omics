@@ -406,7 +406,7 @@ contains
 
         if (is_err(ierr)) return
 
-        !CLAUDE: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers (e.g. `local()` in a do concurrent), which is worth considering given how aggressively do concurrent is used elsewhere in this file for sample loops.
+        !TODO optimize: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers (e.g. `local()` in a do concurrent), which is worth considering given how aggressively do concurrent is used elsewhere in this file for sample loops.
         do i_sample = 1, n_samples
             ! create factor vectors for current sample
             do i_sel_factor = 1, n_selected_factors

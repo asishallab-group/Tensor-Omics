@@ -8,6 +8,7 @@ module tox_gene_centroids
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, validate_dimension_size, validate_in_range_int, validate_all_in_range_int
+    use f42_utils, only: add_vector
     implicit none
 
 #define CM_MODE_GROUP_ORTHOLOGS 0_int32
@@ -78,21 +79,14 @@ contains
         centroid = 0.0_real64
         if (n_selected_genes == 0) return
 
-        !CLAUDE: loop order is transposed relative to the column-major layout of expression_vectors
-        !CLAUDE: (n_axes, n_genes): for a fixed i_axis, the inner loop strides across columns
-        !CLAUDE: (stride n_axes) to gather one value per gene. Swapping to iterate genes outer / axes
-        !CLAUDE: inner would let each selected gene's column be read contiguously and accumulated
-        !CLAUDE: straight into the length-n_axes centroid vector, which is much more cache-friendly.
         ! Compute the mean vector
-        do concurrent (i_axis = 1:n_axes) local(sum_val) shared(gene_indices, centroid, n_selected_genes)
-            sum_val = 0.0_real64
-            ! For each selected gene, accumulate its expression value.
-            do concurrent (i_selected_gene = 1:n_selected_genes) local(gene_idx) shared(gene_indices, expression_vectors) reduce(+:sum_val)
-                gene_idx = gene_indices(i_selected_gene)
-                sum_val = sum_val + expression_vectors(i_axis, gene_idx)
-            end do
-            ! Compute the mean for the current dimension by dividing through the number of selected genes.
-            centroid(i_axis) = sum_val/real(n_selected_genes, real64)
+        do concurrent (i_selected_gene = 1:n_selected_genes) local(gene_idx) shared(gene_indices, centroid, expression_vectors)
+            gene_idx = gene_indices(i_selected_gene)
+            call add_vector(centroid, expression_vectors(:, gene_idx))
+        end do
+
+        do concurrent (i_axis = 1:n_axes) shared(centroid, n_selected_genes)
+            centroid(i_axis) = centroid(i_axis) / real(n_selected_genes, real64)
         end do
     end subroutine mean_vector_helper
 
@@ -184,12 +178,12 @@ contains
         ! Local variables
         integer(int32) :: i_gene, i_family, n_selected
 
-        !CLAUDE: this rescans all n_genes for every family -> O(n_families * n_genes); a single
-        !CLAUDE: bucketing pass (count genes per family, then fill per-family index lists) would be
-        !CLAUDE: O(n_genes + n_families). Also, each family's centroid is independent work but the loop
-        !CLAUDE: is serial and reuses a single shared `tmp_group_indices` scratch buffer across
-        !CLAUDE: iterations, which would need to become per-iteration/private before this could be
-        !CLAUDE: parallelized over families.
+        !TODO optimize: this rescans all n_genes for every family -> O(n_families * n_genes); a single
+        !               bucketing pass (count genes per family, then fill per-family index lists) would be
+        !               O(n_genes + n_families). Also, each family's centroid is independent work but the loop
+        !               is serial and reuses a single shared `tmp_group_indices` scratch buffer across
+        !               iterations, which would need to become per-iteration/private before this could be
+        !               parallelized over families.
         do i_family = 1, n_families
             ! Reset selected indices for the current family
             tmp_group_indices = 0

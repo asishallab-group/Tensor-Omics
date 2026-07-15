@@ -101,7 +101,7 @@ contains
 
         ! Loop over selected expression vectors
         ! Note: If the expression vector is zero in all selected axes, tissue versatility (TV) is set to 1 (maximum specificity) and the angle is set to acos(0) = 90 degrees.
-        !CLAUDE: this per-gene loop is data-parallel (each i_vec is independent) but is forced sequential here only
+        !TODO optimize: this per-gene loop is data-parallel (each i_vec is independent) but is forced sequential here only
         ! because out_idx is an accumulating compaction counter. Since n_selected_vectors is already known, this
         ! could be parallelized with `do concurrent` by precomputing an exclusive prefix sum of
         ! exp_vecs_selection_index to get each vector's output slot directly, consistent with how other modules in

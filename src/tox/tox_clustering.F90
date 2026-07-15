@@ -336,10 +336,10 @@ contains
         integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label
         real(real64) :: dist_AB
 
-        !CLAUDE: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
-        !CLAUDE: one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
-        !CLAUDE: clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
-        !CLAUDE: would matter a lot for larger n_points.
+        !TODO optimize: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
+        !               one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
+        !               clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
+        !               would matter a lot for larger n_points.
         do i = 1, n_points - 1
             call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB)
 

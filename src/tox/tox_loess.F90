@@ -85,7 +85,7 @@ module tox_loess
                 !! Diagonal elements of the hat matrix
             logical, intent(in) :: compute_influence
                 !! Influence calculation flag
-            integer(int32), intent(in) :: int_workspace(int_workspace_size)
+            integer(int32), intent(inout) :: int_workspace(int_workspace_size)
                 !! Integer workspace array
             real(real64), intent(inout) :: real_workspace(real_workspace_size)
                 !! Real workspace array
@@ -367,19 +367,12 @@ contains
         predictor_dim = 1_int32
 
         ! Perform robust iterative refinement
-        !CLAUDE: loess_decomposition (lowesd) only depends on x/n_dim/n/span/degree/max_neighborhood_size/save_factorization, none of which change
-        ! across robust iterations — only the weights change between iterations. Recomputing the full decomposition
-        ! (and re-zeroing the workspace) on every one of the n_iters passes is redundant work that could be hoisted
-        ! out of this loop and computed once.
         do iter = 1, n_iters
             ! Reset workspace arrays for this iteration
             int_workspace = 0_int32
             real_workspace = 0.0_real64
 
-            !CLAUDE: this elementwise loop has no cross-iteration dependency and could be a `do concurrent` like the
-            ! equivalent loops in tox_normalization.F90/tox_get_outliers.F90, instead of a plain sequential loop.
-            ! Combine original weights with robust weights for this iteration
-            do i = 1, n
+            do concurrent (i = 1:n) shared(combined_weights, weights, robust_weights)
                 combined_weights(i) = weights(i)*robust_weights(i)
             end do
 
@@ -390,7 +383,7 @@ contains
             call loess_evaluation(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)
 
             ! Compute residuals for robust reweighting in next iteration
-            do i = 1, n
+            do concurrent (i = 1:n) shared(residuals, y, fitted_values)
                 residuals(i) = y(i) - fitted_values(i)
             end do
 

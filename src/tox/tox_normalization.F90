@@ -413,9 +413,6 @@ contains
         end do
 
         ! === Second pass: assign averaged values by rank ===
-        !CLAUDE: each tissue column is sorted twice (once in the first pass above, once here), doubling the
-        ! O(n_genes log n_genes) sort cost per tissue. The permutation from the first pass could be cached
-        ! (e.g. in an (n_genes, n_replicates) buffer) and reused here instead of re-sorting.
         do i_tissue = 1, n_replicates
             ! Prepare column and reset tmp_permutation
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
@@ -549,16 +546,9 @@ contains
         integer(int32) :: start_idx, stop_idx
 
         ! === Loop over each group ===
-        !CLAUDE: `sum(reps_per_tissue(:i_group-1))` is recomputed from scratch for every (i_gene, i_group) pair,
-        ! i.e. O(n_genes * n_tissues^2) total, even though it is invariant across i_gene and could be a single
-        ! O(n_tissues) prefix-sum computed once outside both loops.
         do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
-            do concurrent (i_group = 1:n_tissues) local(start_idx, stop_idx, sum_val) shared(reps_per_tissue, expr, tissue_averages)
-                if (i_group == 1) then
-                    start_idx = 1
-                else
-                    start_idx = sum(reps_per_tissue(:i_group-1)) + 1
-                end if
+            start_idx = 1
+            do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
                 sum_val = 0.0_real64
@@ -567,6 +557,7 @@ contains
                 end do
 
                 tissue_averages(i_group, i_gene) = sum_val / real(reps_per_tissue(i_group), real64)
+                start_idx = stop_idx + 1
             end do
         end do
     end subroutine calc_tiss_avg_helper

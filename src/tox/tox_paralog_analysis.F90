@@ -355,7 +355,7 @@ contains
                 M_DEFAULT_VAL(dosage_max_angle, max_angle, PI)
 
                 !! prepare sum vector, so the extending gene just needs to be included in one operation and excluded after calculation
-                !CLAUDE: this rebuilds the subset's sum vector from scratch by scanning all n_genes on every call to generate_subsets_helper (once per active mask taken from the work array), instead of carrying the running sum forward from the parent subset that already had it computed. For large gene counts/subset counts this recomputation dominates the runtime of the whole subset-extension search.
+                !TODO optimize: this rebuilds the subset's sum vector from scratch by scanning all n_genes on every call to generate_subsets_helper (once per active mask taken from the work array), instead of carrying the running sum forward from the parent subset that already had it computed. For large gene counts/subset counts this recomputation dominates the runtime of the whole subset-extension search.
                 tmp_paralog_vector = 0
                 do i_gene = 1, n_genes
                     if (mask_check_state(candidate_mask, i_gene)) then

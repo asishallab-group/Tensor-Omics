@@ -147,6 +147,7 @@ contains
         integer(c_int) :: error
         character(len=:), allocatable :: manifest_filename
         integer(int32) :: i
+        integer(int32) :: delete_ierr
 
         call set_ok(ierr)
         call set_ok(error)
@@ -178,8 +179,11 @@ contains
             if (len_trim(filenames(i)) > 0) then
                 call add_data_to_zip(zip_handle, filenames(i), filenames(i), DATA_TYPE_FILE, ierr)
                 if (is_err(ierr)) then
-                    !CLAUDE: On error the partially-written zip_filename is never deleted from disk. Since it was opened with ZIP_EXCLUSIVE, a retry of create_zip_archive with the same name will now fail with "file already exists".
                     error = zip_close(zip_handle)
+                    ! best-effort cleanup: zip_filename was opened with ZIP_EXCLUSIVE, so leaving the
+                    ! partially-written archive on disk would make a retry with the same name fail
+                    ! with "file already exists" even though this attempt never succeeded
+                    call delete_file(zip_filename, delete_ierr)
                     return
                 end if
             end if
