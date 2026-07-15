@@ -799,7 +799,7 @@ void mask_chunk_count_c(
   int* ierr
 );
 
-void calc_work_arr_paralog_subsets_size(
+void calc_work_arr_paralog_subsets_size_c(
   const int* max_subset_size,
   const int* n_genes,
   int* work_array_size,
@@ -808,7 +808,7 @@ void calc_work_arr_paralog_subsets_size(
   int* ierr
 );
 
-void filter_paralogs_by_pattern_dosage_effect(
+void filter_paralogs_by_pattern_dosage_effect_c(
   const double* gene_angles,
   const double* threshold,
   const int* n_genes,
@@ -2527,7 +2527,7 @@ List tox_calc_work_arr_paralog_subsets_size_rcpp(int max_subset_size,
     int work_array_size = 0;
     int ierr = 0;
 
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),
@@ -2558,7 +2558,7 @@ List tox_filter_paralogs_by_pattern_dosage_effect_rcpp(NumericVector gene_angles
     IntegerMatrix masks(n_mask_chunks, n_families);
     int ierr = 0;
 
-    filter_paralogs_by_pattern_dosage_effect(gene_angles.begin(),
+    filter_paralogs_by_pattern_dosage_effect_c(gene_angles.begin(),
                                              &threshold,
                                              &n_genes,
                                              &n_families,
@@ -2626,7 +2626,7 @@ List tox_filter_paralogs_by_pattern_subfunctionalization_rcpp(NumericVector gene
     int ierr = 0;
 
     int work_array_size = 0;
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),
@@ -2704,7 +2704,7 @@ List tox_filter_paralogs_by_pattern_subfunctionalization_rcpp(NumericVector gene
     int ierr = 0;
 
     int work_array_size = 0;
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),

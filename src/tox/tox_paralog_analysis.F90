@@ -120,8 +120,6 @@ contains
         call map_err_arg_pos(ierr, 11_int32, 10_int32) ! n_paralog_subsets
         call map_err_arg_pos(ierr, 12_int32, 11_int32) ! tmp_active_mask
         call map_err_arg_pos(ierr, 13_int32, 12_int32) ! tmp_paralog_vector
-        call map_err_arg_pos(ierr, 14_int32, 14_int32) ! max_angle
-        call map_err_arg_pos(ierr, 15_int32, 15_int32) ! gain_gamma
     end subroutine detect_dosage_effect
 
     !> AUTHOR_FRANZ_ERIC_SILL

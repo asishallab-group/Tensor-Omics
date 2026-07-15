@@ -2892,7 +2892,7 @@ def tox_calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, filtered_pa
     work_array_size = ctypes.c_int(0)
     ierr = ctypes.c_int(0)
 
-    calc_work_arr_size_c = lib.calc_work_arr_paralog_subsets_size
+    calc_work_arr_size_c = lib.calc_work_arr_paralog_subsets_size_c
     calc_work_arr_size_c.argtypes = [
         ctypes.POINTER(ctypes.c_int),                                   # max_subset_size (inout)
         ctypes.POINTER(ctypes.c_int),                                   # n_genes
@@ -2941,7 +2941,7 @@ def tox_filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold,
     masks = np.empty((n_mask_chunks, n_families), dtype=np.int32, order="F")
     ierr = ctypes.c_int(0)
 
-    filter_dosage_effect_c = lib.filter_paralogs_by_pattern_dosage_effect
+    filter_dosage_effect_c = lib.filter_paralogs_by_pattern_dosage_effect_c
     filter_dosage_effect_c.argtypes = [
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # gene_angles
         ctypes.POINTER(ctypes.c_double),                                  # threshold
