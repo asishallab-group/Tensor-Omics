@@ -185,7 +185,7 @@ export function createMasterTable({ elements, familyOnly, parentTable }, getData
           }
         } else {
           const lastGene = getNumericAttribute(tbody.lastChild, "tox-gene");
-          if (lastGene + 1 < dataHandler.getGeneCount(lastFamily) || lastFamily + 1 < dataHandler.getFamilyCount()) {
+          if (dataHandler.isGeneIndex(lastFamily, lastGene + 1) || dataHandler.isFamilyIndex(lastFamily + 1)) {
             generateMasterTableRows(tbody, elements, lastFamily, lastGene, getData, headerMap, { firstAfter: paginationStep }, parentTable);
           }
         }
@@ -213,6 +213,7 @@ function generateMasterTableRows(tbody, elements, familyCursor, geneCursor, getD
     elements = [];
 
     if (firstAfter !== undefined) {
+      // TODO: should not use count as iterator, as the idx encoding might change
       const familyCount = dataHandler.getFamilyCount();
       if (geneCursor === undefined) {
         for (let family = familyCursor + 1; (family < familyCount) && (elements.length < firstAfter); family++) {

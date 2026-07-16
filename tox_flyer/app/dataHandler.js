@@ -14,6 +14,12 @@ export const handler = {
       return Array.from({ length: geneIndices.length }, (_, i) => i);
     }
   },
+  isFamilyIndex(familyIdx) {
+    return familyIdx < this.getFamilyCount();
+  },
+  isGeneIndex(familyIdx, geneIdx) {
+    return geneIdx < this.getGeneCount(familyIdx);
+  },
   get tissues() {
     return data.tissues;
   },
