@@ -6,15 +6,31 @@
 
 !> Noise model for exact p-value computation comparing case and control gene expression.
 !|
+!| This module and `noise_model_exact` (in `tox_noise_model_exact.F90`) are
+!| identical EXCEPT for how the `own` comparison's null is corrected for the
+!| individual-vs-mean scale mismatch (the observed statistic is a difference of
+!| MEANS, so the null must be built at the mean level):
+!|   - `noise_model_exact`: scales each `own` stratum by `1/sqrt(n_replicates)`
+!|     — a fast, variance-only correction of an individual-residual null.
+!|   - this module: BOOTSTRAPS the mean difference (resample n_replicates per side
+!|     with replacement, average, difference) — correct scale AND shape, no
+!|     equal-variance assumption (see `compute_pvalue_bootstrap_mean_helper`).
+!| Both share the same C ABI so either can be swapped in without downstream
+!| changes; keeping them as two modules lets one be accepted and the other
+!| discarded in a later phase.
+!|
+!| The per-gene p-value itself is computed EXACTLY at every pool size (sorted
+!| control pool + two binary searches, `O((n+m) log m)`; no exhaustive-vs-Monte
+!| Carlo split). The bootstrap `own` null is the one place this module uses the RNG.
+!|
 !| Provides routines to:
 !|   - Sort and pack gene expression residuals for efficient neighbourhood lookup
 !|   - Adaptively gather residual pools from the nearest-mean neighbourhood
 !|   - Variance-stratify the gathered pool into quantile intervals so that the
 !|     `own` comparison draws only from the gene's own variance regime, rather
 !|     than from a mixture of regimes across the kNN neighbourhood
-!|   - Compute exact p-values by exhaustively enumerating every pairwise
-!|     residual difference between the case and control residual pools (fully
-!|     deterministic, no Monte Carlo sampling)
+!|   - Compute exact p-values by counting, via sorted-pool binary search, every
+!|     pairwise residual difference that meets or exceeds the observed statistic
 !|   - Run the full pipeline over all genes with pre-cached family / ortholog pools
 module noise_model
     use safeguard
@@ -22,7 +38,7 @@ module noise_model
     use tox_errors, only: set_ok, set_err, is_err, &
                           ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, &
                           validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int
-    use f42_utils, only: sort_real, sort_integer, calc_percentile_helper
+    use f42_utils, only: sort_real, sort_integer, calc_percentile_helper, init_random, rand_range
     implicit none
 
     !> Sorted gene data: means and packed centred residuals in mean-ascending order.
@@ -54,12 +70,12 @@ module noise_model
     integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 50_int32
         !! Criterion 3: every occupied quantile interval must contain at least this
         !! many residuals to support a stable exact null distribution
-    
-    !> Threshold for switching from exact enumeration to Monte Carlo sampling
-    integer(int32), parameter :: MAX_EXACT_COMBINATIONS = 10000_int32
-        !! Maximum number of pairwise combinations for exhaustive enumeration
-    integer(int32), parameter :: MONTE_CARLO_SAMPLES = 10000_int32
-        !! Number of samples for Monte Carlo p-value estimation
+    ! Note: the per-gene p-value is computed exactly at every pool size (no
+    ! MAX_EXACT_COMBINATIONS enumeration/Monte-Carlo threshold). The only RNG use is
+    ! the bootstrap that builds the `own` mean-difference null, below.
+
+    integer(int32), parameter :: N_BOOTSTRAP_DRAWS = 10000_int32
+        !! Number of bootstrap resamples used to build the `own` mean-difference null
 
     real(real64), parameter :: NOISE_LOG_OFFSET = 1.0_real64
         !! Additive constant `c` in the log-space residual
@@ -107,8 +123,7 @@ contains
     !| replicates themselves, so `sum_i epsilon_{i,g} = 0` exactly, by construction.
     !|
     !| This is the single place the log transform is applied; `compute_pvalue_helper`
-    !| and `compute_pvalue_monte_carlo_helper` simply difference whatever scale the
-    !| pooled residuals already carry.
+    !| simply differences whatever scale the pooled residuals already carry.
     !|
     !| Fills `sorted_data` in-place. Does not allocate — all arrays inside
     !| `sorted_data` must already be allocated by the caller to the correct sizes,
@@ -916,19 +931,69 @@ contains
     ! compute_pvalue
     ! =========================================================================
 
-    !> Core implementation: exact p-value via exhaustive pairwise residual enumeration.
+    !> Count entries of an ascending array below a threshold, via binary search.
     !|
-    !| Builds the null distribution deterministically: for every residual
-    !| `r_case` in `pool_case` and every residual `r_control` in `pool_control`,
-    !| the null statistic is `|r_case - r_control|`. The p-value is the fraction of
-    !| these `n_pool_case * n_pool_control` pairwise null statistics whose magnitude
-    !| meets or exceeds `observed_statistic_abs`, with the usual add-one continuity
-    !| correction. Means are intentionally excluded: we are testing how much
-    !| deviation is explained by noise alone.
+    !| Returns the number of entries in `arr(1:n)` (assumed sorted ascending) that
+    !| are `< x` when `inclusive` is `.false.`, or `<= x` when `inclusive` is `.true.`.
+    !| O(log n). This is the primitive used by `compute_pvalue_helper` to tally the
+    !| tail of the pairwise-difference null without enumerating the pairs.
+    pure function count_below_helper(arr, n, x, inclusive) result(cnt)
+        integer(int32), intent(in) :: n
+        !! Number of entries in `arr`
+        real(real64), dimension(n), intent(in) :: arr
+        !! Ascending array to search
+        real(real64), intent(in) :: x
+        !! Threshold value
+        logical, intent(in) :: inclusive
+        !! `.true.` counts `arr <= x`; `.false.` counts `arr < x`
+        integer(int32) :: cnt
+        !! Number of qualifying entries
+
+        integer(int32) :: lo, hi, mid
+
+        lo = 1
+        hi = n
+        cnt = 0
+        do while (lo <= hi)
+            mid = (lo + hi) / 2
+            if ((inclusive .and. arr(mid) <= x) .or. ((.not. inclusive) .and. arr(mid) < x)) then
+                ! arr is ascending, so arr(1:mid) all satisfy the condition; keep
+                ! this count and look right for more.
+                cnt = mid
+                lo = mid + 1
+            else
+                hi = mid - 1
+            end if
+        end do
+    end function count_below_helper
+
+    !> Core implementation: exact p-value via sorted-pool tail counting.
     !|
-    !| The pooled residuals are assumed to already be on whatever scale the
-    !| observed statistic uses (linear or log2) — see `prepare_sorted_data_helper`,
-    !| which is the single place the log transform is applied.
+    !| Computes exactly the same quantity as exhaustive pairwise enumeration — the
+    !| number of pairwise absolute differences `|r_case - r_control|` (over every
+    !| case/control residual pair) that meet or exceed `observed_statistic_abs` —
+    !| but WITHOUT materialising the `n_pool_case * n_pool_control` differences.
+    !| Means are intentionally excluded: we are testing how much deviation is
+    !| explained by noise alone.
+    !|
+    !| The control pool is sorted once. Then, for each case residual `a`, the count
+    !| of control residuals `b` with `|a - b| >= t` (`t = observed_statistic_abs`) is
+    !|
+    !|   m - #{ b in the open window (a - t, a + t) }
+    !|     = m - ( #{ b < a + t } - #{ b <= a - t } )
+    !|
+    !| via two binary searches (`count_below_helper`). Summing over the case pool
+    !| gives the exact tail count in `O((n + m) log m)` instead of `O(n*m)`, so this
+    !| variant is exact at every pool size and needs no Monte Carlo fallback.
+    !|
+    !| The `max(0, ...)` guard covers the degenerate `t = 0` case: the window
+    !| `(a, a)` is empty, so every pair qualifies and `p = 1`, exactly as
+    !| enumeration would give. The strict-vs-inclusive split of the two searches
+    !| reproduces the `>= t` (tie-inclusive) semantics of the enumeration path.
+    !|
+    !| The pooled residuals are assumed to already be on whatever scale the observed
+    !| statistic uses (linear or log2) — see `prepare_sorted_data_helper`, which is
+    !| the single place the log transform is applied.
     pure subroutine compute_pvalue_helper(pool_case, n_pool_case, &
                                           pool_control, n_pool_control, &
                                           observed_statistic_abs, &
@@ -946,98 +1011,46 @@ contains
         real(real64), intent(out) :: p_value
         !! Exact p-value
 
-        integer(int32) :: i_case, i_control, count_ge
-        real(real64) :: null_dist
-        integer(int64) :: n_pairs
+        integer(int32) :: i, i_case, hi, lo
+        integer(int32) :: perm(n_pool_control), stack_left(n_pool_control), stack_right(n_pool_control)
+        real(real64) :: a, sorted_control(n_pool_control)
+        integer(int64) :: count_ge, n_pairs
 
-        count_ge = 0
-        do concurrent(i_case=1:n_pool_case, i_control=1:n_pool_control) &
-            shared(pool_case, pool_control, observed_statistic_abs) &
+        ! Sort the control pool ascending (indirect sort, then materialise the order
+        ! into a contiguous array for cache-friendly binary search).
+        do concurrent(i=1:n_pool_control) shared(perm)
+            perm(i) = i
+        end do
+        call sort_real(pool_control, perm, stack_left, stack_right)
+        do concurrent(i=1:n_pool_control) shared(sorted_control, pool_control, perm)
+            sorted_control(i) = pool_control(perm(i))
+        end do
+
+        ! Tail count = sum over case residuals of #{ b : |a - b| >= t }.
+        count_ge = 0_int64
+        do concurrent(i_case=1:n_pool_case) &
+            shared(pool_case, sorted_control, observed_statistic_abs, n_pool_control) &
             reduce(+:count_ge) &
-            local(null_dist)
+            local(a, hi, lo)
 
-            null_dist = abs(pool_case(i_case) - pool_control(i_control))
-
-            if (null_dist >= observed_statistic_abs) count_ge = count_ge + 1
+            a  = pool_case(i_case)
+            hi = count_below_helper(sorted_control, n_pool_control, a + observed_statistic_abs, .false.)  ! #{b <  a+t}
+            lo = count_below_helper(sorted_control, n_pool_control, a - observed_statistic_abs, .true.)   ! #{b <= a-t}
+            count_ge = count_ge + int(n_pool_control - max(0_int32, hi - lo), int64)
         end do
 
         n_pairs = int(n_pool_case, int64) * int(n_pool_control, int64)
-        p_value = real(count_ge + 1, real64) / real(n_pairs + 1_int64, real64)
+        p_value = real(count_ge + 1_int64, real64) / real(n_pairs + 1_int64, real64)
     end subroutine compute_pvalue_helper
 
-    !> Core implementation: Monte Carlo p-value estimation.
-    !|
-    !| When the number of pairwise combinations exceeds MAX_EXACT_COMBINATIONS,
-    !| this routine samples MONTE_CARLO_SAMPLES pairs from the case and control
-    !| residual pools (with replacement) and estimates the p-value as the fraction
-    !| of sampled null statistics that meet or exceed the observed statistic.
-    !|
-    !| Accepts a single pre-generated array `rand_array` of MONTE_CARLO_SAMPLES
-    !| uniform [0, 1) draws. Each draw is mapped to a flat pair index in
-    !| [0, n_pool_case * n_pool_control - 1], which is then decomposed into
-    !| independent case and control indices. This lets the caller call the RNG
-    !| exactly once per gene, sharing the array across `own`, `family`, and
-    !| `ortholog` p-value computations.
-    !|
-    !| As with `compute_pvalue_helper`, the pooled residuals are assumed to
-    !| already be on the correct scale (see `prepare_sorted_data_helper`).
-    pure subroutine compute_pvalue_monte_carlo_helper( &
-        pool_case, n_pool_case, &
-        pool_control, n_pool_control, &
-        observed_statistic_abs, &
-        rand_array, &
-        p_value)
-        integer(int32), intent(in) :: n_pool_case
-        !! Size of the case residual pool
-        real(real64), dimension(n_pool_case), intent(in) :: pool_case
-        !! Case residual pool
-        integer(int32), intent(in) :: n_pool_control
-        !! Size of the control residual pool
-        real(real64), dimension(n_pool_control), intent(in) :: pool_control
-        !! Control residual pool
-        real(real64), intent(in) :: observed_statistic_abs
-        !! Absolute value of the observed test statistic
-        real(real64), dimension(MONTE_CARLO_SAMPLES), intent(in) :: rand_array
-        !! Pre-generated uniform [0, 1) draws; one per sample, shared across
-        !! all three p-value computations for this gene.
-        real(real64), intent(out) :: p_value
-        !! Monte Carlo p-value estimate
-
-        integer(int32) :: i_sample, i_case, i_control, count_ge
-        real(real64) :: null_dist
-        integer(int64) :: n_pairs, flat_idx
-
-        n_pairs = int(n_pool_case, int64) * int(n_pool_control, int64)
-        count_ge = 0
-        do i_sample = 1, MONTE_CARLO_SAMPLES
-            ! Map one uniform draw to a flat pair index, then decompose.
-            flat_idx = min(int(rand_array(i_sample) * real(n_pairs, real64), int64), n_pairs - 1_int64)
-            i_case    = int(flat_idx / int(n_pool_control, int64), int32) + 1
-            i_control = int(mod(flat_idx,  int(n_pool_control, int64)), int32) + 1
-
-            null_dist = abs(pool_case(i_case) - pool_control(i_control))
-
-            if (null_dist >= observed_statistic_abs) count_ge = count_ge + 1
-        end do
-
-        p_value = real(count_ge + 1, real64) / real(MONTE_CARLO_SAMPLES + 1, real64)
-    end subroutine compute_pvalue_monte_carlo_helper
-
-    !> Validate inputs and compute a p-value (exact or Monte Carlo) based on pool sizes.
+    !> Validate inputs and compute the exact p-value.
     !|
     !| This is the validated entry point: it checks dimensions and residual-pool
-    !| values, then delegates to either `compute_pvalue_helper` (exact enumeration)
-    !| or `compute_pvalue_monte_carlo_helper` (Monte Carlo sampling) depending on
-    !| whether `n_pool_case * n_pool_control <= MAX_EXACT_COMBINATIONS`.
-    !|
-    !| For Monte Carlo mode, `rand_array` must already be populated with
-    !| MONTE_CARLO_SAMPLES uniform [0, 1) draws by the caller before this call.
-    !| The same array is reused across all three p-value calls for a given gene,
-    !| so the RNG is invoked only once per gene (and only when actually needed).
+    !| values, then delegates to `compute_pvalue_helper`, which computes the exact
+    !| tail count at any pool size (no Monte Carlo fallback in this variant).
     pure subroutine compute_pvalue(pool_case, n_pool_case, &
                                    pool_control, n_pool_control, &
                                    observed_statistic, &
-                                   rand_array, &
                                    p_value, ierr)
         integer(int32), intent(in) :: n_pool_case
         !! Size of the case residual pool
@@ -1049,15 +1062,10 @@ contains
         !! Control residual pool
         real(real64), intent(in) :: observed_statistic
         !! Observed test statistic (sign is discarded; absolute value is used)
-        real(real64), dimension(MONTE_CARLO_SAMPLES), intent(in) :: rand_array
-        !! Uniform [0, 1) draws pre-generated by the caller; used only on the
-        !! Monte Carlo path (ignored for exact enumeration).
         real(real64), intent(out) :: p_value
-        !! p-value (exact or Monte Carlo estimated)
+        !! Exact p-value
         integer(int32), intent(out) :: ierr
         !! Error code
-
-        integer(int64) :: n_combinations
 
         call set_ok(ierr)
 
@@ -1067,21 +1075,77 @@ contains
         call validate_all_in_range_real(pool_control, n_pool_control, ierr)
         if (is_err(ierr)) return
 
-        n_combinations = int(n_pool_case, int64) * int(n_pool_control, int64)
-
-        if (n_combinations <= int(MAX_EXACT_COMBINATIONS, int64)) then
-            call compute_pvalue_helper(pool_case, n_pool_case, &
-                                       pool_control, n_pool_control, &
-                                       abs(observed_statistic), &
-                                       p_value)
-        else
-            call compute_pvalue_monte_carlo_helper(pool_case, n_pool_case, &
-                                                   pool_control, n_pool_control, &
-                                                   abs(observed_statistic), &
-                                                   rand_array, &
-                                                   p_value)
-        end if
+        call compute_pvalue_helper(pool_case, n_pool_case, &
+                                   pool_control, n_pool_control, &
+                                   abs(observed_statistic), &
+                                   p_value)
     end subroutine compute_pvalue
+
+    !> Bootstrap the mean-difference null and return the p-value.
+    !|
+    !| Builds the `own` null at the level the observed statistic actually lives on —
+    !| a difference of MEANS — rather than at the individual-residual level. For each
+    !| of `n_boot` draws it resamples `n_rep_case` residuals from `pool_case` and
+    !| `n_rep_control` from `pool_control` (both with replacement), averages each
+    !| side, and takes the absolute difference. The p-value is the add-one-corrected
+    !| fraction of those null statistics that meet or exceed `observed_statistic_abs`.
+    !|
+    !| This gives the correct `sigma^2 / n_rep` scaling AND the correct (CLT-thinned)
+    !| tail shape, and — because each side is resampled from its own pool at its own
+    !| `n_rep` — it makes no equal-variance assumption. `n_rep_case` / `n_rep_control`
+    !| are the replicate counts the observed case / control means were averaged over
+    !| (i.e. `sorted_*%max_resid_per_gene`). Draws indices via `rand_range`; impure,
+    !| so the global RNG must be seeded (the pipeline calls `init_random(42)` up front
+    !| for reproducibility).
+    subroutine compute_pvalue_bootstrap_mean_helper(pool_case, n_pool_case, &
+                                                    pool_control, n_pool_control, &
+                                                    n_rep_case, n_rep_control, &
+                                                    observed_statistic_abs, n_boot, &
+                                                    p_value)
+        integer(int32), intent(in) :: n_pool_case
+        !! Size of the case residual pool (the sampling source)
+        real(real64), dimension(n_pool_case), intent(in) :: pool_case
+        !! Case residual pool
+        integer(int32), intent(in) :: n_pool_control
+        !! Size of the control residual pool (the sampling source)
+        real(real64), dimension(n_pool_control), intent(in) :: pool_control
+        !! Control residual pool
+        integer(int32), intent(in) :: n_rep_case
+        !! Number of case replicates the observed mean averages over (resample size)
+        integer(int32), intent(in) :: n_rep_control
+        !! Number of control replicates the observed mean averages over (resample size)
+        real(real64), intent(in) :: observed_statistic_abs
+        !! Absolute value of the observed test statistic
+        integer(int32), intent(in) :: n_boot
+        !! Number of bootstrap resamples
+        real(real64), intent(out) :: p_value
+        !! Bootstrapped p-value
+
+        integer(int32) :: i_boot, i_rep, idx, count_ge
+        real(real64) :: sum_case, sum_control, null_stat
+
+        count_ge = 0
+        do i_boot = 1, n_boot
+            sum_case = 0.0_real64
+            do i_rep = 1, n_rep_case
+                ! rand_range returns [1, n_pool_case+1); int() -> [1, n_pool_case]
+                idx = min(int(rand_range(1.0_real64, real(n_pool_case + 1, real64)), int32), n_pool_case)
+                sum_case = sum_case + pool_case(idx)
+            end do
+
+            sum_control = 0.0_real64
+            do i_rep = 1, n_rep_control
+                idx = min(int(rand_range(1.0_real64, real(n_pool_control + 1, real64)), int32), n_pool_control)
+                sum_control = sum_control + pool_control(idx)
+            end do
+
+            null_stat = abs(sum_case / real(n_rep_case, real64) - &
+                            sum_control / real(n_rep_control, real64))
+            if (null_stat >= observed_statistic_abs) count_ge = count_ge + 1
+        end do
+
+        p_value = real(count_ge + 1, real64) / real(n_boot + 1, real64)
+    end subroutine compute_pvalue_bootstrap_mean_helper
 
     ! =========================================================================
     ! compute_noise_pvalue_pipeline
@@ -1112,12 +1176,11 @@ contains
     !|
     !| No allocation: every work array (the per-gene residual pools and the
     !| variance-stratification scratch arrays) is pre-allocated by the caller and
-    !| passed in as an `intent(inout)` work array. `rand_array` is a single
-    !| MONTE_CARLO_SAMPLES-length work array for uniform [0, 1) draws; it is
-    !| populated with one `random_number` call per gene, but only when the number
-    !| of pairwise combinations exceeds MAX_EXACT_COMBINATIONS. This avoids RNG
-    !| overhead entirely on the common (small-pool) exact-enumeration path.
-    !| Because `random_number` is impure, this subroutine cannot be `pure`.
+    !| passed in as an `intent(inout)` work array. There is no Monte Carlo buffer —
+    !| the p-value is computed exactly at every pool size by `compute_pvalue`. The
+    !| `own` mean-difference null is bootstrapped in place from the strata (via
+    !| `compute_pvalue_bootstrap_mean_helper`), which draws from the global RNG; that
+    !| is the only impure operation, so this subroutine is not `pure`.
     subroutine compute_noise_pvalue_pipeline_helper( &
         sorted_case, sorted_control, &
         means_case, means_control, &
@@ -1143,7 +1206,7 @@ contains
         tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, &
         tmp_strat_gene_seen_control, tmp_strat_touched_gene_slots_control, tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
         tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
-        rand_array, ierr)
+        ierr)
 
         type(sorted_data_t), intent(in) :: sorted_case
         !! Sorted case gene data
@@ -1262,11 +1325,6 @@ contains
         !! Work array: case residuals restricted to the stratum containing the gene's own case mean
         real(real64), dimension(max_pool_size), intent(inout) :: tmp_own_stratum_pool_control
         !! Work array: control residuals restricted to the stratum containing the gene's own control mean
-        real(real64), dimension(MONTE_CARLO_SAMPLES), intent(inout) :: rand_array
-        !! Work array for uniform [0, 1) draws. Populated with one `random_number`
-        !! call per gene, but only when `n_pool_case * n_pool_control` exceeds
-        !! MAX_EXACT_COMBINATIONS. Reused (unmodified) across the gene's `own`,
-        !! `family`, and `ortholog` p-value calls.
         integer(int32), intent(out) :: ierr
 
         integer(int32) :: i_gene, family_id
@@ -1276,21 +1334,8 @@ contains
         integer(int32) :: case_stratum_count, control_stratum_count
         integer(int32) :: chosen_n_bins_case, chosen_n_bins_control
         logical :: strata_criteria_met_case, strata_criteria_met_control
-        integer(int64) :: n_combinations_own, n_combinations_family, n_combinations_ortholog
-        real(real64) :: own_scale_case, own_scale_control
 
         call set_ok(ierr)
-
-        ! Quick variance correction for the individual-vs-mean scale mismatch of the
-        ! `own` null: the observed statistic is a difference of MEANS (over
-        ! n_replicates each side), but the null is built from differences of
-        ! INDIVIDUAL residuals. Scaling each side's residuals by 1/sqrt(its own
-        ! replicate count) makes a pairwise-difference of the scaled pools carry
-        ! variance sigma_case^2/n_case + sigma_control^2/n_control — matching the
-        ! mean difference, per side, with NO equal-variance assumption. This fixes
-        ! the ~sqrt(n) over-width only; it does not reshape the null via the CLT.
-        own_scale_case    = 1.0_real64 / sqrt(real(sorted_case%max_resid_per_gene, real64))
-        own_scale_control = 1.0_real64 / sqrt(real(sorted_control%max_resid_per_gene, real64))
 
         pvalues_own = -1.0_real64
         pvalues_family = -1.0_real64
@@ -1331,19 +1376,8 @@ contains
                 observed_statistic_family_val /= observed_statistic_family_val .or. &
                 observed_statistic_ortholog_val /= observed_statistic_ortholog_val) cycle
 
-            ! Determine whether any of this gene's p-value computations will need
-            ! Monte Carlo sampling, and if so populate rand_array exactly once.
-            ! The family/ortholog pools come from the cache, so their sizes are
-            ! available without extra gather calls.
-            n_combinations_own = int(n_pool_case, int64) * int(n_pool_control_own, int64)
-            n_combinations_family = int(n_pool_case, int64) * int(cache%family_pool_sizes(family_id), int64)
-            n_combinations_ortholog = int(n_pool_case, int64) * int(cache%orth_pool_sizes(family_id), int64)
-
-            if ((compute_pvalue_own(i_gene) == 1 .and. n_combinations_own > int(MAX_EXACT_COMBINATIONS, int64)) .or. &
-                (compute_pvalue_family(i_gene) == 1 .and. n_combinations_family > int(MAX_EXACT_COMBINATIONS, int64)) .or. &
-                (compute_pvalue_ortholog(i_gene) == 1 .and. n_combinations_ortholog > int(MAX_EXACT_COMBINATIONS, int64))) then
-                call random_number(rand_array)
-            end if
+            ! The exact p-value is computed at every pool size, so there is no
+            ! Monte Carlo path here and nothing to pre-seed per gene.
 
             if (compute_pvalue_own(i_gene) == 1) then
                 ! Variance-stratify both case and control `own` neighbourhoods,
@@ -1389,19 +1423,17 @@ contains
                     tmp_own_stratum_pool_control(1:n_pool_control_own), control_stratum_count)
 
                 if (case_stratum_count >= 10 .and. control_stratum_count >= 10) then
-                    ! Scale each own stratum to mean-difference variance (see the
-                    ! own_scale_* definitions above). Observed statistic is left as-is.
-                    tmp_own_stratum_pool_case(1:case_stratum_count) = &
-                        tmp_own_stratum_pool_case(1:case_stratum_count) * own_scale_case
-                    tmp_own_stratum_pool_control(1:control_stratum_count) = &
-                        tmp_own_stratum_pool_control(1:control_stratum_count) * own_scale_control
-                    call compute_pvalue(tmp_own_stratum_pool_case(1:case_stratum_count), case_stratum_count, &
-                                        tmp_own_stratum_pool_control(1:control_stratum_count), &
-                                        control_stratum_count, &
-                                        observed_statistic_own_val, &
-                                        rand_array, &
-                                        pvalues_own(i_gene), ierr)
-                    if (is_err(ierr)) return
+                    ! Build the `own` null by BOOTSTRAPPING the mean difference: resample
+                    ! n_replicates residuals per side (with replacement) from the strata,
+                    ! average, difference. n_replicates is each side's per-gene replicate
+                    ! count (sorted_*%max_resid_per_gene) — the count the observed means
+                    ! were averaged over. Observed statistic is left as-is.
+                    call compute_pvalue_bootstrap_mean_helper( &
+                        tmp_own_stratum_pool_case(1:case_stratum_count), case_stratum_count, &
+                        tmp_own_stratum_pool_control(1:control_stratum_count), control_stratum_count, &
+                        sorted_case%max_resid_per_gene, sorted_control%max_resid_per_gene, &
+                        abs(observed_statistic_own_val), N_BOOTSTRAP_DRAWS, &
+                        pvalues_own(i_gene))
                     neighborhood_size_own_case(i_gene) = case_stratum_count
                     neighborhood_size_own_control(i_gene) = control_stratum_count
                 end if
@@ -1412,7 +1444,6 @@ contains
                                     cache%family_pools(1:cache%family_pool_sizes(family_id), family_id), &
                                     cache%family_pool_sizes(family_id), &
                                     observed_statistic_family_val, &
-                                    rand_array, &
                                     pvalues_family(i_gene), ierr)
                 if (is_err(ierr)) return
                 neighborhood_size_family(i_gene) = cache%family_pool_sizes(family_id)
@@ -1423,7 +1454,6 @@ contains
                                     cache%orth_pools(1:cache%orth_pool_sizes(family_id), family_id), &
                                     cache%orth_pool_sizes(family_id), &
                                     observed_statistic_ortholog_val, &
-                                    rand_array, &
                                     pvalues_ortholog(i_gene), ierr)
                 if (is_err(ierr)) return
                 neighborhood_size_ortholog(i_gene) = cache%orth_pool_sizes(family_id)
@@ -1437,8 +1467,8 @@ contains
     !> Validate inputs, build sorted structures, pre-cache family pools, and run the pipeline.
     !|
     !| This is the alloc-layer entry point for the full noise-model pipeline. It owns
-    !| every allocation needed by the computation, including the per-gene work
-    !| arrays and the single `rand_array` work buffer used for Monte Carlo draws.
+    !| every allocation needed by the computation (the per-gene work arrays); the
+    !| `own` bootstrap draws from the global RNG in place, so no draw buffer is allocated.
     !| Internally it:
     !|   1. Validates all dimension and range arguments via `tox_errors`.
     !|   2. Calls `prepare_sorted_data` for both case and control data.
@@ -1557,10 +1587,13 @@ contains
         integer(int32), allocatable :: tmp_strat_c_g_control(:)
         integer(int32), allocatable :: tmp_strat_bin_counts_control(:)
         real(real64), allocatable :: tmp_own_stratum_pool_case(:), tmp_own_stratum_pool_control(:)
-        real(real64), allocatable :: rand_array(:)
         integer(int32) :: family_id, sort_ierr
 
         call set_ok(ierr)
+
+        ! Seed the RNG (fixed state 42) at the very beginning so the `own`
+        ! mean-difference bootstrap is reproducible.
+        call init_random(42_int32)
 
         call validate_dimension_size(n_genes_case, ierr)
         call validate_dimension_size(n_replicates_case, ierr)
@@ -1648,9 +1681,6 @@ contains
         M_ALLOCATE(tmp_own_stratum_pool_case(max_pool_size))
         M_ALLOCATE(tmp_own_stratum_pool_control(max_pool_size))
 
-        ! Work array for Monte Carlo uniform draws (populated lazily, per gene)
-        M_ALLOCATE(rand_array(MONTE_CARLO_SAMPLES))
-
         if (is_err(ierr)) return
 
         ! `check_stratification_accepted_helper` requires an all-`.false.` "seen"
@@ -1683,7 +1713,7 @@ contains
             tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, tmp_strat_gene_seen_control, &
             tmp_strat_touched_gene_slots_control, tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
             tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
-            rand_array, ierr)
+            ierr)
 
     end subroutine compute_noise_pvalue_pipeline
 
@@ -1695,7 +1725,12 @@ end module noise_model
 
 #include "macros.h"
 
-!> C-interoperable wrapper for `compute_noise_pvalue_pipeline`.
+!> C-interoperable wrapper for `compute_noise_pvalue_pipeline` (bootstrap-null module).
+!|
+!| Identical ABI to `compute_noise_pvalues_pipeline_exact_c` (the scaling-null
+!| module) — same arguments in the same order — but bound as
+!| `compute_noise_pvalues_pipeline_c` and dispatching to `noise_model`, so either
+!| can be swapped in without downstream changes.
 !|
 !| Performs null-pointer checks via `M_CHECK_IERR_NON_NULL` / `M_CHECK_NON_NULL`,
 !| then delegates unconditionally to the validated Fortran entry point.
