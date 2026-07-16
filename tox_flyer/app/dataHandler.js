@@ -85,7 +85,7 @@ export const handler = {
   getGeneData: function (familyIdx, geneIndex, tissues=null, attributes=null) {
     tissues ??= this.tissues;
     const tissueIndices = this.getTissueIndices(...tissues);
-    geneIndex = data.families[familyIdx]?.gene_indices[geneIndex];
+    geneIndex = data.families[familyIdx]?.gene_indices[geneIndex] - 1;
     if (geneIndex !== undefined) {
       const geneData = data.genes[geneIndex];
       const resultData = {};

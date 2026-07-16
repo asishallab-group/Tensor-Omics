@@ -46,10 +46,10 @@ function registerClickEvents(chunks) {
             }
             case "Gene": {
               handlePick(picked, () => {
-                const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["genes", "species", "is_outlier"]);
+                const geneData = dataHandler.getGeneData(picked.family, picked.geneIndex, chunks.tissues, ["id", "species", "is_outlier"]);
                 createTooltip(evt.event.clientX, evt.event.clientY,
                   `<center>${geneData.is_outlier ? "Outlier" : "Inlier"}</center><table><tbody>` +
-                  `<tr><td>Gene:</td><td>${geneData.genes}</td></tr>` +
+                  `<tr><td>Gene:</td><td>${geneData.id}</td></tr>` +
                   `<tr><td>Species:</td><td>${geneData.species}</td></tr>` +
                   `<tr><td>${chunks.tissues[0]}:</td><td>${geneData.coordinates[0].toFixed(2)}</td></tr>` +
                   `<tr><td>${chunks.tissues[1]}:</td><td>${geneData.coordinates[1].toFixed(2)}</td></tr>` +
