@@ -38,7 +38,7 @@ module noise_model
     use tox_errors, only: set_ok, set_err, is_err, &
                           ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, &
                           validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int
-    use f42_utils, only: sort_real, sort_integer, calc_percentile_helper, init_random, rand_range
+    use f42_utils, only: sort_real, sort_integer, calc_percentile_helper, init_random
     implicit none
 
     !> Sorted gene data: means and packed centred residuals in mean-ascending order.
@@ -1094,9 +1094,10 @@ contains
     !| tail shape, and — because each side is resampled from its own pool at its own
     !| `n_rep` — it makes no equal-variance assumption. `n_rep_case` / `n_rep_control`
     !| are the replicate counts the observed case / control means were averaged over
-    !| (i.e. `sorted_*%max_resid_per_gene`). Draws indices via `rand_range`; impure,
-    !| so the global RNG must be seeded (the pipeline calls `init_random(42)` up front
-    !| for reproducibility).
+    !| (i.e. `sorted_*%max_resid_per_gene`). Indices are drawn a whole side at a time
+    !| via one `random_number` array fill (not per-scalar) for speed; impure, so the
+    !| global RNG must be seeded (the pipeline calls `init_random(42)` up front for
+    !| reproducibility).
     subroutine compute_pvalue_bootstrap_mean_helper(pool_case, n_pool_case, &
                                                     pool_control, n_pool_control, &
                                                     n_rep_case, n_rep_control, &
@@ -1123,19 +1124,26 @@ contains
 
         integer(int32) :: i_boot, i_rep, idx, count_ge
         real(real64) :: sum_case, sum_control, null_stat
+        real(real64) :: rbuf(max(n_rep_case, n_rep_control))
 
+        ! Draw the resample indices for a whole side in a SINGLE array RNG call and
+        ! map [0,1) -> [1, n_pool]. This replaces the millions of scalar `rand_range`
+        ! calls per gene (n_boot * n_rep of them) with 2*n_boot array fills, which is
+        ! far cheaper per value. `init_random(42)` (called once by the pipeline) still
+        ! seeds this stream, so results stay reproducible.
         count_ge = 0
         do i_boot = 1, n_boot
+            call random_number(rbuf(1:n_rep_case))
             sum_case = 0.0_real64
             do i_rep = 1, n_rep_case
-                ! rand_range returns [1, n_pool_case+1); int() -> [1, n_pool_case]
-                idx = min(int(rand_range(1.0_real64, real(n_pool_case + 1, real64)), int32), n_pool_case)
+                idx = min(int(rbuf(i_rep) * real(n_pool_case, real64), int32) + 1, n_pool_case)
                 sum_case = sum_case + pool_case(idx)
             end do
 
+            call random_number(rbuf(1:n_rep_control))
             sum_control = 0.0_real64
             do i_rep = 1, n_rep_control
-                idx = min(int(rand_range(1.0_real64, real(n_pool_control + 1, real64)), int32), n_pool_control)
+                idx = min(int(rbuf(i_rep) * real(n_pool_control, real64), int32) + 1, n_pool_control)
                 sum_control = sum_control + pool_control(idx)
             end do
 
