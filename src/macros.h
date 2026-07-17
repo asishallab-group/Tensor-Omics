@@ -28,3 +28,43 @@
 
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
 #define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if
+
+! =============================================================================
+! Documentation macros (DM_)
+!
+! These are written inside Ford comments (`!!` / `!|`) and expand to prose, so
+! the rendered documentation reads naturally while the code generator can still
+! recognise the statement. They carry the information the generator cannot infer
+! from a signature alone: defaults for optionals, conditional requirements, and
+! where an argument's value is meant to come from.
+!
+! The generator derives its patterns by expanding these very definitions, so
+! rewording one here cannot desynchronise it from the generator. Only the macro
+! name and its parameter order are load-bearing.
+!
+! Prefixes: M_ code macros (this file), CM_ file-local code macros, DM_ doc macros.
+! See helper/codegen_reworked/README.md for the full contract.
+! =============================================================================
+
+! `DEFAULT_VAL` is the value an optional argument takes when it is omitted. It must
+! be a constant expression, as the generator evaluates it at generation time to pass
+! it on from the interfacing languages.
+#define DM_DEFAULT(DEFAULT_VAL) The default value is `DEFAULT_VAL`.
+
+! For an optional argument that has no default but is required in one specific mode:
+! `MODE_ARG` names the mode argument, `MODE_PARAM` the mode parameter in `MODULE`.
+#define DM_REQUIRED_IF_MODE(MODE_ARG, MODULE, MODE_PARAM) This optional argument needs to be passed if used mode (`MODE_ARG`) is [[MODULE(module):MODE_PARAM(variable)]].
+
+! An `intent(out)` argument the caller may decline to receive.
+#define DM_OPTIONAL_OUTPUT This output will only be present if desired.
+
+! For a result array that is filled only partially: `ARGUMENT` names the scalar
+! integer argument holding how many leading elements actually carry results.
+#define DM_RESULT_SIZE_IS(ARGUMENT) The first `ARGUMENT` elements will hold the results.
+
+! The value of this argument comes from another procedure, typically a work array
+! size that cannot be foreseen. `MODE` is AUTO when the interfacing languages should
+! call `PROCEDURE` themselves, or JUST_INFO when the caller has to do it.
+#define DM_OUTPUT_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_OUTPUT_FROM_##MODE to compute this argument from the `ARGUMENT` output of [[MODULE(module):PROCEDURE]].
+#define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
+#define DM_OUTPUT_FROM_JUST_INFO It is recommended
