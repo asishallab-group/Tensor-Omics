@@ -121,8 +121,14 @@ def analyse(procedure: Procedure, diagnostics: DiagnosticBag,
 
 def analyse_project(project, diagnostics: DiagnosticBag,
                     conventions: Conventions = CONVENTIONS) -> None:
+    """Analyse every procedure marked for export.
+
+    Only those. Analysis reports what it cannot interpret -- a mode argument with no
+    table of values, say -- and an internal routine is held to no such contract, because
+    nothing is generated from it.
+    """
     for module in project:
-        for procedure in module:
+        for procedure in module.exported_procedures:
             analyse(procedure, diagnostics, conventions)
 
 
