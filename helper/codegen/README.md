@@ -12,6 +12,27 @@ this points there rather than repeating it.
 
 ---
 
+## Contents
+
+- [What it produces](#what-it-produces)
+- [Running it](#running-it)
+- [Configuration: what is read, and where output goes](#configuration-what-is-read-and-where-output-goes)
+- [How it is built](#how-it-is-built)
+- [Writing generator-compliant Fortran](#writing-generator-compliant-fortran)
+  - [Marking a procedure for export](#marking-a-procedure-for-export)
+  - [What every exported procedure needs](#what-every-exported-procedure-needs)
+  - [Naming conventions](#naming-conventions)
+  - [Mode arguments](#mode-arguments)
+  - [Documentation macros (`DM_`)](#documentation-macros-dm_)
+  - [Serialized arrays](#serialized-arrays)
+  - [What is rejected, and why](#what-is-rejected-and-why)
+- [Edge cases handled](#edge-cases-handled)
+- [How it is tested](#how-it-is-tested)
+- [Extending it](#extending-it)
+- [Open items](#open-items)
+
+---
+
 ## What it produces
 
 From one exported Fortran procedure, three things:
