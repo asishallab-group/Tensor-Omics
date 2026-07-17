@@ -219,6 +219,42 @@ class TestLogicals:
         assert text.index("flag = flag_f") > text.index("call p(&")
 
 
+class TestOptionals:
+    def test_a_nullable_optional_is_declared_optional_not_target(self, bag, emitter):
+        # an OPTIONAL dummy of a bind(C) procedure is absent exactly when C passes a
+        # null pointer, and the C prototype stays a plain pointer
+        procedure = b.procedure("p", b.real("span", Intent.IN, optional=True), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "real(c_double), intent(in), optional :: span" in text
+        assert "target :: span" not in text
+
+    def test_it_is_handed_straight_to_the_callee(self, bag, emitter):
+        # an optional associated with an absent optional is itself absent, so presence
+        # propagates with no branch in the wrapper
+        procedure = b.procedure("p", b.real("span", Intent.IN, optional=True), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "span = span,&" in text
+        assert "present(" not in text
+        assert "if (c_associated" not in text
+
+    def test_an_optional_with_a_default_is_required_in_c(self, bag, emitter):
+        # issue #131: the interfacing languages know the default and pass it, which is
+        # what keeps the wrapper flat
+        from codegen_reworked.ir.directives import Default, Directives
+
+        span = b.real("span", Intent.IN, optional=True)
+        span.directives = Directives(default=Default("0.1_real64"))
+        text = emit(b.procedure("p", span, b.ierr()), bag, emitter)
+
+        assert "real(c_double), intent(in), target :: span" in text
+        assert "optional" not in text
+        assert "M_CHECK_NON_NULL(span)" in text
+
+
 class TestModes:
     def _mode_procedure(self):
         doc = [
@@ -275,7 +311,8 @@ class TestModule:
         # that does not exist compiles as an implicit external and fails at link time
         text = emit_module(b.module("fx_basics", normalize()), bag, emitter)
 
-        assert "implicit none (type, external)" in text
+        assert "M_IMPLICIT_NONE" in text
+        assert "implicit none\n" not in text
 
     def test_only_the_wrappers_are_public(self, bag, emitter):
         text = emit_module(b.module("fx_basics", normalize()), bag, emitter)

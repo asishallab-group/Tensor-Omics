@@ -259,12 +259,13 @@ class TestParameters:
         ]
 
     def test_parameters_evaluate_to_constants(self, project):
-        assert project.constant_values() == {
-            "MODE_MEAN": 1,
-            "MODE_MEDIAN": 2,
-            "METHOD_WARD": 1,
-            "METHOD_SINGLE": 2,
-        }
+        values = project.constant_values()
+
+        assert values["MODE_MEAN"] == 1
+        assert values["MODE_MEDIAN"] == 2
+        assert values["METHOD_WARD"] == 1
+        assert values["METHOD_SINGLE"] == 2
+        assert values["MODE_GROUP_ORTHOLOGS"] == 1
 
 
 class TestSourceLocations:

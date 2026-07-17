@@ -22,6 +22,14 @@
 ! whether empty is an error for that routine -- which is where that policy already lives.
 #define M_CHECK_ARRAY_NON_NULL(ARG, N) if ((N) > 0) then; M_CHECK_NON_NULL(ARG); end if
 
+! A plain `implicit none` constrains only *variables*. A call to a procedure that does not
+! exist -- a typo, or a helper that was renamed -- is still accepted as an implicit
+! external and fails at link time, with a message naming a symbol rather than a line. The
+! `(type, external)` form (F2018) makes it a compile error at the call site instead.
+!
+! Use this instead of a bare `implicit none` in every module.
+#define M_IMPLICIT_NONE implicit none (type, external)
+
 #define M_USE_NULL_VALIDATION use, intrinsic :: iso_c_binding, only: c_associated, c_loc; use tox_errors, only: set_err, ERR_POINTER_NULL
 #define M_USE_ALLOCATION use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_err
 

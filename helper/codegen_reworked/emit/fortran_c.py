@@ -50,12 +50,12 @@ class FortranCEmitter:
         writer.line(f"module {module.name}")
         with writer.indent():
             self._module_uses(writer, module)
-            # (type, external) and not a bare `implicit none`: the latter constrains only
-            # variables, so a call to a procedure that does not exist compiles happily as
-            # an implicit external and fails at link time instead. Generated code is
-            # exactly where that must not be possible -- a typo here is the generator's
-            # fault and should surface at its output, not in someone's build log.
-            writer.line("implicit none (type, external)")
+            # Not a bare `implicit none`: that constrains only variables, so a call to
+            # a procedure that does not exist compiles as an implicit external and fails
+            # at link time. Generated code is exactly where that must not be possible --
+            # a typo here is the generator's fault, and should surface at its output
+            # rather than in someone's build log.
+            writer.line("M_IMPLICIT_NONE")
             writer.line("private")
             writer.blank()
             for wrapper in module:
@@ -173,10 +173,15 @@ class FortranCEmitter:
         if argument.dimension:
             attributes.insert(0, f"dimension({', '.join(argument.dimension.extents)})")
         if argument.optional:
-            # A nullable optional arrives as a pointer, so it is a pointer here too
-            attributes.append("pointer")
+            # An OPTIONAL dummy of a bind(C) procedure is absent exactly when C passes a
+            # null pointer (TS 29113, in F2018). The C prototype stays a plain pointer,
+            # so this costs the ABI nothing, and the wrapper can hand the argument
+            # straight to the callee: an optional associated with an absent optional is
+            # itself absent. No branch, no descriptor, no pointer games.
+            attributes.append("optional")
         else:
-            # c_loc needs a target
+            # c_loc needs a target. An optional gets none: it is never null-checked,
+            # and c_loc of an absent argument is not allowed anyway.
             attributes.append("target")
         return f"{argument.type}, {', '.join(attributes)} :: {argument.name}"
 

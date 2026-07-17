@@ -7,6 +7,11 @@ module fx_edges
     use, intrinsic :: iso_c_binding, only: c_bool
     implicit none
 
+    integer(int32), parameter :: MODE_GROUP_ORTHOLOGS = 1
+        !! group the values by their ortholog set
+    integer(int32), parameter :: MODE_UNGROUPED = 2
+        !! treat every value on its own
+
 contains
 
     !> category: C-interface
@@ -114,6 +119,30 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
     end subroutine fx_work_size
+
+    !> category: C-interface
+    !| summary: An optional with no default, which C may pass a null pointer for
+    !| author: A Developer
+    subroutine fx_nullable(values, n_values, mode, ortholog_set, n_orthologs, ierr)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        integer(int32), intent(in) :: mode
+            !! how to group the values
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | group by ortholog set | [[fx_edges(module):MODE_GROUP_ORTHOLOGS(variable)]] |
+            !! | do not group at all | [[fx_edges(module):MODE_UNGROUPED(variable)]] |
+        integer(int32), intent(in) :: n_orthologs
+            !! elements of `ortholog_set`
+        integer(int32), dimension(n_orthologs), intent(in), optional :: ortholog_set
+            !! which ortholog set each value belongs to.
+            !! DM_REQUIRED_IF_MODE(mode, fx_edges, MODE_GROUP_ORTHOLOGS)
+        integer(int32), intent(out) :: ierr
+            !! Error code
+    end subroutine fx_nullable
 
     !> category: C-interface
     !| summary: A procedure that reports no errors of its own
