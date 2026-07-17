@@ -60,6 +60,48 @@ Warnings never stop generation; errors write nothing.
 
 ---
 
+## Configuration: what is read, and where output goes
+
+All paths are relative to the repository root (`--root`, default the current directory) and
+live in [`config.py`](config.py) as `Paths`. The defaults:
+
+| Setting | Default | Role |
+|---|---|---|
+| `src_dir` | `src` | the sources to read (`--src`) |
+| `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
+| `c_interface_dir` | `src/c_interface` | **output**: the C wrappers |
+| `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
+| `rcpp_out_dir` | `rcpp/tensor_omics` | **output**: the R package |
+
+So a default run writes:
+
+```
+src/c_interface/<module>_c.F90        # C wrappers, one per module
+python/tensor_omics/
+    __init__.py  library.py  error_handling.py
+    <module>.py                       # one per module
+rcpp/tensor_omics/
+    src/tox_marshal.h  src/<module>.cpp
+    R/tox_validate.R   R/error_handling.R   R/<module>.R
+```
+
+Two things worth knowing:
+
+- **Each target directory is cleaned before writing** (unless `--no-clean`), so a procedure
+  that stops being exported leaves no stale wrapper. For R only the generated `src/` and
+  `R/` subdirectories are cleaned — a hand-written `DESCRIPTION` or `NAMESPACE` next to them
+  is left alone.
+- **`--library`** (default `build/libtensor-omics.so`) is not an output path; it is where the
+  *generated Python loader* will look for the compiled shared library at runtime. Override it
+  for an installed or relocated build, or set `TENSOR_OMICS_LIBRARY` at run time.
+
+The conventions the generator recognises in the sources (prefixes, suffixes, the
+`category` tag) are also in `config.py`, as `Conventions` — one place, no naming literals
+scattered through the code. They are the source-language contract, documented under
+[Writing generator-compliant Fortran](#writing-generator-compliant-fortran).
+
+---
+
 ## How it is built
 
 A strict one-way pipeline. Nothing downstream imports Ford; nothing upstream knows a target
