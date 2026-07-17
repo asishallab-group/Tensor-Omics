@@ -341,6 +341,68 @@ class TestUnexpandedMacros:
 
         assert len(bag.errors) == 1
         error = bag.errors[0]
-        assert "'DM_DEFAULT' is still a macro" in error.message
+        assert "'DM_DEFAULT' looks like a documentation macro but never expanded" in error.message
         assert "#include" in error.note
         assert error.location.line is not None
+
+    def test_a_misspelt_doc_macro_is_an_error(self, tmp_path):
+        # a DM_ typo is silent: the default is simply never found
+        _, bag = parse(src_dir=_module_with(tmp_path, "!! DM_DEFAULR(0.1_real64)"))
+
+        assert len(bag.errors) == 1
+        assert "'DM_DEFAULR'" in bag.errors[0].message
+        assert "documentation macro" in bag.errors[0].message
+
+    def test_a_misspelt_code_macro_is_a_warning(self, tmp_path):
+        # an M_ typo leaves the name standing in the docs: wrong, but visible, and
+        # nothing is mis-generated from it
+        _, bag = parse(src_dir=_module_with(tmp_path, "!! see `M_GENE_TO_FAM_SENTINELL`"))
+
+        assert bag.errors == ()
+        assert len(bag.warnings) == 1
+        assert "'M_GENE_TO_FAM_SENTINELL'" in bag.warnings[0].message
+        assert "a macro from a macro header" in bag.warnings[0].message
+
+    def test_a_misspelt_custom_macro_is_a_warning(self, tmp_path):
+        _, bag = parse(src_dir=_module_with(tmp_path, "!! default: `CM_SPAN_DEFAUL`"))
+
+        assert bag.errors == ()
+        assert "custom macro defined in the source file itself" in bag.warnings[0].message
+
+    def test_a_correctly_spelt_macro_is_not_reported(self, tmp_path):
+        # M_GENE_TO_FAM_SENTINEL is defined, so it expands and leaves nothing behind
+        _, bag = parse(src_dir=_module_with(tmp_path, "!! see `M_GENE_TO_FAM_SENTINEL`"))
+
+        assert bag.render() == ""
+
+    def test_several_typos_on_one_line_are_all_reported(self, tmp_path):
+        _, bag = parse(src_dir=_module_with(tmp_path, "!! `M_NOPE` and `CM_ALSO_NOPE`"))
+
+        assert len(bag.warnings) == 2
+
+
+def _module_with(tmp_path, doc_line):
+    """A minimal exported procedure carrying `doc_line` on its argument."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "fx_typo.F90").write_text(
+        "#include <src/macros.h>\n"
+        "\n"
+        "!> summary: typo fixture\n"
+        "module fx_typo\n"
+        "    use, intrinsic :: iso_fortran_env, only: real64, int32\n"
+        "    implicit none\n"
+        "contains\n"
+        "    !> category: C-interface\n"
+        "    !| summary: p\n"
+        "    !| author: A\n"
+        "    subroutine fx_p(span, ierr)\n"
+        "        real(real64), intent(in) :: span\n"
+        "            !! a span.\n"
+        f"            {doc_line}\n"
+        "        integer(int32), intent(out) :: ierr\n"
+        "            !! Error code\n"
+        "    end subroutine fx_p\n"
+        "end module fx_typo\n"
+    )
+    return src

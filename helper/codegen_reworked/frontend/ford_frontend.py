@@ -39,8 +39,21 @@ _LEN_RE = re.compile(r"\blen\s*=\s*(\*|:|[^,)]+)", re.IGNORECASE)
 _BASE_TYPE_RE = re.compile(r"\s*([A-Za-z_]+)", re.IGNORECASE)
 #: Ford renders meta tags as markdown, so `author` arrives wrapped in an anchor
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
-#: A DM_ macro that survived preprocessing, i.e. one whose definition was never seen
-_UNEXPANDED_MACRO_RE = re.compile(r"\bDM_[A-Z][A-Z_0-9]*")
+#: A macro that survived preprocessing, i.e. one whose definition was never seen.
+#:
+#: Any of the three prefixes is a finding, and there are no false positives to worry
+#: about: the preprocessor does not respect backticks or comments, so a macro that *is*
+#: defined always expands, even where it was only meant to be named. A macro-shaped token
+#: still standing after preprocessing is therefore undefined -- a typo, or a missing
+#: include -- and never a deliberate mention.
+_UNEXPANDED_MACRO_RE = re.compile(r"\b(?P<prefix>DM|CM|M)_[A-Z][A-Z_0-9]*")
+
+#: What each prefix means, for the diagnostic
+_MACRO_PREFIXES = {
+    "M": "a macro from a macro header",
+    "CM": "a custom macro defined in the source file itself",
+    "DM": "a documentation macro",
+}
 
 
 @dataclass(frozen=True)
@@ -125,6 +138,9 @@ class FordFrontend:
         path = self._path_of(ford_module)
         name = ford_module.name
 
+        location = self.index.module(path, name)
+        doc, _ = self._documentation(ford_module.doc_list, location)
+
         return Module(
             name=name,
             procedures=[
@@ -135,9 +151,9 @@ class FordFrontend:
                 for variable in ford_module.variables
                 if getattr(variable, "parameter", False)
             ],
-            doc=self._doc(ford_module.doc_list),
+            doc=doc,
             meta=self._meta(ford_module),
-            location=self.index.module(path, name),
+            location=location,
         )
 
     def _procedure(self, ford_procedure, path: Path) -> Procedure:
@@ -155,12 +171,14 @@ class FordFrontend:
             # A function result is an output by definition; Fortran does not say so
             result.intent = Intent.OUT
 
+        doc, directives = self._documentation(ford_procedure.doc_list, location)
+
         return Procedure(
             name=name,
             arguments=arguments,
             result=result,
-            doc=self._doc(ford_procedure.doc_list),
-            directives=self._directives(ford_procedure.doc_list, location),
+            doc=doc,
+            directives=directives,
             meta=self._meta(ford_procedure),
             location=location,
             conventions=self.conventions,
@@ -171,14 +189,16 @@ class FordFrontend:
         location = self.index.argument(path, procedure, name)
         doc_line = self.index.argument_doc(path, procedure, name)
 
+        doc, directives = self._documentation(variable.doc_list, location, doc_line)
+
         return Argument(
             name=name,
             type=self._type(variable, location),
             dimension=self._dimension(variable),
             intent=self._intent(variable),
             optional=bool(getattr(variable, "optional", False)),
-            doc=self._doc(variable.doc_list, doc_line),
-            directives=self._directives(variable.doc_list, location, doc_line),
+            doc=doc,
+            directives=directives,
             attributes=self._attributes(variable),
             location=location,
             is_result=is_result,
@@ -187,11 +207,14 @@ class FordFrontend:
     def _parameter(self, variable, path: Path) -> Parameter:
         name = variable.name
         location = self.index.variable(path, name)
+        doc, _ = self._documentation(
+            variable.doc_list, location, self.index.variable_doc(path, name)
+        )
         return Parameter(
             name=name,
             type=self._type(variable, location, report=False),
             expression=(getattr(variable, "initial", None) or "").strip(),
-            doc=self._doc(variable.doc_list, self.index.variable_doc(path, name)),
+            doc=doc,
             location=location,
         )
 
@@ -281,47 +304,72 @@ class FordFrontend:
             category=_plain_text(getattr(meta, "category", None)),
         )
 
-    @staticmethod
-    def _doc(doc_list, first_line_number: int | None = None) -> Doc:
-        return Doc.parse(_clean_doc(doc_list), first_line_number)
+    def _documentation(self, doc_list, location: SourceLocation,
+                       first_line_number: int | None = None) -> tuple[Doc, Directives]:
+        """Parse one doc comment and read its directives.
 
-    def _directives(self, doc_list, location: SourceLocation,
-                    first_line_number: int | None = None) -> Directives:
+        Both come from the same lines, so they are produced together: parsing twice would
+        mean reporting a malformed table twice as well.
+        """
         self._check_macros_expanded(doc_list, location, first_line_number)
+
         try:
-            return self.directives.parse(Doc.parse(_clean_doc(doc_list), first_line_number))
-        except (DirectiveError, DocParseError) as error:
-            self.diagnostics.error(
-                str(error),
-                location=_at_line(location, getattr(error, "line_number", None)),
-                note=getattr(error, "note", None),
-            )
-            return Directives()
+            doc = Doc.parse(_clean_doc(doc_list), first_line_number)
+        except DocParseError as error:
+            self._report(error, location)
+            return Doc(), Directives()
+
+        try:
+            return doc, self.directives.parse(doc)
+        except DirectiveError as error:
+            self._report(error, location)
+            return doc, Directives()
+
+    def _report(self, error, location: SourceLocation) -> None:
+        self.diagnostics.error(
+            str(error),
+            location=_at_line(location, getattr(error, "line_number", None)),
+            note=getattr(error, "note", None),
+        )
 
     def _check_macros_expanded(self, doc_list, location: SourceLocation,
                                first_line_number: int | None = None) -> None:
         """Report documentation that still contains an unexpanded macro.
 
-        A DM_ macro reaching the generator unexpanded means the preprocessor never saw
-        its definition -- most often a source file that forgot `#include <src/macros.h>`.
-        Nothing else would notice: the directive would simply not be found, the default
-        or the output_from would go missing, and the generated wrapper would be quietly
-        wrong. So it is an error, not a warning.
+        A macro-shaped token surviving preprocessing means its definition was never seen:
+        a misspelt name, or a file that forgot `#include <src/macros.h>`.
+
+        A `DM_` is an error, because it is silent: the directive is simply not found, the
+        default or the output_from goes missing, and the generated wrapper comes out
+        quietly wrong. The others are warnings -- a misspelt `M_`/`CM_` leaves the macro
+        name standing in the rendered documentation, which is wrong but visible, and
+        nothing is mis-generated from it.
         """
         for offset, line in enumerate(_clean_doc(doc_list)):
-            match = _UNEXPANDED_MACRO_RE.search(line)
-            if match is None:
-                continue
-            name = match.group(0)
-            line_number = None if first_line_number is None else first_line_number + offset
-            self.diagnostics.error(
-                f"'{name}' is still a macro in the documentation, so it never expanded",
-                location=_at_line(location, line_number),
-                note=(
-                    f"add '#include <{self.paths.macros_header}>' at the top of the file; "
-                    f"without it the directive is silently ignored"
-                ),
-            )
+            for match in _UNEXPANDED_MACRO_RE.finditer(line):
+                name = match.group(0)
+                prefix = match.group("prefix")
+                line_number = (
+                    None if first_line_number is None else first_line_number + offset
+                )
+                report = (
+                    self.diagnostics.error if prefix == "DM"
+                    else self.diagnostics.warn
+                )
+                consequence = (
+                    "the directive is silently ignored" if prefix == "DM"
+                    else "the macro name is left standing in the documentation"
+                )
+                report(
+                    f"'{name}' looks like {_MACRO_PREFIXES[prefix]} but never expanded, "
+                    f"so it is not defined",
+                    location=_at_line(location, line_number),
+                    note=(
+                        f"check the spelling, and that the file has "
+                        f"'#include <{self.paths.macros_header}>'; otherwise "
+                        f"{consequence}"
+                    ),
+                )
 
     def _path_of(self, entity) -> Path:
         source_file = getattr(entity, "source_file", None)
