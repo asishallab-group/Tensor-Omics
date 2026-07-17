@@ -113,7 +113,30 @@ def build_directive_patterns(macros: MacroTable) -> DirectivePatterns:
 
 
 class MissingMacroError(Exception):
-    """The macro header lacks a documentation macro the generator relies on."""
+    """The macro header lacks a macro the generator relies on."""
+
+
+#: The macro tox_errors uses to pack an argument position into an error code
+ERR_ARG_POS_FACTOR_MACRO = "M_ERR_ARG_POS_FACTOR"
+
+
+def error_arg_pos_factor(macros: MacroTable) -> int:
+    """Read the factor `create_err_code` packs argument positions with.
+
+    Taken from the macro rather than hardcoded, so the generator decodes `ierr` exactly
+    the way the Fortran encodes it.
+    """
+    if ERR_ARG_POS_FACTOR_MACRO not in macros:
+        raise MissingMacroError(
+            f"{macros.header} does not define {ERR_ARG_POS_FACTOR_MACRO}"
+        )
+    expanded = macros.expand(ERR_ARG_POS_FACTOR_MACRO).strip()
+    try:
+        return int(expanded)
+    except ValueError:
+        raise MissingMacroError(
+            f"{ERR_ARG_POS_FACTOR_MACRO} is '{expanded}', which is not an integer"
+        ) from None
 
 
 @dataclass(frozen=True)

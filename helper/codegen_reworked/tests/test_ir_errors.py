@@ -4,8 +4,14 @@ import pytest
 
 from codegen_reworked.diagnostics import DiagnosticBag
 from codegen_reworked.ir.doc import Doc
+from codegen_reworked.frontend.macros import (
+    ERR_ARG_POS_FACTOR_MACRO,
+    MacroTable,
+    MissingMacroError,
+    error_arg_pos_factor,
+)
 from codegen_reworked.ir.errors import (
-    ARG_POS_FACTOR,
+    DEFAULT_ARG_POS_FACTOR,
     ErrorCatalogue,
     ErrorCode,
     ErrorGroup,
@@ -229,28 +235,62 @@ class TestDecoding:
 
 
 class TestAgainstTheRealToxErrors:
-    """Guards against the catalogue drifting from the Fortran it mirrors."""
+    """The Fortran and the generator must agree on how ierr is packed.
 
-    def test_the_arg_pos_factor_matches_create_err_code(self, source):
-        # ARG_POS_FACTOR is duplicated from Fortran, so pin it to the actual expression
-        match = re.search(r"ierr\s*=\s*(\d+)\s*\*\s*arg_pos\s*\+\s*error", source)
+    They agree by construction: both take the factor from M_ERR_ARG_POS_FACTOR. These
+    tests pin that arrangement, so reintroducing a literal on either side is caught.
+    """
 
-        assert match is not None, "create_err_code no longer packs arg_pos as N*arg_pos + error"
-        assert int(match.group(1)) == ARG_POS_FACTOR
+    @pytest.fixture(scope="module")
+    def macros(self):
+        return MacroTable(REPO_ROOT / "src/macros.h", include_paths=(REPO_ROOT,))
 
-    def test_the_decoders_use_the_same_factor(self, source):
-        assert re.search(rf"error\s*=\s*mod\(ierr,\s*{ARG_POS_FACTOR}\)", source) is not None
-        assert re.search(rf"arg_pos\s*=\s*ierr/{ARG_POS_FACTOR}", source) is not None
+    def test_the_macro_is_defined(self, macros):
+        assert ERR_ARG_POS_FACTOR_MACRO in macros
 
-    def test_every_real_error_code_fits_below_the_factor(self, source):
-        # a code >= ARG_POS_FACTOR would be indistinguishable from an argument position
+    def test_the_factor_is_read_from_the_macro(self, macros):
+        assert error_arg_pos_factor(macros) == 10000
+
+    def test_a_header_without_the_macro_is_reported(self, tmp_path):
+        header = tmp_path / "macros.h"
+        header.write_text("#define M_NAN nan\n")
+
+        with pytest.raises(MissingMacroError, match=ERR_ARG_POS_FACTOR_MACRO):
+            error_arg_pos_factor(MacroTable(header))
+
+    def test_a_non_integer_macro_is_reported(self, tmp_path):
+        header = tmp_path / "macros.h"
+        header.write_text(f"#define {ERR_ARG_POS_FACTOR_MACRO} banana\n")
+
+        with pytest.raises(MissingMacroError, match="not an integer"):
+            error_arg_pos_factor(MacroTable(header))
+
+    def test_create_err_code_packs_with_the_macro(self, source):
+        assert re.search(
+            rf"ierr\s*=\s*{ERR_ARG_POS_FACTOR_MACRO}\s*\*\s*arg_pos\s*\+\s*error", source
+        ), "create_err_code no longer packs arg_pos with the macro"
+
+    def test_both_decoders_use_the_macro(self, source):
+        assert re.search(rf"error\s*=\s*mod\(ierr,\s*{ERR_ARG_POS_FACTOR_MACRO}\)", source)
+        assert re.search(rf"arg_pos\s*=\s*ierr/{ERR_ARG_POS_FACTOR_MACRO}", source)
+
+    def test_no_literal_factor_is_left_in_the_encoding(self, source):
+        # a literal here is exactly the drift the macro exists to prevent
+        encoding = re.findall(r"^\s*(?:ierr|error|arg_pos)\s*=.*(?:arg_pos|mod\(ierr).*$",
+                              source, re.MULTILINE)
+
+        assert encoding, "the encoding lines are gone; this test needs updating"
+        assert not [line for line in encoding if re.search(r"\d{4,}", line)]
+
+    def test_every_real_error_code_fits_below_the_factor(self, source, macros):
+        # a code >= the factor is indistinguishable from an error raised for an argument
         values = [
             int(value)
             for value in re.findall(r"parameter\s*::\s*ERR_\w+\s*=\s*(\d+)", source)
         ]
 
         assert values, "no ERR_ parameters found"
-        assert max(values) < ARG_POS_FACTOR
+        assert max(values) < error_arg_pos_factor(macros)
 
     def test_the_ok_code_is_named_as_configured(self, source):
         from codegen_reworked.config import CONVENTIONS

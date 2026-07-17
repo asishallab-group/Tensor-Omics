@@ -11,8 +11,10 @@ Two things the catalogue must model:
 - `ERR_*` codes are failures and raise in the interfacing languages. `STAT_*` codes are
   outcomes, not failures, and must never raise. None exist yet; the split is by prefix so
   the first one added needs no change here.
-- An error code encodes the argument that caused it: `ierr = 10000*arg_pos + error`. So a
-  raised error can name the offending argument, given the procedure's argument list.
+- An error code encodes the argument that caused it, as
+  `M_ERR_ARG_POS_FACTOR*arg_pos + error`. So a raised error can name the offending
+  argument, given the procedure's argument list. The factor comes from the same macro
+  `create_err_code` uses, so the two cannot disagree about how `ierr` is packed.
 """
 
 from __future__ import annotations
@@ -26,10 +28,10 @@ from .constants import ConstantError, ConstantEvaluator
 from .doc import Doc
 from .entities import Module
 
-#: `create_err_code` in tox_errors packs the argument position in as
-#: `10000*arg_pos + error`, and `get_err_code`/`get_err_arg_pos` unpack it again.
-#: Mirrored here rather than parsed out of the Fortran body; a test guards the drift.
-ARG_POS_FACTOR = 10000
+#: Fallback for a catalogue built by hand. A real run takes the factor from the
+#: `M_ERR_ARG_POS_FACTOR` macro that `create_err_code` itself uses, so the Fortran and the
+#: generator cannot disagree about how `ierr` is packed.
+DEFAULT_ARG_POS_FACTOR = 10000
 
 
 class ErrorGroup(Enum):
@@ -108,8 +110,10 @@ class DecodedError:
 class ErrorCatalogue:
     """Every error and status code, keyed by name and by value."""
 
-    def __init__(self, codes=(), conventions: Conventions = CONVENTIONS):
+    def __init__(self, codes=(), conventions: Conventions = CONVENTIONS,
+                 arg_pos_factor: int = DEFAULT_ARG_POS_FACTOR):
         self.conventions = conventions
+        self.arg_pos_factor = arg_pos_factor
         self.codes = tuple(sorted(codes, key=lambda c: c.value))
         self._by_name = {code.name.lower(): code for code in self.codes}
         self._by_value = {}
@@ -123,6 +127,7 @@ class ErrorCatalogue:
         diagnostics: DiagnosticBag,
         constants: dict | None = None,
         conventions: Conventions = CONVENTIONS,
+        arg_pos_factor: int = DEFAULT_ARG_POS_FACTOR,
     ) -> ErrorCatalogue:
         """Read the catalogue out of the parsed `tox_errors` module."""
         evaluator = ConstantEvaluator(constants or {})
@@ -160,9 +165,22 @@ class ErrorCatalogue:
                 ErrorCode(name=name, value=value, doc=parameter.doc, is_status=is_status)
             )
 
-        catalogue = cls(codes, conventions)
+        catalogue = cls(codes, conventions, arg_pos_factor)
         catalogue._report_duplicates(diagnostics, module)
+        catalogue._report_codes_reaching_the_factor(diagnostics, module)
         return catalogue
+
+    def _report_codes_reaching_the_factor(self, diagnostics: DiagnosticBag,
+                                          module: Module) -> None:
+        for code in self.codes:
+            if abs(code.value) >= self.arg_pos_factor:
+                diagnostics.error(
+                    f"'{code.name}' is {code.value}, which reaches the argument position "
+                    f"factor {self.arg_pos_factor}, so it cannot be told from an error "
+                    f"raised for an argument",
+                    entity=module.parameter(code.name) or module,
+                    note="keep error codes below M_ERR_ARG_POS_FACTOR",
+                )
 
     def _report_duplicates(self, diagnostics: DiagnosticBag, module: Module) -> None:
         seen: dict[int, ErrorCode] = {}
@@ -198,8 +216,8 @@ class ErrorCatalogue:
 
     def decode(self, ierr: int) -> DecodedError:
         """Take an `ierr` apart the way `get_err_code`/`get_err_arg_pos` do."""
-        code = ierr % ARG_POS_FACTOR
-        arg_pos = ierr // ARG_POS_FACTOR
+        code = ierr % self.arg_pos_factor
+        arg_pos = ierr // self.arg_pos_factor
         return DecodedError(code=code, arg_pos=arg_pos, error=self.by_value(code))
 
     def encode(self, name: str, arg_pos: int = 0) -> int:
@@ -207,7 +225,7 @@ class ErrorCatalogue:
         code = self.code(name)
         if code is None:
             raise KeyError(f"no error code named '{name}'")
-        return ARG_POS_FACTOR * arg_pos + code.value
+        return self.arg_pos_factor * arg_pos + code.value
 
     def groups(self) -> tuple[ErrorGroup, ...]:
         """The groups actually present, in a stable order."""

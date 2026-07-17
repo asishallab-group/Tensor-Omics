@@ -106,7 +106,7 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
         if (present(arg_pos)) then
-            ierr = 10000*arg_pos + error
+            ierr = M_ERR_ARG_POS_FACTOR*arg_pos + error
         else
             ierr = error
         end if
@@ -117,7 +117,7 @@ contains
         integer(int32), intent(in) :: ierr
             !! Error code
 
-        error = mod(ierr, 10000)
+        error = mod(ierr, M_ERR_ARG_POS_FACTOR)
     end function get_err_code
 
     !> Extracts the argument position from the error code
@@ -125,7 +125,7 @@ contains
         integer(int32), intent(in) :: ierr
             !! Error code
 
-        arg_pos = ierr/10000
+        arg_pos = ierr/M_ERR_ARG_POS_FACTOR
     end function get_err_arg_pos
 
     !> Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.
@@ -193,7 +193,7 @@ contains
             !! Error code
         ! `ios` is a raw Fortran iostat value (not one of this module's encoded error codes), so it
         ! must be compared directly against zero instead of going through `is_err`, which decodes its
-        ! argument via the create_err_code arg_pos scheme (mod 10000).
+        ! argument via the create_err_code arg_pos scheme (mod M_ERR_ARG_POS_FACTOR).
         if (ios /= 0) call set_err(ierr, ERR_ALLOC_FAIL)
     end subroutine check_io_stat
 

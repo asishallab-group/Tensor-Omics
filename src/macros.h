@@ -29,6 +29,13 @@
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
 #define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if
 
+! An error code packs the position of the argument that caused it in as
+! `M_ERR_ARG_POS_FACTOR*arg_pos + error`, so no `ERR_*` value may reach the factor.
+! Defined here rather than written into tox_errors, because the code generator reads it
+! from this file to decode `ierr` for the Python and R error modules -- a literal in the
+! Fortran would mean the generator had to hardcode the same number and could drift from it.
+#define M_ERR_ARG_POS_FACTOR 10000
+
 ! =============================================================================
 ! Documentation macros (DM_)
 !
