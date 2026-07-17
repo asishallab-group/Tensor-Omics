@@ -60,17 +60,19 @@
 !helper/*.py
 !helper/*.sh
 
-# helper/codegen_reworked
+# helper/codegen
 # [a-z]*/ keeps __pycache__ excluded, as for src
-!helper/codegen_reworked
-!helper/codegen_reworked/**/[a-z]*/
-!helper/codegen_reworked/**/*.py
-!helper/codegen_reworked/**/*.md
-!helper/codegen_reworked/**/*.toml
-!helper/codegen_reworked/**/*.txt
+!helper/codegen
+!helper/codegen/**/[a-z]*/
+!helper/codegen/**/*.py
+!helper/codegen/**/*.md
+!helper/codegen/**/*.toml
+!helper/codegen/**/*.txt
+!helper/codegen/**/*.h
+!helper/codegen/**/*.R
 # generator fixtures and expected output
-!helper/codegen_reworked/tests/fixtures/**/*
-!helper/codegen_reworked/tests/golden/**/*
+!helper/codegen/tests/fixtures/**/*
+!helper/codegen/tests/golden/**/*
 
 # loess_netlib
 !external

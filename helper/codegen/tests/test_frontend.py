@@ -9,17 +9,17 @@ from pathlib import Path
 
 import pytest
 
-from codegen_reworked.config import Paths
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.frontend.ford_frontend import FordFrontend
-from codegen_reworked.ir.directives import OutputFromMode
-from codegen_reworked.ir.roles import analyse_project
-from codegen_reworked.ir.types import BaseType, Intent
-from codegen_reworked.ir.validate import validate_project
+from codegen.config import Paths
+from codegen.diagnostics import DiagnosticBag
+from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.directives import OutputFromMode
+from codegen.ir.roles import analyse_project
+from codegen.ir.types import BaseType, Intent
+from codegen.ir.validate import validate_project
 
 from conftest import REPO_ROOT
 
-FIXTURE_SRC = Path("helper/codegen_reworked/tests/fixtures/src")
+FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 
 def parse(src_dir=FIXTURE_SRC, bag=None):
@@ -157,8 +157,8 @@ class TestDimensionAttributes:
         ],
     )
     def test_extents_are_extracted_with_bracket_matching(self, attribute, expected):
-        from codegen_reworked.frontend.ford_frontend import _dimension_attribute
-        from codegen_reworked.ir.types import Dimension
+        from codegen.frontend.ford_frontend import _dimension_attribute
+        from codegen.ir.types import Dimension
 
         extracted = _dimension_attribute(attribute)
 
@@ -168,7 +168,7 @@ class TestDimensionAttributes:
             assert Dimension.parse(extracted).extents == expected
 
     def test_an_unclosed_attribute_yields_nothing_rather_than_a_broken_string(self):
-        from codegen_reworked.frontend.ford_frontend import _dimension_attribute
+        from codegen.frontend.ford_frontend import _dimension_attribute
 
         assert _dimension_attribute("dimension(max(0, n") is None
 

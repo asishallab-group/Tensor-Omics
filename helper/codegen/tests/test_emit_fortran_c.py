@@ -11,11 +11,11 @@ import subprocess
 
 import pytest
 
-from codegen_reworked.abi.c_abi import build_module, build_wrapper
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.emit.fortran_c import FortranCEmitter
-from codegen_reworked.ir.roles import analyse
-from codegen_reworked.ir.types import Intent
+from codegen.abi.c_abi import build_module, build_wrapper
+from codegen.diagnostics import DiagnosticBag
+from codegen.emit.fortran_c import FortranCEmitter
+from codegen.ir.roles import analyse
+from codegen.ir.types import Intent
 
 import builders as b
 from conftest import REPO_ROOT
@@ -244,7 +244,7 @@ class TestOptionals:
     def test_an_optional_with_a_default_is_required_in_c(self, bag, emitter):
         # issue #131: the interfacing languages know the default and pass it, which is
         # what keeps the wrapper flat
-        from codegen_reworked.ir.directives import Default, Directives
+        from codegen.ir.directives import Default, Directives
 
         span = b.real("span", Intent.IN, optional=True)
         span.directives = Directives(default=Default("0.1_real64"))
@@ -354,15 +354,15 @@ def built(tmp_path_factory):
     """Generate the wrappers from the fixtures and compile everything they depend on."""
     from pathlib import Path
 
-    from codegen_reworked.abi.c_abi import build_project
-    from codegen_reworked.config import Paths
-    from codegen_reworked.frontend.ford_frontend import FordFrontend
-    from codegen_reworked.ir.roles import analyse_project
-    from codegen_reworked.ir.validate import validate_project
+    from codegen.abi.c_abi import build_project
+    from codegen.config import Paths
+    from codegen.frontend.ford_frontend import FordFrontend
+    from codegen.ir.roles import analyse_project
+    from codegen.ir.validate import validate_project
 
     out = tmp_path_factory.mktemp("fortran_c")
     bag = DiagnosticBag()
-    fixtures = Path("helper/codegen_reworked/tests/fixtures/src")
+    fixtures = Path("helper/codegen/tests/fixtures/src")
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=fixtures), bag).parse()
     analyse_project(parsed.project, bag)
     validate_project(parsed.project, bag)

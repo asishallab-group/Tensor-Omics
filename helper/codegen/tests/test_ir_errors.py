@@ -2,15 +2,15 @@ import re
 
 import pytest
 
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.ir.doc import Doc
-from codegen_reworked.frontend.macros import (
+from codegen.diagnostics import DiagnosticBag
+from codegen.ir.doc import Doc
+from codegen.frontend.macros import (
     ERR_ARG_POS_FACTOR_MACRO,
     MacroTable,
     MissingMacroError,
     error_arg_pos_factor,
 )
-from codegen_reworked.ir.errors import (
+from codegen.ir.errors import (
     DEFAULT_ARG_POS_FACTOR,
     ErrorCatalogue,
     ErrorCode,
@@ -293,12 +293,12 @@ class TestAgainstTheRealToxErrors:
         assert max(values) < error_arg_pos_factor(macros)
 
     def test_the_ok_code_is_named_as_configured(self, source):
-        from codegen_reworked.config import CONVENTIONS
+        from codegen.config import CONVENTIONS
 
         assert f"parameter :: {CONVENTIONS.ok_code} = 0" in source
 
     def test_the_prefixes_are_the_ones_in_use(self, source):
-        from codegen_reworked.config import CONVENTIONS
+        from codegen.config import CONVENTIONS
 
         assert f"{CONVENTIONS.error_code_prefix}OK" in source
 

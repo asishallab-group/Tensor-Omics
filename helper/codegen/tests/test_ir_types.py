@@ -1,6 +1,6 @@
 import pytest
 
-from codegen_reworked.ir.types import (
+from codegen.ir.types import (
     BaseType,
     CharacterLength,
     Dimension,

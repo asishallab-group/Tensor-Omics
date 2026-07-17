@@ -8,9 +8,9 @@ import importlib.util
 
 import pytest
 
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.emit.errors_python import PythonErrorEmitter
-from codegen_reworked.ir.errors import ErrorCatalogue
+from codegen.diagnostics import DiagnosticBag
+from codegen.emit.errors_python import PythonErrorEmitter
+from codegen.ir.errors import ErrorCatalogue
 
 import builders as b
 
@@ -166,8 +166,8 @@ def real(tmp_path_factory):
     """The error module emitted from the real tox_errors, imported."""
     from pathlib import Path
 
-    from codegen_reworked.config import Paths
-    from codegen_reworked.frontend.ford_frontend import FordFrontend
+    from codegen.config import Paths
+    from codegen.frontend.ford_frontend import FordFrontend
     from conftest import REPO_ROOT
 
     bag = DiagnosticBag()

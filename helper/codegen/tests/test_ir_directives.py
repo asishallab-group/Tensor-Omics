@@ -7,12 +7,12 @@ deriving the patterns from the definitions.
 
 import pytest
 
-from codegen_reworked.frontend.macros import (
+from codegen.frontend.macros import (
     MacroTable,
     MissingMacroError,
     build_directive_patterns,
 )
-from codegen_reworked.ir.directives import (
+from codegen.ir.directives import (
     Default,
     DirectiveError,
     DirectiveParser,
@@ -23,7 +23,7 @@ from codegen_reworked.ir.directives import (
     RequiredIfMode,
     ResultSizeIs,
 )
-from codegen_reworked.ir.doc import Doc
+from codegen.ir.doc import Doc
 
 from conftest import REPO_ROOT
 

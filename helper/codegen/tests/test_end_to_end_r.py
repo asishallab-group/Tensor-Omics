@@ -15,23 +15,23 @@ from pathlib import Path
 
 import pytest
 
-from codegen_reworked.abi.c_abi import build_project
-from codegen_reworked.config import Paths
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.emit.errors_r import RErrorEmitter
-from codegen_reworked.emit.fortran_c import FortranCEmitter
-from codegen_reworked.emit.r_wrapper import RWrapperEmitter
-from codegen_reworked.emit.rcpp import RcppEmitter
-from codegen_reworked.frontend.ford_frontend import FordFrontend
-from codegen_reworked.ir.errors import ErrorCatalogue
-from codegen_reworked.ir.roles import analyse_project
-from codegen_reworked.ir.validate import validate_project
+from codegen.abi.c_abi import build_project
+from codegen.config import Paths
+from codegen.diagnostics import DiagnosticBag
+from codegen.emit.errors_r import RErrorEmitter
+from codegen.emit.fortran_c import FortranCEmitter
+from codegen.emit.r_wrapper import RWrapperEmitter
+from codegen.emit.rcpp import RcppEmitter
+from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.errors import ErrorCatalogue
+from codegen.ir.roles import analyse_project
+from codegen.ir.validate import validate_project
 
 from conftest import REPO_ROOT
 
 GFORTRAN = shutil.which("gfortran")
 RSCRIPT = shutil.which("Rscript")
-FIXTURE_SRC = Path("helper/codegen_reworked/tests/fixtures/src")
+FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 
 def _has_rcpp() -> bool:

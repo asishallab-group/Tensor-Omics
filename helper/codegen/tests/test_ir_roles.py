@@ -1,10 +1,10 @@
 import pytest
 
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.ir.directives import Directives, ResultSizeIs
-from codegen_reworked.ir.doc import Doc
-from codegen_reworked.ir.roles import ModeValue, analyse, analyse_project
-from codegen_reworked.ir.types import Intent
+from codegen.diagnostics import DiagnosticBag
+from codegen.ir.directives import Directives, ResultSizeIs
+from codegen.ir.doc import Doc
+from codegen.ir.roles import ModeValue, analyse, analyse_project
+from codegen.ir.types import Intent
 
 import builders as b
 

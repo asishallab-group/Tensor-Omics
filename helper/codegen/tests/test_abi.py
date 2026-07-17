@@ -1,11 +1,11 @@
 import pytest
 
-from codegen_reworked.abi.c_abi import build_module, build_project, build_wrapper, stripped_name
-from codegen_reworked.abi.model import Conversion, Origin
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.ir.entities import Meta
-from codegen_reworked.ir.roles import analyse
-from codegen_reworked.ir.types import BaseType, Intent
+from codegen.abi.c_abi import build_module, build_project, build_wrapper, stripped_name
+from codegen.abi.model import Conversion, Origin
+from codegen.diagnostics import DiagnosticBag
+from codegen.ir.entities import Meta
+from codegen.ir.roles import analyse
+from codegen.ir.types import BaseType, Intent
 
 import builders as b
 

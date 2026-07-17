@@ -1,7 +1,7 @@
 """Test configuration.
 
 Puts `helper/` on the import path so tests import the generator the same way
-`helper/generate_code.py` does, i.e. as the top-level package `codegen_reworked`.
+`helper/generate_code.py` does, i.e. as the top-level package `codegen`.
 """
 
 import sys

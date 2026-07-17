@@ -4,7 +4,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from codegen_reworked.frontend.macros import DOC_MACROS, MacroTable
+from codegen.frontend.macros import DOC_MACROS, MacroTable
 
 from conftest import REPO_ROOT
 

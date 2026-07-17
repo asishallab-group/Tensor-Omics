@@ -14,23 +14,23 @@ import sys
 
 import pytest
 
-from codegen_reworked.abi.c_abi import build_project
-from codegen_reworked.config import Paths
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.emit.errors_python import PythonErrorEmitter
-from codegen_reworked.emit.fortran_c import FortranCEmitter
-from codegen_reworked.emit.python_ctypes import PythonEmitter
-from codegen_reworked.frontend.ford_frontend import FordFrontend
-from codegen_reworked.ir.errors import ErrorCatalogue
-from codegen_reworked.ir.roles import analyse_project
-from codegen_reworked.ir.validate import validate_project
+from codegen.abi.c_abi import build_project
+from codegen.config import Paths
+from codegen.diagnostics import DiagnosticBag
+from codegen.emit.errors_python import PythonErrorEmitter
+from codegen.emit.fortran_c import FortranCEmitter
+from codegen.emit.python_ctypes import PythonEmitter
+from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.errors import ErrorCatalogue
+from codegen.ir.roles import analyse_project
+from codegen.ir.validate import validate_project
 
 from conftest import REPO_ROOT
 
 from pathlib import Path
 
 GFORTRAN = shutil.which("gfortran")
-FIXTURE_SRC = Path("helper/codegen_reworked/tests/fixtures/src")
+FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 pytestmark = pytest.mark.skipif(GFORTRAN is None, reason="gfortran is not installed")
 

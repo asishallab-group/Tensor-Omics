@@ -2,9 +2,9 @@ import math
 
 import pytest
 
-from codegen_reworked.diagnostics import Context, SourceLocation
-from codegen_reworked.ir.constants import ConstantEvaluator
-from codegen_reworked.ir.entities import (
+from codegen.diagnostics import Context, SourceLocation
+from codegen.ir.constants import ConstantEvaluator
+from codegen.ir.entities import (
     Argument,
     Meta,
     Module,
@@ -13,7 +13,7 @@ from codegen_reworked.ir.entities import (
     ProcedureKind,
     Project,
 )
-from codegen_reworked.ir.types import BaseType, Dimension, FortranType, Intent
+from codegen.ir.types import BaseType, Dimension, FortranType, Intent
 
 import builders as b
 

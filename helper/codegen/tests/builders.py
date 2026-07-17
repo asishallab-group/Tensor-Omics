@@ -10,10 +10,10 @@ These exist only because the IR is constructible without Ford. That is the point
 entity layer, and this module is the smallest demonstration of it.
 """
 
-from codegen_reworked.ir.directives import Directives
-from codegen_reworked.ir.doc import Doc
-from codegen_reworked.ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
-from codegen_reworked.ir.types import (
+from codegen.ir.directives import Directives
+from codegen.ir.doc import Doc
+from codegen.ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
+from codegen.ir.types import (
     BaseType,
     CharacterLength,
     Dimension,

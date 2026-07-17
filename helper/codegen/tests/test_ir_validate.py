@@ -1,10 +1,10 @@
 import pytest
 
-from codegen_reworked.diagnostics import DiagnosticBag
-from codegen_reworked.ir.entities import Meta
-from codegen_reworked.ir.roles import analyse
-from codegen_reworked.ir.types import Intent
-from codegen_reworked.ir.validate import validate_module, validate_procedure, validate_project
+from codegen.diagnostics import DiagnosticBag
+from codegen.ir.entities import Meta
+from codegen.ir.roles import analyse
+from codegen.ir.types import Intent
+from codegen.ir.validate import validate_module, validate_procedure, validate_project
 
 import builders as b
 
@@ -100,8 +100,8 @@ class TestCharacters:
 
 class TestTypes:
     def test_a_derived_type_is_rejected(self, bag):
-        from codegen_reworked.ir.entities import Argument
-        from codegen_reworked.ir.types import BaseType, FortranType
+        from codegen.ir.entities import Argument
+        from codegen.ir.types import BaseType, FortranType
 
         argument = Argument("p", FortranType(BaseType.DERIVED, derived_name="point"), intent=Intent.IN)
         checked(b.procedure("p", argument), bag)

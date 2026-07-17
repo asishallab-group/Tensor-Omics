@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from codegen_reworked.config import CONVENTIONS, Conventions, Paths
+from codegen.config import CONVENTIONS, Conventions, Paths
 
 
 @pytest.mark.parametrize(

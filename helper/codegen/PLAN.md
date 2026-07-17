@@ -37,7 +37,7 @@ Rewriting is cheaper than retrofitting tests onto a design whose core prevents t
 
 ### Decisions taken (confirmed)
 
-- **Rewrite** under `helper/codegen_reworked/`; `helper/generate_code.py` imports from there.
+- **Rewrite** under `helper/codegen/`; `helper/generate_code.py` imports from there.
   The old `helper/codegen/` stays untouched until the rewrite reaches parity, then is removed.
 - **No source annotations are touched.** `122-parallelize-codebase` carries no
   `category: C-interface` tags and no `DM_` macros. Those are added by the maintainer later.
@@ -53,7 +53,7 @@ Strict one-way dependency: `frontend → ir → abi → emit`. Nothing downstrea
 nothing upstream knows a target language exists.
 
 ```
-helper/codegen_reworked/
+helper/codegen/
   diagnostics.py        Diagnostic, DiagnosticBag, SourceLocation, CodegenError
   config.py             paths, prefixes/suffixes, macro names — one place, no literals in code
   render/

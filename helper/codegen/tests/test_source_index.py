@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from codegen_reworked.frontend.source_index import SourceFile, SourceIndex
+from codegen.frontend.source_index import SourceFile, SourceIndex
 
 from conftest import REPO_ROOT
 

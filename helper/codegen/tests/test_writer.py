@@ -1,4 +1,4 @@
-from codegen_reworked.render import Writer
+from codegen.render import Writer
 
 
 def test_lines_are_indented_by_the_current_level():

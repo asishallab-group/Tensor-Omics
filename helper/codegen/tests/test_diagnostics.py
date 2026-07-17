@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from codegen_reworked.diagnostics import (
+from codegen.diagnostics import (
     CodegenError,
     Context,
     Diagnostic,

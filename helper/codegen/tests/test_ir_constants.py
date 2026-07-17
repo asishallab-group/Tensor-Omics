@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from codegen_reworked.ir.constants import (
+from codegen.ir.constants import (
     ConstantError,
     ConstantEvaluator,
     Kind,

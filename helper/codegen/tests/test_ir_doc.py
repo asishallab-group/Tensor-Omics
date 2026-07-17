@@ -1,6 +1,6 @@
 import pytest
 
-from codegen_reworked.ir.doc import (
+from codegen.ir.doc import (
     Alignment,
     Doc,
     DocLine,
