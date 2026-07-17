@@ -5,6 +5,7 @@
 module fx_edges
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
+    use tox_errors, only: set_ok, set_err
     implicit none
 
     integer(int32), parameter :: MODE_GROUP_ORTHOLOGS = 1
@@ -64,6 +65,58 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
     end subroutine fx_masked
+
+    !> category: C-interface
+    !| summary: A string coming back out, scalar and vector
+    !| author: A Developer
+    subroutine fx_labels(values, n_values, label, labels, ierr)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        character(len=16), intent(out) :: label
+            !! a single string coming back
+        character(len=8), dimension(n_values), intent(out) :: labels
+            !! one string per value, the deepest character rank supported
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        label = "summary"
+        do i = 1, n_values
+            if (values(i) > 0.0_real64) then
+                labels(i) = "pos"
+            else
+                labels(i) = "nonpos"
+            end if
+        end do
+    end subroutine fx_labels
+
+    !> category: C-interface
+    !| summary: A string going in, scalar and vector
+    !| author: A Developer
+    subroutine fx_count_matching(names, n_names, wanted, n_matching, ierr)
+        integer(int32), intent(in) :: n_names
+            !! elements of `names`
+        character(len=16), dimension(n_names), intent(in) :: names
+            !! the names to search
+        character(len=*), intent(in) :: wanted
+            !! the name to look for
+        integer(int32), intent(out) :: n_matching
+            !! how many of `names` equal `wanted`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        n_matching = 0
+        do i = 1, n_names
+            if (trim(names(i)) == trim(wanted)) n_matching = n_matching + 1
+        end do
+    end subroutine fx_count_matching
 
     !> category: C-interface
     !| summary: An already interoperable logical, which needs no conversion

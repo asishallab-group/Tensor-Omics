@@ -139,13 +139,23 @@ that does not would compute silently on `INT_MIN`.
 
 ---
 
-## Decision: outputs are `np.empty`, not `np.zeros`
+## Decision: numeric outputs are `np.empty`, character outputs are `np.zeros`
 
-Fortran fills them. Zeroing is an O(n) write of data that is immediately overwritten.
+For a **numeric** output, `np.empty`: Fortran fills it, so zeroing is an O(n) write of
+data that is immediately overwritten. It is also more honest — where Fortran fills only
+part of a numeric array, zeros *look like results*, while uninitialised memory looks like
+the garbage it is. On the error path nothing is returned, so a caller never sees either.
 
-It is also **more honest**: where Fortran fills only part of an array, zeros *look like
-results*, while uninitialised memory looks like the garbage it is. On the error path
-nothing is returned at all, so a caller never sees either.
+For a **character** output, `np.zeros` — and here the reasoning inverts, which is why the
+rule is not uniform. Fortran fills a character buffer only *partially*:
+`string_as_c_char_1d` writes the string and **one** null; `string_as_c_char_2d` fills only
+as many columns as it has strings. Whatever is read back is terminated by the first null,
+so any uninitialised byte past the written data would be read *as part of a string*. The
+zeros are the null padding that stops that. `np.empty` here would return trailing garbage
+inside the returned strings.
+
+So: **`empty` where Fortran fills the whole buffer, `zeros` where it fills only part.**
+Numeric is the former, character the latter.
 
 ---
 

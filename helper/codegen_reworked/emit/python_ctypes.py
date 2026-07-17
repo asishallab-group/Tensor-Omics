@@ -56,7 +56,46 @@ def ctype_of(argument: CArgument) -> str:
 
 
 def dtype_of(argument: CArgument) -> str:
+    """The numpy dtype of an array of this type.
+
+    A character is `S<len>`: numpy lays `S<n>` items out as n contiguous zero-padded
+    bytes each, which is exactly Fortran's `character(len=1) :: buf(len, n)` in column
+    order. So the strings need no repacking, only encoding.
+    """
+    if argument.type.is_character:
+        return _character_dtype(argument)
     return DTYPES[(argument.type.base.value, argument.type.kind)]
+
+
+def _character_dtype(argument: CArgument) -> str:
+    """The `S<len>` dtype, as a Python expression.
+
+    Three cases, because the length is known at three different times:
+
+    - `len=8`  ->  `"S8"`, a literal
+    - `len=n`  ->  `f"S{n}"`, an f-string; `n` is another argument and is in scope
+    - `len=*`  ->  `"S"`, and numpy sizes the item from the data. The wrapper then reads
+      the length back off the array, which is the only order that works: for an assumed
+      length the string *is* where the length comes from.
+    """
+    length = argument.source.type.length if argument.source else None
+    if length is not None and length.is_assumed:
+        return '"S"'
+
+    extent = character_length(argument)
+    if extent.isdigit():
+        return f'"S{extent}"'
+    return 'f"S{' + extent + '}"'
+
+
+def character_length(argument: CArgument) -> str:
+    """A character's length, which C carries as its leading extent."""
+    return argument.dimension.extents[0]
+
+
+def character_rank(argument: CArgument) -> int:
+    """How many dimensions the *strings* have, the length not being one of them."""
+    return argument.rank - 1
 
 
 class PythonEmitter:
@@ -233,7 +272,11 @@ class PythonEmitter:
         if argument.is_scalar:
             argtype = f"ctypes.POINTER({ctype_of(argument)})"
         elif argument.type.is_character:
-            argtype = "ctypes.c_char_p"
+            # c_char_p is read-only bytes, so it cannot receive an output. Both
+            # directions use a buffer instead. No dtype is stated: an S<len> item size
+            # may only be known at call time, and the wrapper builds the buffer itself,
+            # so there is nothing here for ctypes to catch.
+            argtype = f"np.ctypeslib.ndpointer(ndim={max(character_rank(argument), 1)})"
         else:
             rank = argument.rank
             # Fortran is column-major; for rank 1 the two orders coincide
@@ -323,14 +366,18 @@ class PythonEmitter:
         writer = Writer()
 
         if argument.conversion is Conversion.MODE:
+            # a mode is a character to C, so it goes through the same buffer as any
+            # string; only lower-cased first, since the C wrapper matches on the
+            # lower-case spelling of the parameter name
             body = Writer()
-            body.line(f"{name} = str({name}).lower().encode()")
+            body.line(
+                f"{name} = np.array([str({name}).lower().encode()], "
+                f"dtype={dtype_of(argument)})"
+            )
             return self._guarded(argument, body)
 
         if argument.type.is_character:
-            body = Writer()
-            body.line(f"{name} = str({name}).encode()")
-            return self._guarded(argument, body)
+            return self._guarded(argument, self._prepare_character(argument))
 
         if argument.is_scalar:
             return ""
@@ -369,6 +416,33 @@ class PythonEmitter:
                 )
         return self._guarded(argument, body)
 
+    def _prepare_character(self, argument: CArgument) -> Writer:
+        """Encode strings into the zero-padded buffer C expects.
+
+        numpy's `S` dtype pads with nulls, which is what makes this safe: Fortran's
+        `c_char_1d_as_string` reads up to the first null, so a short string in a long
+        buffer arrives with its real length.
+        """
+        name = argument.name
+        body = Writer()
+        if character_rank(argument) == 0:
+            body.line(f"{name} = np.array([str({name}).encode()], dtype={dtype_of(argument)})")
+        else:
+            body.line("try:")
+            with body.indent():
+                body.line(
+                    f"{name} = np.asarray("
+                    f"[str(_s).encode() for _s in {name}], dtype={dtype_of(argument)})"
+                )
+            body.line("except TypeError as error:")
+            with body.indent():
+                body.line(
+                    f'raise TypeError('
+                    f'f"\'{name}\' must be a sequence of strings: {{error}}"'
+                    f") from None"
+                )
+        return body
+
     @staticmethod
     def _guarded(argument: CArgument, body: Writer) -> str:
         """Wrap in a presence check when the argument may be omitted."""
@@ -397,7 +471,9 @@ class PythonEmitter:
         roles = source.roles if source else None
 
         if argument.origin is Origin.STRLEN:
-            return f"len({argument.sizes})"
+            # the buffer's item size, not the number of items in it. For len=* numpy
+            # sized the item from the string itself, so this is where the length is.
+            return f"{argument.sizes}.itemsize"
 
         if argument.origin is Origin.EXTENT:
             owner = wrapper.argument(argument.sizes)
@@ -513,6 +589,16 @@ class PythonEmitter:
         """
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
+
+        if argument.type.is_character:
+            # zeros, not empty, and this is the one case where it matters. Fortran fills
+            # a character buffer only partially: string_as_c_char_1d writes the string
+            # and *one* null, and string_as_c_char_2d fills only as many columns as it
+            # has strings. Uninitialised bytes past that would be read back as a string,
+            # because nothing terminates them. Zeros are the null padding that does.
+            shape = ", ".join(argument.dimension.extents[1:]) or "1"
+            return f"np.zeros(({shape},), dtype={dtype_of(argument)})"
+
         shape = ", ".join(argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
         return f"np.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
@@ -587,6 +673,11 @@ class PythonEmitter:
 
     def _result_expression(self, argument: CArgument, wrapper: CWrapper) -> str:
         roles = argument.source.roles if argument.source else None
+        if argument.type.is_character:
+            # numpy hands back zero-padded bytes; the caller wants str
+            if character_rank(argument) == 0:
+                return f"{argument.name}[0].decode()"
+            return f"[_s.decode() for _s in {argument.name}]"
         if argument.is_scalar:
             return f"{argument.name}.value"
         if roles is not None and roles.result_size_arg is not None:

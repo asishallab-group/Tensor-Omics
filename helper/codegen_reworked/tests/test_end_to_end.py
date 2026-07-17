@@ -175,6 +175,44 @@ class TestModes:
             tox.fx_modes(np.array([1.0]), "nonsense", "ward")
 
 
+class TestCharacters:
+    def test_a_scalar_string_comes_back_decoded(self, tox, np):
+        result = tox.fx_labels(np.array([1.0, -2.0, 3.0]))
+
+        assert result["label"] == "summary"
+        assert isinstance(result["label"], str)
+
+    def test_a_string_vector_comes_back_as_a_list_of_str(self, tox, np):
+        result = tox.fx_labels(np.array([1.0, -2.0, 3.0]))
+
+        assert result["labels"] == ["pos", "nonpos", "pos"]
+        assert all(isinstance(label, str) for label in result["labels"])
+
+    def test_a_short_string_in_a_long_buffer_is_not_read_past(self, tox, np):
+        # 'pos' is three characters in an eight-character buffer; the null padding is
+        # what stops the trailing bytes being read back as part of the string
+        labels = tox.fx_labels(np.array([1.0]))["labels"]
+
+        assert labels == ["pos"]
+
+    def test_a_string_vector_goes_in(self, tox):
+        names = ["alpha", "beta", "alpha", "gamma"]
+
+        assert tox.fx_count_matching(names, "alpha") == 2
+        assert tox.fx_count_matching(names, "beta") == 1
+        assert tox.fx_count_matching(names, "zzz") == 0
+
+    def test_an_assumed_length_scalar_carries_its_own_length(self, tox):
+        # len=* : numpy sizes the S dtype from the string, and the wrapper reads it back
+        assert tox.fx_count_matching(["ab", "abc", "ab"], "ab") == 2
+        assert tox.fx_count_matching(["ab", "abc", "ab"], "abc") == 1
+
+    def test_a_non_iterable_for_a_string_vector_names_the_argument(self, tox):
+        # str() of anything succeeds, so the failure is a non-iterable, not a bad element
+        with pytest.raises(TypeError, match="'names' must be a sequence of strings"):
+            tox.fx_count_matching(42, "x")
+
+
 class TestShapeChecking:
     def test_a_shared_extent_that_disagrees_is_caught(self, tox, np):
         # Fortran cannot make this check: it would be a wrong answer or a segfault
