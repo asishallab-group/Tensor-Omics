@@ -1,0 +1,122 @@
+#include <src/macros.h>
+
+!> summary: Fixture module covering the ordinary cases
+!| Nothing here is compiled into the library. These procedures exist so the generator
+!| has a stable, complete specimen of every construct it claims to support.
+module fx_basics
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    implicit none
+
+    integer(int32), parameter :: MODE_MEAN = 1
+        !! average the values
+    integer(int32), parameter :: MODE_MEDIAN = 2
+        !! take the middle value
+
+    integer(int32), parameter :: METHOD_WARD = 1
+        !! minimises within-cluster variance
+    integer(int32), parameter :: METHOD_SINGLE = 2
+        !! nearest neighbour
+
+contains
+
+    !> category: C-interface
+    !| summary: Normalizes a vector to unit length in-place
+    !| author: A Developer
+    pure subroutine fx_normalize(vector, n_dims, ierr)
+        integer(int32), intent(in) :: n_dims
+            !! number of elements in `vector`
+        real(real64), dimension(n_dims), intent(inout) :: vector
+            !! Vector that will be normalized
+        integer(int32), intent(out) :: ierr
+            !! Error code
+    end subroutine fx_normalize
+
+    !> category: C-interface
+    !| summary: Sums a matrix, exercising a shared extent
+    !| author: A Developer
+    subroutine fx_sum_matrix(matrix, weights, n_rows, n_cols, total, ierr)
+        integer(int32), intent(in) :: n_rows
+            !! rows of `matrix`
+        integer(int32), intent(in) :: n_cols
+            !! columns of `matrix`, and elements of `weights`
+        real(real64), dimension(n_rows, n_cols), intent(in) :: matrix
+            !! the values
+        real(real64), dimension(n_cols), intent(in) :: weights
+            !! one weight per column, so its extent must match `matrix`
+        real(real64), intent(out) :: total
+            !! the weighted sum
+        integer(int32), intent(out) :: ierr
+            !! Error code
+    end subroutine fx_sum_matrix
+
+    !> category: C-interface
+    !| summary: Every optional flavour at once
+    !| author: A Developer
+    subroutine fx_optionals(values, n_values, span, max_iter, use_quantile, tmp_work, ierr)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        real(real64), intent(in), optional :: span
+            !! smoothing span.
+            !! DM_DEFAULT(0.1_real64)
+        integer(int32), intent(in), optional :: max_iter
+            !! iteration cap.
+            !! DM_DEFAULT(300_int32)
+        logical, intent(in), optional :: use_quantile
+            !! whether to normalise by quantile.
+            !! DM_DEFAULT(.false.)
+        real(real64), dimension(n_values), intent(out) :: tmp_work
+            !! scratch space, allocated by the caller
+        integer(int32), intent(out) :: ierr
+            !! Error code
+    end subroutine fx_optionals
+
+    !> category: C-interface
+    !| summary: A mode argument and a method argument
+    !| author: A Developer
+    subroutine fx_modes(values, n_values, mode, link_method, ierr)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        integer(int32), intent(in) :: mode
+            !! how to summarise the values
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | average the values | [[fx_basics(module):MODE_MEAN(variable)]] |
+            !! | take the middle value | [[fx_basics(module):MODE_MEDIAN(variable)]] |
+        integer(int32), intent(in) :: link_method
+            !! how to link clusters
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | minimises variance | [[fx_basics(module):METHOD_WARD(variable)]] |
+            !! | nearest neighbour | [[fx_basics(module):METHOD_SINGLE(variable)]] |
+        integer(int32), intent(out) :: ierr
+            !! Error code
+    end subroutine fx_modes
+
+    !> category: C-interface
+    !| summary: A function, which the C ABI turns into a subroutine
+    !| author: A Developer
+    pure integer(int32) function fx_count_positive(values, n_values) result(count)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        integer(int32) :: count
+    end function fx_count_positive
+
+    !> summary: Not exported, and deliberately breaking the rules
+    !| author: A Developer
+    !| An internal routine is held to none of the export contract.
+    subroutine fx_internal(text, mode)
+        character(len=:), allocatable, intent(inout) :: text
+            !! a deferred-length string, which an exported procedure could not have
+        integer(int32), intent(in) :: mode
+            !! a mode argument with no table, which an exported procedure could not have
+    end subroutine fx_internal
+
+end module fx_basics

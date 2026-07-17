@@ -1,0 +1,349 @@
+"""Ford's parse tree, converted into the IR.
+
+The only module that imports Ford. Everything downstream sees `ir.Project` and cannot
+tell where it came from, which is what lets the test suite build one by hand.
+
+Ford is used as a Fortran parser and nothing more. Its own model is shaped for generating
+documentation pages -- `meta.author` arrives as rendered HTML, `dimension` hides in the
+attribute list, entities carry no source position -- so this module's job is to translate
+all of that into terms the generator was designed around, once, here.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import re
+import warnings
+from dataclasses import dataclass
+from pathlib import Path
+
+from ..config import CONVENTIONS, Conventions, Paths
+from ..diagnostics import DiagnosticBag, SourceLocation
+from ..ir.directives import DirectiveError, DirectiveParser, Directives
+from ..ir.doc import Doc, DocParseError
+from ..ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
+from ..ir.types import (
+    BaseType,
+    CharacterLength,
+    Dimension,
+    FortranType,
+    Intent,
+    UnsupportedTypeError,
+)
+from .macros import MacroTable, build_directive_patterns, error_arg_pos_factor
+from .source_index import SourceIndex
+
+_DIMENSION_ATTRIB_RE = re.compile(r"\bdimension\s*(\([^)]*\))", re.IGNORECASE)
+_LEN_RE = re.compile(r"\blen\s*=\s*(\*|:|[^,)]+)", re.IGNORECASE)
+_BASE_TYPE_RE = re.compile(r"\s*([A-Za-z_]+)", re.IGNORECASE)
+#: Ford renders meta tags as markdown, so `author` arrives wrapped in an anchor
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+#: A DM_ macro that survived preprocessing, i.e. one whose definition was never seen
+_UNEXPANDED_MACRO_RE = re.compile(r"\bDM_[A-Z][A-Z_0-9]*")
+
+
+@dataclass(frozen=True)
+class ParsedProject:
+    """What a frontend run produces."""
+
+    project: Project
+    macros: MacroTable
+    #: How tox_errors packs argument positions, read from M_ERR_ARG_POS_FACTOR
+    arg_pos_factor: int
+
+
+class FordFrontend:
+    def __init__(
+        self,
+        paths: Paths = Paths(),
+        diagnostics: DiagnosticBag | None = None,
+        conventions: Conventions = CONVENTIONS,
+    ):
+        self.paths = paths
+        self.diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
+        self.conventions = conventions
+        self.index = SourceIndex(paths.root)
+        self.macros = MacroTable(
+            paths.resolve(paths.macros_header), include_paths=(paths.root,)
+        )
+        self.directives = DirectiveParser(build_directive_patterns(self.macros))
+
+    def parse(self) -> ParsedProject:
+        ford_project = self._parse_with_ford()
+        modules = [self._module(module) for module in ford_project.modules]
+        return ParsedProject(
+            project=Project(modules),
+            macros=self.macros,
+            arg_pos_factor=error_arg_pos_factor(self.macros),
+        )
+
+    # -- Ford -------------------------------------------------------------------
+
+    def _parse_with_ford(self):
+        # Imported here so the rest of the package can be used, and tested, without Ford
+        from ford.fortran_project import Project as FordProject
+        from ford.settings import load_markdown_settings, load_toml_settings
+
+        root = self.paths.root or Path()
+        settings = load_toml_settings(root)
+        if settings is None:
+            ford_yml = root / "ford.yml"
+            if not ford_yml.is_file():
+                raise FileNotFoundError(
+                    f"no Ford settings: neither {root / 'fpm.toml'} nor {ford_yml} exists"
+                )
+            settings, _ = load_markdown_settings(root, ford_yml.read_text(), str(ford_yml))
+
+        # Absolute, so they do not depend on the working directory below
+        settings.src_dir = [self.paths.resolve(self.paths.src_dir).resolve()]
+        settings.exclude_dir = list(settings.exclude_dir) + [
+            str(self.paths.resolve(self.paths.c_interface_dir).resolve())
+        ]
+
+        # fpm.toml configures `pcpp -D__GFORTRAN__ -I.`, whose include path is relative
+        # to the working directory. Run from anywhere else, `#include <src/macros.h>`
+        # fails, every DM_ directive silently vanishes with it, and the wrappers come out
+        # quietly wrong. The include path cannot be corrected from here either: Ford
+        # splits the setting on whitespace (`settings.preprocessor.split()`), so an
+        # absolute path containing a space -- as this repository's does -- would arrive
+        # as several broken arguments. So honour the project's own `-I.` by giving it the
+        # directory it is written against.
+        with contextlib.chdir(root.resolve()):
+            # Ford narrates its progress to stdout and warns freely; neither is this
+            # generator's output, and both drown its diagnostics.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                with contextlib.redirect_stdout(io.StringIO()):
+                    project = FordProject(settings)
+                    project.correlate()
+        return project
+
+    # -- entities ---------------------------------------------------------------
+
+    def _module(self, ford_module) -> Module:
+        path = self._path_of(ford_module)
+        name = ford_module.name
+
+        return Module(
+            name=name,
+            procedures=[
+                self._procedure(routine, path) for routine in ford_module.routines
+            ],
+            parameters=[
+                self._parameter(variable, path)
+                for variable in ford_module.variables
+                if getattr(variable, "parameter", False)
+            ],
+            doc=self._doc(ford_module.doc_list),
+            meta=self._meta(ford_module),
+            location=self.index.module(path, name),
+        )
+
+    def _procedure(self, ford_procedure, path: Path) -> Procedure:
+        name = ford_procedure.name
+        location = self.index.procedure(path, name)
+
+        arguments = [
+            self._argument(argument, path, name) for argument in ford_procedure.args
+        ]
+
+        result = None
+        retvar = getattr(ford_procedure, "retvar", None)
+        if retvar is not None:
+            result = self._argument(retvar, path, name, is_result=True)
+            # A function result is an output by definition; Fortran does not say so
+            result.intent = Intent.OUT
+
+        return Procedure(
+            name=name,
+            arguments=arguments,
+            result=result,
+            doc=self._doc(ford_procedure.doc_list),
+            directives=self._directives(ford_procedure.doc_list, location),
+            meta=self._meta(ford_procedure),
+            location=location,
+            conventions=self.conventions,
+        )
+
+    def _argument(self, variable, path: Path, procedure: str, is_result: bool = False) -> Argument:
+        name = variable.name
+        location = self.index.argument(path, procedure, name)
+        doc_line = self.index.argument_doc(path, procedure, name)
+
+        return Argument(
+            name=name,
+            type=self._type(variable, location),
+            dimension=self._dimension(variable),
+            intent=self._intent(variable),
+            optional=bool(getattr(variable, "optional", False)),
+            doc=self._doc(variable.doc_list, doc_line),
+            directives=self._directives(variable.doc_list, location, doc_line),
+            attributes=self._attributes(variable),
+            location=location,
+            is_result=is_result,
+        )
+
+    def _parameter(self, variable, path: Path) -> Parameter:
+        name = variable.name
+        location = self.index.variable(path, name)
+        return Parameter(
+            name=name,
+            type=self._type(variable, location, report=False),
+            expression=(getattr(variable, "initial", None) or "").strip(),
+            doc=self._doc(variable.doc_list, self.index.variable_doc(path, name)),
+            location=location,
+        )
+
+    # -- pieces -----------------------------------------------------------------
+
+    def _type(self, variable, location: SourceLocation, report: bool = True):
+        full_type = getattr(variable, "full_type", None) or ""
+        match = _BASE_TYPE_RE.match(full_type)
+        if match is None:
+            if report:
+                self.diagnostics.error(
+                    f"cannot read the type of '{variable.name}' from '{full_type}'",
+                    location=location,
+                )
+            return None
+
+        try:
+            base = BaseType.parse(match.group(1))
+        except UnsupportedTypeError as error:
+            if report:
+                self.diagnostics.error(str(error), location=location)
+            return None
+
+        kind = getattr(variable, "kind", None) or None
+        length = None
+        if base is BaseType.CHARACTER:
+            length_match = _LEN_RE.search(full_type)
+            # `character :: x` is len=1 in Fortran, and Ford states no len for it
+            length = CharacterLength.parse(
+                length_match.group(1) if length_match else "1"
+            )
+            if kind is not None and kind.lower() != "c_char":
+                kind = None
+
+        derived_name = None
+        if base is BaseType.DERIVED:
+            derived_name = kind
+            kind = None
+
+        try:
+            return FortranType(base=base, kind=kind, length=length, derived_name=derived_name)
+        except ValueError as error:
+            if report:
+                self.diagnostics.error(
+                    f"'{variable.name}' has an unusable type '{full_type}': {error}",
+                    location=location,
+                )
+            return None
+
+    @staticmethod
+    def _dimension(variable) -> Dimension:
+        """Read the extents.
+
+        Ford puts `dimension(n)` in the attribute list and leaves `.dimension` empty when
+        the attribute form is used, so the attribute has to win.
+        """
+        for attribute in getattr(variable, "attribs", ()) or ():
+            match = _DIMENSION_ATTRIB_RE.search(attribute)
+            if match is not None:
+                return Dimension.parse(match.group(1))
+        return Dimension.parse(getattr(variable, "dimension", "") or "")
+
+    @staticmethod
+    def _attributes(variable) -> tuple[str, ...]:
+        return tuple(getattr(variable, "attribs", ()) or ())
+
+    @staticmethod
+    def _intent(variable) -> Intent | None:
+        """The declared intent, or None when there is none.
+
+        None rather than a default: `validate` reports a missing intent, and guessing
+        `inout` here would silence it.
+        """
+        intent = (getattr(variable, "intent", "") or "").strip().lower()
+        if not intent:
+            return None
+        try:
+            return Intent(intent)
+        except ValueError:
+            return None
+
+    def _meta(self, entity) -> Meta:
+        meta = getattr(entity, "meta", None)
+        return Meta(
+            summary=_plain_text(getattr(meta, "summary", None)),
+            author=_plain_text(getattr(meta, "author", None)),
+            category=_plain_text(getattr(meta, "category", None)),
+        )
+
+    @staticmethod
+    def _doc(doc_list, first_line_number: int | None = None) -> Doc:
+        return Doc.parse(_clean_doc(doc_list), first_line_number)
+
+    def _directives(self, doc_list, location: SourceLocation,
+                    first_line_number: int | None = None) -> Directives:
+        self._check_macros_expanded(doc_list, location, first_line_number)
+        try:
+            return self.directives.parse(Doc.parse(_clean_doc(doc_list), first_line_number))
+        except (DirectiveError, DocParseError) as error:
+            self.diagnostics.error(
+                str(error),
+                location=_at_line(location, getattr(error, "line_number", None)),
+                note=getattr(error, "note", None),
+            )
+            return Directives()
+
+    def _check_macros_expanded(self, doc_list, location: SourceLocation,
+                               first_line_number: int | None = None) -> None:
+        """Report documentation that still contains an unexpanded macro.
+
+        A DM_ macro reaching the generator unexpanded means the preprocessor never saw
+        its definition -- most often a source file that forgot `#include <src/macros.h>`.
+        Nothing else would notice: the directive would simply not be found, the default
+        or the output_from would go missing, and the generated wrapper would be quietly
+        wrong. So it is an error, not a warning.
+        """
+        for offset, line in enumerate(_clean_doc(doc_list)):
+            match = _UNEXPANDED_MACRO_RE.search(line)
+            if match is None:
+                continue
+            name = match.group(0)
+            line_number = None if first_line_number is None else first_line_number + offset
+            self.diagnostics.error(
+                f"'{name}' is still a macro in the documentation, so it never expanded",
+                location=_at_line(location, line_number),
+                note=(
+                    f"add '#include <{self.paths.macros_header}>' at the top of the file; "
+                    f"without it the directive is silently ignored"
+                ),
+            )
+
+    def _path_of(self, entity) -> Path:
+        source_file = getattr(entity, "source_file", None)
+        path = getattr(source_file, "path", None)
+        return Path(path) if path else Path("<unknown>")
+
+
+def _clean_doc(doc_list) -> list[str]:
+    """Ford indents every documentation line by one space; drop it, keep the rest."""
+    return [line[1:] if line.startswith(" ") else line for line in (doc_list or [])]
+
+
+def _plain_text(value) -> str:
+    """Strip the markup Ford renders meta tags into.
+
+    `author` comes back as an anchor element, because Ford resolves the AUTHOR_* macro
+    and then renders it as markdown for an HTML page. The generator wants the name.
+    """
+    if not value:
+        return ""
+    return _HTML_TAG_RE.sub("", str(value)).strip()
+
+
+def _at_line(location: SourceLocation, line: int | None) -> SourceLocation:
+    return location if line is None else SourceLocation(location.file, line)
