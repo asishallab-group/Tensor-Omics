@@ -15,7 +15,7 @@ module fx_edges
 
 contains
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: Every character length form that is allowed
     !| author: A Developer
     subroutine fx_strings(assumed, fixed, sized, n_chars, names, n_names, ierr)
@@ -35,7 +35,7 @@ contains
             !! Error code
     end subroutine fx_strings
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A flat array whose shape travels separately
     !| author: A Developer
     subroutine fx_serialized(data, data_shape, ierr)
@@ -47,7 +47,7 @@ contains
             !! Error code
     end subroutine fx_serialized
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A mask and the count derived from it
     !| author: A Developer
     subroutine fx_masked(genes_selection_mask, n_selected_genes, n_genes, results, n_results, ierr)
@@ -66,7 +66,7 @@ contains
             !! Error code
     end subroutine fx_masked
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A string coming back out, scalar and vector
     !| author: A Developer
     subroutine fx_labels(values, n_values, label, labels, ierr)
@@ -94,7 +94,7 @@ contains
         end do
     end subroutine fx_labels
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A string going in, scalar and vector
     !| author: A Developer
     subroutine fx_count_matching(names, n_names, wanted, n_matching, ierr)
@@ -118,7 +118,7 @@ contains
         end do
     end subroutine fx_count_matching
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: An already interoperable logical, which needs no conversion
     !| author: A Developer
     subroutine fx_c_bool_flag(flag, ierr)
@@ -128,7 +128,7 @@ contains
             !! Error code
     end subroutine fx_c_bool_flag
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: The allocating half of a pair
     !| author: A Developer
     subroutine fx_cluster_alloc(values, n_values, n_clusters, ierr)
@@ -145,7 +145,7 @@ contains
         n_clusters = count(values > 0.0_real64)
     end subroutine fx_cluster_alloc
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: The expert half of a pair, which owns no allocation
     !| author: A Developer
     subroutine fx_cluster(values, n_values, tmp_work, n_work, n_clusters, ierr)
@@ -173,7 +173,7 @@ contains
         n_clusters = count(values > 0.0_real64)
     end subroutine fx_cluster
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: Works out the work array size for fx_cluster
     !| author: A Developer
     subroutine fx_work_size(n_values, n_work, ierr)
@@ -188,7 +188,7 @@ contains
         n_work = 2*n_values
     end subroutine fx_work_size
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: An optional with no default, which C may pass a null pointer for
     !| author: A Developer
     subroutine fx_nullable(values, n_values, mode, ortholog_set, n_orthologs, ierr)
@@ -212,7 +212,7 @@ contains
             !! Error code
     end subroutine fx_nullable
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A procedure that reports no errors of its own
     !| author: A Developer
     pure subroutine fx_no_ierr(value, doubled)

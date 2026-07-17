@@ -29,7 +29,9 @@ def _is_identifier(name: str) -> bool:
 class Conventions:
     """The naming/annotation contract that Fortran sources must follow."""
 
-    #: Ford meta tag marking a procedure for export, i.e. `!> category: C-interface`
+    #: The Ford `category` value marking a procedure for export. This is a fallback for a
+    #: hand-built Conventions; a real run reads it from the `M_EXPORT_C` macro (see
+    #: `frontend.export_category`), so the marker and the generator cannot drift.
     c_interface_category: str = "C-interface"
 
     #: Suffix of the allocating variant of a procedure pair

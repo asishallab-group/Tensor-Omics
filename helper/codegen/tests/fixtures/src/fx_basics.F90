@@ -20,7 +20,7 @@ module fx_basics
 
 contains
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: Normalizes a vector to unit length in-place
     !| author: A Developer
     pure subroutine fx_normalize(vector, n_dims, ierr)
@@ -42,7 +42,7 @@ contains
         vector = vector/length
     end subroutine fx_normalize
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: Sums a matrix, exercising a shared extent
     !| author: A Developer
     subroutine fx_sum_matrix(matrix, weights, n_rows, n_cols, total, ierr)
@@ -68,7 +68,7 @@ contains
         end do
     end subroutine fx_sum_matrix
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: Every optional flavour at once
     !| author: A Developer
     subroutine fx_optionals(values, n_values, span, max_iter, use_quantile, tmp_work, ierr)
@@ -91,7 +91,7 @@ contains
             !! Error code
     end subroutine fx_optionals
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A mode argument and a method argument
     !| author: A Developer
     subroutine fx_modes(values, n_values, mode, link_method, summary, ierr)
@@ -132,7 +132,7 @@ contains
         summary = summary + 0.0_real64*real(link_method, real64)
     end subroutine fx_modes
 
-    !> category: C-interface
+    !> M_EXPORT_C
     !| summary: A function, which the C ABI turns into a subroutine
     !| author: A Developer
     pure function fx_count_positive(values, n_values) result(n_positive)

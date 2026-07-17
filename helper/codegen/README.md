@@ -159,14 +159,19 @@ the generator.
 
 ### Marking a procedure for export
 
-A Ford `category` meta tag:
+The `M_EXPORT_C` macro, in the procedure's Ford pre-comment (needs
+`#include <src/macros.h>`):
 
 ```fortran
-!> category: C-interface
+!> M_EXPORT_C
 !| summary: Normalizes a vector to unit length in-place
 !| author: A Developer
 pure subroutine normalize_unit_length(vector, n_dims, ierr)
 ```
+
+`M_EXPORT_C` expands to a Ford `category` meta tag, and the generator reads the category
+value from the *same* macro — so the marker and what the generator recognises cannot drift.
+Change the macro in one place and both follow.
 
 Only tagged procedures are wrapped. Everything else is held to none of the rules below.
 

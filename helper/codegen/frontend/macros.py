@@ -116,6 +116,28 @@ class MissingMacroError(Exception):
     """The macro header lacks a macro the generator relies on."""
 
 
+#: The macro marking a procedure for export, e.g. `!> M_EXPORT_C`
+EXPORT_MACRO = "M_EXPORT_C"
+
+
+def export_category(macros: MacroTable) -> str:
+    """The Ford `category` value that marks a procedure for export.
+
+    Read from `M_EXPORT_C` rather than hardcoded, so the marker and what the generator
+    looks for cannot disagree: change the macro and both the sources and the generator
+    follow.
+    """
+    if EXPORT_MACRO not in macros:
+        raise MissingMacroError(f"{macros.header} does not define {EXPORT_MACRO}")
+    expanded = macros.expand(EXPORT_MACRO).strip()
+    match = re.match(r"category\s*:\s*(?P<value>.+)", expanded, re.IGNORECASE)
+    if match is None:
+        raise MissingMacroError(
+            f"{EXPORT_MACRO} must expand to 'category: <name>', not '{expanded}'"
+        )
+    return match.group("value").strip()
+
+
 #: The macro tox_errors uses to pack an argument position into an error code
 ERR_ARG_POS_FACTOR_MACRO = "M_ERR_ARG_POS_FACTOR"
 

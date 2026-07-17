@@ -4,7 +4,13 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from codegen.frontend.macros import DOC_MACROS, MacroTable
+from codegen.frontend.macros import (
+    DOC_MACROS,
+    EXPORT_MACRO,
+    MacroTable,
+    MissingMacroError,
+    export_category,
+)
 
 from conftest import REPO_ROOT
 
@@ -184,3 +190,37 @@ class TestRealDocMacros:
             "DM_REQUIRED_IF_MODE(a, m, MODE_X)",
         ):
             assert "'" not in macros.expand(invocation), invocation
+
+
+class TestExportCategory:
+    """M_EXPORT_C is the single source of the export marker."""
+
+    def test_the_macro_is_defined(self, macros):
+        assert EXPORT_MACRO in macros
+
+    def test_the_category_is_read_from_the_macro(self, macros):
+        assert export_category(macros) == "C-interface"
+
+    def test_it_expands_to_a_ford_category_tag(self, macros):
+        # so Ford still parses it into meta.category
+        assert macros.expand(EXPORT_MACRO).strip().lower().startswith("category:")
+
+    def test_a_header_without_the_macro_is_reported(self, tmp_path):
+        header = tmp_path / "macros.h"
+        header.write_text("#define M_NAN nan\n")
+
+        with pytest.raises(MissingMacroError, match=EXPORT_MACRO):
+            export_category(MacroTable(header))
+
+    def test_a_macro_that_is_not_a_category_tag_is_reported(self, tmp_path):
+        header = tmp_path / "macros.h"
+        header.write_text(f"#define {EXPORT_MACRO} not a category\n")
+
+        with pytest.raises(MissingMacroError, match="category: <name>"):
+            export_category(MacroTable(header))
+
+    def test_the_value_follows_a_changed_macro(self, tmp_path):
+        header = tmp_path / "macros.h"
+        header.write_text(f"#define {EXPORT_MACRO} category: C-export\n")
+
+        assert export_category(MacroTable(header)) == "C-export"

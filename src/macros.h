@@ -55,6 +55,12 @@
 ! Fortran would mean the generator had to hardcode the same number and could drift from it.
 #define M_ERR_ARG_POS_FACTOR 10000
 
+! Marks a procedure for export to C, Python and R. Written in the procedure's Ford
+! pre-comment: `!> M_EXPORT_C`. Expands to a Ford `category` meta tag, so Ford still parses
+! it, and the code generator reads the category value from this macro rather than
+! hardcoding the string -- change it here and both the sources and the generator follow.
+#define M_EXPORT_C category: C-interface
+
 ! =============================================================================
 ! Documentation macros (DM_)
 !

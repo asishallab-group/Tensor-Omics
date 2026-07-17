@@ -15,7 +15,7 @@ import contextlib
 import io
 import re
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from ..config import CONVENTIONS, Conventions, Paths
@@ -31,7 +31,12 @@ from ..ir.types import (
     Intent,
     UnsupportedTypeError,
 )
-from .macros import MacroTable, build_directive_patterns, error_arg_pos_factor
+from .macros import (
+    MacroTable,
+    build_directive_patterns,
+    error_arg_pos_factor,
+    export_category,
+)
 from .source_index import SourceIndex
 
 _DIMENSION_ATTRIB_RE = re.compile(r"\bdimension\s*\(", re.IGNORECASE)
@@ -77,12 +82,16 @@ class FordFrontend:
     ):
         self.paths = paths
         self.diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
-        self.conventions = conventions
         self.index = SourceIndex(paths.root)
         self.macros = MacroTable(
             paths.resolve(paths.macros_header), include_paths=(paths.root,)
         )
         self.directives = DirectiveParser(build_directive_patterns(self.macros))
+        # the export category comes from M_EXPORT_C, so the marker and what the generator
+        # recognises cannot drift; the passed conventions supply everything else
+        self.conventions = replace(
+            conventions, c_interface_category=export_category(self.macros)
+        )
 
     def parse(self) -> ParsedProject:
         ford_project = self._parse_with_ford()
