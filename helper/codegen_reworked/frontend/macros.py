@@ -24,6 +24,8 @@ from pathlib import Path
 
 from pcpp import Preprocessor
 
+from ..ir.directives import DirectivePatterns
+
 
 class MacroTable:
     """The macros defined by a header, with expansion of arbitrary snippets."""
@@ -87,6 +89,31 @@ class MacroTable:
     def _expand_with(preprocessor: Preprocessor, text: str) -> str:
         tokens = preprocessor.tokenize(text)
         return "".join(token.value for token in preprocessor.expand_macros(tokens))
+
+
+def build_directive_patterns(macros: MacroTable) -> DirectivePatterns:
+    """Compile the directive patterns from the macro definitions in the header.
+
+    This is the seam between the preprocessor and the IR: `ir.directives` owns what a
+    directive *means*, this owns how it is spelled once expanded, and neither has to
+    import the other's dependencies.
+    """
+    missing = [name for name in DOC_MACROS.all() if name not in macros]
+    if missing:
+        raise MissingMacroError(
+            f"{macros.header} does not define: {', '.join(sorted(missing))}"
+        )
+
+    return DirectivePatterns(
+        **{
+            field: macros.compiled(template)
+            for field, template in DirectivePatterns.templates().items()
+        }
+    )
+
+
+class MissingMacroError(Exception):
+    """The macro header lacks a documentation macro the generator relies on."""
 
 
 @dataclass(frozen=True)
