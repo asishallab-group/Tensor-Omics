@@ -5,6 +5,7 @@
 !| has a stable, complete specimen of every construct it claims to support.
 module fx_basics
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT
     implicit none
 
     integer(int32), parameter :: MODE_MEAN = 1
@@ -29,6 +30,16 @@ contains
             !! Vector that will be normalized
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        real(real64) :: length
+
+        call set_ok(ierr)
+        length = sqrt(sum(vector**2))
+        if (length <= 0.0_real64) then
+            call set_err(ierr, ERR_DIVISION_BY_ZERO)
+            return
+        end if
+        vector = vector/length
     end subroutine fx_normalize
 
     !> category: C-interface
@@ -47,6 +58,14 @@ contains
             !! the weighted sum
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        integer(int32) :: i_col
+
+        call set_ok(ierr)
+        total = 0.0_real64
+        do i_col = 1, n_cols
+            total = total + weights(i_col)*sum(matrix(:, i_col))
+        end do
     end subroutine fx_sum_matrix
 
     !> category: C-interface
@@ -75,7 +94,7 @@ contains
     !> category: C-interface
     !| summary: A mode argument and a method argument
     !| author: A Developer
-    subroutine fx_modes(values, n_values, mode, link_method, ierr)
+    subroutine fx_modes(values, n_values, mode, link_method, summary, ierr)
         integer(int32), intent(in) :: n_values
             !! elements of `values`
         real(real64), dimension(n_values), intent(in) :: values
@@ -94,8 +113,23 @@ contains
             !! |--------|-------|
             !! | minimises variance | [[fx_basics(module):METHOD_WARD(variable)]] |
             !! | nearest neighbour | [[fx_basics(module):METHOD_SINGLE(variable)]] |
+        real(real64), intent(out) :: summary
+            !! the summarised value
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        call set_ok(ierr)
+        select case (mode)
+            case (MODE_MEAN)
+                summary = sum(values)/real(n_values, real64)
+            case (MODE_MEDIAN)
+                summary = values((n_values + 1)/2)
+            case default
+                call set_err(ierr, ERR_INVALID_INPUT)
+                return
+        end select
+        ! link_method is accepted but unused: it is here to exercise a second mode
+        summary = summary + 0.0_real64*real(link_method, real64)
     end subroutine fx_modes
 
     !> category: C-interface

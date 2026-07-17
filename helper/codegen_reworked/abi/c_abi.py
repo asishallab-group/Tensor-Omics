@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
+from ..ir.constants import ConstantError, ConstantEvaluator
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
@@ -63,21 +64,26 @@ CHARACTER_C_KIND = "c_char"
 
 
 def build_project(project: Project, diagnostics: DiagnosticBag,
-                  conventions: Conventions = CONVENTIONS) -> CInterface:
+                  conventions: Conventions = CONVENTIONS,
+                  evaluator: ConstantEvaluator | None = None) -> CInterface:
     """Build the C interface of every module that exports anything."""
+    if evaluator is None:
+        # The project's own parameters, so DM_DEFAULT(PI) resolves
+        evaluator = ConstantEvaluator(project.constant_values())
     modules = []
     for module in project:
         if not module.has_exports:
             # A module with nothing to export produces no file at all
             continue
-        modules.append(build_module(module, diagnostics, conventions))
+        modules.append(build_module(module, diagnostics, conventions, evaluator))
     return CInterface(tuple(modules))
 
 
 def build_module(module: Module, diagnostics: DiagnosticBag,
-                 conventions: Conventions = CONVENTIONS) -> CWrapperModule:
+                 conventions: Conventions = CONVENTIONS,
+                 evaluator: ConstantEvaluator | None = None) -> CWrapperModule:
     wrappers = tuple(
-        build_wrapper(procedure, diagnostics, conventions)
+        build_wrapper(procedure, diagnostics, conventions, evaluator)
         for procedure in module.exported_procedures
     )
     return CWrapperModule(
@@ -86,8 +92,9 @@ def build_module(module: Module, diagnostics: DiagnosticBag,
 
 
 def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
-                  conventions: Conventions = CONVENTIONS) -> CWrapper:
-    return _Builder(procedure, diagnostics, conventions).build()
+                  conventions: Conventions = CONVENTIONS,
+                  evaluator: ConstantEvaluator | None = None) -> CWrapper:
+    return _Builder(procedure, diagnostics, conventions, evaluator).build()
 
 
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
@@ -112,10 +119,11 @@ def stripped_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) 
 
 class _Builder:
     def __init__(self, procedure: Procedure, diagnostics: DiagnosticBag,
-                 conventions: Conventions):
+                 conventions: Conventions, evaluator: ConstantEvaluator | None = None):
         self.procedure = procedure
         self.diagnostics = diagnostics
         self.conventions = conventions
+        self.evaluator = evaluator or ConstantEvaluator()
         self.taken = {a.name.lower() for a in procedure.arguments}
         if procedure.result is not None:
             self.taken.add(procedure.result.name.lower())
@@ -210,6 +218,8 @@ class _Builder:
             mode=mode,
             shape_arg=shape_arg.name if shape_arg is not None else None,
             size_extents=size_extents,
+            default=self._default_of(argument),
+            has_default=argument.directives.has_default,
         )
 
         # The synthesised arguments follow the one they belong to, so the C signature
@@ -252,6 +262,29 @@ class _Builder:
             )
             return name, extra
         return str(length), None
+
+    def _default_of(self, argument: Argument):
+        """The value an omitted optional takes, evaluated now.
+
+        The interfacing languages have to pass it, so it must be a value and not an
+        expression by the time they are emitted. A default that will not evaluate is
+        reported here, once, rather than by each emitter in turn.
+        """
+        directive = argument.directives.default
+        if directive is None:
+            return None
+        try:
+            return self.evaluator.evaluate(directive.expression)
+        except ConstantError as error:
+            self.diagnostics.error(
+                f"the default of '{argument.name}' is not a constant: {error}",
+                entity=argument,
+                note=(
+                    "a default must be evaluable at generation time, because Python and "
+                    "R pass it when the argument is omitted"
+                ),
+            )
+            return None
 
     @staticmethod
     def _is_nullable(argument: Argument) -> bool:

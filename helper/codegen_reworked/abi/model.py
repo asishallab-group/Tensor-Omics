@@ -74,6 +74,13 @@ class CArgument:
     shape_arg: str | None = None
     #: Extents to multiply for the element count, empty for a scalar
     size_extents: tuple[str, ...] = ()
+    #: The value an omitted optional takes, evaluated from DM_DEFAULT. Evaluated here
+    #: rather than in each emitter: Python and R must agree on it, and a constant
+    #: expression means the same thing in both.
+    default: object | None = None
+    #: Whether a default was documented, which `default is None` cannot say -- the
+    #: default may legitimately be None-like
+    has_default: bool = False
 
     @property
     def rank(self) -> int:
