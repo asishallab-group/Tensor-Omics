@@ -239,10 +239,31 @@ To resolve during implementation — flagged rather than silently decided.
 5. **`DM_REQUIRED_IF_PRESENT` / `M_DOC_NO_DEFAULT`** appear in issue #131 but not in
    `macros.h`. Confirm whether `DM_REQUIRED_IF_MODE` subsumes them.
 
-## 8. Known upstream issue
+## 8. Known upstream issue: `c_loc` on a zero-size target
 
 `src/macros.h` carries a standing `TODO codegen`: `M_CHECK_NON_NULL(ARG)` calls `c_loc(ARG)`
-before the array's declared extent is validated `> 0`, and `c_loc` on a zero-size target is not
-standard-conforming. This is a generator concern — the generator emits the call order. Fix
-within this work (validate extents before null-checking arrays, or null-check via a scalar
-extent argument first) and cover with an edge case in §6.3.
+before the array's declared extent is validated `> 0`, and `c_loc` on a zero-size target is
+not standard-conforming. This is a generator concern — the generator emits the call order.
+
+**Agreed fix (confirmed).** Null validation is emitted in a fixed order:
+
+1. `ierr` — the only channel for reporting anything, so it comes first
+2. scalars — including every extent and shape argument
+3. arrays — by which point their extents are known to be readable
+
+with optionals respected throughout. **Shape and extent arguments must therefore never be
+optional**, which becomes a rule in `validate.py` (§5 step 11).
+
+The ordering alone does not settle zero size: after step 2 an extent is known readable, but
+its *value* may still be 0, and `dimension(n)` with `n == 0` is exactly the zero-size target
+`c_loc` may not take. So step 3 guards the check with the array's size, which the ordering
+has just made safe to read:
+
+```
+#define M_CHECK_ARRAY_NON_NULL(ARG, N) if ((N) > 0) then; M_CHECK_NON_NULL(ARG); endif
+```
+
+A null pointer for a legitimately empty array then passes the wrapper untouched, and the
+callee's own `validate_dimension_size` decides whether empty is an error for that routine —
+which is where that policy already lives. `N` is emitted as the product of the argument's
+extents. To be confirmed at §5 step 13 with generated output to look at.
