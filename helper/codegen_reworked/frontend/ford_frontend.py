@@ -34,9 +34,11 @@ from ..ir.types import (
 from .macros import MacroTable, build_directive_patterns, error_arg_pos_factor
 from .source_index import SourceIndex
 
-_DIMENSION_ATTRIB_RE = re.compile(r"\bdimension\s*(\([^)]*\))", re.IGNORECASE)
+_DIMENSION_ATTRIB_RE = re.compile(r"\bdimension\s*\(", re.IGNORECASE)
 _LEN_RE = re.compile(r"\blen\s*=\s*(\*|:|[^,)]+)", re.IGNORECASE)
 _BASE_TYPE_RE = re.compile(r"\s*([A-Za-z_]+)", re.IGNORECASE)
+#: The name inside a derived type spec: `type(hashmap_type)` -> hashmap_type
+_DERIVED_NAME_RE = re.compile(r"\s*type\s*\(\s*([A-Za-z]\w*)", re.IGNORECASE)
 #: Ford renders meta tags as markdown, so `author` arrives wrapped in an anchor
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 #: A macro that survived preprocessing, i.e. one whose definition was never seen.
@@ -221,7 +223,9 @@ class FordFrontend:
     # -- pieces -----------------------------------------------------------------
 
     def _type(self, variable, location: SourceLocation, report: bool = True):
-        full_type = getattr(variable, "full_type", None) or ""
+        # Ford renders a derived type's name as a link to its documentation page, so
+        # full_type arrives as `type(<a href='type/hashmap_type.html'>hashmap_type</a>)`
+        full_type = _plain_text(getattr(variable, "full_type", None))
         match = _BASE_TYPE_RE.match(full_type)
         if match is None:
             if report:
@@ -251,7 +255,9 @@ class FordFrontend:
 
         derived_name = None
         if base is BaseType.DERIVED:
-            derived_name = kind
+            # The name is inside the type spec, not in .kind
+            name_match = _DERIVED_NAME_RE.match(full_type)
+            derived_name = name_match.group(1) if name_match else (kind or "unknown")
             kind = None
 
         try:
@@ -272,9 +278,9 @@ class FordFrontend:
         the attribute form is used, so the attribute has to win.
         """
         for attribute in getattr(variable, "attribs", ()) or ():
-            match = _DIMENSION_ATTRIB_RE.search(attribute)
-            if match is not None:
-                return Dimension.parse(match.group(1))
+            extents = _dimension_attribute(attribute)
+            if extents is not None:
+                return Dimension.parse(extents)
         return Dimension.parse(getattr(variable, "dimension", "") or "")
 
     @staticmethod
@@ -375,6 +381,31 @@ class FordFrontend:
         source_file = getattr(entity, "source_file", None)
         path = getattr(source_file, "path", None)
         return Path(path) if path else Path("<unknown>")
+
+
+def _dimension_attribute(attribute: str) -> str | None:
+    """The extent list of a `dimension(...)` attribute, or None if it is not one.
+
+    Bracket matching rather than a regex, because the extents are expressions and nest:
+    `dimension(max(0_int32, n_timepoints - 1), n_factors)` and `dimension(clen,
+    product(orig_shape))` both appear in the sources. A `\\(([^)]*)\\)` pattern stops at
+    the first closing bracket and returns something unbalanced.
+    """
+    match = _DIMENSION_ATTRIB_RE.search(attribute)
+    if match is None:
+        return None
+
+    depth = 0
+    start = match.end() - 1
+    for index in range(start, len(attribute)):
+        character = attribute[index]
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth == 0:
+                return attribute[start : index + 1]
+    return None
 
 
 def _clean_doc(doc_list) -> list[str]:

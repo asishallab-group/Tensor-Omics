@@ -130,6 +130,102 @@ class TestDimensions:
         assert argument.dimension.is_assumed_shape
 
 
+class TestDimensionAttributes:
+    """Reading dimension(...) out of Ford's attribute list."""
+
+    @pytest.mark.parametrize(
+        "attribute, expected",
+        [
+            ("dimension(n)", ("n",)),
+            ("dimension(n, m)", ("n", "m")),
+            ("dimension(:)", (":",)),
+            ("dimension(*)", ("*",)),
+            # nested calls: a \(([^)]*)\) pattern stops at the first bracket and
+            # returns something unbalanced. All of these appear in the real sources.
+            ("dimension(max(0, n_timepoints - 1))", ("max(0, n_timepoints - 1)",)),
+            (
+                "dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples)",
+                ("max(0_int32, n_timepoints - 1)", "n_factors", "n_samples"),
+            ),
+            ("dimension(clen, product(orig_shape))", ("clen", "product(orig_shape)")),
+            ("dimension((n_reps_S1 + n_reps_S2)*n_neighbors)", ("(n_reps_S1 + n_reps_S2)*n_neighbors",)),
+            ("DIMENSION(N)", ("N",)),
+            ("dimension  ( n )", ("n",)),
+            # not a dimension attribute at all
+            ("allocatable", None),
+            ("target", None),
+        ],
+    )
+    def test_extents_are_extracted_with_bracket_matching(self, attribute, expected):
+        from codegen_reworked.frontend.ford_frontend import _dimension_attribute
+        from codegen_reworked.ir.types import Dimension
+
+        extracted = _dimension_attribute(attribute)
+
+        if expected is None:
+            assert extracted is None
+        else:
+            assert Dimension.parse(extracted).extents == expected
+
+    def test_an_unclosed_attribute_yields_nothing_rather_than_a_broken_string(self):
+        from codegen_reworked.frontend.ford_frontend import _dimension_attribute
+
+        assert _dimension_attribute("dimension(max(0, n") is None
+
+
+class TestTheWholeRealSource:
+    """The frontend must cope with every construct actually written, not just fixtures.
+
+    This is the broadest check there is: parse src/ and require it to come out clean.
+    """
+
+    @pytest.fixture(scope="session")
+    def real_project(self):
+        result, bag = parse(src_dir=Path("src"))
+        return result.project, bag
+
+    def test_the_real_sources_parse_without_diagnostics(self, real_project):
+        _, bag = real_project
+
+        assert bag.render() == ""
+
+    def test_every_module_is_found(self, real_project):
+        project, _ = real_project
+
+        assert len(project) > 30
+        assert project.module("tox_errors") is not None
+        assert project.module("tox_conversions") is not None
+
+    def test_every_argument_has_a_type(self, real_project):
+        # a type the frontend cannot read comes back as None and would break the ABI
+        project, _ = real_project
+
+        untyped = [
+            f"{m.name}.{p.name}.{a.name}"
+            for m in project
+            for p in m
+            for a in p.arguments
+            if a.type is None
+        ]
+
+        assert untyped == []
+
+    def test_derived_types_keep_their_name(self, real_project):
+        # Ford renders it as a link to its documentation page
+        project, _ = real_project
+
+        derived = [
+            a.type
+            for m in project
+            for p in m
+            for a in p.arguments
+            if a.type is not None and a.type.derived_name
+        ]
+
+        assert derived, "no derived types found; this test needs a new example"
+        assert all("<" not in t.derived_name for t in derived)
+
+
 class TestIntentsAndAttributes:
     @pytest.mark.parametrize(
         "name, intent",
