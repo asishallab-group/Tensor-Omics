@@ -101,12 +101,15 @@ contains
     !> category: C-interface
     !| summary: A function, which the C ABI turns into a subroutine
     !| author: A Developer
-    pure integer(int32) function fx_count_positive(values, n_values) result(count)
+    pure function fx_count_positive(values, n_values) result(n_positive)
         integer(int32), intent(in) :: n_values
             !! elements of `values`
         real(real64), dimension(n_values), intent(in) :: values
             !! the values
-        integer(int32) :: count
+        integer(int32) :: n_positive
+            !! how many values are greater than zero
+
+        n_positive = count(values > 0.0_real64)
     end function fx_count_positive
 
     !> summary: Not exported, and deliberately breaking the rules

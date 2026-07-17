@@ -11,6 +11,17 @@
 !              target here, which is not standard-conforming / is processor-dependent.
 #define M_CHECK_NON_NULL(ARG) if (.not. c_associated(c_loc(ARG))) then; call set_err(ierr, ERR_POINTER_NULL); return; endif
 
+! `c_loc` may not be given a zero-size target, so an array cannot be null-checked until
+! the extents that size it are known -- which is what the TODO above is about. The
+! generator emits the checks in an order that makes this safe (ierr, then every scalar,
+! then the arrays), and guards each array with the element count it has just made
+! readable. `N` is that count, an expression over already-checked scalars.
+!
+! An empty array is therefore left alone: a caller passing null for a legitimately
+! zero-size array gets through, and the callee's own validate_dimension_size decides
+! whether empty is an error for that routine -- which is where that policy already lives.
+#define M_CHECK_ARRAY_NON_NULL(ARG, N) if ((N) > 0) then; M_CHECK_NON_NULL(ARG); end if
+
 #define M_USE_NULL_VALIDATION use, intrinsic :: iso_c_binding, only: c_associated, c_loc; use tox_errors, only: set_err, ERR_POINTER_NULL
 #define M_USE_ALLOCATION use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_err
 

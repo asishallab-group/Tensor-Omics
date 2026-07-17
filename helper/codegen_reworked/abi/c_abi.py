@@ -204,7 +204,7 @@ class _Builder:
             intent=argument.intent or Intent.INOUT,
             origin=self._origin_of(argument, is_result),
             conversion=conversion,
-            optional=argument.optional,
+            optional=self._is_nullable(argument),
             doc=argument.doc,
             source=argument,
             mode=mode,
@@ -252,6 +252,21 @@ class _Builder:
             )
             return name, extra
         return str(length), None
+
+    @staticmethod
+    def _is_nullable(argument: Argument) -> bool:
+        """Whether C may pass a null pointer to mean "not given".
+
+        An optional with a `DM_DEFAULT` is *not* nullable: the interfacing languages know
+        the default and pass it, so C always receives a value. That is deliberate, from
+        issue #131 -- every nullable optional is another branch in the wrapper, and the
+        default has to be applied somewhere regardless. Applying it in Python and R keeps
+        the wrapper flat and the default in one place.
+
+        What stays nullable is an optional with no default: one required only in a
+        certain mode, or an output the caller may decline.
+        """
+        return argument.optional and not argument.directives.has_default
 
     def _origin_of(self, argument: Argument, is_result: bool) -> Origin:
         if is_result:

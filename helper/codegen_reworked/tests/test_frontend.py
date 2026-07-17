@@ -150,7 +150,7 @@ class TestFunctions:
         procedure = project.procedure("fx_basics", "fx_count_positive")
 
         assert procedure.is_function
-        assert procedure.result.name == "count"
+        assert procedure.result.name == "n_positive"
         assert procedure.result.is_result
 
     def test_a_result_is_an_output(self, project):
