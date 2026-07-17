@@ -133,8 +133,20 @@ class RcppEmitter:
 
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
+        """Whether C++ works this out itself, so it is not a parameter of .rcpp.
+
+        A computed (AUTO) argument is *not* derived here: R computes it and passes it in,
+        because the producer's wrapper is an R function C++ cannot call. So from C++'s
+        side a computed argument is an ordinary input. Extents, shapes and mask counts C++
+        does derive, from the input arrays it is handed.
+        """
         roles = argument.source.roles if argument.source else None
-        return bool(roles and roles.is_derived)
+        if roles is None:
+            return False
+        if roles.is_computed:
+            # computed wins: R passes it in, even though it may also size a work array
+            return False
+        return roles.is_extent or roles.is_shape_arg or roles.is_mask_count
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

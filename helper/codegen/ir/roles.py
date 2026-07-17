@@ -61,12 +61,35 @@ class ModeTable:
         return None
 
 
+@dataclass(frozen=True)
+class OutputFromPlan:
+    """How an argument is obtained by calling another procedure.
+
+    For `DM_OUTPUT_FROM(count, mask_chunk_count, ..., AUTO)`: call `mask_chunk_count`,
+    supply its inputs from the consumer's own arguments, and take its `count` output. The
+    interfacing languages call the producer's *generated wrapper*, so its own error
+    checking and result handling come for free.
+    """
+
+    #: The procedure to call
+    producer: Procedure
+    #: The producer's output argument whose value fills the consumer argument
+    output: Argument
+    #: (producer input name, consumer argument name) pairs, name-matched
+    inputs: tuple[tuple[str, str], ...]
+    #: AUTO -> the languages call it; JUST_INFO -> the doc only tells the caller to
+    is_automatic: bool
+
+
 @dataclass
 class ArgumentRoles:
     """Everything the conventions and directives say about one argument."""
 
     #: `tmp_` prefixed: a work array, allocated silently and never returned
     is_temporary: bool = False
+
+    #: How this argument is computed from another procedure, if it is
+    computed_from: OutputFromPlan | None = None
 
     #: The modes this argument accepts, when it is a mode argument
     mode: ModeTable | None = None
@@ -105,12 +128,19 @@ class ArgumentRoles:
         return self.mask_count_of is not None
 
     @property
+    def is_computed(self) -> bool:
+        """Computed by calling another procedure (AUTO). JUST_INFO does not count -- the
+        caller still supplies it, the documentation only says where to get it."""
+        return self.computed_from is not None and self.computed_from.is_automatic
+
+    @property
     def is_derived(self) -> bool:
         """Whether the interfacing languages can work this argument out themselves.
 
-        Such an argument is not asked of the caller: it comes from another argument.
+        Such an argument is not asked of the caller: it comes from another argument, or
+        from calling another procedure.
         """
-        return self.is_extent or self.is_shape_arg or self.is_mask_count
+        return self.is_extent or self.is_shape_arg or self.is_mask_count or self.is_computed
 
 
 def analyse(procedure: Procedure, diagnostics: DiagnosticBag,
@@ -130,6 +160,98 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     for module in project:
         for procedure in module.exported_procedures:
             analyse(procedure, diagnostics, conventions)
+
+    # output_from is a cross-procedure relation, so it is resolved once every procedure
+    # has its own roles and the producer can be looked up
+    for module in project:
+        for procedure in module.exported_procedures:
+            _resolve_output_from(procedure, project, diagnostics)
+
+
+def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag) -> None:
+    """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
+
+    Name-matching only, for now: each of the producer's inputs is supplied by a consumer
+    argument of the same name. A producer input with no match is an error naming it -- the
+    markdown-table override for renamed inputs is deferred until a real case needs it.
+    """
+    for argument in consumer.arguments:
+        directive = argument.directives.output_from
+        if directive is None:
+            continue
+
+        producer = project.procedure(directive.module, directive.procedure)
+        if producer is None:
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{directive.procedure}' in "
+                f"'{directive.module}', which does not exist",
+                entity=argument,
+            )
+            continue
+
+        if producer.module is not consumer.module:
+            # a cross-module call needs the producer's wrapper imported into the
+            # consumer's file; both real cases are same-module, so this is deferred
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{producer.name}' in another "
+                f"module, which is not supported yet",
+                entity=argument,
+                note="the producer must be in the same module as the consumer, for now",
+            )
+            continue
+
+        if not producer.is_exported:
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{producer.name}', which is not "
+                f"exported, so there is no wrapper to call",
+                entity=argument,
+                note=(
+                    f"add 'category: {CONVENTIONS.c_interface_category}' to "
+                    f"'{producer.name}'"
+                ),
+            )
+            continue
+
+        output = producer.argument(directive.argument)
+        if output is None or not (output.intent and output.intent.is_output):
+            diagnostics.error(
+                f"'{directive.argument}' is not an output of '{producer.name}'",
+                entity=argument,
+            )
+            continue
+
+        inputs = []
+        unmatched = []
+        for producer_input in producer.arguments:
+            if producer_input is output or not producer_input.intent.is_input:
+                continue
+            if producer_input.name.lower() == "ierr":
+                continue
+            match = consumer.argument(producer_input.name)
+            if match is None:
+                unmatched.append(producer_input.name)
+            else:
+                inputs.append((producer_input.name, match.name))
+
+        if unmatched:
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{producer.name}', but its "
+                f"input(s) {', '.join(sorted(unmatched))} have no argument of the same "
+                f"name in '{consumer.name}'",
+                entity=argument,
+                note=(
+                    "name-matching is all that is supported yet; a markdown table for "
+                    "renamed inputs is not implemented"
+                ),
+            )
+            continue
+
+        argument.roles.computed_from = OutputFromPlan(
+            producer=producer,
+            output=output,
+            inputs=tuple(inputs),
+            is_automatic=directive.is_automatic,
+        )
 
 
 class _Analyser:

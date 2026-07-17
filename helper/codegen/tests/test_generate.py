@@ -57,11 +57,11 @@ class TestGenerate:
         suffixes = {file.path.suffix for file in result.files}
         assert suffixes == {".py"}
 
-    def test_the_auto_output_from_warning_is_surfaced(self):
-        # fx_cluster's expert twin needs DM_OUTPUT_FROM(AUTO); it is skipped, not emitted
-        result = generate(paths(REPO_ROOT), targets=("c",))
+    def test_auto_output_from_is_generated_not_skipped(self):
+        # fx_cluster's expert twin has n_work via DM_OUTPUT_FROM(AUTO); it is now generated
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",))
 
-        assert any("DM_OUTPUT_FROM" in w.message for w in result.diagnostics.warnings)
+        assert not any("DM_OUTPUT_FROM" in w.message for w in result.diagnostics.warnings)
 
     def test_files_are_not_written_by_generate(self, isolated_repo):
         result = generate(paths(isolated_repo, REAL_SRC), targets=("python",))

@@ -140,6 +140,9 @@ contains
             !! how many clusters were found
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        call set_ok(ierr)
+        n_clusters = count(values > 0.0_real64)
     end subroutine fx_cluster_alloc
 
     !> category: C-interface
@@ -159,6 +162,15 @@ contains
             !! how many clusters were found
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        ! use the work array so it is genuinely needed
+        do i = 1, min(n_values, n_work)
+            tmp_work(i) = values(i)
+        end do
+        n_clusters = count(values > 0.0_real64)
     end subroutine fx_cluster
 
     !> category: C-interface
@@ -171,6 +183,9 @@ contains
             !! required size of the work array
         integer(int32), intent(out) :: ierr
             !! Error code
+
+        call set_ok(ierr)
+        n_work = 2*n_values
     end subroutine fx_work_size
 
     !> category: C-interface

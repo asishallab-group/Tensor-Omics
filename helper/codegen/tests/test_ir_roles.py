@@ -462,6 +462,102 @@ class TestResultSize:
         assert procedure.argument("results").roles.result_size_arg is None
 
 
+class TestOutputFrom:
+    """DM_OUTPUT_FROM(AUTO): an argument obtained by calling another procedure."""
+
+    def _consumer(self, directive_mode="AUTO", producer_inputs=("n",)):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        mode = OutputFromMode.AUTO if directive_mode == "AUTO" else OutputFromMode.JUST_INFO
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(output_from=OutputFrom("n_work", "sizer", "m", mode)),
+        )
+        consumer = b.procedure("uses_work", b.integer("n"), work, b.ierr())
+        producer = b.procedure(
+            "sizer",
+            *[b.integer(name) for name in producer_inputs],
+            b.integer("n_work", Intent.OUT),
+            b.ierr(),
+        )
+        return b.project(b.module("m", consumer, producer))
+
+    def test_a_producer_is_resolved_and_inputs_name_matched(self, bag):
+        project = self._consumer(producer_inputs=("n",))
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert bag.errors == ()
+        assert plan is not None
+        assert plan.producer.name == "sizer"
+        assert plan.output.name == "n_work"
+        assert plan.inputs == (("n", "n"),)
+        assert plan.is_automatic
+
+    def test_an_auto_argument_is_derived_and_not_asked_of_the_caller(self, bag):
+        project = self._consumer()
+
+        analyse_project(project, bag)
+
+        roles = project.procedure("m", "uses_work").argument("n_work").roles
+        assert roles.is_computed
+        assert roles.is_derived
+
+    def test_just_info_is_not_computed_so_the_caller_still_supplies_it(self, bag):
+        project = self._consumer(directive_mode="JUST_INFO")
+
+        analyse_project(project, bag)
+
+        roles = project.procedure("m", "uses_work").argument("n_work").roles
+        assert roles.computed_from is not None
+        assert not roles.is_computed
+        assert not roles.is_derived
+
+    def test_a_producer_input_with_no_matching_name_is_reported(self, bag):
+        project = self._consumer(producer_inputs=("n_absent",))
+
+        analyse_project(project, bag)
+
+        assert any("n_absent" in e.message and "no argument of the same name" in e.message
+                   for e in bag.errors)
+
+    def test_a_missing_producer_is_reported(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(
+                output_from=OutputFrom("n_work", "nope", "m", OutputFromMode.AUTO)
+            ),
+        )
+        project = b.project(b.module("m", b.procedure("p", work, b.ierr())))
+
+        analyse_project(project, bag)
+
+        assert any("does not exist" in e.message for e in bag.errors)
+
+    def test_a_non_exported_producer_is_reported(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+        from codegen.ir.entities import Meta
+
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(
+                output_from=OutputFrom("n_work", "sizer", "m", OutputFromMode.AUTO)
+            ),
+        )
+        consumer = b.procedure("uses_work", b.integer("n"), work, b.ierr())
+        producer = b.procedure(
+            "sizer", b.integer("n"), b.integer("n_work", Intent.OUT), b.ierr(), meta=Meta()
+        )
+        project = b.project(b.module("m", consumer, producer))
+
+        analyse_project(project, bag)
+
+        assert any("not exported" in e.message for e in bag.errors)
+
+
 class TestResultsAndProjects:
     def test_a_function_result_is_analysed_too(self, bag):
         result = b.real("tmp_out", Intent.OUT, is_result=True)

@@ -15,6 +15,7 @@ What the generated function does, and why:
 
 from __future__ import annotations
 
+from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -306,6 +307,7 @@ class PythonEmitter:
             writer.block(render_docstring(wrapper))
             self._prepare_inputs(writer, wrapper)
             self._derive_extents(writer, wrapper)
+            self._compute_auto(writer, wrapper)
             self._check_shapes(writer, wrapper)
             self._allocate(writer, wrapper)
             self._call(writer, wrapper)
@@ -453,6 +455,43 @@ class PythonEmitter:
         with writer.indent():
             writer.extend(body)
         return writer.render()
+
+    def _compute_auto(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Fill each DM_OUTPUT_FROM(AUTO) argument by calling the producer's wrapper.
+
+        The producer's own generated function does its own validation and error
+        checking, so this just calls it. The inputs passed are the consumer's own,
+        already prepared above, so the producer's conversions are no-ops rather than a
+        second copy.
+        """
+        lines = Writer()
+        for argument in wrapper:
+            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
+            if plan is None or not plan.is_automatic:
+                continue
+            producer = stripped_name(plan.producer)
+            call_args = ", ".join(f"{inp}={inp}" for _, inp in plan.inputs)
+            call = f"{producer}({call_args})"
+            if not self._producer_returns_single(plan.producer):
+                call = f'{call}["{plan.output.name}"]'
+            lines.line(f"{argument.name} = {call}")
+        if lines:
+            writer.line("# work out what other procedures must supply, per DM_OUTPUT_FROM")
+            writer.extend(lines)
+            writer.blank()
+
+    @staticmethod
+    def _producer_returns_single(producer) -> bool:
+        """Whether the producer's wrapper returns one value (not a dict of outputs)."""
+        outputs = [
+            a for a in producer.arguments
+            if a.intent and a.intent.is_output
+            and a.name.lower() != "ierr"
+            and not (a.roles and a.roles.is_temporary)
+        ]
+        if producer.result is not None:
+            outputs.append(producer.result)
+        return len(outputs) == 1
 
     def _derive_extents(self, writer: Writer, wrapper: CWrapper) -> None:
         lines = Writer()

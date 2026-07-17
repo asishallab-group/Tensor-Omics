@@ -48,13 +48,78 @@ class RWrapperEmitter:
         writer.line(f"{wrapper.stripped_name} <- function({params}) {{")
         with writer.indent():
             self._validate(writer, wrapper)
+            self._compute_auto(writer, wrapper)
             self._check_shapes(writer, wrapper)
             self._call(writer, wrapper)
             self._return(writer, wrapper)
         writer.line("}")
         return writer.render()
 
+    def _compute_auto(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Fill each DM_OUTPUT_FROM(AUTO) argument by calling the producer's R wrapper.
+
+        As in Python: the producer's own wrapper validates and error-checks, so this only
+        calls it, with the consumer's already-validated inputs.
+        """
+        from ..abi.c_abi import stripped_name
+
+        wrote = False
+        for argument in wrapper:
+            roles = argument.source.roles if argument.source else None
+            plan = roles.computed_from if roles else None
+            if plan is None or not plan.is_automatic:
+                continue
+            producer = stripped_name(plan.producer)
+            call_args = ", ".join(
+                f"{producer_input} = {self._r_value_of(consumer_arg, wrapper)}"
+                for producer_input, consumer_arg in plan.inputs
+            )
+            call = f"{producer}({call_args})"
+            if not self._producer_returns_single(plan.producer):
+                call = f'{call}${plan.output.name}'
+            writer.line(f"{argument.name} <- {call}")
+            wrote = True
+        if wrote:
+            writer.blank()
+
+    def _r_value_of(self, consumer_arg: str, wrapper: CWrapper) -> str:
+        """The R expression for a consumer argument, to feed an AUTO producer call.
+
+        A user input is just its name; a derived extent is not in scope as a variable, so
+        it is spelled out (`length(values)`), which is what the caller would compute anyway.
+        """
+        argument = wrapper.argument(consumer_arg)
+        roles = argument.source.roles if argument and argument.source else None
+        if roles is not None and roles.is_extent:
+            for owner in roles.extent_of:
+                c_owner = wrapper.argument(owner.name)
+                if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
+                    axis = self._axis_of(consumer_arg, c_owner)
+                    if axis is not None:
+                        return self._extent_expression(c_owner, axis)
+        if roles is not None and roles.is_mask_count:
+            return f"sum({roles.mask_count_of.name})"
+        return consumer_arg
+
+    @staticmethod
+    def _producer_returns_single(producer) -> bool:
+        outputs = [
+            a for a in producer.arguments
+            if a.intent and a.intent.is_output
+            and a.name.lower() != "ierr"
+            and not (a.roles and a.roles.is_temporary)
+        ]
+        if producer.result is not None:
+            outputs.append(producer.result)
+        return len(outputs) == 1
+        return writer.render()
+
     def _inputs(self, wrapper: CWrapper) -> list[CArgument]:
+        """What the user supplies -- the R function's parameters.
+
+        Computed (AUTO) arguments are excluded: R works them out itself. They are not,
+        however, excluded from the `.rcpp` call, which C++ needs them for.
+        """
         return [
             argument
             for argument in wrapper
@@ -64,10 +129,31 @@ class RWrapperEmitter:
             and not self._is_derived(argument)
         ]
 
+    def _rcpp_inputs(self, wrapper: CWrapper) -> list[CArgument]:
+        """What the .rcpp function receives: the user inputs, plus computed args R fills."""
+        return [
+            argument
+            for argument in wrapper
+            if argument.intent.is_input
+            and not argument.is_synthesised
+            and not argument.is_temporary
+            and not self._is_derived_in_cpp(argument)
+        ]
+
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
         roles = argument.source.roles if argument.source else None
         return bool(roles and roles.is_derived)
+
+    @staticmethod
+    def _is_derived_in_cpp(argument: CArgument) -> bool:
+        # C++ derives extents/shapes/counts, but not computed args (R passes those)
+        roles = argument.source.roles if argument.source else None
+        if roles is None:
+            return False
+        if roles.is_computed:
+            return False
+        return roles.is_extent or roles.is_shape_arg or roles.is_mask_count
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:
@@ -175,7 +261,7 @@ class RWrapperEmitter:
     # -- call and return --------------------------------------------------------
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
-        inputs = ", ".join(a.name for a in self._inputs(wrapper))
+        inputs = ", ".join(a.name for a in self._rcpp_inputs(wrapper))
         writer.line(f".result <- .{wrapper.stripped_name}_rcpp({inputs})")
         names = ", ".join(f'"{a.name}"' for a in wrapper.procedure.arguments)
         writer.line(f".arguments <- c({names})")

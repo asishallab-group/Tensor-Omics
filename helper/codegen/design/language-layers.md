@@ -246,10 +246,31 @@ The cost is one R function call per invocation, which is nothing against the For
 
 ---
 
+## Decision: DM_OUTPUT_FROM(AUTO) calls the producer's generated wrapper
+
+An argument documented `DM_OUTPUT_FROM(count, producer, module, AUTO)` is obtained by
+calling `producer` and taking its `count` output, so the caller never supplies it. The
+interfacing languages call the producer's **own generated wrapper**, not the C function --
+so its validation, error checking and result handling all come for free, and the value
+passed in is the consumer's already-prepared input, making the producer's conversions
+no-ops rather than a second copy.
+
+The producer's inputs are matched to the consumer's arguments **by name**. That is all the
+real cases need: `mask_chunk_count(n_genes, count)` is called from a consumer that also has
+`n_genes`. A producer input with no same-named consumer argument is an **error** for now; a
+markdown table for renamed inputs (the same shape as the mode table) is the eventual
+override, deferred until a case needs it.
+
+Python computes it inline, since the whole wrapper is one function. R computes it in the R
+wrapper and passes it to the C++ `.rcpp`, because the C call lives in C++ and C++ cannot
+call an R wrapper. So an AUTO argument is a *parameter* of `.rcpp` (R fills it) but never a
+parameter of the user-facing R or Python function. Two constraints, enforced with
+diagnostics: the producer must be exported (else there is no wrapper), and in the same
+module (a cross-module call would need an import).
+
 ## Open
 
-- **`DM_OUTPUT_FROM(..., AUTO)`** — calling another procedure to obtain an argument (work
-  array sizes) is not implemented. It needs an argument-mapping syntax that renders as
-  real prose in Ford; see the README's contract section.
+- **AUTO across modules**, and **AUTO with renamed producer inputs** (the markdown table),
+  are the two deferred pieces of `DM_OUTPUT_FROM`. Both error clearly until implemented.
 - **ifx** — `optional` in `bind(C)` and `implicit none (type, external)` are verified with
   gfortran only. Both are F2018; ifx is expected to agree.

@@ -196,6 +196,17 @@ class TestOptionals:
         assert out.split() == ["TRUE", "TRUE"]
 
 
+class TestAutoOutputFrom:
+    def test_the_work_size_is_computed_by_calling_the_producer(self, built):
+        # fx_cluster_expert calls fx_work_size itself; the caller passes only values
+        out = run_r(built, 'cat(fx_cluster_expert(c(-1, 2, 3, -4, 5)))')
+        assert int(out) == 3
+
+    def test_the_producer_is_a_wrapper_in_its_own_right(self, built):
+        out = run_r(built, 'cat(fx_work_size(4))')
+        assert int(out) == 8
+
+
 class TestClassedConditions:
     def test_a_shape_mismatch_is_a_tox_shape_error_naming_both(self, built):
         out = run_r(built, """

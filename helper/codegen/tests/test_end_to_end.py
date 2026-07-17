@@ -128,10 +128,25 @@ class TestItRuns:
     def test_the_alloc_variant_takes_the_plain_name(self, tox):
         assert "fx_cluster" in tox.__all__
 
-    def test_a_wrapper_needing_auto_output_from_is_skipped_for_now(self, tox):
-        # fx_cluster (the expert twin) has n_work via DM_OUTPUT_FROM(AUTO), which is not
-        # implemented; it is skipped with a warning rather than emitted broken
-        assert "fx_cluster_expert" not in tox.__all__
+    def test_a_wrapper_using_auto_output_from_is_generated(self, tox):
+        # fx_cluster (the expert twin) gets n_work via DM_OUTPUT_FROM(AUTO): it calls
+        # fx_work_size itself, so the caller never supplies the work size
+        assert "fx_cluster_expert" in tox.__all__
+
+
+class TestAutoOutputFrom:
+    def test_the_work_size_is_never_asked_for(self, tox):
+        import inspect
+
+        # n_work is computed by calling fx_work_size, not a parameter
+        assert list(inspect.signature(tox.fx_cluster_expert).parameters) == ["values"]
+
+    def test_it_computes_the_work_size_and_runs(self, tox, np):
+        # fx_work_size returns 2*n_values; fx_cluster returns count(values > 0)
+        assert tox.fx_cluster_expert(np.array([-1.0, 2, 3, -4, 5])) == 3
+
+    def test_the_producer_is_callable_directly_too(self, tox):
+        assert tox.fx_work_size(4) == 8
 
 
 class TestResultsAreRight:
