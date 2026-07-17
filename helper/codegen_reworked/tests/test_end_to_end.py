@@ -190,6 +190,33 @@ class TestShapeChecking:
             tox.fx_sum_matrix(matrix, np.array([1.0, 2.0, 3.0]))
 
 
+class TestBadInputsAreNamed:
+    def test_a_value_that_cannot_be_an_array_names_the_argument(self, tox):
+        # numpy raises "could not convert string to float", which does not say which
+        # argument was wrong -- it cannot know
+        with pytest.raises(TypeError, match="'values' must be an array of np.float64"):
+            tox.fx_count_positive("hello")
+
+    def test_the_underlying_reason_is_kept(self, tox):
+        with pytest.raises(TypeError, match="could not convert"):
+            tox.fx_count_positive("hello")
+
+    def test_a_wrong_type_in_a_second_argument_names_that_one(self, tox, np):
+        matrix = np.asfortranarray([[1.0, 2.0], [3.0, 4.0]])
+
+        with pytest.raises(TypeError, match="'weights'"):
+            tox.fx_sum_matrix(matrix, "oops")
+
+    def test_an_inout_argument_is_rejected_rather_than_converted(self, tox, np):
+        # converting would copy, and the caller would never see the modification
+        with pytest.raises(TypeError, match="'vector' is modified in place"):
+            tox.fx_normalize([3.0, 4.0])
+
+    def test_an_inout_argument_of_the_wrong_dtype_is_rejected(self, tox, np):
+        with pytest.raises(TypeError, match="'vector' is modified in place"):
+            tox.fx_normalize(np.array([3, 4], dtype=np.int32))
+
+
 class TestErrors:
     def test_a_fortran_error_arrives_as_an_exception(self, tox, np):
         # ierr never reaches the caller

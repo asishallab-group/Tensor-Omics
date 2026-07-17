@@ -354,8 +354,19 @@ class PythonEmitter:
                         f"already be column-major (order='F')\")"
                     )
         else:
+            # numpy raises without saying which argument was wrong -- it cannot know --
+            # so the name is put back on the way out
             converter = "np.asfortranarray" if argument.rank > 1 else "np.ascontiguousarray"
-            body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
+            body.line("try:")
+            with body.indent():
+                body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
+            body.line("except (TypeError, ValueError) as error:")
+            with body.indent():
+                body.line(
+                    f'raise TypeError('
+                    f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{error}}"'
+                    f") from None"
+                )
         return self._guarded(argument, body)
 
     @staticmethod
@@ -493,11 +504,18 @@ class PythonEmitter:
             writer.blank()
 
     def _new_value(self, argument: CArgument) -> str:
+        """A fresh output or work array.
+
+        `np.empty`, not `np.zeros`: Fortran fills these, so zeroing them is an O(n) write
+        of data that is immediately overwritten. It is also more honest -- where Fortran
+        fills only part of an array, zeros look like results, while uninitialised memory
+        looks like the garbage it is. On the error path nothing is returned at all.
+        """
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
         shape = ", ".join(argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
-        return f"np.zeros(({shape},), dtype={dtype_of(argument)}, order={order})"
+        return f"np.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
         writer.line(f"_lib.{wrapper.name}(")
