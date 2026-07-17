@@ -1,0 +1,478 @@
+"""Emitting the C++ half of the R interface.
+
+The split with R is deliberate and documented in `design/language-layers.md`: **R decides
+and raises, C++ marshals and calls.** By the time a value reaches C++ it has been checked
+and coerced in R, so nothing here validates -- it converts what C cannot take directly
+(R's int-based logicals, its strings) and hands everything to the `extern "C"` wrapper.
+
+Each generated function is `.<name>_rcpp`, dot-prefixed because it is internal: the
+user-facing `<name>` is the R wrapper on top of it. It returns a list of every output
+plus `ierr`, which the R wrapper decodes.
+"""
+
+from __future__ import annotations
+
+from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
+from ..ir.types import BaseType, Intent
+from ..render import Writer
+
+#: iso_c_binding kind -> the C type it interoperates as, for the extern "C" declaration
+CPP_CTYPE = {
+    "c_int": "int",
+    "c_int8_t": "int8_t",
+    "c_int16_t": "int16_t",
+    "c_int32_t": "int32_t",
+    "c_int64_t": "int64_t",
+    "c_size_t": "size_t",
+    "c_float": "float",
+    "c_double": "double",
+    "c_float_complex": "float _Complex",
+    "c_double_complex": "double _Complex",
+    "c_bool": "bool",
+    "c_char": "char",
+}
+
+#: Fortran base type -> the Rcpp vector class for an array of it
+RCPP_VECTOR = {
+    BaseType.INTEGER: "IntegerVector",
+    BaseType.REAL: "NumericVector",
+    BaseType.COMPLEX: "ComplexVector",
+    BaseType.LOGICAL: "LogicalVector",
+    BaseType.CHARACTER: "CharacterVector",
+}
+
+#: Fortran base type -> the C++ scalar for a by-value input
+RCPP_SCALAR = {
+    BaseType.INTEGER: "int",
+    BaseType.REAL: "double",
+    BaseType.COMPLEX: "std::complex<double>",
+    BaseType.LOGICAL: "bool",
+}
+
+
+def cpp_ctype(argument: CArgument) -> str:
+    return CPP_CTYPE[argument.type.kind]
+
+
+class RcppEmitter:
+    def __init__(self, marshal_header: str = "tox_marshal.h"):
+        self.marshal_header = marshal_header
+
+    def marshal_header_content(self) -> str:
+        """The buffer helpers, in one header rather than repeated per module.
+
+        These are the only conversions C++ does: R's logicals are `int`-based and its
+        strings are `SEXP`s, neither of which Fortran can take. R has already rejected
+        `NA`, so the conversions are straight copies.
+        """
+        return _MARSHAL_HEADER
+
+    # -- module -----------------------------------------------------------------
+
+    def module(self, module: CWrapperModule) -> str:
+        writer = Writer()
+        writer.line("// Generated. Do not edit.")
+        writer.line("#include <Rcpp.h>")
+        writer.line(f'#include "{self.marshal_header}"')
+        writer.blank()
+        writer.line("using namespace Rcpp;")
+        writer.blank()
+
+        writer.line('extern "C" {')
+        with writer.indent():
+            for wrapper in module:
+                writer.line(self._extern_declaration(wrapper))
+        writer.line("}")
+        writer.blank()
+
+        for wrapper in module:
+            writer.block(self.function(wrapper))
+            writer.blank(collapse=False)
+
+        return writer.render(trailing_newline=True)
+
+    def _extern_declaration(self, wrapper: CWrapper) -> str:
+        params = ", ".join(self._extern_param(a) for a in wrapper)
+        return f"void {wrapper.name}({params});"
+
+    def _extern_param(self, argument: CArgument) -> str:
+        const = "const " if argument.intent is Intent.IN else ""
+        return f"{const}{cpp_ctype(argument)}*"
+
+    # -- function ---------------------------------------------------------------
+
+    def function(self, wrapper: CWrapper) -> str:
+        writer = Writer()
+        writer.line(f"// [[Rcpp::export(.{wrapper.stripped_name}_rcpp)]]")
+        params = ", ".join(self._param(a) for a in self._inputs(wrapper))
+        writer.line(f"List {wrapper.stripped_name}_rcpp({params}) {{")
+
+        with writer.indent():
+            self._materialize_optionals(writer, wrapper)
+            self._derive(writer, wrapper)
+            self._copy_inout(writer, wrapper)
+            self._marshal_inputs(writer, wrapper)
+            self._allocate(writer, wrapper)
+            self._call(writer, wrapper)
+            self._marshal_outputs(writer, wrapper)
+            self._return(writer, wrapper)
+
+        writer.line("}")
+        return writer.render()
+
+    def _inputs(self, wrapper: CWrapper) -> list[CArgument]:
+        """The arguments the R wrapper passes in -- the same set Python asks for."""
+        return [
+            argument
+            for argument in wrapper
+            if argument.intent.is_input
+            and not argument.is_synthesised
+            and not argument.is_temporary
+            and not self._is_derived(argument)
+        ]
+
+    @staticmethod
+    def _is_derived(argument: CArgument) -> bool:
+        roles = argument.source.roles if argument.source else None
+        return bool(roles and roles.is_derived)
+
+    def _param(self, argument: CArgument) -> str:
+        if argument.optional:
+            # a nullable optional arrives as R's NULL when absent, which Rcpp's Nullable
+            # carries; the C wrapper then receives a null pointer and Fortran sees it
+            # absent (the OPTIONAL bind(C) rule)
+            return f"Nullable<{self._rcpp_class(argument)}> {argument.name} = R_NilValue"
+        if argument.conversion is Conversion.MODE:
+            return f"CharacterVector {argument.name}"
+        if argument.is_scalar:
+            return f"{RCPP_SCALAR[argument.type.base]} {argument.name}"
+        return f"{RCPP_VECTOR[argument.type.base]} {argument.name}"
+
+    def _rcpp_class(self, argument: CArgument) -> str:
+        if argument.conversion is Conversion.MODE or argument.type.is_character:
+            return "CharacterVector"
+        return RCPP_VECTOR[argument.type.base]
+
+    # -- body -------------------------------------------------------------------
+
+    def _derive(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Compute the extents, shapes and counts the call needs, from the inputs."""
+        lines = Writer()
+        for argument in wrapper:
+            expression = self._derived_value(argument, wrapper)
+            if expression is not None:
+                lines.line(f"{self._cpp_local_type(argument)} {argument.name} = {expression};")
+        if lines:
+            writer.line("// derived from the inputs, not asked of the caller")
+            writer.extend(lines)
+            writer.blank()
+
+    def _derived_value(self, argument: CArgument, wrapper: CWrapper) -> str | None:
+        source = argument.source
+        roles = source.roles if source else None
+
+        if argument.origin is Origin.STRLEN:
+            owner = wrapper.argument(argument.sizes)
+            return f"{argument.sizes}.length() ? Rf_length(STRING_ELT({argument.sizes}, 0)) : 0"
+
+        if argument.origin is Origin.EXTENT:
+            owner = wrapper.argument(argument.sizes)
+            if owner is None or not owner.intent.is_input:
+                return None
+            return self._extent_of(owner, argument.axis)
+
+        if roles is None:
+            return None
+
+        if roles.is_mask_count:
+            # R has already rejected NA, so a plain sum counts the TRUEs
+            return f"(int) sum({roles.mask_count_of.name})"
+
+        if roles.is_shape_arg:
+            return f"IntegerVector({roles.shape_of.name}.attr(\"dim\"))"
+
+        if roles.is_extent:
+            # a required owner first, since its size is always readable; fall back to an
+            # optional one, whose materialized size is 0 when the caller omits it
+            best = None
+            for owner in roles.extent_of:
+                c_owner = wrapper.argument(owner.name)
+                if c_owner is None or not c_owner.intent.is_input:
+                    continue
+                axis = self._axis_of(argument.name, c_owner)
+                if axis is None:
+                    continue
+                if not c_owner.optional:
+                    return self._extent_of(c_owner, axis)
+                best = best or self._extent_of(c_owner, axis)
+            return best
+
+        return None
+
+    def _extent_of(self, owner: CArgument, axis: int) -> str:
+        """The size of `owner` along `axis`, as an Rcpp expression."""
+        if owner.optional:
+            # materialized to 0 when absent, so nothing reads a buffer that is not there
+            return f"{owner.name}_size"
+        if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
+            return f"(int) {owner.name}.size()"
+        # a matrix or higher: read the dim attribute
+        return f"(int) IntegerVector({owner.name}.attr(\"dim\"))[{axis}]"
+
+    @staticmethod
+    def _axis_of(extent: str, owner: CArgument) -> int | None:
+        extents = list(owner.dimension.extents)
+        if owner.type.is_character and extents:
+            extents = extents[1:]
+        try:
+            return extents.index(extent)
+        except ValueError:
+            return None
+
+    def _cpp_local_type(self, argument: CArgument) -> str:
+        if argument.source and argument.source.roles and argument.source.roles.is_shape_arg:
+            return "IntegerVector"
+        return "int"
+
+    def _materialize_optionals(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Turn a nullable optional into a pointer and a size, guarded on presence.
+
+        An absent optional is a null pointer to the C wrapper (Fortran then sees it
+        absent), and a size of 0, which is what the extent derived from it reports so no
+        one reads a buffer that is not there.
+        """
+        lines = Writer()
+        for argument in wrapper:
+            if not argument.optional:
+                continue
+            cls = self._rcpp_class(argument)
+            ctype = cpp_ctype(argument)
+            name = argument.name
+            lines.line(f"const {ctype}* {name}_p = nullptr;")
+            lines.line(f"int {name}_size = 0;")
+            lines.line(f"{cls} {name}_val;")
+            lines.line(f"if ({name}.isNotNull()) {{")
+            with lines.indent():
+                lines.line(f"{name}_val = {name}.get();")
+                lines.line(f"{name}_p = {name}_val.begin();")
+                lines.line(f"{name}_size = {name}_val.size();")
+            lines.line("}")
+        if lines:
+            writer.line("// optionals: a null pointer and size 0 when the caller omits them")
+            writer.extend(lines)
+            writer.blank()
+
+    @staticmethod
+    def _is_inout_copy(argument: CArgument) -> bool:
+        """A plain array modified in place, which must be cloned before Fortran touches it.
+
+        Rcpp shares R's buffer, so writing through it would modify the caller's object --
+        which R's copy-on-modify contract forbids. `clone` copies reliably, where R's own
+        coercion copies only sometimes (`as.double` on an already-double vector does not).
+        Conversion cases build their own buffer, so they need no clone.
+        """
+        return (
+            argument.intent is Intent.INOUT
+            and argument.is_array
+            and not argument.needs_conversion
+        )
+
+    def _working_name(self, argument: CArgument) -> str:
+        return f"{argument.name}_out" if self._is_inout_copy(argument) else argument.name
+
+    def _copy_inout(self, writer: Writer, wrapper: CWrapper) -> None:
+        lines = Writer()
+        for argument in wrapper:
+            if self._is_inout_copy(argument):
+                rcpp = RCPP_VECTOR[argument.type.base]
+                lines.line(f"{rcpp} {argument.name}_out = clone({argument.name});")
+        if lines:
+            writer.line("// copy what is modified in place, so the caller's stays intact")
+            writer.extend(lines)
+            writer.blank()
+
+    def _marshal_inputs(self, writer: Writer, wrapper: CWrapper) -> None:
+        lines = Writer()
+        for argument in wrapper:
+            if not argument.intent.is_input or not argument.needs_conversion:
+                continue
+            lines.line(self._input_buffer(argument))
+        if lines:
+            writer.line("// convert what C cannot take directly")
+            writer.extend(lines)
+            writer.blank()
+
+    def _input_buffer(self, argument: CArgument) -> str:
+        name = argument.name
+        if argument.conversion is Conversion.LOGICAL:
+            return f"tox::BoolBuffer {name}_c({name});"
+        # character or mode: a padded c_char buffer
+        length = argument.dimension.extents[0]
+        return f"tox::CharBuffer {name}_c({name}, {length});"
+
+    def _allocate(self, writer: Writer, wrapper: CWrapper) -> None:
+        lines = Writer()
+        for argument in wrapper:
+            if argument.intent.is_input and not argument.is_temporary:
+                continue
+            if self._is_derived(argument) and argument.intent.is_input:
+                continue
+            lines.line(self._new_value(argument))
+        if lines:
+            writer.line("// outputs and work space")
+            writer.extend(lines)
+            writer.blank()
+
+    def _new_value(self, argument: CArgument) -> str:
+        name = argument.name
+        if argument.origin is Origin.ERROR:
+            return f"int {name} = 0;"
+        if argument.is_scalar:
+            return f"{cpp_ctype(argument)} {name} = 0;"
+
+        size = " * ".join(argument.dimension.extents)
+        if argument.conversion is Conversion.LOGICAL:
+            return f"tox::BoolBuffer {name}_c({size});"
+        if argument.type.is_character:
+            length = argument.dimension.extents[0]
+            count = " * ".join(argument.dimension.extents[1:]) or "1"
+            return f"tox::CharBuffer {name}_c({length}, {count});"
+        # a temporary is scratch C++ never shows anyone; an output is an Rcpp vector
+        if argument.is_temporary:
+            return f"std::vector<{cpp_ctype(argument)}> {name}({size});"
+        return f"{RCPP_VECTOR[argument.type.base]} {name}({size});"
+
+    def _call(self, writer: Writer, wrapper: CWrapper) -> None:
+        writer.line(f"{wrapper.name}(")
+        with writer.indent():
+            actuals = [self._actual(a) for a in wrapper]
+            for index, actual in enumerate(actuals):
+                comma = "" if index == len(actuals) - 1 else ","
+                writer.line(f"{actual}{comma}")
+        writer.line(");")
+        writer.blank()
+
+    def _actual(self, argument: CArgument) -> str:
+        name = argument.name
+        if argument.optional:
+            # null pointer when absent, so Fortran's OPTIONAL dummy is absent too
+            return f"{name}_p"
+        if argument.needs_conversion:
+            return f"{name}_c.data()"
+        if argument.is_scalar:
+            return f"&{name}"
+        if argument.is_temporary:
+            return f"{name}.data()"
+        # an Rcpp vector/matrix: its buffer is already the C layout
+        return f"{self._working_name(argument)}.begin()"
+
+    def _marshal_outputs(self, writer: Writer, wrapper: CWrapper) -> None:
+        lines = Writer()
+        for argument in wrapper:
+            if argument.intent is Intent.IN or not argument.needs_conversion:
+                continue
+            name = argument.name
+            rcpp = RCPP_VECTOR[argument.type.base]
+            lines.line(f"{rcpp} {name} = {name}_c.to_r();")
+        if lines:
+            writer.line("// convert the outputs back")
+            writer.extend(lines)
+            writer.blank()
+
+    def _return(self, writer: Writer, wrapper: CWrapper) -> None:
+        outputs = [a for a in wrapper if self._is_returned(a)]
+        error = wrapper.error_argument
+
+        writer.line("return List::create(")
+        with writer.indent():
+            entries = [f'_["{a.name}"] = {self._working_name(a)}' for a in outputs]
+            entries.append(f'_["{error.name}"] = {error.name}')
+            for index, entry in enumerate(entries):
+                comma = "" if index == len(entries) - 1 else ","
+                writer.line(f"{entry}{comma}")
+        writer.line(");")
+
+    @staticmethod
+    def _is_returned(argument: CArgument) -> bool:
+        """Every output the R wrapper might use, ierr aside (added separately).
+
+        `intent(inout)` is returned too, unlike in Python. R is copy-on-modify, so it
+        cannot hand the modification back through the argument the way Python does -- the
+        R wrapper duplicates the input, C++ modifies the copy, and it comes back in the
+        list. See `design/language-layers.md`.
+        """
+        return (
+            argument.intent.is_output
+            and not argument.is_error
+            and not argument.is_temporary
+        )
+
+
+_MARSHAL_HEADER = r'''// Generated. Do not edit.
+//
+// Marshalling helpers for the R interface. C++ converts only what C cannot take from R
+// directly: R's int-based logicals, and its strings. The R layer has already validated
+// and rejected NA, so these are straight copies.
+#ifndef TOX_MARSHAL_H
+#define TOX_MARSHAL_H
+
+#include <Rcpp.h>
+#include <cstring>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace tox {
+
+// R logical is an int (0/1/NA); Fortran c_bool is a 1-byte _Bool, which C++ bool matches.
+class BoolBuffer {
+    std::unique_ptr<bool[]> buf_;
+    std::size_t n_;
+public:
+    explicit BoolBuffer(std::size_t n) : buf_(new bool[n]()), n_(n) {}
+    explicit BoolBuffer(Rcpp::LogicalVector x)
+        : buf_(new bool[x.size()]), n_(x.size()) {
+        for (std::size_t i = 0; i < n_; ++i) buf_[i] = (x[i] == TRUE);
+    }
+    bool* data() { return buf_.get(); }
+    Rcpp::LogicalVector to_r() const {
+        Rcpp::LogicalVector out(n_);
+        for (std::size_t i = 0; i < n_; ++i) out[i] = buf_[i];
+        return out;
+    }
+};
+
+// Fortran carries a string's length as the leading extent: a vector of n strings of
+// length len is char[len * n], column-major, each string zero-padded. Reading stops at
+// the first null, so an untouched buffer (zero-filled) yields empty strings, never noise.
+class CharBuffer {
+    std::vector<char> data_;
+    int len_;
+    int n_;
+public:
+    CharBuffer(int len, int n) : data_((std::size_t)len * n, '\0'), len_(len), n_(n) {}
+    CharBuffer(Rcpp::CharacterVector x, int len)
+        : data_((std::size_t)len * x.size(), '\0'), len_(len), n_(x.size()) {
+        for (int i = 0; i < n_; ++i) {
+            std::string s = Rcpp::as<std::string>(x[i]);
+            int m = std::min<int>((int)s.size(), len_);
+            std::memcpy(data_.data() + (std::size_t)i * len_, s.data(), m);
+        }
+    }
+    char* data() { return data_.data(); }
+    Rcpp::CharacterVector to_r() const {
+        Rcpp::CharacterVector out(n_);
+        for (int i = 0; i < n_; ++i) {
+            const char* p = data_.data() + (std::size_t)i * len_;
+            int m = 0;
+            while (m < len_ && p[m] != '\0') ++m;
+            out[i] = std::string(p, m);
+        }
+        return out;
+    }
+};
+
+}  // namespace tox
+
+#endif
+'''

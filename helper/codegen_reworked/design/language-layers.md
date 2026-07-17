@@ -182,7 +182,7 @@ after it — one place, one set of condition classes.
 
 ---
 
-## Decision: shape cross-checks happen in the interfacing language
+## Decision: shape cross-checks happen in the interfacing language — and in R that is R, not C++
 
 `matrix(n_rows, n_cols)` and `weights(n_cols)` share an extent. They agree **by
 declaration only** — Fortran has no way to check that the actual arguments agree, and a
@@ -196,6 +196,14 @@ ValueError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
 
 This is the single most valuable thing the generated layer does that a hand-written
 wrapper usually forgets.
+
+In R the check is in the **R** wrapper, not the C++. Everything a user can trip over --
+wrong type, wrong shape, an `NA` -- is caught in one place and raised as a **classed
+condition** (`tox_type_error`, `tox_shape_error`, `tox_error`), so `tryCatch` can select
+on it. C++ raising these would mean calling back into the package environment, which is
+fragile. The split is clean: **R decides and raises; C++ marshals and calls.** C++
+re-derives the extents it needs for the call from the R objects it is handed (`x.size()`
+is free), rather than being passed them.
 
 ---
 

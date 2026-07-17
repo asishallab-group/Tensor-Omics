@@ -127,7 +127,11 @@ class TestItRuns:
 
     def test_the_alloc_variant_takes_the_plain_name(self, tox):
         assert "fx_cluster" in tox.__all__
-        assert "fx_cluster_expert" in tox.__all__
+
+    def test_a_wrapper_needing_auto_output_from_is_skipped_for_now(self, tox):
+        # fx_cluster (the expert twin) has n_work via DM_OUTPUT_FROM(AUTO), which is not
+        # implemented; it is skipped with a warning rather than emitted broken
+        assert "fx_cluster_expert" not in tox.__all__
 
 
 class TestResultsAreRight:

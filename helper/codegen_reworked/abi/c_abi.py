@@ -85,6 +85,7 @@ def build_module(module: Module, diagnostics: DiagnosticBag,
     wrappers = tuple(
         build_wrapper(procedure, diagnostics, conventions, evaluator)
         for procedure in module.exported_procedures
+        if not _needs_unsupported_auto(procedure, diagnostics)
     )
     return CWrapperModule(
         name=f"{module.name}{conventions.c_suffix}", module=module, wrappers=wrappers
@@ -95,6 +96,27 @@ def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
                   conventions: Conventions = CONVENTIONS,
                   evaluator: ConstantEvaluator | None = None) -> CWrapper:
     return _Builder(procedure, diagnostics, conventions, evaluator).build()
+
+
+def _needs_unsupported_auto(procedure: Procedure, diagnostics: DiagnosticBag) -> bool:
+    """Whether a procedure needs `DM_OUTPUT_FROM(..., AUTO)`, which is not implemented yet.
+
+    Such an argument is obtained by calling another procedure, and the interfacing
+    languages are meant to make that call for the user. Until the argument-mapping syntax
+    is settled (see the README's open items), a wrapper needing it is skipped with a
+    warning rather than emitted broken.
+    """
+    for argument in procedure.arguments:
+        directive = argument.directives.output_from
+        if directive is not None and directive.is_automatic:
+            diagnostics.warn(
+                f"'{procedure.name}' is not generated yet: '{argument.name}' needs "
+                f"DM_OUTPUT_FROM(..., AUTO), which is not implemented",
+                entity=procedure,
+                note="the argument-mapping syntax for AUTO is still an open design item",
+            )
+            return True
+    return False
 
 
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
