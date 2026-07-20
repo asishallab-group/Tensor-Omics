@@ -16,11 +16,18 @@ The wrapper's job, in order:
 
 from __future__ import annotations
 
+import re
+
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..config import CONVENTIONS, Conventions
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .doc_ford import render_doc
+
+#: A Fortran identifier inside an extent expression. A leading digit is required to be
+#: absent so an integer literal's kind suffix (`0_int32` -> `_int32`) is the only spurious
+#: match, and that never collides with a real argument name.
+_EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
 #: Suffix of the local a converted argument is passed to the callee as
 CONVERTED_SUFFIX = "_f"
@@ -158,11 +165,17 @@ class FortranCEmitter:
         extension, not standard Fortran: gfortran -std=f2018 rejects `dimension(n)` above
         `integer :: n` outright. So anything named in someone's extents is hoisted, and
         everything else keeps the order the author wrote.
+
+        An extent may be an expression -- `max(0_int32, n_timepoints - 1)`,
+        `sum(reps_per_tissue)` -- so identifiers are pulled out of it rather than comparing
+        the whole string to an argument name; otherwise the argument the expression depends
+        on is not recognised as referenced and is left declared below the array using it.
         """
         referenced = {
-            extent.lower()
+            identifier.lower()
             for argument in wrapper
             for extent in argument.dimension.extents
+            for identifier in _EXTENT_IDENTIFIER_RE.findall(extent)
         }
         extents = [a for a in wrapper if a.name.lower() in referenced]
         rest = [a for a in wrapper if a.name.lower() not in referenced]
@@ -195,9 +208,23 @@ class FortranCEmitter:
         if argument.conversion is Conversion.MODE:
             return [f"integer(int32) :: {argument.name}{MODE_SUFFIX}"]
 
+        # A nullable optional that needs a converted local cannot use an automatic one:
+        # when C passes null the argument is absent, and the local must then be *absent*
+        # to the callee too. An unallocated allocatable actual is an absent optional dummy
+        # (F2018), so the converted local is allocatable and simply left unallocated. Its
+        # shape is deferred -- one `:` per rank of the source, so a rank-2 mask does not
+        # come out declared rank-1.
+        nullable = argument.optional
+        deferred = (
+            ", ".join(":" for _ in source.dimension.extents)
+            if source is not None and source.dimension else ""
+        )
+
         if argument.conversion is Conversion.LOGICAL:
             base = "logical"
-            if source.dimension:
+            if nullable:
+                base += f", dimension({deferred}), allocatable" if deferred else ", allocatable"
+            elif source.dimension:
                 base += f", dimension({', '.join(source.dimension.extents)})"
             return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
 
@@ -207,10 +234,11 @@ class FortranCEmitter:
             length = source.type.length
             declared = "len=:" if length.is_assumed else f"len={length}"
             base = f"character({declared})"
-            if length.is_assumed:
+            if length.is_assumed or nullable:
                 base += ", allocatable"
             if source.dimension:
-                base += f", dimension({', '.join(source.dimension.extents)})"
+                base += f", dimension({deferred})" if nullable else \
+                    f", dimension({', '.join(source.dimension.extents)})"
             return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
 
         return []
@@ -246,6 +274,13 @@ class FortranCEmitter:
             if not argument.needs_conversion:
                 continue
             if argument.intent is Intent.OUT and argument.conversion is not Conversion.MODE:
+                # No value flows in, but a nullable optional still needs its allocatable
+                # local allocated when present, so the callee sees a present argument to
+                # write into (an unallocated one would read as absent).
+                block = self._allocate_optional_out(argument)
+                if block:
+                    writer.block(block)
+                    wrote = True
                 continue
             block = self._input_conversion(argument, wrapper)
             if block:
@@ -253,6 +288,15 @@ class FortranCEmitter:
                 wrote = True
         if wrote:
             writer.blank()
+
+    def _allocate_optional_out(self, argument: CArgument) -> str:
+        if not argument.optional:
+            return ""
+        extents = argument.source.dimension.extents if argument.source.dimension else ()
+        target = f"{argument.name}{CONVERTED_SUFFIX}"
+        if extents:
+            target += f"({', '.join(extents)})"
+        return f"if (present({argument.name})) allocate({target})"
 
     def _input_conversion(self, argument: CArgument, wrapper: CWrapper) -> str:
         writer = Writer()
@@ -262,12 +306,30 @@ class FortranCEmitter:
         match argument.conversion:
             case Conversion.LOGICAL:
                 # logical(c_bool) and default logical differ in kind, so intrinsic
-                # assignment does the conversion
-                writer.line(f"{name}{CONVERTED_SUFFIX} = {name}")
+                # assignment does the conversion. A nullable optional is only converted
+                # when present -- absent leaves the allocatable local unallocated, which
+                # the callee reads as absent.
+                if argument.optional:
+                    writer.line(
+                        f"if (present({name})) {name}{CONVERTED_SUFFIX} = {name}"
+                    )
+                else:
+                    writer.line(f"{name}{CONVERTED_SUFFIX} = {name}")
             case Conversion.CHARACTER:
-                writer.block(self._character_in(argument, error))
+                writer.block(self._guard_optional(argument, self._character_in(argument, error)))
             case Conversion.MODE:
                 writer.block(self._mode_in(argument, error))
+        return writer.render()
+
+    def _guard_optional(self, argument: CArgument, block: str) -> str:
+        """Wrap a multi-line conversion in `if (present(...)) then` for a nullable optional."""
+        if not argument.optional:
+            return block
+        writer = Writer()
+        writer.line(f"if (present({argument.name})) then")
+        with writer.indent():
+            writer.block(block)
+        writer.line("end if")
         return writer.render()
 
     def _character_in(self, argument: CArgument, error: str) -> str:
@@ -382,9 +444,15 @@ class FortranCEmitter:
         name = argument.name
         source = argument.source
         if argument.conversion is Conversion.LOGICAL:
-            return f"{name} = {name}{CONVERTED_SUFFIX}"
-        helper = "string_as_c_char_1d" if source.rank == 0 else "string_as_c_char_2d"
-        return f"call {helper}({name}{CONVERTED_SUFFIX}, {name})"
+            assignment = f"{name} = {name}{CONVERTED_SUFFIX}"
+        else:
+            helper = "string_as_c_char_1d" if source.rank == 0 else "string_as_c_char_2d"
+            assignment = f"call {helper}({name}{CONVERTED_SUFFIX}, {name})"
+        # A nullable optional is only written back when present -- absent means C passed
+        # null, so there is nothing to convert into.
+        if argument.optional:
+            return f"if (present({name})) {assignment}"
+        return assignment
 
 
 def _is_declared_extent(argument: CArgument, wrapper: CWrapper) -> bool:
