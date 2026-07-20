@@ -12,8 +12,9 @@ module f42_binary_search_tree
     public :: build_bst_index, get_sorted_value, bst_range_query
 contains
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Build the BST index by sorting indices using values in x.
+    !> M_EXPORT_C
+    !| summary: Build the BST index by sorting indices using values in x
+    !| AUTHOR_AARON_SCHROEDER
     pure subroutine build_bst_index(values, n_values, sorted_indices, ierr)
         integer(int32), intent(in) :: n_values
             !! Number of elements in values array
@@ -55,8 +56,9 @@ contains
         sorted_value = values(sorted_indices(position))
     end function get_sorted_value
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Perform a 1D range query over the sorted index.
+    !> M_EXPORT_C
+    !| summary: Perform a 1D range query over the sorted index
+    !| AUTHOR_AARON_SCHROEDER
     pure subroutine bst_range_query(values, sorted_indices, n_values, lower_bound, upper_bound, &
                                     output_indices, n_matches, ierr)
 
@@ -71,7 +73,8 @@ contains
         real(real64), intent(in) :: upper_bound
             !! Upper bound of range (inclusive)
         integer(int32), intent(out) :: output_indices(n_values)
-            !! Output array of matching indices
+            !! Output array of matching indices.
+            !! DM_RESULT_SIZE_IS(n_matches)
         integer(int32), intent(out) :: n_matches
             !! Number of matches found
         integer(int32), intent(out) :: ierr
@@ -101,64 +104,3 @@ contains
     end subroutine bst_range_query
 
 end module f42_binary_search_tree
-
-!> Wrapper using C for getting range query usable by python
-pure subroutine bst_range_query_c(values, sorted_indices, n_values, lower_bound, upper_bound, &
-                                  output_indices, n_matches, ierr) bind(C, name='bst_range_query_c')
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use f42_binary_search_tree, only: bst_range_query
-    M_USE_NULL_VALIDATION
-    implicit none
-    real(c_double), intent(in), target :: values(n_values)
-        !! Input real array (C-style)
-    integer(c_int), intent(in), target :: sorted_indices(n_values)
-        !! Permutation index array (C-style)
-    integer(c_int), intent(in), target :: n_values
-        !! Number of elements
-    real(c_double), intent(in), target :: lower_bound
-        !! Lower bound of range
-    real(c_double), intent(in), target :: upper_bound
-        !! Upper bound of range
-    integer(c_int), intent(out), target :: output_indices(n_values)
-        !! Output array (C-style)
-    integer(c_int), intent(out), target :: n_matches
-        !! Number of matches found
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_values)
-    M_CHECK_NON_NULL(lower_bound)
-    M_CHECK_NON_NULL(upper_bound)
-    M_CHECK_NON_NULL(values)
-    M_CHECK_NON_NULL(sorted_indices)
-    M_CHECK_NON_NULL(output_indices)
-    M_CHECK_NON_NULL(n_matches)
-
-    call bst_range_query(values, sorted_indices, n_values, lower_bound, upper_bound, &
-                         output_indices, n_matches, ierr)
-end subroutine bst_range_query_c
-
-!> Wrapper using C for building BST index usable by python
-pure subroutine build_bst_index_c(values, n_values, sorted_indices, ierr) &
-    bind(C, name='build_bst_index_c')
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use f42_binary_search_tree
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_values
-        !! Number of elements
-    real(c_double), intent(in), target :: values(n_values)
-        !! Input real array (C-style)
-    integer(c_int), intent(out), target :: sorted_indices(n_values)
-        !! Output permutation index (C-style)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_values)
-    M_CHECK_NON_NULL(values)
-    M_CHECK_NON_NULL(sorted_indices)
-
-    call build_bst_index(values, n_values, sorted_indices, ierr)
-end subroutine build_bst_index_c
