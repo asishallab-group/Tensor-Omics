@@ -65,9 +65,9 @@ module noise_model
         !! bin) first, tried in order until a step satisfies all acceptance
         !! criteria. The last entry (2 bins, 50% per bin) is a hard floor: it is
         !! accepted unconditionally if no earlier step succeeds.
-    real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.2_real64
+    real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.4_real64
         !! Criterion 2: `Pr(c_g > 2)` must stay below this fraction
-    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 40_int32
+    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 35_int32
         !! Criterion 3: every occupied quantile interval must contain at least this
         !! many residuals to support a stable exact null distribution
     ! Note: the per-gene p-value is computed exactly at every pool size (no
