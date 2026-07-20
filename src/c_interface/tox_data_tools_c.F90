@@ -167,6 +167,7 @@ contains
 
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
+        allocate(character(len=gene_ids_strlen) :: gene_ids_f(n_gene_ids_elements))
 
         call read_gene_ids_from_tsv_file(&
             filename = filename_f,&
@@ -238,6 +239,7 @@ contains
         if (is_err(ierr)) return
         call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
         if (is_err(ierr)) return
+        allocate(character(len=family_ids_strlen) :: family_ids_f(n_family_ids_elements))
 
         call read_orthofinder_file(&
             filename = filename_f,&

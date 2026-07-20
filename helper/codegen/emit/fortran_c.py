@@ -230,14 +230,18 @@ class FortranCEmitter:
 
         if argument.conversion is Conversion.CHARACTER:
             # The local takes the callee's declared length, so it is a valid actual
-            # argument whatever C sent
+            # argument whatever C sent. A deferred length (`len=*` callee) forces an
+            # allocatable local -- and allocatable requires a deferred shape too, so the
+            # explicit extents give way to `:` per rank (an explicit-shape allocatable is
+            # rejected). An assumed-length *output* array is then allocated before the call.
             length = source.type.length
+            allocatable = length.is_assumed or nullable
             declared = "len=:" if length.is_assumed else f"len={length}"
             base = f"character({declared})"
-            if length.is_assumed or nullable:
+            if allocatable:
                 base += ", allocatable"
             if source.dimension:
-                base += f", dimension({deferred})" if nullable else \
+                base += f", dimension({deferred})" if allocatable else \
                     f", dimension({', '.join(source.dimension.extents)})"
             return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
 
@@ -274,10 +278,11 @@ class FortranCEmitter:
             if not argument.needs_conversion:
                 continue
             if argument.intent is Intent.OUT and argument.conversion is not Conversion.MODE:
-                # No value flows in, but a nullable optional still needs its allocatable
-                # local allocated when present, so the callee sees a present argument to
-                # write into (an unallocated one would read as absent).
-                block = self._allocate_optional_out(argument)
+                # No value flows in, but an allocatable local still has to be allocated
+                # before the call so the intent(out) callee has something to write into:
+                # a nullable optional (allocated only when present), or an assumed-length
+                # character array (allocated at the C-supplied string length).
+                block = self._allocate_output_local(argument, wrapper)
                 if block:
                     writer.block(block)
                     wrote = True
@@ -289,14 +294,39 @@ class FortranCEmitter:
         if wrote:
             writer.blank()
 
-    def _allocate_optional_out(self, argument: CArgument) -> str:
-        if not argument.optional:
+    def _allocate_output_local(self, argument: CArgument, wrapper: CWrapper) -> str:
+        source = argument.source
+        assumed_char = (
+            argument.conversion is Conversion.CHARACTER and source.type.length.is_assumed
+        )
+        # An automatic local (fixed-length character, or a non-optional logical) is sized by
+        # its declaration; only an allocatable one needs allocating here.
+        if not argument.optional and not assumed_char:
             return ""
-        extents = argument.source.dimension.extents if argument.source.dimension else ()
+        # The C-visible extents (real names, synthesised for an assumed-shape source rather
+        # than the source's own `:`). For a character the leading extent is the string
+        # length, which `character(len=...)` carries, so it is dropped from the shape.
+        extents = list(argument.dimension.extents)
+        if argument.conversion is Conversion.CHARACTER and extents:
+            extents = extents[1:]
         target = f"{argument.name}{CONVERTED_SUFFIX}"
         if extents:
             target += f"({', '.join(extents)})"
-        return f"if (present({argument.name})) allocate({target})"
+        if argument.conversion is Conversion.CHARACTER:
+            allocate = f"allocate(character(len={self._strlen_name(argument, wrapper)}) :: {target})"
+        else:
+            allocate = f"allocate({target})"
+        if argument.optional:
+            return f"if (present({argument.name})) {allocate}"
+        return allocate
+
+    @staticmethod
+    def _strlen_name(argument: CArgument, wrapper: CWrapper) -> str:
+        """The C argument carrying this character's length (see abi `_character_length`)."""
+        for other in wrapper:
+            if other.origin is Origin.STRLEN and other.sizes == argument.name:
+                return other.name
+        return f"{argument.name}_strlen"
 
     def _input_conversion(self, argument: CArgument, wrapper: CWrapper) -> str:
         writer = Writer()
