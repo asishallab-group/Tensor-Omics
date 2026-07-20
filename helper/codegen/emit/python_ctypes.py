@@ -15,11 +15,25 @@ What the generated function does, and why:
 
 from __future__ import annotations
 
+import re
+
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .doc_numpydoc import render_docstring
+
+#: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
+#: thing, so an extent expression carried over verbatim (`max(0_int32, n - 1)`) is a syntax
+#: error until the suffix is dropped. A kind can only follow a literal (an identifier cannot
+#: start with a digit), so this never touches a real name.
+_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
+
+
+def _python_extent(extent: str) -> str:
+    """A Fortran extent expression as Python. `max`/`min` are built-ins already; the only
+    incompatibility in the extents that reach here is the numeric kind suffix."""
+    return _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
 
 #: Fortran base type -> the ctypes scalar C sees
 CTYPES = {
@@ -635,10 +649,10 @@ class PythonEmitter:
             # and *one* null, and string_as_c_char_2d fills only as many columns as it
             # has strings. Uninitialised bytes past that would be read back as a string,
             # because nothing terminates them. Zeros are the null padding that does.
-            shape = ", ".join(argument.dimension.extents[1:]) or "1"
+            shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
             return f"np.zeros(({shape},), dtype={dtype_of(argument)})"
 
-        shape = ", ".join(argument.dimension.extents)
+        shape = ", ".join(_python_extent(e) for e in argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
         return f"np.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 

@@ -47,7 +47,10 @@ def render_docstring(wrapper: CWrapper) -> str:
 
     emitter = PythonEmitter()
     writer = Writer()
-    writer.line('"""' + (wrapper.procedure.meta.summary or wrapper.stripped_name))
+    # A raw docstring: the argument descriptions carry LaTeX (`\(`, `\frac`), which is an
+    # invalid escape sequence in a plain string and warns (a hard error in a future Python).
+    # The closing `"""` is always on its own line, so no trailing backslash can abut it.
+    writer.line('r"""' + (wrapper.procedure.meta.summary or wrapper.stripped_name))
 
     inputs = emitter._inputs(wrapper)
     outputs = emitter._outputs(wrapper)
