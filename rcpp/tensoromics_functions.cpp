@@ -1214,6 +1214,8 @@ void compute_noise_pvalues_pipeline_c(
   int* neighborhood_size_family,
   int* neighborhood_size_ortholog,
   int* neighborhood_size_case,
+  int* chosen_n_bins_own_case,
+  int* chosen_n_bins_own_control,
   int* ierr
 );
 
@@ -1255,6 +1257,8 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* neighborhood_size_family,
   int* neighborhood_size_ortholog,
   int* neighborhood_size_case,
+  int* chosen_n_bins_own_case,
+  int* chosen_n_bins_own_control,
   int* ierr
 );
 }
@@ -4886,6 +4890,11 @@ static Rcpp::List run_noise_pvalues_pipeline(
     Rcpp::IntegerVector neighborhood_size_orth(n_genes);
     Rcpp::IntegerVector neighborhood_size_cancer(n_genes);
 
+    // Diagnostics: sign-encoded chosen stratification bin count per side
+    // (+ = criteria met, - = coarse 2-bin fallback, -1 = not computed).
+    Rcpp::IntegerVector chosen_n_bins_own_case(n_genes);
+    Rcpp::IntegerVector chosen_n_bins_own_control(n_genes);
+
     int n_success = 0;
     int ierr = 0;
 
@@ -4904,6 +4913,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
             neighborhood_size_cancer.begin(),
+            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     } else {
         compute_noise_pvalues_pipeline_c(
@@ -4920,6 +4930,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
             neighborhood_size_cancer.begin(),
+            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     }
 
@@ -4933,6 +4944,8 @@ static Rcpp::List run_noise_pvalues_pipeline(
         Rcpp::Named("neighborhood_size_fam") = neighborhood_size_fam,
         Rcpp::Named("neighborhood_size_orth") = neighborhood_size_orth,
         Rcpp::Named("neighborhood_size_cancer") = neighborhood_size_cancer,
+        Rcpp::Named("chosen_n_bins_own_case") = chosen_n_bins_own_case,
+        Rcpp::Named("chosen_n_bins_own_control") = chosen_n_bins_own_control,
         Rcpp::Named("ierr") = ierr);
 }
 

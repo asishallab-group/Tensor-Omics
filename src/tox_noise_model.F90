@@ -1202,6 +1202,7 @@ contains
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_family, &
         neighborhood_size_ortholog, neighborhood_size_case, &
+        chosen_n_bins_own_case, chosen_n_bins_own_control, &
         cache, &
         tmp_pool_case, tmp_gene_id_pool_case, &
         tmp_pool_control_own, tmp_gene_id_pool_control_own, &
@@ -1276,6 +1277,12 @@ contains
         !! Control pool size used for gene-vs-ortholog p-value (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for this gene (-1 if not computed)
+        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
+        !! Diagnostic: chosen bin count for the gene-vs-own CASE stratification, sign-encoded
+        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
+        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_control
+        !! Diagnostic: chosen bin count for the gene-vs-own CONTROL stratification, sign-encoded
+        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
         type(family_cache_t), intent(in) :: cache
         !! Pre-computed family and ortholog residual pools
         real(real64), dimension(max_pool_size * 2), intent(inout) :: tmp_pool_case
@@ -1353,6 +1360,8 @@ contains
         neighborhood_size_family = -1
         neighborhood_size_ortholog = -1
         neighborhood_size_case = -1
+        chosen_n_bins_own_case = -1
+        chosen_n_bins_own_control = -1
         n_genes_with_pvalue = 0
 
         do i_gene = 1, n_genes
@@ -1430,6 +1439,14 @@ contains
                     tmp_chosen_bin_edges_control(1:chosen_n_bins_control + 1), chosen_n_bins_control, mean_control_val, &
                     tmp_own_stratum_pool_control(1:n_pool_control_own), control_stratum_count)
 
+                ! Diagnostics: record the chosen bin count per side, sign-encoding whether
+                ! the stratification criteria were met (+ = met, - = coarse 2-bin fallback).
+                ! Recorded even if the stratum is then too small to compute a p-value.
+                chosen_n_bins_own_case(i_gene)    = merge(chosen_n_bins_case, &
+                                                          -chosen_n_bins_case, strata_criteria_met_case)
+                chosen_n_bins_own_control(i_gene) = merge(chosen_n_bins_control, &
+                                                          -chosen_n_bins_control, strata_criteria_met_control)
+
                 if (case_stratum_count >= 10 .and. control_stratum_count >= 10) then
                     ! Build the `own` null by BOOTSTRAPPING the mean difference: resample
                     ! n_replicates residuals per side (with replacement) from the strata,
@@ -1496,6 +1513,7 @@ contains
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_family, &
         neighborhood_size_ortholog, neighborhood_size_case, &
+        chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
         integer(int32), intent(in) :: n_genes_case
@@ -1568,6 +1586,12 @@ contains
         !! Control pool size used for gene-vs-ortholog (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for each gene (-1 if not computed)
+        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
+        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CASE stratification
+        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
+        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_control
+        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
+        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
         integer(int32), intent(out) :: ierr
         !! Error code
 
@@ -1709,6 +1733,7 @@ contains
             neighborhood_size_own_case, neighborhood_size_own_control, &
             neighborhood_size_family, &
             neighborhood_size_ortholog, neighborhood_size_case, &
+            chosen_n_bins_own_case, chosen_n_bins_own_control, &
             cache, &
             tmp_pool_case, tmp_gene_id_pool_case, &
             tmp_pool_control_own, tmp_gene_id_pool_control_own, &
@@ -1756,6 +1781,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
     neighborhood_size_own_case, neighborhood_size_own_control, &
     neighborhood_size_family, &
     neighborhood_size_ortholog, neighborhood_size_case, &
+    chosen_n_bins_own_case, chosen_n_bins_own_control, &
     ierr) bind(C, name="compute_noise_pvalues_pipeline_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
@@ -1834,6 +1860,10 @@ subroutine compute_noise_pvalues_pipeline_c( &
     !! Control pool size used for gene-vs-ortholog (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_case
     !! Case pool size used for each gene (-1 if not computed)
+    integer(c_int), dimension(n_genes), intent(out), target :: chosen_n_bins_own_case
+    !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CASE stratification
+    integer(c_int), dimension(n_genes), intent(out), target :: chosen_n_bins_own_control
+    !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
     integer(c_int), intent(out), target :: ierr
     !! Error code: 0 = success
 
@@ -1873,6 +1903,8 @@ subroutine compute_noise_pvalues_pipeline_c( &
     M_CHECK_NON_NULL(neighborhood_size_family)
     M_CHECK_NON_NULL(neighborhood_size_ortholog)
     M_CHECK_NON_NULL(neighborhood_size_case)
+    M_CHECK_NON_NULL(chosen_n_bins_own_case)
+    M_CHECK_NON_NULL(chosen_n_bins_own_control)
 
     call compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
@@ -1887,6 +1919,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_family, &
         neighborhood_size_ortholog, neighborhood_size_case, &
+        chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
 end subroutine compute_noise_pvalues_pipeline_c
