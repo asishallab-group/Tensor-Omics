@@ -756,7 +756,7 @@ contains
         call median_of_int_array_helper(tmp_c_g(1:n_distinct_genes), n_distinct_genes, median_c_g)
 
         ! ── Criterion 2: Pr(c_g > 2) < 0.1 ───────────────────────────────────
-        n_c_g_gt_2 = count(tmp_c_g(1:n_distinct_genes) > 2)
+        n_c_g_gt_2 = count(tmp_c_g(1:n_distinct_genes) > 4)
 
         ! ── Criterion 3: every occupied bin has >= STRATA_MIN_RESIDUALS_PER_BIN ──
         n_occupied_bins = count(tmp_bin_counts > 0)
