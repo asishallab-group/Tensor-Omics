@@ -23,8 +23,9 @@ module tox_clustering
 #define DEFAULT_MAX_ITER_K_MEANS 300_int32
 contains
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Performs k-means clustering on factor trajectories, so factor evolution over time
+    !> M_EXPORT_C
+    !| summary: Performs k-means clustering on factor trajectories, so factor evolution over time
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
@@ -60,8 +61,9 @@ contains
         call k_means_clustering(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, ierr, max_iterations)
     end subroutine cluster_factor_trajectories_k_means
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| k-means clustering algorithm:
+    !> M_EXPORT_C
+    !| summary: k-means clustering algorithm
+    !| AUTHOR_FRANZ_ERIC_SILL
     !|
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
@@ -89,7 +91,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), intent(in), optional :: max_iterations
-            !! number of maximum iterations of the clustering, default `DEFAULT_MAX_ITER_K_MEANS`
+            !! number of maximum iterations of the clustering.
+            !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
         call set_ok(ierr)
 
@@ -133,7 +136,8 @@ contains
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
         integer(int32), intent(in), optional :: max_iterations
-            !! number of maximum iterations of the clustering, default `DEFAULT_MAX_ITER_K_MEANS`
+            !! number of maximum iterations of the clustering.
+            !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
         integer(int32) :: label, iteration, i_point, max_iter
         logical :: labels_changed
@@ -251,8 +255,9 @@ contains
         end do
     end subroutine k_means_assign_cluster_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Perform linkage clustering on a distance matrix.
+    !> M_EXPORT_C
+    !| summary: Perform linkage clustering on a distance matrix.
+    !| AUTHOR_FRANZ_ERIC_SILL
     !|
     !| @note
     !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
@@ -279,12 +284,11 @@ contains
         integer(int32), intent(in) :: method
             !! used algorithm
             !!
-            !! |      Method      |          Value         |
-            !! |------------------|------------------------|
-            !! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
-            !! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
-            !! |      Ward        |   CM_METHOD_WARD       |
-            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | Average / UPGMA | [[tox_clustering(module):METHOD_AVERAGE(variable)]] |
+            !! | Weighted / WPGMA | [[tox_clustering(module):METHOD_WEIGHTED(variable)]] |
+            !! | Ward | [[tox_clustering(module):METHOD_WARD(variable)]] |
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -601,163 +605,3 @@ contains
         end do
     end subroutine get_min_distance_indices_helper
 end module tox_clustering
-
-!> k-means clustering algorithm:
-!|
-!| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
-!| 2. Recalculates the centroids using the mean of its assigned points
-!| 3. repeat 1-2 until assignment remains unchanged
-pure subroutine k_means_clustering_c(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="k_means_clustering_c")
-    use tox_clustering, only: k_means_clustering
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_clusters
-        !! number (`k`) of clusters
-    integer(c_int), intent(in), target :: n_points
-        !! number of points to cluster
-    integer(c_int), intent(in), target :: n_dims
-        !! number of elements a point has
-    real(c_double), dimension(n_dims, n_points), intent(in), target :: data_points
-        !! matrix with data points to cluster
-    real(c_double), dimension(n_dims, n_clusters), intent(inout), target :: centroids
-        !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-        !! The centroids should be unique. This is not checked in this routine.
-        !!
-        !! The final values will be the final centroids of the clusters
-    integer(c_int), dimension(n_points), intent(out), target :: labels
-        !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-        !!
-        !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
-    integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
-        !! holds the number of points having the respective label assigned
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    integer(c_int), intent(in), target :: max_iterations
-        !! number of maximum iterations of the clustering
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_clusters)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(data_points)
-    M_CHECK_NON_NULL(centroids)
-    M_CHECK_NON_NULL(labels)
-    M_CHECK_NON_NULL(label_counts)
-    M_CHECK_NON_NULL(max_iterations)
-
-    call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations)
-end subroutine k_means_clustering_c
-
-!> C-compatible wrapper for cluster_factor_trajectories_k_means
-pure subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")
-    use tox_clustering, only: cluster_factor_trajectories_k_means
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-        integer(c_int), intent(in), target :: n_clusters
-            !! number (`k`) of clusters
-        integer(c_int), intent(in), target :: n_factors
-            !! number of factors
-        integer(c_int), intent(in), target :: n_timepoints
-            !! number of timepoints
-        integer(c_int), intent(in), target :: n_samples
-            !! number of samples
-        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-            !! matrix with data points to cluster
-        real(c_double), dimension(n_factors, n_clusters), intent(inout), target :: centroids
-            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-            !! The centroids should be unique. This is not checked in this routine.
-            !!
-            !! The final values will be the final centroids of the clusters
-        integer(c_int), dimension(n_samples*n_timepoints), intent(out), target :: labels
-            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-            !!
-            !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
-        integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
-            !! holds the number of points having the respective label assigned
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
-        integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_clusters)
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(centroids)
-    M_CHECK_NON_NULL(labels)
-    M_CHECK_NON_NULL(label_counts)
-    M_CHECK_NON_NULL(max_iterations)
-
-    call cluster_factor_trajectories_k_means(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
-end subroutine cluster_factor_trajectories_k_means_c
-
-!> C-compatible wrapper for linkage_clustering
-subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr) bind(C, name="linkage_clustering_c")
-    use tox_clustering, only: linkage_clustering, METHOD_WARD, METHOD_AVERAGE, METHOD_WEIGHTED
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_errors, only: is_err, set_err, ERR_INVALID_INPUT
-    use tox_conversions, only: c_char_1d_as_string
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_points
-        !! number of points to cluster
-    real(c_double), dimension(n_points, n_points), intent(inout), target :: distances
-        !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
-        !!
-        !! @note
-        !! This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-        !! So there is no need to copy an existing distance matrix, just pass the original.
-        !! @endnote
-    integer(c_int), dimension(n_points - 1), intent(out), target :: merge_i
-        !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-    integer(c_int), dimension(n_points - 1), intent(out), target :: merge_j
-        !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-    real(c_double), dimension(n_points - 1), intent(out), target :: heights
-        !! height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
-    integer(c_int), dimension(n_points - 1), intent(out), target :: cluster_sizes
-        !! size of cluster at iteration k
-    character(kind=c_char, len=1), dimension(8), intent(in), target :: method
-        !! used algorithm
-        !!
-        !! |      Method      |      Value     |
-        !! |------------------|----------------|
-        !! | Average / UPGMA  |   "average"    |
-        !! | Weighted / WPGMA |   "weighted"   |
-        !! |      Ward        |     "ward"     |
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: method_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(distances)
-    M_CHECK_NON_NULL(merge_i)
-    M_CHECK_NON_NULL(merge_j)
-    M_CHECK_NON_NULL(heights)
-    M_CHECK_NON_NULL(cluster_sizes)
-    M_CHECK_NON_NULL(method)
-
-    call c_char_1d_as_string(method, method_f, ierr)
-    if (is_err(ierr)) return
-
-    select case (trim(method_f))
-    case ("average")
-        call linkage_clustering(distances, n_points, merge_i, merge_j, heights, cluster_sizes, METHOD_AVERAGE, ierr)
-    case ("weighted")
-        call linkage_clustering(distances, n_points, merge_i, merge_j, heights, cluster_sizes, METHOD_WEIGHTED, ierr)
-    case ("ward")
-        call linkage_clustering(distances, n_points, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
-    case default
-        call set_err(ierr, ERR_INVALID_INPUT)
-    end select
-
-end subroutine linkage_clustering_c
-

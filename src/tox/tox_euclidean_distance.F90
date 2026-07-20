@@ -11,8 +11,9 @@ module tox_euclidean_distance
 
 contains
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute the Euclidean distance between two vectors.
+    !> M_EXPORT_C
+    !| summary: Compute the Euclidean distance between two vectors.
+    !| AUTHOR_VIVIAN_BASS
     !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
     pure subroutine euclidean_distance(vec1, vec2, n_elements, result, ierr)
         integer(int32), intent(in) :: n_elements
@@ -61,8 +62,9 @@ contains
         result = sqrt(sum_squared_diff)
     end subroutine euclidean_distance_helper
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute distance from each gene to its corresponding family centroid.
+    !> M_EXPORT_C
+    !| summary: Compute distance from each gene to its corresponding family centroid.
+    !| AUTHOR_VIVIAN_BASS
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
     pure subroutine distance_to_centroid(n_genes, n_families, genes, centroids, &
                                          gene_to_fam, distances, n_tissues, ierr)
@@ -129,70 +131,3 @@ contains
         end do
     end subroutine distance_to_centroid_helper
 end module tox_euclidean_distance
-
-!> C wrapper for euclidean_distance.
-!| Exposes euclidean_distance to C via iso_c_binding types.
-pure subroutine euclidean_distance_c(vec1, vec2, n_elements, result, ierr) bind(C, name="euclidean_distance_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_euclidean_distance, only: euclidean_distance
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_elements
-        !! Dimension of both vectors
-    real(c_double), dimension(n_elements), intent(in), target :: vec1
-        !! First expression vector
-    real(c_double), dimension(n_elements), intent(in), target :: vec2
-        !! Second expression vector
-    real(c_double), intent(out), target :: result
-        !! Output scalar distance
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_elements)
-    M_CHECK_NON_NULL(vec1)
-    M_CHECK_NON_NULL(vec2)
-    M_CHECK_NON_NULL(result)
-
-    call euclidean_distance(vec1, vec2, n_elements, result, ierr)
-end subroutine euclidean_distance_c
-
-!> C wrapper for distance_to_centroid.
-!| Exposes distance_to_centroid to C via iso_c_binding types.
-pure subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, &
-                                       gene_to_fam, distances, n_elements, ierr) bind(C, name="distance_to_centroid_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_euclidean_distance, only: distance_to_centroid
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of gene families
-    integer(c_int), intent(in), target :: n_elements
-        !! Expression vector dimension
-    real(c_double), dimension(n_elements, n_genes), intent(in), target :: genes
-        !! Gene expression matrix (n_elements × n_genes), column-major
-    real(c_double), dimension(n_elements, n_families), intent(in), target :: centroids
-        !! Family centroid matrix (n_elements × n_families), column-major
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-        !! M_GENE_TO_FAM_DOC(genes)
-    real(c_double), dimension(n_genes), intent(out), target :: distances
-        !! Output distances array
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(n_elements)
-    M_CHECK_NON_NULL(genes)
-    M_CHECK_NON_NULL(centroids)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(distances)
-
-    call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                              gene_to_fam, distances, n_elements, ierr)
-end subroutine distance_to_centroid_c

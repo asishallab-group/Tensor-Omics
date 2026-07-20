@@ -27,8 +27,9 @@ module tox_paralog_analysis
 
 contains
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.
+    !> M_EXPORT_C
+    !| summary: Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)
         integer(int32), intent(in) :: n_axes
             !! size of `ancestors` vector and vectors in `genes`
@@ -74,8 +75,9 @@ contains
         end do
     end subroutine detect_neofunctionalization
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
+    !> M_EXPORT_C
+    !| summary: Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
@@ -122,8 +124,9 @@ contains
         call map_err_arg_pos(ierr, 13_int32, 12_int32) ! tmp_paralog_vector
     end subroutine detect_dosage_effect
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Identifies subsets of paralogs exhibiting significant angles to the `ancestor`
+    !> M_EXPORT_C
+    !| summary: Identifies subsets of paralogs exhibiting significant angles to the `ancestor`
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine detect_subfunctionalization(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
@@ -626,8 +629,9 @@ contains
         subsets(:, n_results + n_active_masks + n_new_active_masks) = new_active_mask
     end subroutine add_new_active_mask_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| This subroutine easily determines the needed chunk count for subset bit masks, as an integer has only 32 bits.
+    !> M_EXPORT_C
+    !| summary: Determines the needed chunk count for subset bit masks (an integer has only 32 bits)
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine mask_chunk_count(n_genes, count)
         integer(int32), intent(in) :: n_genes
             !! number of genes
@@ -638,8 +642,9 @@ contains
         count = CM_MASK_CHUNK_COUNT
     end subroutine mask_chunk_count
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| This subroutine prefilters the genes for subfunctionalization,
+    !> M_EXPORT_C
+    !| summary: Prefilters the genes for subfunctionalization
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     pure subroutine filter_paralogs_by_pattern_subfunctionalization(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         integer(int32), intent(in) :: n_genes
@@ -669,8 +674,9 @@ contains
         call map_err_arg_pos(ierr, 8_int32, 7_int32)
     end subroutine filter_paralogs_by_pattern_subfunctionalization
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| This subroutine prefilters the genes for dosage effect,
+    !> M_EXPORT_C
+    !| summary: Prefilters the genes for dosage effect
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.
     pure subroutine filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         integer(int32), intent(in) :: n_genes
@@ -768,7 +774,9 @@ contains
         end select
     end subroutine filter_paralogs_by_pattern
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> M_EXPORT_C
+    !| summary: Calculates the needed size for the paralog-subsets work array
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| The `detect_*` subroutines need a work array for the to be tested subsets.
     !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
     !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
@@ -907,8 +915,9 @@ contains
         end if
     end subroutine mask_set_state
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
+    !> M_EXPORT_C
+    !| summary: Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure function mask_check_state(bit_mask, i_gene) result(state)
         integer(int32), dimension(:), intent(in) :: bit_mask
             !! chunked mask to mark active paralogs
@@ -931,345 +940,3 @@ contains
 
     end function mask_check_state
 end module tox_paralog_analysis
-
-!> C-compatible wrapper for detect_neofunctionalization
-pure subroutine detect_neofunctionalization_c(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr) bind(C, name="detect_neofunctionalization_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_paralog_analysis, only: detect_neofunctionalization
-    use tox_errors, only: set_err, is_err, is_ok, set_ok, ERR_ALLOC_FAIL, validate_dimension_size
-    use tox_conversions, only: logical_as_c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Arguments mapped to C types
-    integer(c_int), intent(in), target :: n_axes
-        !! size of `ancestors` vector and vectors in `genes`
-    integer(c_int), intent(in), target :: n_genes
-        !! number of vectors in `genes`
-    integer(c_int), intent(in), target :: n_families
-        !! number of vectors in `ancestors`
-    real(c_double), dimension(n_axes, n_families), intent(in), target :: ancestors
-        !! RAP projected unit length expression vector of ancestral ortholog
-    real(c_double), dimension(n_axes, n_genes), intent(in), target :: genes
-        !! RAP projected unit length expression vectors of genes
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-        !! M_GENE_TO_FAM_DOC(genes)
-    real(c_double), dimension(n_axes), intent(in), target :: thresholds
-        !! threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
-    integer(c_int), dimension(n_genes, n_axes), intent(out), target :: neofunc
-        !! non-zero if neofunctionalization has been detected for the respective axes, always zero for unassigned genes
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    logical, dimension(:, :), allocatable :: neofunc_f
-
-    ! Null checks
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(ancestors)
-    M_CHECK_NON_NULL(genes)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(thresholds)
-    M_CHECK_NON_NULL(neofunc)
-
-    call set_ok(ierr)
-    call validate_dimension_size(n_genes, ierr)
-    call validate_dimension_size(n_genes, ierr)
-    if (is_err(ierr)) return
-
-    allocate (neofunc_f(n_genes, n_axes), stat=ierr)
-    if (is_err(ierr)) then
-        call set_err(ierr, ERR_ALLOC_FAIL)
-        return
-    end if
-
-    ! Call the pure Fortran routine
-    call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc_f, ierr)
-
-    if (is_ok(ierr)) then
-        call logical_as_c_int(neofunc_f, neofunc)
-    end if
-end subroutine detect_neofunctionalization_c
-
-!> C-compatible wrapper for `detect_dosage_effect`
-pure subroutine detect_dosage_effect_c(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr) bind(C, name="detect_dosage_effect_c")
-    use tox_paralog_analysis, only: detect_dosage_effect
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_dims
-        !! size of `ancestor` vector and vectors in `genes`
-    integer(c_int), intent(in), target :: n_genes
-        !! number of vectors in `genes`
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-    real(c_double), dimension(n_dims), intent(in), target :: ancestor
-        !! expression vector of ancestral ortholog
-    real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-        !! expression vectors of genes
-    integer(c_int), intent(out), target :: n_results
-        !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-    integer(c_int), intent(in), target :: max_subset_size
-        !! maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    integer(c_int), intent(in), target :: n_paralog_subsets
-        !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
-        !! working array to hold bitmask encoded subsets for detection.
-        !! @note
-        !! Each bitmask is built of 32 bit chunks. `CM_MASK_CHUNK_COUNT` is equivalent to `CM_MASK_CHUNK_COUNT_EQUIV` and represents the number of chunks
-        !! @endnote
-    integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
-        !! bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
-    integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
-        !! working array to hold the extended subsets
-    real(c_double), dimension(n_dims), intent(out), target :: tmp_paralog_vector
-        !! vector used for pruning subsets
-    real(c_double), intent(in), target :: gain_gamma
-        !! positive magnitude gain for dosage effect, default 0.1
-    real(c_double), intent(in), target :: max_angle
-        !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned, default is Pi
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(ancestor)
-    M_CHECK_NON_NULL(genes)
-    M_CHECK_NON_NULL(n_results)
-    M_CHECK_NON_NULL(max_subset_size)
-    M_CHECK_NON_NULL(n_paralog_subsets)
-    M_CHECK_NON_NULL(work_arr_paralog_subsets)
-    M_CHECK_NON_NULL(filtered_paralogs_mask)
-    M_CHECK_NON_NULL(tmp_active_mask)
-    M_CHECK_NON_NULL(tmp_paralog_vector)
-    M_CHECK_NON_NULL(gain_gamma)
-    M_CHECK_NON_NULL(max_angle)
-
-    call detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)
-end subroutine detect_dosage_effect_c
-
-!> C-compatible wrapper for `detect_subfunctionalization`
-pure subroutine detect_subfunctionalization_c(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr) bind(C, name="detect_subfunctionalization_c")
-    use tox_paralog_analysis, only: detect_subfunctionalization
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_dims
-        !! size of `ancestor` vector and vectors in `genes`
-    integer(c_int), intent(in), target :: n_genes
-        !! number of vectors in `genes`
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-    real(c_double), dimension(n_dims), intent(in), target :: ancestor
-        !! expression vector of ancestral ortholog
-    real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-        !! expression vectors of genes
-    real(c_double), intent(in), target :: rdi_threshold
-        !! max allowed residual distance from `ancestor`
-    integer(c_int), intent(out), target :: n_results
-        !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-    integer(c_int), intent(in), target :: max_subset_size
-        !! maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    integer(c_int), intent(in), target :: n_paralog_subsets
-        !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
-        !! working array to hold bitmask encoded subsets for detection.
-        !! @note
-        !! Each bitmask is built of 32 bit chunks. `CM_MASK_CHUNK_COUNT` is equivalent to `CM_MASK_CHUNK_COUNT_EQUIV` and represents the number of chunks
-        !! @endnote
-    integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
-        !! bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
-    integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
-        !! working array to hold the extended subsets
-    real(c_double), dimension(n_dims), intent(out), target :: tmp_paralog_vector
-        !! vector used for pruning subsets
-    real(c_double), dimension(n_genes), intent(in), target :: paralog_norms
-        !! needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-    integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
-        !! needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-    real(c_double), dimension(n_genes), intent(out), target :: tmp_work_array
-        !! needed for efficient check of minimum value after a certain index
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(ancestor)
-    M_CHECK_NON_NULL(genes)
-    M_CHECK_NON_NULL(rdi_threshold)
-    M_CHECK_NON_NULL(n_results)
-    M_CHECK_NON_NULL(max_subset_size)
-    M_CHECK_NON_NULL(n_paralog_subsets)
-    M_CHECK_NON_NULL(work_arr_paralog_subsets)
-    M_CHECK_NON_NULL(filtered_paralogs_mask)
-    M_CHECK_NON_NULL(tmp_active_mask)
-    M_CHECK_NON_NULL(tmp_paralog_vector)
-    M_CHECK_NON_NULL(paralog_norms)
-    M_CHECK_NON_NULL(sorted_paralog_norms_perm)
-    M_CHECK_NON_NULL(tmp_work_array)
-
-    call detect_subfunctionalization(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-end subroutine detect_subfunctionalization_c
-
-!> C-compatible wrapper for `filter_paralogs_by_pattern_subfunctionalization`
-pure subroutine filter_paralogs_by_pattern_subfunctionalization_c(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_subfunctionalization_c")
-    use tox_paralog_analysis, only: filter_paralogs_by_pattern_subfunctionalization
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! number of families
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-    real(c_double), dimension(n_genes), intent(in), target :: gene_angles
-        !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-        !! a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
-    real(c_double), intent(in), target :: threshold
-        !! filter threshold
-    integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
-        !! bit mask that will have indices of genes kept by pattern set to 1, else 0
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(gene_angles)
-    M_CHECK_NON_NULL(threshold)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(masks)
-
-    call filter_paralogs_by_pattern_subfunctionalization(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
-end subroutine filter_paralogs_by_pattern_subfunctionalization_c
-
-!> C-compatible wrapper for `filter_paralogs_by_pattern_dosage_effect`
-pure subroutine filter_paralogs_by_pattern_dosage_effect_c(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_dosage_effect_c")
-    use tox_paralog_analysis, only: filter_paralogs_by_pattern_dosage_effect
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! number of families
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-    real(c_double), dimension(n_genes), intent(in), target :: gene_angles
-        !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-        !! a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
-    real(c_double), intent(in), target :: threshold
-        !! filter threshold
-    integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
-        !! bit mask that will have indices of genes kept by pattern set to 1, else 0
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(gene_angles)
-    M_CHECK_NON_NULL(threshold)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(masks)
-
-    call filter_paralogs_by_pattern_dosage_effect(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
-end subroutine filter_paralogs_by_pattern_dosage_effect_c
-
-!> C-compatible wrapper for `calc_work_arr_paralog_subsets_size`
-pure subroutine calc_work_arr_paralog_subsets_size_c(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size_c")
-    use tox_paralog_analysis, only: calc_work_arr_paralog_subsets_size
-    use, intrinsic :: iso_c_binding, only: c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! number of paralogs
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-    integer(c_int), intent(inout), target :: max_subset_size
-        !! maximum size that a subset must not exceed.
-        !! @warning
-        !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-        !!
-        !! Also, size will be set to number of paralogs in `filtered_paralogs_mask` if larger.
-        !! @endwarning
-    integer(c_int), intent(out), target :: work_array_size
-        !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
-    integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
-        !! Output mask with all paralogs disabled that did not pass the filter
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(max_subset_size)
-    M_CHECK_NON_NULL(work_array_size)
-    M_CHECK_NON_NULL(filtered_paralogs_mask)
-
-    call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr)
-end subroutine calc_work_arr_paralog_subsets_size_c
-
-!> C-compatible wrapper for `mask_chunk_count`
-pure subroutine mask_chunk_count_c(n_genes, count, ierr) bind(C, name="mask_chunk_count_c")
-    use tox_paralog_analysis, only: mask_chunk_count
-    use, intrinsic :: iso_c_binding, only: c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! number of paralogs
-    integer(c_int), intent(out), target :: count
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(count)
-
-    call mask_chunk_count(n_genes, count)
-end subroutine mask_chunk_count_c
-
-!> C-compatible wrapper for [[tox_paralog_analysis(module):mask_check_state(function)]]
-pure subroutine mask_check_state_c(bit_mask, n_mask_chunks, i_gene, state, ierr) bind(C, name="mask_check_state_c")
-    use tox_paralog_analysis, only: mask_check_state
-    use tox_conversions, only: logical_as_c_int
-    use, intrinsic :: iso_c_binding, only: c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_mask_chunks
-        !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-    integer(c_int), dimension(n_mask_chunks), intent(in), target :: bit_mask
-        !! chunked mask to mark active paralogs
-    integer(c_int), intent(in), target :: i_gene
-        !! index of paralog to be checked, starting with 1
-    integer(c_int), intent(out), target :: state
-        !! check result
-    integer(c_int), intent(out), target :: ierr
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_mask_chunks)
-    M_CHECK_NON_NULL(bit_mask)
-    M_CHECK_NON_NULL(i_gene)
-    M_CHECK_NON_NULL(state)
-
-    call logical_as_c_int(mask_check_state(bit_mask, i_gene), state)
-end subroutine mask_check_state_c

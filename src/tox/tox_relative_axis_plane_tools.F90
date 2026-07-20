@@ -10,8 +10,9 @@ module tox_relative_axis_plane_tools
 
 contains
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
+    !> M_EXPORT_C
+    !| summary: Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine omics_vector_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)
         integer(int32), intent(in) :: n_axes
             !! number of axes
@@ -90,8 +91,9 @@ contains
         call project_selected_vecs_onto_rap_helper(projections, n_selected_axes, n_selected_vecs)
     end subroutine omics_vector_RAP_projection_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+    !> M_EXPORT_C
+    !| summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine omics_field_RAP_projection(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr)
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
@@ -229,8 +231,9 @@ contains
         end if
     end subroutine validate_selected_axes_for_signed_helper
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+    !> M_EXPORT_C
+    !| summary: Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+    !| AUTHOR_VIVIAN_BASS
     !| Calculates the signed rotation angle between two normalized vectors in RAP space.
     !| For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
    pure subroutine clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)
@@ -314,8 +317,9 @@ contains
         signed_angle = orientation_sign * unsigned_angle
     end subroutine clock_hand_angle_between_vectors_helper
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute signed rotation angles between for shift vectors, so between their origin and target
+    !> M_EXPORT_C
+    !| summary: Compute signed rotation angles between for shift vectors, so between their origin and target
+    !| AUTHOR_VIVIAN_BASS
     pure subroutine clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, &
                                                         fields_selection_mask, &
                                                         n_selected_fields, selected_axes_for_signed, &
@@ -448,8 +452,9 @@ contains
         end do
     end subroutine compute_relative_axis_contributions_helper
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+    !> M_EXPORT_C
+    !| summary: Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+    !| AUTHOR_VIVIAN_BASS
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
     pure subroutine relative_axes_changes_from_shift_vector(vec, n_axes, contributions, ierr)
         real(real64), dimension(n_axes), intent(in) :: vec
@@ -464,8 +469,9 @@ contains
         call compute_relative_axis_contributions(vec, n_axes, contributions, ierr)
     end subroutine relative_axes_changes_from_shift_vector
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+    !> M_EXPORT_C
+    !| summary: Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+    !| AUTHOR_VIVIAN_BASS
     !| Wrapper for single RAP-projected expression vectors
     pure subroutine relative_axes_expression_from_expression_vector(vec, n_axes, contributions, ierr)
         real(real64), dimension(n_axes), intent(in) :: vec
@@ -508,220 +514,3 @@ contains
     end function cross_product_orientation_sign
 
 end module tox_relative_axis_plane_tools
-
-! Updated wrappers to pass and return ierr
-
-pure subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr) bind(C, name="clock_hand_angle_between_vectors_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: clock_hand_angle_between_vectors
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_dims
-        !! Dimension of both vectors
-    real(c_double), dimension(n_dims), intent(in), target :: v1
-        !! First normalized vector in RAP space
-    real(c_double), dimension(n_dims), intent(in), target :: v2
-        !! Second normalized vector in RAP space
-    real(c_double), intent(out), target :: signed_angle
-        !! Signed angle between vectors in radians [-π, π]
-    integer(c_int), dimension(3), intent(in), target :: selected_axes_for_signed
-        !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(v1)
-    M_CHECK_NON_NULL(v2)
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(signed_angle)
-    M_CHECK_NON_NULL(selected_axes_for_signed)
-
-    call clock_hand_angle_between_vectors(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)
-end subroutine clock_hand_angle_between_vectors_c
-
-pure subroutine clock_hand_angles_for_shift_vectors_c(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: clock_hand_angles_for_shift_vectors
-    use tox_conversions, only: c_int_as_logical
-    use tox_errors, only: is_err, set_err, ERR_ALLOC_FAIL
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_dims
-        !! Dimension of each vector in RAP space
-    integer(c_int), intent(in), target :: n_fields
-        !! Number of vector pairs
-    real(c_double), dimension(n_dims, 2, n_fields), intent(in), target :: fields
-        !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
-    integer(c_int), dimension(n_fields), intent(in), target :: fields_selection_mask
-        !! .true. for vector pairs where angle should be computed
-    integer(c_int), intent(in), target :: n_selected_fields
-        !! Count of .true. values in fields_selection_mask
-    integer(c_int), dimension(3), intent(in), target :: selected_axes_for_signed
-        !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-    real(c_double), dimension(n_selected_fields), intent(out), target :: signed_angles
-        !! Signed rotation angles between vector pairs in radians [-π, π]
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    logical, dimension(:), allocatable :: fields_selection_mask_f(:)
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(n_fields)
-    M_CHECK_NON_NULL(n_selected_fields)
-    M_CHECK_NON_NULL(fields)
-    M_CHECK_NON_NULL(fields_selection_mask)
-    M_CHECK_NON_NULL(selected_axes_for_signed)
-    M_CHECK_NON_NULL(signed_angles)
-
-    ! Convert c_int mask to logical using tox_conversions utility
-    M_ALLOCATE(fields_selection_mask_f(n_fields))
-    call c_int_as_logical(fields_selection_mask, fields_selection_mask_f)
-
-    call clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, fields_selection_mask_f, n_selected_fields, selected_axes_for_signed, signed_angles, ierr)
-end subroutine clock_hand_angles_for_shift_vectors_c
-
-!> C/Python wrapper for omics_vector_RAP_projection
-pure subroutine omics_vector_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_vector_RAP_projection_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: omics_vector_RAP_projection
-    use tox_conversions, only: c_int_as_logical
-    use tox_errors, only: is_err, set_err, ERR_ALLOC_FAIL
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_axes
-        !! number of axes
-    integer(c_int), intent(in), target :: n_vecs
-        !! number of vectors
-    real(c_double), dimension(n_axes, n_vecs), intent(in), target :: vecs
-        !! matrix with expression vectors
-    integer(c_int), dimension(n_vecs), intent(in), target :: vecs_selection_mask
-        !! mask for selecting vectors
-    integer(c_int), intent(in), target :: n_selected_vecs
-        !! count of selected vectors
-    integer(c_int), dimension(n_axes), intent(in), target :: axes_selection_mask
-        !! mask for selecting axes
-    integer(c_int), intent(in), target :: n_selected_axes
-        !! count of selected axes
-    real(c_double), dimension(n_selected_axes, n_selected_vecs), intent(out), target :: projections
-        !! projected vectors
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    logical, dimension(:), allocatable :: vecs_selection_mask_f(:), axes_selection_mask_f(:)
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_vecs)
-    M_CHECK_NON_NULL(n_selected_vecs)
-    M_CHECK_NON_NULL(n_selected_axes)
-    M_CHECK_NON_NULL(vecs)
-    M_CHECK_NON_NULL(vecs_selection_mask)
-    M_CHECK_NON_NULL(axes_selection_mask)
-    M_CHECK_NON_NULL(projections)
-
-    M_ALLOCATE(vecs_selection_mask_f(n_vecs))
-    call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
-    M_ALLOCATE(axes_selection_mask_f(n_axes))
-    call c_int_as_logical(axes_selection_mask, axes_selection_mask_f)
-
-    call omics_vector_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask_f, n_selected_vecs, axes_selection_mask_f, n_selected_axes, projections, ierr)
-end subroutine omics_vector_RAP_projection_c
-
-!> C/Python wrapper for omics_field_RAP_projection
-pure subroutine omics_field_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_field_RAP_projection_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: omics_field_RAP_projection
-    use tox_conversions, only: c_int_as_logical
-    use tox_errors, only: is_err, set_err, ERR_ALLOC_FAIL
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_axes
-        !! number of axes
-    integer(c_int), intent(in), target :: n_vecs
-        !! number of vectors
-    real(c_double), dimension(n_axes, 2, n_vecs), intent(in), target :: vecs
-        !! matrix with vector fields, first n rows mean vector origin, last n rows vector targets
-    integer(c_int), dimension(n_vecs), intent(in), target :: vecs_selection_mask
-        !! mask for selecting vectors
-    integer(c_int), intent(in), target :: n_selected_vecs
-        !! count of selected vectors
-    integer(c_int), dimension(n_axes), intent(in), target :: axes_selection_mask
-        !! mask for selecting axes
-    integer(c_int), intent(in), target :: n_selected_axes
-        !! count of selected axes
-    real(c_double), dimension(n_selected_axes, n_selected_vecs), intent(out), target :: projections
-        !! projected vectors
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    logical, dimension(:), allocatable :: vecs_selection_mask_f(:), axes_selection_mask_f(:)
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_vecs)
-    M_CHECK_NON_NULL(n_selected_vecs)
-    M_CHECK_NON_NULL(n_selected_axes)
-    M_CHECK_NON_NULL(vecs)
-    M_CHECK_NON_NULL(vecs_selection_mask)
-    M_CHECK_NON_NULL(axes_selection_mask)
-    M_CHECK_NON_NULL(projections)
-
-    M_ALLOCATE(vecs_selection_mask_f(n_vecs))
-    call c_int_as_logical(vecs_selection_mask, vecs_selection_mask_f)
-    M_ALLOCATE(axes_selection_mask_f(n_axes))
-    call c_int_as_logical(axes_selection_mask, axes_selection_mask_f)
-
-    call omics_field_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask_f, n_selected_vecs, axes_selection_mask_f, n_selected_axes, projections, ierr)
-end subroutine omics_field_RAP_projection_c
-
-!> C/Python wrapper for relative_axes_changes_from_shift_vector
-pure subroutine relative_axes_changes_from_shift_vector_c(vec, n_axes, contributions, ierr) bind(C, name="relative_axes_changes_from_shift_vector_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    real(c_double), dimension(n_axes), intent(in), target :: vec
-        !! RAP-projected and normalized shift vector
-    integer(c_int), intent(in), target :: n_axes
-        !! Number of axes
-    real(c_double), dimension(n_axes), intent(out), target :: contributions
-        !! Fractional contribution of each axis
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(vec)
-    M_CHECK_NON_NULL(contributions)
-
-    call relative_axes_changes_from_shift_vector(vec, n_axes, contributions, ierr)
-end subroutine relative_axes_changes_from_shift_vector_c
-
-!> C/Python wrapper for relative_axes_expression_from_expression_vector
-pure subroutine relative_axes_expression_from_expression_vector_c(vec, n_axes, contributions, ierr) bind(C, name="relative_axes_expression_from_expression_vector_c")
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_relative_axis_plane_tools, only: relative_axes_expression_from_expression_vector
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    real(c_double), dimension(n_axes), intent(in), target :: vec
-        !! RAP-projected and normalized expression vector
-    integer(c_int), intent(in), target :: n_axes
-        !! Number of axes
-    real(c_double), dimension(n_axes), intent(out), target :: contributions
-        !! Fractional contribution of each axis
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(vec)
-    M_CHECK_NON_NULL(contributions)
-
-    call relative_axes_expression_from_expression_vector(vec, n_axes, contributions, ierr)
-end subroutine relative_axes_expression_from_expression_vector_c

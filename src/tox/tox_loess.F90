@@ -12,6 +12,14 @@ module tox_loess
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_io_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
 
+#define CM_MODE_PLAIN 0_int32
+#define CM_MODE_ROBUST 1_int32
+
+    integer(int32), parameter, public :: MODE_PLAIN = CM_MODE_PLAIN
+        !! Mode code for plain LOESS fitting in [[tox_loess(module):loess_alloc(subroutine)]]
+    integer(int32), parameter, public :: MODE_ROBUST = CM_MODE_ROBUST
+        !! Mode code for robust LOESS fitting in [[tox_loess(module):loess_alloc(subroutine)]]
+
     ! ---- LOESS netlib externals ----
     ! ============================================================
     ! LOESS Subroutines from Netlib
@@ -151,8 +159,9 @@ contains
     ! ============================================================
     ! Recommend workspace sizes based on Netlib exact formulas
     ! ============================================================
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Recommend workspace sizes based on Netlib exact formulas.
+    !> M_EXPORT_C
+    !| summary: Recommend workspace sizes based on Netlib exact formulas
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Computes the required sizes for integer and real workspace arrays.
     !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
     subroutine tox_loess_required_workspace(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)
@@ -187,8 +196,9 @@ contains
     ! ============================================================
     ! Plain LOESS fitting
     ! ============================================================
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Perform plain LOESS fitting.
+    !> M_EXPORT_C
+    !| summary: Perform plain LOESS fitting
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Fits a LOESS model to the data using the specified smoothing parameter.
     !| Outputs the smoothed response variable array. Caller-provided workspace must already be
     !| sized via [[tox_loess(module):tox_loess_required_workspace(subroutine)]]; no input validation
@@ -274,8 +284,9 @@ contains
     ! ============================================================
     ! Robust LOESS fitting
     ! ============================================================
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Perform robust LOESS fitting with bisquare reweighting.
+    !> M_EXPORT_C
+    !| summary: Perform robust LOESS fitting with bisquare reweighting
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !|  - Combines original weights with robust weights (down-weights from previous iteration)
@@ -395,8 +406,9 @@ contains
     ! ============================================================
     ! Wrapper subroutine for LOESS fitting (plain or robust)
     ! ============================================================
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Wrapper subroutine for LOESS fitting (plain or robust).
+    !> M_EXPORT_C
+    !| summary: Wrapper subroutine for LOESS fitting (plain or robust)
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| This subroutine selects between plain and robust LOESS fitting based on the mode.
     !| It dynamically allocates the required arrays and computes workspace sizes, and handles
     !| degenerate inputs (single point, near-constant `x`, or fewer unique `x` values than the
@@ -421,7 +433,12 @@ contains
         integer(int32), intent(in) :: degree
             !! Degree of the LOESS polynomial
         integer(int32), intent(in) :: mode
-            !! Mode of operation: 0 for plain, 1 for robust
+            !! Mode of operation
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Plain LOESS fitting | [[tox_loess(module):MODE_PLAIN(variable)]] |
+            !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in) :: n_iters
             !! Number of robust iterations (only used when mode = 1)
 
@@ -564,236 +581,3 @@ contains
     end subroutine loess_alloc
 
 end module tox_loess
-
-!> C interface for the LOESS wrapper subroutine.
-!| This subroutine selects between plain and robust LOESS fitting based on the mode.
-!| It dynamically allocates the required arrays and computes workspace sizes.
-!|
-!| Parameters:
-!| - mode: Specifies the type of LOESS fitting to perform.
-!|   - 0: Plain LOESS fitting. This mode performs a single pass of LOESS fitting without any additional weighting or iterations. It is suitable for datasets without significant outliers.
-!|   - 1: Robust LOESS fitting. This mode applies bisquare reweighting over multiple iterations to reduce the influence of outliers. The number of iterations is controlled by the `n_iters` parameter.
-subroutine tox_loess_c(x, y, n, span, degree, fitted_values, mode, n_iters, ierr) bind(C, name="tox_loess_c")
-    use tox_loess, only: loess_alloc
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Input parameters
-    integer(c_int), intent(in), target :: n
-        !! Number of data points
-    real(c_double), dimension(n), intent(in), target :: x
-        !! Predictor variable array
-    real(c_double), dimension(n), intent(in), target :: y
-        !! Response variable array
-    real(c_double), intent(in), target :: span
-        !! Smoothing parameter for LOESS
-    integer(c_int), intent(in), target :: degree
-        !! Degree of the LOESS polynomial
-    integer(c_int), intent(in), target :: mode
-        !! Mode of operation: 0 for plain, 1 for robust
-    integer(c_int), intent(in), target :: n_iters
-        !! Number of robust iterations (only used when mode = 1)
-
-    ! Output parameters
-    real(c_double), dimension(n), intent(out), target :: fitted_values
-        !! Fitted (smoothed) values of y
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    ! Null validation macros
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n)
-    M_CHECK_NON_NULL(x)
-    M_CHECK_NON_NULL(y)
-    M_CHECK_NON_NULL(span)
-    M_CHECK_NON_NULL(degree)
-    M_CHECK_NON_NULL(mode)
-    M_CHECK_NON_NULL(n_iters)
-    M_CHECK_NON_NULL(fitted_values)
-
-    ! Call the Fortran subroutine
-    call loess_alloc(x, y, span, degree, fitted_values, mode, n_iters, ierr)
-end subroutine tox_loess_c
-
-!> Perform plain LOESS fitting.
-!| Fits a LOESS model to the data using the specified smoothing parameter.
-!| Outputs the smoothed response variable array.
-subroutine loess_fit_plain_c(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr) bind(C, name="loess_fit_plain_c")
-    use tox_loess, only: loess_fit_plain
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Input parameters
-    integer(c_int), intent(in), target :: n
-        !! Total number of data points
-    real(c_double), dimension(n), intent(in), target :: x
-        !! Predictor variable array
-    real(c_double), dimension(n), intent(in), target :: y
-        !! Response variable array
-    real(c_double), dimension(n), intent(in), target :: weights
-        !! Weight array for data points
-    real(c_double), dimension(n, 1), intent(in), target :: eval_points
-        !! Evaluation points (x values at which the fitted curve is computed)
-    real(c_double), intent(in), target :: span
-        !! Smoothing parameter for LOESS
-    integer(c_int), intent(in), target :: degree
-        !! Degree of the LOESS polynomial
-    integer(c_int), intent(in), target :: max_neighborhood_size
-        !! Maximum neighborhood size
-    integer(c_int), intent(in), target :: compute_influence
-        !! Influence calculation flag (0 for false, non-zero for true)
-    integer(c_int), intent(in), target :: save_factorization
-        !! Save matrix factorization flag (0 for false, non-zero for true)
-    integer(c_int), dimension(*), intent(inout), target :: int_workspace
-        !! Integer workspace array
-    integer(c_int), intent(in), target :: int_workspace_size
-        !! Required size of the integer workspace array
-    real(c_double), dimension(*), intent(inout), target :: real_workspace
-        !! Real workspace array
-    integer(c_int), intent(in), target :: real_workspace_size
-        !! Required size of the real workspace array
-
-    ! Output parameters
-    real(c_double), dimension(n), intent(out), target :: hat_diag
-        !! Diagonal elements of the hat matrix
-    real(c_double), dimension(n), intent(out), target :: fitted_values
-        !! Fitted (smoothed) values of y at the evaluation points
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    ! Null validation macros
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n)
-    M_CHECK_NON_NULL(x)
-    M_CHECK_NON_NULL(y)
-    M_CHECK_NON_NULL(weights)
-    M_CHECK_NON_NULL(eval_points)
-    M_CHECK_NON_NULL(span)
-    M_CHECK_NON_NULL(degree)
-    M_CHECK_NON_NULL(max_neighborhood_size)
-    M_CHECK_NON_NULL(compute_influence)
-    M_CHECK_NON_NULL(save_factorization)
-    M_CHECK_NON_NULL(int_workspace)
-    M_CHECK_NON_NULL(int_workspace_size)
-    M_CHECK_NON_NULL(real_workspace)
-    M_CHECK_NON_NULL(real_workspace_size)
-    M_CHECK_NON_NULL(hat_diag)
-    M_CHECK_NON_NULL(fitted_values)
-
-    ! Call the Fortran subroutine
-    call loess_fit_plain(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence /= 0, save_factorization /= 0, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)
-end subroutine loess_fit_plain_c
-
-!> Perform robust LOESS fitting with bisquare reweighting.
-!| Fits a LOESS model to the data using robust iterations to handle outliers.
-!| Outputs the smoothed response variable array.
-subroutine loess_fit_robust_c(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr) bind(C, name="loess_fit_robust_c")
-    use tox_loess, only: loess_fit_robust
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Input parameters
-    integer(c_int), intent(in), target :: n
-        !! Number of data points
-    real(c_double), dimension(n), intent(in), target :: x
-        !! Predictor variable array
-    real(c_double), dimension(n), intent(in), target :: y
-        !! Response variable array
-    real(c_double), dimension(n), intent(in), target :: weights
-        !! Weight array for data points
-    real(c_double), dimension(n, 1), intent(in), target :: eval_points
-        !! Evaluation points (x values at which the fitted curve is computed)
-    real(c_double), intent(in), target :: span
-        !! Smoothing parameter for LOESS
-    integer(c_int), intent(in), target :: degree
-        !! Degree of the LOESS polynomial
-    integer(c_int), intent(in), target :: max_neighborhood_size
-        !! Maximum neighborhood size
-    integer(c_int), intent(in), target :: compute_influence
-        !! Influence calculation flag (0 for false, non-zero for true)
-    integer(c_int), intent(in), target :: save_factorization
-        !! Save matrix factorization flag (0 for false, non-zero for true)
-    integer(c_int), intent(in), target :: n_iters
-        !! Number of robust iterations
-    integer(c_int), dimension(*), intent(inout), target :: int_workspace
-        !! Integer workspace array
-    integer(c_int), intent(in), target :: int_workspace_size
-        !! Required size of the integer workspace array
-    real(c_double), dimension(*), intent(inout), target :: real_workspace
-        !! Real workspace array
-    integer(c_int), intent(in), target :: real_workspace_size
-        !! Required size of the real workspace array
-
-    ! Output parameters
-    real(c_double), dimension(n), intent(out), target :: hat_diag
-        !! Diagonal elements of the hat matrix
-    real(c_double), dimension(n), intent(out), target :: robust_weights
-        !! Robust bisquare weights (updated each iteration)
-    real(c_double), dimension(n), intent(out), target :: combined_weights
-        !! Combined weights: product of user weights and robust weights
-    real(c_double), dimension(n), intent(out), target :: residuals
-        !! Residuals (y - fitted_values), used to compute robust weights
-    integer(c_int), dimension(n), intent(out), target :: permutation_indices
-        !! Permutation indices array (from NetLib bisquare weight computation)
-    real(c_double), dimension(n), intent(out), target :: fitted_values
-        !! Fitted (smoothed) values of y at the evaluation points
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    ! Null validation macros
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n)
-    M_CHECK_NON_NULL(x)
-    M_CHECK_NON_NULL(y)
-    M_CHECK_NON_NULL(weights)
-    M_CHECK_NON_NULL(eval_points)
-    M_CHECK_NON_NULL(span)
-    M_CHECK_NON_NULL(degree)
-    M_CHECK_NON_NULL(max_neighborhood_size)
-    M_CHECK_NON_NULL(compute_influence)
-    M_CHECK_NON_NULL(save_factorization)
-    M_CHECK_NON_NULL(n_iters)
-    M_CHECK_NON_NULL(int_workspace)
-    M_CHECK_NON_NULL(int_workspace_size)
-    M_CHECK_NON_NULL(real_workspace)
-    M_CHECK_NON_NULL(real_workspace_size)
-    M_CHECK_NON_NULL(hat_diag)
-    M_CHECK_NON_NULL(robust_weights)
-    M_CHECK_NON_NULL(combined_weights)
-    M_CHECK_NON_NULL(residuals)
-    M_CHECK_NON_NULL(permutation_indices)
-    M_CHECK_NON_NULL(fitted_values)
-
-    ! Call the Fortran subroutine
-    call loess_fit_robust(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence /= 0, save_factorization /= 0, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)
-end subroutine loess_fit_robust_c
-
-!! Wrapper for recommending workspace sizes based on Netlib exact formulas.
-!! This subroutine is designed to be called from C code and computes the required sizes
-!! for integer and real workspace arrays. These sizes depend on the dimensionality of the data,
-!! the maximum neighborhood size, and whether matrix factorizations are saved.
-subroutine tox_loess_required_workspace_c(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization) bind(C, name="tox_loess_required_workspace_c")
-    use tox_loess, only: tox_loess_required_workspace
-    use, intrinsic :: iso_c_binding, only: c_int
-    implicit none
-
-    ! Input parameters
-    integer(c_int), intent(in), target :: n_dim
-        !! Dimensionality of the data
-    integer(c_int), intent(in), target :: max_neighborhood_size
-        !! Maximum neighborhood size
-    integer(c_int), intent(in), target :: save_factorization
-        !! Save matrix factorization flag (0 for false, non-zero for true)
-
-    ! Output parameters
-    integer(c_int), intent(out) :: int_workspace_size
-        !! Required size of the integer workspace array
-    integer(c_int), intent(out) :: real_workspace_size
-        !! Required size of the real workspace array
-
-    ! Call the Fortran subroutine
-    call tox_loess_required_workspace(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization /= 0)
-end subroutine tox_loess_required_workspace_c

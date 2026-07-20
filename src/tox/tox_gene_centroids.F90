@@ -21,8 +21,9 @@ module tox_gene_centroids
 
 contains
 
-    !> AUTHOR_LUKA_FAENSEN
-    !| Computes the element-wise mean for a given set of vectors.
+    !> M_EXPORT_C
+    !| summary: Computes the element-wise mean for a given set of vectors.
+    !| AUTHOR_LUKA_FAENSEN
     pure subroutine mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, &
                                 centroid, ierr)
         implicit none
@@ -90,8 +91,9 @@ contains
         end do
     end subroutine mean_vector_helper
 
-    !> AUTHOR_LUKA_FAENSEN
-    !| Iterates over families, filters gene indices, and computes centroids.
+    !> M_EXPORT_C
+    !| summary: Iterates over families, filters gene indices, and computes centroids.
+    !| AUTHOR_LUKA_FAENSEN
     pure subroutine group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
                                    centroid_matrix, mode, tmp_group_indices, ierr, ortholog_set)
         implicit none
@@ -108,11 +110,10 @@ contains
         integer(int32), intent(in) :: mode
             !! used mode for grouping
             !!
-            !! |      Method      |          Value            |
-            !! |------------------|---------------------------|
-            !! | Group Orthologs  |  CM_MODE_GROUP_ORTHOLOGS  |
-            !! |    Group all     |     CM_MODE_GROUP_ALL     |
-            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Group Orthologs | [[tox_gene_centroids(module):MODE_GROUP_ORTHOLOGS(variable)]] |
+            !! | Group all | [[tox_gene_centroids(module):MODE_GROUP_ALL(variable)]] |
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
         integer(int32), dimension(n_genes), intent(out) :: tmp_group_indices
@@ -121,6 +122,7 @@ contains
             !! Error code
         logical, dimension(n_genes), intent(in), optional :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
+            !! DM_REQUIRED_IF_MODE(mode, tox_gene_centroids, MODE_GROUP_ORTHOLOGS)
 
         ! Initialize error code
         call set_ok(ierr)
@@ -205,111 +207,4 @@ contains
     end subroutine group_centroid_helper
 
 end module tox_gene_centroids
-
-! =============================================================================
-! C Wrapper Subroutine
-! =============================================================================
-!> C interface wrapper for mean_vector.
-pure subroutine mean_vector_c(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid_col, ierr) &
-    bind(c, name='mean_vector_c')
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_gene_centroids, only: mean_vector
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_axes
-        !! Number of axes (tissues/dimensions).
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes in the input matrix.
-    real(c_double), dimension(n_axes, n_genes), intent(in), target :: expression_vectors
-        !! The input matrix of all gene expression vectors (n_axes x n_genes).
-    integer(c_int), intent(in), target :: n_selected_genes
-        !! The number of genes in the current family to be averaged.
-    integer(c_int), dimension(n_selected_genes), intent(in), target :: gene_indices
-        !! An array containing the column indices of the selected genes in 'expression_vectors'.
-    real(c_double), dimension(n_axes), intent(out), target :: centroid_col
-        !! The output vector representing the computed centroid.
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_selected_genes)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(gene_indices)
-    M_CHECK_NON_NULL(centroid_col)
-
-    call mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid_col, ierr)
-end subroutine mean_vector_c
-
-!> C interface wrapper for group_centroid.
-pure subroutine group_centroid_c(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
-                                 centroid_matrix, mode, ortholog_set, tmp_group_indices, ierr) &
-    bind(c, name='group_centroid_c')
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_gene_centroids, only: group_centroid, MODE_GROUP_ORTHOLOGS, MODE_GROUP_ALL
-    use tox_errors, only: is_err, set_err, ERR_INVALID_INPUT, ERR_ALLOC_FAIL
-    use tox_conversions, only: c_char_1d_as_string, c_int_as_logical
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_axes
-        !! Number of axes (tissues/dimensions).
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes.
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of families.
-    real(c_double), dimension(n_axes, n_genes), intent(in), target :: expression_vectors
-        !! The allocated length of the 'tmp_group_indices' array.
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_family
-        !! M_GENE_TO_FAM_DOC(expression_vectors)
-    character(c_char), dimension(9), intent(in), target :: mode
-        !! A character array indicating the mode of operation ('orthologs' or 'all').
-    real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
-        !! Output matrix for centroids.
-    integer(c_int), dimension(n_genes), intent(out), target :: tmp_group_indices
-        !! Output array for selected indices.
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    integer(c_int), dimension(n_genes), intent(in), target :: ortholog_set
-        !! Integer array from C indicating subset membership.
-
-    ! Local variables
-    logical, dimension(:), allocatable :: ortholog_set_fortran
-    integer(int32) :: mode_int
-    character(len=:), allocatable :: mode_string
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(tmp_group_indices)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(gene_to_family)
-    M_CHECK_NON_NULL(mode)
-    M_CHECK_NON_NULL(centroid_matrix)
-    M_CHECK_NON_NULL(tmp_group_indices)
-
-    ! Convert raw character array to Fortran string
-    call c_char_1d_as_string(mode, mode_string, ierr)
-    if (is_err(ierr)) return
-
-    ! If "orthologs" mode is selected, convert ortholog_set to logical
-    ! If "all" mode is selected, call group_centroid directly without ortholog_set
-    select case (mode_string)
-    case ("orthologs")
-        mode_int = MODE_GROUP_ORTHOLOGS
-        M_CHECK_NON_NULL(ortholog_set)
-        M_ALLOCATE(ortholog_set_fortran(n_genes))
-        call c_int_as_logical(ortholog_set, ortholog_set_fortran)
-    case ("all")
-        mode_int = MODE_GROUP_ALL
-    case default
-        call set_err(ierr, ERR_INVALID_INPUT)
-        return
-    end select
-
-    call group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
-                        centroid_matrix, mode_int, tmp_group_indices, ierr, ortholog_set_fortran)
-end subroutine group_centroid_c
 

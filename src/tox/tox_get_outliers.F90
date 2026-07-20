@@ -12,8 +12,9 @@ module tox_get_outliers
 
 contains
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Compute family scaling factors (dscale) to normalize distances.
+    !> M_EXPORT_C
+    !| summary: Compute family scaling factors (dscale) to normalize distances (expert entry point)
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling( &
         n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -34,7 +35,7 @@ contains
             !! Mapping of each gene to its family (1-based)
 
         real(real64), intent(out) :: dscale(n_families)
-            !! Output: array of scaling factors per family
+            !! Array of scaling factors per family (output)
 
         ! Buffers (reused)
         real(real64), intent(out) :: loess_x(n_families)
@@ -86,7 +87,12 @@ contains
         integer(int32), intent(in)   :: degree
             !! Degree of the LOESS polynomial
         integer(int32), intent(in)   :: mode
-            !! Mode for LOESS fitting (0=plain, 1=robust)
+            !! Mode for LOESS fitting
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Plain LOESS fitting | [[tox_loess(module):MODE_PLAIN(variable)]] |
+            !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in)   :: n_iters
             !! Number of iterations for robust LOESS fitting
         real(real64), intent(out) :: low_sd_cutoff
@@ -326,8 +332,9 @@ contains
 
     end subroutine compute_family_scaling
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper routine that allocates internal arrays and calls [[tox_get_outliers(module):compute_family_scaling(subroutine)]].
+    !> M_EXPORT_C
+    !| summary: Allocates internal LOESS work arrays and computes per-family scaling factors
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| This makes usage easier since users don't need to care about internal array requirements.
     subroutine compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
                                             loess_x, loess_y, indices_used, ierr)
@@ -409,8 +416,9 @@ contains
 
     end subroutine compute_family_scaling_alloc
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Compute the hybrid RDI (Relative Distance Index) for each gene.
+    !> M_EXPORT_C
+    !| summary: Compute the hybrid RDI (Relative Distance Index) for each gene
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
                                 stack_left, stack_right)
@@ -471,8 +479,9 @@ contains
 
     end subroutine compute_rdi
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Identify gene outliers based on the top percentile of RDI values.
+    !> M_EXPORT_C
+    !| summary: Identify gene outliers based on the top percentile of RDI values
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
     pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)
@@ -489,7 +498,8 @@ contains
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
         real(real64), intent(in), optional :: percentile
-            !! (optional) Percentile threshold (default: 95 for top 5%)
+            !! Percentile threshold (top 5% for the default).
+            !! DM_DEFAULT(95.0_real64)
         real(real64), intent(out) :: p_values(n_genes)
             !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
 
@@ -534,8 +544,9 @@ contains
 
     end subroutine identify_outliers
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Main routine to detect outliers using RDI and LOESS-based scaling.
+    !> M_EXPORT_C
+    !| summary: Main routine to detect outliers using RDI and LOESS-based scaling
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Orchestrates the full pipeline: computes per-family scaling factors via
     !| [[tox_get_outliers(module):compute_family_scaling_alloc(subroutine)]], derives the RDI per gene via
     !| [[tox_get_outliers(module):compute_rdi(subroutine)]], then flags outliers via
@@ -571,7 +582,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), intent(in), optional :: percentile
-            !! (optional) Percentile threshold for outlier detection (default: 95)
+            !! Percentile threshold for outlier detection.
+            !! DM_DEFAULT(95.0_real64)
         real(real64), intent(out) :: p_values(n_genes)
             !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
 
@@ -599,336 +611,3 @@ contains
         call identify_outliers(n_genes, rdi, tmp_work_array, tmp_perm, is_outlier, threshold, p_values, percentile_val)
     end subroutine detect_outliers
 end module tox_get_outliers
-
-!> C wrapper for compute_family_scaling (main version with automatic allocation).
-!| Calls compute_family_scaling_alloc with C-compatible types for external interface.
-!| This is the recommended version for most users as it handles memory allocation automatically.
-subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, &
-                                    loess_x, loess_y, indices_used, ierr) bind(C, name="compute_family_scaling_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_get_outliers, only: compute_family_scaling_alloc
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of families
-    real(c_double), intent(in), target :: distances(n_genes)
-        !! Array of Euclidean distances for each gene
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Mapping of each gene to its family (1-based)
-    real(c_double), intent(out), target :: dscale(n_families)
-        !! Output: array of scaling factors per family
-    real(c_double), intent(inout), target :: loess_x(n_families)
-        !! Reference x-coordinates for LOESS
-    real(c_double), intent(inout), target :: loess_y(n_families)
-        !! Reference y-coordinates for LOESS
-    integer(c_int), intent(inout), target :: indices_used(n_families)
-        !! Indices of reference points used for smoothing
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(distances)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(dscale)
-    M_CHECK_NON_NULL(loess_x)
-    M_CHECK_NON_NULL(loess_y)
-    M_CHECK_NON_NULL(indices_used)
-
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
-                                      loess_x, loess_y, indices_used, ierr)
-end subroutine compute_family_scaling_c
-
-!> C wrapper for compute_rdi.
-!| Calls compute_rdi with C-compatible types for external interface.
-!| Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays for downstream use.
-subroutine compute_rdi_c(n_genes, n_families, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr) bind(C, name="compute_rdi_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_get_outliers, only: compute_rdi
-    use tox_errors, only: set_ok
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of families
-    real(c_double), intent(in), target :: distances(n_genes)
-        !! Array of Euclidean distances for each gene to its centroid
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Gene-to-family mapping (1-based indexing)
-    real(c_double), intent(in), target :: dscale(n_families)
-        !! Array of scaling factors for each family
-    real(c_double), intent(out), target :: rdi(n_genes)
-        !! Output array of RDI values for each gene (unsorted)
-    real(c_double), intent(out), target :: sorted_rdi(n_genes)
-        !! Output array of sorted RDI values (filtered, sorted)
-    integer(c_int), intent(out), target :: perm(n_genes)
-        !! Output permutation array for sorting (dimension n_genes)
-    integer(c_int), intent(out), target :: stack_left(n_genes)
-        !! Output stack array for left indices during sorting
-    integer(c_int), intent(out), target :: stack_right(n_genes)
-        !! Output stack array for right indices during sorting
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(distances)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(dscale)
-    M_CHECK_NON_NULL(rdi)
-    M_CHECK_NON_NULL(sorted_rdi)
-    M_CHECK_NON_NULL(perm)
-    M_CHECK_NON_NULL(stack_left)
-    M_CHECK_NON_NULL(stack_right)
-
-    call set_ok(ierr)
-    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
-end subroutine compute_rdi_c
-
-!> C wrapper for identify_outliers.
-!| Calls identify_outliers with C-compatible types for external interface.
-subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile, ierr) &
-    bind(C, name="identify_outliers_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_get_outliers, only: identify_outliers
-    use tox_conversions, only: logical_as_c_int
-    use tox_errors, only: set_ok
-    M_USE_ALLOCATION
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    real(c_double), intent(in), target :: rdi(n_genes)
-        !! Array of RDI values for each gene
-    real(c_double), intent(in), target :: sorted_rdi(n_genes)
-        !! Filtered RDI array (no negatives, no NaNs)
-    integer(c_int), intent(inout), target :: perm(n_genes)
-        !! Permutation array with sorted indices
-    integer(c_int), intent(out), target :: is_outlier(n_genes)
-        !! Output integer array indicating outliers (1=outlier, 0=not)
-    real(c_double), intent(out), target :: threshold
-        !! Output threshold value used for detection
-    real(c_double), intent(in), target :: percentile
-        !! Percentile threshold for outlier detection
-    real(c_double), intent(out), target :: p_values(n_genes)
-        !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    logical, dimension(:), allocatable :: is_outlier_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(rdi)
-    M_CHECK_NON_NULL(sorted_rdi)
-    M_CHECK_NON_NULL(perm)
-    M_CHECK_NON_NULL(is_outlier)
-    M_CHECK_NON_NULL(threshold)
-    M_CHECK_NON_NULL(percentile)
-    M_CHECK_NON_NULL(p_values)
-
-    M_ALLOCATE(is_outlier_f(n_genes))
-
-    call set_ok(ierr)
-
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier_f, threshold, p_values, percentile)
-
-    call logical_as_c_int(is_outlier_f, is_outlier)
-end subroutine identify_outliers_c
-
-!> C wrapper for detect_outliers.
-!| Calls detect_outliers with C-compatible types for external interface.
-subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
-                             tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                             is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
-                             percentile) bind(C, name="detect_outliers_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_get_outliers, only: detect_outliers
-    use tox_conversions, only: logical_as_c_int
-    use tox_errors, only: is_ok
-    M_USE_ALLOCATION
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of families
-    real(c_double), intent(in), target :: distances(n_genes)
-        !! Array of Euclidean distances for each gene to its centroid
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Gene-to-family mapping (1-based indexing)
-    real(c_double), intent(out), target :: tmp_work_array(n_genes)
-        !! Work array for sorting (dimension n_genes)
-    integer(c_int), intent(out), target :: tmp_perm(n_genes)
-        !! Permutation array for sorting (dimension n_genes)
-    integer(c_int), intent(out), target :: tmp_stack_left(n_genes)
-        !! Stack array for left indices during sorting
-    integer(c_int), intent(out), target :: tmp_stack_right(n_genes)
-        !! Stack array for right indices during sorting
-    integer(c_int), intent(out), target :: is_outlier(n_genes)
-        !! Output integer array indicating outliers (1=outlier, 0=not)
-    real(c_double), intent(out), target :: loess_x(n_families)
-        !! Reference x-coordinates for LOESS
-    real(c_double), intent(out), target :: loess_y(n_families)
-        !! Reference y-coordinates for LOESS
-    integer(c_int), intent(out), target :: loess_n(n_families)
-        !! Indices of reference points used for smoothing
-    real(c_double), intent(out), target :: p_values(n_genes)
-        !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    real(c_double), intent(in), target :: percentile
-        !! Percentile threshold for outlier detection
-
-    logical, dimension(:), allocatable :: is_outlier_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(distances)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(tmp_work_array)
-    M_CHECK_NON_NULL(tmp_perm)
-    M_CHECK_NON_NULL(tmp_stack_left)
-    M_CHECK_NON_NULL(tmp_stack_right)
-    M_CHECK_NON_NULL(is_outlier)
-    M_CHECK_NON_NULL(loess_x)
-    M_CHECK_NON_NULL(loess_y)
-    M_CHECK_NON_NULL(loess_n)
-    M_CHECK_NON_NULL(p_values)
-    M_CHECK_NON_NULL(percentile)
-
-    M_ALLOCATE(is_outlier_f(n_genes))
-
-    call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
-                         tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                         is_outlier_f, loess_x, loess_y, loess_n, p_values, ierr, &
-                         percentile)
-
-    if (is_ok(ierr)) then
-        call logical_as_c_int(is_outlier_f, is_outlier)
-    end if
-end subroutine detect_outliers_c
-
-!> C wrapper for compute_family_scaling expert version.
-!| Calls compute_family_scaling with C-compatible types for external interface.
-!| This wrapper is designed for external use, providing additional arguments for advanced configurations.
-subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, &
-                                           loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                                           tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, &
-                                           span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr) bind(C, name="compute_family_scaling_expert_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_get_outliers, only: compute_family_scaling
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_genes
-        !! Total number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Total number of families
-    real(c_double), intent(in), target :: distances(n_genes)
-        !! Array of Euclidean distances for each gene
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Mapping of each gene to its family (1-based)
-    real(c_double), intent(out), target :: dscale(n_families)
-        !! Output: array of scaling factors per family
-    real(c_double), intent(inout), target :: loess_x(n_families)
-        !! Reference x-coordinates for LOESS
-    real(c_double), intent(inout), target :: loess_y(n_families)
-        !! Reference y-coordinates for LOESS
-    integer(c_int), intent(inout), target :: indices_used(n_families)
-        !! Indices of reference points used for smoothing
-    integer(c_int), intent(inout), target :: tmp_perm(n_genes)
-        !! Temporary array for permutation
-    integer(c_int), intent(inout), target :: tmp_stack_left(n_genes)
-        !! Temporary array for left stack
-    integer(c_int), intent(inout), target :: tmp_stack_right(n_genes)
-        !! Temporary array for right stack
-    integer(c_int), intent(inout), target :: tmp_iv(liv)
-        !! Integer workspace array for LOESS
-    integer(c_int), intent(in), target :: liv
-        !! Length of integer workspace array
-    integer(c_int), intent(in), target :: lv
-        !! Length of real workspace array
-    real(c_double), intent(inout), target :: tmp_wv(lv)
-        !! Real workspace array for LOESS
-    real(c_double), intent(inout), target :: tmp_diagl(n_genes)
-        !! Diagonal elements for LOESS
-    real(c_double), intent(inout), target :: tmp_w_init(n_genes)
-        !! Initial weights for LOESS
-    real(c_double), intent(inout), target :: tmp_z_mat(n_genes, 1)
-        !! Z matrix for LOESS
-    real(c_double), intent(inout), target :: tmp_rw(n_genes)
-        !! Residual weights for LOESS
-    real(c_double), intent(inout), target :: tmp_ww(n_genes)
-        !! Working weights for LOESS
-    real(c_double), intent(inout), target :: tmp_res(n_genes)
-        !! Residuals for LOESS
-    integer(c_int), intent(inout), target :: tmp_pi(n_genes)
-        !! Pi values for LOESS
-    real(c_double), intent(inout), target :: tmp_yhat(n_genes)
-        !! Temporary array for predicted values
-    real(c_double), intent(in), target :: span
-        !! Span parameter for LOESS
-    integer(c_int), intent(in), target :: degree
-        !! Degree of polynomial for LOESS
-    integer(c_int), intent(in), target :: mode
-        !! Mode for LOESS
-    integer(c_int), intent(in), target :: n_iters
-        !! Number of iterations for LOESS
-    real(c_double), intent(out), target :: low_sd_cutoff
-        !! cutoff used to filter families with low std
-    integer(c_int), intent(out), target :: excluded_low_sd(n_families)
-        !! Mask to save those families that have low sd
-    real(c_double), intent(inout), target :: tmp_means_aux(n_families)
-        !! Work array for saving raw means
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(distances)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(dscale)
-    M_CHECK_NON_NULL(loess_x)
-    M_CHECK_NON_NULL(loess_y)
-    M_CHECK_NON_NULL(indices_used)
-    M_CHECK_NON_NULL(tmp_perm)
-    M_CHECK_NON_NULL(tmp_stack_left)
-    M_CHECK_NON_NULL(tmp_stack_right)
-    M_CHECK_NON_NULL(tmp_iv)
-    M_CHECK_NON_NULL(liv)
-    M_CHECK_NON_NULL(lv)
-    M_CHECK_NON_NULL(tmp_wv)
-    M_CHECK_NON_NULL(tmp_diagl)
-    M_CHECK_NON_NULL(tmp_w_init)
-    M_CHECK_NON_NULL(tmp_z_mat)
-    M_CHECK_NON_NULL(tmp_rw)
-    M_CHECK_NON_NULL(tmp_ww)
-    M_CHECK_NON_NULL(tmp_res)
-    M_CHECK_NON_NULL(tmp_pi)
-    M_CHECK_NON_NULL(tmp_yhat)
-    M_CHECK_NON_NULL(span)
-    M_CHECK_NON_NULL(degree)
-    M_CHECK_NON_NULL(mode)
-    M_CHECK_NON_NULL(n_iters)
-    M_CHECK_NON_NULL(low_sd_cutoff)
-    M_CHECK_NON_NULL(excluded_low_sd)
-    M_CHECK_NON_NULL(tmp_means_aux)
-
-    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
-                                loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                                tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, &
-                                span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
-end subroutine compute_family_scaling_expert_c

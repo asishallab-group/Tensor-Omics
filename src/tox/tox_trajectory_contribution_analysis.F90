@@ -26,6 +26,15 @@ module tox_trajectory_contribution_analysis
     integer(int32), parameter :: BASELINE_MEAN = CM_MODE_BASELINE_MEAN
         !! Baseline mode code: contributions are centered on each series' arithmetic mean.
 
+    ! Public aliases the interface generator maps the `baseline_mode` strings onto: an arg
+    ! named `*_mode` takes the `MODE_` prefix, so "raw"/"min"/"mean" resolve to these.
+    integer(int32), parameter, public :: MODE_RAW = CM_MODE_BASELINE_RAW
+        !! `baseline_mode` value for no centering (raw values)
+    integer(int32), parameter, public :: MODE_MIN = CM_MODE_BASELINE_MIN
+        !! `baseline_mode` value for centering on each series' minimum value
+    integer(int32), parameter, public :: MODE_MEAN = CM_MODE_BASELINE_MEAN
+        !! `baseline_mode` value for centering on each series' arithmetic mean
+
 contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
@@ -69,7 +78,9 @@ contains
         end if
     end subroutine select_random_sample_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> M_EXPORT_C
+    !| summary: Permutation test for a factor-dependent pair using a random different sample's dependent
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| For a given factor-dependent pair, this subroutine calculates the contributions by taking the same dependent but from a random different sample.
     subroutine perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, local_contributions, total_contributions, tmp_factor, tmp_dependent, ierr, random_seed)
         integer(int32), intent(in) :: n_factors
@@ -89,11 +100,11 @@ contains
         integer(int32), intent(in) :: baseline_mode
             !! Used mode for baseline calculation (see [[tox_trajectory_contribution_analysis(module):compute_baselines_factor_dependent(subroutine)]])
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         integer(int32), intent(in) :: n_permutations
             !! number of permutations to perform
@@ -148,11 +159,11 @@ contains
             !! index of sample to compute the permutation contributions for
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         integer(int32), intent(in) :: n_permutations
             !! number of permutations to perform
@@ -193,7 +204,9 @@ contains
         end do
     end subroutine perform_permutation_test_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> M_EXPORT_C
+    !| summary: Computes empirical p-values from the permutation-test contributions
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Once the permutation tests are calculated ([[tox_trajectory_contribution_analysis(module):perform_permutation_test(subroutine)]]),
     !| this subroutine calculates the p values for the contributions, i.e. how many of the permutation contributions were at least as high as the real contributions.
     pure subroutine compute_p_values(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, local_p_values, total_p_value, ierr)
@@ -275,8 +288,9 @@ contains
         total_p_value = anint(total_p_value, kind=real64)/real(n_permutations, kind=real64)
     end subroutine compute_p_values_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| This routine performs contribution analysis for a specific factor–dependent pair, no input validation
+    !> M_EXPORT_C
+    !| summary: Contribution analysis for a specific factor-dependent pair
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine compute_contributions(factor, dependent, n_dims, baseline_mode, local_contributions, total_contribution, ierr)
         integer(int32), intent(in) :: n_dims
             !! Number of elements in `factor` and `dependent`
@@ -286,11 +300,11 @@ contains
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), dimension(n_dims), intent(out) :: local_contributions
             !! Per-element contributions
@@ -322,11 +336,11 @@ contains
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), dimension(n_dims), intent(out) :: local_contributions
             !! Per-element contributions
@@ -352,8 +366,9 @@ contains
         end do
     end subroutine compute_contributions_helper
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| This routine performs contribution analysis for every selected factor–dependent pair
+    !> M_EXPORT_C
+    !| summary: Contribution analysis for every selected factor-dependent pair
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)
         integer(int32), intent(in) :: n_factors
             !! number of factors
@@ -373,11 +388,11 @@ contains
             !! indices of dependents to compute the contributions for
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out) :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
@@ -432,8 +447,9 @@ contains
         end do
     end subroutine compute_all_contributions
 
-    !> AUTHOR_JITU_DABA
-    !| Compute scalar baselines for a factor and dependent variable time series.
+    !> M_EXPORT_C
+    !| summary: Compute scalar baselines for a factor and dependent variable time series
+    !| AUTHOR_JITU_DABA
     pure subroutine compute_baselines_factor_dependent(n_timepoints, factor, dependent, baseline_mode, &
                                                        factor_baseline, dependent_baseline, ierr)
 
@@ -445,11 +461,11 @@ contains
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), intent(out) :: factor_baseline
             !! Computed baseline for factor
@@ -575,8 +591,9 @@ contains
         end do
     end subroutine compute_factor_velocity_from_trajectories_helper
 
-    !> AUTHOR_JITU_DABA
-    !| Compute velocity trajectory from a single position trajectory  with validation
+    !> M_EXPORT_C
+    !| summary: Compute velocity trajectory from a single position trajectory
+    !| AUTHOR_JITU_DABA
     pure subroutine compute_velocity_trajectory(trajectory, velocity, n_timepoints, ierr)
 
         integer(int32), intent(in)  :: n_timepoints
@@ -596,8 +613,9 @@ contains
         call compute_velocity_trajectory_helper(trajectory, velocity, n_timepoints)
     end subroutine compute_velocity_trajectory
 
-    !> AUTHOR_JITU_DABA
-    !| Compute acceleration trajectory from a single velocity trajectory  with validation
+    !> M_EXPORT_C
+    !| summary: Compute acceleration trajectory from a single velocity trajectory
+    !| AUTHOR_JITU_DABA
     pure subroutine compute_acceleration_from_velocity_trajectory(velocity, acceleration, &
                                                                   n_timepoints, ierr)
         integer(int32), intent(in)  :: n_timepoints
@@ -641,8 +659,9 @@ contains
         end do
     end subroutine compute_velocity_trajectories_helper
 
-    !> AUTHOR_JITU_DABA
-    !| Compute velocity trajectories  with validation
+    !> M_EXPORT_C
+    !| summary: Compute velocity trajectories for all factors and samples
+    !| AUTHOR_JITU_DABA
     pure subroutine compute_velocity_trajectories(trajectories, velocity, &
                                                   n_factors, n_samples, n_timepoints, ierr)
 
@@ -699,8 +718,9 @@ contains
         end do
     end subroutine compute_acceleration_from_velocity_helper
 
-    !> AUTHOR_JITU_DABA
-    !| Compute acceleration trajectories from velocity trajectories  API with validation
+    !> M_EXPORT_C
+    !| summary: Compute acceleration trajectories from velocity trajectories
+    !| AUTHOR_JITU_DABA
     pure subroutine compute_acceleration_from_velocity(velocity, acceleration, &
                                                        n_factors, n_samples, n_timepoints, ierr)
 
@@ -728,8 +748,9 @@ contains
         call compute_acceleration_from_velocity_helper(velocity, acceleration, n_factors, n_samples, n_timepoints)
     end subroutine compute_acceleration_from_velocity
 
-    !> AUTHOR_JITU_DABA
-    !| Compute velocity and acceleration contributions for all variable pairs in the trajectories
+    !> M_EXPORT_C
+    !| summary: Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+    !| AUTHOR_JITU_DABA
     !| @note
     !| Performance layout:
     !|
@@ -755,11 +776,11 @@ contains
             !! number of timepoints
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
             !! input position trajectories
@@ -869,8 +890,9 @@ contains
         end do
     end subroutine compute_velocity_acceleration_contributions
 
-    !> AUTHOR_JITU_DABA
-    !| Compute velocity and acceleration contributions for all variable pairs in the trajectories
+    !> M_EXPORT_C
+    !| summary: Compute velocity and acceleration contributions for all variable pairs (allocating entry point)
+    !| AUTHOR_JITU_DABA
     !| @note
     !| Performance layout:
     !|
@@ -895,11 +917,11 @@ contains
             !! number of timepoints
         integer(int32), intent(in) :: baseline_mode
             !!
-            !! |          Mode       |            Value        |
-            !! |---------------------|-------------------------|
-            !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-            !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-            !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis(module):MODE_RAW(variable)]] |
+            !! | arithmetic mean | [[tox_trajectory_contribution_analysis(module):MODE_MEAN(variable)]] |
+            !! | minimum value | [[tox_trajectory_contribution_analysis(module):MODE_MIN(variable)]] |
             !!
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
             !! input position trajectories
@@ -939,534 +961,3 @@ contains
                                                          contrib_acceleration, acceleration_contribution_series, ierr)
     end subroutine compute_velocity_acceleration_contributions_alloc
 end module tox_trajectory_contribution_analysis
-
-!> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):compute_all_contributions(subroutine)]]
-pure subroutine compute_all_contributions_c(trajectories, n_factors, n_samples, n_timepoints, &
-                                            factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, &
-                                            local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr) &
-    bind(C, name="compute_all_contributions_c")
-
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_trajectory_contribution_analysis, only: compute_all_contributions, get_baseline_mode
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    integer(c_int), intent(in), target :: n_selected_factors
-        !! number of selected factors in `factor_indices`
-    integer(c_int), intent(in), target :: n_selected_dependents
-        !! number of selected dependents in `dependent_indices`
-    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-        !! trajectories array: (n_factors, n_samples, n_timepoints)
-    integer(c_int), dimension(n_selected_factors), intent(in), target :: factor_indices
-        !! indices of factors to compute the contributions for
-    integer(c_int), dimension(n_selected_dependents), intent(in), target :: dependent_indices
-        !! indices of dependents to compute the contributions for
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !! Baseline mode: "raw", "min", "mean"
-    real(c_double), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: local_contributions
-        !! Per-timepoint contributions per sample-dependent-factor combination
-    real(c_double), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: total_contributions
-        !! Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination
-    real(c_double), dimension(n_timepoints, n_selected_factors), intent(out), target :: tmp_factors
-        !! Working array to hold the currently handled sample's factors in contiguous memory
-    real(c_double), dimension(n_timepoints), intent(out), target :: tmp_dependent
-        !! Working array to hold the currently handled dependent in contiguous memory
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    integer(int32) :: mode_int
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(n_selected_factors)
-    M_CHECK_NON_NULL(n_selected_dependents)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(factor_indices)
-    M_CHECK_NON_NULL(dependent_indices)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(local_contributions)
-    M_CHECK_NON_NULL(total_contributions)
-    M_CHECK_NON_NULL(tmp_factors)
-    M_CHECK_NON_NULL(tmp_dependent)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-    if (is_err(ierr)) return
-
-    call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
-                                   factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, mode_int, &
-                                   local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)
-end subroutine compute_all_contributions_c
-
-!> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):compute_contributions(subroutine)]]
-pure subroutine compute_contributions_c(factor, dependent, n_dims, baseline_mode, local_contributions, total_contribution, ierr) &
-    bind(C, name="compute_contributions_c")
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_trajectory_contribution_analysis, only: compute_contributions, get_baseline_mode
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Arguments mapped to C types
-    integer(c_int), intent(in), target :: n_dims
-        !! Number of elements in `factor` and `dependent`
-    real(c_double), dimension(n_dims), intent(in), target :: factor
-        !! Factor time series
-    real(c_double), dimension(n_dims), intent(in), target :: dependent
-        !! Dependent variable time series
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !! Baseline mode: "raw", "min", "mean"
-    real(c_double), dimension(n_dims), intent(out), target :: local_contributions
-        !! Per-element contributions
-    real(c_double), intent(out), target :: total_contribution
-        !! Total contribution
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    integer(int32) :: mode_int
-
-    ! Null checks
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(factor)
-    M_CHECK_NON_NULL(dependent)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(local_contributions)
-    M_CHECK_NON_NULL(total_contribution)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-    if (is_err(ierr)) return
-
-    call compute_contributions(factor, dependent, n_dims, mode_int, local_contributions, total_contribution, ierr)
-end subroutine compute_contributions_c
-
-!> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):compute_baselines_factor_dependent(subroutine)]]
-pure subroutine compute_baselines_factor_dependent_c(factor, dependent, n_timepoints, baseline_mode, &
-                                                     factor_baseline, dependent_baseline, ierr) &
-    bind(C, name="compute_baselines_factor_dependent_c")
-
-    use tox_trajectory_contribution_analysis, only: compute_baselines_factor_dependent, get_baseline_mode
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_double, c_int, c_char
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_timepoints
-        !! Number of timepoints in both factor and dependent arrays
-    real(c_double), dimension(n_timepoints), intent(in), target :: factor
-        !! Factor time series, length n_timepoints
-    real(c_double), dimension(n_timepoints), intent(in), target :: dependent
-        !! Dependent variable time series, length n_timepoints
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !! Baseline mode: "raw", "min", "mean"
-    real(c_double), intent(out), target :: factor_baseline
-        !! Computed baseline for factor
-    real(c_double), intent(out), target :: dependent_baseline
-        !! Computed baseline for dependent variable
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    integer(int32) :: mode_int
-
-    !! Null-pointer validation
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(factor)
-    M_CHECK_NON_NULL(dependent)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(factor_baseline)
-    M_CHECK_NON_NULL(dependent_baseline)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-    if (is_err(ierr)) return
-
-    call compute_baselines_factor_dependent(n_timepoints, factor, dependent, mode_int, factor_baseline, dependent_baseline, ierr)
-end subroutine compute_baselines_factor_dependent_c
-
-!> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):perform_permutation_test(subroutine)]]
-subroutine perform_permutation_test_c(trajectories, n_factors, n_samples, n_timepoints, &
-                                      factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, &
-                                      local_contributions, total_contributions, tmp_factor, tmp_dependent, ierr, random_seed) &
-    bind(C, name="perform_permutation_test_c")
-
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_trajectory_contribution_analysis, only: perform_permutation_test, get_baseline_mode
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-        !! expression vectors across different samples over time
-    integer(c_int), intent(in), target :: factor_idx
-        !! index of factor to compute the permutation contributions for
-    integer(c_int), intent(in), target :: dependent_idx
-        !! index of dependent to compute the permutation contributions for
-    integer(c_int), intent(in), target :: sample_idx
-        !! index of sample to compute the permutation contributions for
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !!
-        !! |          Mode       |            Value        |
-        !! |---------------------|-------------------------|
-        !! |  Raw/zero baseline  |  CM_MODE_BASELINE_RAW   |
-        !! |   arithmetic mean   |  CM_MODE_BASELINE_MEAN  |
-        !! |    minimum value    |  CM_MODE_BASELINE_MIN   |
-        !!
-    integer(c_int), intent(in), target :: n_permutations
-        !! number of permutations to perform
-    real(c_double), dimension(n_timepoints, n_permutations), intent(out), target :: local_contributions
-        !! Per-timepoint contributions per permutation
-    real(c_double), dimension(n_permutations), intent(out), target :: total_contributions
-        !! Total contribution (`sum(local_contributions)`) per permutation
-    real(c_double), dimension(n_timepoints), intent(out), target :: tmp_factor
-        !! Working array to hold the factor in contiguous memory
-    real(c_double), dimension(n_timepoints), intent(out), target :: tmp_dependent
-        !! Working array to hold the random dependent in contiguous memory
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    integer(c_int), intent(in), target :: random_seed
-        !! Seed to use for random number generation.
-
-    integer(int32) :: mode_int
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(factor_idx)
-    M_CHECK_NON_NULL(dependent_idx)
-    M_CHECK_NON_NULL(sample_idx)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(n_permutations)
-    M_CHECK_NON_NULL(local_contributions)
-    M_CHECK_NON_NULL(total_contributions)
-    M_CHECK_NON_NULL(tmp_factor)
-    M_CHECK_NON_NULL(tmp_dependent)
-    M_CHECK_NON_NULL(random_seed)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-
-    call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
-                                  factor_idx, dependent_idx, sample_idx, mode_int, n_permutations, &
-                                  local_contributions, total_contributions, tmp_factor, tmp_dependent, ierr, random_seed)
-end subroutine perform_permutation_test_c
-
-!> C-compatible wrapper for [[tox_trajectory_contribution_analysis(module):compute_p_values(subroutine)]]
-pure subroutine compute_p_values_c(local_contributions_observed, total_contribution_observed, &
-                                   local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, &
-                                   local_p_values, total_p_value, ierr) bind(C, name="compute_p_values_c")
-
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_trajectory_contribution_analysis, only: compute_p_values
-    M_USE_NULL_VALIDATION
-
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    integer(c_int), intent(in), target :: n_permutations
-        !! number of permutations
-    real(c_double), dimension(n_timepoints), intent(in), target :: local_contributions_observed
-        !! observed local contributions
-    real(c_double), intent(in), target :: total_contribution_observed
-        !! observed total contribution
-    real(c_double), dimension(n_timepoints, n_permutations), intent(in), target :: local_contributions_perm_test
-        !! permutation local contributions
-    real(c_double), dimension(n_permutations), intent(in), target :: total_contributions_perm_test
-        !! permutation total contributions
-    real(c_double), dimension(n_timepoints), intent(out), target :: local_p_values
-        !! output local p-values
-    real(c_double), intent(out), target :: total_p_value
-        !! output total p-value
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(n_permutations)
-    M_CHECK_NON_NULL(local_contributions_observed)
-    M_CHECK_NON_NULL(total_contribution_observed)
-    M_CHECK_NON_NULL(local_contributions_perm_test)
-    M_CHECK_NON_NULL(total_contributions_perm_test)
-    M_CHECK_NON_NULL(local_p_values)
-    M_CHECK_NON_NULL(total_p_value)
-
-    call compute_p_values(local_contributions_observed, total_contribution_observed, &
-                          local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, &
-                          local_p_values, total_p_value, ierr)
-end subroutine compute_p_values_c
-
-!> C wrapper for compute_velocity_trajectories
-pure subroutine compute_velocity_trajectories_c(trajectories, n_factors, n_samples, n_timepoints, &
-                                                velocity, ierr) &
-    bind(C, name="compute_velocity_trajectories_c")
-    use tox_trajectory_contribution_analysis, only: compute_velocity_trajectories
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_double, c_int
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-        !! input trajectories in layout (n_factors, n_samples, n_timepoints)
-    real(c_double), dimension(max(0, n_timepoints - 1), n_factors, n_samples), intent(out), target :: velocity
-        !! output velocity in layout (n_timepoints-1, n_factors, n_samples)
-        !! time-first layout keeps velocity(:,factor,sample) contiguous
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-        !! Null-pointer validation
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(velocity)
-
-    call compute_velocity_trajectories(trajectories, velocity, n_factors, n_samples, n_timepoints, ierr)
-end subroutine compute_velocity_trajectories_c
-
-!> C wrapper for compute_acceleration_from_velocity
-pure subroutine compute_acceleration_from_velocity_c(velocity, n_factors, n_samples, n_timepoints, &
-                                                     acceleration, ierr) &
-    bind(C, name="compute_acceleration_from_velocity_c")
-
-    use tox_trajectory_contribution_analysis, only: compute_acceleration_from_velocity
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_errors, only: is_err
-
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    real(c_double), dimension(max(0, n_timepoints - 1), n_factors, n_samples), intent(in), target :: velocity
-        !! input velocity in layout (n_timepoints-1, n_factors, n_samples)
-        !! time-first layout keeps velocity(:,factor,sample) contiguous
-    real(c_double), dimension(max(0, n_timepoints - 2), n_factors, n_samples), intent(out), target :: acceleration
-        !! output acceleration in layout (n_timepoints-2, n_factors, n_samples)
-        !! time-first layout keeps acceleration(:,factor,sample) contiguous
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(velocity)
-    M_CHECK_NON_NULL(acceleration)
-
-    call compute_acceleration_from_velocity(velocity, acceleration, n_factors, n_samples, n_timepoints, ierr)
-end subroutine compute_acceleration_from_velocity_c
-
-!> C wrapper for compute_velocity_and_acceleration_contributions
-pure subroutine compute_velocity_acceleration_contributions_c(trajectories, n_factors, n_samples, n_timepoints, baseline_mode, &
-                                                              tmp_factors, tmp_dependent, tmp_contributions, &
-                                                              contrib_velocity, velocity_contribution_series, &
-                                                              contrib_acceleration, acceleration_contribution_series, ierr) &
-    bind(C, name="compute_velocity_acceleration_contributions_c")
-
-    use tox_trajectory_contribution_analysis, only: compute_velocity_acceleration_contributions, get_baseline_mode
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use, intrinsic :: iso_fortran_env, only: int32
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !! Baseline mode: "raw", "min", "mean"
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-        !! input trajectories in layout (n_factors, n_samples, n_timepoints)
-
-    ! ---- Workspace arrays (passed in from C, reused for velocity and acceleration) ----
-    ! NOTE (performance layout): unlike trajectories, these are time-first so slices like
-    ! workspace(:, factor) are contiguous and avoid tmporary arrays in inner computations.
-    ! Caller must allocate all with size (n_timepoints-1) if n_timepoints>1.
-    real(c_double), dimension(n_timepoints - 1, n_factors), intent(out), target :: tmp_factors
-        !! workspace for factor data (used for velocity and acceleration)
-    real(c_double), dimension(n_timepoints - 1), intent(out), target :: tmp_dependent
-        !! workspace for dependent data (used for velocity and acceleration)
-    real(c_double), dimension(n_timepoints - 1), intent(out), target :: tmp_contributions
-        !! workspace for contribution calculations (used for velocity and acceleration)
-
-    real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: Contrib_velocity
-        !! velocity covariance matrix
-    real(c_double), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out), target :: velocity_contribution_series
-        !! velocity contribution series
-    real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: Contrib_acceleration
-        !! acceleration covariance matrix
-    real(c_double), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out), target :: acceleration_contribution_series
-        !! acceleration contribution series
-
-    integer(int32) :: mode_int
-
-    ! ---- Null checks ----
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(tmp_factors)
-    M_CHECK_NON_NULL(tmp_dependent)
-    M_CHECK_NON_NULL(tmp_contributions)
-    M_CHECK_NON_NULL(Contrib_velocity)
-    M_CHECK_NON_NULL(velocity_contribution_series)
-    M_CHECK_NON_NULL(Contrib_acceleration)
-    M_CHECK_NON_NULL(acceleration_contribution_series)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-    if (is_err(ierr)) return
-
-    call compute_velocity_acceleration_contributions(trajectories, n_factors, n_samples, n_timepoints, mode_int, &
-                                                     tmp_factors, tmp_dependent, tmp_contributions, &
-                                                     contrib_velocity, velocity_contribution_series, &
-                                                     contrib_acceleration, acceleration_contribution_series, ierr)
-
-end subroutine compute_velocity_acceleration_contributions_c
-
-!> C wrapper for compute_velocity_acceleration_contributions_alloc
-pure subroutine compute_velocity_acceleration_contributions_alloc_c(trajectories, n_factors, n_samples, n_timepoints, baseline_mode, &
-                                                                    contrib_velocity, velocity_contribution_series, &
-                                                                    contrib_acceleration, acceleration_contribution_series, ierr) &
-    bind(C, name="compute_velocity_acceleration_contributions_alloc_c")
-
-    use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use tox_errors, only: is_err
-    use tox_trajectory_contribution_analysis, only: compute_velocity_acceleration_contributions_alloc, get_baseline_mode
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_factors
-        !! number of factors
-    integer(c_int), intent(in), target :: n_samples
-        !! number of samples
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    character(len=1, kind=c_char), dimension(*), intent(in), target :: baseline_mode
-        !! Baseline mode: "raw", "min", "mean"
-
-    real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-        !! input trajectories
-    real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: contrib_velocity
-        !! velocity covariance matrix
-    real(c_double), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out), target :: velocity_contribution_series
-        !! velocity contribution series
-    real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: contrib_acceleration
-        !! acceleration covariance matrix
-    real(c_double), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out), target :: acceleration_contribution_series
-        !! acceleration contribution series
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    integer(int32) :: mode_int
-    ! ---- Null checks ----
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(n_factors)
-    M_CHECK_NON_NULL(baseline_mode)
-    M_CHECK_NON_NULL(trajectories)
-    M_CHECK_NON_NULL(contrib_velocity)
-    M_CHECK_NON_NULL(velocity_contribution_series)
-    M_CHECK_NON_NULL(contrib_acceleration)
-    M_CHECK_NON_NULL(acceleration_contribution_series)
-
-    call get_baseline_mode(baseline_mode, mode_int, ierr)
-    if (is_err(ierr)) return
-
-    call compute_velocity_acceleration_contributions_alloc( &
-        trajectories, n_factors, n_samples, n_timepoints, mode_int, &
-        contrib_velocity, velocity_contribution_series, &
-        contrib_acceleration, acceleration_contribution_series, ierr)
-
-end subroutine compute_velocity_acceleration_contributions_alloc_c
-
-!> C wrapper for compute_velocity_trajectory
-pure subroutine compute_velocity_trajectory_c(trajectory, n_timepoints, velocity, ierr) &
-    bind(C, name="compute_velocity_trajectory_c")
-    use tox_trajectory_contribution_analysis, only: compute_velocity_trajectory
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    real(c_double), dimension(n_timepoints), intent(in), target :: trajectory
-        !! input position trajectory
-    real(c_double), dimension(max(0, n_timepoints - 1)), intent(out), target :: velocity
-        !! output velocity trajectory
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(trajectory)
-    M_CHECK_NON_NULL(velocity)
-
-    call compute_velocity_trajectory(trajectory, velocity, n_timepoints, ierr)
-end subroutine compute_velocity_trajectory_c
-
-!> C wrapper for compute_acceleration_from_velocity_trajectory
-pure subroutine compute_acceleration_from_velocity_trajectory_c(velocity, n_timepoints, acceleration, ierr) &
-    bind(C, name="compute_acceleration_from_velocity_trajectory_c")
-    use tox_trajectory_contribution_analysis, only: compute_acceleration_from_velocity_trajectory
-    use, intrinsic :: iso_fortran_env, only: int32
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_timepoints
-        !! number of timepoints
-    real(c_double), dimension(max(0, n_timepoints - 1)), intent(in), target :: velocity
-        !! input velocity trajectory
-    real(c_double), dimension(max(0, n_timepoints - 2)), intent(out), target :: acceleration
-        !! output acceleration trajectory
-    integer(c_int), intent(out), target :: ierr
-        !! error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_timepoints)
-    M_CHECK_NON_NULL(velocity)
-    M_CHECK_NON_NULL(acceleration)
-
-    call compute_acceleration_from_velocity_trajectory(velocity, acceleration, n_timepoints, ierr)
-end subroutine compute_acceleration_from_velocity_trajectory_c

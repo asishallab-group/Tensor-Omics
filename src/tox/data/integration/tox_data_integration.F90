@@ -1,3 +1,5 @@
+#include <src/macros.h>
+
 !> In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
 !| Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort,
 !| composition can introduce batch effects that are not easily detectable from mean expression levels alone.
@@ -24,7 +26,9 @@ module tox_data_integration
     implicit none
 
     interface compute_gene_means
-        !> Compute per-gene mean expression, ignoring NaN values
+        !> M_EXPORT_C
+        !| summary: Compute per-gene mean expression, ignoring NaN values
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine compute_gene_means(n_genes, n_reps, expr, means, ierr)
             integer(int32), intent(in) :: n_genes
                 !! Number of genes in the study
@@ -54,7 +58,9 @@ module tox_data_integration
     end interface compute_gene_means_helper
 
     interface compute_residuals
-        !> Compute signed residuals (centering by mean)
+        !> M_EXPORT_C
+        !| summary: Compute signed residuals (centering by mean)
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine compute_residuals(n_genes, n_reps, expr, means, resid, ierr)
             integer(int32), intent(in) :: n_genes
                 !! Number of genes in the study
@@ -88,7 +94,9 @@ module tox_data_integration
     end interface compute_residuals_helper
 
     interface pool_means_alloc
-        !> Pool per-gene mean expression values across studies
+        !> M_EXPORT_C
+        !| summary: Pool per-gene mean expression values across studies
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine pool_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)
             integer(int32), intent(in) :: n_genes_S1
                 !! Number of genes in study S1
@@ -110,7 +118,9 @@ module tox_data_integration
     end interface pool_means_alloc
 
     interface pool_means
-        !> Pool per-gene mean expression values across studies
+        !> M_EXPORT_C
+        !| summary: Pool per-gene mean expression values across studies (expert entry point)
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine pool_means(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
             integer(int32), intent(in), target :: pool_size
                 !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
@@ -147,10 +157,11 @@ module tox_data_integration
         end subroutine pool_means_helper
     end interface pool_means_helper
 
-    !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
-    !|
-    !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
     interface calc_neighborhood_size
+        !> M_EXPORT_C
+        !| summary: Calculate the number of neighbors to be used for constructing neighborhoods
+        !| AUTHOR_ASIS_HALLAB
+        !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
         pure module function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
             integer(int32), intent(in) :: n_pool
                 !! Total number of pooled mean-expression values across both studies
@@ -161,14 +172,17 @@ module tox_data_integration
             real(real64), intent(in) :: mean_S(n_genes_S)
                 !! Per-gene mean expression values
             integer(int32), intent(in), optional :: desired_size
-                !! Optional desired neighborhood size, default=1000
+                !! Optional desired neighborhood size.
+                !! DM_DEFAULT(1000_int32)
             integer(int32) :: n_neighbors
                 !! Calculated neighborhood size
         end function calc_neighborhood_size
     end interface calc_neighborhood_size
 
     interface construct_neighborhoods_alloc
-        !> Construct neighborhood-based residual sets (kNN)
+        !> M_EXPORT_C
+        !| summary: Construct neighborhood-based residual sets (kNN)
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
                                                              neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
             integer(int32), intent(in) :: n_points
@@ -254,7 +268,9 @@ module tox_data_integration
     end interface construct_neighborhoods_helper
 
     interface gjct_permutation_test_alloc
-        !> Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
+        !> M_EXPORT_C
+        !| summary: Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
+        !| AUTHOR_ASIS_HALLAB
         module subroutine gjct_permutation_test_alloc(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, ierr, random_seed, neighbor_mask_S1, neighbor_mask_S2)
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -292,7 +308,9 @@ module tox_data_integration
     end interface gjct_permutation_test_alloc
 
     interface gjct_permutation_test
-        !> Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
+        !> M_EXPORT_C
+        !| summary: Estimates the permutation-test p-value (expert entry point with caller-provided work arrays)
+        !| AUTHOR_ASIS_HALLAB
         module subroutine gjct_permutation_test( &
             neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
             tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
@@ -424,12 +442,15 @@ module tox_data_integration
     end interface shuffle_reference_point_helper
 
     interface determine_shared_residual_range
-        !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+        !> M_EXPORT_C
+        !| summary: Computes the shared residual range [-R, R] from S1/S2 residuals (expert entry point)
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine determine_shared_residual_range(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, ierr, residual_range_quantile)
             integer(int32), intent(in) :: pool_size
                 !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile for determining the residual range.
+                !! DM_DEFAULT(95.0_real64)
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -447,7 +468,8 @@ module tox_data_integration
             integer(int32), intent(in) :: pool_size
                 !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile for determining the residual range.
+                !! DM_DEFAULT(95.0_real64)
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -458,7 +480,9 @@ module tox_data_integration
     end interface determine_shared_residual_range_helper
 
     interface determine_shared_residual_range_alloc
-        !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+        !> M_EXPORT_C
+        !| summary: Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine determine_shared_residual_range_alloc(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, shared_residual_range, ierr, residual_range_quantile)
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -473,7 +497,8 @@ module tox_data_integration
             real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
                 !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile for determining the residual range.
+                !! DM_DEFAULT(95.0_real64)
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             integer(int32), intent(out) :: ierr
@@ -482,7 +507,9 @@ module tox_data_integration
     end interface determine_shared_residual_range_alloc
 
     interface build_residual_histograms
-        !> Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
+        !> M_EXPORT_C
+        !| summary: Summarizes the neighborhood residuals in absolute histogram counts and probability mass functions `pmf(residual, bin)` (actually a matrix)
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine build_residual_histograms(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, ierr, neighbor_mask)
             integer(int32), intent(in) :: n_reps
                 !! Number of replicates of the study
@@ -536,7 +563,9 @@ module tox_data_integration
     end interface build_residual_histograms_helper
 
     interface compute_divergence_per_reference_point
-        !> Having the probabilities `pmf` from [[tox_data_integration(module):build_residual_histograms(interface)]], this subroutine computes the Jensen-Shannon divergence per reference point/neighbor
+        !> M_EXPORT_C
+        !| summary: Computes the Jensen-Shannon divergence per reference point from the histogram pmfs
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine compute_divergence_per_reference_point(pmf_S1, pmf_S2, n_points, n_bins, js_divergences, ierr)
             integer(int32), intent(in) :: n_points
                 !! Number of reference points (k)
@@ -570,7 +599,9 @@ module tox_data_integration
     end interface compute_divergence_per_reference_point_helper
 
     interface compute_weighted_global_divergence
-        !> Computes the global weighted Jensen-Shannon divergence from the per-neighbor divergences calculated by [[tox_data_integration(module):compute_divergence_per_reference_point(interface)]]
+        !> M_EXPORT_C
+        !| summary: Computes the global weighted Jensen-Shannon divergence from the per-neighbor divergences
+        !| AUTHOR_ASIS_HALLAB
         pure module subroutine compute_weighted_global_divergence(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, ierr)
             integer(int32), intent(in) :: n_points
                 !! Number of reference points (k)
@@ -650,7 +681,10 @@ module tox_data_integration
     end interface jct_compute_jsd_pipeline_helper
 
     interface fjct_compute_jsd_alloc
-        !> Computes the family-level compatibility score `global_js_divergence` between two studies for a single gene family (`family_idx`), by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family
+        !> M_EXPORT_C
+        !| summary: Computes the family-level compatibility score for a single gene family (`family_idx`)
+        !| AUTHOR_ASIS_HALLAB
+        !| Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family
         pure module subroutine fjct_compute_jsd_alloc(family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
                                                       neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
                                                       included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, ierr &
@@ -703,7 +737,10 @@ module tox_data_integration
     end interface fjct_compute_jsd_alloc
 
     interface fjct_compute_jsd
-        !> Computes the compatibility score `global_js_divergence` between two studies for a single sub-neighborhood/family, by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2` (typically all neighbors belonging to one gene family; see [[tox_data_integration(module):fjct_compute_jsd_alloc(interface)]] for the family-index-based entry point that builds these masks)
+        !> M_EXPORT_C
+        !| summary: Computes the compatibility score for a single sub-neighborhood/family (expert entry point with caller-provided masks and work arrays)
+        !| AUTHOR_ASIS_HALLAB
+        !| Restricts residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2` (typically all neighbors belonging to one gene family; see [[tox_data_integration(module):fjct_compute_jsd_alloc(interface)]] for the family-index-based entry point that builds these masks)
         pure module subroutine fjct_compute_jsd(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, ierr)
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -748,13 +785,11 @@ module tox_data_integration
         end subroutine fjct_compute_jsd
     end interface fjct_compute_jsd
 
-    !> Computes the per-family/per-sub-neighborhood contribution score that combines
-    !|
-    !| 1. how divergent the family is between the studies, and
-    !| 2. how much residual support the family has overall,
-    !|
-    !| using the outputs from [[tox_data_integration(module):fjct_compute_jsd(interface)]], collected for the analyzed sub-neighborhoods.
     interface fjct_compute_contribution_scores
+        !> M_EXPORT_C
+        !| summary: Computes the per-family/per-sub-neighborhood contribution score
+        !| AUTHOR_ASIS_HALLAB
+        !| Combines (1) how divergent the family is between the studies, and (2) how much residual support the family has overall, using the outputs from [[tox_data_integration(module):fjct_compute_jsd(interface)]], collected for the analyzed sub-neighborhoods.
         pure module subroutine fjct_compute_contribution_scores(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores, ierr)
             integer(int32), intent(in) :: k_families
                 !! Number of sub-neighborhoods analyzed

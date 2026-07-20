@@ -11,8 +11,9 @@ module tox_tissue_versatility
     implicit none
 contains
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Computes normalized tissue versatility for selected expression vectors.
+    !> M_EXPORT_C
+    !| summary: Computes normalized tissue versatility for selected expression vectors.
+    !| AUTHOR_VIVIAN_BASS
     !| The metric is based on the angle between each gene expression vector and the space diagonal.
     !| Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
     pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, &
@@ -141,59 +142,3 @@ contains
     end subroutine compute_tissue_versatility_helper
 
 end module tox_tissue_versatility
-
-!> C wrapper for compute_tissue_versatility.
-!| Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.
-pure subroutine compute_tissue_versatility_c(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, &
-                                             n_selected_vectors, axes_selection, n_selected_axes, &
-                                             tissue_versatilities, tissue_angles_deg, ierr) bind(C, name="compute_tissue_versatility_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use tox_tissue_versatility, only: compute_tissue_versatility
-    use tox_conversions, only: c_int_as_logical
-    use tox_errors, only: is_err, set_err, ERR_ALLOC_FAIL
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    integer(c_int), intent(in), target :: n_axes
-        !! Number of axes (tissues/dimensions)
-    integer(c_int), intent(in), target :: n_vectors
-        !! Number of expression vectors (genes)
-    real(c_double), dimension(n_axes, n_vectors), intent(in), target :: expression_vectors
-        !! 2D array (n_axes, n_vectors), each column is a gene expression vector (column-major)
-    integer(c_int), dimension(n_vectors), intent(in), target :: exp_vecs_selection_index
-        !! Integer array (n_vectors), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.
-    integer(c_int), intent(in), target :: n_selected_vectors
-        !! Number of selected expression vectors (count of 1s in exp_vecs_selection_index)
-    integer(c_int), dimension(n_axes), intent(in), target :: axes_selection
-        !! Integer array (n_axes), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.
-    integer(c_int), intent(in), target :: n_selected_axes
-        !! Number of selected axes (count of 1s in axes_selection)
-    real(c_double), dimension(n_selected_vectors), intent(out), target :: tissue_versatilities
-        !! Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities for selected vectors
-    real(c_double), dimension(n_selected_vectors), intent(out), target :: tissue_angles_deg
-        !! Output, real array, length = n_selected_vectors, stores the calculated angles in degrees for selected vectors
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    logical, dimension(:), allocatable :: exp_vecs_selection_index_f, axes_selection_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_axes)
-    M_CHECK_NON_NULL(n_vectors)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(exp_vecs_selection_index)
-    M_CHECK_NON_NULL(n_selected_vectors)
-    M_CHECK_NON_NULL(axes_selection)
-    M_CHECK_NON_NULL(n_selected_axes)
-    M_CHECK_NON_NULL(tissue_versatilities)
-    M_CHECK_NON_NULL(tissue_angles_deg)
-
-    M_ALLOCATE(exp_vecs_selection_index_f(n_vectors))
-    call c_int_as_logical(exp_vecs_selection_index, exp_vecs_selection_index_f)
-    M_ALLOCATE(axes_selection_f(n_axes))
-    call c_int_as_logical(axes_selection, axes_selection_f)
-
-    call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index_f, n_selected_vectors, &
-                                    axes_selection_f, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
-end subroutine compute_tissue_versatility_c
-
