@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import re
 import warnings
 from dataclasses import dataclass, replace
@@ -108,6 +109,15 @@ class FordFrontend:
         # Imported here so the rest of the package can be used, and tested, without Ford
         from ford.fortran_project import Project as FordProject
         from ford.settings import load_markdown_settings, load_toml_settings
+
+        # Ford animates a rich progress bar from a background refresh thread that writes to
+        # whatever `sys.stdout` currently is. Its reader redirects `sys.stdout` to a StringIO
+        # around the preprocessor to capture the preprocessed source -- and the spinner
+        # thread races into that same buffer, interleaving progress glyphs into the Fortran
+        # the parser then reads. That intermittently mangles a declaration (`real(real64)`
+        # loses its kind, "a kind is required"), with nothing wrong in the sources. Ford
+        # disables the bar (and its thread) entirely when this is set, which is the cure.
+        os.environ["FORD_DEBUGGING"] = "1"
 
         root = self.paths.root or Path()
         settings = load_toml_settings(root)
