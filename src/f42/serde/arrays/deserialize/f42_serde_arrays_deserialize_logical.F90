@@ -13,8 +13,9 @@ module f42_serde_arrays_deserialize_logical
 
 contains
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Deserialize a flat logical array from a file
+    !> M_EXPORT_C
+    !| summary: Deserialize a flat logical array from a file
+    !| AUTHOR_AARON_SCHROEDER
     subroutine deserialize_logical_helper(arr, n_elements, orig_shape, filename, ierr)
         integer(int32), intent(in) :: n_elements
             !! Size of `arr`
@@ -111,53 +112,3 @@ contains
     end subroutine deserialize_logical_5d
 
 end module f42_serde_arrays_deserialize_logical
-
-!> C binding for the subroutine to deserialize a logical array from a file.
-subroutine deserialize_logical_nd_c(arr, orig_shape, n_dims, filename, fn_len, ierr) bind(C, name="deserialize_logical_nd_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_char
-    use f42_serde_arrays_deserialize_logical, only: deserialize_logical_helper
-    use tox_errors, only: is_err, map_err_arg_pos, ERR_ALLOC_FAIL, set_err
-    use tox_conversions, only: c_char_1d_as_string, logical_as_c_int
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Inputs / Outputs
-    integer(c_int), intent(in), target :: n_dims
-        !! Number of dimensions of the expected array (`size(orig_shape)`)
-    integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
-        !! Original shape of the flattened array `arr` -> for a 2D array it would be `[n_elements, n_contained_arrays]`
-    integer(c_int), dimension(product(orig_shape)), intent(out), target :: arr
-        !! Preallocated output array, (`.false.<=>0` and `.true.<=>1`)
-    integer(c_int), intent(in), target :: fn_len
-        !! Length of the filename
-    character(kind=c_char, len=1), dimension(fn_len), intent(in), target :: filename
-        !! Filename in raw bytes
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    ! Locals
-    character(len=:), allocatable :: filename_f
-    logical, dimension(:), allocatable :: arr_f
-    integer(c_int) :: n_elements
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(fn_len)
-    M_CHECK_NON_NULL(arr)
-    M_CHECK_NON_NULL(filename)
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(orig_shape)
-
-    ! raw to String
-    call c_char_1d_as_string(filename, filename_f, ierr)
-    if (is_err(ierr)) return
-
-    n_elements = size(arr, kind=c_int)
-    M_ALLOCATE(arr_f(n_elements))
-    call deserialize_logical_helper(arr_f, n_elements, orig_shape, filename_f, ierr)
-    ! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so
-    ! remap any error reported against it back onto `arr` (C-visible arg 1).
-    call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
-    if (is_err(ierr)) return
-
-    call logical_as_c_int(arr_f, arr)
-end subroutine deserialize_logical_nd_c

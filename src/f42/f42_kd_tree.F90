@@ -14,8 +14,9 @@ module f42_kd_tree
 
 contains
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Build a k-d tree index using a stack-based, non-recursive approach.
+    !> M_EXPORT_C
+    !| summary: Build a k-d tree index using a stack-based, non-recursive approach
+    !| AUTHOR_AARON_SCHROEDER
     pure subroutine build_kd_index_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Number of dimensions
@@ -250,8 +251,9 @@ contains
         end do
     end subroutine partial_sort_by_dimension_helper
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors).
+    !> M_EXPORT_C
+    !| summary: Build a k-d tree index over points on the unit sphere (unit vectors)
+    !| AUTHOR_AARON_SCHROEDER
     !| This is a thin, semantically-named wrapper: partitioning is identical to
     !| [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]] (plain per-axis median splits);
     !| callers are responsible for ensuring `points` are actually unit-normalized beforehand.
@@ -333,65 +335,3 @@ contains
     end subroutine get_kd_point
 
 end module f42_kd_tree
-
-!> C interface for building KD index
-pure subroutine build_kd_index_c(points, n_dimensions, n_points, kd_indices, dimension_order, ierr) bind(C, name="build_kd_index_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use, intrinsic :: iso_fortran_env, only: int32
-    use f42_kd_tree, only: build_kd_index_alloc
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_dimensions
-        !! Number of dimensions
-    integer(c_int), intent(in), target :: n_points
-        !! Number of points
-    real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
-        !! Data points
-    integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
-        !! Dimension order (by variance)
-    integer(c_int), dimension(n_points), intent(out), target :: kd_indices
-        !! Output index array (k-d tree order)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dimensions)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(points)
-    M_CHECK_NON_NULL(dimension_order)
-    M_CHECK_NON_NULL(kd_indices)
-
-    ! Call the original implementation
-    call build_kd_index_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
-end subroutine build_kd_index_c
-
-!> C interface for building spherical KD index
-pure subroutine build_spherical_kd_c(points, n_dimensions, n_points, kd_indices, dimension_order, ierr) bind(C, name="build_spherical_kd_c")
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
-    use, intrinsic :: iso_fortran_env, only: int32
-    use f42_kd_tree, only: build_spherical_kd_alloc
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_dimensions
-        !! Number of dimensions
-    integer(c_int), intent(in), target :: n_points
-        !! Number of points
-    real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
-        !! Data points
-    integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
-        !! Dimension order (by variance)
-    integer(c_int), dimension(n_points), intent(out), target :: kd_indices
-        !! Output index array (k-d tree order)
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_dimensions)
-    M_CHECK_NON_NULL(n_points)
-    M_CHECK_NON_NULL(points)
-    M_CHECK_NON_NULL(dimension_order)
-    M_CHECK_NON_NULL(kd_indices)
-
-    ! Call the original implementation
-    call build_spherical_kd_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
-end subroutine build_spherical_kd_c

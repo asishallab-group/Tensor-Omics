@@ -13,8 +13,9 @@ module f42_serde_arrays_serialize_char
               serialize_char_4d, serialize_char_5d, serialize_char_helper
 
 contains
-    !> AUTHOR_AARON_SCHROEDER
-    !| Subroutine to serialize a flat character array into a file
+    !> M_EXPORT_C
+    !| summary: Subroutine to serialize a flat character array into a file
+    !| AUTHOR_AARON_SCHROEDER
     subroutine serialize_char_helper(arr, n_strings, orig_shape, filename, ierr)
         integer(int32), intent(in) :: n_strings
             !! Number of strings in `arr`
@@ -111,59 +112,3 @@ contains
     end subroutine serialize_char_5d
 
 end module f42_serde_arrays_serialize_char
-
-!> C binding for the subroutine to serialize a flat character array into a file.
-subroutine serialize_char_nd_c(raw_chars, clen, orig_shape, n_dims, &
-                                 filename, fn_len, ierr) bind(C, name="serialize_char_nd_c")
-    use, intrinsic :: iso_c_binding, only: c_char, c_int
-    use f42_serde_arrays_serialize_char, only: serialize_char_helper
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
-    use tox_errors, only: is_err, map_err_arg_pos
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Arguments
-    integer(c_int), intent(in), target :: clen
-        !! Length of each character string
-    integer(c_int), intent(in), target :: n_dims
-        !! Number of dimensions of the expected array (`size(orig_shape)`)
-    integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
-        !! Original shape of the flattened array `raw_chars` -> for a 1D array of 7 strings it would be `[7]` with `n_dims=1`
-    character(kind=c_char, len=1), dimension(clen, product(orig_shape)), intent(in), target :: raw_chars
-        !! Input array of c_chars (2D: clen x n_strings)
-    integer(c_int), intent(in), target :: fn_len
-        !! Length of the filename
-    character(kind=c_char, len=1), dimension(fn_len), intent(in), target  :: filename
-        !! c_char array representing the filename
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: filename_f
-    character(len=:), dimension(:), allocatable :: raw_chars_f
-    integer(c_int) :: n_strings
-
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(clen)
-    M_CHECK_NON_NULL(fn_len)
-    M_CHECK_NON_NULL(raw_chars)
-    M_CHECK_NON_NULL(filename)
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(orig_shape)
-
-    n_strings = size(raw_chars, dim=2, kind=c_int)
-
-    ! Convert filename from c_char array to Fortran string
-    call c_char_1d_as_string(filename, filename_f, ierr)
-    if (is_err(ierr)) return
-
-    call c_char_2d_as_string(raw_chars, raw_chars_f, ierr)
-    if (is_err(ierr)) return
-
-    call serialize_char_helper(raw_chars_f, n_strings, orig_shape, filename_f, ierr)
-    ! n_strings (helper arg 2) is derived from `raw_chars` here rather than exposed as a C argument,
-    ! so remap any error reported against it back onto `raw_chars` (C-visible arg 1).
-    call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
-    if (is_err(ierr)) return
-
-end subroutine serialize_char_nd_c

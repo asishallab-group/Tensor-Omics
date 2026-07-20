@@ -13,8 +13,9 @@ module f42_serde_arrays_serialize_logical
               serialize_logical_4d, serialize_logical_5d, serialize_logical_helper
 
 contains
-    !> AUTHOR_AARON_SCHROEDER
-    !| Subroutine to serialize a flat logical array into a file
+    !> M_EXPORT_C
+    !| summary: Subroutine to serialize a flat logical array into a file
+    !| AUTHOR_AARON_SCHROEDER
     subroutine serialize_logical_helper(arr, n_elements, orig_shape, filename, ierr)
         integer(int32), intent(in) :: n_elements
             !! Number of strings in `arr`
@@ -111,54 +112,3 @@ contains
     end subroutine serialize_logical_5d
 
 end module f42_serde_arrays_serialize_logical
-
-!> C binding for the subroutine to serialize a flat logical array into a file.
-subroutine serialize_logical_nd_c(arr, orig_shape, n_dims, &
-                                 filename, fn_len, ierr) bind(C, name="serialize_logical_nd_c")
-    use, intrinsic :: iso_c_binding, only: c_char, c_int
-    use f42_serde_arrays_serialize_logical, only: serialize_logical_helper
-    use tox_conversions, only: c_char_1d_as_string, c_int_as_logical
-    use tox_errors, only: is_err, map_err_arg_pos, ERR_ALLOC_FAIL, set_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Arguments
-    integer(c_int), intent(in), target :: n_dims
-        !! Number of dimensions of the expected array (`size(orig_shape)`)
-    integer(c_int), dimension(n_dims), intent(in), target :: orig_shape
-        !! Original shape of the flattened array `arr` -> for a 2D array it would be `[n_elements, n_contained_arrays]`
-    integer(c_int), dimension(product(orig_shape)), intent(in), target :: arr
-        !! Input array to be serialized, (`.false.<=>0` and `.true.<=>1`)
-    integer(c_int), intent(in), target :: fn_len
-        !! Length of the filename
-    character(kind=c_char, len=1), dimension(fn_len), intent(in), target  :: filename
-        !! c_char array representing the filename
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: filename_f
-    logical, dimension(:), allocatable :: arr_f
-    integer(c_int) :: n_elements
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(fn_len)
-    M_CHECK_NON_NULL(arr)
-    M_CHECK_NON_NULL(filename)
-    M_CHECK_NON_NULL(n_dims)
-    M_CHECK_NON_NULL(orig_shape)
-
-    n_elements = size(arr, kind=c_int)
-
-    ! Convert filename from c_char array to Fortran string
-    call c_char_1d_as_string(filename, filename_f, ierr)
-    if (is_err(ierr)) return
-
-    n_elements = size(arr, kind=c_int)
-    M_ALLOCATE(arr_f(n_elements))
-    call c_int_as_logical(arr, arr_f)
-
-    call serialize_logical_helper(arr_f, n_elements, orig_shape, filename_f, ierr)
-    ! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so
-    ! remap any error reported against it back onto `arr` (C-visible arg 1).
-    call map_err_arg_pos(ierr, 2_c_int, 1_c_int)
-end subroutine serialize_logical_nd_c
