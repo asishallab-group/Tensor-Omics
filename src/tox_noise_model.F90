@@ -65,7 +65,7 @@ module noise_model
         !! bin) first, tried in order until a step satisfies all acceptance
         !! criteria. The last entry (2 bins, 50% per bin) is a hard floor: it is
         !! accepted unconditionally if no earlier step succeeds.
-    real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.75_real64
+    real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.5_real64
         !! Criterion 2: `Pr(c_g > 2)` must stay below this fraction
     integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 30_int32
         !! Criterion 3: every occupied quantile interval must contain at least this
@@ -756,7 +756,7 @@ contains
         call median_of_int_array_helper(tmp_c_g(1:n_distinct_genes), n_distinct_genes, median_c_g)
 
         ! ── Criterion 2: Pr(c_g > 2) < 0.1 ───────────────────────────────────
-        n_c_g_gt_2 = count(tmp_c_g(1:n_distinct_genes) > 4)
+        n_c_g_gt_2 = count(tmp_c_g(1:n_distinct_genes) > 3)
 
         ! ── Criterion 3: every occupied bin has >= STRATA_MIN_RESIDUALS_PER_BIN ──
         n_occupied_bins = count(tmp_bin_counts > 0)
@@ -766,7 +766,7 @@ contains
             min_occupied_count = 0
         end if
 
-        is_accepted = (median_c_g == 1) .and. &
+        is_accepted = (median_c_g <= 3) .and. &
                       (real(n_c_g_gt_2, real64) / real(max(n_distinct_genes, 1_int32), real64) &
                        < STRATA_MAX_C_G_PROB_THRESHOLD) .and. &
                       (min_occupied_count >= STRATA_MIN_RESIDUALS_PER_BIN)
