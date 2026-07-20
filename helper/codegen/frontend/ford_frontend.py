@@ -155,7 +155,8 @@ class FordFrontend:
         return Module(
             name=name,
             procedures=[
-                self._procedure(routine, path) for routine in ford_module.routines
+                self._procedure(routine, path)
+                for routine in self._module_routines(ford_module)
             ],
             parameters=[
                 self._parameter(variable, path)
@@ -166,6 +167,26 @@ class FordFrontend:
             meta=self._meta(ford_module),
             location=location,
         )
+
+    @staticmethod
+    def _module_routines(ford_module):
+        """Every procedure the module defines, including ones split into a submodule.
+
+        A procedure whose body lives in a submodule is declared here as a `module
+        subroutine`/`module function` inside an `interface` block, carrying its full
+        signature and documentation. Ford lists those under `.interfaces`, not
+        `.routines`, and reports the implementing submodule with no routines of its own --
+        so the interface declaration is the only place the generator can read them from.
+
+        Only interface bodies marked `module` are taken: an `interface` block also holds
+        `bind(C)` externals (e.g. the libzip bindings) and abstract interfaces, which are
+        not this module's procedures and carry types the wrapper has no business mapping.
+        """
+        yield from ford_module.routines
+        for interface in getattr(ford_module, "interfaces", ()) or ():
+            for routine in getattr(interface, "routines", ()) or ():
+                if "module" in (getattr(routine, "attribs", ()) or ()):
+                    yield routine
 
     def _procedure(self, ford_procedure, path: Path) -> Procedure:
         name = ford_procedure.name
