@@ -57,10 +57,10 @@ module noise_model
         !! Total number of genes in the sorted structure
     end type sorted_data_t
 
-    integer(int32), parameter :: STRATA_N_SCHEDULE_STEPS = 5
+    integer(int32), parameter :: STRATA_N_SCHEDULE_STEPS = 6
         !! Number of candidate bin-count steps tried by `stratify_residuals_helper`
     integer(int32), parameter :: STRATA_BIN_COUNT_SCHEDULE(STRATA_N_SCHEDULE_STEPS) = &
-        [20_int32, 10_int32, 5_int32, 4_int32, 2_int32]
+        [20_int32, 10_int32, 5_int32, 4_int32, 2_int32, 1_int32]
         !! Candidate quantile bin counts, finest (5% per bin) to coarsest (50% per
         !! bin) first, tried in order until a step satisfies all acceptance
         !! criteria. The last entry (2 bins, 50% per bin) is a hard floor: it is
