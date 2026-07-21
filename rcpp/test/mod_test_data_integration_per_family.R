@@ -1,4 +1,4 @@
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 TOL <- 1e-12
@@ -67,7 +67,7 @@ test_fjct <- function() {
   expected_weights <- c(1,0,0)
 
   # ---- alloc variant ----
-  res_alloc <- tox_fjct_compute_jsd(
+  res_alloc <- fjct_compute_jsd(
     family_idx,
     gene_to_family_S1,
     gene_to_family_S2,
@@ -79,7 +79,7 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  res_expert <- tox_fjct_compute_jsd_expert(
+  res_expert <- fjct_compute_jsd_expert(
     neighborhood_residuals_S1,
     neighborhood_residuals_S2,
     mask_S1,
@@ -138,7 +138,7 @@ test_fjct <- function() {
   expected_weights <- c(0,0,1)
 
   # ---- alloc variant ----
-  res_alloc <- tox_fjct_compute_jsd(
+  res_alloc <- fjct_compute_jsd(
     family_idx,
     gene_to_family_S1,
     gene_to_family_S2,
@@ -150,7 +150,7 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  res_expert <- tox_fjct_compute_jsd_expert(
+  res_expert <- fjct_compute_jsd_expert(
     neighborhood_residuals_S1,
     neighborhood_residuals_S2,
     mask_S1,
@@ -197,7 +197,7 @@ test_fjct <- function() {
   expected_support_weights <- c(6/9, 3/9)
   expected_contribution_scores <- expected_support_weights * global_js_divergence
 
-  res2 <- tox_fjct_compute_contribution_scores(
+  res2 <- fjct_compute_contribution_scores(
     global_js_divergence,
     total_included_n_reps
   )

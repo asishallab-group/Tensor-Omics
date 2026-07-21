@@ -1,6 +1,6 @@
 # Comprehensive R test suite for tox_paralog_analysis (mirrors python/test/mod_test_tox_paralog_analysis.py)
 
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 normalize_unit <- function(v) {
@@ -15,12 +15,12 @@ test_paralog_functions <- function() {
   n_paralogs <- 5L
   i_paralog <- 2L
 
-  chunk_count <- tox_mask_chunk_count(n_paralogs)
+  chunk_count <- mask_chunk_count(n_paralogs)
   assert_true(chunk_count == 1L)
 
   bit_mask <- integer(chunk_count)
   bit_mask[(i_paralog %/% 32L) + 1L] <- bitwShiftL(1L, i_paralog %% 32L)
-  state <- tox_mask_check_state(bit_mask, i_paralog + 1L)
+  state <- mask_check_state(bit_mask, i_paralog + 1L)
   assert_true(isTRUE(state))
 
   # Testing pattern filtering
@@ -29,19 +29,19 @@ test_paralog_functions <- function() {
   angles <- c(0.1, 0.3, 0.5, 0.7, 0.9)
   threshold <- 0.6
 
-  dosage_mask <- tox_filter_paralogs_by_pattern_dosage_effect(angles, threshold, gene_to_fam, n_families)
+  dosage_mask <- filter_paralogs_by_pattern_dosage_effect(angles, threshold, n_families, gene_to_fam, chunk_count)
   assert_true(all(dim(dosage_mask) == c(1L, 1L)))
   assert_true(dosage_mask[1, 1] == 7L)
 
-  subfunc_mask <- tox_filter_paralogs_by_pattern_subfunctionalization(angles, threshold, gene_to_fam, n_families)
+  subfunc_mask <- filter_paralogs_by_pattern_subfunctionalization(angles, threshold, n_families, gene_to_fam, chunk_count)
   assert_true(all(dim(subfunc_mask) == c(1L, 1L)))
   assert_true(subfunc_mask[1, 1] == 24L)
 
   # Testing work-array size calculation
   max_subset_size <- 3L
-  work_info <- tox_calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
+  work_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
   assert_true(work_info$work_array_size == 3L)
-  assert_true(work_info$actual_max_subset_size == 3L)
+  assert_true(work_info$max_subset_size == 3L)
 
   # Testing dosage-effect detection
   ancestor <- c(1.0, 1.0)
@@ -50,45 +50,47 @@ test_paralog_functions <- function() {
     0.9, 0.8, 0.7, 0.6, 0.5
   ), nrow = 2, byrow = TRUE)
 
-  dosage_result <- tox_detect_dosage_effect(
+  dosage_result <- detect_dosage_effect(
     ancestor = ancestor,
     genes = paralogs,
     filtered_paralogs_mask = as.integer(dosage_mask[, 1]),
-    max_subset_size = n_paralogs,
+    max_subset_size = work_info$max_subset_size,
+    n_paralog_subsets = work_info$work_array_size,
     gain_gamma = 0.1,
     max_angle = pi
   )
 
+  # the work array is returned whole; n_results says how much of it is filled
   assert_true(dosage_result$n_results == 3L)
-  assert_true(all(dosage_result$results[1, ] == c(6L, 3L, 5L)))
+  dosage_found <- dosage_result$work_arr_paralog_subsets[1, seq_len(dosage_result$n_results)]
+  assert_true(all(dosage_found == c(6L, 3L, 5L)))
 
   # Testing subfunctionalization detection
   norms <- sqrt(colSums(paralogs ^ 2))
   sorted_perm <- as.integer(order(norms))
 
-  subfunc_result <- tox_detect_subfunctionalization(
+  subfunc_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs,
+                                                     as.integer(subfunc_mask[, 1]))
+
+  subfunc_result <- detect_subfunctionalization(
     ancestor = ancestor,
     genes = paralogs,
     rdi_threshold = 0.5,
     filtered_paralogs_mask = as.integer(subfunc_mask[, 1]),
-    max_subset_size = n_paralogs,
+    max_subset_size = subfunc_info$max_subset_size,
+    n_paralog_subsets = subfunc_info$work_array_size,
     paralog_norms = norms,
     sorted_paralog_norms_perm = sorted_perm
   )
 
   assert_true(subfunc_result$n_results == 0L)
-  assert_true(ncol(subfunc_result$results) == 0L)
 
-  # Edge cases
-  error_caught <- FALSE
-  tryCatch({
-    tox_mask_chunk_count(0L)
-  }, error = function(e) {
-    error_caught <<- TRUE
-  })
-  assert_true(error_caught)
+  # Edge cases. mask_chunk_count is pure arithmetic with no validation in Fortran --
+  # zero genes need zero chunks -- so it returns rather than raising. The old
+  # hand-written wrapper added a check of its own; the Python suite asserts no error too.
+  assert_true(mask_chunk_count(0L) == 0L)
 
-  single_mask <- tox_mask_chunk_count(1L)
+  single_mask <- mask_chunk_count(1L)
   assert_true(single_mask == 1L)
 
 }
@@ -109,7 +111,7 @@ test_detect_neofunctionalization <- function() {
     genes[, i] <- ancestors[, gene_to_fam[i]]
   }
 
-  neofunc <- tox_detect_neofunctionalization(ancestors, genes, gene_to_fam, thresholds)
+  neofunc <- detect_neofunctionalization(ancestors, genes, gene_to_fam, thresholds)
   expected <- matrix(FALSE, nrow = 3, ncol = 2)
   assert_true(identical(neofunc, expected))
 
@@ -120,7 +122,7 @@ test_detect_neofunctionalization <- function() {
     genes2[, i] <- ancestors[, gene_to_fam[i]] - thresholds * gene_to_fam[i]
   }
 
-  neofunc2 <- tox_detect_neofunctionalization(ancestors, genes2, gene_to_fam, thresholds)
+  neofunc2 <- detect_neofunctionalization(ancestors, genes2, gene_to_fam, thresholds)
   expected2 <- matrix(c(FALSE, TRUE, FALSE,
                         FALSE, TRUE, FALSE), nrow = 3, ncol = 2)
   assert_true(identical(neofunc2, expected2))

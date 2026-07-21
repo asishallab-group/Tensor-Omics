@@ -5,7 +5,7 @@
 # Avoid requiring 'readr' in CI; use base R readers instead
 
 # Source the main functions
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 # Function to generate gene_to_family mapping from Orthogroups.tsv file
@@ -127,7 +127,7 @@ run_real_data_example <- function() {
   d <- nrow(gene_expr_matrix)
   
   # Call distance_to_centroid wrapper function directly from tensoromics_functions.R
-  distances <- tox_distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family)
+  distances <- distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family)
   
   # Create results dataframe
   results_df <- data.frame(

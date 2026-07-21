@@ -1,18 +1,18 @@
 # Comprehensive R test suite for LOESS interface functions
 # Validation of the R wrapper for plain and robust LOESS.
 
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 # 1. Test Workspace Calculation
 test_workspace_calculation <- function() {
   
-  # Typical parameters: d=1 (univariate), nvmax=100, setlf=TRUE
-  ws <- tox_loess_required_workspace(d=1, nvmax=100, setlf=TRUE)
+  # Typical parameters: univariate, 100 neighbours, factorization saved
+  ws <- tox_loess_required_workspace(n_dim=1, max_neighborhood_size=100, save_factorization=TRUE)
   
   assert_true(is.list(ws))
-  assert_true(ws$liv > 0)
-  assert_true(ws$lv > 0)
+  assert_true(ws$int_workspace_size > 0)
+  assert_true(ws$real_workspace_size > 0)
   
 }
 
@@ -27,18 +27,18 @@ test_loess_plain_functionality <- function() {
   z <- x
   
   # Get required workspace sizes
-  ws <- tox_loess_required_workspace(d=1, nvmax=n, setlf=FALSE)
+  ws <- tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=FALSE)
   
   # Initialize workspace arrays
-  iv <- integer(ws$liv)
-  wv <- numeric(ws$lv)
+  iv <- integer(ws$int_workspace_size)
+  wv <- numeric(ws$real_workspace_size)
   
   yhat <- loess_fit_plain(
-    x=x, y=y, w=w, z=z, 
-    span=0.5, degree=1, nvmax=n, 
-    infl=FALSE, setlf=FALSE, 
-    iv=iv, wv=wv
-  )
+    x=x, y=y, weights=w, eval_points=matrix(z, ncol=1),
+    span=0.5, degree=1, max_neighborhood_size=n,
+    compute_influence=FALSE, save_factorization=FALSE,
+    int_workspace=iv, real_workspace=wv, hat_diag=numeric(n)
+  )$fitted_values
   
   assert_true(length(yhat) == n)
   assert_true(all(!is.na(yhat)))
@@ -55,22 +55,23 @@ test_loess_robust_functionality <- function() {
   
   w <- rep(1.0, n)
   z <- x
-  ws <- tox_loess_required_workspace(d=1, nvmax=n, setlf=FALSE)
+  ws <- tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=FALSE)
   
   # Workspace and additional robust arrays
-  iv <- integer(ws$liv)
-  wv <- numeric(ws$lv)
+  iv <- integer(ws$int_workspace_size)
+  wv <- numeric(ws$real_workspace_size)
   rw <- numeric(n)
   ww <- numeric(n)
   res <- numeric(n)
   pi <- integer(n)
   
   yhat <- loess_fit_robust(
-    x=x, y=y, w=w, z=z, 
-    span=0.5, degree=1, nvmax=n, 
-    infl=FALSE, setlf=FALSE, n_iters=4,
-    iv=iv, wv=wv, rw=rw, ww=ww, res=res, pi=pi
-  )
+    x=x, y=y, weights=w, eval_points=matrix(z, ncol=1),
+    span=0.5, degree=1, max_neighborhood_size=n,
+    compute_influence=FALSE, save_factorization=FALSE, n_iters=4,
+    int_workspace=iv, real_workspace=wv, hat_diag=numeric(n),
+    robust_weights=rw, combined_weights=ww, residuals=res, permutation_indices=pi
+  )$fitted_values
   
   assert_true(length(yhat) == n)
   # If robustness works, the outlier at index 6 should be ignored
@@ -78,19 +79,19 @@ test_loess_robust_functionality <- function() {
   
 }
 
-# 4. Test High-level Wrapper (tox_loess)
+# 4. Test High-level Wrapper (loess)
 test_tox_loess_wrapper <- function() {
   
   n <- 30
   x <- seq(0, 2*pi, length.out = n)
   y <- sin(x)
   
-  # Test Plain mode (mode=0)
-  yhat_plain <- tox_loess(x, y, span=0.4, degree=1, mode=0)
+  # Test Plain mode (mode="plain")
+  yhat_plain <- loess(x, y, span=0.4, degree=1, mode="plain")
   assert_true(length(yhat_plain) == n)
   
   # Test Robust mode (mode=1)
-  yhat_robust <- tox_loess(x, y, span=0.4, degree=1, mode=1, n_iters=2)
+  yhat_robust <- loess(x, y, span=0.4, degree=1, mode="robust", n_iters=2)
   assert_true(length(yhat_robust) == n)
   
   # Verify that results are not identical due to re-weighting
@@ -106,7 +107,7 @@ test_invalid_inputs <- function() {
   
   error_caught <- FALSE
   tryCatch({
-    tox_loess(x, y)
+    loess(x, y)
   }, error = function(e) {
     error_caught <<- TRUE
   })

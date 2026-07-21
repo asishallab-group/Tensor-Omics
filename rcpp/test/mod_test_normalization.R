@@ -1,6 +1,9 @@
 # Load all TensorOmics helper functions
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
+# tox_diagnose_data_quality / tox_clean_data_for_normalization are pure R -- no Fortran
+# behind them -- so they live outside the generated interface
+source("rcpp/data_prep.R")
 
 test_basic_calling <- function() {
   # === Example of full normalization pipeline ===
@@ -35,10 +38,12 @@ test_basic_calling <- function() {
     df_matrix_clean <- df_matrix
   }
   # === Apply normalization steps sequentially ===
-  normalized_matrix_std <- tox_normalize_by_std_dev(df_matrix_clean)    # Normalize by standard deviation
-  normalized_matrix_qtl <- tox_quantile_normalization(normalized_matrix_std)  # Apply quantile normalization
-  normalized_matrix_log <- tox_log2_transformation(normalized_matrix_qtl)     # Log2(x+1) transformation
-  averaged_df <- tox_calculate_tissue_averages(normalized_matrix_log)         # Average replicates by tissue
+  normalized_matrix_std <- normalize_by_std_dev(df_matrix_clean)    # Normalize by standard deviation
+  # quantile_normalization returns the rank means alongside the matrix
+  normalized_matrix_qtl <- quantile_normalization(normalized_matrix_std)$normalized_expr  # Apply quantile normalization
+  normalized_matrix_log <- log2_transformation(normalized_matrix_qtl)     # Log2(x+1) transformation
+  # one replicate per row: the routine takes the counts rather than parsing row names
+  averaged_df <- calc_tiss_avg(rep(1L, nrow(normalized_matrix_log)), normalized_matrix_log)
 
   # force(df_matrix_clean)
   invisible(force(normalized_matrix_std))

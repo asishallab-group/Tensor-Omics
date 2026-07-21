@@ -1,8 +1,8 @@
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 test_k_means_clustering <- function() {
-  # tox_k_means_clustering returns valid output
+  # k_means_clustering returns valid output
   set.seed(42)
   n_clusters <- 2
   n_points <- 6
@@ -13,22 +13,19 @@ test_k_means_clustering <- function() {
   ), nrow = n_dims, ncol = n_points, byrow = TRUE)
   centroids <- matrix(c(1, 1, 8, 8), nrow = n_dims, ncol = n_clusters)
   max_iterations <- 10
-  res <- tox_k_means_clustering(
-    n_clusters = n_clusters,
+  # the extents come from the arrays themselves now
+  res <- k_means_clustering(
     data_points = data_points,
-    n_points = n_points,
-    n_dims = n_dims,
     centroids = centroids,
     max_iterations = max_iterations
   )
   assert_true(isTRUE(all.equal(dim(res$centroids), c(n_dims, n_clusters))))
   assert_true(length(res$labels) == n_points)
   assert_true(length(res$label_counts) == n_clusters)
-  assert_true(res$ierr == 0)
 
   # Example: cluster_factor_trajectories_k_means (minimal smoke test)
 
-  # tox_cluster_factor_trajectories_k_means runs without error
+  # cluster_factor_trajectories_k_means runs without error
   set.seed(1)
   n_clusters <- 2
   n_factors <- 2
@@ -39,19 +36,15 @@ test_k_means_clustering <- function() {
   ), dim = c(n_factors, n_samples, n_timepoints))
   centroids <- matrix(runif(n_factors * n_clusters), nrow = n_factors, ncol = n_clusters)
   max_iterations <- 5
-  res <- tox_cluster_factor_trajectories_k_means(
-    n_clusters = n_clusters,
-    trajectories = as.numeric(trajectories),
-    n_factors = n_factors,
-    n_samples = n_samples,
-    n_timepoints = n_timepoints,
+  # the extents come from the arrays, so the trajectories keep their shape
+  res <- cluster_factor_trajectories_k_means(
+    trajectories = trajectories,
     centroids = centroids,
     max_iterations = max_iterations
   )
   assert_true(isTRUE(all.equal(dim(res$centroids), c(n_factors, n_clusters))))
   assert_true(length(res$labels) == n_samples * n_timepoints)
   assert_true(length(res$label_counts) == n_clusters)
-  assert_true(res$ierr == 0)
 }
 
 run_all_tests()

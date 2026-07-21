@@ -2,7 +2,7 @@
 # This script generates a small synthetic dataset and runs the full pipeline,
 # including fold change calculation for multiple conditions.
 
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 test_basic_calling <- function() {
@@ -28,26 +28,30 @@ test_basic_calling <- function() {
   force(dimnames)
 
   # --- Run normalization pipeline ---
-  normalized_matrix_std <- tox_normalize_by_std_dev(mock_matrix, span = 0.75, degree = 2)
-  normalized_matrix_qtl <- tox_quantile_normalization(normalized_matrix_std)
-  normalized_matrix_log <- tox_log2_transformation(normalized_matrix_qtl)
+  normalized_matrix_std <- normalize_by_std_dev(mock_matrix, span = 0.75, degree = 2)
+  # quantile_normalization returns the rank means alongside the matrix
+  normalized_matrix_qtl <- quantile_normalization(normalized_matrix_std)$normalized_expr
+  normalized_matrix_log <- log2_transformation(normalized_matrix_qtl)
   dimnames(normalized_matrix_log) <- list(row_names, gene_ids)
-  averaged_df <- tox_calculate_tissue_averages(normalized_matrix_log)
-  # `tox_calculate_tissue_averages` returns a data.frame; downstream
-  # functions expect a numeric matrix. Convert here to avoid validation errors.
-  averaged_mat <- as.matrix(averaged_df)
-  # --- Calculate fold changes for multiple diets ---
-  fc_df <- tox_calculate_fold_changes(
-    expr = averaged_mat,
-    control_pattern = "dietM",
-    condition_patterns = c("dietP", "dietQ")
+
+  # 2 tissues x 3 diets, 2 replicates each: the routine takes the replicate counts
+  # rather than parsing them back out of the row names
+  reps_per_tissue <- rep(2L, 6L)
+  averaged_mat <- calc_tiss_avg(reps_per_tissue, normalized_matrix_log)
+
+  # --- Fold changes, control paired with condition one-to-one ---
+  # averaged tissues are brain_dietM/P/Q then muscle_dietM/P/Q, so dietM is 1 and 4
+  fc_df <- calc_fchange(
+    control_tissues = c(1L, 4L),
+    condition_tissues = c(2L, 5L),
+    expr = averaged_mat
   )
   # --- Print results ---
   invisible(force(mock_matrix))
   invisible(force(normalized_matrix_std))
   invisible(force(normalized_matrix_qtl))
   invisible(force(normalized_matrix_log))
-  invisible(force(averaged_df))
+  invisible(force(averaged_mat))
   invisible(force(fc_df))
 }
 

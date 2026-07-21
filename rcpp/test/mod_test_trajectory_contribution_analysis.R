@@ -1,7 +1,7 @@
 
 
 # Set library path and compile
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 
@@ -9,7 +9,7 @@ source("rcpp/test_helpers.R")
 TOL <- 1e-12
 
 # =====================================================
-# Test: tox_compute_baselines_factor_dependent
+# Test: compute_baselines_factor_dependent
 # =====================================================
 
 test_compute_baselines_factor_dependent <- function() {
@@ -17,31 +17,31 @@ test_compute_baselines_factor_dependent <- function() {
   factor <- c(1.0, 3.0, 2.0, 4.0)
   dependent <- c(5.0, 7.0, 6.0, 8.0)
   
-  # RAW mode => zero baselines
-  res_raw <- tox_compute_baselines_factor_dependent(factor, dependent, mode = "raw")
+  # RAW baseline_mode = > zero baselines
+  res_raw <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "raw")
   assert_true(abs(res_raw$factor_baseline - 0.0) < TOL)
   assert_true(abs(res_raw$dependent_baseline - 0.0) < TOL)
   
-  # MIN mode => min values
-  res_min <- tox_compute_baselines_factor_dependent(factor, dependent, mode = "min")
+  # MIN baseline_mode = > min values
+  res_min <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "min")
   assert_true(abs(res_min$factor_baseline - min(factor)) < TOL)
   assert_true(abs(res_min$dependent_baseline - min(dependent)) < TOL)
   
-  # MEAN mode => arithmetic mean
-  res_mean <- tox_compute_baselines_factor_dependent(factor, dependent, mode = "mean")
+  # MEAN baseline_mode = > arithmetic mean
+  res_mean <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "mean")
   assert_true(abs(res_mean$factor_baseline - mean(factor)) < TOL)
   assert_true(abs(res_mean$dependent_baseline - mean(dependent)) < TOL)
   
   # Mismatched lengths should raise error
-  assert_error(tox_compute_baselines_factor_dependent(factor, dependent[-length(dependent)], mode = "raw"), "Should have raised error for mismatched lengths")
+  assert_error(compute_baselines_factor_dependent(factor, dependent[-length(dependent)], baseline_mode = "raw"), "Should have raised error for mismatched lengths")
   
   # Invalid mode should raise error
-  assert_error(tox_compute_baselines_factor_dependent(factor, dependent, mode = "unknown_mode"), "Should have raised error for invalid mode")
+  assert_error(compute_baselines_factor_dependent(factor, dependent, baseline_mode = "unknown_mode"), "Should have raised error for invalid mode")
   
 }
 
 # =====================================================
-# Test: tox_compute_contributions
+# Test: compute_contributions
 # =====================================================
 
 test_compute_contributions <- function() {
@@ -49,7 +49,7 @@ test_compute_contributions <- function() {
   # Case 1: RAW baseline
   factor <- c(1.0, 2.0, 3.0, 4.0)
   dependent <- c(2.0, 1.0, 0.0, -1.0)
-  result <- tox_compute_contributions(factor, dependent, mode = "raw")
+  result <- compute_contributions(factor, dependent, baseline_mode = "raw")
   
   expected_local <- factor * dependent
   expected_total <- sum(expected_local)
@@ -59,7 +59,7 @@ test_compute_contributions <- function() {
   # Case 2: MIN baseline
   factor <- c(3.0, 5.0, 2.0, 4.0)
   dependent <- c(1.0, 2.0, 0.0, -1.0)
-  result <- tox_compute_contributions(factor, dependent, mode = "min")
+  result <- compute_contributions(factor, dependent, baseline_mode = "min")
   
   expected_local <- (factor - min(factor)) * (dependent - min(dependent))
   expected_total <- sum(expected_local)
@@ -69,7 +69,7 @@ test_compute_contributions <- function() {
   # Case 3: MEAN baseline
   factor <- c(1.0, 2.0, 3.0, 4.0)
   dependent <- c(4.0, 3.0, 2.0, 1.0)
-  result <- tox_compute_contributions(factor, dependent, mode = "mean")
+  result <- compute_contributions(factor, dependent, baseline_mode = "mean")
   
   expected_local <- (factor - mean(factor)) * (dependent - mean(dependent))
   expected_total <- sum(expected_local)
@@ -79,7 +79,7 @@ test_compute_contributions <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_all_contributions
+# Test: compute_all_contributions
 # =====================================================
 
 test_compute_all_contributions <- function() {
@@ -89,7 +89,7 @@ test_compute_all_contributions <- function() {
   factor_indices <- c(1L)
   dependent_indices <- c(2L)
   
-  result <- tox_compute_all_contributions(trajectories, factor_indices, dependent_indices, mode = "mean")
+  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "mean")
   expected_local <- c(1.0, 0.0, 1.0)
   expected_total <- 2.0
   # Update indexing to match actual shape
@@ -109,7 +109,7 @@ test_compute_all_contributions <- function() {
   
   # Case 2: MIN baseline
   trajectories <- array(c(2.0, 5.0, 4.0, 3.0, 6.0, 5.0), dim = c(2L, 1L, 3L))  # 3D array
-  result <- tox_compute_all_contributions(trajectories, factor_indices, dependent_indices, mode = "min")
+  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "min")
   expected_local <- c(0.0, 0.0, 8.0)
   expected_total <- 8.0
   assert_true(all(abs(result$local_contributions[,1,1,1] - expected_local) < TOL))
@@ -118,7 +118,7 @@ test_compute_all_contributions <- function() {
 }
 
 # =====================================================
-# Test: tox_perform_permutation_test
+# Test: perform_permutation_test
 # =====================================================
 
 test_perform_permutation_test <- function() {
@@ -141,9 +141,9 @@ test_perform_permutation_test <- function() {
   mode <- "mean"  # MEAN baseline
   random_seed <- 12345L
   trajectories <- array(trajectories, dim = dims)
-  result <- tox_perform_permutation_test(
+  result <- perform_permutation_test(
     trajectories, factor_idx, dependent_idx, sample_idx,
-    mode = mode, 
+    baseline_mode = mode, 
     n_permutations = n_permutations, 
     random_seed = random_seed
   )
@@ -155,7 +155,7 @@ test_perform_permutation_test <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_p_values
+# Test: compute_p_values
 # =====================================================
 
 test_compute_p_values <- function() {
@@ -172,7 +172,7 @@ test_compute_p_values <- function() {
   ), nrow = n_timepoints, ncol = n_permutations, byrow = FALSE)
   total_perm <- c(2.0, 4.0, 7.0, 0.0)
   dims <- c(n_timepoints, n_permutations)
-  result <- tox_compute_p_values(local_obs, total_obs, local_perm, total_perm)
+  result <- compute_p_values(local_obs, total_obs, local_perm, total_perm)
   local_p <- result$local_p_values
   total_p <- result$total_p_value
   expected_local <- c(0.5, 1.0, 0.5)
@@ -181,16 +181,16 @@ test_compute_p_values <- function() {
   assert_true(abs(total_p - expected_total) < TOL)
   # Case 2: NaN in observed contributions
   local_obs_nan <- c(2.0, 0.0, NaN)
-  assert_error(tox_compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Should have raised error for NaN input")
+  assert_error(compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Should have raised error for NaN input")
   # Case 3: Inf in permutation contributions
   local_perm_inf <- local_perm
   local_perm_inf[3, 4] <- Inf
-  assert_error(tox_compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Should have raised error for Inf input")
+  assert_error(compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Should have raised error for Inf input")
 }
 
 
 # =====================================================
-# Test: tox_compute_velocity_trajectories
+# Test: compute_velocity_trajectories
 # =====================================================
 test_compute_velocity_trajectories <- function() {
 
@@ -205,7 +205,7 @@ test_compute_velocity_trajectories <- function() {
   trajectories[1, 2, ] <- c(0.0, -1.0, -1.0, 0.0)
 
 
-  velocity <- tox_compute_velocity_trajectories(trajectories)
+  velocity <- compute_velocity_trajectories(trajectories)
 
   # Expected output shape:
   # (n_timepoints-1, n_factors, n_samples) = (3, 1, 2)
@@ -224,7 +224,7 @@ test_compute_velocity_trajectories <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_acceleration_from_velocity
+# Test: compute_acceleration_from_velocity
 # =====================================================
 test_compute_acceleration_from_velocity <- function() {
 
@@ -239,7 +239,7 @@ test_compute_acceleration_from_velocity <- function() {
   velocity[, 1, 2] <- c(-1.0, 0.0, 1.0)
 
 
-  acceleration <- tox_compute_acceleration_from_velocity(velocity)
+  acceleration <- compute_acceleration_from_velocity(velocity, dim(velocity)[1] + 1L)
 
   # Since n_timepoints = n_vel + 1 = 4,
   # expected output shape = (n_timepoints-2, n_factors, n_samples) = (2, 1, 2)
@@ -258,12 +258,12 @@ test_compute_acceleration_from_velocity <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_velocity_trajectory
+# Test: compute_velocity_trajectory
 # =====================================================
 test_compute_velocity_trajectory <- function() {
 
   trajectory <- c(1.0, 2.0, 4.0, 7.0)
-  velocity <- tox_compute_velocity_trajectory(trajectory)
+  velocity <- compute_velocity_trajectory(trajectory)
 
   # Expected raw output length = n_timepoints - 1 = 3
   expected_velocity <- c(1.0, 2.0, 3.0)
@@ -275,12 +275,12 @@ test_compute_velocity_trajectory <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_acceleration_from_velocity_trajectory
+# Test: compute_acceleration_from_velocity_trajectory
 # =====================================================
 test_compute_acceleration_from_velocity_trajectory <- function() {
 
   velocity <- c(1.0, 2.0, 3.0)
-  acceleration <- tox_compute_acceleration_from_velocity_trajectory(velocity)
+  acceleration <- compute_acceleration_from_velocity_trajectory(velocity, length(velocity) + 1L)
 
   # Expected raw output length = n_timepoints - 2 = 2
   # Since original trajectory length would be 4
@@ -292,7 +292,7 @@ test_compute_acceleration_from_velocity_trajectory <- function() {
 
 }
 # =====================================================
-# Test: tox_compute_velocity_acceleration_contributions
+# Test: compute_velocity_acceleration_contributions_expert
 # =====================================================
 test_compute_velocity_acceleration_contributions <- function() {
 
@@ -312,7 +312,7 @@ test_compute_velocity_acceleration_contributions <- function() {
   assert_true(all(is.finite(trajectories)))
   # Ensure Fortran order (column-major)
   trajectories <- aperm(trajectories, c(1,2,3))
-  result <- tox_compute_velocity_acceleration_contributions(trajectories, mode = mode)
+  result <- compute_velocity_acceleration_contributions_expert(trajectories, baseline_mode = mode)
 
   contrib_velocity <- result$contrib_velocity
   velocity_contribution_series <- result$velocity_contribution_series
@@ -363,7 +363,7 @@ test_compute_velocity_acceleration_contributions <- function() {
 }
 
 # =====================================================
-# Test: tox_compute_velocity_acceleration_contributions_alloc
+# Test: compute_velocity_acceleration_contributions
 # =====================================================
 test_compute_velocity_acceleration_contributions_alloc <- function() {
 
@@ -379,7 +379,7 @@ test_compute_velocity_acceleration_contributions_alloc <- function() {
   mode <- "raw"
 
 
-  result <- tox_compute_velocity_acceleration_contributions_alloc(trajectories, mode = mode)
+  result <- compute_velocity_acceleration_contributions(trajectories, baseline_mode = mode)
 
   contrib_velocity <- result$contrib_velocity
   velocity_contribution_series <- result$velocity_contribution_series

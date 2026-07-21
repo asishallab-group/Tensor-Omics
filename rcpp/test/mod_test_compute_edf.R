@@ -1,6 +1,6 @@
 
 # Set library path and compile
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 
@@ -10,7 +10,7 @@ TOL <- 1e-12
 test_compute_edf_simple <- function() {
   x <- c(1, 2, 2, 3, 3, 3)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -25,7 +25,7 @@ test_compute_edf_simple <- function() {
 test_compute_edf_all_unique <- function() {
   x <- c(1, 2, 3, 4, 5)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   unique_vals <- result$unique_values
   cdf_vals <- result$cdf_values
   n_unique <- length(unique_vals)
@@ -40,7 +40,7 @@ test_compute_edf_all_unique <- function() {
 test_compute_edf_all_same <- function() {
   x <- c(5, 5, 5, 5)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -54,7 +54,7 @@ test_compute_edf_all_same <- function() {
 test_compute_edf_duplicates <- function() {
   x <- c(1, 1, 2, 3, 3, 3, 4)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -72,7 +72,7 @@ test_compute_edf_duplicates <- function() {
 test_compute_edf_single_value <- function() {
   x <- c(42)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -85,14 +85,14 @@ test_compute_edf_single_value <- function() {
 test_compute_edf_empty_input <- function() {
   x <- numeric(0)
   perm <- integer(0)
-  assert_error(tox_compute_edf(x, perm), "Should have raised error for empty input")
+  assert_error(compute_edf_expert(x, perm), "Should have raised error for empty input")
 }
 
 # Test 7: Large Dataset
 test_compute_edf_large_dataset <- function() {
   x <- c(rep(1, 250), rep(2, 250), rep(3, 250), rep(4, 250))
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -107,7 +107,7 @@ test_compute_edf_large_dataset <- function() {
 test_compute_edf_negative_values <- function() {
   x <- c(-3, -1, 0, 1, 3)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -122,7 +122,7 @@ test_compute_edf_negative_values <- function() {
 test_compute_edf_unsorted_input <- function() {
   x <- c(3, 1, 4, 1, 5, 9, 2, 6)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -137,7 +137,7 @@ test_compute_edf_unsorted_input <- function() {
 test_compute_edf_list_input <- function() {
   x <- c(1, 2, 2, 3)
   perm <- order(x)
-  result <- tox_compute_edf(x, perm)
+  result <- compute_edf_expert(x, perm)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
@@ -151,7 +151,7 @@ test_compute_edf_list_input <- function() {
 # Test 11: Default path without perm
 test_compute_edf_default_no_perm <- function() {
   x <- c(3, 1, 2, 2, 3, 3)
-  result <- tox_compute_edf(x)
+  result <- compute_edf(x)
   n_unique <- result$n_unique
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]

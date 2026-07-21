@@ -1,5 +1,5 @@
 # test_tox_jensen_shannon_test.R
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 # Test 1: Basic compute_gene_means
@@ -12,7 +12,7 @@ test_compute_gene_means_basic <- function() {
     14, 24, 34, 44
   ), nrow = 3, ncol = 4, byrow = TRUE)
   
-  result <- tox_compute_gene_means(expr)
+  result <- compute_gene_means(expr)
   
   # Verify calculations
   expected <- c(12, 22, 32, 42)  # (10+12+14)/3 = 12, etc.
@@ -29,7 +29,7 @@ test_compute_gene_means_with_na <- function() {
     14,  24,  34,  NA
   ), nrow = 3, ncol = 4, byrow = TRUE)
   
-  result <- tox_compute_gene_means(expr)
+  result <- compute_gene_means(expr)
   
   # Verify calculations (skip NA values)
   # Gene 1: (10+12+14)/3 = 12
@@ -51,7 +51,7 @@ test_compute_residuals_basic <- function() {
   ), nrow = 3, ncol = 3, byrow = TRUE)
   
   means <- c(12, 22, 32)  # Known means
-  result <- tox_compute_residuals(expr, means)
+  result <- compute_residuals(expr, means)
   
   # Verify calculations: residuals = expr - means
   expected <- matrix(c(
@@ -71,7 +71,7 @@ test_pool_means_basic <- function() {
   mean_S2 <- c(20, 22, NA, 26, 28)
   n_points <- 3
   
-  result <- tox_pool_means(mean_S1, mean_S2, n_points)
+  result <- pool_means(mean_S1, mean_S2, n_points)
   
   # Verify
   # Non-NA values: 10,12,14,18 from S1 and 20,22,26,28 from S2 = 8 total
@@ -96,7 +96,9 @@ test_construct_neighborhoods_basic <- function() {
   
   n_pool <- 10  # Arbitrary value for test
   
-  result <- tox_construct_neighborhoods(x_star, n_pool, mean_S, resid_S, n_pool)
+  # the routine takes the actual neighbour count now, not a desired size
+  n_neighbors <- calc_neighborhood_size(n_pool, length(x_star), mean_S, n_pool)
+  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors)
   force(result)
 }
 
@@ -107,13 +109,13 @@ test_error_handling <- function() {
   expr <- matrix(1:6, nrow = 2, ncol = 3)
   means_wrong <- c(1, 2)  # Wrong length
   
-  assert_error(tox_compute_residuals(expr, means_wrong), "Test failed - should have caught dimension mismatch")
+  assert_error(compute_residuals(expr, means_wrong), "Test failed - should have caught dimension mismatch")
   
   # Test with invalid n_points
   mean_S1 <- c(1, 2, 3)
   mean_S2 <- c(4, 5, 6)
   
-  assert_error(tox_pool_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points")
+  assert_error(pool_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points")
   
 }
 
@@ -131,7 +133,8 @@ test_construct_neighborhoods_explicit <- function() {
   explicit_size <- 5
   
   # Test with explicit size
-  result <- tox_construct_neighborhoods(x_star, n_pool, mean_S, resid_S, explicit_size)
+  n_neighbors <- calc_neighborhood_size(n_pool, n_points, mean_S, explicit_size)
+  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors)
   
   assert_true(dim(result$neighborhood_residuals)[2] == explicit_size)  # Should use the explicit size
   

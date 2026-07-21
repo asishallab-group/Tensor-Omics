@@ -1,6 +1,6 @@
 
 # Set library path and compile
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 # Test 1: Simple 3D vectors
@@ -8,7 +8,7 @@ test_euclidean_distance_3d <- function() {
   vec1 <- c(1.0, 2.0, 3.0)
   vec2 <- c(4.0, 5.0, 6.0)
   
-  result <- tox_euclidean_distance(vec1, vec2)$euclidean_distance
+  result <- euclidean_distance(vec1, vec2)
   expected <- sqrt(sum((vec1 - vec2)^2))
   
   
@@ -22,7 +22,7 @@ test_euclidean_distance_to_origin <- function() {
   vec1 <- c(3.0, 4.0)
   vec2 <- c(0.0, 0.0)
   
-  result <- tox_euclidean_distance(vec1, vec2)$euclidean_distance
+  result <- euclidean_distance(vec1, vec2)
   expected <- 5.0
   
   
@@ -36,7 +36,7 @@ test_euclidean_distance_identical <- function() {
   vec1 <- c(1.5, 2.7, 3.9)
   vec2 <- vec1  # identical
   
-  result <- tox_euclidean_distance(vec1, vec2)$euclidean_distance
+  result <- euclidean_distance(vec1, vec2)
   expected <- 0.0
   
   
@@ -52,7 +52,7 @@ test_euclidean_distance_high_dimensional <- function() {
   vec1 <- 1:d  # [1, 2, 3, ..., 100]
   vec2 <- 2:(d+1)  # [2, 3, 4, ..., 101] (shift by 1)
   
-  result <- tox_euclidean_distance(vec1, vec2)$euclidean_distance
+  result <- euclidean_distance(vec1, vec2)
   expected <- sqrt(d)  # sqrt(100 * 1^2) = 10
   
   
@@ -64,13 +64,13 @@ test_euclidean_distance_high_dimensional <- function() {
 # Test 5: Invalid inputs (should throw errors)
 test_euclidean_distance_invalid_inputs <- function() {
   # Test different lengths
-  assert_error(tox_euclidean_distance(c(1, 2), c(1, 2, 3)), "case: same length")
+  assert_error(euclidean_distance(c(1, 2), c(1, 2, 3)), "case: same length")
   
   # Test empty vectors
-  assert_error(tox_euclidean_distance(numeric(0), numeric(0)), "case: cannot be empty")
+  assert_error(euclidean_distance(numeric(0), numeric(0)), "case: cannot be empty")
   
   # Test non-numeric input
-  assert_error(tox_euclidean_distance(c("a", "b"), c(1, 2)), "case: must be numeric")
+  assert_error(euclidean_distance(c("a", "b"), c(1, 2)), "case: must be numeric")
 }
 
 # =====================
@@ -99,7 +99,7 @@ test_distance_to_centroid_basic <- function() {
   # Gene-to-family mapping (1-based)
   gene_to_fam <- c(1L, 1L, 2L, 2L)
   
-  result <- tox_distance_to_centroid(genes, centroids, gene_to_fam)$distance
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   # Expected distances
   # Gene 1: [1,0,0] vs [0.5,0.5,0] = sqrt(0.5^2 + 0.5^2) ≈ 0.707
@@ -130,7 +130,7 @@ test_distance_to_centroid_invalid_families <- function() {
   # Mixed family assignments: valid (1), invalid (3), no family (0)
   gene_to_fam <- c(1L, 0L, 0L)  # family 0 = no assignment
   
-  result <- tox_distance_to_centroid(genes, centroids, gene_to_fam)$distance
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   
   # Verify handling of invalid indices
@@ -156,7 +156,7 @@ test_distance_to_centroid_performance <- function() {
   # Time the operation
   start_time <- Sys.time()
   
-  result <- tox_distance_to_centroid(genes, centroids, gene_to_fam)$distance
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   end_time <- Sys.time()
   elapsed <- as.numeric(end_time - start_time, units = "secs")
@@ -173,10 +173,10 @@ test_distance_to_centroid_performance <- function() {
 # Test 9: Input validation for distance_to_centroid
 test_distance_to_centroid_input_validation <- function() {
   # Test gene_to_fam length mismatch
-  assert_error(tox_distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, 2, 3)), "wrong gene_to_fam length")
+  assert_error(distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, 2, 3)), "wrong gene_to_fam length")
   
   # Test negative family indices (should throw error)
-  assert_error(tox_distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, -1)), "negative family index")
+  assert_error(distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, -1)), "negative family index")
 }
 
 # Test 10: Single-dimensional vectors
@@ -184,7 +184,7 @@ test_euclidean_distance_1d <- function() {
   vec1 <- c(5.0)
   vec2 <- c(2.0)
   
-  result <- tox_euclidean_distance(vec1, vec2)$euclidean_distance
+  result <- euclidean_distance(vec1, vec2)
   expected <- 3.0
   
   

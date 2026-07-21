@@ -1,4 +1,4 @@
-source("rcpp/tensoromics_functions.R")
+source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
 TOL <- 1e-12
@@ -22,22 +22,22 @@ test_determine_shared_residual_range <- function() {
     9,0,1,2
   ), dim = c(3, 2, 2))
 
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- determine_shared_residual_range(S1, S2, 95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed: expected ~10.65")
 
   # Test 2 — Custom quantile
-  R <- tox_determine_shared_residual_range(S1, S2, 50)
+  R <- determine_shared_residual_range(S1, S2, 50)
   assert_true(approx_equal(R, 4.0), "Test 2 failed: expected ~4.0")
 
   # Test 3 — Quantile < 0 → error
   assert_error(
-    tox_determine_shared_residual_range(S1, S2, -1),
+    determine_shared_residual_range(S1, S2, -1),
     "Test 3 failed: expected error for negative quantile"
   )
 
   # Test 4 — Quantile > 100 → error
   assert_error(
-    tox_determine_shared_residual_range(S1, S2, 150),
+    determine_shared_residual_range(S1, S2, 150),
     "Test 4 failed: expected error for quantile > 100"
   )
 
@@ -56,19 +56,19 @@ test_determine_shared_residual_range <- function() {
     9,10,NA_real_
   ), dim = c(3,2,2))
 
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- determine_shared_residual_range(S1, S2, 95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed: expected ~11.0")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- determine_shared_residual_range(S1, S2, 95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed: expected 0")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- determine_shared_residual_range(S1, S2, 95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed: expected ~3.95")
 }
 
@@ -98,22 +98,22 @@ test_determine_shared_residual_range_expert <- function() {
   pp <- make_pool(S1, S2)
 
   # Test 1
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed")
 
   # Test 2
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 50)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 50)
   assert_true(approx_equal(R, 4.0), "Test 2 failed")
 
   # Test 3
   assert_error(
-    tox_determine_shared_residual_range_expert(pp$pool, pp$perm, -1),
+    determine_shared_residual_range_expert(pp$pool, pp$perm, -1),
     "Test 3 failed"
   )
 
   # Test 4
   assert_error(
-    tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 150),
+    determine_shared_residual_range_expert(pp$pool, pp$perm, 150),
     "Test 4 failed"
   )
 
@@ -133,21 +133,21 @@ test_determine_shared_residual_range_expert <- function() {
   ), dim = c(3,2,2))
 
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed")
 }
 
@@ -171,7 +171,7 @@ test_tox_build_residual_histograms <- function() {
 
     neighbor_mask <- array(FALSE, dim = c(n_neighbors, n_points))
 
-    out <- tox_build_residual_histograms_filtered(
+    out <- build_residual_histograms(
         E, Rval, n_bins, neighbor_mask = neighbor_mask
     )
 
@@ -184,13 +184,13 @@ test_tox_build_residual_histograms <- function() {
     assert_true(all(included == 0), "All included should be zero")
 
     filtered <- function(E, Rval, n_bins) {
-        tox_build_residual_histograms_filtered(
+        build_residual_histograms(
             E, Rval, n_bins,
             neighbor_mask = matrix(TRUE, nrow = dim(E)[3], ncol=dim(E)[2], byrow=TRUE)
         )
     }
 
-    for (func in list(tox_build_residual_histograms, filtered)) {
+    for (func in list(build_residual_histograms, filtered)) {
 
         E <- array(0, dim = c(n_reps, n_neighbors, n_points))
         E[,1,1] <- c(-2.0, -0.5, 0.2)
@@ -304,7 +304,7 @@ test_compute_divergence_per_reference_point <- function() {
 
   q <- p
 
-  jsd <- tox_compute_divergence_per_reference_point(p, q)
+  jsd <- compute_divergence_per_reference_point(p, q)
   assert_true(all(abs(jsd) < TOL), "Test 1 failed")
 
   # Test 2 — disjoint PMFs
@@ -313,7 +313,7 @@ test_compute_divergence_per_reference_point <- function() {
   p[1,1] <- 1
   q[1,2] <- 1
 
-  jsd <- tox_compute_divergence_per_reference_point(p, q)
+  jsd <- compute_divergence_per_reference_point(p, q)
   assert_true(approx_equal(jsd[1], log(2)), "Test 2 failed")
   assert_true(jsd[2] == 0, "Test 2 row 2 failed")
   assert_true(jsd[3] == 0, "Test 2 row 3 failed")
@@ -324,7 +324,7 @@ test_compute_divergence_per_reference_point <- function() {
   p[1,] <- c(0.5,0.5,0,0)
   q[1,] <- c(0,1,0,0)
 
-  jsd <- tox_compute_divergence_per_reference_point(p, q)
+  jsd <- compute_divergence_per_reference_point(p, q)
 
   expected <- 0.5 * (
     0.5 * log(2) +
@@ -340,7 +340,7 @@ test_compute_divergence_per_reference_point <- function() {
   p[1,1] <- 1
   q[1,3] <- 1
 
-  jsd <- tox_compute_divergence_per_reference_point(p, q)
+  jsd <- compute_divergence_per_reference_point(p, q)
   assert_true(approx_equal(jsd[1], log(2)), "Test 4 failed")
 
   # Test 5 — mixed patterns
@@ -366,7 +366,7 @@ test_compute_divergence_per_reference_point <- function() {
     ncol = 4
   )
 
-  jsd <- tox_compute_divergence_per_reference_point(p, q)
+  jsd <- compute_divergence_per_reference_point(p, q)
 
   assert_true(approx_equal(jsd[2], 0.5 * log(2)), "Test 5 row 2 failed")
   assert_true(approx_equal(jsd[3], 0.5 * log(2)), "Test 5 row 3 failed")
@@ -380,7 +380,7 @@ test_compute_weighted_global_divergence <- function() {
   jsd <- c(0.1,0.2,0.3,0.4)
   n1 <- c(5L,5L,5L,5L)
   n2 <- c(5L,5L,5L,5L)
-  out <- tox_compute_weighted_global_divergence(jsd, n1, n2)
+  out <- compute_weighted_global_divergence(jsd, n1, n2)
 
   assert_true(all(out$weights == 0.25), "Test 1 weights mismatch")
   assert_true(approx_equal(out$global_js_divergence, 0.25), "Test 1 global JSD mismatch")
@@ -390,7 +390,7 @@ test_compute_weighted_global_divergence <- function() {
   n1 <- c(10L,20L,30L,40L)
   n2 <- c(0L,10L,10L,10L)
 
-  out <- tox_compute_weighted_global_divergence(jsd, n1, n2)
+  out <- compute_weighted_global_divergence(jsd, n1, n2)
 
   expected_w <- c(10,30,40,50) / 130
   assert_true(all(abs(out$weights - expected_w) < TOL), "Test 2 weights mismatch")
@@ -403,7 +403,7 @@ test_compute_weighted_global_divergence <- function() {
   n1 <- c(0L,10L,0L,5L)
   n2 <- c(0L,0L,0L,5L)
 
-  out <- tox_compute_weighted_global_divergence(jsd, n1, n2)
+  out <- compute_weighted_global_divergence(jsd, n1, n2)
 
   expected_w <- c(0,0.5,0,0.5)
   assert_true(all(abs(out$weights - expected_w) < TOL), "Test 3 weights mismatch")
@@ -414,7 +414,7 @@ test_compute_weighted_global_divergence <- function() {
   n1 <- c(0L,0L,0L,0L)
   n2 <- c(0L,0L,0L,0L)
 
-  out <- tox_compute_weighted_global_divergence(jsd, n1, n2)
+  out <- compute_weighted_global_divergence(jsd, n1, n2)
 
   assert_true(all(out$weights == 0), "Test 4 weights mismatch")
   assert_true(out$global_js_divergence == 0, "Test 4 global JSD mismatch")
@@ -424,7 +424,7 @@ test_compute_weighted_global_divergence <- function() {
   n1  <- c(5L, 0L, 10L, 5L)
   n2  <- c(5L, 5L,  0L, 5L)
 
-  out <- tox_compute_weighted_global_divergence(jsd, n1, n2)
+  out <- compute_weighted_global_divergence(jsd, n1, n2)
 
   expected_w <- c(10, 5, 10, 10) / 35
   assert_true(all(abs(out$weights - expected_w) < TOL),
@@ -461,7 +461,7 @@ test_gjct_permutation_test <- function() {
   S2_arr <- array(S2_vec, dim = c(n_reps_S2, n_neighbors, n_points))
 
   # Case A: all null >= observed → p = 1
-  res_p1 <- tox_gjct_permutation_test_filtered(
+  res_p1 <- gjct_permutation_test(
     S1_arr, S2_arr,
     global_jsd_observed = huge,
     n_bins = n_bins,
@@ -474,7 +474,7 @@ test_gjct_permutation_test <- function() {
 
   assert_true(abs(res_p1$p_value - 1/3) < 1e-12, "Test 3A: p-value should be 1 when for huge observed JSD and without included residuals")
   filtered <- function(S1_arr, S2_arr, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed) {
-      tox_gjct_permutation_test_filtered(
+      gjct_permutation_test(
           S1_arr,
           S2_arr,
           global_jsd_observed=global_jsd_observed,
@@ -487,7 +487,7 @@ test_gjct_permutation_test <- function() {
       )
   }
 
-  for (func in list(tox_gjct_permutation_test, filtered)) {
+  for (func in list(gjct_permutation_test, filtered)) {
 
     # Base vector (same as Fortran)
     S_12 <- c(
@@ -513,7 +513,6 @@ test_gjct_permutation_test <- function() {
       n_permutations = n_permutations,
       random_seed = random_seed
     )
-    check_err_code(res_p1$ierr)
 
     assert_true(abs(res_p1$p_value - 1.0) < 1e-12,
                "Test 3A: p-value should be 1 when observed JSD = 0")
