@@ -213,6 +213,17 @@ class RWrapperEmitter:
         name = f'"{argument.name}"'
         value = argument.name
 
+        if argument.shape_arg is not None:
+            # its shape is read off it after this, so the coercion must not drop it
+            base = {
+                BaseType.INTEGER: "integer",
+                BaseType.REAL: "double",
+                BaseType.COMPLEX: "complex",
+                BaseType.LOGICAL: "logical",
+                BaseType.CHARACTER: "character",
+            }[argument.type.base]
+            return f".tox_as_{base}_shaped({value}, {name})"
+
         if argument.conversion is Conversion.MODE:
             choices = ", ".join(f'"{v.string}"' for v in argument.mode.values)
             return f".tox_as_mode({value}, {name}, c({choices}))"
@@ -390,6 +401,43 @@ _VALIDATORS = r'''# Generated. Do not edit.
   if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
     .tox_type_error(name, sprintf("a numeric array of rank %d", ndim), x)
   storage.mode(x) <- "double"
+  x
+}
+
+# An array whose shape travels in a separate argument keeps that shape through
+# coercion: as.integer() and friends drop the dim attribute, and the shape is read off
+# the array after this point. storage.mode() converts in place instead.
+.tox_as_double_shaped <- function(x, name) {
+  if (!is.numeric(x)) .tox_type_error(name, "a numeric array", x)
+  storage.mode(x) <- "double"
+  x
+}
+
+.tox_as_integer_shaped <- function(x, name) {
+  if (!is.numeric(x)) .tox_type_error(name, "an integer array", x)
+  storage.mode(x) <- "integer"
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_complex_shaped <- function(x, name) {
+  if (!is.numeric(x) && !is.complex(x)) .tox_type_error(name, "a complex array", x)
+  storage.mode(x) <- "complex"
+  x
+}
+
+.tox_as_logical_shaped <- function(x, name) {
+  if (!is.logical(x) && !is.numeric(x)) .tox_type_error(name, "a logical array", x)
+  dims <- dim(x)
+  x <- as.logical(x)
+  if (anyNA(x)) .tox_na_error(name)
+  dim(x) <- dims
+  x
+}
+
+.tox_as_character_shaped <- function(x, name) {
+  if (!is.character(x)) .tox_type_error(name, "a character array", x)
+  if (anyNA(x)) .tox_na_error(name)
   x
 }
 
