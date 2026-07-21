@@ -290,11 +290,11 @@ contains
         if (mode == 0) then
             ! If you have a plain routine, call it; otherwise keep robust always.
             call loess_fit_plain( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat(1:n_valid, 1:1), &
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
                 span, degree, n_valid, .false., .false., tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), tmp_yhat(1:n_valid), ierr)
         else
             call loess_fit_robust( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat(1:n_valid, 1:1), &
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
                 span, degree, n_valid, .false., .false., n_iters, tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), &
                 tmp_rw(1:n_valid), tmp_ww(1:n_valid), tmp_res(1:n_valid), tmp_pi(1:n_valid), tmp_yhat(1:n_valid), ierr)
         end if
@@ -320,7 +320,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call loess_evaluation(tmp_iv, liv, lv, tmp_wv, n_families, tmp_z_mat(1:n_families, 1:1), tmp_yhat(1:n_families))
+        call loess_evaluation(tmp_iv, liv, lv, tmp_wv, n_families, tmp_z_mat, tmp_yhat(1:n_families))
 
         if (is_err(ierr)) return
 
