@@ -645,8 +645,17 @@ public:
     }
     bool* data() { return buf_.get(); }
     Rcpp::LogicalVector to_r() const {
+        // R stores a logical as an int that is exactly 0 or 1, and compares them with
+        // identical(). Fortran's logical(c_bool) only promises "non-zero is true": ifx
+        // writes 0xFF, which widens to 255 and prints as TRUE while comparing unequal to
+        // TRUE. Test the byte rather than widening it.
+        // and read the byte as unsigned char, not as bool: a C++ bool holding anything
+        // other than 0 or 1 is undefined behaviour, so the compiler is entitled to fold
+        // `buf_[i] ? TRUE : FALSE` down to a plain widening -- which is exactly what it
+        // does, leaving the 255 in place.
+        const unsigned char* raw = reinterpret_cast<const unsigned char*>(buf_.get());
         Rcpp::LogicalVector out(n_);
-        for (std::size_t i = 0; i < n_; ++i) out[i] = buf_[i];
+        for (std::size_t i = 0; i < n_; ++i) out[i] = raw[i] != 0 ? TRUE : FALSE;
         return out;
     }
 };
