@@ -357,7 +357,8 @@ contains
             !! | Plain LOESS fitting  | [[tox_loess(module):MODE_PLAIN(variable)]]  |
             !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
         integer(c_int), intent(in), target :: n_iters
-            !! Number of robust iterations (only used when mode = 1)
+            !! Number of robust iterations, ignored in [[tox_loess(module):MODE_PLAIN(variable)]].
+            !! The default value is `3_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: mode_mode_f

@@ -14,7 +14,11 @@ module tox_loess
 
 #define CM_MODE_PLAIN 0_int32
 #define CM_MODE_ROBUST 1_int32
+#define CM_DEFAULT_LOESS_ITERS 3_int32
 
+    integer(int32), parameter, public :: DEFAULT_LOESS_ITERS = CM_DEFAULT_LOESS_ITERS
+        !! Robust iterations used when the caller does not say, matching the count
+        !! [[tox_get_outliers(module)]] and [[tox_normalization(module)]] use
     integer(int32), parameter, public :: MODE_PLAIN = CM_MODE_PLAIN
         !! Mode code for plain LOESS fitting in [[tox_loess(module):loess_alloc(subroutine)]]
     integer(int32), parameter, public :: MODE_ROBUST = CM_MODE_ROBUST
@@ -439,8 +443,9 @@ contains
             !! |------|-------|
             !! | Plain LOESS fitting | [[tox_loess(module):MODE_PLAIN(variable)]] |
             !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
-        integer(int32), intent(in) :: n_iters
-            !! Number of robust iterations (only used when mode = 1)
+        integer(int32), intent(in), optional :: n_iters
+            !! Number of robust iterations, ignored in [[tox_loess(module):MODE_PLAIN(variable)]].
+            !! DM_DEFAULT(CM_DEFAULT_LOESS_ITERS)
 
         ! Output parameters
         real(real64), intent(out) :: fitted_values(size(y))
@@ -458,11 +463,18 @@ contains
         logical :: found
         integer(int32) :: i, j
         real(real64) :: tol
+        integer(int32) :: actual_n_iters
 
         ! Initialize variables
         n = size(y)
         call set_ok(ierr)
         call set_ok(istat)
+
+        if (present(n_iters)) then
+            actual_n_iters = n_iters
+        else
+            actual_n_iters = CM_DEFAULT_LOESS_ITERS
+        end if
 
         if (size(x) /= size(y)) then
             call set_err(ierr, ERR_SIZE_MISMATCH)
@@ -570,7 +582,7 @@ contains
                                  .false., .false., int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)
         else
             call loess_fit_robust(n, x, y, initial_weights, eval_points_mat, span, degree, n, &
-                                  .false., .false., n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, &
+                                  .false., .false., actual_n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, &
                                   hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)
         end if
 
