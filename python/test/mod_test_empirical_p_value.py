@@ -11,10 +11,25 @@ import ctypes
 # Path configuration to import your functions
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
-    compute_empirical_p_values
-)
+from tensor_omics import compute_empirical_p_values as _compute_empirical_p_values
 from test_helpers import run_all_tests
+
+
+def compute_empirical_p_values(distribution, c_const):
+    """Sort-prep in front of the raw Fortran routine, which takes rdi/sorted_rdi/perm.
+
+    Negatives are invalid and clamped to zero; perm is the 1-based ascending
+    permutation of that clamped array.
+    """
+    dist = np.ascontiguousarray(distribution, dtype=np.float64)
+    if dist.size == 0:
+        return np.ascontiguousarray([], dtype=np.float64)
+
+    sorted_rdi = dist.copy()
+    sorted_rdi[sorted_rdi < 0.0] = 0.0
+    perm = (np.argsort(sorted_rdi, kind="mergesort").astype(np.int32) + 1)
+
+    return _compute_empirical_p_values(dist, sorted_rdi, perm, float(c_const))
 
 
 def _assert_allclose(a, b, tol=1e-12, msg=""):

@@ -29,11 +29,27 @@ from .doc_numpydoc import render_docstring
 #: start with a digit), so this never touches a real name.
 _FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
 
+#: `size(arr)` or `size(arr, dim)` -- Fortran's way of writing an extent in terms of
+#: another argument, which numpy spells as an attribute rather than a call.
+_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
+
+
+def _size_as_numpy(match: re.Match) -> str:
+    array, dim = match.group(1), match.group(2)
+    if dim is None:
+        # no dim: the total number of elements, whatever the rank
+        return f"{array}.size"
+    # Fortran dimensions are 1-based, numpy axes 0-based
+    return f"{array}.shape[{int(dim) - 1}]"
+
 
 def _python_extent(extent: str) -> str:
-    """A Fortran extent expression as Python. `max`/`min` are built-ins already; the only
-    incompatibility in the extents that reach here is the numeric kind suffix."""
-    return _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
+    """A Fortran extent expression as Python.
+
+    `max`/`min` are built-ins already. What needs translating is the numeric kind suffix,
+    which Python has no notion of, and `size(...)`, which numpy spells as an attribute.
+    """
+    return _FORTRAN_SIZE.sub(_size_as_numpy, _FORTRAN_KIND_SUFFIX.sub(r"\1", extent))
 
 #: Fortran base type -> the ctypes scalar C sees
 CTYPES = {
@@ -94,7 +110,7 @@ def _character_dtype(argument: CArgument) -> str:
       length the string *is* where the length comes from.
     """
     length = argument.source.type.length if argument.source else None
-    if length is not None and length.is_assumed:
+    if length is not None and length.is_assumed and argument.intent.is_input:
         return '"S"'
 
     extent = character_length(argument)
@@ -319,6 +335,7 @@ class PythonEmitter:
 
         with writer.indent():
             writer.block(render_docstring(wrapper))
+            self._stash_raw(writer, wrapper)
             self._prepare_inputs(writer, wrapper)
             self._derive_extents(writer, wrapper)
             self._compute_auto(writer, wrapper)
@@ -348,10 +365,21 @@ class PythonEmitter:
             argument
             for argument in wrapper
             if argument.intent.is_input
-            and not argument.is_synthesised
             and not argument.is_temporary
             and not self._is_derived(argument)
+            and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
+
+    def _must_be_supplied(self, argument: CArgument, wrapper: CWrapper) -> bool:
+        """Whether a synthesised extent or strlen has to come from the caller after all.
+
+        One that sizes an input is read off that input. One that sizes an *output* --
+        the length of a result only the caller can size -- has no such source, so
+        leaving it out would drop it from the signature with nothing to compute it from.
+        """
+        if argument.is_error:
+            return False
+        return not self._extent_expression(argument, wrapper)
 
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
@@ -396,6 +424,13 @@ class PythonEmitter:
             return self._guarded(argument, self._prepare_character(argument))
 
         if argument.is_scalar:
+            if argument.intent is Intent.INOUT and not argument.optional:
+                # Fortran writes back through the pointer, so C needs a box to write
+                # into rather than a temporary made at the call. The new value is
+                # returned, Python having no way to rebind the caller's name.
+                body = Writer()
+                body.line(f"{name} = {ctype_of(argument)}({name})")
+                return body.render()
             return ""
 
         body = Writer()
@@ -409,6 +444,7 @@ class PythonEmitter:
                     f'raise TypeError("\'{name}\' is modified in place, so it must '
                     f'already be a numpy array of {{}}".format({dtype_of(argument)}))'
                 )
+            self._check_rank(argument, body)
             if argument.rank > 1:
                 body.line(f"if not {name}.flags.f_contiguous:")
                 with body.indent():
@@ -430,7 +466,37 @@ class PythonEmitter:
                     f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{error}}"'
                     f") from None"
                 )
+            self._check_rank(argument, body)
         return self._guarded(argument, body)
+
+    @staticmethod
+    def _numpy_rank(argument: CArgument) -> int:
+        """How many dimensions the numpy array for this argument has.
+
+        A character's length is a C extent but not a numpy axis, and a scalar string is
+        still carried as a one-element buffer.
+        """
+        if argument.type.is_character:
+            return max(character_rank(argument), 1)
+        return argument.rank
+
+    def _check_rank(self, argument: CArgument, body: Writer) -> None:
+        """Reject a wrong-rank array by name.
+
+        The `ndpointer` argtype checks this too, but only at the call, and it raises a
+        `ctypes.ArgumentError` naming an argument *position*. Checking here says which
+        argument, and raises the ValueError the rest of the wrapper raises.
+        """
+        rank = self._numpy_rank(argument)
+        name = argument.name
+        body.line(f"if {name}.ndim != {rank}:")
+        with body.indent():
+            body.line(
+                f'raise ValueError('
+                f'f"\'{name}\' must have {rank} dimension{"" if rank == 1 else "s"}, '
+                f'but has {{{name}.ndim}}"'
+                f")"
+            )
 
     def _prepare_character(self, argument: CArgument) -> Writer:
         """Encode strings into the zero-padded buffer C expects.
@@ -457,6 +523,7 @@ class PythonEmitter:
                     f'f"\'{name}\' must be a sequence of strings: {{error}}"'
                     f") from None"
                 )
+            self._check_rank(argument, body)
         return body
 
     @staticmethod
@@ -470,25 +537,72 @@ class PythonEmitter:
             writer.extend(body)
         return writer.render()
 
+    @staticmethod
+    def _rebinds_on_prepare(argument: CArgument) -> bool:
+        """Whether preparing this argument replaces the caller's value with a buffer."""
+        return argument.conversion is Conversion.MODE or argument.type.is_character
+
+    def _raw_stashes(self, wrapper: CWrapper) -> dict[str, str]:
+        """Producer inputs that preparation would destroy, and the name to keep them under.
+
+        A producer runs after the extents are derived -- it may need one of them -- but
+        by then a character argument has been replaced by a numpy bytes buffer, and the
+        producer's own `str()` would turn that into a nonsense value. So the caller's
+        original is kept aside first.
+        """
+        stashes: dict[str, str] = {}
+        for argument in wrapper:
+            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
+            if plan is None or not plan.is_automatic:
+                continue
+            for _, name in plan.inputs:
+                supplied = wrapper.argument(name)
+                if supplied is not None and self._rebinds_on_prepare(supplied):
+                    stashes[name] = f"_{name}_raw"
+        return stashes
+
+    def _stash_raw(self, writer: Writer, wrapper: CWrapper) -> None:
+        stashes = self._raw_stashes(wrapper)
+        if not stashes:
+            return
+        writer.line("# kept before conversion, for the producers called below")
+        for name, alias in stashes.items():
+            writer.line(f"{alias} = {name}")
+        writer.blank()
+
     def _compute_auto(self, writer: Writer, wrapper: CWrapper) -> None:
         """Fill each DM_OUTPUT_FROM(AUTO) argument by calling the producer's wrapper.
 
         The producer's own generated function does its own validation and error
-        checking, so this just calls it. The inputs passed are the consumer's own,
-        already prepared above, so the producer's conversions are no-ops rather than a
-        second copy.
+        checking, so this just calls it. It runs after the extents are derived, because a
+        producer input may be one of them, and takes the stashed pre-conversion value of
+        any input that preparation replaced.
+
+        One call serves every argument it supplies. Producers are not cheap -- the one
+        behind `read_tox_data_into` unpacks a zip archive -- so calling it once per
+        extent would re-do that work for each.
         """
         lines = Writer()
+        calls: dict[tuple, str] = {}
+        stashes = self._raw_stashes(wrapper)
         for argument in wrapper:
             plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
             if plan is None or not plan.is_automatic:
                 continue
             producer = stripped_name(plan.producer)
-            call_args = ", ".join(f"{inp}={inp}" for _, inp in plan.inputs)
-            call = f"{producer}({call_args})"
-            if not self._producer_returns_single(plan.producer):
-                call = f'{call}["{plan.output.name}"]'
-            lines.line(f"{argument.name} = {call}")
+            call_args = ", ".join(
+                f"{inp}={stashes.get(inp, inp)}" for _, inp in plan.inputs)
+            single = self._producer_returns_single(plan.producer)
+            if single:
+                lines.line(f"{argument.name} = {producer}({call_args})")
+                continue
+
+            key = (producer, call_args)
+            if key not in calls:
+                calls[key] = f"_{producer}_result" if len(calls) == 0 else \
+                    f"_{producer}_result_{len(calls)}"
+                lines.line(f"{calls[key]} = {producer}({call_args})")
+            lines.line(f'{argument.name} = {calls[key]}["{plan.output.name}"]')
         if lines:
             writer.line("# work out what other procedures must supply, per DM_OUTPUT_FROM")
             writer.extend(lines)
@@ -526,12 +640,19 @@ class PythonEmitter:
         if argument.origin is Origin.STRLEN:
             # the buffer's item size, not the number of items in it. For len=* numpy
             # sized the item from the string itself, so this is where the length is.
-            return f"{argument.sizes}.itemsize"
+            # Only for an input: an output buffer does not exist yet, so nothing can be
+            # read off it and the caller has to say how long its strings are.
+            owner = wrapper.argument(argument.sizes)
+            if owner is not None and owner.intent.is_input:
+                return self._maybe_absent(owner, f"{argument.sizes}.itemsize")
+            return ""
 
         if argument.origin is Origin.EXTENT:
             owner = wrapper.argument(argument.sizes)
-            if owner is not None and owner.intent.is_input:
-                return f"{argument.sizes}.shape[{argument.axis}]"
+            # not from a work array: that is allocated from this extent, not the reverse
+            if owner is not None and owner.intent.is_input and not owner.is_temporary:
+                return self._maybe_absent(
+                    owner, f"{argument.sizes}.shape[{argument.axis}]")
             return ""
 
         if roles is None:
@@ -549,11 +670,26 @@ class PythonEmitter:
 
         return ""
 
+    @staticmethod
+    def _maybe_absent(owner: CArgument, expression: str) -> str:
+        """Guard an extent read off an argument the caller may have left out.
+
+        An omitted optional array is `None`, and asking a `None` for its shape is an
+        AttributeError rather than the absent argument the Fortran expects. Zero is
+        what the C wrapper passes on for an absent array anyway.
+        """
+        if not owner.optional:
+            return expression
+        return f"0 if {owner.name} is None else {expression}"
+
     def _extent_provider(self, argument: CArgument, wrapper: CWrapper) -> str:
         """The first input array that already knows this extent."""
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
             if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
+                continue
+            if c_owner.is_temporary:
+                # allocated from this extent, so it cannot also be its source
                 continue
             axis = self._axis_of(argument.name, c_owner)
             if axis is not None:
@@ -594,6 +730,9 @@ class PythonEmitter:
                 if wrapper.argument(owner.name) is not None
                 and wrapper.argument(owner.name).intent.is_input
                 and not wrapper.argument(owner.name).optional
+                # a work array the wrapper allocates itself always agrees, and does not
+                # exist yet at this point in the generated function
+                and not wrapper.argument(owner.name).is_temporary
             ]
             owners = [(owner, axis) for owner, axis in owners if axis is not None]
             if len(owners) < 2:
@@ -709,6 +848,9 @@ class PythonEmitter:
         Not `ierr`, which became an exception. Not work arrays, which are an
         implementation detail. Not a count that only exists to size another result --
         the returned array is already that long.
+
+        An `intent(inout)` array is modified in place and so is already visible to the
+        caller, but an `intent(inout)` scalar cannot be: it is returned instead.
         """
         consumed = {
             a.source.roles.result_size_arg.name
@@ -718,7 +860,9 @@ class PythonEmitter:
         return [
             argument
             for argument in wrapper
-            if argument.intent is Intent.OUT
+            if (argument.intent is Intent.OUT
+                or (argument.intent is Intent.INOUT and argument.is_scalar
+                    and not argument.optional))
             and not argument.is_error
             and not argument.is_temporary
             and argument.name not in consumed

@@ -153,7 +153,7 @@ class RWrapperEmitter:
             return False
         if roles.is_computed:
             return False
-        return roles.is_extent or roles.is_shape_arg or roles.is_mask_count
+        return roles.is_inferable_extent or roles.is_shape_arg or roles.is_mask_count
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

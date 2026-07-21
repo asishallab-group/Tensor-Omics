@@ -116,6 +116,19 @@ class ArgumentRoles:
         return bool(self.extent_of)
 
     @property
+    def is_inferable_extent(self) -> bool:
+        """Whether an extent can actually be read off an argument the caller supplies.
+
+        An extent named only by `intent(out)` arrays -- the length of a result whose size
+        the caller alone knows -- cannot be. Neither can one named only by work arrays:
+        those are allocated *from* the extent, so reading it back off them is circular.
+        Treating either as derived would drop it from the signature and then leave nothing
+        to compute it from, so it stays a parameter.
+        """
+        return any(owner.intent.is_input and not (owner.roles and owner.roles.is_temporary)
+                   for owner in self.extent_of)
+
+    @property
     def is_shape_arg(self) -> bool:
         return self.shape_of is not None
 
@@ -140,7 +153,8 @@ class ArgumentRoles:
         Such an argument is not asked of the caller: it comes from another argument, or
         from calling another procedure.
         """
-        return self.is_extent or self.is_shape_arg or self.is_mask_count or self.is_computed
+        return (self.is_inferable_extent or self.is_shape_arg
+                or self.is_mask_count or self.is_computed)
 
 
 def analyse(procedure: Procedure, diagnostics: DiagnosticBag,

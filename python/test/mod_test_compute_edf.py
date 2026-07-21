@@ -10,7 +10,7 @@ import os
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import compute_edf, compute_edf_expert
+from tensor_omics import compute_edf, compute_edf_expert
 from test_helpers import run_all_tests, assert_error
 
 

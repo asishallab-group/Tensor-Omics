@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import tox_euclidean_distance, tox_distance_to_centroid
+from tensor_omics import euclidean_distance, distance_to_centroid
 from test_helpers import run_all_tests
 
 
@@ -134,7 +134,7 @@ def test_real_data_example():
     centroids_matrix = np.asfortranarray(centroids_matrix.T)  # Transpose to d x n_families
 
     # Call Fortran function
-    distances = tox_distance_to_centroid(
+    distances = distance_to_centroid(
         gene_expr_matrix,
         centroids_matrix,
         mapping_data['gene_to_family']
@@ -171,7 +171,7 @@ def test_basic_euclidean():
     vec2 = np.array([4.0, 5.0, 6.0], dtype=np.float64)
 
     # Call wrapper function
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
 
     # Expected result
     expected = np.sqrt(np.sum((vec1 - vec2)**2))

@@ -79,5 +79,5 @@ def assert_error(func, msg):
         assert False, msg
     except AssertionError as e:
         raise e
-    except (RuntimeError, ValueError, FileNotFoundError) as e:
+    except (RuntimeError, ValueError, TypeError, FileNotFoundError) as e:
         pass

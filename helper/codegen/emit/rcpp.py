@@ -146,7 +146,7 @@ class RcppEmitter:
         if roles.is_computed:
             # computed wins: R passes it in, even though it may also size a work array
             return False
-        return roles.is_extent or roles.is_shape_arg or roles.is_mask_count
+        return roles.is_inferable_extent or roles.is_shape_arg or roles.is_mask_count
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

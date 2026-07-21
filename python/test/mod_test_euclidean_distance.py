@@ -10,7 +10,7 @@ import os
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import tox_euclidean_distance, tox_distance_to_centroid
+from tensor_omics import euclidean_distance, distance_to_centroid
 from test_helpers import run_all_tests, assert_error
 
 
@@ -23,7 +23,7 @@ def test_euclidean_distance_3d():
     vec1 = np.array([1.0, 2.0, 3.0])
     vec2 = np.array([4.0, 5.0, 6.0])
 
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
     expected = np.linalg.norm(vec1 - vec2)
 
     assert np.isclose(result, expected)
@@ -34,7 +34,7 @@ def test_euclidean_distance_to_origin():
     vec1 = np.array([3.0, 4.0])
     vec2 = np.array([0.0, 0.0])
 
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
     expected = 5.0
 
     assert np.isclose(result, expected)
@@ -45,7 +45,7 @@ def test_euclidean_distance_identical():
     vec1 = np.array([1.5, 2.7, 3.9])
     vec2 = vec1.copy()  # identical
 
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
     expected = 0.0
 
     assert np.isclose(result, expected)
@@ -58,7 +58,7 @@ def test_euclidean_distance_high_dimensional():
     vec1 = np.arange(1, d+1, dtype=np.float64)  # [1, 2, 3, ..., 100]
     vec2 = np.arange(2, d+2, dtype=np.float64)  # [2, 3, 4, ..., 101] (shift by 1)
 
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
     expected = np.sqrt(d)  # sqrt(100 * 1^2) = 10
     assert np.isclose(result, expected)
 
@@ -66,13 +66,13 @@ def test_euclidean_distance_high_dimensional():
 def test_euclidean_distance_invalid_inputs():
     """Test invalid inputs (should throw errors)"""
     # Test different lengths
-    assert_error(lambda: tox_euclidean_distance(np.array([1, 2]), np.array([1, 2, 3])), "Expected error")
+    assert_error(lambda: euclidean_distance(np.array([1, 2]), np.array([1, 2, 3])), "Expected error")
 
     # Test empty vectors
-    assert_error(lambda: tox_euclidean_distance(np.array([]), np.array([])), "Expected error")
+    assert_error(lambda: euclidean_distance(np.array([]), np.array([])), "Expected error")
 
     # Test non-numeric input
-    assert_error(lambda: tox_euclidean_distance(np.array(["a", "b"]), np.array([1, 2])), "Expected error")
+    assert_error(lambda: euclidean_distance(np.array(["a", "b"]), np.array([1, 2])), "Expected error")
 
 
 def test_euclidean_distance_1d():
@@ -80,7 +80,7 @@ def test_euclidean_distance_1d():
     vec1 = np.array([5.0])
     vec2 = np.array([2.0])
 
-    result = tox_euclidean_distance(vec1, vec2)
+    result = euclidean_distance(vec1, vec2)
     expected = 3.0
 
     assert np.isclose(result, expected)
@@ -115,7 +115,7 @@ def test_distance_to_centroid_basic():
     # Gene-to-family mapping (1-based)
     gene_to_fam = np.array([1, 1, 2, 2], dtype=np.int32)
 
-    result = tox_distance_to_centroid(genes, centroids, gene_to_fam)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     # Expected distances
     # Gene 1: [1,0,0] vs [0.5,0.5,0] = sqrt(0.5^2 + 0.5^2) ≈ 0.707
@@ -146,7 +146,7 @@ def test_distance_to_centroid_invalid_families():
     # Mixed family assignments: valid (1), invalid (3), no family (0)
     gene_to_fam = np.array([1, 0, 0], dtype=np.int32)  # family 0 = no assignment
 
-    result = tox_distance_to_centroid(genes, centroids, gene_to_fam)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     expected = [np.sqrt(sum((genes[:, 0] - centroids[:, 0]) ** 2)), -1, -1]
     assert all(np.isclose(result, expected)), "Expected distances mismatch"
@@ -169,7 +169,7 @@ def test_distance_to_centroid_performance():
     import time
     start_time = time.time()
 
-    result = tox_distance_to_centroid(genes, centroids, gene_to_fam)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     end_time = time.time()
     elapsed = end_time - start_time
@@ -198,7 +198,7 @@ def test_distance_to_centroid_input_validation():
 
     gene_to_fam = np.array([1, 0, 0], dtype=np.int32)  # family 0 = no assignment
 
-    assert_error(lambda: tox_distance_to_centroid(genes, centroids, -gene_to_fam), "Expected error")
+    assert_error(lambda: distance_to_centroid(genes, centroids, -gene_to_fam), "Expected error")
 
 
 if __name__ == "__main__":

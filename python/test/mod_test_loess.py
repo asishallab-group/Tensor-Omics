@@ -11,11 +11,11 @@ import ctypes
 # Path configuration to import your functions
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
+from tensor_omics import (
     tox_loess_required_workspace,
     loess_fit_plain,
     loess_fit_robust,
-    tox_loess
+    loess
 )
 from test_helpers import run_all_tests
 
@@ -23,12 +23,12 @@ from test_helpers import run_all_tests
 def test_workspace_calculation():
     """Validates that the workspace recommendation function returns consistent values."""
 
-    # Typical parameters: d=1 (univariate), nvmax=100, setlf=True
-    ws = tox_loess_required_workspace(d=1, nvmax=100, setlf=True)
+    # Typical parameters: univariate, 100 neighbours, factorization saved
+    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=100, save_factorization=True)
 
     assert isinstance(ws, dict), "Should return a dictionary"
-    assert ws["liv"] > 0, "LIV (Integer Workspace) should be positive"
-    assert ws["lv"] > 0, "LV (Real Workspace) should be positive"
+    assert ws["int_workspace_size"] > 0, "Integer workspace size should be positive"
+    assert ws["real_workspace_size"] > 0, "Real workspace size should be positive"
 
 
 def test_loess_plain_functionality():
@@ -41,18 +41,17 @@ def test_loess_plain_functionality():
     z = x.copy()
 
     # Get required workspace sizes
-    ws = tox_loess_required_workspace(d=1, nvmax=n, setlf=False)
-    iv = np.zeros(ws["liv"], dtype=np.int32)
-    wv = np.zeros(ws["lv"], dtype=np.float64)
+    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=False)
+    iv = np.zeros(ws["int_workspace_size"], dtype=np.int32)
+    wv = np.zeros(ws["real_workspace_size"], dtype=np.float64)
     diagl = np.zeros(n, dtype=np.float64)
 
-
     yhat = loess_fit_plain(
-        n=n, x=x, y=y, w=w, z=z, 
-        span=0.5, degree=1, nvmax=n, 
-        infl=False, setlf=False, 
-        iv=iv, liv=ws["liv"], wv=wv, lv=ws["lv"], 
-        diagl=diagl
+        x=x, y=y, weights=w, eval_points=z.reshape(n, 1),
+        span=0.5, degree=1, max_neighborhood_size=n,
+        compute_influence=False, save_factorization=False,
+        int_workspace=iv, real_workspace=wv,
+        hat_diag=diagl
     )
 
     assert yhat.shape == (n,), "Output shape mismatch"
@@ -68,11 +67,11 @@ def test_loess_robust_functionality():
 
     w = np.ones(n)
     z = x.copy()
-    ws = tox_loess_required_workspace(d=1, nvmax=n, setlf=False)
+    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=False)
 
     # Additional arrays required specifically for the robust version
-    iv = np.zeros(ws["liv"], dtype=np.int32)
-    wv = np.zeros(ws["lv"], dtype=np.float64)
+    iv = np.zeros(ws["int_workspace_size"], dtype=np.int32)
+    wv = np.zeros(ws["real_workspace_size"], dtype=np.float64)
     diagl = np.zeros(n, dtype=np.float64)
     rw = np.zeros(n, dtype=np.float64)
     ww = np.zeros(n, dtype=np.float64)
@@ -80,11 +79,12 @@ def test_loess_robust_functionality():
     pi = np.zeros(n, dtype=np.int32)
 
     yhat = loess_fit_robust(
-        n=n, x=x, y=y, w=w, z=z, 
-        span=0.5, degree=1, nvmax=n, 
-        infl=False, setlf=False, n_iters=4,
-        iv=iv, liv=ws["liv"], wv=wv, lv=ws["lv"],
-        diagl=diagl, rw=rw, ww=ww, res=res, pi=pi
+        x=x, y=y, weights=w, eval_points=z.reshape(n, 1),
+        span=0.5, degree=1, max_neighborhood_size=n,
+        compute_influence=False, save_factorization=False, n_iters=4,
+        int_workspace=iv, real_workspace=wv,
+        hat_diag=diagl, robust_weights=rw, combined_weights=ww,
+        residuals=res, permutation_indices=pi
     )
 
     assert yhat.shape == (n,), "Output shape mismatch"
@@ -99,12 +99,12 @@ def test_tox_loess_wrapper():
     x = np.arange(n, dtype=np.float64)
     y = np.sin(x / 5.0)
 
-    # Test Plain mode (mode=0)
-    yhat_plain = tox_loess(x, y, span=0.4, degree=1, mode=0)
+    # Test Plain mode (mode="plain", n_iters=0)
+    yhat_plain = loess(x, y, span=0.4, degree=1, mode="plain", n_iters=0)
     assert yhat_plain.shape == (n,), "Plain mode shape mismatch"
 
     # Test Robust mode (mode=1)
-    yhat_robust = tox_loess(x, y, span=0.4, degree=1, mode=1, n_iters=2)
+    yhat_robust = loess(x, y, span=0.4, degree=1, mode="robust", n_iters=2)
     assert yhat_robust.shape == (n,), "Robust mode shape mismatch"
 
     # Verify that results differ due to robust iterations
