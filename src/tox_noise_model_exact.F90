@@ -331,11 +331,16 @@ contains
 
     !> Core implementation: adaptively gather residuals from the nearest-mean neighbourhood.
     !|
-    !| Starting from the gene whose mean is closest to `target_mean`, neighbours are
+    !| Starting from the gene whose mean is closest to `target_mean`, neighbour GENES are
     !| added outward (alternating left/right in mean-sorted order) until one of:
-    !|   - The pool contains at least `k_start` residuals (initial phase), then
+    !|   - The neighbourhood contains at least `k_start` genes (initial phase), then
     !|   - The relative change in mean absolute residual exceeds `tau` (adaptive phase), or
-    !|   - The pool reaches `min(k_max, max_pool_size)` residuals.
+    !|   - The neighbourhood reaches `k_max` genes.
+    !|
+    !| `k_start`, `k_step` and `k_max` are counted in GENES, not residuals, so the collected
+    !| expression window is independent of how many replicates each gene has (each gene
+    !| contributes `sorted_data%n_residuals` = n_replicates residuals). The resulting
+    !| residual pool holds up to `k_max * n_replicates` values, hard-capped at `max_pool_size`.
     !|
     !| Alongside the pooled residuals, `gene_id_per_residual` records the sorted-gene-slot
     !| (index into `sorted_data%means_sorted` / `sorted_data%original_indices`) that each
@@ -356,11 +361,11 @@ contains
         type(sorted_data_t), intent(in) :: sorted_data
         !! Pre-built sorted gene structure
         integer(int32), intent(in) :: k_start
-        !! Minimum pool size before the adaptive stopping criterion is applied
+        !! Minimum number of neighbour GENES before the adaptive stopping criterion applies
         integer(int32), intent(in) :: k_step
-        !! Number of new residuals to add per adaptive round before re-evaluating
+        !! Number of new neighbour GENES to add per adaptive round before re-evaluating
         integer(int32), intent(in) :: k_max
-        !! Hard upper limit on pool size (also capped at `max_pool_size`)
+        !! Hard upper limit on the number of neighbour GENES (residuals still capped at max_pool_size)
         real(real64), intent(in) :: tau
         !! Relative-change threshold; expansion stops when the change exceeds this value
         real(real64), intent(out) :: pooled_residuals(:)
@@ -371,15 +376,16 @@ contains
         integer(int32), intent(out) :: n_pooled
         !! Number of residuals written into `pooled_residuals`
         integer(int32), intent(in) :: max_pool_size
-        !! Allocated size of `pooled_residuals`
+        !! Allocated size of `pooled_residuals` (hard cap on the residual count)
 
         integer(int32) :: pos, left_cand, right_cand, idx, i_new
-        integer(int32) :: current_size, added_this_round, genes_added, offset, trial_size
+        integer(int32) :: current_size, genes_added, offset, trial_size, n_genes_pool
         integer(int32) :: pool_size, n_resid
         real(real64) :: S_old, S_new, rel_change, abs_sum, trial_abs_sum
 
         n_pooled = 0
         current_size = 0
+        n_genes_pool = 0
 
         pos = find_closest_helper(target_mean, sorted_data%means_sorted, sorted_data%n_genes)
         if (pos == 0) return
@@ -387,27 +393,31 @@ contains
         current_size = min(sorted_data%n_residuals(pos), max_pool_size)
         pooled_residuals(1:current_size) = sorted_data%residuals_packed(1:current_size, pos)
         gene_id_per_residual(1:current_size) = pos
+        n_genes_pool = 1
 
         left_cand = pos - 1
         right_cand = pos + 1
 
-        ! Phase 1: expand until pool reaches k_start to ensure minimum size regardless of tau
-        do while (current_size < k_start .and. &
+        ! Phase 1: expand until the neighbourhood reaches k_start GENES, regardless of tau.
+        ! (k_start/k_step/k_max are gene counts; each gene adds n_replicates residuals, and
+        !  the residual pool is separately hard-capped at max_pool_size for safety.)
+        do while (n_genes_pool < k_start .and. current_size < max_pool_size .and. &
                   (left_cand >= 1 .or. right_cand <= sorted_data%n_genes))
 
-            ! choose closest candidate
+            ! choose closest candidate gene
             call choose_index(sorted_data%means_sorted, sorted_data%n_genes, target_mean, idx, left_cand, right_cand)
 
-            ! Add residuals to pool
+            ! Add its residuals to the pool
             pool_size = min(current_size + sorted_data%n_residuals(idx), max_pool_size)
             call add_residuals_to_pool_helper(pooled_residuals, current_size, &
                                               sorted_data%residuals_packed(:, idx), &
                                               sorted_data%n_residuals(idx), pool_size)
             call add_gene_id_to_pool_helper(gene_id_per_residual, current_size, idx, pool_size)
             current_size = pool_size
+            n_genes_pool = n_genes_pool + 1
         end do
 
-        ! If max found residuals are below 10 return (possibly error or status here?)
+        ! If fewer than 10 residuals were collected, return (too little to model)
         if (current_size < 10) return
 
         ! Running sum of |residual| over the committed pool, maintained incrementally
@@ -419,22 +429,20 @@ contains
             return
         end if
 
-        ! Phase 2: adaptive expansion. A round's candidate residuals are appended in
-        ! place directly past `current_size`; nothing already committed is overwritten,
-        ! so a rejected round is discarded simply by not advancing `current_size` (the
-        ! trailing trial data beyond `n_pooled` is never read). This avoids the previous
-        ! per-round full-pool copy and full re-sum.
-        do while (current_size < min(k_max, max_pool_size) .and. &
+        ! Phase 2: adaptive expansion by GENES. A round's candidate residuals are appended
+        ! in place past `current_size`; a rejected round is discarded by not advancing
+        ! `current_size` / `n_genes_pool` (trailing trial data beyond `n_pooled` is never read).
+        do while (n_genes_pool < k_max .and. current_size < max_pool_size .and. &
                   (left_cand >= 1 .or. right_cand <= sorted_data%n_genes))
 
-            added_this_round = 0
             genes_added = 0
             offset = 0
             trial_abs_sum = abs_sum
 
-            do while (added_this_round < k_step .and. &
-                      (left_cand >= 1 .or. right_cand <= sorted_data%n_genes) .and. &
-                      current_size + offset < min(k_max, max_pool_size))
+            do while (genes_added < k_step .and. &
+                      n_genes_pool + genes_added < k_max .and. &
+                      current_size + offset < max_pool_size .and. &
+                      (left_cand >= 1 .or. right_cand <= sorted_data%n_genes))
 
                 call choose_index(sorted_data%means_sorted, sorted_data%n_genes, target_mean, idx, left_cand, right_cand)
 
@@ -449,7 +457,6 @@ contains
                     trial_abs_sum = trial_abs_sum + abs(pooled_residuals(i_new))
                 end do
                 offset = offset + n_resid
-                added_this_round = added_this_round + n_resid
                 genes_added = genes_added + 1
             end do
 
@@ -462,6 +469,7 @@ contains
             if (rel_change > tau) exit
 
             current_size = trial_size
+            n_genes_pool = n_genes_pool + genes_added
             abs_sum = trial_abs_sum
             S_old = S_new
         end do
