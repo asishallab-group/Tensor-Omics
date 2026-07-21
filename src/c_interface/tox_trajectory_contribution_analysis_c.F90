@@ -473,7 +473,7 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_ARRAY_NON_NULL(trajectory, n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, max(0_int32, n_timepoints - 1))
+        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)))
 
         call compute_velocity_trajectory(&
             trajectory = trajectory,&
@@ -504,8 +504,8 @@ contains
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, max(0_int32, n_timepoints - 1))
-        M_CHECK_ARRAY_NON_NULL(acceleration, max(0_int32, n_timepoints - 2))
+        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)))
+        M_CHECK_ARRAY_NON_NULL(acceleration, (max(0_int32, n_timepoints - 2)))
 
         call compute_acceleration_from_velocity_trajectory(&
             velocity = velocity,&
@@ -545,7 +545,7 @@ contains
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, max(0_int32, n_timepoints - 1) * n_factors * n_samples)
+        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples)
 
         call compute_velocity_trajectories(&
             trajectories = trajectories,&
@@ -586,8 +586,8 @@ contains
         M_CHECK_NON_NULL(n_factors)
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, max(0_int32, n_timepoints - 1) * n_factors * n_samples)
-        M_CHECK_ARRAY_NON_NULL(acceleration, max(0_int32, n_timepoints - 2) * n_factors * n_samples)
+        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples)
+        M_CHECK_ARRAY_NON_NULL(acceleration, (max(0_int32, n_timepoints - 2)) * n_factors * n_samples)
 
         call compute_acceleration_from_velocity(&
             velocity = velocity,&
@@ -669,9 +669,9 @@ contains
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
         M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
-        M_CHECK_ARRAY_NON_NULL(tmp_factors, n_timepoints - 1 * n_factors)
-        M_CHECK_ARRAY_NON_NULL(tmp_dependent, n_timepoints - 1)
-        M_CHECK_ARRAY_NON_NULL(tmp_contributions, n_timepoints - 1)
+        M_CHECK_ARRAY_NON_NULL(tmp_factors, (n_timepoints - 1) * n_factors)
+        M_CHECK_ARRAY_NON_NULL(tmp_dependent, (n_timepoints - 1))
+        M_CHECK_ARRAY_NON_NULL(tmp_contributions, (n_timepoints - 1))
         M_CHECK_ARRAY_NON_NULL(contrib_velocity, n_factors * n_factors * n_samples)
         M_CHECK_ARRAY_NON_NULL(velocity_contribution_series, n_timepoints * n_factors * n_factors * n_samples)
         M_CHECK_ARRAY_NON_NULL(contrib_acceleration, n_factors * n_factors * n_samples)

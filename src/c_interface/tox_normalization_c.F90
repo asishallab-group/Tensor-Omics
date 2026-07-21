@@ -333,7 +333,7 @@ contains
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_tissues)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
-        M_CHECK_ARRAY_NON_NULL(expr, sum(reps_per_tissue) * n_genes)
+        M_CHECK_ARRAY_NON_NULL(expr, (sum(reps_per_tissue)) * n_genes)
         M_CHECK_ARRAY_NON_NULL(tissue_averages, n_tissues * n_genes)
 
         call calc_tiss_avg(&

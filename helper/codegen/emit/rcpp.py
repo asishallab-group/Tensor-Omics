@@ -79,6 +79,17 @@ RCPP_SCALAR = {
 }
 
 
+def _product(extents) -> str:
+    """The product of some extents, each parenthesised.
+
+    An extent may be an expression (`n_timepoints - 1`), and `*` binds tighter than `-`
+    in both C++ and Fortran: joining raw gives `n_timepoints - 1 * n_factors`, which is
+    a different number and, for a buffer size, a heap overrun waiting to happen.
+    """
+    parts = [e if e.isidentifier() or e.isdigit() else f"({e})" for e in extents]
+    return " * ".join(parts) if parts else "1"
+
+
 def cpp_ctype(argument: CArgument) -> str:
     return CPP_CTYPE[argument.type.kind]
 
@@ -232,7 +243,10 @@ class RcppEmitter:
             # a Nullable has no .length(): read the value materialized above, which is an
             # empty vector when the caller omitted the argument
             buffer = f"{argument.sizes}_val" if owner.optional else argument.sizes
-            return f"{buffer}.length() ? Rf_length(STRING_ELT({buffer}, 0)) : 0"
+            # the longest string, not the first: Fortran's character(len=n) is one width
+            # for the whole array, and sizing it from element 0 silently truncates every
+            # longer one
+            return f"tox::max_strlen({buffer})"
 
         if argument.origin is Origin.EXTENT:
             owner = wrapper.argument(argument.sizes)
@@ -426,10 +440,38 @@ class RcppEmitter:
             if self._is_derived(argument) and argument.intent.is_input:
                 continue
             lines.line(self._new_value(argument))
+            if not argument.is_temporary and not self._converts_via_buffer(argument):
+                dim = self._dim_attribute(argument)
+                if dim:
+                    lines.line(dim)
         if lines:
             writer.line("// outputs and work space")
             writer.extend(lines)
             writer.blank()
+
+    def _r_extents(self, argument: CArgument) -> list[str]:
+        """The extents R sees, as C++ expressions.
+
+        A character's leading extent is its item length, which is not an R dimension --
+        its strings are an array of one dimension fewer.
+        """
+        extents = [cpp_extent(e) for e in argument.dimension.extents]
+        if argument.type.is_character and extents:
+            extents = extents[1:]
+        return extents
+
+    def _dim_attribute(self, argument: CArgument) -> str | None:
+        """Give a rank-2-or-more output the `dim` that makes it a matrix in R.
+
+        Without it a freshly allocated output comes back as a flat vector, and every
+        `dim(x)` or `x[, 1]` on the R side fails. (An `intent(inout)` array escapes this
+        by accident: it is cloned from the caller's object, attributes and all.)
+        """
+        extents = self._r_extents(argument)
+        if len(extents) < 2:
+            return None
+        joined = ", ".join(extents)
+        return f'{self._working_name(argument)}.attr("dim") = IntegerVector::create({joined});'
 
     def _new_value(self, argument: CArgument) -> str:
         name = argument.name
@@ -439,12 +481,12 @@ class RcppEmitter:
             return f"{cpp_ctype(argument)} {name} = 0;"
 
         extents = [cpp_extent(e) for e in argument.dimension.extents]
-        size = " * ".join(extents)
+        size = _product(extents)
         if argument.conversion is Conversion.LOGICAL:
             return f"tox::BoolBuffer {name}_c({size});"
         if argument.type.is_character:
             length = extents[0]
-            count = " * ".join(extents[1:]) or "1"
+            count = _product(extents[1:])
             return f"tox::CharBuffer {name}_c({length}, {count});"
         # a temporary is scratch C++ never shows anyone; an output is an Rcpp vector
         if argument.is_temporary:
@@ -498,6 +540,9 @@ class RcppEmitter:
             name = argument.name
             rcpp = RCPP_VECTOR[argument.type.base]
             lines.line(f"{rcpp} {name} = {name}_c.to_r();")
+            dim = self._dim_attribute(argument)
+            if dim:
+                lines.line(dim)
         if lines:
             writer.line("// convert the outputs back")
             writer.extend(lines)
@@ -569,6 +614,19 @@ public:
 // Fortran carries a string's length as the leading extent: a vector of n strings of
 // length len is char[len * n], column-major, each string zero-padded. Reading stops at
 // the first null, so an untouched buffer (zero-filled) yields empty strings, never noise.
+// The width a character(len=n) array needs: the longest element. Every string is stored
+// in the same n bytes, so anything shorter is null-padded and anything longer would be
+// cut off.
+inline int max_strlen(Rcpp::CharacterVector x) {
+    int longest = 0;
+    for (int i = 0; i < x.size(); ++i) {
+        if (x[i] == NA_STRING) continue;
+        int n = Rf_length(STRING_ELT(x, i));
+        if (n > longest) longest = n;
+    }
+    return longest;
+}
+
 class CharBuffer {
     std::vector<char> data_;
     int len_;

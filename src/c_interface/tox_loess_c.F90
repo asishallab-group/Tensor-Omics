@@ -372,7 +372,7 @@ contains
         M_CHECK_NON_NULL(n_iters)
         M_CHECK_ARRAY_NON_NULL(x, n_x_elements)
         M_CHECK_ARRAY_NON_NULL(y, n_y_elements)
-        M_CHECK_ARRAY_NON_NULL(fitted_values, size(y))
+        M_CHECK_ARRAY_NON_NULL(fitted_values, (size(y)))
         M_CHECK_ARRAY_NON_NULL(mode, 6)
 
         block

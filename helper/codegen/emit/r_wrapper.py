@@ -235,6 +235,10 @@ class RWrapperEmitter:
                 c_owner = wrapper.argument(owner.name)
                 if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
                     continue
+                if c_owner.is_temporary:
+                    # a work array C++ allocates itself always agrees, and is not a
+                    # variable R has in scope
+                    continue
                 axis = self._axis_of(argument.name, c_owner)
                 if axis is not None:
                     owners.append((c_owner, axis))
@@ -365,6 +369,31 @@ _VALIDATORS = r'''# Generated. Do not edit.
   if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
     .tox_type_error(name, sprintf("a numeric array of rank %d", ndim), x)
   storage.mode(x) <- "double"
+  x
+}
+
+.tox_as_complex_vector <- function(x, name) {
+  if (!is.numeric(x) && !is.complex(x)) .tox_type_error(name, "a complex vector", x)
+  as.complex(x)
+}
+
+.tox_as_complex_scalar <- function(x, name) {
+  if ((!is.numeric(x) && !is.complex(x)) || length(x) != 1L)
+    .tox_type_error(name, "a complex scalar", x)
+  as.complex(x)
+}
+
+.tox_as_complex_matrix <- function(x, name) {
+  if (!is.matrix(x) || (!is.numeric(x) && !is.complex(x)))
+    .tox_type_error(name, "a complex matrix", x)
+  storage.mode(x) <- "complex"
+  x
+}
+
+.tox_as_complex_array <- function(x, name, ndim) {
+  if (!is.array(x) || (!is.numeric(x) && !is.complex(x)) || length(dim(x)) != ndim)
+    .tox_type_error(name, sprintf("a complex array of %d dimensions", ndim), x)
+  storage.mode(x) <- "complex"
   x
 }
 

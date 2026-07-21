@@ -523,7 +523,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S1_copy, n_reps_S1 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2_copy, n_reps_S2 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(jsd_null, n_permutations)
-        M_CHECK_ARRAY_NON_NULL(tmp_pool, n_reps_S1 + n_reps_S2 * n_neighbors)
+        M_CHECK_ARRAY_NON_NULL(tmp_pool, (n_reps_S1 + n_reps_S2) * n_neighbors)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)

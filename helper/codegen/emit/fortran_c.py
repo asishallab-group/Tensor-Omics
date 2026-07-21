@@ -37,6 +37,16 @@ MODE_SUFFIX = "_mode_f"
 POINTER_SUFFIX = "_p"
 
 
+def _product(extents) -> str:
+    """The product of some extents, each parenthesised.
+
+    An extent may be an expression (`n_timepoints - 1`), and `*` binds tighter than `-`
+    in both C++ and Fortran: joining raw gives `n_timepoints - 1 * n_factors`, which is
+    a different number and, for a buffer size, a heap overrun waiting to happen.
+    """
+    parts = [e if e.isidentifier() or e.isdigit() else f"({e})" for e in extents]
+    return " * ".join(parts) if parts else "1"
+
 class FortranCEmitter:
     def __init__(self, conventions: Conventions = CONVENTIONS,
                  macros_header: str = "src/macros.h"):
@@ -270,7 +280,7 @@ class FortranCEmitter:
             # Its shape travels separately, so the count is that array's product. The
             # ordering has already made the shape argument safe to read.
             return f"product({argument.shape_arg})"
-        return " * ".join(argument.size_extents) if argument.size_extents else "1"
+        return _product(argument.size_extents)
 
     def _input_conversions(self, writer: Writer, wrapper: CWrapper) -> None:
         wrote = False

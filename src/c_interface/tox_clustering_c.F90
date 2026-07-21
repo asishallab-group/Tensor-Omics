@@ -68,7 +68,7 @@ contains
         M_CHECK_NON_NULL(max_iterations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
         M_CHECK_ARRAY_NON_NULL(centroids, n_factors * n_clusters)
-        M_CHECK_ARRAY_NON_NULL(labels, n_samples*n_timepoints)
+        M_CHECK_ARRAY_NON_NULL(labels, (n_samples*n_timepoints))
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
 
         call cluster_factor_trajectories_k_means(&
@@ -202,10 +202,10 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_ARRAY_NON_NULL(distances, n_points * n_points)
-        M_CHECK_ARRAY_NON_NULL(merge_i, n_points - 1)
-        M_CHECK_ARRAY_NON_NULL(merge_j, n_points - 1)
-        M_CHECK_ARRAY_NON_NULL(heights, n_points - 1)
-        M_CHECK_ARRAY_NON_NULL(cluster_sizes, n_points - 1)
+        M_CHECK_ARRAY_NON_NULL(merge_i, (n_points - 1))
+        M_CHECK_ARRAY_NON_NULL(merge_j, (n_points - 1))
+        M_CHECK_ARRAY_NON_NULL(heights, (n_points - 1))
+        M_CHECK_ARRAY_NON_NULL(cluster_sizes, (n_points - 1))
         M_CHECK_ARRAY_NON_NULL(method, 8)
 
         block

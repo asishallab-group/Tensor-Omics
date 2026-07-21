@@ -279,7 +279,7 @@ contains
         M_CHECK_NON_NULL(n_gene_to_fam_elements)
         M_CHECK_NON_NULL(n_genes_kept)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_gene_to_fam_elements)
-        M_CHECK_ARRAY_NON_NULL(mask, size(gene_to_fam))
+        M_CHECK_ARRAY_NON_NULL(mask, (size(gene_to_fam)))
 
         call get_unassigned_mask(&
             gene_to_fam = gene_to_fam,&
