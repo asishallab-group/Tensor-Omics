@@ -338,6 +338,22 @@ class FortranCEmitter:
                 return other.name
         return f"{argument.name}_strlen"
 
+    def _conversion_source(self, argument: CArgument) -> str:
+        """The wrapper's own array, sliced when its length travels separately.
+
+        An argument with a shape argument is assumed-size in the wrapper, and an
+        assumed-size array can be neither assigned whole nor passed to an assumed-shape
+        dummy. Its element count is the product of the shape argument, exactly as when it
+        is passed to the callee unconverted.
+        """
+        if argument.shape_arg is None:
+            return argument.name
+        if argument.type.is_character:
+            # a character buffer carries its length as the leading extent, so the items
+            # are the second dimension
+            return f"{argument.name}(:, 1:product({argument.shape_arg}))"
+        return f"{argument.name}(1:product({argument.shape_arg}))"
+
     def _input_conversion(self, argument: CArgument, wrapper: CWrapper) -> str:
         writer = Writer()
         name = argument.name
@@ -349,12 +365,13 @@ class FortranCEmitter:
                 # assignment does the conversion. A nullable optional is only converted
                 # when present -- absent leaves the allocatable local unallocated, which
                 # the callee reads as absent.
+                source_expression = self._conversion_source(argument)
                 if argument.optional:
                     writer.line(
-                        f"if (present({name})) {name}{CONVERTED_SUFFIX} = {name}"
+                        f"if (present({name})) {name}{CONVERTED_SUFFIX} = {source_expression}"
                     )
                 else:
-                    writer.line(f"{name}{CONVERTED_SUFFIX} = {name}")
+                    writer.line(f"{name}{CONVERTED_SUFFIX} = {source_expression}")
             case Conversion.CHARACTER:
                 writer.block(self._guard_optional(argument, self._character_in(argument, error)))
             case Conversion.MODE:
@@ -377,9 +394,10 @@ class FortranCEmitter:
         name = argument.name
         source = argument.source
         helper = "c_char_1d_as_string" if source.rank == 0 else "c_char_2d_as_string"
+        from_buffer = self._conversion_source(argument)
 
         if source.type.length.is_assumed:
-            writer.line(f"call {helper}({name}, {name}{CONVERTED_SUFFIX}, {error})")
+            writer.line(f"call {helper}({from_buffer}, {name}{CONVERTED_SUFFIX}, {error})")
         else:
             # The callee's length is fixed, so convert into a deferred-length local and
             # let assignment pad or truncate to exactly that length
@@ -483,11 +501,14 @@ class FortranCEmitter:
     def _output_conversion(self, argument: CArgument) -> str:
         name = argument.name
         source = argument.source
+        # the same slice the input direction needs: an assumed-size array can be neither
+        # assigned whole nor passed to an assumed-shape dummy
+        target = self._conversion_source(argument)
         if argument.conversion is Conversion.LOGICAL:
-            assignment = f"{name} = {name}{CONVERTED_SUFFIX}"
+            assignment = f"{target} = {name}{CONVERTED_SUFFIX}"
         else:
             helper = "string_as_c_char_1d" if source.rank == 0 else "string_as_c_char_2d"
-            assignment = f"call {helper}({name}{CONVERTED_SUFFIX}, {name})"
+            assignment = f"call {helper}({name}{CONVERTED_SUFFIX}, {target})"
         # A nullable optional is only written back when present -- absent means C passed
         # null, so there is nothing to convert into.
         if argument.optional:

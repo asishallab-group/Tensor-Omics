@@ -24,14 +24,13 @@ def _file_shape(filename):
 
 
 def _serialize_nd(helper, array, filename, dtype):
-    array = np.asfortranarray(array, dtype=dtype)
-    helper(array.ravel(order="F"), np.asarray(array.shape, dtype=np.int32), filename)
+    # the helper derives the shape from the array itself now
+    helper(np.asfortranarray(array, dtype=dtype), filename)
 
 
 def _deserialize_nd(helper, filename, dtype):
     shape = _file_shape(filename)
-    flat = helper(int(np.prod(shape)), shape, filename)
-    return np.asarray(flat, dtype=dtype).reshape(shape, order="F")
+    return np.asarray(helper(shape, filename), dtype=dtype).reshape(shape, order="F")
 
 
 def tox_serialize_int_nd(array, filename):
@@ -67,6 +66,8 @@ def tox_deserialize_complex_nd(filename):
 
 
 def tox_serialize_char_nd(array, filename):
+    # characters still take the shape explicitly: the encode step rebuilds the buffer,
+    # so the shape has to be read off the caller's array first
     array = np.asfortranarray(array)
     serialize_char_helper(array.ravel(order="F"),
                           np.asarray(array.shape, dtype=np.int32), filename)

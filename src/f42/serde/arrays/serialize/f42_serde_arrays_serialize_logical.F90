@@ -16,13 +16,13 @@ contains
     !> M_EXPORT_C
     !| summary: Subroutine to serialize a flat logical array into a file
     !| AUTHOR_AARON_SCHROEDER
-    subroutine serialize_logical_helper(arr, n_elements, orig_shape, filename, ierr)
+    subroutine serialize_logical_helper(arr, n_elements, arr_shape, filename, ierr)
         integer(int32), intent(in) :: n_elements
             !! Number of strings in `arr`
         logical, dimension(n_elements), intent(in) :: arr
             !! Array to be serialized
-        integer(int32), dimension(:), intent(in) :: orig_shape
-            !! Original shape of the flattened array `arr`
+        integer(int32), dimension(:), intent(in) :: arr_shape
+            !! Extents of `arr`, one per dimension
         character(len=*), intent(in) :: filename
             !! Name of the file to write to
         integer(int32), intent(out) :: ierr
@@ -36,7 +36,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call write_file_header(filename, unit, LOGICAL_TYPE_CODE, size(orig_shape, kind=int32), orig_shape, ierr)
+        call write_file_header(filename, unit, LOGICAL_TYPE_CODE, size(arr_shape, kind=int32), arr_shape, ierr)
         if (is_err(ierr)) return
 
         ! Write the entire array as a contiguous block

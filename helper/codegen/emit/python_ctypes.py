@@ -455,7 +455,9 @@ class PythonEmitter:
         else:
             # numpy raises without saying which argument was wrong -- it cannot know --
             # so the name is put back on the way out
-            converter = "np.asfortranarray" if argument.rank > 1 else "np.ascontiguousarray"
+            converter = ("np.asfortranarray"
+                         if argument.rank > 1 or argument.shape_arg is not None
+                         else "np.ascontiguousarray")
             body.line("try:")
             with body.indent():
                 body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
@@ -487,6 +489,10 @@ class PythonEmitter:
         `ctypes.ArgumentError` naming an argument *position*. Checking here says which
         argument, and raises the ValueError the rest of the wrapper raises.
         """
+        if argument.shape_arg is not None:
+            # its shape travels in a separate argument, so any rank is accepted and the
+            # array is flattened at the call
+            return
         rank = self._numpy_rank(argument)
         name = argument.name
         body.line(f"if {name}.ndim != {rank}:")
@@ -538,6 +544,13 @@ class PythonEmitter:
         return writer.render()
 
     @staticmethod
+    def _producer_value(supply, stashes: dict[str, str]) -> str:
+        """What to pass for one producer input: an argument, or a constant outright."""
+        if supply.is_constant:
+            return python_literal(supply.constant)
+        return stashes.get(supply.argument, supply.argument)
+
+    @staticmethod
     def _rebinds_on_prepare(argument: CArgument) -> bool:
         """Whether preparing this argument replaces the caller's value with a buffer."""
         return argument.conversion is Conversion.MODE or argument.type.is_character
@@ -555,7 +568,10 @@ class PythonEmitter:
             plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
             if plan is None or not plan.is_automatic:
                 continue
-            for _, name in plan.inputs:
+            for supply in plan.inputs:
+                if supply.is_constant:
+                    continue
+                name = supply.argument
                 supplied = wrapper.argument(name)
                 if supplied is not None and self._rebinds_on_prepare(supplied):
                     stashes[name] = f"_{name}_raw"
@@ -598,8 +614,8 @@ class PythonEmitter:
             # the keyword is the *producer's* parameter name, the value the consumer's
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
-                f"{producer_input}={stashes.get(consumer_arg, consumer_arg)}"
-                for producer_input, consumer_arg in plan.inputs)
+                f"{supply.name}={self._producer_value(supply, stashes)}"
+                for supply in plan.inputs)
             single = self._producer_returns_single(plan.producer)
             if single:
                 lines.line(f"{argument.name} = {producer}({call_args})")
@@ -670,9 +686,16 @@ class PythonEmitter:
             return f"int({roles.mask_count_of.name}.sum())"
 
         if roles.is_shape_arg:
+            if not roles.shape_of.intent.is_input:
+                # it describes an output, so it says what shape to produce: ask for it
+                return ""
             return f"np.ascontiguousarray({roles.shape_of.name}.shape, dtype=np.int32)"
 
         if roles.is_extent:
+            # the same predicate the signature uses, so an argument is never both asked
+            # for and derived
+            if not roles.is_inferable_extent:
+                return ""
             provider = self._extent_provider(argument, wrapper)
             return provider or ""
 
@@ -696,6 +719,15 @@ class PythonEmitter:
             c_owner = wrapper.argument(owner.name)
             if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
                 continue
+            if c_owner.shape_arg is not None:
+                # its extents travel separately, so the only thing an extent of it can
+                # mean is how many elements there are altogether
+                return f"{owner.name}.size"
+        # an output sized by a shape argument: the count is the product of that shape
+        for owner in argument.source.roles.extent_of:
+            c_owner = wrapper.argument(owner.name)
+            if c_owner is not None and c_owner.shape_arg is not None:
+                return f"int(np.prod({c_owner.shape_arg}))"
             if c_owner.is_temporary:
                 # allocated from this extent, so it cannot also be its source
                 continue
@@ -790,6 +822,12 @@ class PythonEmitter:
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
 
+        if argument.shape_arg is not None and not argument.type.is_character:
+            # C sees one flat block, so the element count is the product of the extents
+            # that travel beside it
+            return (f"np.empty((int(np.prod({argument.shape_arg})),), "
+                    f"dtype={dtype_of(argument)}, order='C')")
+
         if argument.type.is_character:
             # zeros, not empty, and this is the one case where it matters. Fortran fills
             # a character buffer only partially: string_as_c_char_1d writes the string
@@ -813,6 +851,10 @@ class PythonEmitter:
 
     def _actual(self, argument: CArgument) -> str:
         name = argument.name
+        if argument.shape_arg is not None and not argument.type.is_character:
+            # Fortran has it as one flat block whose extents arrive separately; ravel in
+            # Fortran order, which is a view of an already column-major array
+            return f"{name}.ravel(order='F')"
         if argument.type.is_character:
             return name
         if argument.is_scalar:

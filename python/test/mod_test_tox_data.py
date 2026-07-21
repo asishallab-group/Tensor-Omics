@@ -40,14 +40,13 @@ def _file_shape(filename):
 
 
 def _serialize_nd(helper, array, filename, dtype):
-    array = np.asfortranarray(array, dtype=dtype)
-    helper(array.ravel(order="F"), np.asarray(array.shape, dtype=np.int32), filename)
+    # the helper derives the shape from the array itself now
+    helper(np.asfortranarray(array, dtype=dtype), filename)
 
 
 def _deserialize_nd(helper, filename, dtype):
     shape = _file_shape(filename)
-    flat = helper(int(np.prod(shape)), shape, filename)
-    return np.asarray(flat, dtype=dtype).reshape(shape, order="F")
+    return np.asarray(helper(shape, filename), dtype=dtype).reshape(shape, order="F")
 
 
 def tox_serialize_int_nd(a, f): _serialize_nd(serialize_int_helper, a, f, np.int32)

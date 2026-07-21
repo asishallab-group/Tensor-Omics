@@ -113,6 +113,8 @@ class RcppEmitter:
         writer = Writer()
         writer.line("// Generated. Do not edit.")
         writer.line("#include <Rcpp.h>")
+        writer.line("#include <numeric>")
+        writer.line("#include <functional>")
         writer.line(f'#include "{self.marshal_header}"')
         writer.blank()
         writer.line("using namespace Rcpp;")
@@ -197,7 +199,8 @@ class RcppEmitter:
         if roles.is_computed:
             # computed wins: R passes it in, even though it may also size a work array
             return False
-        return roles.is_inferable_extent or roles.is_shape_arg or roles.is_mask_count
+        return (roles.is_inferable_extent or roles.is_inferable_shape_arg
+                or roles.is_mask_count)
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:
@@ -219,9 +222,20 @@ class RcppEmitter:
     # -- body -------------------------------------------------------------------
 
     def _derive(self, writer: Writer, wrapper: CWrapper) -> None:
-        """Compute the extents, shapes and counts the call needs, from the inputs."""
+        """Compute the extents, shapes and counts the call needs, from the inputs.
+
+        A shape argument comes first: C++ needs it declared before the extent that is the
+        product of it, and the wrapper's argument order is the Fortran one, which says
+        nothing about that.
+        """
         lines = Writer()
-        for argument in wrapper:
+
+        def is_shape(argument):
+            roles = argument.source.roles if argument.source else None
+            return bool(roles and roles.is_shape_arg)
+
+        ordered = sorted(wrapper, key=lambda argument: not is_shape(argument))
+        for argument in ordered:
             expression = self._derived_value(argument, wrapper)
             if expression is not None:
                 lines.line(f"{self._cpp_local_type(argument)} {argument.name} = {expression};")
@@ -263,9 +277,27 @@ class RcppEmitter:
             return f"(int) sum({roles.mask_count_of.name})"
 
         if roles.is_shape_arg:
-            return f"IntegerVector({roles.shape_of.name}.attr(\"dim\"))"
+            if not roles.shape_of.intent.is_input:
+                # it says what shape the output should have, so the caller states it
+                return None
+            # a plain R vector carries no dim attribute, and its shape is its length
+            owner = roles.shape_of.name
+            return (f"Rf_isNull({owner}.attr(\"dim\")) "
+                    f"? IntegerVector::create({owner}.size()) "
+                    f": IntegerVector({owner}.attr(\"dim\"))")
 
         if roles.is_extent:
+            for owner in roles.extent_of:
+                c_owner = wrapper.argument(owner.name)
+                if c_owner is None or c_owner.shape_arg is None:
+                    continue
+                # its extents travel separately, so an extent of it is the total count:
+                # read off the array itself when the caller supplies it, otherwise the
+                # product of the shape they stated
+                if c_owner.intent.is_input:
+                    return f"(int) {owner.name}.size()"
+                return (f"(int) std::accumulate({c_owner.shape_arg}.begin(), "
+                        f"{c_owner.shape_arg}.end(), 1, std::multiplies<int>())")
             # a required owner first, since its size is always readable; fall back to an
             # optional one, whose materialized size is 0 when the caller omits it
             best = None
@@ -481,7 +513,13 @@ class RcppEmitter:
             return f"{cpp_ctype(argument)} {name} = 0;"
 
         extents = [cpp_extent(e) for e in argument.dimension.extents]
-        size = _product(extents)
+        if argument.shape_arg is not None:
+            # C sees one flat block, so the count is the product of the extents that
+            # travel beside it rather than anything the declaration says
+            size = (f"(int) std::accumulate({argument.shape_arg}.begin(), "
+                    f"{argument.shape_arg}.end(), 1, std::multiplies<int>())")
+        else:
+            size = _product(extents)
         if argument.conversion is Conversion.LOGICAL:
             return f"tox::BoolBuffer {name}_c({size});"
         if argument.type.is_character:
