@@ -12,9 +12,38 @@ plus `ierr`, which the R wrapper decodes.
 
 from __future__ import annotations
 
+import re
+
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+
+#: A Fortran numeric literal's kind suffix -- `0_int32`. C++ has no such thing.
+_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
+#: `size(arr)` / `size(arr, dim)` -- an extent stated in terms of another argument.
+_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
+#: `max`/`min` resolve to the C++ standard versions, which need qualifying.
+_FORTRAN_MINMAX = re.compile(r"\b(max|min)\s*\(")
+
+
+def _size_as_cpp(match: re.Match) -> str:
+    array, dim = match.group(1), match.group(2)
+    if dim is None:
+        return f"(int) {array}.size()"
+    # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
+    return f"(int) IntegerVector({array}.attr(\"dim\"))[{int(dim) - 1}]"
+
+
+def cpp_extent(extent: str) -> str:
+    """A Fortran extent expression as C++.
+
+    The same three incompatibilities the Python emitter handles -- kind suffixes, which
+    C++ has no notion of; `size(...)`, which is a member function here; and `max`/`min`,
+    which must name the std versions rather than rely on lookup finding something.
+    """
+    extent = _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
+    extent = _FORTRAN_SIZE.sub(_size_as_cpp, extent)
+    return _FORTRAN_MINMAX.sub(r"std::\1(", extent)
 
 #: iso_c_binding kind -> the C type it interoperates as, for the extern "C" declaration
 CPP_CTYPE = {
@@ -126,10 +155,21 @@ class RcppEmitter:
             argument
             for argument in wrapper
             if argument.intent.is_input
-            and not argument.is_synthesised
             and not argument.is_temporary
             and not self._is_derived(argument)
+            and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
+
+    def _must_be_supplied(self, argument: CArgument, wrapper: CWrapper) -> bool:
+        """Whether a synthesised extent or strlen has to come from the caller after all.
+
+        One that sizes an input is read off that input; one that sizes an *output* has no
+        such source, so leaving it out would drop it from the signature with nothing to
+        compute it from. Mirrors the Python emitter.
+        """
+        if argument.is_error:
+            return False
+        return self._derived_value(argument, wrapper) is None
 
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
@@ -185,11 +225,19 @@ class RcppEmitter:
 
         if argument.origin is Origin.STRLEN:
             owner = wrapper.argument(argument.sizes)
-            return f"{argument.sizes}.length() ? Rf_length(STRING_ELT({argument.sizes}, 0)) : 0"
+            # only off an input: an output buffer is not built yet, so its item length
+            # cannot be read back and the caller has to state it
+            if owner is None or not owner.intent.is_input:
+                return None
+            # a Nullable has no .length(): read the value materialized above, which is an
+            # empty vector when the caller omitted the argument
+            buffer = f"{argument.sizes}_val" if owner.optional else argument.sizes
+            return f"{buffer}.length() ? Rf_length(STRING_ELT({buffer}, 0)) : 0"
 
         if argument.origin is Origin.EXTENT:
             owner = wrapper.argument(argument.sizes)
-            if owner is None or not owner.intent.is_input:
+            # not off a work array either: that is sized *from* this extent
+            if owner is None or not owner.intent.is_input or owner.is_temporary:
                 return None
             return self._extent_of(owner, argument.axis)
 
@@ -211,6 +259,9 @@ class RcppEmitter:
                 c_owner = wrapper.argument(owner.name)
                 if c_owner is None or not c_owner.intent.is_input:
                     continue
+                if c_owner.is_temporary:
+                    # sized from this extent, so it cannot also be its source
+                    continue
                 axis = self._axis_of(argument.name, c_owner)
                 if axis is None:
                     continue
@@ -225,6 +276,8 @@ class RcppEmitter:
         """The size of `owner` along `axis`, as an Rcpp expression."""
         if owner.optional:
             # materialized to 0 when absent, so nothing reads a buffer that is not there
+            if owner.rank > 1 and not owner.type.is_character:
+                return f"{owner.name}_dim[{axis}]"
             return f"{owner.name}_size"
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"(int) {owner.name}.size()"
@@ -260,19 +313,56 @@ class RcppEmitter:
             cls = self._rcpp_class(argument)
             ctype = cpp_ctype(argument)
             name = argument.name
-            lines.line(f"const {ctype}* {name}_p = nullptr;")
+            rank = argument.rank
+            # a character's leading extent is its item length, not an axis, so its
+            # strings are a vector however many C extents it has
+            has_axes = rank > 1 and not argument.type.is_character
+            # A converted argument (character, mode, logical) reaches C through its own
+            # buffer, built from `_val` below, so no raw pointer into R's memory is taken.
+            if not argument.needs_conversion:
+                lines.line(f"const {ctype}* {name}_p = nullptr;")
             lines.line(f"int {name}_size = 0;")
+            if has_axes:
+                # a matrix needs its extents per axis, not just its total length
+                lines.line(f"std::vector<int> {name}_dim({rank}, 0);")
             lines.line(f"{cls} {name}_val;")
             lines.line(f"if ({name}.isNotNull()) {{")
             with lines.indent():
                 lines.line(f"{name}_val = {name}.get();")
-                lines.line(f"{name}_p = {name}_val.begin();")
+                if not argument.needs_conversion:
+                    lines.line(
+                        f"{name}_p = {self._as_c_pointer(argument, f'{name}_val.begin()')};"
+                    )
                 lines.line(f"{name}_size = {name}_val.size();")
+                if has_axes:
+                    # R only carries a dim attribute on a matrix; the R wrapper coerces
+                    # to one, but a direct .rcpp call need not have
+                    lines.line(f"if (!Rf_isNull({name}_val.attr(\"dim\"))) {{")
+                    with lines.indent():
+                        lines.line(f"IntegerVector {name}_d({name}_val.attr(\"dim\"));")
+                        lines.line(
+                            f"for (int i = 0; i < {rank} && i < {name}_d.size(); ++i)"
+                            f" {name}_dim[i] = {name}_d[i];"
+                        )
+                    lines.line("}")
             lines.line("}")
         if lines:
             writer.line("// optionals: a null pointer and size 0 when the caller omits them")
             writer.extend(lines)
             writer.blank()
+
+    @staticmethod
+    def _converts_via_buffer(argument: CArgument) -> bool:
+        """Whether this argument reaches C through a tox:: buffer rather than directly.
+
+        Conversion is an array concern. A logical *scalar* is already C++'s `bool`, which
+        is what the C wrapper takes, so it goes by address like any other scalar; only a
+        logical array needs unpacking from R's int-based representation. A character is
+        always a buffer, scalar or not, because R hands over a SEXP.
+        """
+        if not argument.needs_conversion:
+            return False
+        return argument.is_array or argument.type.is_character
 
     @staticmethod
     def _is_inout_copy(argument: CArgument) -> bool:
@@ -281,12 +371,15 @@ class RcppEmitter:
         Rcpp shares R's buffer, so writing through it would modify the caller's object --
         which R's copy-on-modify contract forbids. `clone` copies reliably, where R's own
         coercion copies only sometimes (`as.double` on an already-double vector does not).
-        Conversion cases build their own buffer, so they need no clone.
+        Conversion cases build their own buffer, so they need no clone. Neither do work
+        arrays: the wrapper allocates those itself, so there is no caller object to
+        protect and nothing to clone from.
         """
         return (
             argument.intent is Intent.INOUT
             and argument.is_array
             and not argument.needs_conversion
+            and not argument.is_temporary
         )
 
     def _working_name(self, argument: CArgument) -> str:
@@ -306,7 +399,7 @@ class RcppEmitter:
     def _marshal_inputs(self, writer: Writer, wrapper: CWrapper) -> None:
         lines = Writer()
         for argument in wrapper:
-            if not argument.intent.is_input or not argument.needs_conversion:
+            if not argument.intent.is_input or not self._converts_via_buffer(argument):
                 continue
             lines.line(self._input_buffer(argument))
         if lines:
@@ -316,11 +409,14 @@ class RcppEmitter:
 
     def _input_buffer(self, argument: CArgument) -> str:
         name = argument.name
+        # an optional arrives as a Nullable; the buffer is built from the value
+        # materialized above, which is empty when the caller omitted the argument
+        value = f"{name}_val" if argument.optional else name
         if argument.conversion is Conversion.LOGICAL:
-            return f"tox::BoolBuffer {name}_c({name});"
+            return f"tox::BoolBuffer {name}_c({value});"
         # character or mode: a padded c_char buffer
         length = argument.dimension.extents[0]
-        return f"tox::CharBuffer {name}_c({name}, {length});"
+        return f"tox::CharBuffer {name}_c({value}, {length});"
 
     def _allocate(self, writer: Writer, wrapper: CWrapper) -> None:
         lines = Writer()
@@ -342,12 +438,13 @@ class RcppEmitter:
         if argument.is_scalar:
             return f"{cpp_ctype(argument)} {name} = 0;"
 
-        size = " * ".join(argument.dimension.extents)
+        extents = [cpp_extent(e) for e in argument.dimension.extents]
+        size = " * ".join(extents)
         if argument.conversion is Conversion.LOGICAL:
             return f"tox::BoolBuffer {name}_c({size});"
         if argument.type.is_character:
-            length = argument.dimension.extents[0]
-            count = " * ".join(argument.dimension.extents[1:]) or "1"
+            length = extents[0]
+            count = " * ".join(extents[1:]) or "1"
             return f"tox::CharBuffer {name}_c({length}, {count});"
         # a temporary is scratch C++ never shows anyone; an output is an Rcpp vector
         if argument.is_temporary:
@@ -368,20 +465,35 @@ class RcppEmitter:
         name = argument.name
         if argument.optional:
             # null pointer when absent, so Fortran's OPTIONAL dummy is absent too
+            if self._converts_via_buffer(argument):
+                return f"{name}.isNotNull() ? {name}_c.data() : nullptr"
             return f"{name}_p"
-        if argument.needs_conversion:
+        if self._converts_via_buffer(argument):
             return f"{name}_c.data()"
         if argument.is_scalar:
             return f"&{name}"
         if argument.is_temporary:
             return f"{name}.data()"
         # an Rcpp vector/matrix: its buffer is already the C layout
-        return f"{self._working_name(argument)}.begin()"
+        return self._as_c_pointer(argument, f"{self._working_name(argument)}.begin()")
+
+    @staticmethod
+    def _as_c_pointer(argument: CArgument, buffer: str) -> str:
+        """The Rcpp buffer as the pointer the `extern "C"` declaration asks for.
+
+        Only complex needs saying: a `ComplexVector` iterates as `Rcomplex*`, the pair of
+        doubles R stores, which is layout-compatible with C's `double _Complex` but not
+        convertible to it. Every other type's iterator already *is* the C pointer.
+        """
+        if argument.type.base is not BaseType.COMPLEX:
+            return buffer
+        const = "const " if argument.intent is Intent.IN else ""
+        return f"reinterpret_cast<{const}{cpp_ctype(argument)}*>({buffer})"
 
     def _marshal_outputs(self, writer: Writer, wrapper: CWrapper) -> None:
         lines = Writer()
         for argument in wrapper:
-            if argument.intent is Intent.IN or not argument.needs_conversion:
+            if argument.intent is Intent.IN or not self._converts_via_buffer(argument):
                 continue
             name = argument.name
             rcpp = RCPP_VECTOR[argument.type.base]

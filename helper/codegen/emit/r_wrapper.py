@@ -124,9 +124,9 @@ class RWrapperEmitter:
             argument
             for argument in wrapper
             if argument.intent.is_input
-            and not argument.is_synthesised
             and not argument.is_temporary
             and not self._is_derived(argument)
+            and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
     def _rcpp_inputs(self, wrapper: CWrapper) -> list[CArgument]:
@@ -135,10 +135,22 @@ class RWrapperEmitter:
             argument
             for argument in wrapper
             if argument.intent.is_input
-            and not argument.is_synthesised
             and not argument.is_temporary
             and not self._is_derived_in_cpp(argument)
+            and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
+
+    @staticmethod
+    def _must_be_supplied(argument: CArgument, wrapper: CWrapper) -> bool:
+        """Whether a synthesised extent or strlen has to come from the caller after all.
+
+        Kept in step with the Rcpp emitter, which decides the same thing for the C++
+        signature: an extent or strlen that sizes only an *output* has nothing to be read
+        off, so it stays a parameter on both sides.
+        """
+        from .rcpp import RcppEmitter
+
+        return RcppEmitter()._must_be_supplied(argument, wrapper)
 
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
