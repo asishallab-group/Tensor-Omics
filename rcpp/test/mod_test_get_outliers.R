@@ -7,38 +7,14 @@
 source("rcpp/load_tensor_omics.R")
 source("rcpp/test_helpers.R")
 
-# The generated interface exposes the Fortran routines as they are: the scratch buffers
-# and sort prep the old hand-written wrappers hid are now the caller's to supply. These
-# adapters do exactly that, so the assertions below stay about the numerics.
+# compute_rdi returns the sorted array and permutation identify_outliers wants, so the
+# pipeline composes directly. Only the sort prep for calling identify_outliers with a
+# bare rdi remains.
 
 .sort_prep <- function(rdi) {
   sorted_rdi <- rdi
   sorted_rdi[sorted_rdi < 0] <- 0
   list(sorted_rdi = sorted_rdi, perm = order(sorted_rdi))
-}
-
-family_scaling <- function(distances, gene_to_fam, n_families) {
-  loess_x <- numeric(n_families)
-  loess_y <- numeric(n_families)
-  indices_used <- integer(n_families)
-  compute_family_scaling(distances, gene_to_fam, loess_x, loess_y, indices_used)
-}
-
-family_scaling_expert <- function(distances, gene_to_fam, n_families,
-                                  span, degree, mode, n_iters) {
-  ws <- tox_loess_required_workspace(n_dim = 1, max_neighborhood_size = n_families,
-                                     save_factorization = FALSE)
-  compute_family_scaling_expert(
-    distances, gene_to_fam, integer(n_families),
-    ws$int_workspace_size, ws$real_workspace_size, n_families, n_families,
-    span, degree, mode, n_iters
-  )
-}
-
-rdi_of <- function(distances, gene_to_fam, dscale) {
-  n <- length(distances)
-  compute_rdi(distances, gene_to_fam, dscale,
-              numeric(n), seq_len(n), integer(n), integer(n))
 }
 
 outliers_of <- function(rdi, percentile) {
@@ -63,7 +39,7 @@ test_compute_family_scaling_basic <- function() {
   distances <- rep(1:n_families, each = genes_per_fam) * 2 + rep(c(0.1, 0.4, 0.9, 1.6), n_families)
   gene_to_fam <- rep(1:n_families, each = genes_per_fam)
 
-  result <- family_scaling(distances, gene_to_fam, n_families)
+  result <- compute_family_scaling(n_families, distances, gene_to_fam)
 
   # Verify results
   assert_true(all(result$dscale > 0))  # All families have >1 gene
@@ -81,7 +57,7 @@ test_compute_family_scaling_invalid <- function() {
   
   error_caught <- FALSE
   tryCatch({
-    family_scaling(distances, gene_to_fam, n_families)
+    compute_family_scaling(n_families, distances, gene_to_fam)
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains expected text
@@ -97,7 +73,7 @@ test_compute_family_scaling_zero_distances <- function() {
   gene_to_fam <- c(1, 1, 2, 2, 2)
   n_families <- 2
   
-  result <- family_scaling(distances, gene_to_fam, n_families)
+  result <- compute_family_scaling(n_families, distances, gene_to_fam)
   
   # Verify zero distance handling
   assert_true(all(result$dscale == 0))  # All distances zero
@@ -117,7 +93,7 @@ test_compute_family_scaling_large_dataset <- function() {
   distances <- runif(n_genes, 0.5, 5.0)  # Random distances
   gene_to_fam <- rep(1:n_families, each = genes_per_fam)
 
-  result <- family_scaling(distances, gene_to_fam, n_families)
+  result <- compute_family_scaling(n_families, distances, gene_to_fam)
 
   # Verify large dataset handling
   assert_true(length(result$dscale) == n_families)
@@ -135,7 +111,7 @@ test_compute_rdi_normal <- function() {
   gene_to_fam <- c(1, 1, 2, 2, 2)
   dscale <- c(2, 4)
   
-  result <- rdi_of(distances, gene_to_fam, dscale)
+  result <- compute_rdi(distances, gene_to_fam, dscale)
   
   # Verify RDI calculation: rdi = abs(distances) / dscale
   expected_rdi <- abs(distances) / dscale[gene_to_fam]
@@ -150,7 +126,7 @@ test_compute_rdi_zero_scaling <- function() {
   gene_to_fam <- c(1, 1, 2, 2, 2)
   dscale <- c(0, 0)
   
-  result <- rdi_of(distances, gene_to_fam, dscale)
+  result <- compute_rdi(distances, gene_to_fam, dscale)
   
   # Verify zero scaling results in zero RDI
   assert_true(all(result$rdi == 0))
@@ -163,7 +139,7 @@ test_compute_rdi_precision <- function() {
   gene_to_fam <- c(1, 1, 1)
   dscale <- c(2.0)  # All genes in family 1, scaling = 2.0
   
-  result <- rdi_of(distances, gene_to_fam, dscale)
+  result <- compute_rdi(distances, gene_to_fam, dscale)
   
   # Expected RDI: [2.0/2.0, 4.0/2.0, 6.0/2.0] = [1.0, 2.0, 3.0]
   expected <- c(1.0, 2.0, 3.0)
@@ -177,7 +153,7 @@ test_compute_rdi_negative_distances <- function() {
   gene_to_fam <- c(1, 1, 2, 2, 2)
   dscale <- c(2, 4)
   
-  result <- rdi_of(distances, gene_to_fam, dscale)
+  result <- compute_rdi(distances, gene_to_fam, dscale)
   
   # Verify negative distances are handled (absolute value used)
   expected_rdi <- abs(distances) / dscale[gene_to_fam]
@@ -404,7 +380,7 @@ test_compute_family_scaling_expert_basic <- function() {
   stack_left_tmp <- integer(n_genes)
   stack_right_tmp <- integer(n_genes)
 
-  result <- family_scaling_expert(distances, gene_to_fam, n_families,
+  result <- compute_family_scaling_expert(n_families, distances, gene_to_fam,
                                   span, degree, mode, n_iters)
 
 
@@ -452,9 +428,9 @@ test_compute_family_scaling_expert_consistency <- function() {
   assert_true(length(stack_left_tmp) == n_genes)
   assert_true(length(stack_right_tmp) == n_genes)
 
-  result_expert <- family_scaling_expert(distances, gene_to_fam, n_families,
+  result_expert <- compute_family_scaling_expert(n_families, distances, gene_to_fam,
                                          span, degree, mode, n_iters)
-  result_regular <- family_scaling(distances, gene_to_fam, n_families)
+  result_regular <- compute_family_scaling(n_families, distances, gene_to_fam)
 
   valid_idx <- !is.na(result_expert$loess_x)
 

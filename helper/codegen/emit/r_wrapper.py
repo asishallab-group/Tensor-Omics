@@ -74,8 +74,8 @@ class RWrapperEmitter:
                 continue
             producer = stripped_name(plan.producer)
             call_args = ", ".join(
-                f"{producer_input} = {self._r_value_of(consumer_arg, wrapper)}"
-                for producer_input, consumer_arg in plan.inputs
+                f"{supply.name} = {self._producer_value(supply, wrapper)}"
+                for supply in plan.inputs
             )
             if self._producer_returns_single(plan.producer):
                 writer.line(f"{argument.name} <- {producer}({call_args})")
@@ -92,6 +92,12 @@ class RWrapperEmitter:
         if wrote:
             writer.blank()
 
+    def _producer_value(self, supply, wrapper: CWrapper) -> str:
+        """What to pass for one producer input: an argument, or a constant outright."""
+        if supply.is_constant:
+            return r_literal(supply.constant)
+        return self._r_value_of(supply.argument, wrapper)
+
     def _r_value_of(self, consumer_arg: str, wrapper: CWrapper) -> str:
         """The R expression for a consumer argument, to feed an AUTO producer call.
 
@@ -103,6 +109,10 @@ class RWrapperEmitter:
         if roles is not None and roles.is_extent:
             for owner in roles.extent_of:
                 c_owner = wrapper.argument(owner.name)
+                if c_owner is not None and c_owner.is_temporary:
+                    # a work array the wrapper allocates: not in scope, and sized *from*
+                    # this extent rather than the other way round
+                    continue
                 if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
                     axis = self._axis_of(consumer_arg, c_owner)
                     if axis is not None:
@@ -175,7 +185,8 @@ class RWrapperEmitter:
             return False
         if roles.is_computed:
             return False
-        return roles.is_inferable_extent or roles.is_shape_arg or roles.is_mask_count
+        return (roles.is_inferable_extent or roles.is_inferable_shape_arg
+                or roles.is_mask_count)
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

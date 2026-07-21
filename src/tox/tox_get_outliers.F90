@@ -42,7 +42,7 @@ contains
             !! Reference x-coordinates for LOESS smoothing
         real(real64), intent(out) :: loess_y(n_families)
             !! Reference y-coordinates for LOESS smoothing
-        integer(int32), intent(inout) :: indices_used(n_families)
+        integer(int32), intent(out) :: indices_used(n_families)
             !! Indices of reference points used for smoothing
         integer(int32), intent(out) :: tmp_perm(n_genes)
             !! Permutation array for sorting gene distances
@@ -50,36 +50,50 @@ contains
             !! Stack array for left indices during sorting
         integer(int32), intent(out) :: tmp_stack_right(n_genes)
             !! Stack array for right indices during sorting
-        real(real64), intent(inout) :: tmp_means_aux(n_families)
+        real(real64), intent(out) :: tmp_means_aux(n_families)
             !! Work array for saving raw means
         integer(int32), intent(out) :: excluded_low_sd(n_families)
             !! Mask to save those families that have low sd
 
         ! LOESS workspace
         integer(int32), intent(in)    :: liv
-            !! Length of integer workspace
-        integer(int32), intent(inout) :: tmp_iv(liv)
+            !! Length of integer workspace.
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |-----------------------|------------|
+            !! | n_dim                 | 1_int32    |
+            !! | max_neighborhood_size | n_families |
+            !! | save_factorization    | .false.    |
+        integer(int32), intent(out) :: tmp_iv(liv)
             !! Integer workspace array
         integer(int32), intent(in)    :: lv
-            !! Length of real workspace
-        real(real64), intent(inout) :: tmp_wv(lv)
+            !! Length of real workspace.
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |-----------------------|------------|
+            !! | n_dim                 | 1_int32    |
+            !! | max_neighborhood_size | n_families |
+            !! | save_factorization    | .false.    |
+        real(real64), intent(out) :: tmp_wv(lv)
             !! Real workspace array
 
         real(real64), intent(inout) :: tmp_diagl(n_families)
             !! Diagonal elements of the weight matrix
-        real(real64), intent(inout) :: tmp_w_init(n_families)
+        real(real64), intent(out) :: tmp_w_init(n_families)
             !! Initial weights for LOESS
         real(real64), intent(inout) :: tmp_z_mat(n_families, 1)
             !! Z matrix for LOESS fitting
-        real(real64), intent(inout) :: tmp_rw(n_families)
+        real(real64), intent(out) :: tmp_rw(n_families)
             !! Residuals for robust LOESS fitting
         real(real64), dimension(n_families), intent(out), target :: tmp_ww
             !! Working weights array
         real(real64), dimension(n_families), intent(out), target :: tmp_res
             !! Residuals array
-        integer(int32), intent(inout):: tmp_pi(:)
+        integer(int32), intent(out)  :: tmp_pi(n_families)
             !! Permutation indices for robust LOESS fitting
-        real(real64), intent(out)    :: tmp_yhat(:)
+        real(real64), intent(out)    :: tmp_yhat(n_families)
             !! Output array for LOESS predictions
 
         real(real64), intent(in)     :: span
@@ -129,6 +143,12 @@ contains
         tmp_w_init = 0.0_real64
         tmp_rw = 0.0_real64
         tmp_pi = 0
+
+        ! netlib reads iv and wv as workspace it has already seeded, so they are
+        ! initialised here rather than by the caller: this routine is exported, and an
+        ! interfacing language hands it freshly allocated -- uninitialised -- memory.
+        tmp_iv = 1_int32
+        tmp_wv = 0.0_real64
 
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
@@ -348,11 +368,11 @@ contains
             !! Mapping of each gene to its family (1-based)
         real(real64), intent(out) :: dscale(n_families)
             !! Output: array of scaling factors per family
-        real(real64), intent(inout) :: loess_x(n_families)
+        real(real64), intent(out) :: loess_x(n_families)
             !! Reference x-coordinates.
-        real(real64), intent(inout) :: loess_y(n_families)
+        real(real64), intent(out) :: loess_y(n_families)
             !! Reference y-coordinates (length n_total).
-        integer(int32), intent(inout) :: indices_used(n_families)
+        integer(int32), intent(out) :: indices_used(n_families)
             !! Indices of reference points used for smoothing.
         integer(int32), intent(out) :: ierr
             !! Error code
@@ -400,12 +420,6 @@ contains
         M_ALLOCATE(excluded_low_sd(n_families))
         M_ALLOCATE(tmp_means_aux(n_families))
 
-        ! Initialize (important for netlib)
-        tmp_iv = 1_int32
-        tmp_wv = 0.0_real64
-        tmp_rw = 1.0_real64
-        tmp_pi = 0_int32
-
         call compute_family_scaling( &
             n_genes, n_families, distances, gene_to_fam, dscale, &
             loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
@@ -421,7 +435,7 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
-                                stack_left, stack_right)
+                                tmp_stack_left, tmp_stack_right)
         implicit none
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -433,13 +447,13 @@ contains
             !! Array of scaling factors for each family
         real(real64), intent(out) :: rdi(n_genes)
             !! Output array of RDI values for each gene
-        real(real64), intent(inout) :: sorted_rdi(n_genes)
+        real(real64), intent(out) :: sorted_rdi(n_genes)
             !! Work array for sorting (dimension n_genes)
-        integer(int32), intent(inout) :: perm(n_genes)
+        integer(int32), intent(out) :: perm(n_genes)
             !! Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
-        integer(int32), intent(inout) :: stack_left(n_genes)
+        integer(int32), intent(out) :: tmp_stack_left(n_genes)
             !! Stack array for sorting (dimension n_genes)
-        integer(int32), intent(inout) :: stack_right(n_genes)
+        integer(int32), intent(out) :: tmp_stack_right(n_genes)
             !! Stack array for sorting (dimension n_genes)
 
         integer(int32) :: i, family_idx
@@ -474,8 +488,13 @@ contains
             sorted_rdi = 0.0_real64
         end where
 
+        ! the quicksort permutes `perm`, so it has to start as the identity: seeded here
+        ! rather than by the caller, since this routine is exported and an interfacing
+        ! language hands it freshly allocated memory
+        call init_perm(perm)
+
         ! Sort RDI values using the tox_sorting module
-        call sort_array(sorted_rdi, perm, stack_left, stack_right)
+        call sort_array(sorted_rdi, perm, tmp_stack_left, tmp_stack_right)
 
     end subroutine compute_rdi
 

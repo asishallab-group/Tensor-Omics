@@ -11,18 +11,17 @@ import os
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
-    compute_family_scaling as _compute_family_scaling,
-    compute_family_scaling_expert as _compute_family_scaling_expert,
-    compute_rdi as _compute_rdi,
+    compute_family_scaling,
+    compute_family_scaling_expert,
+    compute_rdi,
     identify_outliers as _identify_outliers,
     detect_outliers as _detect_outliers,
-    tox_loess_required_workspace,
 )
 from test_helpers import run_all_tests, assert_error
 
-# The generated interface exposes the Fortran routines as they are: the scratch buffers
-# and sort prep that the old hand-written wrappers hid are now the caller's to supply.
-# These adapters do exactly that, so the assertions below stay about the numerics.
+# compute_rdi returns the sorted array and permutation that identify_outliers wants, so
+# the pipeline composes directly. Only the two shims below remain: one for calling
+# identify_outliers with a bare rdi, and one for the key the old suite expects.
 
 
 def _sort_prep(rdi):
@@ -31,41 +30,6 @@ def _sort_prep(rdi):
     sorted_rdi[sorted_rdi < 0.0] = 0.0
     perm = (np.argsort(sorted_rdi, kind="mergesort").astype(np.int32) + 1)
     return sorted_rdi, perm
-
-
-def compute_family_scaling(distances, gene_to_fam):
-    n_families = int(np.max(gene_to_fam))
-    loess_x = np.zeros(n_families, dtype=np.float64)
-    loess_y = np.zeros(n_families, dtype=np.float64)
-    indices_used = np.zeros(n_families, dtype=np.int32)
-    dscale = _compute_family_scaling(distances, gene_to_fam, loess_x, loess_y, indices_used)
-    # loess_x/loess_y are intent(inout), so they come back filled
-    return {"dscale": dscale, "loess_x": loess_x, "loess_y": loess_y,
-            "indices_used": indices_used}
-
-
-def compute_family_scaling_expert(distances, gene_to_fam, span, degree, mode, n_iters):
-    n_families = int(np.max(gene_to_fam))
-    indices_used = np.zeros(n_families, dtype=np.int32)
-    # the same workspace sizing the allocating variant does internally
-    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n_families,
-                                      save_factorization=False)
-    result = _compute_family_scaling_expert(
-        distances, gene_to_fam, indices_used,
-        ws["int_workspace_size"], ws["real_workspace_size"], n_families, n_families,
-        span, degree, mode, n_iters)
-    return dict(result, indices_used=indices_used)
-
-
-def compute_rdi(distances, gene_to_fam, dscale):
-    n_genes = np.asarray(distances).size
-    return _compute_rdi(
-        distances, gene_to_fam, dscale,
-        np.zeros(n_genes, dtype=np.float64),
-        np.arange(1, n_genes + 1, dtype=np.int32),
-        np.zeros(n_genes, dtype=np.int32),
-        np.zeros(n_genes, dtype=np.int32),
-    )
 
 
 def identify_outliers(rdi, percentile=95.0):
@@ -118,7 +82,7 @@ def test_compute_family_scaling_basic():
         np.full(genes_per_fam, 10)
     ]).astype(np.int32)
 
-    result = compute_family_scaling(distances, gene_to_fam)
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
 
     # Verify basic properties
     assert len(result['dscale']) == n_families  # Ten families
@@ -132,7 +96,8 @@ def test_compute_family_scaling_single_family():
     distances = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     gene_to_fam = np.array([1, 1, 1, 1], dtype=np.int32)  # All in family 1
 
-    result = compute_family_scaling(distances, gene_to_fam)
+    n_families = int(np.max(gene_to_fam))
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
 
     assert len(result['dscale']) == 1
     assert result['dscale'][0] == 0
@@ -159,7 +124,8 @@ def test_compute_family_scaling_edge_cases():
         11, 11, 12, 12  # Family 6
     ], dtype=np.int32)
 
-    result = compute_family_scaling(distances, gene_to_fam)
+    n_families = int(np.max(gene_to_fam))
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
     assert all(np.isfinite(result['dscale']))
 
     # Case 2: Large distances with more families
@@ -180,7 +146,7 @@ def test_compute_family_scaling_edge_cases():
         11, 11, 12, 12  # Family 6
     ], dtype=np.int32)
 
-    result = compute_family_scaling(distances, gene_to_fam)
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
     assert all(np.isfinite(result['dscale']))
 
 
@@ -222,7 +188,7 @@ def test_tox_compute_family_scaling_expert():
     ]).astype(np.int32)
 
     result = compute_family_scaling_expert(
-        distances, gene_to_fam, span, degree, mode, n_iters
+        n_families, distances, gene_to_fam, span, degree, mode, n_iters
     )
 
     # Verify basic properties
@@ -236,7 +202,7 @@ def test_tox_compute_family_scaling_expert():
     assert 'indices_used' in result
 
     # Compare with regular version to ensure consistency
-    result_regular = compute_family_scaling(distances, gene_to_fam)
+    result_regular = compute_family_scaling(n_families, distances, gene_to_fam)
 
     # Results should be very similar (within numerical precision)
     np.testing.assert_allclose(result['dscale'], result_regular['dscale'], rtol=1e-10)
@@ -275,14 +241,14 @@ def test_compute_family_scaling_expert_input_validation():
     # distances and gene_to_fam share n_genes; a mismatch has to be rejected
     assert_error(
         lambda: compute_family_scaling_expert(
-            distances[:-1], gene_to_fam, span, degree, mode, n_iters),
+            n_families, distances[:-1], gene_to_fam, span, degree, mode, n_iters),
         "Expected an error for mismatched distances / gene_to_fam lengths",
     )
 
     # an unknown mode string is not one of the tabulated values
     assert_error(
         lambda: compute_family_scaling_expert(
-            distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
+            n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
         "Expected an error for an invalid mode string",
     )
 
@@ -298,7 +264,7 @@ def test_compute_rdi_basic():
     gene_to_fam = np.array([1, 1, 2, 2, 2], dtype=np.int32)
     dscale = np.array([1.5, 2.0], dtype=np.float64)  # Manual scaling factors
 
-    rdi = compute_rdi(distances, gene_to_fam, dscale)
+    rdi = compute_rdi(distances, gene_to_fam, dscale)['rdi']
 
     # Verify properties
     assert len(rdi) == len(distances)
@@ -314,7 +280,7 @@ def test_compute_rdi_outlier_detection():
     gene_to_fam = np.array([1, 1, 1, 1], dtype=np.int32)
     dscale = np.array([1.0], dtype=np.float64)
 
-    rdi = compute_rdi(distances, gene_to_fam, dscale)
+    rdi = compute_rdi(distances, gene_to_fam, dscale)['rdi']
 
     # The outlier should have much higher RDI
     assert rdi[3] > rdi[0]

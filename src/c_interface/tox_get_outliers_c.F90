@@ -44,9 +44,7 @@ contains
             tmp_ww,&
             tmp_res,&
             tmp_pi,&
-            n_tmp_pi_elements,&
             tmp_yhat,&
-            n_tmp_yhat_elements,&
             span,&
             degree,&
             mode,&
@@ -64,13 +62,23 @@ contains
         integer(c_int), intent(in), target :: n_families
             !! Total number of gene families
         integer(c_int), intent(in), target :: liv
-            !! Length of integer workspace
+            !! Length of integer workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output of [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_families  |
+            !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: lv
-            !! Length of real workspace
-        integer(c_int), intent(in), target :: n_tmp_pi_elements
-            !! number of elements in `tmp_pi`
-        integer(c_int), intent(in), target :: n_tmp_yhat_elements
-            !! number of elements in `tmp_yhat`
+            !! Length of real workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output of [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_families  |
+            !! | save_factorization    | .false.     |
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
@@ -81,7 +89,7 @@ contains
             !! Reference x-coordinates for LOESS smoothing
         real(c_double), dimension(n_families), intent(out), target :: loess_y
             !! Reference y-coordinates for LOESS smoothing
-        integer(c_int), dimension(n_families), intent(inout), target :: indices_used
+        integer(c_int), dimension(n_families), intent(out), target :: indices_used
             !! Indices of reference points used for smoothing
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm
             !! Permutation array for sorting gene distances
@@ -89,25 +97,25 @@ contains
             !! Stack array for left indices during sorting
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_right
             !! Stack array for right indices during sorting
-        integer(c_int), dimension(liv), intent(inout), target :: tmp_iv
+        integer(c_int), dimension(liv), intent(out), target :: tmp_iv
             !! Integer workspace array
-        real(c_double), dimension(lv), intent(inout), target :: tmp_wv
+        real(c_double), dimension(lv), intent(out), target :: tmp_wv
             !! Real workspace array
         real(c_double), dimension(n_families), intent(inout), target :: tmp_diagl
             !! Diagonal elements of the weight matrix
-        real(c_double), dimension(n_families), intent(inout), target :: tmp_w_init
+        real(c_double), dimension(n_families), intent(out), target :: tmp_w_init
             !! Initial weights for LOESS
         real(c_double), dimension(n_families, 1), intent(inout), target :: tmp_z_mat
             !! Z matrix for LOESS fitting
-        real(c_double), dimension(n_families), intent(inout), target :: tmp_rw
+        real(c_double), dimension(n_families), intent(out), target :: tmp_rw
             !! Residuals for robust LOESS fitting
         real(c_double), dimension(n_families), intent(out), target :: tmp_ww
             !! Working weights array
         real(c_double), dimension(n_families), intent(out), target :: tmp_res
             !! Residuals array
-        integer(c_int), dimension(n_tmp_pi_elements), intent(inout), target :: tmp_pi
+        integer(c_int), dimension(n_families), intent(out), target :: tmp_pi
             !! Permutation indices for robust LOESS fitting
-        real(c_double), dimension(n_tmp_yhat_elements), intent(out), target :: tmp_yhat
+        real(c_double), dimension(n_families), intent(out), target :: tmp_yhat
             !! Output array for LOESS predictions
         real(c_double), intent(in), target :: span
             !! Span parameter for LOESS smoothing
@@ -126,7 +134,7 @@ contains
             !! cutoff used to filter families with low std
         integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
             !! Mask to save those families that have low sd
-        real(c_double), dimension(n_families), intent(inout), target :: tmp_means_aux
+        real(c_double), dimension(n_families), intent(out), target :: tmp_means_aux
             !! Work array for saving raw means
         integer(c_int), intent(out), target :: ierr
             !! Error code
@@ -138,8 +146,6 @@ contains
         M_CHECK_NON_NULL(n_families)
         M_CHECK_NON_NULL(liv)
         M_CHECK_NON_NULL(lv)
-        M_CHECK_NON_NULL(n_tmp_pi_elements)
-        M_CHECK_NON_NULL(n_tmp_yhat_elements)
         M_CHECK_NON_NULL(span)
         M_CHECK_NON_NULL(degree)
         M_CHECK_NON_NULL(n_iters)
@@ -161,8 +167,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_rw, n_families)
         M_CHECK_ARRAY_NON_NULL(tmp_ww, n_families)
         M_CHECK_ARRAY_NON_NULL(tmp_res, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_pi, n_tmp_pi_elements)
-        M_CHECK_ARRAY_NON_NULL(tmp_yhat, n_tmp_yhat_elements)
+        M_CHECK_ARRAY_NON_NULL(tmp_pi, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_yhat, n_families)
         M_CHECK_ARRAY_NON_NULL(mode, 6)
         M_CHECK_ARRAY_NON_NULL(excluded_low_sd, n_families)
         M_CHECK_ARRAY_NON_NULL(tmp_means_aux, n_families)
@@ -243,11 +249,11 @@ contains
             !! Mapping of each gene to its family (1-based)
         real(c_double), dimension(n_families), intent(out), target :: dscale
             !! Output: array of scaling factors per family
-        real(c_double), dimension(n_families), intent(inout), target :: loess_x
+        real(c_double), dimension(n_families), intent(out), target :: loess_x
             !! Reference x-coordinates.
-        real(c_double), dimension(n_families), intent(inout), target :: loess_y
+        real(c_double), dimension(n_families), intent(out), target :: loess_y
             !! Reference y-coordinates (length n_total).
-        integer(c_int), dimension(n_families), intent(inout), target :: indices_used
+        integer(c_int), dimension(n_families), intent(out), target :: indices_used
             !! Indices of reference points used for smoothing.
         integer(c_int), intent(out), target :: ierr
             !! Error code
@@ -287,8 +293,8 @@ contains
             rdi,&
             sorted_rdi,&
             perm,&
-            stack_left,&
-            stack_right,&
+            tmp_stack_left,&
+            tmp_stack_right,&
             ierr&
         ) bind(C, name="compute_rdi_c")
         use tox_get_outliers, only: compute_rdi
@@ -305,13 +311,13 @@ contains
             !! Array of scaling factors for each family
         real(c_double), dimension(n_genes), intent(out), target :: rdi
             !! Output array of RDI values for each gene
-        real(c_double), dimension(n_genes), intent(inout), target :: sorted_rdi
+        real(c_double), dimension(n_genes), intent(out), target :: sorted_rdi
             !! Work array for sorting (dimension n_genes)
-        integer(c_int), dimension(n_genes), intent(inout), target :: perm
+        integer(c_int), dimension(n_genes), intent(out), target :: perm
             !! Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
-        integer(c_int), dimension(n_genes), intent(inout), target :: stack_left
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_left
             !! Stack array for sorting (dimension n_genes)
-        integer(c_int), dimension(n_genes), intent(inout), target :: stack_right
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_right
             !! Stack array for sorting (dimension n_genes)
         integer(c_int), intent(out), target :: ierr
             !! Error code
@@ -326,8 +332,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(rdi, n_genes)
         M_CHECK_ARRAY_NON_NULL(sorted_rdi, n_genes)
         M_CHECK_ARRAY_NON_NULL(perm, n_genes)
-        M_CHECK_ARRAY_NON_NULL(stack_left, n_genes)
-        M_CHECK_ARRAY_NON_NULL(stack_right, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_stack_left, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_stack_right, n_genes)
 
         call compute_rdi(&
             n_genes = n_genes,&
@@ -337,8 +343,8 @@ contains
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&
             perm = perm,&
-            stack_left = stack_left,&
-            stack_right = stack_right&
+            tmp_stack_left = tmp_stack_left,&
+            tmp_stack_right = tmp_stack_right&
         )
     end subroutine compute_rdi_c
 
