@@ -501,7 +501,7 @@ class TestOutputFrom:
         assert plan is not None
         assert plan.producer.name == "sizer"
         assert plan.output.name == "n_work"
-        assert plan.inputs == (("n", "n"),)
+        assert [(s.name, s.argument) for s in plan.inputs] == [("n", "n")]
         assert plan.is_automatic
 
     def test_an_auto_argument_is_derived_and_not_asked_of_the_caller(self, bag):
@@ -565,7 +565,34 @@ class TestOutputFrom:
         assert bag.errors == ()
         assert plan is not None
         # the producer's own name on the left, the consumer's argument on the right
-        assert plan.inputs == (("n_values", "n"),)
+        assert [(s.name, s.argument) for s in plan.inputs] == [("n_values", "n")]
+
+    def test_a_table_supplies_a_constant_the_consumer_has_no_argument_for(self, bag):
+        project = self._consumer(
+            producer_inputs=("n", "factor"),
+            doc=producer_input_doc(("factor", "3_int32")),
+        )
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert bag.errors == ()
+        assert plan is not None
+        by_name = {supply.name: supply for supply in plan.inputs}
+        assert by_name["n"].argument == "n"
+        assert by_name["factor"].is_constant
+        assert by_name["factor"].constant == 3
+
+    def test_a_cell_that_is_neither_argument_nor_constant_is_reported(self, bag):
+        project = self._consumer(
+            producer_inputs=("n", "factor"),
+            doc=producer_input_doc(("factor", "not_a_thing")),
+        )
+
+        analyse_project(project, bag)
+
+        assert any("factor" in e.message and "no argument of the same name" in e.message
+                   for e in bag.errors)
 
     def test_a_table_naming_an_input_the_producer_lacks_is_reported(self, bag):
         project = self._consumer(
@@ -574,14 +601,6 @@ class TestOutputFrom:
         analyse_project(project, bag)
 
         assert any("not an argument of 'sizer'" in e.message for e in bag.errors)
-
-    def test_a_table_naming_a_supplier_the_consumer_lacks_is_reported(self, bag):
-        project = self._consumer(
-            producer_inputs=("n_values",), doc=producer_input_doc(("n_values", "absent")))
-
-        analyse_project(project, bag)
-
-        assert any("not an argument of 'uses_work'" in e.message for e in bag.errors)
 
     def test_an_empty_cell_in_the_table_is_reported(self, bag):
         project = self._consumer(

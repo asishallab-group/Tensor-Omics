@@ -275,8 +275,20 @@ integer(int32), dimension(:), intent(in) :: data_shape
 ```
 
 `data_shape` must be `intent(in)`, a rank-1 integer, and **not optional** (the wrapper reads
-it to size `data`). `data` is declared assumed-shape `(:)`; the wrapper makes it assumed-size
-and slices it to `product(data_shape)`.
+it to size `data`). `data` may be assumed-shape `(:)` or explicit `(n)`; the wrapper makes it
+assumed-size and slices it to `product(data_shape)`.
+
+Python then accepts an array of *any* rank and flattens it in Fortran order at the call, so
+the shape argument never has to be written out by hand:
+
+```python
+serialize_int_helper(np.arange(12).reshape(3, 4), path)   # shape derived
+deserialize_int_helper(shape, path)                       # count = product(shape)
+```
+
+**Not yet for `character`**: preparing a character argument rebuilds the buffer to encode
+it, which flattens the caller's array before the shape can be read off it. The character
+serde helpers therefore still take their shape explicitly.
 
 ### What is rejected, and why
 

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag, SourceLocation
+from .constants import ConstantError, ConstantEvaluator
 from .doc import DocTable, FordLink
 from .entities import Argument, Procedure
 from .types import BaseType, Intent
@@ -62,6 +63,22 @@ class ModeTable:
 
 
 @dataclass(frozen=True)
+class ProducerInput:
+    """One input of a `DM_OUTPUT_FROM` producer, and where its value comes from."""
+
+    #: The producer's own parameter name, which is what the call must use as a keyword
+    name: str
+    #: The consumer argument supplying it, or None when it is a constant
+    argument: str | None = None
+    #: The value, when the producer input is a constant the consumer has no argument for
+    constant: object = None
+
+    @property
+    def is_constant(self) -> bool:
+        return self.argument is None
+
+
+@dataclass(frozen=True)
 class OutputFromPlan:
     """How an argument is obtained by calling another procedure.
 
@@ -75,8 +92,8 @@ class OutputFromPlan:
     producer: Procedure
     #: The producer's output argument whose value fills the consumer argument
     output: Argument
-    #: (producer input name, consumer argument name) pairs, name-matched
-    inputs: tuple[tuple[str, str], ...]
+    #: Where each of the producer's inputs comes from, in the producer's own order
+    inputs: tuple[ProducerInput, ...]
     #: AUTO -> the languages call it; JUST_INFO -> the doc only tells the caller to
     is_automatic: bool
 
@@ -125,12 +142,29 @@ class ArgumentRoles:
         Treating either as derived would drop it from the signature and then leave nothing
         to compute it from, so it stays a parameter.
         """
-        return any(owner.intent.is_input and not (owner.roles and owner.roles.is_temporary)
-                   for owner in self.extent_of)
+        def readable(owner) -> bool:
+            if owner.roles and owner.roles.is_temporary:
+                return False
+            if owner.roles and owner.roles.shape_arg is not None:
+                # its extents travel in a shape argument, so the count is their product
+                # whichever way the array itself flows
+                return True
+            return owner.intent.is_input
+
+        return any(readable(owner) for owner in self.extent_of)
 
     @property
     def is_shape_arg(self) -> bool:
         return self.shape_of is not None
+
+    @property
+    def is_inferable_shape_arg(self) -> bool:
+        """Whether the shape can be read off the array it describes.
+
+        Only when that array is an input. Describing an `intent(out)` array, the shape is
+        what the caller states the result should be, so it has to be asked for.
+        """
+        return self.shape_of is not None and self.shape_of.intent.is_input
 
     @property
     def has_shape_arg(self) -> bool:
@@ -153,7 +187,7 @@ class ArgumentRoles:
         Such an argument is not asked of the caller: it comes from another argument, or
         from calling another procedure.
         """
-        return (self.is_inferable_extent or self.is_shape_arg
+        return (self.is_inferable_extent or self.is_inferable_shape_arg
                 or self.is_mask_count or self.is_computed)
 
 
@@ -176,14 +210,18 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             analyse(procedure, diagnostics, conventions)
 
     # output_from is a cross-procedure relation, so it is resolved once every procedure
-    # has its own roles and the producer can be looked up
+    # has its own roles and the producer can be looked up. The evaluator is built once:
+    # a producer-input table may supply a constant, which has to be a value by the time
+    # an emitter passes it on.
+    evaluator = ConstantEvaluator(project.constant_values())
     for module in project:
         for procedure in module.exported_procedures:
-            _resolve_output_from(procedure, project, diagnostics)
+            _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
 
 
 def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag,
-                         conventions: Conventions = CONVENTIONS) -> None:
+                         conventions: Conventions = CONVENTIONS,
+                         evaluator: ConstantEvaluator | None = None) -> None:
     """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
 
     Each of the producer's inputs is supplied by the consumer argument of the same name.
@@ -193,9 +231,13 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
         !! |----------------|-------------|
         !! | n_elements     | n_genes     |
 
-    A producer input that is neither name-matched nor in the table is an error naming it.
-    The producer may live in another module; the Python emitter imports it where it is
-    called, and R has every wrapper in one environment already.
+    A cell that is not an argument of the consumer is evaluated as a Fortran constant, so
+    a producer input the consumer simply has no argument for -- `n_dim` on a routine that
+    is always one-dimensional -- can be given a value outright.
+
+    A producer input that is neither name-matched, nor mapped to an argument, nor a
+    constant is an error naming it. The producer may live in another module; the Python
+    emitter imports it where it is called, and R has every wrapper in one environment.
     """
     for argument in consumer.arguments:
         directive = argument.directives.output_from
@@ -245,10 +287,20 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 continue
             supplier = renames.get(producer_input.name.lower(), producer_input.name)
             match = consumer.argument(supplier)
-            if match is None:
-                unmatched.append(producer_input.name)
-            else:
-                inputs.append((producer_input.name, match.name))
+            if match is not None:
+                inputs.append(ProducerInput(producer_input.name, argument=match.name))
+                continue
+            # not an argument of the consumer: a table may supply it as a constant, which
+            # is how a producer input the consumer simply does not have gets a value
+            if supplier != producer_input.name and evaluator is not None:
+                try:
+                    value = evaluator.evaluate(supplier)
+                except ConstantError:
+                    pass
+                else:
+                    inputs.append(ProducerInput(producer_input.name, constant=value))
+                    continue
+            unmatched.append(producer_input.name)
 
         if unmatched:
             diagnostics.error(
@@ -323,13 +375,6 @@ def _producer_input_table(argument: Argument, consumer: Procedure, producer: Pro
                 entity=argument,
             )
             return None
-        if consumer.argument(given) is None:
-            diagnostics.error(
-                f"the producer-input table of '{argument.name}' supplies '{wanted}' "
-                f"from '{given}', which is not an argument of '{consumer.name}'",
-                entity=argument,
-            )
-            return None
         mapping[wanted.lower()] = given
     return mapping
 
@@ -338,10 +383,13 @@ def _producer_input_table_example(conventions: Conventions) -> str:
     left = conventions.producer_input_header.title()
     right = conventions.producer_supplied_by_header.capitalize()
     return (
-        "name-matching is tried first; where the names differ, map them in a table:\n"
+        "name-matching is tried first; where the names differ, or where the consumer has\n"
+        "no argument for an input at all, map it in a table -- the right-hand cell is an\n"
+        "argument of the consumer, or a Fortran constant:\n"
         f"!! | {left} | {right} |\n"
         f"!! |----------------|-------------|\n"
-        f"!! | n_elements     | n_genes     |"
+        f"!! | n_elements     | n_genes     |\n"
+        f"!! | n_dim          | 1_int32     |"
     )
 
 class _Analyser:

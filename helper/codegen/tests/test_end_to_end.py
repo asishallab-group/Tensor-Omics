@@ -171,6 +171,14 @@ class TestAutoOutputFrom:
         assert list(inspect.signature(tox.fx_renamed_input).parameters) == ["samples"]
         assert tox.fx_renamed_input(np.array([1.0, 2.0, 3.0])) is None
 
+    def test_a_constant_producer_input_is_passed_outright(self, tox, np):
+        # the consumer has no argument for `factor`, so the table gives it a value
+        assert list(inspect.signature(tox.fx_constant_input).parameters) == ["samples"]
+        source = (Path(tox.__file__).parent / "fx_edges.py").read_text()
+        body = source.split("def fx_constant_input")[1]
+        assert "fx_scaled_size(n_values=n_samples, factor=3)" in body
+        assert tox.fx_constant_input(np.array([1.0, 2.0])) is None
+
     def test_the_cross_module_import_is_deferred(self, tox):
         # a module-level import would be circular the moment two modules size each
         # other's outputs, so it sits inside the function
