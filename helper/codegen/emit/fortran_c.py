@@ -319,6 +319,10 @@ class FortranCEmitter:
         extents = list(argument.dimension.extents)
         if argument.conversion is Conversion.CHARACTER and extents:
             extents = extents[1:]
+        if argument.shape_arg is not None:
+            # the C extent is `*`; how many items there really are is the product of the
+            # shape that travels beside them
+            extents = [f"product({argument.shape_arg})"]
         target = f"{argument.name}{CONVERTED_SUFFIX}"
         if extents:
             target += f"({', '.join(extents)})"

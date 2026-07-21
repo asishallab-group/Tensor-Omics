@@ -21,16 +21,13 @@ fn <- function(name, tmpdir = tempdir()) file.path(tmpdir, name)
 .deserialize_char_nd <- function(filename) {
   shape <- .file_shape(filename)
   strlen <- get_array_metadata(filename, .MAX_RANK)$type_code
-  flat <- deserialize_char_helper(strlen, as.integer(prod(shape)), shape, filename)
+  flat <- deserialize_char_helper(strlen, shape, filename)
   if (length(shape) > 1L) dim(flat) <- shape
   flat
 }
 
 .serialize_char_nd <- function(arr, filename) {
-  # characters still state their shape: the encode step rebuilds the buffer, so the
-  # shape has to be read off the caller's array first
-  shape <- if (is.null(dim(arr))) length(arr) else dim(arr)
-  serialize_char_helper(as.vector(arr), as.integer(shape), filename)
+  serialize_char_helper(arr, filename)
 }
 
 .deserialize_nd <- function(helper, filename) {

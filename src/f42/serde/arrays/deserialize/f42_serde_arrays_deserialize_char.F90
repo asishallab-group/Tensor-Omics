@@ -16,13 +16,13 @@ contains
     !> M_EXPORT_C
     !| summary: Subroutine to deserialize a flat character array from a file
     !| AUTHOR_AARON_SCHROEDER
-    subroutine deserialize_char_helper(arr, n_strings, orig_shape, filename, ierr)
+    subroutine deserialize_char_helper(arr, n_strings, arr_shape, filename, ierr)
         integer(int32), intent(in) :: n_strings
             !! Number of strings in `arr`
         character(len=*), dimension(n_strings), intent(out) :: arr
             !! Pre-allocated array to read the data into
-        integer(int32), dimension(:), intent(in) :: orig_shape
-            !! Original shape of the flattened array `arr`
+        integer(int32), dimension(:), intent(in) :: arr_shape
+            !! Extents of `arr`, one per dimension
         character(len=*), intent(in) :: filename
             !! Name of the file
         integer(int32), intent(out) :: ierr
@@ -36,7 +36,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call check_file_header(filename, len(arr, kind=int32), orig_shape, unit, ierr)
+        call check_file_header(filename, len(arr, kind=int32), arr_shape, unit, ierr)
         if (is_err(ierr)) return
 
         ! Read the entire array as a contiguous block

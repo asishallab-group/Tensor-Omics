@@ -524,7 +524,9 @@ class RcppEmitter:
             return f"tox::BoolBuffer {name}_c({size});"
         if argument.type.is_character:
             length = extents[0]
-            count = _product(extents[1:])
+            # the items are the product of the shape when that travels separately: the
+            # declaration only carries `*` in that case
+            count = size if argument.shape_arg is not None else _product(extents[1:])
             return f"tox::CharBuffer {name}_c({length}, {count});"
         # a temporary is scratch C++ never shows anyone; an output is an Rcpp vector
         if argument.is_temporary:

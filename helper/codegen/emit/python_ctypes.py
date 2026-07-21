@@ -406,6 +406,25 @@ class PythonEmitter:
             writer.blank()
 
     def _prepare(self, argument: CArgument) -> str:
+        """Prepare one input, reading its shape off first if that travels separately.
+
+        The shape has to come first whichever branch below runs: preparing a character
+        rebuilds the buffer to encode it, and every kind is flattened at the call, so by
+        either point the caller's shape is gone.
+        """
+        body = self._prepare_value(argument)
+        if argument.shape_arg is None:
+            return body
+        writer = Writer()
+        writer.line(
+            f"{argument.shape_arg} = np.ascontiguousarray("
+            f"np.shape({argument.name}), dtype=np.int32)"
+        )
+        if body:
+            writer.block(body)
+        return writer.render()
+
+    def _prepare_value(self, argument: CArgument) -> str:
         name = argument.name
         writer = Writer()
 
@@ -518,9 +537,11 @@ class PythonEmitter:
         else:
             body.line("try:")
             with body.indent():
+                items = (f"np.asarray({name}).ravel(order='F')"
+                         if argument.shape_arg is not None else name)
                 body.line(
                     f"{name} = np.asarray("
-                    f"[str(_s).encode() for _s in {name}], dtype={dtype_of(argument)})"
+                    f"[str(_s).encode() for _s in {items}], dtype={dtype_of(argument)})"
                 )
             body.line("except TypeError as error:")
             with body.indent():
@@ -686,10 +707,9 @@ class PythonEmitter:
             return f"int({roles.mask_count_of.name}.sum())"
 
         if roles.is_shape_arg:
-            if not roles.shape_of.intent.is_input:
-                # it describes an output, so it says what shape to produce: ask for it
-                return ""
-            return f"np.ascontiguousarray({roles.shape_of.name}.shape, dtype=np.int32)"
+            # settled while its array was prepared, or asked of the caller when the array
+            # is an output and the shape is what they want produced
+            return ""
 
         if roles.is_extent:
             # the same predicate the signature uses, so an argument is never both asked
@@ -822,11 +842,13 @@ class PythonEmitter:
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
 
-        if argument.shape_arg is not None and not argument.type.is_character:
+        if argument.shape_arg is not None:
             # C sees one flat block, so the element count is the product of the extents
             # that travel beside it
-            return (f"np.empty((int(np.prod({argument.shape_arg})),), "
-                    f"dtype={dtype_of(argument)}, order='C')")
+            count = f"int(np.prod({argument.shape_arg}))"
+            if argument.type.is_character:
+                return f"np.zeros(({count},), dtype={dtype_of(argument)})"
+            return f"np.empty(({count},), dtype={dtype_of(argument)}, order='C')"
 
         if argument.type.is_character:
             # zeros, not empty, and this is the one case where it matters. Fortran fills

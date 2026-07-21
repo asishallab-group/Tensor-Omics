@@ -16,13 +16,13 @@ contains
     !> M_EXPORT_C
     !| summary: Subroutine to serialize a flat character array into a file
     !| AUTHOR_AARON_SCHROEDER
-    subroutine serialize_char_helper(arr, n_strings, orig_shape, filename, ierr)
+    subroutine serialize_char_helper(arr, n_strings, arr_shape, filename, ierr)
         integer(int32), intent(in) :: n_strings
             !! Number of strings in `arr`
         character(len=*), dimension(n_strings), intent(in) :: arr
             !! Array to be serialized
-        integer(int32), dimension(:), intent(in) :: orig_shape
-            !! Original shape of the flattened array `arr`
+        integer(int32), dimension(:), intent(in) :: arr_shape
+            !! Extents of `arr`, one per dimension
         character(len=*), intent(in) :: filename
             !! Name of the file to write to
         integer(int32), intent(out) :: ierr
@@ -36,7 +36,7 @@ contains
 
         if (is_err(ierr)) return
 
-        call write_file_header(filename, unit, len(arr, kind=int32), size(orig_shape, kind=int32), orig_shape, ierr)
+        call write_file_header(filename, unit, len(arr, kind=int32), size(arr_shape, kind=int32), arr_shape, ierr)
         if (is_err(ierr)) return
 
         ! Write the entire array as a contiguous block

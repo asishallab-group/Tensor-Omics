@@ -66,18 +66,14 @@ def tox_deserialize_complex_nd(filename):
 
 
 def tox_serialize_char_nd(array, filename):
-    # characters still take the shape explicitly: the encode step rebuilds the buffer,
-    # so the shape has to be read off the caller's array first
-    array = np.asfortranarray(array)
-    serialize_char_helper(array.ravel(order="F"),
-                          np.asarray(array.shape, dtype=np.int32), filename)
+    serialize_char_helper(np.asfortranarray(array), filename)
 
 
 def tox_deserialize_char_nd(filename):
     shape = _file_shape(filename)
     # for a character file the type code is the string length
     strlen = get_array_metadata(filename, _MAX_RANK)["type_code"]
-    flat = deserialize_char_helper(strlen, int(np.prod(shape)), shape, filename)
+    flat = deserialize_char_helper(strlen, shape, filename)
     return np.asarray(flat, dtype=f"U{strlen}").reshape(shape, order="F")
 
 

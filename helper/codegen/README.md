@@ -286,9 +286,8 @@ serialize_int_helper(np.arange(12).reshape(3, 4), path)   # shape derived
 deserialize_int_helper(shape, path)                       # count = product(shape)
 ```
 
-**Not yet for `character`**: preparing a character argument rebuilds the buffer to encode
-it, which flattens the caller's array before the shape can be read off it. The character
-serde helpers therefore still take their shape explicitly.
+Characters work the same way: the shape is read off the caller's array before the encode
+rebuilds the buffer, and the strings are encoded in Fortran order.
 
 ### What is rejected, and why
 

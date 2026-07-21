@@ -56,15 +56,13 @@ def tox_deserialize_real_nd(f): return _deserialize_nd(deserialize_real_helper, 
 
 
 def tox_serialize_char_nd(array, filename):
-    array = np.asfortranarray(array)
-    serialize_char_helper(array.ravel(order="F"),
-                          np.asarray(array.shape, dtype=np.int32), filename)
+    serialize_char_helper(np.asfortranarray(array), filename)
 
 
 def tox_deserialize_char_nd(filename):
     shape = _file_shape(filename)
     strlen = get_array_metadata(filename, _MAX_RANK)["type_code"]
-    flat = deserialize_char_helper(strlen, int(np.prod(shape)), shape, filename)
+    flat = deserialize_char_helper(strlen, shape, filename)
     return np.asarray(flat, dtype=f"U{strlen}").reshape(shape, order="F")
 
 
