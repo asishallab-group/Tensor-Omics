@@ -59,11 +59,14 @@ class RWrapperEmitter:
         """Fill each DM_OUTPUT_FROM(AUTO) argument by calling the producer's R wrapper.
 
         As in Python: the producer's own wrapper validates and error-checks, so this only
-        calls it, with the consumer's already-validated inputs.
+        calls it, with the consumer's already-validated inputs. One call serves every
+        argument it supplies -- the producer behind `read_tox_data_into` unpacks a zip
+        archive, so calling it once per extent would re-do that work each time.
         """
         from ..abi.c_abi import stripped_name
 
         wrote = False
+        calls: dict[tuple, str] = {}
         for argument in wrapper:
             roles = argument.source.roles if argument.source else None
             plan = roles.computed_from if roles else None
@@ -74,10 +77,17 @@ class RWrapperEmitter:
                 f"{producer_input} = {self._r_value_of(consumer_arg, wrapper)}"
                 for producer_input, consumer_arg in plan.inputs
             )
-            call = f"{producer}({call_args})"
-            if not self._producer_returns_single(plan.producer):
-                call = f'{call}${plan.output.name}'
-            writer.line(f"{argument.name} <- {call}")
+            if self._producer_returns_single(plan.producer):
+                writer.line(f"{argument.name} <- {producer}({call_args})")
+                wrote = True
+                continue
+
+            key = (producer, call_args)
+            if key not in calls:
+                suffix = "" if not calls else f"_{len(calls)}"
+                calls[key] = f".{producer}_result{suffix}"
+                writer.line(f"{calls[key]} <- {producer}({call_args})")
+            writer.line(f"{argument.name} <- {calls[key]}${plan.output.name}")
             wrote = True
         if wrote:
             writer.blank()

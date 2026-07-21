@@ -54,6 +54,12 @@ class Conventions:
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).
     mode_aliases: tuple[str, ...] = ("mode", "method")
 
+    #: Header of the first column of the table that maps a DM_OUTPUT_FROM producer's
+    #: input names onto the consumer's arguments, where the two differ
+    producer_input_header: str = "producer input"
+    #: Header of its second column
+    producer_supplied_by_header: str = "supplied by"
+
     #: Prefix of an error code parameter in `tox_errors`; these raise in Python/R
     error_code_prefix: str = "ERR_"
     #: Prefix of a status code parameter; these are outcomes, not failures, and never raise

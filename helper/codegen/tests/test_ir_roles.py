@@ -25,6 +25,14 @@ def mode_doc(*rows, header=("Mode", "Value"), preamble=("How to link.",)):
     return lines
 
 
+def producer_input_doc(*rows):
+    lines = ["Where the size comes from.",
+             "| Producer input | Supplied by |",
+             "|----------------|-------------|"]
+    lines.extend(f"| {wanted} | {given} |" for wanted, given in rows)
+    return lines
+
+
 class TestTemporaries:
     def test_the_tmp_prefix_marks_a_work_array(self):
         procedure = analysed(
@@ -465,13 +473,14 @@ class TestResultSize:
 class TestOutputFrom:
     """DM_OUTPUT_FROM(AUTO): an argument obtained by calling another procedure."""
 
-    def _consumer(self, directive_mode="AUTO", producer_inputs=("n",)):
+    def _consumer(self, directive_mode="AUTO", producer_inputs=("n",), doc=None):
         from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
 
         mode = OutputFromMode.AUTO if directive_mode == "AUTO" else OutputFromMode.JUST_INFO
         work = b.integer(
             "n_work", Intent.IN,
             directives=Directives(output_from=OutputFrom("n_work", "sizer", "m", mode)),
+            **({"doc": doc} if doc is not None else {}),
         )
         consumer = b.procedure("uses_work", b.integer("n"), work, b.ierr())
         producer = b.procedure(
@@ -521,6 +530,66 @@ class TestOutputFrom:
 
         assert any("n_absent" in e.message and "no argument of the same name" in e.message
                    for e in bag.errors)
+
+    def test_a_producer_in_another_module_is_resolved(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(
+                output_from=OutputFrom("n_work", "sizer", "other", OutputFromMode.AUTO)
+            ),
+        )
+        consumer = b.procedure("uses_work", b.integer("n"), work, b.ierr())
+        producer = b.procedure(
+            "sizer", b.integer("n"), b.integer("n_work", Intent.OUT), b.ierr()
+        )
+        project = b.project(b.module("m", consumer), b.module("other", producer))
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert bag.errors == ()
+        assert plan is not None
+        assert plan.producer.module.name == "other"
+
+    def test_a_table_supplies_a_renamed_producer_input(self, bag):
+        project = self._consumer(
+            producer_inputs=("n_values",),
+            doc=producer_input_doc(("n_values", "n")),
+        )
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert bag.errors == ()
+        assert plan is not None
+        # the producer's own name on the left, the consumer's argument on the right
+        assert plan.inputs == (("n_values", "n"),)
+
+    def test_a_table_naming_an_input_the_producer_lacks_is_reported(self, bag):
+        project = self._consumer(
+            producer_inputs=("n",), doc=producer_input_doc(("n_absent", "n")))
+
+        analyse_project(project, bag)
+
+        assert any("not an argument of 'sizer'" in e.message for e in bag.errors)
+
+    def test_a_table_naming_a_supplier_the_consumer_lacks_is_reported(self, bag):
+        project = self._consumer(
+            producer_inputs=("n_values",), doc=producer_input_doc(("n_values", "absent")))
+
+        analyse_project(project, bag)
+
+        assert any("not an argument of 'uses_work'" in e.message for e in bag.errors)
+
+    def test_an_empty_cell_in_the_table_is_reported(self, bag):
+        project = self._consumer(
+            producer_inputs=("n_values",), doc=producer_input_doc(("n_values", "")))
+
+        analyse_project(project, bag)
+
+        assert any("empty cell" in e.message for e in bag.errors)
 
     def test_a_missing_producer_is_reported(self, bag):
         from codegen.ir.directives import Directives, OutputFrom, OutputFromMode

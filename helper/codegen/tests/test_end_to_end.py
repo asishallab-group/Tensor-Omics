@@ -7,6 +7,7 @@ Fortran actually computed. Nothing short of running it can show that.
 Skipped without gfortran.
 """
 
+import inspect
 import os
 import shutil
 import subprocess
@@ -147,6 +148,35 @@ class TestAutoOutputFrom:
 
     def test_the_producer_is_callable_directly_too(self, tox):
         assert tox.fx_work_size(4) == 8
+
+    def test_a_producer_in_another_module_is_asked_for_too(self, tox):
+        import inspect
+
+        # fx_cross_module lives in fx_basics, fx_work_size in fx_edges
+        assert list(inspect.signature(tox.fx_cross_module).parameters) == ["values"]
+
+    def test_a_cross_module_producer_runs(self, tox, np):
+        # the work array is sized by fx_edges::fx_work_size, and the sum comes back
+        assert tox.fx_cross_module(np.array([1.0, 2.0, 3.0])) == pytest.approx(6.0)
+
+    def test_a_renamed_producer_input_is_asked_for_by_the_producer_name(self, tox):
+        # the consumer calls it n_samples, the producer n_values; the keyword has to be
+        # the producer's, or the call is a TypeError
+        source = (Path(tox.__file__).parent / "fx_edges.py").read_text()
+        body = source.split("def fx_renamed_input")[1]
+        assert "fx_work_size(n_values=n_samples)" in body
+
+    def test_a_renamed_producer_input_runs(self, tox, np):
+        # fx_work_size returns 2*n, and fx_renamed_input fills the work array with it
+        assert list(inspect.signature(tox.fx_renamed_input).parameters) == ["samples"]
+        assert tox.fx_renamed_input(np.array([1.0, 2.0, 3.0])) is None
+
+    def test_the_cross_module_import_is_deferred(self, tox):
+        # a module-level import would be circular the moment two modules size each
+        # other's outputs, so it sits inside the function
+        source = (Path(tox.__file__).parent / "fx_basics.py").read_text()
+        body = source.split("def fx_cross_module")[1]
+        assert "from .fx_edges import fx_work_size" in body
 
 
 class TestResultsAreRight:

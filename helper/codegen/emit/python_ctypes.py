@@ -585,13 +585,21 @@ class PythonEmitter:
         lines = Writer()
         calls: dict[tuple, str] = {}
         stashes = self._raw_stashes(wrapper)
+        consumer_module = wrapper.procedure.module
         for argument in wrapper:
             plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
             if plan is None or not plan.is_automatic:
                 continue
             producer = stripped_name(plan.producer)
+            if plan.producer.module is not consumer_module:
+                # Imported here rather than at the top of the file: two modules may size
+                # each other's outputs, and a module-level import would then be circular.
+                lines.line(f"from .{plan.producer.module.name} import {producer}")
+            # the keyword is the *producer's* parameter name, the value the consumer's
+            # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
-                f"{inp}={stashes.get(inp, inp)}" for _, inp in plan.inputs)
+                f"{producer_input}={stashes.get(consumer_arg, consumer_arg)}"
+                for producer_input, consumer_arg in plan.inputs)
             single = self._producer_returns_single(plan.producer)
             if single:
                 lines.line(f"{argument.name} = {producer}({call_args})")

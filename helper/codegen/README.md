@@ -241,7 +241,26 @@ nullable.
 
 `DM_OUTPUT_FROM(..., AUTO)` matches the producer's inputs to the consumer's arguments by
 name. `mask_chunk_count(n_genes, count)` is called wherever the consumer also has `n_genes`.
-The producer must be exported (so it has a wrapper to call) and in the same module.
+The producer must be exported, so that there is a wrapper to call; it may live in any
+module. Python imports it inside the calling function rather than at the top of the file,
+because two modules may size each other's outputs and a module-level import would then be
+circular. R needs no import: every wrapper is sourced into one environment.
+
+Where the producer and consumer spell the same quantity differently, the consumer argument
+maps them in a table:
+
+```fortran
+integer(int32), intent(in) :: n_work
+    !! size of the work array.
+    !! DM_OUTPUT_FROM(n_work, fx_work_size, fx_edges, AUTO)
+    !!
+    !! | Producer input | Supplied by |
+    !! |----------------|-------------|
+    !! | n_values       | n_samples   |
+```
+
+Name-matching is tried first, so only the differences need a row. A producer input that is
+neither name-matched nor in the table is an error naming it.
 
 ### Serialized arrays
 
@@ -348,8 +367,11 @@ code.
 
 ## Open items
 
-- **`DM_OUTPUT_FROM(AUTO)`** across modules, and with **renamed producer inputs** (a markdown
-  table, the same shape as the mode table). Both error clearly until implemented.
+- **`DM_OUTPUT_FROM(AUTO)` with a producer input that is a *constant*** rather than another
+  argument. `tox_loess_required_workspace(n_dim, max_neighborhood_size, save_factorization)`
+  is the real case: a consumer can now supply `max_neighborhood_size` by renaming, but
+  `n_dim` is always `1` and `save_factorization` always `.false.`, and neither is an
+  argument of the consumer to point at. Errors clearly until implemented.
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip

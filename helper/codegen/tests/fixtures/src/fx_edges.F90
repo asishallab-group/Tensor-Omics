@@ -174,6 +174,30 @@ contains
     end subroutine fx_cluster
 
     !> M_EXPORT_C
+    !| summary: A consumer whose producer names its input differently
+    !| author: A Developer
+    subroutine fx_renamed_input(samples, n_samples, tmp_work, n_work, ierr)
+        integer(int32), intent(in) :: n_samples
+            !! elements of `samples`
+        real(real64), dimension(n_samples), intent(in) :: samples
+            !! the values
+        integer(int32), intent(in) :: n_work
+            !! size of the work array.
+            !! DM_OUTPUT_FROM(n_work, fx_work_size, fx_edges, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_values       | n_samples   |
+        real(real64), dimension(n_work), intent(out) :: tmp_work
+            !! scratch space
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+        tmp_work = real(n_work, real64)
+    end subroutine fx_renamed_input
+
+    !> M_EXPORT_C
     !| summary: Works out the work array size for fx_cluster
     !| author: A Developer
     subroutine fx_work_size(n_values, n_work, ierr)

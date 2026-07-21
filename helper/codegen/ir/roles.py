@@ -182,12 +182,20 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             _resolve_output_from(procedure, project, diagnostics)
 
 
-def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag) -> None:
+def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag,
+                         conventions: Conventions = CONVENTIONS) -> None:
     """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
 
-    Name-matching only, for now: each of the producer's inputs is supplied by a consumer
-    argument of the same name. A producer input with no match is an error naming it -- the
-    markdown-table override for renamed inputs is deferred until a real case needs it.
+    Each of the producer's inputs is supplied by the consumer argument of the same name.
+    Where the two disagree, the argument documents the mapping in a table:
+
+        !! | Producer input | Supplied by |
+        !! |----------------|-------------|
+        !! | n_elements     | n_genes     |
+
+    A producer input that is neither name-matched nor in the table is an error naming it.
+    The producer may live in another module; the Python emitter imports it where it is
+    called, and R has every wrapper in one environment already.
     """
     for argument in consumer.arguments:
         directive = argument.directives.output_from
@@ -200,17 +208,6 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"'{argument.name}' is computed from '{directive.procedure}' in "
                 f"'{directive.module}', which does not exist",
                 entity=argument,
-            )
-            continue
-
-        if producer.module is not consumer.module:
-            # a cross-module call needs the producer's wrapper imported into the
-            # consumer's file; both real cases are same-module, so this is deferred
-            diagnostics.error(
-                f"'{argument.name}' is computed from '{producer.name}' in another "
-                f"module, which is not supported yet",
-                entity=argument,
-                note="the producer must be in the same module as the consumer, for now",
             )
             continue
 
@@ -234,6 +231,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
+        renames = _producer_input_table(argument, consumer, producer,
+                                        diagnostics, conventions)
+        if renames is None:
+            continue
+
         inputs = []
         unmatched = []
         for producer_input in producer.arguments:
@@ -241,7 +243,8 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 continue
             if producer_input.name.lower() == "ierr":
                 continue
-            match = consumer.argument(producer_input.name)
+            supplier = renames.get(producer_input.name.lower(), producer_input.name)
+            match = consumer.argument(supplier)
             if match is None:
                 unmatched.append(producer_input.name)
             else:
@@ -253,10 +256,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"input(s) {', '.join(sorted(unmatched))} have no argument of the same "
                 f"name in '{consumer.name}'",
                 entity=argument,
-                note=(
-                    "name-matching is all that is supported yet; a markdown table for "
-                    "renamed inputs is not implemented"
-                ),
+                note=_producer_input_table_example(conventions),
             )
             continue
 
@@ -267,6 +267,82 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             is_automatic=directive.is_automatic,
         )
 
+
+
+def _looks_like_a_producer_input_table(table: DocTable, conventions: Conventions) -> bool:
+    """A two-column table headed `Producer input` and `Supplied by`.
+
+    Shallow, like the mode-table check: a table that looks like this one is treated as
+    one, and anything wrong with its rows is reported rather than quietly disqualifying
+    it and leaving the author with a misleading 'no matching argument' further down.
+    """
+    if table.n_columns != 2:
+        return False
+    header = [text.strip().lower() for text in table.header_text]
+    return (header[0] == conventions.producer_input_header
+            and header[1] == conventions.producer_supplied_by_header)
+
+
+def _producer_input_table(argument: Argument, consumer: Procedure, producer: Procedure,
+                          diagnostics: DiagnosticBag,
+                          conventions: Conventions) -> dict[str, str] | None:
+    """The producer-input -> consumer-argument overrides this argument documents.
+
+    An empty mapping when there is no table. `None` when the table is there but wrong, so
+    the caller stops rather than reporting a pile of consequential name mismatches.
+    """
+    tables = [t for t in argument.doc.tables
+              if _looks_like_a_producer_input_table(t, conventions)]
+    if not tables:
+        return {}
+    if len(tables) > 1:
+        diagnostics.error(
+            f"'{argument.name}' has {len(tables)} tables mapping the inputs of "
+            f"'{producer.name}'",
+            entity=argument,
+            note="the mapping goes in exactly one table",
+        )
+        return None
+
+    mapping: dict[str, str] = {}
+    for row_index, (producer_input, supplied_by) in enumerate(tables[0].rows, start=1):
+        wanted = producer_input.text.strip()
+        given = supplied_by.text.strip()
+        if not wanted or not given:
+            diagnostics.error(
+                f"row {row_index} of the producer-input table of '{argument.name}' "
+                f"has an empty cell",
+                entity=argument,
+                note=_producer_input_table_example(conventions),
+            )
+            return None
+        if producer.argument(wanted) is None:
+            diagnostics.error(
+                f"the producer-input table of '{argument.name}' maps '{wanted}', which "
+                f"is not an argument of '{producer.name}'",
+                entity=argument,
+            )
+            return None
+        if consumer.argument(given) is None:
+            diagnostics.error(
+                f"the producer-input table of '{argument.name}' supplies '{wanted}' "
+                f"from '{given}', which is not an argument of '{consumer.name}'",
+                entity=argument,
+            )
+            return None
+        mapping[wanted.lower()] = given
+    return mapping
+
+
+def _producer_input_table_example(conventions: Conventions) -> str:
+    left = conventions.producer_input_header.title()
+    right = conventions.producer_supplied_by_header.capitalize()
+    return (
+        "name-matching is tried first; where the names differ, map them in a table:\n"
+        f"!! | {left} | {right} |\n"
+        f"!! |----------------|-------------|\n"
+        f"!! | n_elements     | n_genes     |"
+    )
 
 class _Analyser:
     def __init__(self, procedure: Procedure, diagnostics: DiagnosticBag,

@@ -146,6 +146,36 @@ contains
         n_positive = count(values > 0.0_real64)
     end function fx_count_positive
 
+    !> M_EXPORT_C
+    !| summary: A consumer whose work size is computed by a producer in another module
+    !| author: A Developer
+    !| The directive is documentation only, so naming fx_edges here creates no Fortran
+    !| dependency: n_work is an ordinary input as far as the compiler is concerned.
+    subroutine fx_cross_module(values, n_values, tmp_work, n_work, total, ierr)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        integer(int32), intent(in) :: n_work
+            !! size of the work array.
+            !! DM_OUTPUT_FROM(n_work, fx_work_size, fx_edges, AUTO)
+        real(real64), dimension(n_work), intent(out) :: tmp_work
+            !! scratch space
+        real(real64), intent(out) :: total
+            !! the sum of the values
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        tmp_work = 0.0_real64
+        do i = 1, min(n_values, n_work)
+            tmp_work(i) = values(i)
+        end do
+        total = sum(values)
+    end subroutine fx_cross_module
+
     !> summary: Not exported, and deliberately breaking the rules
     !| author: A Developer
     !| An internal routine is held to none of the export contract.
