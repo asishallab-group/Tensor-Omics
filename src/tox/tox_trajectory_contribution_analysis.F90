@@ -509,37 +509,6 @@ contains
 
     end subroutine compute_baselines_factor_dependent
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper to map baseline baseline_mode string ("min", "mean", "raw") to integer constant
-    pure subroutine get_baseline_mode(c_mode_str, baseline_mode, ierr)
-        use, intrinsic :: iso_c_binding, only: c_char
-        use tox_conversions, only: c_char_1d_as_string
-        character(len=1, kind=c_char), dimension(4), intent(in) :: c_mode_str
-            !! baseline_mode string ("min", "mean", "raw")
-        integer(int32), intent(out) :: baseline_mode
-            !! integer representation for the baseline_mode passed by `c_mode_str`
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        character(len=:), allocatable :: mode_str_f
-
-        call set_ok(ierr)
-
-        call c_char_1d_as_string(c_mode_str, mode_str_f, ierr)
-        if (is_err(ierr)) return
-
-        select case (trim(mode_str_f))
-        case ("raw")
-            baseline_mode = BASELINE_RAW
-        case ("min")
-            baseline_mode = BASELINE_MIN
-        case ("mean")
-            baseline_mode = BASELINE_MEAN
-        case default
-            call set_err(ierr, ERR_INVALID_INPUT)
-        end select
-    end subroutine get_baseline_mode
-
     !> AUTHOR_JITU_DABA
     !| This routine computes velocity trajectory from a single position trajectory, no input validation
     pure subroutine compute_velocity_trajectory_helper(trajectory, velocity, n_timepoints)

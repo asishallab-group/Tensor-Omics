@@ -11,7 +11,7 @@ test_compute_edf_simple <- function() {
   x <- c(1, 2, 2, 3, 3, 3)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- c(1, 2, 3)
@@ -41,7 +41,7 @@ test_compute_edf_all_same <- function() {
   x <- c(5, 5, 5, 5)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   assert_true(n_unique == 1)
@@ -55,7 +55,7 @@ test_compute_edf_duplicates <- function() {
   x <- c(1, 1, 2, 3, 3, 3, 4)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   assert_true(n_unique == 4)
@@ -73,7 +73,7 @@ test_compute_edf_single_value <- function() {
   x <- c(42)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   assert_true(n_unique == 1)
@@ -93,7 +93,7 @@ test_compute_edf_large_dataset <- function() {
   x <- c(rep(1, 250), rep(2, 250), rep(3, 250), rep(4, 250))
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- c(1, 2, 3, 4)
@@ -108,7 +108,7 @@ test_compute_edf_negative_values <- function() {
   x <- c(-3, -1, 0, 1, 3)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- c(-3, -1, 0, 1, 3)
@@ -123,7 +123,7 @@ test_compute_edf_unsorted_input <- function() {
   x <- c(3, 1, 4, 1, 5, 9, 2, 6)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- sort(unique(x))
@@ -138,7 +138,7 @@ test_compute_edf_list_input <- function() {
   x <- c(1, 2, 2, 3)
   perm <- order(x)
   result <- compute_edf_expert(x, perm)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- c(1, 2, 3)
@@ -152,7 +152,7 @@ test_compute_edf_list_input <- function() {
 test_compute_edf_default_no_perm <- function() {
   x <- c(3, 1, 2, 2, 3, 3)
   result <- compute_edf(x)
-  n_unique <- result$n_unique
+  n_unique <- length(result$unique_values)
   unique_vals <- result$unique_values[seq_len(n_unique)]
   cdf_vals <- result$cdf_values[seq_len(n_unique)]
   expected_unique <- c(1, 2, 3)

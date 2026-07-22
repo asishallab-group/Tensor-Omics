@@ -24,7 +24,7 @@ def test_edf_simple():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # Expected: 1.0 appears once (1/6), 2.0 appears twice (3/6), 3.0 appears thrice (6/6)
     expected_unique = [1.0, 2.0, 3.0]
@@ -49,7 +49,7 @@ def test_edf_all_unique():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # All values are unique, so CDF should be 0.2, 0.4, 0.6, 0.8, 1.0
     expected_unique = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -74,7 +74,7 @@ def test_edf_all_same():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # Only one unique value with CDF = 1.0
     assert n_unique == 1, f"Expected 1 unique value, got {n_unique}"
@@ -92,7 +92,7 @@ def test_edf_duplicates():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # Expected: 1.0 (2/7), 2.0 (3/7), 3.0 (6/7), 4.0 (7/7)
     expected_unique = [1.0, 2.0, 3.0, 4.0]
@@ -117,7 +117,7 @@ def test_edf_single_value():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     assert n_unique == 1, f"Expected 1 unique value, got {n_unique}"
     assert abs(unique_vals[0] - 42.0) < 1e-12, "Unique value should be 42.0"
@@ -149,7 +149,7 @@ def test_edf_large_dataset():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # Expected: 1.0 (0.25), 2.0 (0.5), 3.0 (0.75), 4.0 (1.0)
     expected_unique = [1.0, 2.0, 3.0, 4.0]
@@ -174,7 +174,7 @@ def test_edf_negative_values():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # All values are unique
     expected_unique = [-3.0, -1.0, 0.0, 1.0, 3.0]
@@ -199,7 +199,7 @@ def test_edf_unsorted_input():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     # Expected sorted unique values: 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 9.0
     # 1.0 appears twice (2/8), then each once
@@ -225,7 +225,7 @@ def test_edf_list_input():
     result = compute_edf(values)
     unique_vals = result['unique_values']
     cdf_vals = result['cdf_values']
-    n_unique = result['n_unique']
+    n_unique = len(result['unique_values'])
 
     expected_unique = [1.0, 2.0, 3.0]
     expected_cdf = [0.25, 0.75, 1.0]
