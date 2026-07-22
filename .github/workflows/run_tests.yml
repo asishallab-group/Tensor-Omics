@@ -50,4 +50,6 @@ jobs:
         run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
 
       - name: Ensure the code generator doesn't need to be run.
-        run: python helper/generate_code.py --check
+        run: |
+          pip install ford
+          python helper/generate_code.py --check
