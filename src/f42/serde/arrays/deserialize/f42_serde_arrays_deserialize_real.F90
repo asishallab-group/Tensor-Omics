@@ -23,6 +23,11 @@ contains
             !! Pre-allocated array to read the data into
         integer(int32), dimension(:), intent(in) :: arr_shape
             !! Extents of `arr`, one per dimension
+            !! DM_OUTPUT_FROM(dims_out, get_array_metadata, f42_serde_arrays_utils, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! | dims_out_capacity | 5_int32     |
         character(len=*), intent(in) :: filename
             !! Name of the file
         integer(int32), intent(out) :: ierr

@@ -4,65 +4,48 @@ import os
 
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensor_omics import (get_array_metadata,
-                          serialize_char_helper, serialize_int_helper, serialize_real_helper,
+from tensor_omics import (serialize_char_helper, serialize_int_helper, serialize_real_helper,
                           serialize_logical_helper, serialize_complex_helper,
                           deserialize_char_helper, deserialize_int_helper, deserialize_real_helper,
                           deserialize_logical_helper, deserialize_complex_helper)
 from test_helpers import run_all_tests
 
-# The generated helpers are flat: they take the original shape and the element count
-# explicitly. The n-dimensional convenience the tests are written against is that plus
-# a reshape, so it lives here rather than in the generated interface.
-_MAX_RANK = 8
-
-
-def _file_shape(filename):
-    """The original shape an array was serialized with."""
-    meta = get_array_metadata(filename, _MAX_RANK)
-    return meta["dims_out"][:meta["ndims"]]
-
-
-def _serialize_nd(helper, array, filename, dtype):
-    # the helper derives the shape from the array itself now
-    helper(np.asfortranarray(array, dtype=dtype), filename)
-
-
-def _deserialize_nd(helper, filename, dtype):
-    shape = _file_shape(filename)
-    return np.asarray(helper(shape, filename), dtype=dtype).reshape(shape, order="F")
+# The generated deserialize helpers read the file's own shape (via get_array_metadata, wired
+# up as a DM_OUTPUT_FROM producer) and hand back an array already in that shape. So there is
+# nothing left to do here: serialize takes the shape off the array, deserialize needs only
+# the filename. The `_nd` names are kept so the tests below read as before.
 
 
 def tox_serialize_int_nd(array, filename):
-    _serialize_nd(serialize_int_helper, array, filename, np.int32)
+    serialize_int_helper(np.asfortranarray(array, dtype=np.int32), filename)
 
 
 def tox_deserialize_int_nd(filename):
-    return _deserialize_nd(deserialize_int_helper, filename, np.int32)
+    return deserialize_int_helper(filename)
 
 
 def tox_serialize_real_nd(array, filename):
-    _serialize_nd(serialize_real_helper, array, filename, np.float64)
+    serialize_real_helper(np.asfortranarray(array, dtype=np.float64), filename)
 
 
 def tox_deserialize_real_nd(filename):
-    return _deserialize_nd(deserialize_real_helper, filename, np.float64)
+    return deserialize_real_helper(filename)
 
 
 def tox_serialize_logical_nd(array, filename):
-    _serialize_nd(serialize_logical_helper, array, filename, np.bool_)
+    serialize_logical_helper(np.asfortranarray(array, dtype=np.bool_), filename)
 
 
 def tox_deserialize_logical_nd(filename):
-    return _deserialize_nd(deserialize_logical_helper, filename, np.bool_)
+    return deserialize_logical_helper(filename)
 
 
 def tox_serialize_complex_nd(array, filename):
-    _serialize_nd(serialize_complex_helper, array, filename, np.complex128)
+    serialize_complex_helper(np.asfortranarray(array, dtype=np.complex128), filename)
 
 
 def tox_deserialize_complex_nd(filename):
-    return _deserialize_nd(deserialize_complex_helper, filename, np.complex128)
+    return deserialize_complex_helper(filename)
 
 
 def tox_serialize_char_nd(array, filename):
@@ -70,11 +53,7 @@ def tox_serialize_char_nd(array, filename):
 
 
 def tox_deserialize_char_nd(filename):
-    shape = _file_shape(filename)
-    # for a character file the type code is the string length
-    strlen = get_array_metadata(filename, _MAX_RANK)["type_code"]
-    flat = deserialize_char_helper(strlen, shape, filename)
-    return np.asarray(flat, dtype=f"U{strlen}").reshape(shape, order="F")
+    return deserialize_char_helper(filename)
 
 
 # Tests for integer

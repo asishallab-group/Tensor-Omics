@@ -25,34 +25,18 @@ from tensor_omics import (
     create_zip_archive,
     group_centroid,
     compute_shift_vector_field,
-    get_array_metadata,
     serialize_int_helper, serialize_real_helper, serialize_char_helper,
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
 from test_helpers import run_all_tests, assert_error
 
-_MAX_RANK = 8
 
-
-def _file_shape(filename):
-    meta = get_array_metadata(filename, _MAX_RANK)
-    return meta["dims_out"][:meta["ndims"]]
-
-
-def _serialize_nd(helper, array, filename, dtype):
-    # the helper derives the shape from the array itself now
-    helper(np.asfortranarray(array, dtype=dtype), filename)
-
-
-def _deserialize_nd(helper, filename, dtype):
-    shape = _file_shape(filename)
-    return np.asarray(helper(shape, filename), dtype=dtype).reshape(shape, order="F")
-
-
-def tox_serialize_int_nd(a, f): _serialize_nd(serialize_int_helper, a, f, np.int32)
-def tox_deserialize_int_nd(f): return _deserialize_nd(deserialize_int_helper, f, np.int32)
-def tox_serialize_real_nd(a, f): _serialize_nd(serialize_real_helper, a, f, np.float64)
-def tox_deserialize_real_nd(f): return _deserialize_nd(deserialize_real_helper, f, np.float64)
+# The generated deserialize helpers read the file's own shape and hand back an array already
+# in it, so serialize needs only the array and deserialize only the filename.
+def tox_serialize_int_nd(a, f): serialize_int_helper(np.asfortranarray(a, dtype=np.int32), f)
+def tox_deserialize_int_nd(f): return deserialize_int_helper(f)
+def tox_serialize_real_nd(a, f): serialize_real_helper(np.asfortranarray(a, dtype=np.float64), f)
+def tox_deserialize_real_nd(f): return deserialize_real_helper(f)
 
 
 def tox_serialize_char_nd(array, filename):
@@ -60,10 +44,7 @@ def tox_serialize_char_nd(array, filename):
 
 
 def tox_deserialize_char_nd(filename):
-    shape = _file_shape(filename)
-    strlen = get_array_metadata(filename, _MAX_RANK)["type_code"]
-    flat = deserialize_char_helper(strlen, shape, filename)
-    return np.asarray(flat, dtype=f"U{strlen}").reshape(shape, order="F")
+    return deserialize_char_helper(filename)
 
 
 def extract_zip_archive(zip_filename):

@@ -187,6 +187,7 @@ contains
             !! Capacity of the dims_out array
         integer(int32), intent(out) :: dims_out(dims_out_capacity)
             !! Array to store output dimensions
+            !! DM_RESULT_SIZE_IS(ndims)
         integer(int32), intent(out) :: type_code
             !! Type code of the serialized array
             !!

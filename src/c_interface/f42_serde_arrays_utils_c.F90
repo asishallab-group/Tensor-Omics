@@ -44,6 +44,7 @@ contains
             !! Name of the file
         integer(c_int), dimension(dims_out_capacity), intent(out), target :: dims_out
             !! Array to store output dimensions
+            !! The first `ndims` elements will hold the results.
         integer(c_int), intent(out), target :: ndims
             !! number of dimensions
         integer(c_int), intent(out), target :: type_code

@@ -179,12 +179,9 @@ test_5_zipping <- function() {
   mapped <- trimws(body[seq(1, 2 * n_entries, by = 2)])
   assert_true(setequal(mapped, keys), "the manifest keys should be the ones written")
 
-  # and the members deserialize back to what went in
+  # and the members deserialize back to what went in, already in shape
   member <- file.path(extracted, "temp_3d_int_R.test.bin")
-  meta <- get_array_metadata(member, 8L)
-  shape <- meta$dims_out[seq_len(meta$ndims)]
-  restored <- deserialize_int_helper(shape, member)
-  dim(restored) <- shape
+  restored <- deserialize_int_helper(member)
   assert_true(all(dim(restored) == c(5, 4, 3)), "the 3d array keeps its shape")
   assert_true(all(as.vector(restored) == seq_len(60)), "and its values")
 

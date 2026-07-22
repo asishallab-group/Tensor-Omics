@@ -37,6 +37,11 @@ contains
             !! Size of `arr`
         integer(c_int), dimension(n_arr_shape_elements), intent(in), target :: arr_shape
             !! Extents of `arr`, one per dimension
+            !! It is *VERY IMPORTANT* to compute this argument from the `dims_out` output of [[f42_serde_arrays_utils(module):get_array_metadata]].
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! | dims_out_capacity | 5_int32     |
         character(len=1, kind=c_char), dimension(filename_strlen), intent(in), target :: filename
             !! Name of the file
         integer(c_int), intent(out), target :: ierr

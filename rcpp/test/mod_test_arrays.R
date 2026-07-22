@@ -3,38 +3,24 @@ source("rcpp/test_helpers.R")
 
 fn <- function(name, tmpdir = tempdir()) file.path(tmpdir, name)
 
-# The generated helpers are flat: they take the original shape and the element count
-# explicitly. The n-dimensional convenience these tests are written against is that plus
-# a reshape, so it lives here rather than in the generated interface.
-.MAX_RANK <- 8L
-
-.file_shape <- function(filename) {
-  meta <- get_array_metadata(filename, .MAX_RANK)
-  meta$dims_out[seq_len(meta$ndims)]
-}
-
+# The generated deserialize helpers read the file's own shape (via get_array_metadata,
+# wired up as a DM_OUTPUT_FROM producer) and return an array already in that shape. So the
+# tests call them with the filename alone; the `_nd` wrappers are kept only so the bodies
+# below read as before.
 .serialize_nd <- function(helper, arr, filename) {
-  # the helper derives the shape from the array itself now
   helper(arr, filename)
 }
 
-.deserialize_char_nd <- function(filename) {
-  shape <- .file_shape(filename)
-  strlen <- get_array_metadata(filename, .MAX_RANK)$type_code
-  flat <- deserialize_char_helper(strlen, shape, filename)
-  if (length(shape) > 1L) dim(flat) <- shape
-  flat
+.deserialize_nd <- function(helper, filename) {
+  helper(filename)
 }
 
 .serialize_char_nd <- function(arr, filename) {
   serialize_char_helper(arr, filename)
 }
 
-.deserialize_nd <- function(helper, filename) {
-  shape <- .file_shape(filename)
-  flat <- helper(shape, filename)
-  if (length(shape) > 1L) dim(flat) <- shape
-  flat
+.deserialize_char_nd <- function(filename) {
+  deserialize_char_helper(filename)
 }
 
 test_integer_serialization <- function() {

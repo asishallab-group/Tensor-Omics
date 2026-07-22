@@ -337,8 +337,12 @@ class PythonEmitter:
             writer.block(render_docstring(wrapper))
             self._stash_raw(writer, wrapper)
             self._prepare_inputs(writer, wrapper)
-            self._derive_extents(writer, wrapper)
+            # extents a producer reads must be settled before it is called; extents read
+            # off what a producer *makes* can only be settled after. So the derivation
+            # brackets the producers: the plain ones first, the produced-from ones after.
+            self._derive_extents(writer, wrapper, from_computed=False)
             self._compute_auto(writer, wrapper)
+            self._derive_extents(writer, wrapper, from_computed=True)
             self._check_shapes(writer, wrapper)
             self._allocate(writer, wrapper)
             self._call(writer, wrapper)
@@ -611,9 +615,9 @@ class PythonEmitter:
         """Fill each DM_OUTPUT_FROM(AUTO) argument by calling the producer's wrapper.
 
         The producer's own generated function does its own validation and error
-        checking, so this just calls it. It runs after the extents are derived, because a
-        producer input may be one of them, and takes the stashed pre-conversion value of
-        any input that preparation replaced.
+        checking, so this just calls it. Its inputs -- the extents it reads -- are already
+        derived (those that do not themselves come from a producer are), so it just passes
+        them, taking the stashed pre-conversion value of any input preparation replaced.
 
         One call serves every argument it supplies. Producers are not cheap -- the one
         behind `read_tox_data_into` unpacks a zip archive -- so calling it once per
@@ -666,9 +670,12 @@ class PythonEmitter:
             outputs.append(producer.result)
         return len(outputs) == 1
 
-    def _derive_extents(self, writer: Writer, wrapper: CWrapper) -> None:
+    def _derive_extents(self, writer: Writer, wrapper: CWrapper,
+                        from_computed: bool) -> None:
         lines = Writer()
         for argument in wrapper:
+            if self._derives_from_computed(argument, wrapper) != from_computed:
+                continue
             expression = self._extent_expression(argument, wrapper)
             if expression:
                 lines.line(f"{argument.name} = {expression}")
@@ -676,6 +683,36 @@ class PythonEmitter:
             writer.line("# what the inputs already say, rather than asking for it again")
             writer.extend(lines)
             writer.blank()
+
+    def _derives_from_computed(self, argument: CArgument, wrapper: CWrapper) -> bool:
+        """Whether this argument's derived value is read off something a producer makes.
+
+        `n_elements = prod(arr_shape)` is, when `arr_shape` is filled by a DM_OUTPUT_FROM
+        producer: it cannot be settled until that producer has run. A plain extent read
+        off a caller's array is not, and is settled before the producers so they can use
+        it. The two are derived on opposite sides of the producer calls.
+        """
+        if argument.origin in (Origin.EXTENT, Origin.STRLEN):
+            owner = wrapper.argument(argument.sizes)
+            return owner is not None and self._is_computed(owner)
+        roles = argument.source.roles if argument.source else None
+        if roles is None or not roles.is_extent:
+            return False
+        for owner in roles.extent_of:
+            c_owner = wrapper.argument(owner.name)
+            if c_owner is None:
+                continue
+            if self._is_computed(c_owner):
+                return True
+            shape = wrapper.argument(c_owner.shape_arg) if c_owner.shape_arg else None
+            if shape is not None and self._is_computed(shape):
+                return True
+        return False
+
+    @staticmethod
+    def _is_computed(argument: CArgument) -> bool:
+        roles = argument.source.roles if argument.source else None
+        return bool(roles and roles.is_computed)
 
     def _extent_expression(self, argument: CArgument, wrapper: CWrapper) -> str:
         """Where a derived argument's value comes from."""
@@ -942,6 +979,14 @@ class PythonEmitter:
 
     def _result_expression(self, argument: CArgument, wrapper: CWrapper) -> str:
         roles = argument.source.roles if argument.source else None
+        if argument.shape_arg is not None and not argument.is_scalar:
+            # C had it as one flat block; the extents that travelled beside it are the
+            # shape, so the caller gets the n-d array back rather than the flat buffer
+            # and a shape they have to reapply themselves. Column-major, as Fortran wrote.
+            if argument.type.is_character:
+                decoded = f"[_s.decode() for _s in {argument.name}]"
+                return f"np.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
+            return f"{argument.name}.reshape(tuple({argument.shape_arg}), order='F')"
         if argument.type.is_character:
             # numpy hands back zero-padded bytes; the caller wants str
             if character_rank(argument) == 0:

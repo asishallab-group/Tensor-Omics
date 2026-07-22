@@ -16,13 +16,25 @@ contains
     !> M_EXPORT_C
     !| summary: Subroutine to deserialize a flat character array from a file
     !| AUTHOR_AARON_SCHROEDER
-    subroutine deserialize_char_helper(arr, n_strings, arr_shape, filename, ierr)
+    subroutine deserialize_char_helper(arr, n_strings, strlen, arr_shape, filename, ierr)
         integer(int32), intent(in) :: n_strings
             !! Number of strings in `arr`
-        character(len=*), dimension(n_strings), intent(out) :: arr
+        integer(int32), intent(in) :: strlen
+            !! Length of each string in `arr`.
+            !! DM_OUTPUT_FROM(type_code, get_array_metadata, f42_serde_arrays_utils, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! | dims_out_capacity | 5_int32     |
+        character(len=strlen), dimension(n_strings), intent(out) :: arr
             !! Pre-allocated array to read the data into
         integer(int32), dimension(:), intent(in) :: arr_shape
             !! Extents of `arr`, one per dimension
+            !! DM_OUTPUT_FROM(dims_out, get_array_metadata, f42_serde_arrays_utils, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! | dims_out_capacity | 5_int32     |
         character(len=*), intent(in) :: filename
             !! Name of the file
         integer(int32), intent(out) :: ierr
@@ -56,7 +68,7 @@ contains
         integer(int32), intent(out)   :: ierr
             !! Error code
 
-        call deserialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+        call deserialize_char_helper(arr, size(arr, kind=int32), len(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_char_1d
 
     !> AUTHOR_AARON_SCHROEDER
@@ -69,7 +81,7 @@ contains
         integer(int32), intent(out)   :: ierr
             !! Error code
 
-        call deserialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+        call deserialize_char_helper(arr, size(arr, kind=int32), len(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_char_2d
 
     !> AUTHOR_AARON_SCHROEDER
@@ -82,7 +94,7 @@ contains
         integer(int32), intent(out)   :: ierr
             !! Error code
 
-        call deserialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+        call deserialize_char_helper(arr, size(arr, kind=int32), len(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_char_3d
 
     !> AUTHOR_AARON_SCHROEDER
@@ -95,7 +107,7 @@ contains
         integer(int32), intent(out)   :: ierr
             !! Error code
 
-        call deserialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+        call deserialize_char_helper(arr, size(arr, kind=int32), len(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_char_4d
 
     !> AUTHOR_AARON_SCHROEDER
@@ -108,7 +120,7 @@ contains
         integer(int32), intent(out)   :: ierr
             !! Error code
 
-        call deserialize_char_helper(arr, size(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
+        call deserialize_char_helper(arr, size(arr, kind=int32), len(arr, kind=int32), shape(arr, kind=int32), filename, ierr)
     end subroutine deserialize_char_5d
 
 end module f42_serde_arrays_deserialize_char

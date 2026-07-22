@@ -499,6 +499,11 @@ class RcppEmitter:
         `dim(x)` or `x[, 1]` on the R side fails. (An `intent(inout)` array escapes this
         by accident: it is cloned from the caller's object, attributes and all.)
         """
+        if argument.shape_arg is not None:
+            # its extents travelled separately; apply them so R gets the n-d array back
+            # rather than a flat vector and a shape to reapply itself. R is column-major,
+            # as Fortran wrote the block, so the dim is all that is needed.
+            return f'{self._working_name(argument)}.attr("dim") = {argument.shape_arg};'
         extents = self._r_extents(argument)
         if len(extents) < 2:
             return None
