@@ -49,5 +49,5 @@ jobs:
       - name: Run Python Tests
         run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
 
-      - name: Run Snippet Generator
-        run: python helper/generate_snippets.py
+      - name: Ensure the code generator doesn't need to be run.
+        run: python helper/generate_code.py --check
