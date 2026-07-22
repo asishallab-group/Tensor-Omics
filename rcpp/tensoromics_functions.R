@@ -3757,3 +3757,69 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     )
     return(result)
 }
+
+#' Compute noise-model p-values (LFCseq variant)
+#'
+#' LFCseq model: the \code{own} null is built from WITHIN-neighbourhood mean
+#' comparisons with NO variance stratification. For each draw, two group means
+#' (of sizes \code{n_rep_case} and \code{n_rep_control}) are drawn from the same
+#' pool and differenced -- once within the case pool and once within the control
+#' pool -- and the two sides are unioned into a single null distribution. Takes the
+#' same arguments and returns the same list shape as
+#' \code{\link{tox_compute_noise_pvalues_pipeline}}; dispatches to the
+#' \code{noise_model_lfcseq} Fortran module.
+#'
+#' @inheritParams tox_compute_noise_pvalues_pipeline
+#'
+#' @return A list with p-values (own/fam/orth), n_success, five neighborhood
+#'   sizes (own_case, own_control, fam, orth, cancer), and ierr. The
+#'   \code{chosen_n_bins_own_*} entries are 1 when the own p-value is computed
+#'   (this model does not stratify) and -1 otherwise.
+#' @export
+tox_compute_noise_pvalues_pipeline_lfcseq <- function(
+    cancer_means,
+    cancer_replicates,
+    healthy_means,
+    healthy_replicates,
+    obs_own,
+    obs_fam,
+    obs_orth,
+    family_means,
+    ortholog_means,
+    valid_genes_own,
+    valid_genes_fam,
+    valid_genes_orth,
+    family_sizes,
+    gene_to_fam,
+    norm_method = 0L,
+    k_start = 100L,
+    k_step = 100L,
+    k_max = 1000L,
+    tau = 0.01,
+    max_pool_size
+) {
+
+    result <- tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
+        cancer_means = cancer_means,
+        cancer_replicates = cancer_replicates,
+        healthy_means = healthy_means,
+        healthy_replicates = healthy_replicates,
+        obs_own = obs_own,
+        obs_fam = obs_fam,
+        obs_orth = obs_orth,
+        family_means = family_means,
+        ortholog_means = ortholog_means,
+        valid_genes_own = as.integer(valid_genes_own),
+        valid_genes_fam = as.integer(valid_genes_fam),
+        valid_genes_orth = as.integer(valid_genes_orth),
+        family_sizes = as.integer(family_sizes),
+        gene_to_fam = as.integer(gene_to_fam),
+        norm_method = as.integer(norm_method),
+        k_start = as.integer(k_start),
+        k_step = as.integer(k_step),
+        k_max = as.integer(k_max),
+        tau = as.numeric(tau),
+        max_pool_size = as.integer(max_pool_size)
+    )
+    return(result)
+}

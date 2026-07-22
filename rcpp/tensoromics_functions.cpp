@@ -1261,6 +1261,51 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* chosen_n_bins_own_control,
   int* ierr
 );
+
+// LFCseq variant: identical ABI, dispatches to the noise_model_lfcseq module
+// (within-neighbourhood unioned mean comparisons, no stratification). See
+// tox_noise_model_lfcseq.F90. The chosen_n_bins_own_* outputs are placeholders here
+// (1 when computed, no stratification is performed).
+void compute_noise_pvalues_pipeline_lfcseq_c(
+  const double* means_case,
+  const double* replicates_case,
+  const int* n_genes_case,
+  const int* n_replicates_case,
+  const double* means_control,
+  const double* replicates_control,
+  const int* n_genes_control,
+  const int* n_replicates_control,
+  const double* observed_statistic_own,
+  const double* observed_statistic_family,
+  const double* observed_statistic_ortholog,
+  const double* family_means,
+  const double* ortholog_means,
+  const int* compute_pvalue_own,
+  const int* compute_pvalue_family,
+  const int* compute_pvalue_ortholog,
+  const int* family_sizes,
+  const int* gene_to_family,
+  const int* n_genes,
+  const int* n_families,
+  const int* norm_method,
+  const int* k_start,
+  const int* k_step,
+  const int* k_max,
+  const double* tau,
+  double* pvalues_own,
+  double* pvalues_family,
+  double* pvalues_ortholog,
+  int* n_genes_with_pvalue,
+  const int* max_pool_size,
+  int* neighborhood_size_own_case,
+  int* neighborhood_size_own_control,
+  int* neighborhood_size_family,
+  int* neighborhood_size_ortholog,
+  int* neighborhood_size_case,
+  int* chosen_n_bins_own_case,
+  int* chosen_n_bins_own_control,
+  int* ierr
+);
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -4841,12 +4886,14 @@ NumericVector tox_empirical_p_values_rcpp(
     return p_values;
 }
 
-// Shared marshalling for the two noise-model pipeline bindings. The baseline
-// (enumeration + Monte Carlo) and the exact (sorted binary-search) Fortran entry
-// points have an identical ABI, so only the C function invoked differs — selected
-// by `use_exact`. Keeping one driver guarantees both bindings stay in lock-step.
+// Shared marshalling for the three noise-model pipeline bindings. The baseline
+// (bootstrap mean-difference null), the exact (sorted binary-search + sqrt(n)
+// scaling), and the LFCseq (within-neighbourhood unioned mean comparisons) Fortran
+// entry points all have an identical ABI, so only the C function invoked differs —
+// selected by `model_variant` (0 = baseline, 1 = exact, 2 = LFCseq). Keeping one
+// driver guarantees all three bindings stay in lock-step.
 static Rcpp::List run_noise_pvalues_pipeline(
-    bool use_exact,
+    int model_variant,
     Rcpp::NumericVector cancer_means,
     Rcpp::NumericMatrix cancer_replicates,
     Rcpp::NumericVector healthy_means,
@@ -4898,8 +4945,25 @@ static Rcpp::List run_noise_pvalues_pipeline(
     int n_success = 0;
     int ierr = 0;
 
-    if (use_exact) {
+    if (model_variant == 1) {
         compute_noise_pvalues_pipeline_exact_c(
+            cancer_means.begin(), cancer_replicates.begin(), &cancer_n_genes, &cancer_n_samples,
+            healthy_means.begin(), healthy_replicates.begin(), &healthy_n_genes, &healthy_n_samples,
+            obs_own.begin(), obs_fam.begin(), obs_orth.begin(),
+            family_means.begin(), ortholog_means.begin(),
+            valid_genes_own.begin(), valid_genes_fam.begin(), valid_genes_orth.begin(),
+            family_sizes.begin(), gene_to_fam.begin(),
+            &n_genes, &n_families, &norm_method,
+            &k_start, &k_step, &k_max, &tau,
+            pvalues_own.begin(), pvalues_fam.begin(), pvalues_orth.begin(),
+            &n_success, &max_pool_size,
+            neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
+            neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
+            neighborhood_size_cancer.begin(),
+            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
+            &ierr);
+    } else if (model_variant == 2) {
+        compute_noise_pvalues_pipeline_lfcseq_c(
             cancer_means.begin(), cancer_replicates.begin(), &cancer_n_genes, &cancer_n_samples,
             healthy_means.begin(), healthy_replicates.begin(), &healthy_n_genes, &healthy_n_samples,
             obs_own.begin(), obs_fam.begin(), obs_orth.begin(),
@@ -5004,7 +5068,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
-        false,
+        0,  // baseline (bootstrap mean-difference null)
         cancer_means, cancer_replicates, healthy_means, healthy_replicates,
         obs_own, obs_fam, obs_orth, family_means, ortholog_means,
         valid_genes_own, valid_genes_fam, valid_genes_orth,
@@ -5046,7 +5110,52 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
-        true,
+        1,  // exact (sorted binary-search + sqrt(n) scaling)
+        cancer_means, cancer_replicates, healthy_means, healthy_replicates,
+        obs_own, obs_fam, obs_orth, family_means, ortholog_means,
+        valid_genes_own, valid_genes_fam, valid_genes_orth,
+        family_sizes, gene_to_fam,
+        norm_method, k_start, k_step, k_max, tau, max_pool_size);
+}
+
+//' Compute noise-model p-values (LFCseq variant) for own/family/ortholog comparisons
+//'
+//' LFCseq model: the `own` null is built from WITHIN-neighbourhood mean comparisons
+//' (no variance stratification). For each draw, two group means (sizes n_rep_case and
+//' n_rep_control) are drawn from the same pool and differenced — once within the case
+//' pool and once within the control pool — and the two sides are unioned into one null.
+//' Same arguments and return shape as \code{tox_compute_noise_pvalues_pipeline_rcpp};
+//' dispatches to the \code{noise_model_lfcseq} Fortran module. The chosen_n_bins_own_*
+//' outputs are 1 when the own p-value is computed (no stratification), -1 otherwise.
+//'
+//' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
+//' @return List with p-values (own/fam/orth), success count, five neighborhood
+//'   sizes (own_case, own_control, fam, orth, cancer), and error code.
+// [[Rcpp::export]]
+Rcpp::List tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
+    Rcpp::NumericVector cancer_means,
+    Rcpp::NumericMatrix cancer_replicates,
+    Rcpp::NumericVector healthy_means,
+    Rcpp::NumericMatrix healthy_replicates,
+    Rcpp::NumericVector obs_own,
+    Rcpp::NumericVector obs_fam,
+    Rcpp::NumericVector obs_orth,
+    Rcpp::NumericVector family_means,
+    Rcpp::NumericVector ortholog_means,
+    Rcpp::IntegerVector valid_genes_own,
+    Rcpp::IntegerVector valid_genes_fam,
+    Rcpp::IntegerVector valid_genes_orth,
+    Rcpp::IntegerVector family_sizes,
+    Rcpp::IntegerVector gene_to_fam,
+    int norm_method,
+    int k_start,
+    int k_step,
+    int k_max,
+    double tau,
+    int max_pool_size) {
+
+    return run_noise_pvalues_pipeline(
+        2,  // LFCseq (within-neighbourhood unioned mean comparisons)
         cancer_means, cancer_replicates, healthy_means, healthy_replicates,
         obs_own, obs_fam, obs_orth, family_means, ortholog_means,
         valid_genes_own, valid_genes_fam, valid_genes_orth,
