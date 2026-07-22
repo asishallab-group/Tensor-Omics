@@ -1,0 +1,174 @@
+# Generated. Do not edit.
+
+#' Compute family scaling factors (dscale) to normalize distances (expert entry point)
+#'
+#' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
+#'
+#' @param n_families a integer scalar. Total number of gene families
+#' @param distances a numeric vector. Array of Euclidean distances for each gene
+#' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
+#' @param span a numeric scalar. Span parameter for LOESS smoothing
+#' @param degree a integer scalar. Degree of the LOESS polynomial
+#' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
+#' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
+#' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`, `low_sd_cutoff`, `excluded_low_sd`.
+#'
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}.
+#' @export
+compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, span, degree, mode, n_iters) {
+    n_families <- .tox_as_integer_scalar(n_families, "n_families")
+    distances <- .tox_as_double_vector(distances, "distances")
+    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
+    span <- .tox_as_double_scalar(span, "span")
+    degree <- .tox_as_integer_scalar(degree, "degree")
+    mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
+    n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
+    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = n_families, save_factorization = FALSE)
+    liv <- .tox_loess_required_workspace_result$int_workspace_size
+    lv <- .tox_loess_required_workspace_result$real_workspace_size
+
+    if (length(gene_to_fam) != length(distances))
+        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+
+    .result <- .compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, liv, lv, span, degree, mode, n_iters)
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_iv", "liv", "tmp_wv", "lv", "tmp_diagl", "tmp_w_init", "tmp_z_mat", "tmp_rw", "tmp_ww", "tmp_res", "tmp_pi", "tmp_yhat", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        dscale = .result$dscale,
+        loess_x = .result$loess_x,
+        loess_y = .result$loess_y,
+        indices_used = .result$indices_used,
+        low_sd_cutoff = .result$low_sd_cutoff,
+        excluded_low_sd = .result$excluded_low_sd
+    )
+}
+
+#' Allocates internal LOESS work arrays and computes per-family scaling factors
+#'
+#' This makes usage easier since users don't need to care about internal array requirements.
+#'
+#' @param n_families a integer scalar. Total number of gene families
+#' @param distances a numeric vector. Array of Euclidean distances for each gene
+#' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
+#' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`.
+#'
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}.
+#' @export
+compute_family_scaling <- function(n_families, distances, gene_to_fam) {
+    n_families <- .tox_as_integer_scalar(n_families, "n_families")
+    distances <- .tox_as_double_vector(distances, "distances")
+    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
+    if (length(gene_to_fam) != length(distances))
+        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+
+    .result <- .compute_family_scaling_rcpp(n_families, distances, gene_to_fam)
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        dscale = .result$dscale,
+        loess_x = .result$loess_x,
+        loess_y = .result$loess_y,
+        indices_used = .result$indices_used
+    )
+}
+
+#' Compute the hybrid RDI (Relative Distance Index) for each gene
+#'
+#' RDI = Euclidean distance / family scaling factor
+#'
+#' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param dscale a numeric vector. Array of scaling factors for each family
+#' @return a named list with elements `rdi`, `sorted_rdi`, `perm`.
+#'
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}.
+#' @export
+compute_rdi <- function(distances, gene_to_fam, dscale) {
+    distances <- .tox_as_double_vector(distances, "distances")
+    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
+    dscale <- .tox_as_double_vector(dscale, "dscale")
+    if (length(gene_to_fam) != length(distances))
+        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+
+    .result <- .compute_rdi_rcpp(distances, gene_to_fam, dscale)
+    .arguments <- c("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "tmp_stack_left", "tmp_stack_right")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        rdi = .result$rdi,
+        sorted_rdi = .result$sorted_rdi,
+        perm = .result$perm
+    )
+}
+
+#' Identify gene outliers based on the top percentile of RDI values
+#'
+#' Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
+#' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
+#'
+#' @param rdi a numeric vector. Array of RDI values for each gene
+#' @param sorted_rdi a numeric vector. Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
+#' @param perm a integer vector. Permutation array with sorted indices
+#' @param percentile a numeric scalar. Percentile threshold (top 5% for the default).
+#' @return a named list with elements `is_outlier`, `threshold`, `p_values`.
+#'
+#' Generated from the Fortran procedure \code{tox_get_outliers::identify_outliers}.
+#' @export
+identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
+    rdi <- .tox_as_double_vector(rdi, "rdi")
+    sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
+    perm <- .tox_as_integer_vector(perm, "perm")
+    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    if (length(sorted_rdi) != length(rdi))
+        .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
+    if (length(perm) != length(rdi))
+        .tox_shape_error("perm", length(perm), "rdi", length(rdi))
+
+    .result <- .identify_outliers_rcpp(rdi, sorted_rdi, perm, percentile)
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "p_values", "percentile")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        is_outlier = .result$is_outlier,
+        threshold = .result$threshold,
+        p_values = .result$p_values
+    )
+}
+
+#' Main routine to detect outliers using RDI and LOESS-based scaling
+#'
+#' Orchestrates the full pipeline: computes per-family scaling factors via
+#' [[tox_get_outliers(module):compute_family_scaling_alloc(subroutine)]], derives the RDI per gene via
+#' [[tox_get_outliers(module):compute_rdi(subroutine)]], then flags outliers via
+#' [[tox_get_outliers(module):identify_outliers(subroutine)]].
+#'
+#' @param n_families a integer scalar. Total number of gene families
+#' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param percentile a numeric scalar. Percentile threshold for outlier detection.
+#' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `p_values`.
+#'
+#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}.
+#' @export
+detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
+    n_families <- .tox_as_integer_scalar(n_families, "n_families")
+    distances <- .tox_as_double_vector(distances, "distances")
+    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
+    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    if (length(gene_to_fam) != length(distances))
+        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+
+    .result <- .detect_outliers_rcpp(n_families, distances, gene_to_fam, percentile)
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "p_values", "ierr", "percentile")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        is_outlier = .result$is_outlier,
+        loess_x = .result$loess_x,
+        loess_y = .result$loess_y,
+        loess_n = .result$loess_n,
+        p_values = .result$p_values
+    )
+}
