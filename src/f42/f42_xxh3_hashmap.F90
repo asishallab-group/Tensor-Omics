@@ -1,3 +1,5 @@
+#include <src/macros.h>
+
 !> AUTHOR_AARON_SCHROEDER
 !| String-keyed hashmap (`character -> integer(int32)`) and hashset (`character` membership),
 !| implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
@@ -11,7 +13,7 @@ module f42_xxh3_hashmap
     use f42_utils, only: next_power_of_two
     use config, only: DEBUG, debug_hashing
     use tox_errors, only: set_ok, set_err, ERR_INVALID_INPUT
-    implicit none
+    M_IMPLICIT_NONE
     private
 
     public :: hashmap_type, hashmap_create, hashmap_destroy, hashmap_get, hashmap_put
@@ -22,7 +24,7 @@ module f42_xxh3_hashmap
     interface
         function xxh3_hash_c(key, length) bind(C, name="XXH3_64bits")
             use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_int64_t
-            implicit none
+            M_IMPLICIT_NONE
             type(c_ptr), value :: key
                 !! C pointer to the start of the key's character data.
             integer(c_int), value :: length

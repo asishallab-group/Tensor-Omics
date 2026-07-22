@@ -6,7 +6,7 @@ module f42_serde_arrays_serialize_complex
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_arrays_utils, only: write_file_header, COMPLEX_TYPE_CODE
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
-    implicit none
+    M_IMPLICIT_NONE
 
     private
     public :: serialize_complex_1d, serialize_complex_2d, serialize_complex_3d, &

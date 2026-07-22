@@ -12,7 +12,7 @@ module tox_trajectory_contribution_analysis
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, set_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, validate_in_range_real, validate_in_range_int
     use f42_utils, only: init_random, rand_range
-    implicit none
+    M_IMPLICIT_NONE
 
     ! Baseline computation modes
 #define CM_VALIDATE_MODE_BASELINE(ARG) call validate_in_range_int(baseline_mode, ierr, min=1_int32, max=3_int32, ARG)

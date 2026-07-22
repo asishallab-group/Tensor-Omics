@@ -6,7 +6,7 @@ module tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err, is_err, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, set_err_once, ERR_DIVISION_BY_ZERO
     use f42_utils, only: operator(.isclose.)
-    implicit none
+    M_IMPLICIT_NONE
 
 contains
 

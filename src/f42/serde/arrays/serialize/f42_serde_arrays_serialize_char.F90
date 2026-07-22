@@ -6,7 +6,7 @@ module f42_serde_arrays_serialize_char
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_arrays_utils, only: write_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
-    implicit none
+    M_IMPLICIT_NONE
 
     private
     public :: serialize_char_1d, serialize_char_2d, serialize_char_3d, &

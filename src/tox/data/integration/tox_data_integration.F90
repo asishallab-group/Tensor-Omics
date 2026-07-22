@@ -23,7 +23,7 @@
 module tox_data_integration
     use safeguard
     use iso_fortran_env, only: int32, real64
-    implicit none
+    M_IMPLICIT_NONE
 
     interface compute_gene_means
         !> M_EXPORT_C

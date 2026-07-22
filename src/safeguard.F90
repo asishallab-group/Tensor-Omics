@@ -1,3 +1,5 @@
+#include <src/macros.h>
+
 !> AUTHOR_FRANZ_ERIC_SILL
 !| This module ensures equivalence of used c types in this framework during compile time.
 !| Thus, it needs to be used by every module to be compiled first, ***and*** it is highly recommended to compile the framework manually.
@@ -12,25 +14,25 @@ module safeguard
     use tox_conversions, only: c_char_as_char
     use config
     use, intrinsic :: iso_c_binding, only: c_double, c_double_complex
-    implicit none
+    M_IMPLICIT_NONE
     integer(int32), parameter :: c_int = int32*2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE
     use tox_conversions, only: c_char_as_char
     use config
     use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
-    implicit none
+    M_IMPLICIT_NONE
     integer(int32), parameter ::  c_double = real64*2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX
     use tox_conversions, only: c_char_as_char
     use config
     use, intrinsic :: iso_c_binding, only: c_int, c_double
-    implicit none
+    M_IMPLICIT_NONE
     integer(int32), parameter ::  c_double_complex = real64*2
 #else
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex
-    implicit none
+    M_IMPLICIT_NONE
 #endif
 #endif
 #endif

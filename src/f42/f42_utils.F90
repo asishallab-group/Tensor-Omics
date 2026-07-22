@@ -7,7 +7,7 @@ module f42_utils
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: validate_all_in_range_int, ERR_DIVISION_BY_ZERO, set_ok, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, ERR_ALLOC_FAIL
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
-    implicit none
+    M_IMPLICIT_NONE
     public :: init_random, rand_range
     public :: sort_real, sort_integer, sort_character
     public :: sort_array

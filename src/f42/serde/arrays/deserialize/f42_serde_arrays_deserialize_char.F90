@@ -6,7 +6,7 @@ module f42_serde_arrays_deserialize_char
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_arrays_utils, only: check_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_READ_DATA, set_err
-    implicit none
+    M_IMPLICIT_NONE
 
     private
     public :: deserialize_char_1d, deserialize_char_2d, deserialize_char_3d, &

@@ -9,7 +9,7 @@ submodule(tox_data_integration) tox_data_integration_preprocessing
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
     use f42_utils, only: sort_array_heapsort, calc_percentile_helper, clamp
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err
-    implicit none
+    M_IMPLICIT_NONE
 
 contains
 

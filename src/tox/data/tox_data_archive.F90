@@ -18,7 +18,7 @@ module tox_data_archive
     use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA
     use iso_fortran_env, only: real64, int32, iostat_end
     use config, only: DEBUG
-    implicit none
+    M_IMPLICIT_NONE
 
     ! libzip constants
     integer(c_int), parameter :: ZIP_CREATE = 1
@@ -429,7 +429,7 @@ contains
     !| (`data_type=DATA_TYPE_STRING`, `data_source` is the literal content).
     subroutine add_data_to_zip(zip_handle, filename, data_source, data_type, ierr)
         use tox_conversions, only: int32_as_c_size
-        implicit none
+        M_IMPLICIT_NONE
 
         ! Arguments
         type(c_ptr), intent(in)    :: zip_handle
@@ -556,7 +556,7 @@ contains
 
     end subroutine add_data_to_zip
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> AUTHOR_AARON_SCHROEDER
     !| Write manifest from given key-value pairs
     subroutine write_manifest(keys, filenames, manifest_filename, ierr)
         character(len=*), intent(in) :: keys(:)
@@ -609,7 +609,7 @@ contains
         if (DEBUG) print *, "Manifest created successfully with ", size(keys), " entries"
     end subroutine write_manifest
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> AUTHOR_AARON_SCHROEDER
     !| Read manifest file and return key-value pairs
     subroutine read_manifest_generic(manifest_filename, keys, values, ierr)
         character(len=*), intent(in) :: manifest_filename
@@ -693,7 +693,7 @@ contains
                              expression_file, gene_to_family, gene_to_family_file, &
                              family_ids, family_ids_file, family_centroids, &
                              family_centroids_file, shift_vectors, shift_vectors_file)
-        implicit none
+        M_IMPLICIT_NONE
 
         character(len=*), intent(in) :: zip_filename
         !! Zip filename
@@ -886,7 +886,7 @@ contains
         use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
         use tox_data_read_write
         use iso_fortran_env, only: real64, int32
-        implicit none
+        M_IMPLICIT_NONE
 
         character(len=*), intent(in) :: zip_filename
         !! Name of the zipfile

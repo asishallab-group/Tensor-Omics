@@ -4,7 +4,7 @@
 module tox_errors
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
-    implicit none
+    M_IMPLICIT_NONE
     public   ! <-- expose all names (constants + procedures)
 
     !------------------------------

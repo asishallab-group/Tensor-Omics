@@ -425,7 +425,7 @@ contains
     !|   - 1: Robust LOESS fitting. This mode applies bisquare reweighting over multiple iterations to reduce the influence of outliers. The number of iterations is controlled by the `n_iters` parameter.
     subroutine loess_alloc(x, y, span, degree, fitted_values, mode, n_iters, ierr)
         use, intrinsic :: iso_fortran_env, only: real64, int32
-        implicit none
+        M_IMPLICIT_NONE
 
         ! Input parameters
         real(real64), intent(in) :: x(:)

@@ -8,7 +8,7 @@ module tox_get_outliers
     use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values, init_perm
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
-    implicit none
+    M_IMPLICIT_NONE
 
 contains
 
@@ -23,7 +23,7 @@ contains
         span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
 
         use, intrinsic :: iso_fortran_env, only: real64, int32
-        implicit none
+        M_IMPLICIT_NONE
 
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -436,7 +436,7 @@ contains
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
                                 tmp_stack_left, tmp_stack_right)
-        implicit none
+        M_IMPLICIT_NONE
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         real(real64), intent(in) :: distances(n_genes)

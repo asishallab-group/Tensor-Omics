@@ -16,7 +16,7 @@ module f42_serde_arrays_utils
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_utils
     use tox_errors
-    implicit none
+    M_IMPLICIT_NONE
 
     public :: get_array_metadata, read_file_header_helper, write_file_header
 

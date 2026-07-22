@@ -1,3 +1,5 @@
+#include <src/macros.h>
+
 !> Wrappers for serialization/deserialization of arrays
 module tox_data_read_write
     use safeguard
@@ -5,7 +7,7 @@ module tox_data_read_write
     use tox_errors, only: set_ok, set_err, is_err, is_ok
     use f42_serde_arrays_serialize, only: serialize_int_1d, serialize_real_2D, serialize_char_1D
     use f42_serde_arrays_deserialize, only: deserialize_int_1D, deserialize_real_2D, deserialize_char_1D
-    implicit none
+    M_IMPLICIT_NONE
 
 contains
     !> AUTHOR_AARON_SCHROEDER

@@ -9,7 +9,7 @@ module tox_gene_centroids
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, validate_dimension_size, validate_in_range_int, validate_all_in_range_int
     use f42_utils, only: add_vector
-    implicit none
+    M_IMPLICIT_NONE
 
 #define CM_MODE_GROUP_ORTHOLOGS 0_int32
 #define CM_MODE_GROUP_ALL 1_int32
@@ -26,7 +26,7 @@ contains
     !| AUTHOR_LUKA_FAENSEN
     pure subroutine mean_vector(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, &
                                 centroid, ierr)
-        implicit none
+        M_IMPLICIT_NONE
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions).
         integer(int32), intent(in) :: n_genes
@@ -58,7 +58,7 @@ contains
     !> AUTHOR_LUKA_FAENSEN
     !| Computes the element-wise mean for a given set of vectors.
     pure subroutine mean_vector_helper(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid)
-        implicit none
+        M_IMPLICIT_NONE
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions).
         integer(int32), intent(in) :: n_genes
@@ -96,7 +96,7 @@ contains
     !| AUTHOR_LUKA_FAENSEN
     pure subroutine group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
                                    centroid_matrix, mode, tmp_group_indices, ierr, ortholog_set)
-        implicit none
+        M_IMPLICIT_NONE
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions).
         integer(int32), intent(in) :: n_genes
@@ -151,7 +151,7 @@ contains
     !| Iterates over families, filters gene indices, and computes centroids.
     pure subroutine group_centroid_helper(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
                                    centroid_matrix, mode, tmp_group_indices, ortholog_set)
-        implicit none
+        M_IMPLICIT_NONE
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions).
         integer(int32), intent(in) :: n_genes

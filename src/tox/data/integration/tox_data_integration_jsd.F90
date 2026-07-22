@@ -9,7 +9,7 @@ submodule(tox_data_integration) tox_data_integration_jsd
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_utils, only: clamp, calc_percentile_helper, is_close, sort_array_heapsort, shuffle_vector, init_random
     use tox_errors, only: set_ok, set_err, is_err, ERR_ALLOC_FAIL, validate_dimension_size, validate_in_range_real, validate_all_in_range_real, validate_in_range_int, validate_all_in_range_int
-    implicit none
+    M_IMPLICIT_NONE
 contains
 
     !> Computes the shared residual range [-R, R] for the computed residuals from studies S1 and S2

@@ -8,7 +8,7 @@ module tox_tissue_versatility
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once, validate_dimension_size, validate_all_in_range_real, is_err
     use f42_utils, only: operator(.isclose.), clamp, degrees
-    implicit none
+    M_IMPLICIT_NONE
 contains
 
     !> M_EXPORT_C

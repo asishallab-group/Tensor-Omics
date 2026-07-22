@@ -12,7 +12,7 @@ module tox_data_tools
     use tox_errors, only: set_ok, set_err_once, set_err, is_err, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH
     use config, only: DEBUG
-    implicit none
+    M_IMPLICIT_NONE
     private
 
     public :: read_gene_ids_from_tsv_file
@@ -491,7 +491,7 @@ contains
     !| AUTHOR_AARON_SCHROEDER
     subroutine get_unassigned_mask(gene_to_fam, mask, n_genes_kept)
         use iso_fortran_env, only: int32
-        implicit none
+        M_IMPLICIT_NONE
 
         integer(int32), intent(in) :: gene_to_fam(:)
         !! gene to family mapping

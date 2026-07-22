@@ -9,7 +9,7 @@ submodule(tox_data_integration) tox_data_integration_per_family
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, validate_dimension_size, validate_in_range_int, validate_all_in_range_int, validate_all_in_range_real, is_err, ERR_ALLOC_FAIL, set_err, validate_in_range_real
     use f42_utils, only: is_close
-    implicit none
+    M_IMPLICIT_NONE
 
 contains
 
