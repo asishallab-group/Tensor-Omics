@@ -2,7 +2,6 @@
 
 !> Module for deserializing character arrays from files
 module f42_serde_arrays_deserialize_char
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_arrays_utils, only: check_file_header
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_READ_DATA, set_err

@@ -8,7 +8,6 @@
 !| the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
 !| netlib routines themselves are not re-documented here beyond their calling convention.
 module tox_loess
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_io_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
 

@@ -8,7 +8,6 @@
 !| be assessed via a permutation test that recomputes the same contribution against a randomly chosen
 !| other sample.
 module tox_trajectory_contribution_analysis
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, set_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, validate_in_range_real, validate_in_range_int
     use f42_utils, only: init_random, rand_range

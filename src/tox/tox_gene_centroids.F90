@@ -5,7 +5,6 @@
 !| This module contains the core scientific kernel. The C and R interface
 !| wrappers are defined outside the module for compatibility.
 module tox_gene_centroids
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, validate_dimension_size, validate_in_range_int, validate_all_in_range_int
     use f42_utils, only: add_vector

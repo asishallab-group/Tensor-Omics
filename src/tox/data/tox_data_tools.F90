@@ -7,7 +7,6 @@
 !| [[tox_data_archive(module):save_tox_data(subroutine)]] later persists; unlike the archive/serde
 !| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools
-    use safeguard
     use iso_fortran_env, only: real64, int32, iostat_end
     use tox_errors, only: set_ok, set_err_once, set_err, is_err, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH

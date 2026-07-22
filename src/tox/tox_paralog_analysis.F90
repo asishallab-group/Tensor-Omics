@@ -8,7 +8,6 @@
 !| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
 !| extended further, which keeps the combinatorial subset search tractable.
 module tox_paralog_analysis
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int, validate_all_in_range_int, validate_in_range_real, validate_all_in_range_real, map_err_arg_pos
     use f42_utils, only: add_vector, subtract_vector, norm, angle_between, above, PI

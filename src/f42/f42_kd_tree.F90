@@ -6,7 +6,6 @@
 !| is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
 !| index array rather than as linked nodes.
 module f42_kd_tree
-    use safeguard
     use f42_utils, only: sort_array_heapsort, init_perm
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, validate_dimension_size, validate_all_in_range_int, validate_in_range_int, is_err, set_err, ERR_ALLOC_FAIL

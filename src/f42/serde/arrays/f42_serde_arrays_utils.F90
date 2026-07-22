@@ -12,7 +12,6 @@
 !| raw array payload follows immediately after the header, written as one
 !| contiguous block by the type-specific serializers.
 module f42_serde_arrays_utils
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_utils
     use tox_errors

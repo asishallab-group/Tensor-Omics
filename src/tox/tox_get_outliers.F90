@@ -2,7 +2,6 @@
 
 !> Module to identify gene outliers based on their distances to family centroids.
 module tox_get_outliers
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values, init_perm

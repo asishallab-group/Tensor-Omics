@@ -21,7 +21,6 @@
 !| The test is intended to support principled decisions
 !| on whether replicate sets from different studies should be merged or treated as distinct conditions within Tensor Omics workflows.
 module tox_data_integration
-    use safeguard
     use iso_fortran_env, only: int32, real64
     M_IMPLICIT_NONE
 

@@ -2,7 +2,6 @@
 
 !> Module for serializing integer arrays into files
 module f42_serde_arrays_serialize_int
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_arrays_utils, only: write_file_header, INTEGER_TYPE_CODE
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err

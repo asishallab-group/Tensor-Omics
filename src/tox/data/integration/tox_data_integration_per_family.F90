@@ -5,7 +5,6 @@
 !| This module implements subroutines to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]]
 !| for specific sub-neighborhoods by using the pipeline from [[tox_data_integration_jsd(submodule)]].
 submodule(tox_data_integration) tox_data_integration_per_family
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, validate_dimension_size, validate_in_range_int, validate_all_in_range_int, validate_all_in_range_real, is_err, ERR_ALLOC_FAIL, set_err, validate_in_range_real
     use f42_utils, only: is_close

@@ -2,7 +2,6 @@
 
 !> Module with normalization routines for tensor omics.
 module tox_normalization
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev

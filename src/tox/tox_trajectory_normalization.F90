@@ -5,7 +5,6 @@
 module tox_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_NAN_INF, set_ok, set_err, is_err, validate_dimension_size, validate_all_in_range_real, ERR_DIVISION_BY_ZERO, ERR_ALLOC_FAIL
-    use safeguard
     use f42_utils, only: is_close
     M_IMPLICIT_NONE
 

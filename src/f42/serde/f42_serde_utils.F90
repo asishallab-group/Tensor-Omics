@@ -5,7 +5,6 @@
 !> AUTHOR_FRANZ_ERIC_SILL
 !| Module for de-/serialization utilities.
 module f42_serde_utils
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32
     M_IMPLICIT_NONE
 

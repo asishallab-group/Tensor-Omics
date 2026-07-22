@@ -7,7 +7,6 @@
 !| exchangeable, S1/S2 residuals are repeatedly shuffled within each reference point's pooled neighborhood and
 !| the JSD pipeline is recomputed, giving a null distribution against which the observed JSD is compared.
 submodule(tox_data_integration) tox_data_integration_stats
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real, set_ok, set_err, is_err, ERR_ALLOC_FAIL
     use f42_utils, only: init_random, shuffle_vector

@@ -2,7 +2,6 @@
 
 !> Module for computing the shift vector field for all genes.
 module tox_shift_vectors
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, is_err, validate_dimension_size, validate_all_in_range_int, validate_all_in_range_real
     M_IMPLICIT_NONE

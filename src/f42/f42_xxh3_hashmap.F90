@@ -7,7 +7,6 @@
 !| / [[f42_xxh3_hashmap(module):resize_hashset(subroutine)]] once the load factor exceeds
 !| [[f42_xxh3_hashmap(module):MAX_LOAD_FACTOR(variable)]].
 module f42_xxh3_hashmap
-    use safeguard
     use, intrinsic :: iso_c_binding, only: c_loc
     use iso_fortran_env, only: int32, int64
     use f42_utils, only: next_power_of_two

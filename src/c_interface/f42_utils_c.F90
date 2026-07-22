@@ -110,8 +110,10 @@ contains
             !! Pre-sorted permutation indices (must be sorted by values[perm]).
         real(c_double), dimension(n_values), intent(out), target :: unique_values
             !! Sorted unique data values.
+            !! The first `n_unique` elements will hold the results.
         real(c_double), dimension(n_values), intent(out), target :: cdf_values
             !! Corresponding cumulative frequencies between 0 and 1.
+            !! The first `n_unique` elements will hold the results.
         integer(c_int), intent(out), target :: n_unique
             !! Number of unique values found (actual size of output arrays)
         integer(c_int), intent(out), target :: ierr
@@ -156,8 +158,10 @@ contains
             !! Array of observed data values (e.g., contributions or spikes).
         real(c_double), dimension(n_values), intent(out), target :: unique_values
             !! Sorted unique data values.
+            !! The first `n_unique` elements will hold the results.
         real(c_double), dimension(n_values), intent(out), target :: cdf_values
             !! Corresponding cumulative frequencies between 0 and 1.
+            !! The first `n_unique` elements will hold the results.
         integer(c_int), intent(out), target :: n_unique
             !! Number of unique values found (actual size of output arrays)
         integer(c_int), intent(out), target :: ierr

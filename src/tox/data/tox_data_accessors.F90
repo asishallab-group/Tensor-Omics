@@ -6,7 +6,6 @@
 !| (e.g. [[tox_data_archive(module):read_tox_data(subroutine)]]): given an index, return the
 !| corresponding row/column/slice with bounds and shape checks; given an ID string, find its index.
 module tox_data_accessors
-    use safeguard
     use iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err_once, ERR_SIZE_MISMATCH, ERR_INVALID_INPUT
     M_IMPLICIT_NONE

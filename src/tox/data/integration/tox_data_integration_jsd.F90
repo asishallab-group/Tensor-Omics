@@ -4,7 +4,6 @@
 !|
 !| This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from [[tox_data_integration_preprocessing(submodule)]].
 submodule(tox_data_integration) tox_data_integration_jsd
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_utils, only: clamp, calc_percentile_helper, is_close, sort_array_heapsort, shuffle_vector, init_random
