@@ -24,14 +24,14 @@ compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, sp
     mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
     n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
     .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = n_families, save_factorization = FALSE)
-    liv <- .tox_loess_required_workspace_result$int_workspace_size
-    lv <- .tox_loess_required_workspace_result$real_workspace_size
+    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
+    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
 
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, liv, lv, span, degree, mode, n_iters)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_iv", "liv", "tmp_wv", "lv", "tmp_diagl", "tmp_w_init", "tmp_z_mat", "tmp_rw", "tmp_ww", "tmp_res", "tmp_pi", "tmp_yhat", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr")
+    .result <- .compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, int_workspace_size, real_workspace_size, span, degree, mode, n_iters)
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
@@ -106,7 +106,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' Identify gene outliers based on the top percentile of RDI values
 #'
 #' Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-#' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
+#' If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
 #'
 #' @param rdi a numeric vector. Array of RDI values for each gene
 #' @param sorted_rdi a numeric vector. Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)

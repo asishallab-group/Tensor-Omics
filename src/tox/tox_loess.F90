@@ -206,7 +206,7 @@ contains
     !| Outputs the smoothed response variable array. Caller-provided workspace must already be
     !| sized via [[tox_loess(module):tox_loess_required_workspace(subroutine)]]; no input validation
     !| beyond `n`, `span`, `degree`, and workspace-size bounds is performed here.
-    subroutine loess_fit_plain(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)
+    subroutine loess_fit_plain(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, fitted_values, ierr)
         integer(int32), intent(in) :: n
             !! Total number of data points
         integer(int32), intent(in) :: degree
@@ -215,9 +215,18 @@ contains
             !! Maximum neighborhood size
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! |       n_dim       |   1_int32   |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! |       n_dim       |   1_int32   |
         real(real64), intent(in) :: x(n)
             !! Predictor variable array
         real(real64), intent(in) :: y(n)
@@ -234,11 +243,11 @@ contains
         logical, intent(in) :: save_factorization
             !! Save matrix factorization flag
 
-        integer(int32), intent(inout) :: int_workspace(int_workspace_size)
+        integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
             !! Integer workspace array
-        real(real64), intent(inout) :: real_workspace(real_workspace_size)
+        real(real64), intent(out) :: tmp_real_workspace(real_workspace_size)
             !! Real workspace array
-        real(real64), intent(inout) :: hat_diag(n)
+        real(real64), intent(out) :: tmp_hat_diag(n)
             !! Diagonal elements of the hat matrix
 
         real(real64), intent(out) :: fitted_values(n)
@@ -279,9 +288,9 @@ contains
         ! `106` is netlib's packed `iv(19)` model-selection code (family/surface/statistics digits);
         ! it selects the netlib default (Gaussian family, direct surface, exact statistics) and is not
         ! meant to be tuned per call.
-        call loess_decomposition(106, int_workspace, int_workspace_size, real_workspace_size, real_workspace, 1_int32, n, span, degree, max_neighborhood_size, save_factorization)
-        call loess_fitting(x, y, weights, hat_diag, compute_influence, int_workspace, int_workspace_size, real_workspace_size, real_workspace)
-        call loess_evaluation(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)
+        call loess_decomposition(106, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, 1_int32, n, span, degree, max_neighborhood_size, save_factorization)
+        call loess_fitting(x, y, weights, tmp_hat_diag, compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
+        call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n, eval_points, fitted_values)
     end subroutine loess_fit_plain
 
     ! ============================================================
@@ -297,7 +306,7 @@ contains
     !|  - Computes residuals (y - fitted values)
     !|  - Updates robust weights using bisquare function (suppresses large residuals)
     !|
-    subroutine loess_fit_robust(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)
+    subroutine loess_fit_robust(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)
         integer(int32), intent(in) :: n
             !! Total number of data points
         integer(int32), intent(in) :: degree
@@ -308,8 +317,18 @@ contains
             !! Number of robust iterations
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! |       n_dim       |   1_int32   |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !!
+            !! | Producer input    | Supplied by |
+            !! |-------------------|-------------|
+            !! |       n_dim       |   1_int32   |
 
         real(real64), intent(in) :: x(n)
             !! Predictor variable array
@@ -327,11 +346,11 @@ contains
         logical, intent(in) :: save_factorization
             !! Save matrix factorization flag
 
-        integer(int32), intent(inout) :: int_workspace(int_workspace_size)
+        integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
             !! Integer workspace array
-        real(real64), intent(inout) :: real_workspace(real_workspace_size)
+        real(real64), intent(out) :: tmp_real_workspace(real_workspace_size)
             !! Real workspace array
-        real(real64), intent(inout) :: hat_diag(n)
+        real(real64), intent(inout) :: tmp_hat_diag(n)
             !! Diagonal elements of the hat matrix
         real(real64), intent(inout) :: robust_weights(n)
             !! Robust bisquare weights (updated each iteration, initialized to 1.0)
@@ -383,8 +402,8 @@ contains
         ! Perform robust iterative refinement
         do iter = 1, n_iters
             ! Reset workspace arrays for this iteration
-            int_workspace = 0_int32
-            real_workspace = 0.0_real64
+            tmp_int_workspace = 0_int32
+            tmp_real_workspace = 0.0_real64
 
             do concurrent (i = 1:n) shared(combined_weights, weights, robust_weights)
                 combined_weights(i) = weights(i)*robust_weights(i)
@@ -392,9 +411,9 @@ contains
 
             ! Perform LOESS fitting for this robust iteration.
             ! `106` is netlib's packed `iv(19)` model-selection code, see loess_fit_plain for details.
-            call loess_decomposition(106_int32, int_workspace, int_workspace_size, real_workspace_size, real_workspace, predictor_dim, n, span, degree, max_neighborhood_size, save_factorization)
-            call loess_fitting(x, y, combined_weights, hat_diag, compute_influence, int_workspace, int_workspace_size, real_workspace_size, real_workspace)
-            call loess_evaluation(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)
+            call loess_decomposition(106_int32, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, predictor_dim, n, span, degree, max_neighborhood_size, save_factorization)
+            call loess_fitting(x, y, combined_weights, tmp_hat_diag, compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
+            call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n, eval_points, fitted_values)
 
             ! Compute residuals for robust reweighting in next iteration
             do concurrent (i = 1:n) shared(residuals, y, fitted_values)

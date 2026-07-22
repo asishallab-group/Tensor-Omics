@@ -49,7 +49,7 @@ _lib.compute_family_scaling_expert_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_iv", "liv", "tmp_wv", "lv", "tmp_diagl", "tmp_w_init", "tmp_z_mat", "tmp_rw", "tmp_ww", "tmp_res", "tmp_pi", "tmp_yhat", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr",)
+_COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr",)
 
 _lib.compute_family_scaling_c.restype = None
 _lib.compute_family_scaling_c.argtypes = (
@@ -200,9 +200,9 @@ def compute_family_scaling_expert(
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     from .tox_loess import tox_loess_required_workspace
     _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n_families, save_factorization=False)
-    liv = _tox_loess_required_workspace_result["int_workspace_size"]
+    int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
     from .tox_loess import tox_loess_required_workspace
-    lv = _tox_loess_required_workspace_result["real_workspace_size"]
+    real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
 
     # Fortran cannot check that shared extents agree; this can
     if gene_to_fam.shape[0] != n_genes:
@@ -218,16 +218,16 @@ def compute_family_scaling_expert(
     tmp_perm = np.empty((n_genes,), dtype=np.int32, order='C')
     tmp_stack_left = np.empty((n_genes,), dtype=np.int32, order='C')
     tmp_stack_right = np.empty((n_genes,), dtype=np.int32, order='C')
-    tmp_iv = np.empty((liv,), dtype=np.int32, order='C')
-    tmp_wv = np.empty((lv,), dtype=np.float64, order='C')
+    tmp_int_workspace = np.empty((int_workspace_size,), dtype=np.int32, order='C')
+    tmp_real_workspace = np.empty((real_workspace_size,), dtype=np.float64, order='C')
     tmp_diagl = np.empty((n_families,), dtype=np.float64, order='C')
-    tmp_w_init = np.empty((n_families,), dtype=np.float64, order='C')
-    tmp_z_mat = np.empty((n_families, 1,), dtype=np.float64, order='F')
-    tmp_rw = np.empty((n_families,), dtype=np.float64, order='C')
-    tmp_ww = np.empty((n_families,), dtype=np.float64, order='C')
-    tmp_res = np.empty((n_families,), dtype=np.float64, order='C')
-    tmp_pi = np.empty((n_families,), dtype=np.int32, order='C')
-    tmp_yhat = np.empty((n_families,), dtype=np.float64, order='C')
+    tmp_weights = np.empty((n_families,), dtype=np.float64, order='C')
+    tmp_eval_points = np.empty((n_families, 1,), dtype=np.float64, order='F')
+    tmp_robust_weights = np.empty((n_families,), dtype=np.float64, order='C')
+    tmp_combined_weights = np.empty((n_families,), dtype=np.float64, order='C')
+    tmp_residuals = np.empty((n_families,), dtype=np.float64, order='C')
+    tmp_permutation_indices = np.empty((n_families,), dtype=np.int32, order='C')
+    tmp_fitted_values = np.empty((n_families,), dtype=np.float64, order='C')
     low_sd_cutoff = ctypes.c_double(0)
     excluded_low_sd = np.empty((n_families,), dtype=np.int32, order='C')
     tmp_means_aux = np.empty((n_families,), dtype=np.float64, order='C')
@@ -245,18 +245,18 @@ def compute_family_scaling_expert(
         tmp_perm,
         tmp_stack_left,
         tmp_stack_right,
-        tmp_iv,
-        ctypes.byref(ctypes.c_int(liv)),
-        tmp_wv,
-        ctypes.byref(ctypes.c_int(lv)),
+        tmp_int_workspace,
+        ctypes.byref(ctypes.c_int(int_workspace_size)),
+        tmp_real_workspace,
+        ctypes.byref(ctypes.c_int(real_workspace_size)),
         tmp_diagl,
-        tmp_w_init,
-        tmp_z_mat,
-        tmp_rw,
-        tmp_ww,
-        tmp_res,
-        tmp_pi,
-        tmp_yhat,
+        tmp_weights,
+        tmp_eval_points,
+        tmp_robust_weights,
+        tmp_combined_weights,
+        tmp_residuals,
+        tmp_permutation_indices,
+        tmp_fitted_values,
         ctypes.byref(ctypes.c_double(span)),
         ctypes.byref(ctypes.c_int(degree)),
         mode,

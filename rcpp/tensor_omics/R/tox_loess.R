@@ -42,14 +42,11 @@ tox_loess_required_workspace <- function(n_dim, max_neighborhood_size, save_fact
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param compute_influence a logical scalar. Influence calculation flag
 #' @param save_factorization a logical scalar. Save matrix factorization flag
-#' @param int_workspace a integer vector. Integer workspace array
-#' @param real_workspace a numeric vector. Real workspace array
-#' @param hat_diag a numeric vector. Diagonal elements of the hat matrix
-#' @return a named list with elements `int_workspace`, `real_workspace`, `hat_diag`, `fitted_values`.
+#' @return Fitted (smoothed) values of y at the evaluation points
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain}.
 #' @export
-loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, real_workspace, hat_diag) {
+loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization) {
     x <- .tox_as_double_vector(x, "x")
     y <- .tox_as_double_vector(y, "y")
     weights <- .tox_as_double_vector(weights, "weights")
@@ -59,28 +56,22 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
     max_neighborhood_size <- .tox_as_integer_scalar(max_neighborhood_size, "max_neighborhood_size")
     compute_influence <- .tox_as_logical(compute_influence, "compute_influence")
     save_factorization <- .tox_as_logical(save_factorization, "save_factorization")
-    int_workspace <- .tox_as_integer_vector(int_workspace, "int_workspace")
-    real_workspace <- .tox_as_double_vector(real_workspace, "real_workspace")
-    hat_diag <- .tox_as_double_vector(hat_diag, "hat_diag")
+    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = max_neighborhood_size, save_factorization = save_factorization)
+    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
+    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
+
     if (length(y) != length(x))
         .tox_shape_error("y", length(y), "x", length(x))
     if (length(weights) != length(x))
         .tox_shape_error("weights", length(weights), "x", length(x))
     if (dim(eval_points)[1] != length(x))
         .tox_shape_error("eval_points", dim(eval_points)[1], "x", length(x))
-    if (length(hat_diag) != length(x))
-        .tox_shape_error("hat_diag", length(hat_diag), "x", length(x))
 
-    .result <- .loess_fit_plain_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, real_workspace, hat_diag)
-    .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "int_workspace", "int_workspace_size", "real_workspace", "real_workspace_size", "hat_diag", "fitted_values", "ierr")
+    .result <- .loess_fit_plain_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace_size, real_workspace_size)
+    .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "fitted_values", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
-    list(
-        int_workspace = .result$int_workspace,
-        real_workspace = .result$real_workspace,
-        hat_diag = .result$hat_diag,
-        fitted_values = .result$fitted_values
-    )
+    .result$fitted_values
 }
 
 #' Perform robust LOESS fitting with bisquare reweighting
@@ -102,18 +93,15 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #' @param compute_influence a logical scalar. Influence calculation flag
 #' @param save_factorization a logical scalar. Save matrix factorization flag
 #' @param n_iters a integer scalar. Number of robust iterations
-#' @param int_workspace a integer vector. Integer workspace array
-#' @param real_workspace a numeric vector. Real workspace array
-#' @param hat_diag a numeric vector. Diagonal elements of the hat matrix
 #' @param robust_weights a numeric vector. Robust bisquare weights (updated each iteration, initialized to 1.0)
 #' @param combined_weights a numeric vector. Combined weights: product of user weights and robust weights (weights(i) * robust_weights(i))
 #' @param residuals a numeric vector. Residuals (y - fitted_values), used to compute bisquare robust weights
 #' @param permutation_indices a integer vector. Permutation indices array (from NetLib bisquare weight computation)
-#' @return a named list with elements `int_workspace`, `real_workspace`, `hat_diag`, `robust_weights`, `combined_weights`, `residuals`, `permutation_indices`, `fitted_values`.
+#' @return a named list with elements `robust_weights`, `combined_weights`, `residuals`, `permutation_indices`, `fitted_values`.
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust}.
 #' @export
-loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, real_workspace, hat_diag, robust_weights, combined_weights, residuals, permutation_indices) {
+loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, robust_weights, combined_weights, residuals, permutation_indices) {
     x <- .tox_as_double_vector(x, "x")
     y <- .tox_as_double_vector(y, "y")
     weights <- .tox_as_double_vector(weights, "weights")
@@ -124,21 +112,20 @@ loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neigh
     compute_influence <- .tox_as_logical(compute_influence, "compute_influence")
     save_factorization <- .tox_as_logical(save_factorization, "save_factorization")
     n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
-    int_workspace <- .tox_as_integer_vector(int_workspace, "int_workspace")
-    real_workspace <- .tox_as_double_vector(real_workspace, "real_workspace")
-    hat_diag <- .tox_as_double_vector(hat_diag, "hat_diag")
     robust_weights <- .tox_as_double_vector(robust_weights, "robust_weights")
     combined_weights <- .tox_as_double_vector(combined_weights, "combined_weights")
     residuals <- .tox_as_double_vector(residuals, "residuals")
     permutation_indices <- .tox_as_integer_vector(permutation_indices, "permutation_indices")
+    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = max_neighborhood_size, save_factorization = save_factorization)
+    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
+    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
+
     if (length(y) != length(x))
         .tox_shape_error("y", length(y), "x", length(x))
     if (length(weights) != length(x))
         .tox_shape_error("weights", length(weights), "x", length(x))
     if (dim(eval_points)[1] != length(x))
         .tox_shape_error("eval_points", dim(eval_points)[1], "x", length(x))
-    if (length(hat_diag) != length(x))
-        .tox_shape_error("hat_diag", length(hat_diag), "x", length(x))
     if (length(robust_weights) != length(x))
         .tox_shape_error("robust_weights", length(robust_weights), "x", length(x))
     if (length(combined_weights) != length(x))
@@ -148,14 +135,11 @@ loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neigh
     if (length(permutation_indices) != length(x))
         .tox_shape_error("permutation_indices", length(permutation_indices), "x", length(x))
 
-    .result <- .loess_fit_robust_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, real_workspace, hat_diag, robust_weights, combined_weights, residuals, permutation_indices)
-    .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "int_workspace", "int_workspace_size", "real_workspace", "real_workspace_size", "hat_diag", "robust_weights", "combined_weights", "residuals", "permutation_indices", "fitted_values", "ierr")
+    .result <- .loess_fit_robust_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace_size, real_workspace_size, robust_weights, combined_weights, residuals, permutation_indices)
+    .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "robust_weights", "combined_weights", "residuals", "permutation_indices", "fitted_values", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
-        int_workspace = .result$int_workspace,
-        real_workspace = .result$real_workspace,
-        hat_diag = .result$hat_diag,
         robust_weights = .result$robust_weights,
         combined_weights = .result$combined_weights,
         residuals = .result$residuals,

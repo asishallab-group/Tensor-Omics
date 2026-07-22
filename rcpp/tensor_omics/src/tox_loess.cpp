@@ -37,18 +37,14 @@ List tox_loess_required_workspace_rcpp(int n_dim, int max_neighborhood_size, boo
 }
 
 // [[Rcpp::export(.loess_fit_plain_rcpp)]]
-List loess_fit_plain_rcpp(NumericVector x, NumericVector y, NumericVector weights, NumericVector eval_points, double span, int degree, int max_neighborhood_size, bool compute_influence, bool save_factorization, IntegerVector int_workspace, NumericVector real_workspace, NumericVector hat_diag) {
+List loess_fit_plain_rcpp(NumericVector x, NumericVector y, NumericVector weights, NumericVector eval_points, double span, int degree, int max_neighborhood_size, bool compute_influence, bool save_factorization, int int_workspace_size, int real_workspace_size) {
     // derived from the inputs, not asked of the caller
     int n = (int) x.size();
-    int int_workspace_size = (int) int_workspace.size();
-    int real_workspace_size = (int) real_workspace.size();
-
-    // copy what is modified in place, so the caller's stays intact
-    IntegerVector int_workspace_out = clone(int_workspace);
-    NumericVector real_workspace_out = clone(real_workspace);
-    NumericVector hat_diag_out = clone(hat_diag);
 
     // outputs and work space
+    std::vector<int> tmp_int_workspace(int_workspace_size);
+    std::vector<double> tmp_real_workspace(real_workspace_size);
+    std::vector<double> tmp_hat_diag(n);
     NumericVector fitted_values(n);
     int ierr = 0;
 
@@ -63,41 +59,36 @@ List loess_fit_plain_rcpp(NumericVector x, NumericVector y, NumericVector weight
         &max_neighborhood_size,
         &compute_influence,
         &save_factorization,
-        int_workspace_out.begin(),
+        tmp_int_workspace.data(),
         &int_workspace_size,
-        real_workspace_out.begin(),
+        tmp_real_workspace.data(),
         &real_workspace_size,
-        hat_diag_out.begin(),
+        tmp_hat_diag.data(),
         fitted_values.begin(),
         &ierr
     );
 
     return List::create(
-        _["int_workspace"] = int_workspace_out,
-        _["real_workspace"] = real_workspace_out,
-        _["hat_diag"] = hat_diag_out,
         _["fitted_values"] = fitted_values,
         _["ierr"] = ierr
     );
 }
 
 // [[Rcpp::export(.loess_fit_robust_rcpp)]]
-List loess_fit_robust_rcpp(NumericVector x, NumericVector y, NumericVector weights, NumericVector eval_points, double span, int degree, int max_neighborhood_size, bool compute_influence, bool save_factorization, int n_iters, IntegerVector int_workspace, NumericVector real_workspace, NumericVector hat_diag, NumericVector robust_weights, NumericVector combined_weights, NumericVector residuals, IntegerVector permutation_indices) {
+List loess_fit_robust_rcpp(NumericVector x, NumericVector y, NumericVector weights, NumericVector eval_points, double span, int degree, int max_neighborhood_size, bool compute_influence, bool save_factorization, int n_iters, int int_workspace_size, int real_workspace_size, NumericVector robust_weights, NumericVector combined_weights, NumericVector residuals, IntegerVector permutation_indices) {
     // derived from the inputs, not asked of the caller
     int n = (int) x.size();
-    int int_workspace_size = (int) int_workspace.size();
-    int real_workspace_size = (int) real_workspace.size();
 
     // copy what is modified in place, so the caller's stays intact
-    IntegerVector int_workspace_out = clone(int_workspace);
-    NumericVector real_workspace_out = clone(real_workspace);
-    NumericVector hat_diag_out = clone(hat_diag);
     NumericVector robust_weights_out = clone(robust_weights);
     NumericVector combined_weights_out = clone(combined_weights);
     NumericVector residuals_out = clone(residuals);
     IntegerVector permutation_indices_out = clone(permutation_indices);
 
     // outputs and work space
+    std::vector<int> tmp_int_workspace(int_workspace_size);
+    std::vector<double> tmp_real_workspace(real_workspace_size);
+    std::vector<double> tmp_hat_diag(n);
     NumericVector fitted_values(n);
     int ierr = 0;
 
@@ -113,11 +104,11 @@ List loess_fit_robust_rcpp(NumericVector x, NumericVector y, NumericVector weigh
         &compute_influence,
         &save_factorization,
         &n_iters,
-        int_workspace_out.begin(),
+        tmp_int_workspace.data(),
         &int_workspace_size,
-        real_workspace_out.begin(),
+        tmp_real_workspace.data(),
         &real_workspace_size,
-        hat_diag_out.begin(),
+        tmp_hat_diag.data(),
         robust_weights_out.begin(),
         combined_weights_out.begin(),
         residuals_out.begin(),
@@ -127,9 +118,6 @@ List loess_fit_robust_rcpp(NumericVector x, NumericVector y, NumericVector weigh
     );
 
     return List::create(
-        _["int_workspace"] = int_workspace_out,
-        _["real_workspace"] = real_workspace_out,
-        _["hat_diag"] = hat_diag_out,
         _["robust_weights"] = robust_weights_out,
         _["combined_weights"] = combined_weights_out,
         _["residuals"] = residuals_out,

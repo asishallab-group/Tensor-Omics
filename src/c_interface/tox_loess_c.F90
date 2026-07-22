@@ -86,11 +86,11 @@ contains
             max_neighborhood_size,&
             compute_influence,&
             save_factorization,&
-            int_workspace,&
+            tmp_int_workspace,&
             int_workspace_size,&
-            real_workspace,&
+            tmp_real_workspace,&
             real_workspace_size,&
-            hat_diag,&
+            tmp_hat_diag,&
             fitted_values,&
             ierr&
         ) bind(C, name="loess_fit_plain_c")
@@ -100,8 +100,18 @@ contains
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_dim          | 1_int32     |
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
         real(c_double), dimension(n), intent(in), target :: y
@@ -120,11 +130,11 @@ contains
             !! Influence calculation flag
         logical(c_bool), intent(in), target :: save_factorization
             !! Save matrix factorization flag
-        integer(c_int), dimension(int_workspace_size), intent(inout), target :: int_workspace
+        integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
             !! Integer workspace array
-        real(c_double), dimension(real_workspace_size), intent(inout), target :: real_workspace
+        real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
             !! Real workspace array
-        real(c_double), dimension(n), intent(inout), target :: hat_diag
+        real(c_double), dimension(n), intent(out), target :: tmp_hat_diag
             !! Diagonal elements of the hat matrix
         real(c_double), dimension(n), intent(out), target :: fitted_values
             !! Fitted (smoothed) values of y at the evaluation points
@@ -147,9 +157,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(y, n)
         M_CHECK_ARRAY_NON_NULL(weights, n)
         M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
-        M_CHECK_ARRAY_NON_NULL(int_workspace, int_workspace_size)
-        M_CHECK_ARRAY_NON_NULL(real_workspace, real_workspace_size)
-        M_CHECK_ARRAY_NON_NULL(hat_diag, n)
+        M_CHECK_ARRAY_NON_NULL(tmp_int_workspace, int_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_real_workspace, real_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
         compute_influence_f = compute_influence
@@ -166,11 +176,11 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             compute_influence = compute_influence_f,&
             save_factorization = save_factorization_f,&
-            int_workspace = int_workspace,&
+            tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
-            real_workspace = real_workspace,&
+            tmp_real_workspace = tmp_real_workspace,&
             real_workspace_size = real_workspace_size,&
-            hat_diag = hat_diag,&
+            tmp_hat_diag = tmp_hat_diag,&
             fitted_values = fitted_values,&
             ierr = ierr&
         )
@@ -195,11 +205,11 @@ contains
             compute_influence,&
             save_factorization,&
             n_iters,&
-            int_workspace,&
+            tmp_int_workspace,&
             int_workspace_size,&
-            real_workspace,&
+            tmp_real_workspace,&
             real_workspace_size,&
-            hat_diag,&
+            tmp_hat_diag,&
             robust_weights,&
             combined_weights,&
             residuals,&
@@ -213,8 +223,18 @@ contains
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_dim          | 1_int32     |
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
         real(c_double), dimension(n), intent(in), target :: y
@@ -235,11 +255,11 @@ contains
             !! Save matrix factorization flag
         integer(c_int), intent(in), target :: n_iters
             !! Number of robust iterations
-        integer(c_int), dimension(int_workspace_size), intent(inout), target :: int_workspace
+        integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
             !! Integer workspace array
-        real(c_double), dimension(real_workspace_size), intent(inout), target :: real_workspace
+        real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
             !! Real workspace array
-        real(c_double), dimension(n), intent(inout), target :: hat_diag
+        real(c_double), dimension(n), intent(inout), target :: tmp_hat_diag
             !! Diagonal elements of the hat matrix
         real(c_double), dimension(n), intent(inout), target :: robust_weights
             !! Robust bisquare weights (updated each iteration, initialized to 1.0)
@@ -271,9 +291,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(y, n)
         M_CHECK_ARRAY_NON_NULL(weights, n)
         M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
-        M_CHECK_ARRAY_NON_NULL(int_workspace, int_workspace_size)
-        M_CHECK_ARRAY_NON_NULL(real_workspace, real_workspace_size)
-        M_CHECK_ARRAY_NON_NULL(hat_diag, n)
+        M_CHECK_ARRAY_NON_NULL(tmp_int_workspace, int_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_real_workspace, real_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n)
         M_CHECK_ARRAY_NON_NULL(robust_weights, n)
         M_CHECK_ARRAY_NON_NULL(combined_weights, n)
         M_CHECK_ARRAY_NON_NULL(residuals, n)
@@ -295,11 +315,11 @@ contains
             compute_influence = compute_influence_f,&
             save_factorization = save_factorization_f,&
             n_iters = n_iters,&
-            int_workspace = int_workspace,&
+            tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
-            real_workspace = real_workspace,&
+            tmp_real_workspace = tmp_real_workspace,&
             real_workspace_size = real_workspace_size,&
-            hat_diag = hat_diag,&
+            tmp_hat_diag = tmp_hat_diag,&
             robust_weights = robust_weights,&
             combined_weights = combined_weights,&
             residuals = residuals,&

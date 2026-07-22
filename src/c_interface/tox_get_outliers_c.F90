@@ -33,18 +33,18 @@ contains
             tmp_perm,&
             tmp_stack_left,&
             tmp_stack_right,&
-            tmp_iv,&
-            liv,&
-            tmp_wv,&
-            lv,&
+            tmp_int_workspace,&
+            int_workspace_size,&
+            tmp_real_workspace,&
+            real_workspace_size,&
             tmp_diagl,&
-            tmp_w_init,&
-            tmp_z_mat,&
-            tmp_rw,&
-            tmp_ww,&
-            tmp_res,&
-            tmp_pi,&
-            tmp_yhat,&
+            tmp_weights,&
+            tmp_eval_points,&
+            tmp_robust_weights,&
+            tmp_combined_weights,&
+            tmp_residuals,&
+            tmp_permutation_indices,&
+            tmp_fitted_values,&
             span,&
             degree,&
             mode,&
@@ -61,7 +61,7 @@ contains
             !! Total number of genes
         integer(c_int), intent(in), target :: n_families
             !! Total number of gene families
-        integer(c_int), intent(in), target :: liv
+        integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
             !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
@@ -70,7 +70,7 @@ contains
             !! | n_dim                 | 1_int32     |
             !! | max_neighborhood_size | n_families  |
             !! | save_factorization    | .false.     |
-        integer(c_int), intent(in), target :: lv
+        integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
             !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
@@ -97,25 +97,25 @@ contains
             !! Stack array for left indices during sorting
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_right
             !! Stack array for right indices during sorting
-        integer(c_int), dimension(liv), intent(out), target :: tmp_iv
+        integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
             !! Integer workspace array
-        real(c_double), dimension(lv), intent(out), target :: tmp_wv
+        real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
             !! Real workspace array
         real(c_double), dimension(n_families), intent(inout), target :: tmp_diagl
             !! Diagonal elements of the weight matrix
-        real(c_double), dimension(n_families), intent(out), target :: tmp_w_init
+        real(c_double), dimension(n_families), intent(out), target :: tmp_weights
             !! Initial weights for LOESS
-        real(c_double), dimension(n_families, 1), intent(inout), target :: tmp_z_mat
+        real(c_double), dimension(n_families, 1), intent(inout), target :: tmp_eval_points
             !! Z matrix for LOESS fitting
-        real(c_double), dimension(n_families), intent(out), target :: tmp_rw
+        real(c_double), dimension(n_families), intent(out), target :: tmp_robust_weights
             !! Residuals for robust LOESS fitting
-        real(c_double), dimension(n_families), intent(out), target :: tmp_ww
+        real(c_double), dimension(n_families), intent(out), target :: tmp_combined_weights
             !! Working weights array
-        real(c_double), dimension(n_families), intent(out), target :: tmp_res
+        real(c_double), dimension(n_families), intent(out), target :: tmp_residuals
             !! Residuals array
-        integer(c_int), dimension(n_families), intent(out), target :: tmp_pi
+        integer(c_int), dimension(n_families), intent(out), target :: tmp_permutation_indices
             !! Permutation indices for robust LOESS fitting
-        real(c_double), dimension(n_families), intent(out), target :: tmp_yhat
+        real(c_double), dimension(n_families), intent(out), target :: tmp_fitted_values
             !! Output array for LOESS predictions
         real(c_double), intent(in), target :: span
             !! Span parameter for LOESS smoothing
@@ -144,8 +144,8 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
-        M_CHECK_NON_NULL(liv)
-        M_CHECK_NON_NULL(lv)
+        M_CHECK_NON_NULL(int_workspace_size)
+        M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(span)
         M_CHECK_NON_NULL(degree)
         M_CHECK_NON_NULL(n_iters)
@@ -159,16 +159,16 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_perm, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_stack_left, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_stack_right, n_genes)
-        M_CHECK_ARRAY_NON_NULL(tmp_iv, liv)
-        M_CHECK_ARRAY_NON_NULL(tmp_wv, lv)
+        M_CHECK_ARRAY_NON_NULL(tmp_int_workspace, int_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_real_workspace, real_workspace_size)
         M_CHECK_ARRAY_NON_NULL(tmp_diagl, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_w_init, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_z_mat, n_families * 1)
-        M_CHECK_ARRAY_NON_NULL(tmp_rw, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_ww, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_res, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_pi, n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_yhat, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_weights, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_eval_points, n_families * 1)
+        M_CHECK_ARRAY_NON_NULL(tmp_robust_weights, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_combined_weights, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_residuals, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_fitted_values, n_families)
         M_CHECK_ARRAY_NON_NULL(mode, 6)
         M_CHECK_ARRAY_NON_NULL(excluded_low_sd, n_families)
         M_CHECK_ARRAY_NON_NULL(tmp_means_aux, n_families)
@@ -201,18 +201,18 @@ contains
             tmp_perm = tmp_perm,&
             tmp_stack_left = tmp_stack_left,&
             tmp_stack_right = tmp_stack_right,&
-            tmp_iv = tmp_iv,&
-            liv = liv,&
-            tmp_wv = tmp_wv,&
-            lv = lv,&
+            tmp_int_workspace = tmp_int_workspace,&
+            int_workspace_size = int_workspace_size,&
+            tmp_real_workspace = tmp_real_workspace,&
+            real_workspace_size = real_workspace_size,&
             tmp_diagl = tmp_diagl,&
-            tmp_w_init = tmp_w_init,&
-            tmp_z_mat = tmp_z_mat,&
-            tmp_rw = tmp_rw,&
-            tmp_ww = tmp_ww,&
-            tmp_res = tmp_res,&
-            tmp_pi = tmp_pi,&
-            tmp_yhat = tmp_yhat,&
+            tmp_weights = tmp_weights,&
+            tmp_eval_points = tmp_eval_points,&
+            tmp_robust_weights = tmp_robust_weights,&
+            tmp_combined_weights = tmp_combined_weights,&
+            tmp_residuals = tmp_residuals,&
+            tmp_permutation_indices = tmp_permutation_indices,&
+            tmp_fitted_values = tmp_fitted_values,&
             span = span,&
             degree = degree,&
             mode = mode_mode_f,&
@@ -350,7 +350,7 @@ contains
 
     !> summary: C-wrapper for [[tox_get_outliers(module):identify_outliers(subroutine)]]
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-    !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
+    !| If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
     subroutine identify_outliers_c(&
             n_genes,&
             rdi,&

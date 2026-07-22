@@ -48,7 +48,7 @@ _lib.loess_fit_plain_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_LOESS_FIT_PLAIN_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "int_workspace", "int_workspace_size", "real_workspace", "real_workspace_size", "hat_diag", "fitted_values", "ierr",)
+_LOESS_FIT_PLAIN_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "fitted_values", "ierr",)
 
 _lib.loess_fit_robust_c.restype = None
 _lib.loess_fit_robust_c.argtypes = (
@@ -77,7 +77,7 @@ _lib.loess_fit_robust_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_LOESS_FIT_ROBUST_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "int_workspace", "int_workspace_size", "real_workspace", "real_workspace_size", "hat_diag", "robust_weights", "combined_weights", "residuals", "permutation_indices", "fitted_values", "ierr",)
+_LOESS_FIT_ROBUST_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "robust_weights", "combined_weights", "residuals", "permutation_indices", "fitted_values", "ierr",)
 
 _lib.loess_c.restype = None
 _lib.loess_c.argtypes = (
@@ -162,9 +162,6 @@ def loess_fit_plain(
         max_neighborhood_size,
         compute_influence,
         save_factorization,
-        int_workspace,
-        real_workspace,
-        hat_diag,
 ):
     r"""Perform plain LOESS fitting
 
@@ -188,12 +185,6 @@ def loess_fit_plain(
         Influence calculation flag
     save_factorization : bool
         Save matrix factorization flag
-    int_workspace : np.ndarray[np.int32] of shape (int_workspace_size,), modified in place
-        Integer workspace array
-    real_workspace : np.ndarray[np.float64] of shape (real_workspace_size,), modified in place
-        Real workspace array
-    hat_diag : np.ndarray[np.float64] of shape (n,), modified in place
-        Diagonal elements of the hat matrix
 
     Returns
     -------
@@ -234,23 +225,14 @@ def loess_fit_plain(
         raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
     if eval_points.ndim != 2:
         raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
-    if not isinstance(int_workspace, np.ndarray) or int_workspace.dtype != np.int32:
-        raise TypeError("'int_workspace' is modified in place, so it must already be a numpy array of {}".format(np.int32))
-    if int_workspace.ndim != 1:
-        raise ValueError(f"'int_workspace' must have 1 dimension, but has {int_workspace.ndim}")
-    if not isinstance(real_workspace, np.ndarray) or real_workspace.dtype != np.float64:
-        raise TypeError("'real_workspace' is modified in place, so it must already be a numpy array of {}".format(np.float64))
-    if real_workspace.ndim != 1:
-        raise ValueError(f"'real_workspace' must have 1 dimension, but has {real_workspace.ndim}")
-    if not isinstance(hat_diag, np.ndarray) or hat_diag.dtype != np.float64:
-        raise TypeError("'hat_diag' is modified in place, so it must already be a numpy array of {}".format(np.float64))
-    if hat_diag.ndim != 1:
-        raise ValueError(f"'hat_diag' must have 1 dimension, but has {hat_diag.ndim}")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
-    int_workspace_size = int_workspace.shape[0]
-    real_workspace_size = real_workspace.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=max_neighborhood_size, save_factorization=save_factorization)
+    int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
+    real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
 
     # Fortran cannot check that shared extents agree; this can
     if y.shape[0] != n:
@@ -265,12 +247,11 @@ def loess_fit_plain(
         raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
             f"'x' implies n == {n}"
         )
-    if hat_diag.shape[0] != n:
-        raise ValueError(f"'hat_diag' has {hat_diag.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
 
     # outputs and work arrays, which the caller never sees
+    tmp_int_workspace = np.empty((int_workspace_size,), dtype=np.int32, order='C')
+    tmp_real_workspace = np.empty((real_workspace_size,), dtype=np.float64, order='C')
+    tmp_hat_diag = np.empty((n,), dtype=np.float64, order='C')
     fitted_values = np.empty((n,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
@@ -285,11 +266,11 @@ def loess_fit_plain(
         ctypes.byref(ctypes.c_int(max_neighborhood_size)),
         ctypes.byref(ctypes.c_bool(compute_influence)),
         ctypes.byref(ctypes.c_bool(save_factorization)),
-        int_workspace,
+        tmp_int_workspace,
         ctypes.byref(ctypes.c_int(int_workspace_size)),
-        real_workspace,
+        tmp_real_workspace,
         ctypes.byref(ctypes.c_int(real_workspace_size)),
-        hat_diag,
+        tmp_hat_diag,
         fitted_values,
         ctypes.byref(ierr),
     )
@@ -309,9 +290,6 @@ def loess_fit_robust(
         compute_influence,
         save_factorization,
         n_iters,
-        int_workspace,
-        real_workspace,
-        hat_diag,
         robust_weights,
         combined_weights,
         residuals,
@@ -341,12 +319,6 @@ def loess_fit_robust(
         Save matrix factorization flag
     n_iters : int
         Number of robust iterations
-    int_workspace : np.ndarray[np.int32] of shape (int_workspace_size,), modified in place
-        Integer workspace array
-    real_workspace : np.ndarray[np.float64] of shape (real_workspace_size,), modified in place
-        Real workspace array
-    hat_diag : np.ndarray[np.float64] of shape (n,), modified in place
-        Diagonal elements of the hat matrix
     robust_weights : np.ndarray[np.float64] of shape (n,), modified in place
         Robust bisquare weights (updated each iteration, initialized to 1.0)
     combined_weights : np.ndarray[np.float64] of shape (n,), modified in place
@@ -395,18 +367,6 @@ def loess_fit_robust(
         raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
     if eval_points.ndim != 2:
         raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
-    if not isinstance(int_workspace, np.ndarray) or int_workspace.dtype != np.int32:
-        raise TypeError("'int_workspace' is modified in place, so it must already be a numpy array of {}".format(np.int32))
-    if int_workspace.ndim != 1:
-        raise ValueError(f"'int_workspace' must have 1 dimension, but has {int_workspace.ndim}")
-    if not isinstance(real_workspace, np.ndarray) or real_workspace.dtype != np.float64:
-        raise TypeError("'real_workspace' is modified in place, so it must already be a numpy array of {}".format(np.float64))
-    if real_workspace.ndim != 1:
-        raise ValueError(f"'real_workspace' must have 1 dimension, but has {real_workspace.ndim}")
-    if not isinstance(hat_diag, np.ndarray) or hat_diag.dtype != np.float64:
-        raise TypeError("'hat_diag' is modified in place, so it must already be a numpy array of {}".format(np.float64))
-    if hat_diag.ndim != 1:
-        raise ValueError(f"'hat_diag' must have 1 dimension, but has {hat_diag.ndim}")
     if not isinstance(robust_weights, np.ndarray) or robust_weights.dtype != np.float64:
         raise TypeError("'robust_weights' is modified in place, so it must already be a numpy array of {}".format(np.float64))
     if robust_weights.ndim != 1:
@@ -426,8 +386,11 @@ def loess_fit_robust(
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
-    int_workspace_size = int_workspace.shape[0]
-    real_workspace_size = real_workspace.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=max_neighborhood_size, save_factorization=save_factorization)
+    int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
+    real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
 
     # Fortran cannot check that shared extents agree; this can
     if y.shape[0] != n:
@@ -440,10 +403,6 @@ def loess_fit_robust(
         )
     if eval_points.shape[0] != n:
         raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
-    if hat_diag.shape[0] != n:
-        raise ValueError(f"'hat_diag' has {hat_diag.shape[0]} along axis 0, but "
             f"'x' implies n == {n}"
         )
     if robust_weights.shape[0] != n:
@@ -464,6 +423,9 @@ def loess_fit_robust(
         )
 
     # outputs and work arrays, which the caller never sees
+    tmp_int_workspace = np.empty((int_workspace_size,), dtype=np.int32, order='C')
+    tmp_real_workspace = np.empty((real_workspace_size,), dtype=np.float64, order='C')
+    tmp_hat_diag = np.empty((n,), dtype=np.float64, order='C')
     fitted_values = np.empty((n,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
@@ -479,11 +441,11 @@ def loess_fit_robust(
         ctypes.byref(ctypes.c_bool(compute_influence)),
         ctypes.byref(ctypes.c_bool(save_factorization)),
         ctypes.byref(ctypes.c_int(n_iters)),
-        int_workspace,
+        tmp_int_workspace,
         ctypes.byref(ctypes.c_int(int_workspace_size)),
-        real_workspace,
+        tmp_real_workspace,
         ctypes.byref(ctypes.c_int(real_workspace_size)),
-        hat_diag,
+        tmp_hat_diag,
         robust_weights,
         combined_weights,
         residuals,

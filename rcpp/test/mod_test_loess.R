@@ -26,19 +26,11 @@ test_loess_plain_functionality <- function() {
   w <- rep(1.0, n)
   z <- x
   
-  # Get required workspace sizes
-  ws <- tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=FALSE)
-  
-  # Initialize workspace arrays
-  iv <- integer(ws$int_workspace_size)
-  wv <- numeric(ws$real_workspace_size)
-  
   yhat <- loess_fit_plain(
     x=x, y=y, weights=w, eval_points=matrix(z, ncol=1),
     span=0.5, degree=1, max_neighborhood_size=n,
-    compute_influence=FALSE, save_factorization=FALSE,
-    int_workspace=iv, real_workspace=wv, hat_diag=numeric(n)
-  )$fitted_values
+    compute_influence=FALSE, save_factorization=FALSE
+  )
   
   assert_true(length(yhat) == n)
   assert_true(all(!is.na(yhat)))
@@ -55,11 +47,6 @@ test_loess_robust_functionality <- function() {
   
   w <- rep(1.0, n)
   z <- x
-  ws <- tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=FALSE)
-  
-  # Workspace and additional robust arrays
-  iv <- integer(ws$int_workspace_size)
-  wv <- numeric(ws$real_workspace_size)
   rw <- numeric(n)
   ww <- numeric(n)
   res <- numeric(n)
@@ -69,7 +56,6 @@ test_loess_robust_functionality <- function() {
     x=x, y=y, weights=w, eval_points=matrix(z, ncol=1),
     span=0.5, degree=1, max_neighborhood_size=n,
     compute_influence=FALSE, save_factorization=FALSE, n_iters=4,
-    int_workspace=iv, real_workspace=wv, hat_diag=numeric(n),
     robust_weights=rw, combined_weights=ww, residuals=res, permutation_indices=pi
   )$fitted_values
   

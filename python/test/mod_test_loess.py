@@ -40,18 +40,10 @@ def test_loess_plain_functionality():
     w = np.ones(n)
     z = x.copy()
 
-    # Get required workspace sizes
-    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=False)
-    iv = np.zeros(ws["int_workspace_size"], dtype=np.int32)
-    wv = np.zeros(ws["real_workspace_size"], dtype=np.float64)
-    diagl = np.zeros(n, dtype=np.float64)
-
     yhat = loess_fit_plain(
         x=x, y=y, weights=w, eval_points=z.reshape(n, 1),
         span=0.5, degree=1, max_neighborhood_size=n,
-        compute_influence=False, save_factorization=False,
-        int_workspace=iv, real_workspace=wv,
-        hat_diag=diagl
+        compute_influence=False, save_factorization=False
     )
 
     assert yhat.shape == (n,), "Output shape mismatch"
@@ -67,12 +59,7 @@ def test_loess_robust_functionality():
 
     w = np.ones(n)
     z = x.copy()
-    ws = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n, save_factorization=False)
-
     # Additional arrays required specifically for the robust version
-    iv = np.zeros(ws["int_workspace_size"], dtype=np.int32)
-    wv = np.zeros(ws["real_workspace_size"], dtype=np.float64)
-    diagl = np.zeros(n, dtype=np.float64)
     rw = np.zeros(n, dtype=np.float64)
     ww = np.zeros(n, dtype=np.float64)
     res = np.zeros(n, dtype=np.float64)
@@ -82,8 +69,7 @@ def test_loess_robust_functionality():
         x=x, y=y, weights=w, eval_points=z.reshape(n, 1),
         span=0.5, degree=1, max_neighborhood_size=n,
         compute_influence=False, save_factorization=False, n_iters=4,
-        int_workspace=iv, real_workspace=wv,
-        hat_diag=diagl, robust_weights=rw, combined_weights=ww,
+        robust_weights=rw, combined_weights=ww,
         residuals=res, permutation_indices=pi
     )
 

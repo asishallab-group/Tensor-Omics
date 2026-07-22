@@ -18,7 +18,7 @@ contains
     subroutine compute_family_scaling( &
         n_genes, n_families, distances, gene_to_fam, dscale, &
         loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
-        tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, &
+        tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, &
         span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
 
         use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -55,7 +55,7 @@ contains
             !! Mask to save those families that have low sd
 
         ! LOESS workspace
-        integer(int32), intent(in)    :: liv
+        integer(int32), intent(in)    :: int_workspace_size
             !! Length of integer workspace.
             !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
@@ -64,9 +64,9 @@ contains
             !! | n_dim                 | 1_int32    |
             !! | max_neighborhood_size | n_families |
             !! | save_factorization    | .false.    |
-        integer(int32), intent(out) :: tmp_iv(liv)
+        integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
             !! Integer workspace array
-        integer(int32), intent(in)    :: lv
+        integer(int32), intent(in)    :: real_workspace_size
             !! Length of real workspace.
             !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
@@ -75,24 +75,24 @@ contains
             !! | n_dim                 | 1_int32    |
             !! | max_neighborhood_size | n_families |
             !! | save_factorization    | .false.    |
-        real(real64), intent(out) :: tmp_wv(lv)
+        real(real64), intent(out) :: tmp_real_workspace(real_workspace_size)
             !! Real workspace array
 
         real(real64), intent(inout) :: tmp_diagl(n_families)
             !! Diagonal elements of the weight matrix
-        real(real64), intent(out) :: tmp_w_init(n_families)
+        real(real64), intent(out) :: tmp_weights(n_families)
             !! Initial weights for LOESS
-        real(real64), intent(inout) :: tmp_z_mat(n_families, 1)
+        real(real64), intent(inout) :: tmp_eval_points(n_families, 1)
             !! Z matrix for LOESS fitting
-        real(real64), intent(out) :: tmp_rw(n_families)
+        real(real64), intent(out) :: tmp_robust_weights(n_families)
             !! Residuals for robust LOESS fitting
-        real(real64), dimension(n_families), intent(out), target :: tmp_ww
+        real(real64), dimension(n_families), intent(out), target :: tmp_combined_weights
             !! Working weights array
-        real(real64), dimension(n_families), intent(out), target :: tmp_res
+        real(real64), dimension(n_families), intent(out), target :: tmp_residuals
             !! Residuals array
-        integer(int32), intent(out)  :: tmp_pi(n_families)
+        integer(int32), intent(out)  :: tmp_permutation_indices(n_families)
             !! Permutation indices for robust LOESS fitting
-        real(real64), intent(out)    :: tmp_yhat(n_families)
+        real(real64), intent(out)    :: tmp_fitted_values(n_families)
             !! Output array for LOESS predictions
 
         real(real64), intent(in)     :: span
@@ -139,37 +139,37 @@ contains
         ! PASS 1: compute (mean, stddev) per family
         ! ------------------------------------------------------------
 
-        tmp_w_init = 0.0_real64
-        tmp_rw = 0.0_real64
-        tmp_pi = 0
+        tmp_weights = 0.0_real64
+        tmp_robust_weights = 0.0_real64
+        tmp_permutation_indices = 0
 
         ! netlib reads iv and wv as workspace it has already seeded, so they are
         ! initialised here rather than by the caller: this routine is exported, and an
         ! interfacing language hands it freshly allocated -- uninitialised -- memory.
-        tmp_iv = 1_int32
-        tmp_wv = 0.0_real64
+        tmp_int_workspace = 1_int32
+        tmp_real_workspace = 0.0_real64
 
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
             dist_val = abs(distances(i_gene))
 
-            tmp_pi(family_idx) = tmp_pi(family_idx) + 1
-            tmp_w_init(family_idx) = tmp_w_init(family_idx) + dist_val
-            tmp_rw(family_idx) = tmp_rw(family_idx) + (dist_val**2)
+            tmp_permutation_indices(family_idx) = tmp_permutation_indices(family_idx) + 1
+            tmp_weights(family_idx) = tmp_weights(family_idx) + dist_val
+            tmp_robust_weights(family_idx) = tmp_robust_weights(family_idx) + (dist_val**2)
         end do
 
         n_valid = 0
         do i_family = 1, n_families
-            n_in_family = tmp_pi(i_family)
+            n_in_family = tmp_permutation_indices(i_family)
 
             if (n_in_family <= 1) cycle
 
             n_valid = n_valid + 1
 
-            mean_dist = tmp_w_init(i_family)/real(n_in_family, real64)
+            mean_dist = tmp_weights(i_family)/real(n_in_family, real64)
 
             ! Var = (SumSq - (Sum^2)/N) / (N-1)
-            sumsq = max(0.0_real64, tmp_rw(i_family) - (tmp_w_init(i_family)**2/real(n_in_family, real64)))
+            sumsq = max(0.0_real64, tmp_robust_weights(i_family) - (tmp_weights(i_family)**2/real(n_in_family, real64)))
             stddev_dist = sqrt(sumsq/real(n_in_family - 1, real64))
 
             loess_x(n_valid) = mean_dist
@@ -178,9 +178,9 @@ contains
             indices_used(n_valid) = i_family
         end do
 
-        tmp_w_init = 0.0_real64
-        tmp_rw = 0.0_real64
-        tmp_pi = 0
+        tmp_weights = 0.0_real64
+        tmp_robust_weights = 0.0_real64
+        tmp_permutation_indices = 0
 
         if (n_valid <= 1) then
             low_sd_cutoff = 0.0_real64
@@ -283,19 +283,19 @@ contains
         ! ------------------------------------------------------------
         ! LOESS GLOBAL: smooth y_ref as function of x_ref (once)
         ! ------------------------------------------------------------
-        tmp_w_init(1:n_valid) = 1.0_real64
-        tmp_z_mat(1:n_valid, 1) = loess_x(1:n_valid)
+        tmp_weights(1:n_valid) = 1.0_real64
+        tmp_eval_points(1:n_valid, 1) = loess_x(1:n_valid)
 
         if (mode == 0) then
             ! If you have a plain routine, call it; otherwise keep robust always.
             call loess_fit_plain( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
-                span, degree, n_valid, .false., .false., tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), tmp_yhat(1:n_valid), ierr)
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                span, degree, n_valid, .false., .false., tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         else
             call loess_fit_robust( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
-                span, degree, n_valid, .false., .false., n_iters, tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), &
-                tmp_rw(1:n_valid), tmp_ww(1:n_valid), tmp_res(1:n_valid), tmp_pi(1:n_valid), tmp_yhat(1:n_valid), ierr)
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                span, degree, n_valid, .false., .false., n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
+                tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         end if
 
         if (is_err(ierr)) return
@@ -305,33 +305,33 @@ contains
         ! concurrent iterations would be an unsynchronized data race.
         do i_family = 1, n_families
             if (tmp_means_aux(i_family) >= 0.0_real64) then
-                call logx(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1), tmp_ierr)
+                call logx(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1), tmp_ierr)
                 if (is_err(tmp_ierr)) then
                     ierr = tmp_ierr
                 else
-                    if (tmp_z_mat(i_family, 1) < xmin) tmp_z_mat(i_family, 1) = xmin
-                    if (tmp_z_mat(i_family, 1) > xmax) tmp_z_mat(i_family, 1) = xmax
+                    if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
+                    if (tmp_eval_points(i_family, 1) > xmax) tmp_eval_points(i_family, 1) = xmax
                 end if
             else
-                tmp_z_mat(i_family, 1) = xmin
+                tmp_eval_points(i_family, 1) = xmin
             end if
         end do
 
         if (is_err(ierr)) return
 
-        call loess_evaluation(tmp_iv, liv, lv, tmp_wv, n_families, tmp_z_mat, tmp_yhat(1:n_families))
+        call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n_families, tmp_eval_points, tmp_fitted_values(1:n_families))
 
         if (is_err(ierr)) return
 
         ! ------------------------------------------------------------
-        ! Map compact tmp_results back to full dscale
+        ! Map compact tmp_residuals back to full dscale
         ! ------------------------------------------------------------
 
-        do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_yhat, eps_sd)
+        do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
             if (tmp_means_aux(i_family) < 0.0_real64) then
                 dscale(i_family) = 0.0_real64
             else
-                dscale(i_family) = max(2.0_real64**tmp_yhat(i_family) - eps_sd, 0.0_real64)
+                dscale(i_family) = max(2.0_real64**tmp_fitted_values(i_family) - eps_sd, 0.0_real64)
             end if
         end do
 
@@ -385,9 +385,9 @@ contains
         real(real64), allocatable :: tmp_means_aux(:)
 
         ! LOESS workspace
-        integer(int32) :: liv, lv
-        integer(int32), allocatable :: tmp_iv(:), tmp_pi(:)
-        real(real64), allocatable :: tmp_wv(:), tmp_diagl(:), tmp_w_init(:), tmp_z_mat(:, :), tmp_rw(:), tmp_ww(:), tmp_res(:), tmp_yhat(:)
+        integer(int32) :: int_workspace_size, real_workspace_size
+        integer(int32), allocatable :: tmp_int_workspace(:), tmp_permutation_indices(:)
+        real(real64), allocatable :: tmp_real_workspace(:), tmp_diagl(:), tmp_weights(:), tmp_eval_points(:, :), tmp_robust_weights(:), tmp_combined_weights(:), tmp_residuals(:), tmp_fitted_values(:)
 
         ! LOESS params (defaults)
         real(real64), parameter :: span = 0.7_real64
@@ -399,20 +399,20 @@ contains
         call set_ok(ierr)
 
         ! Workspace sizes
-        call tox_loess_required_workspace(1_int32, n_families, liv, lv, setlf)
+        call tox_loess_required_workspace(1_int32, n_families, int_workspace_size, real_workspace_size, setlf)
 
-        M_ALLOCATE(tmp_iv(liv))
-        M_ALLOCATE(tmp_wv(lv))
+        M_ALLOCATE(tmp_int_workspace(int_workspace_size))
+        M_ALLOCATE(tmp_real_workspace(real_workspace_size))
 
         ! For robust we also need arrays sized to n_valid (<= n_families).
         M_ALLOCATE(tmp_diagl(n_families))
-        M_ALLOCATE(tmp_w_init(n_families))
-        M_ALLOCATE(tmp_z_mat(n_families, 1))
-        M_ALLOCATE(tmp_rw(n_families))
-        M_ALLOCATE(tmp_ww(n_families))
-        M_ALLOCATE(tmp_res(n_families))
-        M_ALLOCATE(tmp_pi(n_families))
-        M_ALLOCATE(tmp_yhat(n_families))
+        M_ALLOCATE(tmp_weights(n_families))
+        M_ALLOCATE(tmp_eval_points(n_families, 1))
+        M_ALLOCATE(tmp_robust_weights(n_families))
+        M_ALLOCATE(tmp_combined_weights(n_families))
+        M_ALLOCATE(tmp_residuals(n_families))
+        M_ALLOCATE(tmp_permutation_indices(n_families))
+        M_ALLOCATE(tmp_fitted_values(n_families))
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -422,10 +422,10 @@ contains
         call compute_family_scaling( &
             n_genes, n_families, distances, gene_to_fam, dscale, &
             loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, &
-            tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, &
+            tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, &
             span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)
 
-        deallocate (tmp_iv, tmp_wv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat)
+        deallocate (tmp_int_workspace, tmp_real_workspace, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values)
 
     end subroutine compute_family_scaling_alloc
 
@@ -501,7 +501,7 @@ contains
     !| summary: Identify gene outliers based on the top percentile of RDI values
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-    !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
+    !| If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
     pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes

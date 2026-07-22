@@ -15,7 +15,7 @@ extern "C" {
 }
 
 // [[Rcpp::export(.compute_family_scaling_expert_rcpp)]]
-List compute_family_scaling_expert_rcpp(int n_families, NumericVector distances, IntegerVector gene_to_fam, int liv, int lv, double span, int degree, CharacterVector mode, int n_iters) {
+List compute_family_scaling_expert_rcpp(int n_families, NumericVector distances, IntegerVector gene_to_fam, int int_workspace_size, int real_workspace_size, double span, int degree, CharacterVector mode, int n_iters) {
     // derived from the inputs, not asked of the caller
     int n_genes = (int) distances.size();
 
@@ -30,16 +30,16 @@ List compute_family_scaling_expert_rcpp(int n_families, NumericVector distances,
     std::vector<int> tmp_perm(n_genes);
     std::vector<int> tmp_stack_left(n_genes);
     std::vector<int> tmp_stack_right(n_genes);
-    std::vector<int> tmp_iv(liv);
-    std::vector<double> tmp_wv(lv);
+    std::vector<int> tmp_int_workspace(int_workspace_size);
+    std::vector<double> tmp_real_workspace(real_workspace_size);
     std::vector<double> tmp_diagl(n_families);
-    std::vector<double> tmp_w_init(n_families);
-    std::vector<double> tmp_z_mat(n_families * 1);
-    std::vector<double> tmp_rw(n_families);
-    std::vector<double> tmp_ww(n_families);
-    std::vector<double> tmp_res(n_families);
-    std::vector<int> tmp_pi(n_families);
-    std::vector<double> tmp_yhat(n_families);
+    std::vector<double> tmp_weights(n_families);
+    std::vector<double> tmp_eval_points(n_families * 1);
+    std::vector<double> tmp_robust_weights(n_families);
+    std::vector<double> tmp_combined_weights(n_families);
+    std::vector<double> tmp_residuals(n_families);
+    std::vector<int> tmp_permutation_indices(n_families);
+    std::vector<double> tmp_fitted_values(n_families);
     double low_sd_cutoff = 0;
     IntegerVector excluded_low_sd(n_families);
     std::vector<double> tmp_means_aux(n_families);
@@ -57,18 +57,18 @@ List compute_family_scaling_expert_rcpp(int n_families, NumericVector distances,
         tmp_perm.data(),
         tmp_stack_left.data(),
         tmp_stack_right.data(),
-        tmp_iv.data(),
-        &liv,
-        tmp_wv.data(),
-        &lv,
+        tmp_int_workspace.data(),
+        &int_workspace_size,
+        tmp_real_workspace.data(),
+        &real_workspace_size,
         tmp_diagl.data(),
-        tmp_w_init.data(),
-        tmp_z_mat.data(),
-        tmp_rw.data(),
-        tmp_ww.data(),
-        tmp_res.data(),
-        tmp_pi.data(),
-        tmp_yhat.data(),
+        tmp_weights.data(),
+        tmp_eval_points.data(),
+        tmp_robust_weights.data(),
+        tmp_combined_weights.data(),
+        tmp_residuals.data(),
+        tmp_permutation_indices.data(),
+        tmp_fitted_values.data(),
         &span,
         &degree,
         mode_c.data(),
