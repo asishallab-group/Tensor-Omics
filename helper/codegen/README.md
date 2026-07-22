@@ -42,9 +42,23 @@ From one exported Fortran procedure, three things:
 | C | `src/c_interface/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
 | Python | `python/tensor_omics/<module>.py` | a `ctypes` function with a numpydoc docstring |
 | R | `rcpp/tensor_omics/{src,R}/<module>.*` | an Rcpp function (marshalling) under an R function (validation, docs) |
+| Snippets | `snippets/<Language>_<root>_snippets.json` | VS Code call/setup snippets, split by language and module root |
 
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
 the loader/marshalling scaffolding.
+
+The `snippets` target (`emit/vscode_snippets.py`) emits VS Code snippets split into six
+files -- `{Fortran,Python,R}_{f42,tox}_snippets.json` under `snippets/` -- the language in
+the file name (so no per-snippet `scope`) and the root keeping the two namespaces apart.
+These are **regenerated artifacts, git-ignored** (like the Python/R packages); the
+hand-written `snippets/toxdev_snippets.json` and `snippets/readme.md` sit alongside and are
+tracked. Per exported procedure: a native Fortran `call` (plus a variant that guards
+`ierr`) and a wrapper call for Python and R, arguments rendered as keyword tabstops -- a
+`mode`/`method` argument becomes a *choice* of its accepted values. Per module: a Fortran
+`use ..., only:` and a Python import (both a choice of that module's procedures). Plus
+generic aids: an R loader `source`, an error-handling wrapper per interfacing language, and
+an error-code picker. Every prefix starts with the module's root -- `f42:` or `tox:`, taken
+from the module name up to its first underscore.
 
 The generated interfaces are consistent by construction: all three read the *same* model of
 what a procedure looks like from C (the `abi` layer), so they cannot drift.
@@ -93,6 +107,7 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 | `c_interface_dir` | `src/c_interface` | **output**: the C wrappers |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
 | `rcpp_out_dir` | `rcpp/tensor_omics` | **output**: the R package |
+| `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, git-ignored) |
 
 So a default run writes:
 

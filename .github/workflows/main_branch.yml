@@ -54,7 +54,7 @@ jobs:
           packages: ford
 
       - name: Generate snippets
-        run: python helper/generate_snippets.py
+        run: python helper/generate_code.py --target snippets
 
       - name: Generate docs
         run: ford concise_project_info.md

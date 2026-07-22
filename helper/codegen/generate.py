@@ -22,6 +22,7 @@ from .emit.fortran_c import FortranCEmitter
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.rcpp import RcppEmitter
+from .emit.vscode_snippets import SnippetEmitter
 from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
 from .ir.roles import analyse_project
@@ -53,7 +54,7 @@ class Result:
 
 def generate(
     paths: Paths = Paths(),
-    targets: tuple[str, ...] = ("c", "python", "r"),
+    targets: tuple[str, ...] = ("c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
 ) -> Result:
@@ -79,13 +80,15 @@ def generate(
         files += _python_files(interface, catalogue, paths, library)
     if "r" in targets:
         files += _r_files(interface, catalogue, paths)
+    if "snippets" in targets:
+        files += _snippets_files(interface, catalogue, paths)
 
     return Result(diagnostics=diagnostics, files=files)
 
 
 def generate_and_write(
     paths: Paths = Paths(),
-    targets: tuple[str, ...] = ("c", "python", "r"),
+    targets: tuple[str, ...] = ("c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
     clean: bool = True,
@@ -150,6 +153,12 @@ def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFi
             GeneratedFile(out / "R" / f"{module.stripped_name}.R", wrapper.module(module))
         )
     return files
+
+
+def _snippets_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
+    out = paths.resolve(paths.snippets_dir)
+    files = SnippetEmitter().snippets_files(interface, catalogue)
+    return [GeneratedFile(out / name, content) for name, content in files.items()]
 
 
 def _catalogue(parsed: ParsedProject, diagnostics: DiagnosticBag,

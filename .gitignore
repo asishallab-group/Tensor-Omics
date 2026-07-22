@@ -39,6 +39,7 @@
 !/src/**/macros.h
 
 # snippets
+# the dir is allowed but the generated *_snippets.json inside stay ignored (large, regenerated)
 !/snippets
 
 # python

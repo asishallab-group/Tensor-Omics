@@ -13,7 +13,9 @@ from pathlib import Path
 from .config import Paths
 from .generate import generate, generate_and_write
 
-ALL_TARGETS = ("c", "python", "r")
+C_INTERFACE_TARGETS = ("c", "python", "r")
+SNIPPETS_TARGETS = ("snippets",)
+ALL_TARGETS = (*C_INTERFACE_TARGETS, *SNIPPETS_TARGETS)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--target", choices=ALL_TARGETS, action="append", dest="targets",
-        help="a target to generate; repeatable, defaults to all",
+        help=f"a target to generate; repeatable, defaults to ({", ".join(C_INTERFACE_TARGETS)})",
     )
     parser.add_argument(
         "--library", default="build/libtensor-omics.so",
@@ -58,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     paths = Paths(root=args.root)
     if args.src is not None:
         paths = Paths(root=args.root, src_dir=args.src)
-    targets = tuple(args.targets) if args.targets else ALL_TARGETS
+    targets = tuple(args.targets) if args.targets else C_INTERFACE_TARGETS
     color = not args.no_color and sys.stderr.isatty()
 
     if args.check:
