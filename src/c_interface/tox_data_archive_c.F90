@@ -395,37 +395,37 @@ contains
             !! length of the strings in `zip_filename`
         integer(c_int), intent(in), target :: n_gene_ids
             !! Number of gene ids.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_gene_ids` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_gene_ids` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: gene_id_len
             !! String length of each gene id.
-            !! It is *VERY IMPORTANT* to compute this argument from the `gene_id_len` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `gene_id_len` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_expression_rows
             !! Rows (samples) of the expression matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_expression_rows` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_expression_rows` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_expression_cols
             !! Columns (genes) of the expression matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_expression_cols` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_expression_cols` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_gene_to_family
             !! Number of gene-to-family entries.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_gene_to_family` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_gene_to_family` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_family_ids
             !! Number of family ids.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_ids` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_ids` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: family_id_len
             !! String length of each family id.
-            !! It is *VERY IMPORTANT* to compute this argument from the `family_id_len` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `family_id_len` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_family_centroids_rows
             !! Rows (samples) of the family centroids matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_centroids_rows` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_centroids_rows` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_family_centroids_cols
             !! Columns (families) of the family centroids matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_centroids_cols` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_family_centroids_cols` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_shift_vectors_rows
             !! Rows of the shift vectors matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_shift_vectors_rows` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_shift_vectors_rows` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         integer(c_int), intent(in), target :: n_shift_vectors_cols
             !! Columns of the shift vectors matrix.
-            !! It is *VERY IMPORTANT* to compute this argument from the `n_shift_vectors_cols` output of [[tox_data_archive(module):get_tox_data_dims]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_shift_vectors_cols` output produced by [[tox_data_archive(module):get_tox_data_dims]].
         character(len=1, kind=c_char), dimension(zip_filename_strlen), intent(in), target :: zip_filename
             !! Name of the zip file
         character(len=1, kind=c_char), dimension(gene_id_len, n_gene_ids), intent(out), target :: gene_ids

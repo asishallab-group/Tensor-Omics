@@ -30,7 +30,7 @@ contains
 
         integer(c_int), intent(in), target :: strlen
             !! Length of each string in `arr`.
-            !! It is *VERY IMPORTANT* to compute this argument from the `type_code` output of [[f42_serde_arrays_utils(module):get_array_metadata]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `type_code` output produced by [[f42_serde_arrays_utils(module):get_array_metadata]].
             !!
             !! | Producer input    | Supplied by |
             !! |-------------------|-------------|
@@ -45,7 +45,7 @@ contains
             !! Number of strings in `arr`
         integer(c_int), dimension(n_arr_shape_elements), intent(in), target :: arr_shape
             !! Extents of `arr`, one per dimension
-            !! It is *VERY IMPORTANT* to compute this argument from the `dims_out` output of [[f42_serde_arrays_utils(module):get_array_metadata]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `dims_out` output produced by [[f42_serde_arrays_utils(module):get_array_metadata]].
             !!
             !! | Producer input    | Supplied by |
             !! |-------------------|-------------|

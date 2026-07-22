@@ -97,6 +97,6 @@
 ! The value of this argument comes from another procedure, typically a work array
 ! size that cannot be foreseen. `MODE` is AUTO when the interfacing languages should
 ! call `PROCEDURE` themselves, or JUST_INFO when the caller has to do it.
-#define DM_OUTPUT_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_OUTPUT_FROM_##MODE to compute this argument from the `ARGUMENT` output of [[MODULE(module):PROCEDURE]].
+#define DM_OUTPUT_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_OUTPUT_FROM_##MODE to compute this argument from the `ARGUMENT` output produced by [[MODULE(module):PROCEDURE]].
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_OUTPUT_FROM_JUST_INFO It is recommended
