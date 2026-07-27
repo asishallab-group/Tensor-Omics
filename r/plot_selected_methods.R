@@ -21,7 +21,7 @@ w_r <- sprintf("%.2f", as.numeric(args[7]))
 w_e <- sprintf("%.2f", as.numeric(args[8]))
 w_c <- sprintf("%.2f", as.numeric(args[9]))
 
-input_dir <- "results/data"
+input_dir <- "results/data/2d"
 output_dir <- "results/plots"
 output_pdf <- file.path(output_dir, paste0("combined_methods_k", k, "_iter", max_iter, "_span", span, "_ksigma", k_neighbors_sigma, "_kernel", kernel_type, "_method", method_flag, "_wr", w_r, "_we", w_e, "_wc", w_c, "_nw.pdf"))
 

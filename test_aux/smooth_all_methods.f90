@@ -292,10 +292,10 @@ program smooth_all_methods_functional
     ! EXPORT RESULTS (CSV)
     ! ============================
     open(12, file=trim(outfile), status="replace", action="write")
-    write(12,'(A)') 'x_orig,y_orig,x_loess,y_loess,x_anwil,y_anwil,x_iter,y_iter,x_nw,y_nw,y_nw_knn,x_manle,y_manle,svd_x,svd_y,x_amanle,y_amanle'
+    write(12,'(A)') 'x_original,y_original,x_loess,y_loess,x_anwil,y_anwil,x_anwil_iterative,y_anwil_iterative,x_nw,y_nw,y_nw_knn,x_manle,y_manle,x_manle_svd,y_manle_svd,x_amanle,y_amanle'
 
     do i = 1, n_points
-        write(12,'(17(F12.6,","))') x(i), y_orig(i), x_loess(i), y_loess(i), &
+        write(12,'(F12.6,16(",",F12.6))') x(i), y_orig(i), x_loess(i), y_loess(i), &
             smoothed_anwil(1,i), smoothed_anwil(2,i), x_anwil_iterative(i), y_anwil_iterative(i), &
             coords_nw(1,i), smoothed_nw(1,i), smoothed_nw_knn(1,i), x_manle_center(i), y_manle_center(i), &
             svd_line(1,i), svd_line(2,i), x_amanle_center(i), y_amanle_center(i)
@@ -312,9 +312,9 @@ program smooth_all_methods_functional
     ! Export Standard Deviation (Sigma) Arrays
     call make_output_name(outfile, k_neighbors, n_iters_max, 2, span_loess, k_neighbors_sigma, kernel_type, method_flag, w_r, w_e, w_c)
     open(20, file=outfile, status="replace", action="write")
-    write(20, '(A)') 'x,sigma_raw,sigma_smooth'
+    write(20, '(A)') 'x,local_sigma_raw,local_sigma_smooth'
     do i = 1, n_points
-        write(20, '(3(F12.6,","))') x(i), sigma_raw_anwil(1,i), sd_arr_anwil(1,i)
+        write(20, '(F12.6,2(",",F12.6))') x(i), sigma_raw_anwil(1,i), sd_arr_anwil(1,i)
     end do
     close(20)
     print *, "Sigma (Standard Deviation) data saved to:", trim(outfile)
@@ -352,9 +352,9 @@ contains
 
         if (dotpos > 0) then
             if (option == 1) then 
-                name = trim(name(1:dotpos-1)) // '_smoothed_k' // trim(k_s) // '_it' // trim(it_s) // &
-                       '_sp' // trim(adjustl(sp_s)) // '_ksig' // trim(sig_s) // '_ker' // trim(ker_s) // &
-                       '_m' // trim(met_s) // '_wr' // trim(wr_s) // '_we' // trim(we_s) // '_wc' // trim(wc_s) // '.csv'
+                name = trim(name(1:dotpos-1)) // '_smoothed_k' // trim(k_s) // '_iter' // trim(it_s) // &
+                       '_span' // trim(adjustl(sp_s)) // '_ksigma' // trim(sig_s) // '_kernel' // trim(ker_s) // &
+                       '_method' // trim(met_s) // '_wr' // trim(wr_s) // '_we' // trim(we_s) // '_wc' // trim(wc_s) // '.csv'
             else if (option == 2) then
                 anwil_pos = index(name, 'anwil')
                 if (anwil_pos > 0) then

@@ -5,7 +5,7 @@ library(dplyr)
 library(tidyr)
 library(tools)
 
-input_dir   <- "results/data"
+input_dir   <- "results/data/2d"
 
 # Parse command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
@@ -44,7 +44,7 @@ files <- list.files(
 )
 
 if (length(files) == 0) {
-  stop("No *smoothed.csv files found in results/data/")
+  stop("No *smoothed.csv files found in results/data/2d/")
 }
 
 # FIX 1: Rugosity (0..1) based on "following the general trend"
@@ -178,7 +178,7 @@ calculate_metrics <- function(df,
 
   name_map <- c(
     "loess" = "LOESS", "anwil" = "ANWIL",
-    "anwil_iterative" = "ANWIL (iterative)", "nw" = "Nadaraya–Watson", "nw_knn" = "Nadaraya–Watson-Knn",
+    "anwil_iterative" = "ANWIL (iterative)", "nw" = "Nadaraya-Watson", "nw_knn" = "Nadaraya-Watson-Knn",
     "manle" = "ManLe", "amanle" = "AmanLe"
   )
 
@@ -282,8 +282,8 @@ for (f in files) {
       tibble(x = df$x_loess, y = df$y_loess, method = "LOESS"),
       tibble(x = df$x_anwil, y = df$y_anwil, method = "ANWIL"),
       tibble(x = df$x_anwil_iterative, y = df$y_anwil_iterative, method = "ANWIL (iterative)"),
-      tibble(x = df$x_nw, y = df$y_nw, method = "Nadaraya–Watson"),
-      tibble(x = df$x_nw, y = df$y_nw_knn, method = "Nadaraya–Watson-Knn"),
+      tibble(x = df$x_nw, y = df$y_nw, method = "Nadaraya-Watson"),
+      tibble(x = df$x_nw, y = df$y_nw_knn, method = "Nadaraya-Watson-Knn"),
       tibble(x = df$x_manle, y = df$y_manle, method = "ManLe"),
       tibble(x = df$x_amanle, y = df$y_amanle, method = "AmanLe")
     )
@@ -295,7 +295,7 @@ for (f in files) {
   if (is.null(df_fun)) next
 
   df_fun$method <- factor(df_fun$method, levels = c(
-    "LOESS", "ANWIL", "ANWIL (iterative)", "Nadaraya–Watson", "Nadaraya–Watson-Knn", "ManLe", "AmanLe"
+    "LOESS", "ANWIL", "ANWIL (iterative)", "Nadaraya-Watson", "Nadaraya-Watson-Knn", "ManLe", "AmanLe"
   ))
 
   # DUPLICATE ORIGINAL POINTS FOR EACH METHOD FACET

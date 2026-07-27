@@ -20,7 +20,7 @@ w_e <- sprintf("%.2f", as.numeric(args[8]))
 w_c <- sprintf("%.2f", as.numeric(args[9]))
 
 # Define the input and output directories
-input_dir <- "results/data"
+input_dir <- "results/data/2d"
 output_dir <- "results/plots"
 output_pdf <- file.path(output_dir, paste0("anwil_std_plots_k", k, "_iter", max_iter, "_span", format(span, nsmall = 2), "_ksigma", k_neighbors_sigma, "_kernel", kernel_type, "_method", method_flag, "_wr", w_r, "_we", w_e, "_wc", w_c, ".pdf"))
 

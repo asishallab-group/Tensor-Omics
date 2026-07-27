@@ -1,139 +1,102 @@
 #!/bin/bash
 
-# Compile project
+# --- 1. Compilation ---
 ./build.sh
+echo "Compiling test_lomanle with LAPACK support..."
+gfortran -O2 -I build -o build/test_lomanle \
+    test_aux/test_lomanle.f90 \
+    build/*.o \
+    -Lexternal/lib -lloess_netlib -llapack -lblas
 
-# Compile smoothing program
-gfortran -O2 -I build -o build/smooth_all test_aux/smooth_all_methods.f90 build/*.o -Lexternal/lib -lloess_netlib -llapack -lblas
-
-if [ "$#" -lt 7 ]; then
-    echo "Usage: $0 <all|dataset_name> <k_neighbors_list> <span_list> <n_iters_max_list> <kernel_type_list> <k_neighbors_sigma_list> <method_id> <score_method_list> <roughness_weight_list> <rmse_weight_list> <coverage_weight_list>"
+if [ $? -ne 0 ]; then
+    echo "Compilation Error. Verify that lomanle_mod.o is in build/."
     exit 1
 fi
 
-k_neighbors_list=(${2//,/ })  # Split comma-separated list into array
-span_list=(${3//,/ })  # Split comma-separated list into array
-n_iters_max_list=(${4//,/ })  # Split comma-separated list into array
-kernel_type_list=(${5//,/ })  # Split comma-separated list into array ! 1 gaussian, 2 tricubic
-k_neighbors_sigma_list=(${6//,/ })  # Split comma-separated list into array
-method_id=$7
-score_method_list=(${8//,/ })  # Split comma-separated list into array
-roughness_weight_list=(${9//,/ })  # Split comma-separated list into array
-rmse_weight_list=(${10//,/ })  # Split comma-separated list into array
-coverage_weight_list=(${11//,/ })  # Split comma-separated list into array
+# --- 2. Argument Validation ---
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 <file.csv|all> <k_min_list> [manifold_dim] [g_threshold_list] [o_max_list] [o_min_list] [stability_threshold_list] [scale_factor_list] [max_iterations_list] [relative_conv_tol_list]"
+    echo "Example: $0 results/data/arc.csv 10 1 1.0 0.30 0.05 0.90 2.5 50 0.01"
+    echo "Example with lists: $0 results/data/arc.csv 10,20,30 1 1.0,2.0 0.30,0.40 0.05,0.10 0.90 2.5 50 0.01"
+    exit 1
+fi
 
-if [ "$1" == "all" ]; then
-    echo "Running smoothing tests on all datasets with method_id=$method_id..."
-    # Run test for all generated datasets
-    for f in results/data/*.csv; do
-        if [[ "$f" != *"_smoothed"* ]]; then
-            echo "Processing: $f"
-            for k_neighbors in "${k_neighbors_list[@]}"; do
-                for span in "${span_list[@]}"; do
-                    for n_iters_max in "${n_iters_max_list[@]}"; do
-                        for kernel_type in "${kernel_type_list[@]}"; do
-                            for k_neighbors_sigma in "${k_neighbors_sigma_list[@]}"; do
-                                for score_method in "${score_method_list[@]}"; do
-                                    for roughness_weight in "${roughness_weight_list[@]}"; do
-                                        for rmse_weight in "${rmse_weight_list[@]}"; do
-                                            for coverage_weight in "${coverage_weight_list[@]}"; do
-                                                echo "Running with k_neighbors=$k_neighbors, span=$span, n_iters_max=$n_iters_max, kernel_type=$kernel_type, k_neighbors_sigma=$k_neighbors_sigma, score_method=$score_method, roughness_weight=$roughness_weight, rmse_weight=$rmse_weight, coverage_weight=$coverage_weight"
-                                                ./build/smooth_all "$f" "$k_neighbors" "$n_iters_max" "$method_id" "$k_neighbors_sigma" "$kernel_type" "$span" "$score_method" "$roughness_weight" "$rmse_weight" "$coverage_weight"
-                                            done
-                                        done
-                                    done
+dataset_input=$1
+k_min_list=(${2//,/ })
+m_dim=${3:-1}             # Default 1 (curve)
+g_thresh_list=(${4:-1.0})
+g_thresh_list=(${g_thresh_list//,/ })   # Convert to array
+o_max_list=(${5:-0.30})
+o_max_list=(${o_max_list//,/ })         # Convert to array
+o_min_list=(${6:-0.05})
+o_min_list=(${o_min_list//,/ })         # Convert to array
+stability_list=(${7:-0.90})             # Tangent-stability threshold, see smoothing_vecinos.md
+stability_list=(${stability_list//,/ })
+scale_factor_list=(${8:-2.5})           # Local-scale distance-jump multiplier
+scale_factor_list=(${scale_factor_list//,/ })
+max_iter_list=(${9:-50})                # Convergence loop iteration cap
+max_iter_list=(${max_iter_list//,/ })
+conv_tol_list=(${10:-0.01})             # Convergence tolerance, as a fraction of median nearest-neighbor distance
+conv_tol_list=(${conv_tol_list//,/ })
+
+# --- 3. Processing Function ---
+process_file() {
+    local f=$1
+    for k in "${k_min_list[@]}"; do
+        for g_thresh in "${g_thresh_list[@]}"; do
+            for o_max in "${o_max_list[@]}"; do
+                for o_min in "${o_min_list[@]}"; do
+                    for stability in "${stability_list[@]}"; do
+                        for scale_factor in "${scale_factor_list[@]}"; do
+                            for max_iter in "${max_iter_list[@]}"; do
+                                for conv_tol in "${conv_tol_list[@]}"; do
+                                    echo "------------------------------------------"
+                                    echo "EXECUTING: $f"
+                                    echo "Parameters: k_min=$k, dim=$m_dim, gap_threshold=$g_thresh, o_max=$o_max, o_min=$o_min, stability=$stability, scale_factor=$scale_factor, max_iter=$max_iter, conv_tol=$conv_tol"
+
+                                    # Execute Fortran with the 10 arguments
+                                    ./build/test_lomanle "$f" "$k" "$m_dim" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol"
+
+                                    if [ $? -ne 0 ]; then
+                                        echo "Error during Fortran execution."
+                                        continue
+                                    fi
+
+                                    # Define output CSV name including k, g, overlap, stability and iteration parameters
+                                    base_name=$(basename "$f" .csv)
+                                    csv_out="results/data/${base_name}_k${k}_g${g_thresh}_omax${o_max}_st${stability}_sf${scale_factor}_mi${max_iter}_ct${conv_tol}_lomanle.csv"
+                                    edges_out="${csv_out%.csv}_edges.csv"
+                                    echo "Saving output to: $csv_out"
+                                    mv lomanle_output.csv "$csv_out"
+                                    echo "Saving skeleton edges to: $edges_out"
+                                    mv lomanle_edges.csv "$edges_out"
+
+                                    # R SCRIPT CALL (Passes parameters for plotting)
+                                    echo "Generating visualization..."
+                                    Rscript r/plot_lomanle_spheres.R "$csv_out" "$k" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol"
                                 done
                             done
                         done
                     done
                 done
             done
+        done
+    done
+}
+
+# --- 4. Main Logic ---
+if [ "$dataset_input" == "all" ]; then
+    for f in results/data/3d/*.csv; do
+        # Avoid re-processing files that are already lomanle outputs
+        if [[ "$f" != *"_lomanle"* ]]; then
+            if [[ "$f" != *"_smoothed"* ]]; then
+                process_file "$f"
+            fi
         fi
     done
 else
-    echo "Running smoothing test on dataset: $1 with method_id=$method_id..."
-    for k_neighbors in "${k_neighbors_list[@]}"; do
-        for span in "${span_list[@]}"; do
-            for n_iters_max in "${n_iters_max_list[@]}"; do
-                for kernel_type in "${kernel_type_list[@]}"; do
-                    for k_neighbors_sigma in "${k_neighbors_sigma_list[@]}"; do
-                        for score_method in "${score_method_list[@]}"; do
-                            for roughness_weight in "${roughness_weight_list[@]}"; do
-                                for rmse_weight in "${rmse_weight_list[@]}"; do
-                                    for coverage_weight in "${coverage_weight_list[@]}"; do
-                                        echo "Running with k_neighbors=$k_neighbors, span=$span, n_iters_max=$n_iters_max, kernel_type=$kernel_type, k_neighbors_sigma=$k_neighbors_sigma, score_method=$score_method, roughness_weight=$roughness_weight, rmse_weight=$rmse_weight, coverage_weight=$coverage_weight"
-                                        ./build/smooth_all "$1" "$k_neighbors" "$n_iters_max" "$method_id" "$k_neighbors_sigma" "$kernel_type" "$span" "$score_method" "$roughness_weight" "$rmse_weight" "$coverage_weight"
-                                    done
-                                done
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
+    process_file "$dataset_input"
 fi
 
-for k_neighbors in "${k_neighbors_list[@]}"; do
-    echo "Entering k_neighbors loop with k_neighbors=$k_neighbors"
-    for span in "${span_list[@]}"; do
-        echo "  Entering span loop with span=$span"
-        for n_iters_max in "${n_iters_max_list[@]}"; do
-            for kernel_type in "${kernel_type_list[@]}"; do
-                for k_neighbors_sigma in "${k_neighbors_sigma_list[@]}"; do
-                    for score_method in "${score_method_list[@]}"; do
-                        for roughness_weight in "${roughness_weight_list[@]}"; do
-                            for rmse_weight in "${rmse_weight_list[@]}"; do
-                                for coverage_weight in "${coverage_weight_list[@]}"; do
-                                    echo "    Entering n_iters_max loop with n_iters_max=$n_iters_max, kernel_type=$kernel_type, k_neighbors_sigma=$k_neighbors_sigma, score_method=$score_method, roughness_weight=$roughness_weight, rmse_weight=$rmse_weight, coverage_weight=$coverage_weight"
-                                    Rscript r/plot_smooth_all.r "$k_neighbors" "$span" "$n_iters_max" "$kernel_type" "$k_neighbors_sigma" "$score_method" "$roughness_weight" "$rmse_weight" "$coverage_weight"
-                                done
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
-done
-
-for k_neighbors in "${k_neighbors_list[@]}"; do
-    for span in "${span_list[@]}"; do
-        for n_iters_max in "${n_iters_max_list[@]}"; do
-            for kernel_type in "${kernel_type_list[@]}"; do
-                for k_neighbors_sigma in "${k_neighbors_sigma_list[@]}"; do
-                    for score_method in "${score_method_list[@]}"; do
-                        for roughness_weight in "${roughness_weight_list[@]}"; do
-                            for rmse_weight in "${rmse_weight_list[@]}"; do
-                                for coverage_weight in "${coverage_weight_list[@]}"; do
-                                    Rscript r/plot_anwil_std.R "$k_neighbors" "$span" "$n_iters_max" "$kernel_type" "$k_neighbors_sigma" "$score_method" "$roughness_weight" "$rmse_weight" "$coverage_weight"
-                                done
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
-done
-
-
-for k_neighbors in "${k_neighbors_list[@]}"; do
-    for span in "${span_list[@]}"; do
-        for n_iters_max in "${n_iters_max_list[@]}"; do
-            for kernel_type in "${kernel_type_list[@]}"; do
-                for k_neighbors_sigma in "${k_neighbors_sigma_list[@]}"; do
-                    for score_method in "${score_method_list[@]}"; do
-                        for roughness_weight in "${roughness_weight_list[@]}"; do
-                            for rmse_weight in "${rmse_weight_list[@]}"; do
-                                for coverage_weight in "${coverage_weight_list[@]}"; do
-                                    Rscript r/plot_selected_methods.R "$k_neighbors" "$span" "$n_iters_max" "$kernel_type" "$k_neighbors_sigma" "$score_method" "$roughness_weight" "$rmse_weight" "$coverage_weight"
-                                done
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
-done
+echo "------------------------------------------"
+echo "Process finished. Check results/plots/ for PDF reports."

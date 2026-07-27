@@ -5,46 +5,47 @@
 
 source build_utils.sh
 
-COMPILER=$(get_compiler)
-FLAGS=$(get_flags)
-ALIGN=$(get_alignment)
-handle_args "$@"
+init "$@"
 
-# Clean build directory if it exists
-if [[ -d "build" && -z "$KEEP_OLD_BUILD_DIR" ]]; then
-  rm -rf build
+mkdir -p build
+
+# trigger clean build on branch switch
+if [[ $(command -v git) ]]; then
+  current_branch=$(git branch --show-current 2>/dev/null || true)
+  filename=".${COMPILER}.${current_branch}.branch"
+  filename=build/${filename//\//_.SLASH._} # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
+  if [[ ! -f "$filename" ]]; then
+    TOX_CLEAN_BUILD=1
+    rm -f build/.$COMPILER.*.branch # remove prev branch file (should only be one)
+    rm -f build/.branch # this one for backwards compatibility with other still existing branches
+    : > "$filename"
+  fi
 fi
 
-# Compile external libraries
-./build_externals.sh
+# Clean build directory if it exists
+if [[ "$TOX_CLEAN_BUILD" ]]; then
+  rm -rf build/${COMPILER}_*
+fi
+
+# clean output directories for safety, so no wrong libs will be linked accidentally
+rm -f build/*.so
+rm -f external/*.a
 
 # Build with FPM first
-generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
-
-export LIBRARY_PATH="$PWD/external/lib:${LIBRARY_PATH}"
-
-fpm build --compiler $COMPILER \
-          --flag "$FLAGS $DIRECTIVES" \
-          --flag "-DDEFAULT_ALIGNMENT=$ALIGN" \
-          --flag "$MAX_PERF_FLAG" 
+# dependencies
+cd external/loess_netlib
+root=../..
+fpm build --compiler "$COMPILER"
+find_and_mv_libs "$(fpm build --compiler "$COMPILER" --list 2>&1)" "$root/external"
+cd $root
+# tox
+utils_fpm build
 
 check_exit_code "Build with fpm failed"
 
-rm fpm.toml
+# Retrieve output path for .so from fpm and copy to build directory
+find_and_mv_libs "$(utils_fpm list 2>&1)" "build"
 
-# Move .mod, .o and .so files from FPM build directories to root
-for compiler_dir in build/${COMPILER}_*; do
-  if [ -d "$compiler_dir" ]; then
-    echo "Processing FPM directory: $compiler_dir"
-    # Move .so files if they exist
-    mv "$compiler_dir"/*.so build/ 2>/dev/null || true
-    # Move .mod files if they exist
-    find "$compiler_dir" -name "*.mod" -exec mv {} build/ \; 2>/dev/null || true
-    # Move .o files from subdirectories if they exist
-    find "$compiler_dir" -name "*.o" -exec mv {} build/ \; 2>/dev/null || true
-    # Remove the compiler-specific directory
-    rm -rf "$compiler_dir"
-  fi
-done
-
-echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
+stderr "
+${COLOR_GREEN}Build complete with compiler${COLOR_CREAM}: $(echo_compiler $COMPILER)
+"
