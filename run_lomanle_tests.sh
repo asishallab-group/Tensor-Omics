@@ -88,7 +88,7 @@ process_file() {
 
 # --- 4. Main Logic ---
 if [ "$dataset_input" == "all" ]; then
-    for f in results/data/3d/*.csv; do
+    for f in results/data/2d/*.csv; do
         # Avoid re-processing files that are already lomanle outputs
         if [[ "$f" != *"_lomanle"* ]]; then
             if [[ "$f" != *"_smoothed"* ]]; then

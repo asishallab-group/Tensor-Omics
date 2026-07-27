@@ -80,8 +80,7 @@ Please consider that for the latest experiments we used complete nadaraya watson
 
 **Example**
 ```bash
-./run_smoothing_tests.sh results/data/2d/circular_arc_noise_medium
-.csv 30 0.30 10 1 30 0 1 3 3 4
+./run_smoothing_tests.sh results/data/2d/circular_arc_noise_medium.csv 30 0.30 10 1 30 0 1 3 3 4
 ```
 
 **Parameters:**
