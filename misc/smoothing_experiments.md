@@ -856,6 +856,8 @@ Every argument except `input_file` and `k_min_list` is optional and falls back t
 | `relative_conv_tol_list` | 10 | List | Convergence tolerance, as a fraction of the median nearest-neighbor distance (§2). | `0.01` |
 | `dim` | 11 | Integer | Ambient dimension of the input coordinates: `2` for datasets under `results/data/2d/`, `3` for `results/data/3d/`. | `2` |
 
+If you want to run all tests, please make sure you have the correct directory in line 91 in `run_lomanle_tests.sh`.
+
 #### 3. Workflow Logic
 
 1. **Compilation**: The script runs `./build.sh`, then compiles `test_aux/test_lomanle.f90` against the resulting `.mod`/library, linked with LAPACK, BLAS, and the LOESS libraries.
