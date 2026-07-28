@@ -4,7 +4,8 @@ module kd_tree
     use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_DIM_MISMATCH, ERR_SIZE_MISMATCH, set_ok, set_err_once, is_ok, validate_dimension_size
     implicit none
     private
-    public :: build_kd_index, build_spherical_kd, get_kd_point, kd_knn_query
+    public :: build_kd_index, build_spherical_kd, get_kd_point, kd_knn_query, &
+              kd_range_query_mask, kd_range_query_list
 
 contains
 
@@ -421,6 +422,166 @@ contains
         end do
         
     end subroutine kd_knn_query
+
+    !> Finds all points within `radius` of `query_point`, marking them in a
+    !| logical mask over all num_points. Same iterative stack-based traversal
+    !| and splitting-plane pruning as kd_knn_query (explore the near side of
+    !| each split unconditionally, prune the far side only when the
+    !| distance to the splitting plane already exceeds radius), just with a
+    !| fixed radius bound instead of a k-nearest-neighbor heap.
+    !|
+    !| Fits callers that already do an O(num_points) pass over the result
+    !| (e.g. merging it into an existing coverage mask via .or.). Callers
+    !| that issue many independent range queries per outer step (e.g. one
+    !| per candidate point in a greedy loop) should use kd_range_query_list
+    !| instead, since the `in_radius_mask = .false.` reset here costs
+    !| O(num_points) on every call regardless of how few points are
+    !| actually found.
+    pure subroutine kd_range_query_mask(points, kd_indices, num_dimensions, num_points, dimension_order, &
+                                        query_point, radius, in_radius_mask)
+        integer(int32), intent(in) :: num_dimensions       !! Number of dimensions
+        integer(int32), intent(in) :: num_points           !! Number of points in dataset
+        real(real64), intent(in) :: points(num_dimensions, num_points)    !! Original points dataset
+        integer(int32), intent(in) :: kd_indices(num_points)              !! Pre-built k-d tree indices
+        integer(int32), intent(in) :: dimension_order(num_dimensions)     !! Dimension order from tree build
+        real(real64), intent(in) :: query_point(num_dimensions)           !! Query point coordinates
+        real(real64), intent(in) :: radius                                !! Search radius
+        logical, intent(out) :: in_radius_mask(num_points)                !! Output: .true. for points within radius
+
+        ! Internal variables - no allocations
+        integer(int32) :: point_idx, current_dim, i
+        integer(int32) :: left_idx, right_idx, mid_idx, current_depth
+        real(real64)   :: dist_sq, radius_sq, axis_dist, diff_val
+
+        ! Stack for tree traversal using the SAME structure as build_kd_index/kd_knn_query
+        integer(int32) :: stack_pos
+        integer(int32) :: range_stack(3, num_points)
+
+        radius_sq = radius * radius
+        in_radius_mask = .false.
+
+        stack_pos = 1
+        range_stack(1, 1) = 1
+        range_stack(2, 1) = num_points
+        range_stack(3, 1) = 0
+
+        do while (stack_pos > 0)
+            left_idx = range_stack(1, stack_pos)
+            right_idx = range_stack(2, stack_pos)
+            current_depth = range_stack(3, stack_pos)
+            stack_pos = stack_pos - 1
+
+            if (right_idx < left_idx) cycle
+
+            current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)
+            mid_idx = left_idx + (right_idx - left_idx) / 2
+            point_idx = kd_indices(mid_idx)
+
+            dist_sq = 0.0_real64
+            do i = 1, num_dimensions
+                diff_val = query_point(i) - points(i, point_idx)
+                dist_sq = dist_sq + diff_val * diff_val
+            end do
+            if (dist_sq <= radius_sq) in_radius_mask(point_idx) = .true.
+
+            ! Distance from the query point to this node's splitting plane;
+            ! the near side is always explored, the far side only if it's
+            ! still within radius of the plane.
+            axis_dist = query_point(current_dim) - points(current_dim, point_idx)
+
+            if (axis_dist <= radius .and. left_idx < mid_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = left_idx
+                range_stack(2, stack_pos) = mid_idx - 1
+                range_stack(3, stack_pos) = current_depth + 1
+            end if
+            if (axis_dist >= -radius .and. mid_idx < right_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = mid_idx + 1
+                range_stack(2, stack_pos) = right_idx
+                range_stack(3, stack_pos) = current_depth + 1
+            end if
+        end do
+
+    end subroutine kd_range_query_mask
+
+    !> Same traversal and pruning as kd_range_query_mask, but writes matches
+    !| into a caller-provided compact index buffer (size num_points, same
+    !| convention as the tmp_n_loc-style scratch buffers used elsewhere)
+    !| instead of a full-size logical mask, so repeated calls -- e.g. once
+    !| per candidate point in an outer greedy loop -- don't each pay an
+    !| O(num_points) reset.
+    pure subroutine kd_range_query_list(points, kd_indices, num_dimensions, num_points, dimension_order, &
+                                        query_point, radius, neighbors, n_found)
+        integer(int32), intent(in) :: num_dimensions       !! Number of dimensions
+        integer(int32), intent(in) :: num_points           !! Number of points in dataset
+        real(real64), intent(in) :: points(num_dimensions, num_points)    !! Original points dataset
+        integer(int32), intent(in) :: kd_indices(num_points)              !! Pre-built k-d tree indices
+        integer(int32), intent(in) :: dimension_order(num_dimensions)     !! Dimension order from tree build
+        real(real64), intent(in) :: query_point(num_dimensions)           !! Query point coordinates
+        real(real64), intent(in) :: radius                                !! Search radius
+        integer(int32), intent(out) :: neighbors(num_points)              !! Output: indices within radius, in neighbors(1:n_found)
+        integer(int32), intent(out) :: n_found                            !! Output: number of points within radius
+
+        ! Internal variables - no allocations
+        integer(int32) :: point_idx, current_dim, i
+        integer(int32) :: left_idx, right_idx, mid_idx, current_depth
+        real(real64)   :: dist_sq, radius_sq, axis_dist, diff_val
+
+        ! Stack for tree traversal using the SAME structure as build_kd_index/kd_knn_query
+        integer(int32) :: stack_pos
+        integer(int32) :: range_stack(3, num_points)
+
+        radius_sq = radius * radius
+        n_found = 0
+
+        stack_pos = 1
+        range_stack(1, 1) = 1
+        range_stack(2, 1) = num_points
+        range_stack(3, 1) = 0
+
+        do while (stack_pos > 0)
+            left_idx = range_stack(1, stack_pos)
+            right_idx = range_stack(2, stack_pos)
+            current_depth = range_stack(3, stack_pos)
+            stack_pos = stack_pos - 1
+
+            if (right_idx < left_idx) cycle
+
+            current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)
+            mid_idx = left_idx + (right_idx - left_idx) / 2
+            point_idx = kd_indices(mid_idx)
+
+            dist_sq = 0.0_real64
+            do i = 1, num_dimensions
+                diff_val = query_point(i) - points(i, point_idx)
+                dist_sq = dist_sq + diff_val * diff_val
+            end do
+            if (dist_sq <= radius_sq) then
+                n_found = n_found + 1
+                neighbors(n_found) = point_idx
+            end if
+
+            ! Distance from the query point to this node's splitting plane;
+            ! the near side is always explored, the far side only if it's
+            ! still within radius of the plane.
+            axis_dist = query_point(current_dim) - points(current_dim, point_idx)
+
+            if (axis_dist <= radius .and. left_idx < mid_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = left_idx
+                range_stack(2, stack_pos) = mid_idx - 1
+                range_stack(3, stack_pos) = current_depth + 1
+            end if
+            if (axis_dist >= -radius .and. mid_idx < right_idx) then
+                stack_pos = stack_pos + 1
+                range_stack(1, stack_pos) = mid_idx + 1
+                range_stack(2, stack_pos) = right_idx
+                range_stack(3, stack_pos) = current_depth + 1
+            end if
+        end do
+
+    end subroutine kd_range_query_list
 
     !> Maintain max-heap property by bubbling element up from given position
     !! Used when inserting new elements into the heap

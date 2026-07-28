@@ -136,7 +136,7 @@ The overall design -- a local atlas of overlapping tangent-plane anchors, stitch
 
 ### Testing so far
 
-The algorithm has been run on both 2D and 3D ambient data. Datasets are organized by ambient dimension under `results/data/2d/` and `results/data/3d/` (bifurcation and curve/surface shapes, at low/medium/high noise levels). Rendered results for both live in `results/plots/`. See "How the plots are generated" under §18 for exactly what each report contains and why 3D datasets get both.
+The algorithm has been run on both 2D and 3D ambient data. Datasets are organized by ambient dimension under `results/data/2d/` and `results/data/3d/` (bifurcation and curve/surface shapes, at low/medium/high noise levels). Rendered results for both live in `results/plots/`. See "How the plots are generated" under §19 for exactly what each report contains and why 3D datasets get both.
 
 ### Status: experimental, and the API reflects that
 
@@ -414,11 +414,13 @@ An edge is created between two anchors if they share at least one point:
 edge = Anchor A intersects Anchor B
 ```
 
-Formally, two anchors are connected if:
+Conceptually, two anchors are connected if:
 
 ```fortran
 any(point_in_anchor(:, A) .and. point_in_anchor(:, B))
 ```
+
+**That's the definition, not how the code actually finds these pairs.** Checking every one of the O(n_anchor²) anchor pairs this way, each against every point, is what the original implementation did -- and it's an O(n_anchor² · n) scan. As of 2026-07-27 the code instead visits each point once, reads off the handful of anchors that actually cover it, and only enumerates pairs among those -- see §18.3 for exactly how and why. Same edges come out either way; only how expensive it is to find them changed.
 
 This creates a graph of anchor intersections.
 
@@ -753,6 +755,104 @@ The current implementation covers the main structure proposed in the issue:
 * iterate until convergence,
 * build a topological anchor graph (tiers 1-2 + MST) and turn it into point-level backbone edges, with structural endpoint/pass-through/branch roles.
 
+---
+
+## 18. Performance
+
+This section documents the performance work done on `src/lomanle.F90` (2026-07-27): what was optimized, why, how it was verified, what parallelization requires, and what the built-in profiling currently shows is (and isn't) worth optimizing next. Everything below was verified to produce **bit-identical output** to the pre-optimization code (same `max_disp` trajectory, same CSV/edges files) with Claude help.
+
+### 18.1 Complexity, before and after
+
+| Step | Before | After |
+| --- | --- | --- |
+| 5 — anchor selection (§7) | O(n_anchor · n²) | O(n_anchor · n · log n) |
+| 6 — per-anchor SVD (§9) | O(n_anchor · n) | O(n_anchor · log n) |
+| 7 — membership matrix (§11) | O(n_anchor · n) | O(n_anchor · log n) |
+| 8 — anchor intersection edges (§12) | O(n_anchor² · n) | O(n_anchor · n) |
+| 10 — stitching, per-point anchor lookup (§15) | O(n_anchor) per point | O(anchor_count(i)) per point |
+
+The dominant remaining term is Step 5's O(n_anchor · n · log n): the greedy loop still re-scans **all** n candidates on every one of the n_anchor iterations (a candidate's overlap ratio can change whenever *any* nearby anchor gets picked, not just the most recent one, so there's no cheap way to know which candidates are still "clean" without re-checking). Restructuring that into an event-driven / priority-queue scheme (only re-evaluate a candidate when a nearby anchor was actually just added) could in principle remove that n_anchor factor entirely -- see §18.5 for why this hasn't been done yet.
+
+Since n_anchor ≈ n / (points per anchor), the practical worst case is still roughly quadratic in n, just with a much smaller constant and a log n where there used to be a full factor of n.
+
+### 18.2 The mechanism: two new KD-tree queries
+
+`src/k_d_tree.F90` only had `kd_knn_query` (fixed-k nearest neighbors) before this work. Steps 5-8 and 10 needed a different primitive: "which points are within radius r of this point", which didn't exist. Two variants were added, both reusing `kd_knn_query`'s iterative stack-based traversal and splitting-plane pruning, just with a radius bound instead of a k-sized max-heap:
+
+* **`kd_range_query_mask`**: fills a `logical(num_points)` mask. Fits call sites that already do an O(n) pass over the result anyway (e.g. `is_covered_mask = is_covered_mask .or. new_mask` in Step 5).
+* **`kd_range_query_list`**: fills a caller-provided compact index buffer + count. Needed anywhere the O(n) mask reset itself would defeat the purpose of the query -- e.g. Step 5's per-candidate overlap check, called up to n times per anchor.
+
+Both replace the `dist_sq = sum((coords(:,i) - coords(:,j))**2); if (dist_sq <= radius**2) ...` brute-force loop pattern that used to appear (independently) in `select_atlas_anchors`, `compute_anchor_svd`, `build_membership_matrix`, and `absorb_orphans`.
+
+**A real bug this surfaced, worth remembering:** the first version of the `compute_anchor_svd` swap produced *different* (though still structurally valid) output than the original -- not because the query was wrong (verified correct against brute force, zero mismatches on real data), but because `kd_range_query_list` returns points in KD-tree traversal order, not ascending point-index order. The center/covariance summation in `compute_anchor_svd` is a floating-point accumulation, and floating-point addition isn't associative -- a different summation order gives a last-bit-different result, which cascades through `lomanle_compute`'s outer convergence loop (often not fully converged within `max_iterations`) into a visibly different final skeleton. Fixed by sorting the compact result back to ascending index order before accumulating (cheap relative to the O(n) scan it replaced). `select_atlas_anchors` and `build_membership_matrix` didn't need this fix: they only ever produce integer counts or boolean masks from the query result, and neither is order-sensitive.
+
+### 18.3 Step 8 no longer scans every anchor pair against every point
+
+§12 above describes Step 8 as: for every pair of anchors, `any(point_in_anchor(:, A) .and. point_in_anchor(:, B))` over all n points. That is what the code did before 2026-07-27, and it's an O(n_anchor² · n) scan -- for every one of the O(n_anchor²) candidate pairs, an O(n) pass over the membership matrix. The current implementation (`count_anchor_intersection_edges`, `build_point_anchor_lists`, `fill_anchor_intersection_edges`, `count_intersection_csr_sizes`, and the CSR-fill phase of `build_intersection_graph`) instead visits each **point** once, reads off the (typically 2-3) anchors covering it directly from the membership matrix, and enumerates only the pairs among *those* anchors -- using a `pair_seen_mask(n_anchor, n_anchor)` / `edge_id_of_pair(n_anchor, n_anchor)` lookup (same technique the Tier-1/Tier-2 MST candidate code already used, see §16.3-16.4) so no O(n_anchor²) matrix ever needs an O(n) inner scan. This is the O(n_anchor² · n) → O(n_anchor · n) row in the table above.
+
+The same point-then-pair technique also replaced Step 10's per-point anchor lookup (`build_point_anchor_lists` builds a CSR "point → covering anchors" list once, right after Step 8 already computes `anchor_count`; `stitch_multi_anchor_point`/`stitch_single_anchor_point` walk that compact list instead of re-scanning all n_anchor columns of the membership matrix per point).
+
+### 18.4 Parallelization: `do concurrent` was replaced by explicit OpenMP
+
+Every loop in this module that's safe to parallelize (Steps 0-3's per-point growth, Step 5's per-candidate evaluation, Step 6's per-anchor SVD, Step 7's per-anchor membership query, Step 10's per-point stitching) used to be written as Fortran `do concurrent`. As of 2026-07-27 these are all `!$omp parallel do` instead. Two independent reasons:
+
+1. **`do concurrent` doesn't actually run in parallel under gfortran without `-ftree-parallelize-loops`**, and even with that flag explicitly enabled, gfortran's auto-parallelizer refuses to parallelize a `do concurrent` loop whose body calls an external procedure -- **even one declared `pure`**. Every one of these loops does: `kd_range_query_list`/`kd_range_query_mask`, `dsyev`, or `grow_one_point_neighborhood`. Concretely, `compute_anchor_svd`'s per-anchor loop calls `dsyev`, which is declared `pure` *specifically* to be safe to call concurrently -- and gfortran still would not auto-parallelize it as `do concurrent`. Confirmed directly: compiling with `-ftree-parallelize-loops=4` added produced a working binary that linked against **no** `libgomp` symbols at all, i.e. nothing was actually parallelized.
+2. `!$omp parallel do` has no such restriction, so it was used instead everywhere `do concurrent` used to appear. This does mean every subroutine containing one of these loops (and everything that calls it, transitively -- `lomanle_pass`, `construct_atlas`, etc.) is no longer `pure`: OpenMP worksharing directives aren't allowed inside a pure procedure. `dsyev`'s interface is still declared `pure` -- that's now purely documentation of its own thread-safety, not something the compiler requires for `do concurrent` anymore.
+
+
+### 18.5 Build flags: `-fopenmp` is not on by default
+
+`fpm.toml`'s `optimization` feature (`-O3 -march=native -fopenmp -funroll-loops -ftree-vectorize`) is gated behind the `TOX_MAX_PERFORMANCE` environment variable in `build_utils.sh` -- a plain `./build.sh` does **not** set it, so **the `!$omp parallel do` loops silently run single-threaded** under a default build, and none of the `-O3`/`-march=native` speedup applies either. `run_lomanle_tests.sh` now always builds with `TOX_MAX_PERFORMANCE=1` (see §19), so running it always gets the parallel, optimized build. A bare `./build.sh` invoked directly elsewhere in the repo does not, and needs `TOX_MAX_PERFORMANCE=1 ./build.sh` explicitly.
+
+
+### 18.6 Built-in profiling: what it found
+
+`lomanle_compute` now prints a per-stage wall-clock breakdown at the end of every run (module-level `prof_*` accumulators in `lomanle.F90`, reset and printed once per `lomanle_compute` call; `grow_adaptive_neighborhoods` additionally splits Steps 0-3's own time into "kd_knn_query+sort" vs "covariance+dsyev+stability"). This is **kept intentionally, not a one-off diagnostic** -- it's cheap (`system_clock` calls around each step) and meant to keep informing where to spend further optimization effort.
+
+**Important reading caveat**: the Steps 0-3 sub-breakdown (`prof_growth_query`/`prof_growth_covdsyev`) is measured *inside* the `!$omp parallel do` in `grow_adaptive_neighborhoods`, summed across all points/threads -- so it's aggregate CPU-time (like `user` time), not wall-clock, and will sum to roughly (wall-clock growth time) × (thread count). Only the *ratio* between the two sub-buckets is meaningful; don't compare them directly against the wall-clock `prof_growth` total printed above them.
+
+**What it revealed, which contradicted the working assumption going into this round of optimization:** Step 5 (`atlas`) is *not* always the dominant cost. Which of Step 5 or Steps 0-3 (`growth`) dominates depends almost entirely on `k_min` relative to `n_points`, not on `n_points` itself:
+
+| n | k_min | growth % of total | atlas % of total |
+| --- | --- | --- | --- |
+| 5,000 | 200 | 43% | 55% |
+| 5,000 | 800 | 77% | 22% |
+| 50,000 | 2,000 | 45% | 55% |
+| 50,000 | 8,000 | 83% | 17% |
+
+With a large `k_min` (relative to `n`), Steps 0-3 dominate, and within Steps 0-3, `kd_knn_query`+sort is consistently 83-86% of the time (covariance/`dsyev` is only 14-17%) regardless of scale.
+
+The working hypothesis was that this was caused by `grow_one_point_neighborhood` re-querying the KD-tree from scratch at every growth step (k_min → 1.25·k_min → 1.5625·k_min → ...), discarding the previous, smaller result each time. A caching fix was implemented (`grow_one_point_neighborhood` now only re-queries when the current growth target exceeds what's already cached, fetching a geometrically-larger batch each time it does, and serves intermediate growth steps from a prefix of the cached sorted result -- exact, not approximate, since the first k entries of a sorted K-nearest-neighbor list, K≥k, *are* the k-nearest-neighbor list). It's correct (bit-identical output) and does help when growth takes many steps from a small `k_min` -- but **measured impact on the k_min=200/800 and 2000/8000 cases was negligible**: growth apparently doesn't take enough steps in those regimes for the caching to matter. The real cost there looks like it's a single (or very few) `kd_knn_query` calls for a *large* k being inherently expensive -- the same phenomenon as §18.2's radius queries: a KD-tree prunes poorly once the requested neighborhood is a large fraction of the dataset, so there's comparatively little to save by calling it less often. This is **not yet solved** -- see §18.7.
+
+### 18.7 What's not done yet
+
+* **Step 5's O(n) full-candidate-rescan-per-anchor** (§18.1): the one clear large remaining lever, but a real algorithmic restructuring (event-driven candidate re-evaluation), not a primitive swap -- meaningfully more correctness risk than anything else in this section, needs careful design before attempting.
+* **Large-`k_min` `kd_knn_query` cost** (§18.6): no known low-risk fix yet; a single large-k query against a KD-tree is close to unavoidably expensive once k approaches a significant fraction of n, structurally similar to why Step 5's radius-query win (§18.2) disappears for large spheres.
+* **MST Tier-2 candidate generation** (`count_tier2_candidate_pairs`, §16.4) is still an O(n_anchor²) pairwise scan, just with O(dim) work per pair rather than O(n) -- cheap in every case measured so far (n_anchor stayed in the hundreds), but a real O(n_anchor²) term if n_anchor ever gets much larger.
+* **`build_member_chains`/`emit_branch`'s comparison sorts** (§16.7) could in principle become an O(1) bucket sort / 1D binning instead of an O(m log m) `sort_array`, since points are being ordered by a single projected coordinate -- low priority, these sort small per-anchor/per-branch clusters, not the whole dataset, so the log factor is not currently worth the added complexity.
+
+### 18.8 Measured wall-clock times
+
+Measured on a local machine with **12 threads** (`TOX_MAX_PERFORMANCE=1`, i.e. the fully optimized + parallel build described above). `iter` is the outer convergence-loop iteration count (`max_iterations`).
+
+| n points | k_min | iter | wall-clock time |
+| --- | --- | --- | --- |
+| 500 | 30 | 10 | 0.12 s |
+| 500 | 30 | 50 | 0.13 s |
+| 500 | 80 | 10 | 0.06 s |
+| 500 | 80 | 50 | 0.14 s |
+| 5,000 | 300 | 10 | 0.98 s |
+| 5,000 | 300 | 50 | 3.86 s |
+| 5,000 | 800 | 10 | 1.18 s |
+| 5,000 | 800 | 50 | 4.65 s |
+| 50,000 | 3,000 | 10 | 2m 2.8s |
+| 50,000 | 3,000 | 50 | 5m 37.9s |
+| 50,000 | 8,000 | 10 | 2m 21.5s |
+| 50,000 | 8,000 | 50 | 8m 48.9s |
+
+For reference, before any of the work in this section (no KD-tree range queries, no OpenMP, no `-O3`/`-march=native`), the n=5,000/k_min=10/iter=3 case alone took 74s -- close to what the n=50,000/k_min=8,000/iter=10 row above takes now, at 100x the points and over 3x the iterations.
+
+---
 
 # Open Questions
 
@@ -816,12 +916,13 @@ Then choose a value near the elbow of the curve, where increasing `k` no longer 
 4. Reconstruct an actual surface/mesh for `manifold_dim > 1`, not just the stitched points -- still open, untouched (§16.12, § Open Questions 4).
 5. Implement a systematic method for choosing `k`. Still open, untouched.
 6. Define and test a score function for parameter selection. Still open, untouched.
+7. Performance: complexity/parallelization work done 2026-07-27 -- see §18. Still open: Step 5's O(n) full-candidate rescan per anchor, and the large-`k_min` `kd_knn_query` cost in Steps 0-3 (§18.7).
 
 The current implementation covers the full pipeline end to end: local atlas construction, overlap detection, CSR/BFS-based intersection grouping, inverse-variance-weighted point updates, and topological backbone/edge construction with structural endpoint/pass-through/branch classification (§16).
 
 ---
 
-## 18. `run_lomanle_tests.sh`: Automated Pipeline Script
+## 19. `run_lomanle_tests.sh`: Automated Pipeline Script
 
 This bash script automates the compilation, execution, and visualization of the **LoManLe** (Local Manifold Learning) algorithm across multiple datasets. It handles the batch processing of CSV files and dynamically generates reports using R.
 
@@ -860,7 +961,7 @@ If you want to run all tests, please make sure you have the correct directory in
 
 #### 3. Workflow Logic
 
-1. **Compilation**: The script runs `./build.sh`, then compiles `test_aux/test_lomanle.f90` against the resulting `.mod`/library, linked with LAPACK, BLAS, and the LOESS libraries.
+1. **Compilation**: The script runs `TOX_MAX_PERFORMANCE=1 ./build.sh` (so the `-O3 -march=native -fopenmp -funroll-loops -ftree-vectorize` flags are always applied -- see §18.5, a plain `./build.sh` does not include them), then compiles `test_aux/test_lomanle.f90` with `-fopenmp` against the resulting `.mod`/library, linked with LAPACK, BLAS, and the LOESS libraries. Picks the most recently built `lomanle_mod.mod` (`find ... -exec ls -t {} + | head -1`) rather than the first one `find` happens to return, since a leftover `build/gfortran_*/` directory from an earlier, differently-flagged build can otherwise get picked up silently.
 2. **Execution Loop**: For every combination in the cartesian product of all list-valued arguments (`k_min` × `g_threshold` × `o_max` × `o_min` × `stability` × `scale_factor` × `max_iterations` × `relative_conv_tol`), the script runs the Fortran binary once.
 3. **File Management**: It renames the generic `lomanle_output.csv` / `lomanle_edges.csv` to unique names incorporating every parameter of that run (e.g. `circular_arc_noise_high_k30_g3.0_omax0.3_st0.90_sf2.5_mi50_ct0.01_lomanle.csv` and its `..._edges.csv` companion).
 4. **Plotting**: Executes `r/plot_lomanle_spheres.R` on that pair of CSVs -- see "How the plots are generated" right below.

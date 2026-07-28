@@ -6,11 +6,34 @@
 !| projection, and then reading a topological backbone graph (endpoints,
 !| pass-through anchors, branch/junction anchors) off the anchor adjacency
 !| graph's minimum spanning tree. See misc/smoothing_experiments.md for the
-!| full algorithm write-up and misc/lomanle_literature_resume.md for how this
-!| compares to LTSA/Hidalgo/MMLS/Atlas/IAN/SCMS.
+!| full algorithm write-up (section "Performance" for the complexity/
+!| parallelization work summarized below) and misc/lomanle_literature_resume.md
+!| for how this compares to LTSA/Hidalgo/MMLS/Atlas/IAN/SCMS.
+!|
+!| Parallelization: every `!$omp parallel do` in this module used to be a
+!| Fortran `do concurrent` construct. That was dropped in favor of explicit
+!| OpenMP because gfortran's own `do concurrent` auto-parallelizer
+!| (`-ftree-parallelize-loops`) refuses to parallelize a loop whose body
+!| calls an external procedure -- even a `pure` one -- and every one of
+!| these loops does (kd_range_query_list/mask, dsyev, grow_one_point_neighborhood).
+!| Concretely: the per-anchor SVD loop in compute_anchor_svd calls `dsyev`,
+!| which is declared `pure` specifically so it's safe to call from multiple
+!| threads -- and gfortran STILL wouldn't auto-parallelize it as `do
+!| concurrent`. `!$omp parallel do` has no such restriction. This also means
+!| every subroutine containing one of these loops (and everything that calls
+!| it) can no longer be `pure` itself, since OpenMP worksharing directives
+!| aren't allowed inside a pure procedure.
+!|
+!| Build flags: `-fopenmp` (and `-O3 -march=native -funroll-loops
+!| -ftree-vectorize`) are gated behind fpm.toml's "optimization" feature,
+!| which only gets included when `TOX_MAX_PERFORMANCE=1` is set -- a plain
+!| `./build.sh` does NOT apply them, so the `!$omp parallel do` loops below
+!| silently run single-threaded. `run_lomanle_tests.sh` always sets
+!| `TOX_MAX_PERFORMANCE=1` before building, so running it always gets the
+!| parallel build; a bare `./build.sh` elsewhere in the repo does not.
 module lomanle_mod
-    use iso_fortran_env, only: int32, real64
-    use kd_tree,         only: build_kd_index, kd_knn_query
+    use iso_fortran_env, only: int32, int64, real64
+    use kd_tree,         only: build_kd_index, kd_knn_query, kd_range_query_mask, kd_range_query_list
     use tox_errors,      only: set_ok, is_ok, is_err, set_err, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, &
                                validate_dimension_size, validate_in_range_real, &
                                validate_in_range_int, validate_all_in_range_real
@@ -18,9 +41,14 @@ module lomanle_mod
     implicit none
 
     interface
-        ! Declared pure so it can be called from do concurrent / pure contexts
-        ! (grow_one_point_neighborhood, compute_anchor_svd): dsyev is a
-        ! deterministic numerical routine with no I/O and no global state.
+        ! Declared pure to document that dsyev is a deterministic numerical
+        ! routine with no I/O and no global state -- which is what makes it
+        ! safe to call concurrently from multiple OpenMP threads inside the
+        ! `!$omp parallel do` regions in grow_one_point_neighborhood and
+        ! compute_anchor_svd. Neither of those routines is itself `pure`
+        ! anymore (OpenMP worksharing directives aren't allowed inside a pure
+        ! procedure) -- this interface's purity is now just documentation of
+        ! dsyev's own thread-safety, not a language requirement.
         pure subroutine dsyev(jobz, uplo, n, a, lda, w, work, lwork, info)
             import :: int32, real64
             character,        intent(in)    :: jobz, uplo
@@ -35,7 +63,7 @@ module lomanle_mod
     private :: lomanle_pass, grow_adaptive_neighborhoods, grow_one_point_neighborhood, &
                construct_atlas, sort_points_by_density, select_atlas_anchors, absorb_orphans, &
                compute_anchor_svd, build_membership_matrix, &
-               count_anchor_intersection_edges, fill_anchor_intersection_edges, &
+               count_anchor_intersection_edges, build_point_anchor_lists, fill_anchor_intersection_edges, &
                count_intersection_csr_sizes, build_intersection_graph_alloc, &
                build_intersection_graph, stitch_points, &
                stitch_multi_anchor_point, stitch_single_anchor_point, &
@@ -46,16 +74,40 @@ module lomanle_mod
                classify_anchor_roles, build_member_chains, build_branch_adjacency, &
                find_root, nearest_member, emit_branch, compute_relative_conv_tol
 
+    ! --- PROFILING (kept intentionally, not a one-off diagnostic -- see
+    ! misc/smoothing_experiments.md "Performance" section for how to read
+    ! this output and what it revealed about where time actually goes,
+    ! before further algorithmic changes to any given step). Wall-clock time
+    ! accumulated across every lomanle_pass call within one lomanle_compute
+    ! run, broken down by pipeline stage, and printed automatically at the
+    ! end of lomanle_compute.
+    real(real64), save :: prof_growth    = 0.0_real64  ! Steps 0-3 (KD-tree + adaptive growth)
+    real(real64), save :: prof_growth_query    = 0.0_real64  ! subset of prof_growth: kd_knn_query + sort per growth step
+    real(real64), save :: prof_growth_covdsyev = 0.0_real64  ! subset of prof_growth: covariance + dsyev + normal-error + stability per growth step
+    real(real64), save :: prof_atlas     = 0.0_real64  ! Steps 4-5b (density sort + select_atlas_anchors + orphans)
+    real(real64), save :: prof_svd       = 0.0_real64  ! Step 6 (per-anchor SVD)
+    real(real64), save :: prof_intersect = 0.0_real64  ! Steps 6.5-9 (membership matrix + Step 8 + BFS)
+    real(real64), save :: prof_stitch    = 0.0_real64  ! Step 10 (inverse-variance stitching)
+    real(real64), save :: prof_skeleton  = 0.0_real64  ! backbone/MST (build_skeleton_edges_alloc, called x2)
+    integer(int32), save :: prof_n_calls = 0
+
 contains
 
     !> Orchestrates the LoManLe pipeline for a single pass, by calling each
     !| numbered step (see the individual step subroutines below) in sequence.
-    !| Not pure: Steps 6.5-9 call build_intersection_graph_alloc, which
-    !| allocates. The point_in_anchor_mask/anchor_to_point locals are
-    !| allocatable only because Fortran requires an allocatable actual
-    !| argument for build_intersection_graph_alloc's allocatable intent(out)
-    !| dummies of the same name; this routine itself never calls allocate(),
-    !| so it does not carry an _alloc suffix.
+    !| Not pure, for two independent reasons: (1) Steps 6.5-9 call
+    !| build_intersection_graph_alloc, which allocates -- the
+    !| point_in_anchor_mask/anchor_to_point/pt_anchor_start/pt_anchor_list
+    !| locals are allocatable only because Fortran requires an allocatable
+    !| actual argument for that routine's allocatable intent(out) dummies of
+    !| the same name; this routine itself never calls allocate(), so it does
+    !| not carry an _alloc suffix; (2) every step subroutine it calls
+    !| (grow_adaptive_neighborhoods, construct_atlas, compute_anchor_svd,
+    !| build_membership_matrix via build_intersection_graph_alloc,
+    !| stitch_points) now runs its own `!$omp parallel do` internally, and
+    !| OpenMP worksharing directives aren't allowed inside a pure procedure --
+    !| see the "Parallelization" note in the module docstring above for why
+    !| this moved from `do concurrent` to explicit OpenMP.
     subroutine lomanle_pass(work_coords, n_points, dim, manifold_dim, k_min, g_threshold, &
                             o_max, o_min, stability_threshold, scale_factor, &
                             tmp_kd_indices, tmp_workspace, tmp_val_buf, tmp_perm, &
@@ -143,12 +195,17 @@ contains
         ! Local variables
         logical, allocatable :: point_in_anchor_mask(:,:)  ! (n_points, n_anchor) membership matrix
         integer(int32), allocatable :: anchor_to_point(:)
+        integer(int32), allocatable :: pt_anchor_start(:), pt_anchor_list(:)
         integer(int32) :: anchor_count(n_points)      ! how many anchors cover each point
         integer(int32) :: n_anchor
+        integer(int64) :: prof_t0, prof_t1, prof_rate  ! PROFILING
 
         call set_ok(ierr)
+        call system_clock(count_rate=prof_rate)  ! PROFILING
+        prof_n_calls = prof_n_calls + 1          ! PROFILING
 
         ! STEPS 0-3: KD-tree + adaptive neighborhood growth
+        call system_clock(prof_t0)  ! PROFILING
         call grow_adaptive_neighborhoods(work_coords, n_points, dim, manifold_dim, k_min, &
                                          g_threshold, stability_threshold, scale_factor, &
                                          tmp_kd_indices, tmp_workspace, tmp_val_buf, tmp_perm, &
@@ -157,30 +214,42 @@ contains
                                          sphere_radii, densities, gap_values, normal_errors, &
                                          stability_values, k_selected, growth_stopped_complex, &
                                          tangent_scales, ierr)
+        call system_clock(prof_t1) ; prof_growth = prof_growth + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
         if (.not. is_ok(ierr)) return
 
         ! STEPS 4-5b: density sort + greedy anchor selection + orphan absorption
+        call system_clock(prof_t0)  ! PROFILING
         call construct_atlas(work_coords, n_points, dim, o_min, o_max, densities, &
-                             tmp_perm, tmp_l_stack, tmp_r_stack, sphere_radii, is_anchor_mask)
+                             tmp_perm, tmp_l_stack, tmp_r_stack, tmp_kd_indices, tmp_dim_order, &
+                             sphere_radii, is_anchor_mask)
+        call system_clock(prof_t1) ; prof_atlas = prof_atlas + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
 
         ! STEP 6: per-anchor SVD (center, tangent basis, extent, fit quality)
+        call system_clock(prof_t0)  ! PROFILING
         call compute_anchor_svd(work_coords, n_points, dim, manifold_dim, is_anchor_mask, &
-                                  sphere_radii, lwork, &
+                                  sphere_radii, lwork, tmp_kd_indices, tmp_dim_order, &
                                   anchor_centers, tangent_bases, tangent_scales, normal_errors)
+        call system_clock(prof_t1) ; prof_svd = prof_svd + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
 
         ! STEPS 6.5-9: anchor mapping + membership matrix + intersection-graph BFS labeling
+        call system_clock(prof_t0)  ! PROFILING
         call build_intersection_graph_alloc(work_coords, n_points, dim, is_anchor_mask, sphere_radii, &
                                             tmp_workspace, tmp_val_buf, tmp_perm, tmp_l_stack, tmp_r_stack, &
-                                            point_in_anchor_mask, anchor_to_point, anchor_count, labels, &
+                                            tmp_kd_indices, tmp_dim_order, &
+                                            point_in_anchor_mask, anchor_to_point, anchor_count, &
+                                            pt_anchor_start, pt_anchor_list, labels, &
                                             n_anchor, ierr)
+        call system_clock(prof_t1) ; prof_intersect = prof_intersect + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
         if (.not. is_ok(ierr)) return
         if (n_anchor == 0) return
 
         ! STEP 10: inverse-variance-weighted stitching
+        call system_clock(prof_t0)  ! PROFILING
         call stitch_points(work_coords, n_points, dim, manifold_dim, n_anchor, &
-                           point_in_anchor_mask, anchor_to_point, anchor_count, anchor_centers, &
-                           tangent_bases, normal_errors, skeleton_coords, &
+                           anchor_to_point, anchor_count, pt_anchor_start, pt_anchor_list, &
+                           anchor_centers, tangent_bases, normal_errors, skeleton_coords, &
                            primary_anchor_ids, secondary_anchor_ids)
+        call system_clock(prof_t1) ; prof_stitch = prof_stitch + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
 
     end subroutine lomanle_pass
 
@@ -188,7 +257,7 @@ contains
     !| point via candidate growth, keeping the best-scoring size seen (not the
     !| last one evaluated). See misc/smoothing_experiments.md section 4 for the
     !| full rationale behind the quality score and the tangent-stability check.
-    pure subroutine grow_adaptive_neighborhoods(work_coords, n_points, dim, manifold_dim, k_min, &
+    subroutine grow_adaptive_neighborhoods(work_coords, n_points, dim, manifold_dim, k_min, &
                                            g_threshold, stability_threshold, scale_factor, &
                                            tmp_kd_indices, tmp_workspace, tmp_val_buf, tmp_perm, &
                                            tmp_l_stack, tmp_r_stack, tmp_rec_stack, tmp_dim_order, &
@@ -256,6 +325,7 @@ contains
         ! Local variables
         integer(int32) :: i, k_limit
         integer(int32) :: ierr_per_point(n_points)
+        real(real64) :: query_time_per_point(n_points), covdsyev_time_per_point(n_points)  ! PROFILING
 
         call set_ok(ierr)
         k_limit = n_points / 4
@@ -274,12 +344,8 @@ contains
         ! iterations are independent; every KD-NN/sort/LAPACK scratch buffer
         ! is private per-point here (tmp_kd_indices/tmp_dim_order, filled once by
         ! Step 0 above, are the only ones actually shared/read-only below).
-        do concurrent (i = 1:n_points) shared(work_coords, n_points, dim, manifold_dim, k_min, &
-                                              g_threshold, stability_threshold, scale_factor, k_limit, &
-                                              tmp_kd_indices, tmp_dim_order, lwork, tangent_bases, &
-                                              sphere_radii, densities, gap_values, normal_errors, &
-                                              stability_values, k_selected, growth_stopped_complex, &
-                                              tangent_scales, ierr_per_point)
+        !$omp parallel do default(shared) schedule(dynamic)
+        do i = 1, n_points
             block
                 integer(int32) :: n_loc_i(n_points), workspace_i(n_points), perm_i(n_points)
                 integer(int32) :: l_stack_i(n_points), r_stack_i(n_points)
@@ -293,10 +359,12 @@ contains
                                                  tangent_bases(:,:,i), sphere_radii(i), densities(i), &
                                                  gap_values(i), normal_errors(i), stability_values(i), &
                                                  k_selected(i), growth_stopped_complex(i), &
-                                                 tangent_scales(:,i), ierr_i)
+                                                 tangent_scales(:,i), ierr_i, &
+                                                 query_time_per_point(i), covdsyev_time_per_point(i))
                 ierr_per_point(i) = ierr_i
             end block
         end do
+        !$omp end parallel do
 
         ! Surface the first point-level failure, if any (each point's own
         ! kd_knn_query failure is already handled gracefully inside
@@ -309,6 +377,11 @@ contains
             end if
         end do
 
+        ! PROFILING: sum per-point sub-timings sequentially (no race,
+        ! since the per-point arrays were filled disjointly inside the parallel loop)
+        prof_growth_query    = prof_growth_query    + sum(query_time_per_point)
+        prof_growth_covdsyev = prof_growth_covdsyev + sum(covdsyev_time_per_point)
+
     end subroutine grow_adaptive_neighborhoods
 
     !> STEPS 1-3 for exactly one point: grows its neighborhood from k_min via
@@ -319,13 +392,14 @@ contains
     !| Growth stops once the tangent basis is unstable for several
     !| consecutive steps. See misc/smoothing_experiments.md section 4 for
     !| the full rationale.
-    pure subroutine grow_one_point_neighborhood(i, work_coords, n_points, dim, manifold_dim, k_min, &
+    subroutine grow_one_point_neighborhood(i, work_coords, n_points, dim, manifold_dim, k_min, &
                                            g_threshold, stability_threshold, scale_factor, k_limit, &
                                            tmp_kd_indices, tmp_dim_order, lwork, tmp_work_lapack, tmp_n_loc, tmp_d_loc, &
                                            tmp_workspace, tmp_val_buf, tmp_perm, tmp_l_stack, tmp_r_stack, &
                                            point_tangent_basis, sphere_radius_i, density_i, gap_i, &
                                            point_normal_error, point_stability, k_selected_i, &
-                                           stopped_complex, point_tangent_scales, ierr)
+                                           stopped_complex, point_tangent_scales, ierr, &
+                                           query_time_i, covdsyev_time_i)
 
         integer(int32), intent(in) :: i
             !! Index of the point to grow a neighborhood for
@@ -391,9 +465,14 @@ contains
             !! Extent along each tangent direction
         integer(int32), intent(out) :: ierr
             !! Error code: 0 = success
+        real(real64),   intent(out) :: query_time_i
+            !! PROFILING: seconds spent in kd_knn_query+sort across all growth steps
+        real(real64),   intent(out) :: covdsyev_time_i
+            !! PROFILING: seconds spent in covariance/dsyev/stability across all growth steps
 
         ! Local variables
-        integer(int32) :: j, row, col, info, k_curr, d_idx, base_idx
+        integer(int64) :: prof_t0, prof_t1, prof_rate  ! PROFILING
+        integer(int32) :: j, row, col, info, k_curr, k_have, d_idx, base_idx
         integer(int32) :: k_query, self_pos, best_k, patience, consecutive_unstable
         logical        :: have_previous, first_step
         real(real64)   :: sigma_i, sigma2_i, rho_i, s_gap, dist_sq
@@ -419,6 +498,7 @@ contains
         first_step = .true.
 
         k_curr = k_min
+        k_have = 0  ! how many sorted real (non-self) neighbors are currently cached in tmp_n_loc/tmp_d_loc
         best_quality = -huge(1.0_real64)
         best_k = 0
         local_scale_i = 0.0_real64
@@ -426,44 +506,63 @@ contains
         consecutive_unstable = 0
         patience = 1 ! recomputed from noise_ratio_i once the k_min neighborhood is known
 
-        adaptive_k: do
-            ! Query one extra neighbor so the query point itself (always
-            ! returned at distance 0) can be dropped without losing k_curr
-            ! real neighbors.
-            k_query = min(k_curr + 1, size(tmp_n_loc))
-            call kd_knn_query(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
-                              work_coords(:,i), k_query, tmp_n_loc(1:k_query), tmp_d_loc(1:k_query), ierr)
-            if (.not. is_ok(ierr)) exit adaptive_k
+        query_time_i = 0.0_real64 ; covdsyev_time_i = 0.0_real64  ! PROFILING
+        call system_clock(count_rate=prof_rate)                    ! PROFILING
 
-            self_pos = 0
-            do j = 1, k_query
-                if (tmp_n_loc(j) == i) then
-                    self_pos = j
-                    exit
-                end if
-            end do
-            if (self_pos > 0 .and. self_pos < k_query) then
-                tmp_n_loc(self_pos) = tmp_n_loc(k_query)
-                tmp_d_loc(self_pos) = tmp_d_loc(k_query)
-            end if
-            k_curr = k_query - 1
+        adaptive_k: do
+            ! Cap this step's target neighborhood size to the scratch-buffer limit --
+            ! same bound the original k_query = min(k_curr+1, size(tmp_n_loc)) enforced,
+            ! just computed before deciding whether a fresh KD-tree query is even needed.
+            k_curr = min(k_curr, size(tmp_n_loc) - 1)
             if (k_curr < manifold_dim + 1) exit adaptive_k ! not enough points for a tangent
 
-            ! Sort ascending so the radius, local scale and jump checks are meaningful.
-            ! sort_array leaves its `array` argument untouched (intent(in)) and only
-            ! permutes `tmp_perm` -- which must start as the identity 1..k_curr -- so we
-            ! sort a throwaway identity permutation and apply it to tmp_d_loc/tmp_n_loc
-            ! ourselves via tmp_workspace/tmp_val_buf (both unused elsewhere during Steps 1-3).
-            do j = 1, k_curr
-                tmp_perm(j) = j
-            end do
-            call sort_array(tmp_d_loc(1:k_curr), tmp_perm(1:k_curr), tmp_l_stack(1:k_curr), tmp_r_stack(1:k_curr))
-            tmp_workspace(1:k_curr) = tmp_n_loc(1:k_curr)
-            tmp_val_buf(1:k_curr) = tmp_d_loc(1:k_curr)
-            do j = 1, k_curr
-                tmp_n_loc(j) = tmp_workspace(tmp_perm(j))
-                tmp_d_loc(j) = tmp_val_buf(tmp_perm(j))
-            end do
+            if (k_curr > k_have) then
+                ! Cache exhausted: fetch a bigger batch (geometric growth of the
+                ! query itself, decoupled from the 1.25x per-step growth) instead of
+                ! re-querying+re-sorting from scratch on every single growth step.
+                ! A sorted list of the K nearest neighbors' first k<=K entries IS
+                ! exactly the k-nearest-neighbor list, so serving later growth steps
+                ! from a prefix of this cache changes nothing about which candidate
+                ! sizes get evaluated or their neighbor content -- only how often
+                ! kd_knn_query/sort_array actually run. (Profiling showed this pair
+                ! at 83-86% of Steps 0-3's time, the previous dominant cost.)
+                call system_clock(prof_t0)  ! PROFILING
+                k_have = min(max(k_curr, 2 * k_have), size(tmp_n_loc) - 1)
+                k_query = k_have + 1
+                call kd_knn_query(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                  work_coords(:,i), k_query, tmp_n_loc(1:k_query), tmp_d_loc(1:k_query), ierr)
+                if (.not. is_ok(ierr)) exit adaptive_k
+
+                self_pos = 0
+                do j = 1, k_query
+                    if (tmp_n_loc(j) == i) then
+                        self_pos = j
+                        exit
+                    end if
+                end do
+                if (self_pos > 0 .and. self_pos < k_query) then
+                    tmp_n_loc(self_pos) = tmp_n_loc(k_query)
+                    tmp_d_loc(self_pos) = tmp_d_loc(k_query)
+                end if
+
+                ! Sort ascending so the radius, local scale and jump checks are meaningful.
+                ! sort_array leaves its `array` argument untouched (intent(in)) and only
+                ! permutes `tmp_perm` -- which must start as the identity 1..k_have -- so we
+                ! sort a throwaway identity permutation and apply it to tmp_d_loc/tmp_n_loc
+                ! ourselves via tmp_workspace/tmp_val_buf (both unused elsewhere during Steps 1-3).
+                do j = 1, k_have
+                    tmp_perm(j) = j
+                end do
+                call sort_array(tmp_d_loc(1:k_have), tmp_perm(1:k_have), tmp_l_stack(1:k_have), tmp_r_stack(1:k_have))
+                tmp_workspace(1:k_have) = tmp_n_loc(1:k_have)
+                tmp_val_buf(1:k_have) = tmp_d_loc(1:k_have)
+                do j = 1, k_have
+                    tmp_n_loc(j) = tmp_workspace(tmp_perm(j))
+                    tmp_d_loc(j) = tmp_val_buf(tmp_perm(j))
+                end do
+                call system_clock(prof_t1) ; query_time_i = query_time_i + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
+            end if
+            call system_clock(prof_t0)  ! PROFILING
 
             if (k_curr == k_min) then
                 if (mod(k_min, 2) == 1) then
@@ -566,6 +665,7 @@ contains
                     stability_i = 0.0_real64
                 end if
             end if
+            call system_clock(prof_t1) ; covdsyev_time_i = covdsyev_time_i + real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
 
             ! Density (unchanged formula; still used for anchor seeding later)
             rho_i = 0.0_real64
@@ -641,8 +741,9 @@ contains
     !| spheres subject to the o_min/o_max overlap-ratio constraint (Step 5),
     !| finally growing the nearest anchor's radius to absorb any leftover
     !| uncovered "orphan" points (Step 5b).
-    pure subroutine construct_atlas(work_coords, n_points, dim, o_min, o_max, densities, &
-                               tmp_perm, tmp_l_stack, tmp_r_stack, sphere_radii, is_anchor_mask)
+    subroutine construct_atlas(work_coords, n_points, dim, o_min, o_max, densities, &
+                               tmp_perm, tmp_l_stack, tmp_r_stack, tmp_kd_indices, tmp_dim_order, &
+                               sphere_radii, is_anchor_mask)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -656,6 +757,10 @@ contains
             !! Maximum allowed anchor-sphere overlap ratio
         real(real64),   intent(in) :: densities(n_points)
             !! Per-point local density estimate, used to order/rank candidates
+        integer(int32), intent(in) :: tmp_kd_indices(n_points)
+            !! KD-tree indices, see kd_tree module (built once in Step 0)
+        integer(int32), intent(in) :: tmp_dim_order(dim)
+            !! KD-tree dimension-splitting order, see kd_tree module
 
         integer(int32), intent(inout) :: tmp_perm(n_points)
             !! Sort-permutation scratch buffer; ends up holding the
@@ -680,7 +785,8 @@ contains
 
         ! STEP 5: greedy anchor selection under the o_min/o_max overlap constraint
         call select_atlas_anchors(work_coords, n_points, dim, o_min, o_max, densities, &
-                                  tmp_perm, sphere_radii, is_anchor_mask, is_covered_mask, n_anchor)
+                                  tmp_perm, tmp_kd_indices, tmp_dim_order, &
+                                  sphere_radii, is_anchor_mask, is_covered_mask, n_anchor)
 
         ! STEP 5b: absorb leftover uncovered points into the nearest anchor
         call absorb_orphans(work_coords, n_points, dim, is_anchor_mask, sphere_radii, is_covered_mask)
@@ -717,8 +823,9 @@ contains
     !| the o_min/o_max overlap-ratio constraint; opens a new component from
     !| the highest-density uncovered point whenever no candidate satisfies
     !| the constraint.
-    pure subroutine select_atlas_anchors(work_coords, n_points, dim, o_min, o_max, densities, &
-                                    tmp_perm, sphere_radii, is_anchor_mask, is_covered_mask, n_anchor)
+    subroutine select_atlas_anchors(work_coords, n_points, dim, o_min, o_max, densities, &
+                                    tmp_perm, tmp_kd_indices, tmp_dim_order, &
+                                    sphere_radii, is_anchor_mask, is_covered_mask, n_anchor)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -734,6 +841,10 @@ contains
             !! Per-point local density estimate, used to order/rank candidates
         integer(int32), intent(in) :: tmp_perm(n_points)
             !! Point indices in descending-density order, see sort_points_by_density
+        integer(int32), intent(in) :: tmp_kd_indices(n_points)
+            !! KD-tree indices, see kd_tree module (built once in Step 0)
+        integer(int32), intent(in) :: tmp_dim_order(dim)
+            !! KD-tree dimension-splitting order, see kd_tree module
         real(real64),   intent(in) :: sphere_radii(n_points)
             !! Per-point adaptive radius from Steps 1-3
 
@@ -744,10 +855,12 @@ contains
         integer(int32), intent(out) :: n_anchor
             !! Number of anchors selected
 
-        integer(int32) :: i, k_idx, m_idx, num_overlap, total_in_sphere
-        integer(int32) :: best_candidate, n_uncovered
+        integer(int32) :: i, k_idx, best_candidate, n_uncovered
         logical        :: found_candidate
-        real(real64)   :: current_ratio, dist_sq, best_density
+        real(real64)   :: best_density
+        real(real64)   :: candidate_ratio(n_points)
+        logical        :: candidate_eligible(n_points)
+        logical        :: newly_covered_mask(n_points)
 
         is_covered_mask = .false.
         n_anchor = 0
@@ -758,51 +871,72 @@ contains
             n_uncovered = count(.not. is_covered_mask)
             if (n_uncovered == 0) exit atlas_construction
 
-            ! Find best candidate that satisfies o_min <= overlap <= o_max
             best_candidate = -1
             best_density = -1.0_real64
             found_candidate = .false.
 
-            do k_idx = 1, n_points
-                i = tmp_perm(k_idx)  ! Iterate in density order
-
-                ! Skip if already anchor or if this point is covered
-                if (is_anchor_mask(i) .or. is_covered_mask(i)) cycle
-
-                ! Calculate overlap with current atlas
-                num_overlap = 0
-                total_in_sphere = 0
-                do m_idx = 1, n_points
-                    dist_sq = sum((work_coords(:, i) - work_coords(:, m_idx))**2)
-                    if (dist_sq <= sphere_radii(i)**2) then
-                        total_in_sphere = total_in_sphere + 1
-                        if (is_covered_mask(m_idx)) num_overlap = num_overlap + 1
-                    end if
+            if (n_anchor == 0) then
+                ! First anchor: no o_min/overlap check, just seed from the
+                ! highest-density uncovered point (first hit in density order).
+                do k_idx = 1, n_points
+                    i = tmp_perm(k_idx)
+                    if (is_anchor_mask(i) .or. is_covered_mask(i)) cycle
+                    best_candidate = i
+                    best_density = densities(i)
+                    found_candidate = .true.
+                    exit
                 end do
+            else
+                ! Evaluate every remaining candidate's overlap ratio against
+                ! the current atlas independently -- is_anchor_mask/
+                ! is_covered_mask are frozen for the rest of this iteration,
+                ! so each candidate's kd_range_query_list only depends on
+                ! shared read-only inputs and writes to its own slice of
+                ! candidate_ratio/candidate_eligible.
+                !$omp parallel do default(shared) schedule(dynamic)
+                do k_idx = 1, n_points
+                    block
+                        integer(int32) :: ii, j, n_found_i, num_overlap_i, total_in_sphere_i
+                        integer(int32) :: range_buf_i(n_points)
 
-                current_ratio = 0.0_real64
-                if (total_in_sphere > 0) current_ratio = real(num_overlap, real64) / real(total_in_sphere, real64)
+                        ii = tmp_perm(k_idx)
+                        if (is_anchor_mask(ii) .or. is_covered_mask(ii)) then
+                            candidate_eligible(k_idx) = .false.
+                        else
+                            call kd_range_query_list(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                                     work_coords(:,ii), sphere_radii(ii), range_buf_i, n_found_i)
+                            total_in_sphere_i = n_found_i
+                            num_overlap_i = 0
+                            do j = 1, n_found_i
+                                if (is_covered_mask(range_buf_i(j))) num_overlap_i = num_overlap_i + 1
+                            end do
+                            if (total_in_sphere_i > 0) then
+                                candidate_ratio(k_idx) = real(num_overlap_i, real64) / real(total_in_sphere_i, real64)
+                            else
+                                candidate_ratio(k_idx) = 0.0_real64
+                            end if
+                            candidate_eligible(k_idx) = .true.
+                        end if
+                    end block
+                end do
+                !$omp end parallel do
 
-                ! Check if this candidate satisfies connectivity constraints
-                ! For the first anchor (n_anchor == 0), we don't check o_min
-                if (n_anchor == 0) then
-                    if (.not. found_candidate) then
-                        best_candidate = i
-                        best_density = densities(i)
-                        found_candidate = .true.
-                        exit  ! Take the first (highest density) as seed
-                    end if
-                else
-                    ! For subsequent anchors, enforce o_min <= overlap <= o_max
-                    if (current_ratio >= o_min .and. current_ratio <= o_max) then
+                ! Sequential pick, same tie-break as before: first candidate
+                ! in density order whose ratio qualifies wins, since tmp_perm
+                ! is already descending by density (best_density only ever
+                ! updates on the first qualifying hit).
+                do k_idx = 1, n_points
+                    i = tmp_perm(k_idx)
+                    if (.not. candidate_eligible(k_idx)) cycle
+                    if (candidate_ratio(k_idx) >= o_min .and. candidate_ratio(k_idx) <= o_max) then
                         if (densities(i) > best_density) then
                             best_candidate = i
                             best_density = densities(i)
                             found_candidate = .true.
                         end if
                     end if
-                end if
-            end do
+                end do
+            end if
 
             ! If we found a valid candidate, add it as anchor
             if (found_candidate .and. best_candidate > 0) then
@@ -810,12 +944,10 @@ contains
                 n_anchor = n_anchor + 1
 
                 ! Mark all points in this sphere as covered
-                do m_idx = 1, n_points
-                    dist_sq = sum((work_coords(:, best_candidate) - work_coords(:, m_idx))**2)
-                    if (dist_sq <= sphere_radii(best_candidate)**2) then
-                        is_covered_mask(m_idx) = .true.
-                    end if
-                end do
+                call kd_range_query_mask(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                         work_coords(:,best_candidate), sphere_radii(best_candidate), &
+                                         newly_covered_mask)
+                is_covered_mask = is_covered_mask .or. newly_covered_mask
             else
                 ! No valid candidate found - try to start new component with highest density uncovered point
                 best_candidate = -1
@@ -833,10 +965,10 @@ contains
                 if (best_candidate > 0) then
                     is_anchor_mask(best_candidate) = .true.
                     n_anchor = n_anchor + 1
-                    do m_idx = 1, n_points
-                        dist_sq = sum((work_coords(:, best_candidate) - work_coords(:, m_idx))**2)
-                        if (dist_sq <= sphere_radii(best_candidate)**2) is_covered_mask(m_idx) = .true.
-                    end do
+                    call kd_range_query_mask(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                             work_coords(:,best_candidate), sphere_radii(best_candidate), &
+                                             newly_covered_mask)
+                    is_covered_mask = is_covered_mask .or. newly_covered_mask
                 else
                     ! Should rarely happen: no uncovered point left to seed a new
                     ! component from, so there is nothing further this loop can do.
@@ -904,8 +1036,8 @@ contains
     !| extent, and fit-quality (normal_error) over its FINAL sphere membership
     !| (radii may have changed since Steps 1-3 during atlas/orphan handling).
     !| Non-anchor points keep whatever Steps 1-3 already wrote for them.
-    pure subroutine compute_anchor_svd(work_coords, n_points, dim, manifold_dim, is_anchor_mask, &
-                                  sphere_radii, lwork, &
+    subroutine compute_anchor_svd(work_coords, n_points, dim, manifold_dim, is_anchor_mask, &
+                                  sphere_radii, lwork, tmp_kd_indices, tmp_dim_order, &
                                   anchor_centers, tangent_bases, tangent_scales, normal_errors)
 
         integer(int32), intent(in) :: n_points
@@ -922,6 +1054,10 @@ contains
             !! .true. for points selected as atlas anchors
         real(real64),   intent(in) :: sphere_radii(n_points)
             !! Per-point (or, for anchors, per-anchor) sphere radius
+        integer(int32), intent(in) :: tmp_kd_indices(n_points)
+            !! KD-tree indices, see kd_tree module (built once in Step 0)
+        integer(int32), intent(in) :: tmp_dim_order(dim)
+            !! KD-tree dimension-splitting order, see kd_tree module
 
         real(real64),   intent(out)   :: anchor_centers(dim, n_points)
             !! Default: anchor centre = anchor position; overwritten below for
@@ -944,27 +1080,40 @@ contains
         ! to its own slice of the output arrays, so the iterations are
         ! independent; tmp_n_loc/tmp_work_lapack are private per-anchor scratch (each
         ! anchor's own sphere is gathered fresh, never shared across anchors).
-        do concurrent (i = 1:n_points) shared(work_coords, n_points, dim, manifold_dim, lwork, &
-                                              sphere_radii, is_anchor_mask, anchor_centers, &
-                                              tangent_bases, tangent_scales, normal_errors)
+        !$omp parallel do default(shared) schedule(dynamic)
+        do i = 1, n_points
             if (.not. is_anchor_mask(i)) cycle
             block
-                integer(int32) :: j, m_idx, k_curr, col, row, info, base_idx
+                integer(int32) :: j, k_curr, col, row, info, base_idx
                 real(real64)   :: dist_sq, center(dim), cov(dim, dim), p_diff(dim), w_eig(dim)
                 real(real64)   :: projection, min_proj, max_proj
                 integer(int32) :: tmp_n_loc(n_points)
                 real(real64)   :: tmp_work_lapack(lwork)
 
-                ! Gather all points within the final sphere radius
-                k_curr = 0
-                do m_idx = 1, n_points
-                    dist_sq = sum((work_coords(:, i) - work_coords(:, m_idx))**2)
-                    if (dist_sq <= sphere_radii(i)**2) then
-                        k_curr = k_curr + 1
-                        if (k_curr > size(tmp_n_loc)) exit  ! Buffer overflow protection
-                        tmp_n_loc(k_curr) = m_idx
-                    end if
-                end do
+                ! Gather all points within the final sphere radius. Sorted back to
+                ! ascending point-index order (kd_range_query_list returns them in
+                ! KD-tree traversal order) so the center/covariance summation below
+                ! accumulates in the exact same order as the original O(n) linear
+                ! scan: floating-point addition isn't associative, and re-ordering
+                ! it here was empirically confirmed (against a pre-optimization
+                ! baseline run) to change which anchor role/tangent basis a point
+                ! converges to over lomanle_compute's outer iterations, since that
+                ! loop is often still not fully converged after max_iterations.
+                call kd_range_query_list(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                         work_coords(:,i), sphere_radii(i), tmp_n_loc, k_curr)
+                block
+                    integer(int32) :: sj, sk, stmp
+                    do sj = 2, k_curr
+                        stmp = tmp_n_loc(sj)
+                        sk = sj - 1
+                        do while (sk >= 1)
+                            if (tmp_n_loc(sk) <= stmp) exit
+                            tmp_n_loc(sk+1) = tmp_n_loc(sk)
+                            sk = sk - 1
+                        end do
+                        tmp_n_loc(sk+1) = stmp
+                    end do
+                end block
 
                 if (k_curr >= manifold_dim + 1) then  ! Need enough points for SVD
                     ! Compute center
@@ -1023,14 +1172,15 @@ contains
                 end if
             end block
         end do
+        !$omp end parallel do
 
     end subroutine compute_anchor_svd
 
     !> STEP 7: fills the (n_points, n_anchor) membership matrix, where
     !| M(i, i_anc) = .true. iff point i falls inside anchor i_anc's sphere.
     !| This is the central data structure for intersection identification.
-    pure subroutine build_membership_matrix(work_coords, n_points, dim, n_anchor, anchor_to_point, &
-                                       sphere_radii, point_in_anchor_mask)
+    subroutine build_membership_matrix(work_coords, n_points, dim, n_anchor, anchor_to_point, &
+                                       sphere_radii, tmp_kd_indices, tmp_dim_order, point_in_anchor_mask)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -1044,33 +1194,44 @@ contains
             !! Compact anchor index (1..n_anchor) -> original point index
         real(real64),   intent(in) :: sphere_radii(n_points)
             !! Per-anchor sphere radius
+        integer(int32), intent(in) :: tmp_kd_indices(n_points)
+            !! KD-tree indices, see kd_tree module (built once in Step 0)
+        integer(int32), intent(in) :: tmp_dim_order(dim)
+            !! KD-tree dimension-splitting order, see kd_tree module
 
         logical, intent(out) :: point_in_anchor_mask(n_points, n_anchor)
             !! (n_points, n_anchor) membership matrix
 
-        integer(int32) :: i_anc, m_idx
+        integer(int32) :: i_anc
 
-        ! Each (m_idx, i_anc) entry depends only on shared read-only inputs
-        ! and writes to its own matrix element, so the iterations are independent.
-        point_in_anchor_mask = .false.
-        do concurrent (i_anc = 1:n_anchor, m_idx = 1:n_points) &
-                shared(work_coords, n_points, dim, anchor_to_point, sphere_radii, point_in_anchor_mask)
+        ! Each anchor's membership column depends only on shared read-only
+        ! inputs and writes to its own column, so the iterations are
+        ! independent; one kd_range_query_mask call per anchor replaces the
+        ! previous O(n_points) brute-force scan against every point.
+        !$omp parallel do default(shared) schedule(dynamic)
+        do i_anc = 1, n_anchor
             block
                 integer(int32) :: i
-                real(real64)   :: dist_sq
                 i = anchor_to_point(i_anc)
-                dist_sq = sum((work_coords(:,m_idx) - work_coords(:,i))**2)
-                if (dist_sq <= sphere_radii(i)**2) point_in_anchor_mask(m_idx, i_anc) = .true.
+                call kd_range_query_mask(work_coords, tmp_kd_indices, dim, n_points, tmp_dim_order, &
+                                         work_coords(:,i), sphere_radii(i), point_in_anchor_mask(:,i_anc))
             end block
         end do
+        !$omp end parallel do
 
     end subroutine build_membership_matrix
 
     !> STEP 8, phase a: counts pairwise anchor intersections (an edge = two
-    !| anchors that share at least one point), so the caller can allocate the
-    !| edge-list arrays to the exact size before fill_anchor_intersection_edges
+    !| anchors that share at least one point) and each point's anchor
+    !| coverage, by visiting every point once and enumerating the (typically
+    !| just 2-3) anchors that cover it -- rather than, for every one of the
+    !| O(n_anchor^2) anchor pairs, scanning all n_points to test for shared
+    !| membership. pair_seen_mask(lo,hi) ends up .true. for exactly the
+    !| anchor pairs that will become edges; the caller uses it (and n_edges)
+    !| to allocate the edge-list arrays before fill_anchor_intersection_edges
     !| fills them.
-    pure subroutine count_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, n_edges)
+    pure subroutine count_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, &
+                                                anchor_count, pair_seen_mask, n_edges)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -1079,25 +1240,46 @@ contains
         logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
             !! (n_points, n_anchor) membership matrix
 
+        integer(int32), intent(out) :: anchor_count(n_points)
+            !! How many anchors cover each point
+        logical,        intent(out) :: pair_seen_mask(n_anchor, n_anchor)
+            !! .true. for anchor pairs (lo, hi) that share at least one point
         integer(int32), intent(out) :: n_edges
             !! Number of anchor pairs that share at least one point
 
-        integer(int32) :: i_anc, j_anc
+        integer(int32) :: i, a, b, n_cov, cov(n_anchor)
 
-        n_edges = 0
-        do i_anc = 1, n_anchor
-            do j_anc = i_anc + 1, n_anchor
-                if (any(point_in_anchor_mask(:,i_anc) .and. point_in_anchor_mask(:,j_anc))) &
-                    n_edges = n_edges + 1
+        pair_seen_mask = .false.
+        do i = 1, n_points
+            n_cov = 0
+            do a = 1, n_anchor
+                if (point_in_anchor_mask(i, a)) then
+                    n_cov = n_cov + 1
+                    cov(n_cov) = a
+                end if
+            end do
+            anchor_count(i) = n_cov
+            do a = 1, n_cov - 1
+                do b = a + 1, n_cov
+                    pair_seen_mask(cov(a), cov(b)) = .true.
+                end do
             end do
         end do
 
+        n_edges = count(pair_seen_mask)
+
     end subroutine count_anchor_intersection_edges
 
-    !> STEP 8, phase b: fills the anchor-pair edge list (edge_anc1/edge_anc2)
-    !| for every pair of anchors that share at least one point.
-    pure subroutine fill_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, n_edges, &
-                                              edge_anc1, edge_anc2)
+    !> Builds a CSR "point -> covering anchors" structure from the membership
+    !| matrix and the anchor_count already computed by
+    !| count_anchor_intersection_edges, so Step 10's per-point stitching
+    !| (stitch_multi_anchor_point/stitch_single_anchor_point) can walk just
+    !| the (typically 2-3) anchors that actually cover a point instead of
+    !| re-scanning all n_anchor columns of point_in_anchor_mask for every
+    !| one of the n_points points -- the same O(n_anchor * n_points) pattern
+    !| already replaced in Step 8.
+    pure subroutine build_point_anchor_lists(n_points, n_anchor, point_in_anchor_mask, anchor_count, &
+                                        pt_anchor_start, pt_anchor_list)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -1105,34 +1287,78 @@ contains
             !! Number of atlas anchors
         logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
             !! (n_points, n_anchor) membership matrix
+        integer(int32), intent(in) :: anchor_count(n_points)
+            !! How many anchors cover each point
+
+        integer(int32), intent(out) :: pt_anchor_start(n_points + 1)
+            !! CSR: point -> range of its covering-anchor entries
+        integer(int32), intent(out) :: pt_anchor_list(:)
+            !! CSR: compact anchor index for each point-anchor incidence
+
+        integer(int32) :: i, a, fill
+
+        pt_anchor_start(1) = 1
+        do i = 1, n_points
+            pt_anchor_start(i+1) = pt_anchor_start(i) + anchor_count(i)
+        end do
+
+        do i = 1, n_points
+            fill = 0
+            do a = 1, n_anchor
+                if (point_in_anchor_mask(i, a)) then
+                    fill = fill + 1
+                    pt_anchor_list(pt_anchor_start(i) + fill - 1) = a
+                end if
+            end do
+        end do
+
+    end subroutine build_point_anchor_lists
+
+    !> STEP 8, phase b: fills the anchor-pair edge list (edge_anc1/edge_anc2)
+    !| for every anchor pair flagged in pair_seen_mask, and builds
+    !| edge_id_of_pair -- an O(1) (anchor_lo, anchor_hi) -> compact edge
+    !| index lookup -- so downstream point-driven passes never need to
+    !| re-derive "is this pair an edge" from the membership matrix.
+    pure subroutine fill_anchor_intersection_edges(n_anchor, pair_seen_mask, n_edges, &
+                                              edge_anc1, edge_anc2, edge_id_of_pair)
+
+        integer(int32), intent(in) :: n_anchor
+            !! Number of atlas anchors
+        logical,        intent(in) :: pair_seen_mask(n_anchor, n_anchor)
+            !! .true. for anchor pairs (lo, hi) that share at least one point
         integer(int32), intent(in) :: n_edges
             !! Number of anchor pairs that share at least one point
 
         integer(int32), intent(out) :: edge_anc1(n_edges), edge_anc2(n_edges)
             !! Anchor-pair edge list (compact anchor indices)
+        integer(int32), intent(out) :: edge_id_of_pair(n_anchor, n_anchor)
+            !! 0 unless pair_seen_mask(lo,hi); else the compact edge index
 
         integer(int32) :: i_anc, j_anc, e
 
+        edge_id_of_pair = 0
         e = 0
         do i_anc = 1, n_anchor
             do j_anc = i_anc + 1, n_anchor
-                if (any(point_in_anchor_mask(:,i_anc) .and. point_in_anchor_mask(:,j_anc))) then
+                if (pair_seen_mask(i_anc, j_anc)) then
                     e = e + 1
                     edge_anc1(e) = i_anc
                     edge_anc2(e) = j_anc
+                    edge_id_of_pair(i_anc, j_anc) = e
                 end if
             end do
         end do
 
     end subroutine fill_anchor_intersection_edges
 
-    !> STEP 8, phase c: counts, in a single pass, how many anchors cover each
-    !| point (anchor_count, a real output the caller needs) and how many
+    !> STEP 8, phase c: counts, in a single point-driven pass, how many
     !| edges touch each point/anchor-pair (n_edges_of_pt/edge_pt_count, used
-    !| only to size the CSR data arrays that follow).
+    !| only to size the CSR data arrays that follow) -- same point-then-pair
+    !| enumeration as count_anchor_intersection_edges, using
+    !| edge_id_of_pair for an O(1) pair -> edge lookup instead of the
+    !| previous O(n_edges * n_points) edge-driven scan.
     pure subroutine count_intersection_csr_sizes(n_points, n_anchor, n_edges, point_in_anchor_mask, &
-                                            edge_anc1, edge_anc2, anchor_count, &
-                                            n_edges_of_pt, edge_pt_count)
+                                            edge_id_of_pair, n_edges_of_pt, edge_pt_count)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -1142,33 +1368,34 @@ contains
             !! Number of anchor pairs that share at least one point
         logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
             !! (n_points, n_anchor) membership matrix
-        integer(int32), intent(in) :: edge_anc1(n_edges), edge_anc2(n_edges)
-            !! Anchor-pair edge list (compact anchor indices)
+        integer(int32), intent(in) :: edge_id_of_pair(n_anchor, n_anchor)
+            !! 0 unless (lo,hi) is an edge; else its compact edge index
 
-        integer(int32), intent(out) :: anchor_count(n_points)
-            !! How many anchors cover each point
         integer(int32), intent(out) :: n_edges_of_pt(n_points)
             !! How many anchor-pair edges touch each point
         integer(int32), intent(out) :: edge_pt_count(n_edges)
             !! How many points touch each anchor-pair edge
 
-        integer(int32) :: i, i_anc, e
+        integer(int32) :: i, a, b, n_cov, cov(n_anchor), e
 
-        anchor_count  = 0
         n_edges_of_pt = 0
         edge_pt_count = 0
-        do i_anc = 1, n_anchor
-            do i = 1, n_points
-                if (point_in_anchor_mask(i, i_anc)) anchor_count(i) = anchor_count(i) + 1
-            end do
-        end do
-        do e = 1, n_edges
-            do i = 1, n_points
-                if (point_in_anchor_mask(i, edge_anc1(e)) .and. &
-                    point_in_anchor_mask(i, edge_anc2(e))) then
-                    n_edges_of_pt(i) = n_edges_of_pt(i) + 1
-                    edge_pt_count(e) = edge_pt_count(e) + 1
+        do i = 1, n_points
+            n_cov = 0
+            do a = 1, n_anchor
+                if (point_in_anchor_mask(i, a)) then
+                    n_cov = n_cov + 1
+                    cov(n_cov) = a
                 end if
+            end do
+            do a = 1, n_cov - 1
+                do b = a + 1, n_cov
+                    e = edge_id_of_pair(cov(a), cov(b))
+                    if (e > 0) then
+                        n_edges_of_pt(i) = n_edges_of_pt(i) + 1
+                        edge_pt_count(e) = edge_pt_count(e) + 1
+                    end if
+                end do
             end do
         end do
 
@@ -1183,7 +1410,9 @@ contains
     !| allocation.
     subroutine build_intersection_graph_alloc(work_coords, n_points, dim, is_anchor_mask, sphere_radii, &
                                               tmp_workspace, tmp_val_buf, tmp_perm, tmp_l_stack, tmp_r_stack, &
+                                              tmp_kd_indices, tmp_dim_order, &
                                               point_in_anchor_mask, anchor_to_point, anchor_count, &
+                                              pt_anchor_start, pt_anchor_list, &
                                               labels, n_anchor, ierr)
 
         integer(int32), intent(in) :: n_points
@@ -1196,6 +1425,10 @@ contains
             !! .true. for points selected as atlas anchors
         real(real64),   intent(in) :: sphere_radii(n_points)
             !! Per-point (or, for anchors, per-anchor) sphere radius
+        integer(int32), intent(in) :: tmp_kd_indices(n_points)
+            !! KD-tree indices, see kd_tree module (built once in Step 0)
+        integer(int32), intent(in) :: tmp_dim_order(dim)
+            !! KD-tree dimension-splitting order, see kd_tree module
 
         integer(int32), intent(inout) :: tmp_workspace(n_points)
             !! Reused here as the BFS queue (Step 9).
@@ -1212,6 +1445,10 @@ contains
             !! Compact anchor index (1..n_anchor) -> original point index
         integer(int32), intent(out) :: anchor_count(n_points)
             !! How many anchors cover each point.
+        integer(int32), intent(out), allocatable :: pt_anchor_start(:)
+            !! CSR: point -> range of its covering-anchor entries (Step 10)
+        integer(int32), intent(out), allocatable :: pt_anchor_list(:)
+            !! CSR: compact anchor index for each point-anchor incidence (Step 10)
         integer(int32), intent(out) :: labels(n_points)
             !! BFS connected-overlap-region label; 0 if not in any intersection.
         integer(int32), intent(out) :: n_anchor
@@ -1224,6 +1461,8 @@ contains
         integer(int32), allocatable :: point_to_anchor(:)
         integer(int32), allocatable :: edge_anc1(:), edge_anc2(:), tmp_edge_label_arr(:)
         logical, allocatable :: edge_visited_mask(:), pt_visited_mask(:)
+        logical, allocatable :: pair_seen_mask(:,:)
+        integer(int32), allocatable :: edge_id_of_pair(:,:)
         integer(int32), allocatable :: pt_edge_start(:), pt_edge_list(:)
         integer(int32), allocatable :: edge_pt_start(:), edge_pt_list(:)
         integer(int32), allocatable :: edge_pt_count(:)
@@ -1242,16 +1481,31 @@ contains
 
         M_ALLOCATE(point_in_anchor_mask(n_points, n_anchor))
         call build_membership_matrix(work_coords, n_points, dim, n_anchor, anchor_to_point, &
-                                     sphere_radii, point_in_anchor_mask)
+                                     sphere_radii, tmp_kd_indices, tmp_dim_order, point_in_anchor_mask)
 
         ! --- STEP 8: Build Edge List + CSR Adjacency Structures ---
-        ! An edge = two anchors that share at least one point.
+        ! An edge = two anchors that share at least one point. Both counting
+        ! and CSR sizing enumerate anchor pairs per-point (each point covered
+        ! by only a handful of anchors) rather than per-anchor-pair over all
+        ! n_points, via pair_seen_mask/edge_id_of_pair -- see the subroutines
+        ! below for why this replaces an O(n_anchor^2 * n_points) scan.
         ! CSR pt->edges: O(degree) lookup instead of O(n_edges) scan in BFS.
         ! CSR edge->pts: O(edge_size) expansion instead of O(n_points) scan.
-        call count_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, n_edges)
+        M_ALLOCATE(pair_seen_mask(n_anchor, n_anchor))
+        call count_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, &
+                                             anchor_count, pair_seen_mask, n_edges)
+
+        ! Point -> covering-anchor CSR list, for Step 10's per-point stitching
+        ! (stitch_multi_anchor_point/stitch_single_anchor_point): avoids
+        ! re-scanning all n_anchor columns of point_in_anchor_mask per point.
+        M_ALLOCATE(pt_anchor_start(n_points + 1))
+        M_ALLOCATE(pt_anchor_list(max(1, sum(anchor_count))))
+        call build_point_anchor_lists(n_points, n_anchor, point_in_anchor_mask, anchor_count, &
+                                      pt_anchor_start, pt_anchor_list)
 
         M_ALLOCATE(edge_anc1(n_edges))
         M_ALLOCATE(edge_anc2(n_edges))
+        M_ALLOCATE(edge_id_of_pair(n_anchor, n_anchor))
         M_ALLOCATE(tmp_edge_label_arr(n_edges))
         M_ALLOCATE(edge_visited_mask(n_edges))
         M_ALLOCATE(pt_visited_mask(n_points))
@@ -1260,12 +1514,11 @@ contains
         edge_visited_mask   = .false.
         pt_visited_mask     = .false.
 
-        call fill_anchor_intersection_edges(n_points, n_anchor, point_in_anchor_mask, n_edges, &
-                                            edge_anc1, edge_anc2)
+        call fill_anchor_intersection_edges(n_anchor, pair_seen_mask, n_edges, &
+                                            edge_anc1, edge_anc2, edge_id_of_pair)
 
         call count_intersection_csr_sizes(n_points, n_anchor, n_edges, point_in_anchor_mask, &
-                                          edge_anc1, edge_anc2, anchor_count, &
-                                          n_edges_of_pt, edge_pt_count)
+                                          edge_id_of_pair, n_edges_of_pt, edge_pt_count)
 
         ! Phase 8d: Build CSR prefix sums, which fixes the exact sizes of the
         ! two CSR data arrays (pt_edge_list, edge_pt_list)
@@ -1286,7 +1539,7 @@ contains
         deallocate(edge_pt_count)
 
         call build_intersection_graph(n_points, n_anchor, n_edges, point_in_anchor_mask, &
-                                      edge_anc1, edge_anc2, pt_edge_start, edge_pt_start, &
+                                      edge_id_of_pair, pt_edge_start, edge_pt_start, &
                                       tmp_workspace, tmp_val_buf, tmp_perm, tmp_l_stack, tmp_r_stack, &
                                       pt_visited_mask, edge_visited_mask, tmp_edge_label_arr, &
                                       pt_edge_list, edge_pt_list, labels)
@@ -1297,7 +1550,7 @@ contains
     !| already-allocated (and already prefix-summed) buffers, then
     !| BFS-label the connected overlap regions. No allocation.
     pure subroutine build_intersection_graph(n_points, n_anchor, n_edges, point_in_anchor_mask, &
-                                        edge_anc1, edge_anc2, pt_edge_start, edge_pt_start, &
+                                        edge_id_of_pair, pt_edge_start, edge_pt_start, &
                                         tmp_workspace, tmp_val_buf, tmp_perm, tmp_l_stack, tmp_r_stack, &
                                         pt_visited_mask, edge_visited_mask, tmp_edge_label_arr, &
                                         pt_edge_list, edge_pt_list, labels)
@@ -1310,8 +1563,8 @@ contains
             !! Number of pairwise anchor-intersection edges
         logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
             !! (n_points, n_anchor) membership matrix
-        integer(int32), intent(in) :: edge_anc1(n_edges), edge_anc2(n_edges)
-            !! Anchor-pair endpoints of each edge
+        integer(int32), intent(in) :: edge_id_of_pair(n_anchor, n_anchor)
+            !! 0 unless (lo,hi) is an edge; else its compact edge index
         integer(int32), intent(in) :: pt_edge_start(n_points + 1)
             !! CSR prefix sums: point -> range of its edge-list entries
         integer(int32), intent(in) :: edge_pt_start(n_edges + 1)
@@ -1344,23 +1597,36 @@ contains
         integer(int32) :: head, tail, curr_idx, current_label
         integer(int32) :: n_edges_of_pt(n_points)
         integer(int32) :: edge_pt_count(n_edges)
+        integer(int32) :: a, b, n_cov, cov(n_anchor), pt_fill
         logical        :: found_candidate
 
-        ! Phase 8e: Fill both CSR lists in a single pass
-        n_edges_of_pt = 0   ! per-point fill offset
+        ! Phase 8e: fill both CSR lists in a single point-driven pass --
+        ! same point-then-pair enumeration as count_anchor_intersection_edges/
+        ! count_intersection_csr_sizes, using edge_id_of_pair for an O(1)
+        ! pair -> edge lookup instead of the previous O(n_edges * n_points)
+        ! edge-driven scan.
         edge_pt_count = 0   ! per-edge fill offset
-        do e = 1, n_edges
-            do i = 1, n_points
-                if (point_in_anchor_mask(i, edge_anc1(e)) .and. &
-                    point_in_anchor_mask(i, edge_anc2(e))) then
-                    n_edges_of_pt(i) = n_edges_of_pt(i) + 1
-                    pt_edge_list(pt_edge_start(i) + n_edges_of_pt(i) - 1) = e
-                    edge_pt_count(e) = edge_pt_count(e) + 1
-                    edge_pt_list(edge_pt_start(e) + edge_pt_count(e) - 1) = i
+        do i = 1, n_points
+            n_cov = 0
+            do a = 1, n_anchor
+                if (point_in_anchor_mask(i, a)) then
+                    n_cov = n_cov + 1
+                    cov(n_cov) = a
                 end if
             end do
+            pt_fill = 0
+            do a = 1, n_cov - 1
+                do b = a + 1, n_cov
+                    e = edge_id_of_pair(cov(a), cov(b))
+                    if (e > 0) then
+                        pt_fill = pt_fill + 1
+                        pt_edge_list(pt_edge_start(i) + pt_fill - 1) = e
+                        edge_pt_count(e) = edge_pt_count(e) + 1
+                        edge_pt_list(edge_pt_start(e) + edge_pt_count(e) - 1) = i
+                    end if
+                end do
+            end do
         end do
-        ! Restore n_edges_of_pt from prefix sums (was used as fill counter)
         do i = 1, n_points
             n_edges_of_pt(i) = pt_edge_start(i+1) - pt_edge_start(i)
         end do
@@ -1435,9 +1701,9 @@ contains
     !| anchors covering it, weighted by inverse anchor fit-quality
     !| (1/normal_error). See misc/smoothing_experiments.md section 15 for the
     !| full rationale behind inverse-variance weighting.
-    pure subroutine stitch_points(work_coords, n_points, dim, manifold_dim, n_anchor, &
-                             point_in_anchor_mask, anchor_to_point, anchor_count, anchor_centers, &
-                             tangent_bases, normal_errors, skeleton_coords, &
+    subroutine stitch_points(work_coords, n_points, dim, manifold_dim, n_anchor, &
+                             anchor_to_point, anchor_count, pt_anchor_start, pt_anchor_list, &
+                             anchor_centers, tangent_bases, normal_errors, skeleton_coords, &
                              primary_anchor_ids, secondary_anchor_ids)
 
         integer(int32), intent(in) :: n_points
@@ -1450,12 +1716,14 @@ contains
             !! Number of atlas anchors
         real(real64),   intent(in) :: work_coords(dim, n_points)
             !! Current point coordinates
-        logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
-            !! (n_points, n_anchor) membership matrix
         integer(int32), intent(in) :: anchor_to_point(n_anchor)
             !! Compact anchor index (1..n_anchor) -> original point index
         integer(int32), intent(in) :: anchor_count(n_points)
             !! How many anchors cover each point
+        integer(int32), intent(in) :: pt_anchor_start(n_points + 1)
+            !! CSR: point -> range of its covering-anchor entries, see build_point_anchor_lists
+        integer(int32), intent(in) :: pt_anchor_list(:)
+            !! CSR: compact anchor index for each point-anchor incidence
         real(real64),   intent(in) :: anchor_centers(dim, n_points)
             !! Centroid of each anchor's sphere (only meaningful for anchor points)
         real(real64),   intent(in) :: tangent_bases(dim, manifold_dim, n_points)
@@ -1477,21 +1745,19 @@ contains
         ! Each point's stitched position depends only on shared read-only
         ! inputs and writes to its own slice of the output arrays, so the
         ! iterations are independent.
-        do concurrent (i = 1:n_points) shared(n_points, dim, manifold_dim, n_anchor, work_coords, &
-                                              point_in_anchor_mask, anchor_to_point, anchor_count, &
-                                              anchor_centers, tangent_bases, normal_errors, &
-                                              skeleton_coords, primary_anchor_ids, secondary_anchor_ids)
+        !$omp parallel do default(shared)
+        do i = 1, n_points
             skeleton_coords(1, i) = real(anchor_count(i), real64)
 
             if (anchor_count(i) >= 2) then
                 call stitch_multi_anchor_point(i, work_coords, n_points, dim, manifold_dim, n_anchor, &
-                                               point_in_anchor_mask, anchor_to_point, anchor_centers, &
-                                               tangent_bases, normal_errors, skeleton_coords(2:dim+1, i), &
+                                               anchor_to_point, pt_anchor_list(pt_anchor_start(i):pt_anchor_start(i+1)-1), &
+                                               anchor_centers, tangent_bases, normal_errors, skeleton_coords(2:dim+1, i), &
                                                primary_anchor_ids(i), secondary_anchor_ids(i))
             else if (anchor_count(i) == 1) then
                 call stitch_single_anchor_point(i, work_coords, n_points, dim, manifold_dim, n_anchor, &
-                                                point_in_anchor_mask, anchor_to_point, anchor_centers, &
-                                                tangent_bases, skeleton_coords(2:dim+1, i), &
+                                                anchor_to_point, pt_anchor_list(pt_anchor_start(i):pt_anchor_start(i+1)-1), &
+                                                anchor_centers, tangent_bases, skeleton_coords(2:dim+1, i), &
                                                 primary_anchor_ids(i))
                 secondary_anchor_ids(i) = 0
             else
@@ -1501,6 +1767,7 @@ contains
                 secondary_anchor_ids(i) = 0
             end if
         end do
+        !$omp end parallel do
 
     end subroutine stitch_points
 
@@ -1514,7 +1781,7 @@ contains
     !| bifurcations (where two anchors genuinely fit about equally well, the
     !| average naturally lands between both branches).
     pure subroutine stitch_multi_anchor_point(i, work_coords, n_points, dim, manifold_dim, n_anchor, &
-                                         point_in_anchor_mask, anchor_to_point, anchor_centers, &
+                                         anchor_to_point, covering_anchors, anchor_centers, &
                                          tangent_bases, normal_errors, stitched_position, &
                                          primary_anchor_idx, secondary_anchor_idx)
 
@@ -1530,10 +1797,10 @@ contains
             !! Number of atlas anchors
         real(real64),   intent(in) :: work_coords(dim, n_points)
             !! Current point coordinates
-        logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
-            !! (n_points, n_anchor) membership matrix
         integer(int32), intent(in) :: anchor_to_point(n_anchor)
             !! Compact anchor index (1..n_anchor) -> original point index
+        integer(int32), intent(in) :: covering_anchors(:)
+            !! Compact anchor indices covering point i, see build_point_anchor_lists
         real(real64),   intent(in) :: anchor_centers(dim, n_points)
             !! Centroid of each anchor's sphere (only meaningful for anchor points)
         real(real64),   intent(in) :: tangent_bases(dim, manifold_dim, n_points)
@@ -1546,7 +1813,7 @@ contains
         integer(int32), intent(out) :: primary_anchor_idx, secondary_anchor_idx
             !! Point index of the highest/second-highest weighted covering anchor
 
-        integer(int32) :: i_anc, k, base_idx
+        integer(int32) :: idx, i_anc, k, base_idx
         real(real64)   :: p_diff(dim), center(dim), proj_val, sigma_i
         real(real64)   :: v_ij(dim), min_dist
         real(real64)   :: primary_weight, secondary_weight
@@ -1558,8 +1825,8 @@ contains
         v_ij     = 0.0_real64
         min_dist = 0.0_real64
 
-        do i_anc = 1, n_anchor
-            if (.not. point_in_anchor_mask(i, i_anc)) cycle
+        do idx = 1, size(covering_anchors)
+            i_anc = covering_anchors(idx)
             k = anchor_to_point(i_anc)
 
             p_diff = work_coords(:, i) - anchor_centers(:, k)
@@ -1597,7 +1864,7 @@ contains
     !| onto the tangent subspace of the one covering anchor, so all points in
     !| the same patch collapse onto the manifold_dim-dimensional central trend.
     pure subroutine stitch_single_anchor_point(i, work_coords, n_points, dim, manifold_dim, n_anchor, &
-                                          point_in_anchor_mask, anchor_to_point, anchor_centers, &
+                                          anchor_to_point, covering_anchors, anchor_centers, &
                                           tangent_bases, stitched_position, primary_anchor_idx)
 
         integer(int32), intent(in) :: i
@@ -1612,10 +1879,11 @@ contains
             !! Number of atlas anchors
         real(real64),   intent(in) :: work_coords(dim, n_points)
             !! Current point coordinates
-        logical,        intent(in) :: point_in_anchor_mask(n_points, n_anchor)
-            !! (n_points, n_anchor) membership matrix
         integer(int32), intent(in) :: anchor_to_point(n_anchor)
             !! Compact anchor index (1..n_anchor) -> original point index
+        integer(int32), intent(in) :: covering_anchors(:)
+            !! Compact anchor index covering point i (exactly one entry here),
+            !! see build_point_anchor_lists
         real(real64),   intent(in) :: anchor_centers(dim, n_points)
             !! Centroid of each anchor's sphere (only meaningful for anchor points)
         real(real64),   intent(in) :: tangent_bases(dim, manifold_dim, n_points)
@@ -1626,20 +1894,16 @@ contains
         integer(int32), intent(out) :: primary_anchor_idx
             !! Point index of the covering anchor
 
-        integer(int32) :: i_anc, k, base_idx
+        integer(int32) :: k, base_idx
         real(real64)   :: p_diff(dim), proj_val
 
-        do i_anc = 1, n_anchor
-            if (.not. point_in_anchor_mask(i, i_anc)) cycle
-            k = anchor_to_point(i_anc)
-            primary_anchor_idx = k
-            p_diff = work_coords(:, i) - anchor_centers(:, k)
-            stitched_position = anchor_centers(:, k)
-            do base_idx = 1, manifold_dim
-                proj_val = dot_product(p_diff, tangent_bases(:, base_idx, k))
-                stitched_position = stitched_position + proj_val * tangent_bases(:, base_idx, k)
-            end do
-            exit
+        k = anchor_to_point(covering_anchors(1))
+        primary_anchor_idx = k
+        p_diff = work_coords(:, i) - anchor_centers(:, k)
+        stitched_position = anchor_centers(:, k)
+        do base_idx = 1, manifold_dim
+            proj_val = dot_product(p_diff, tangent_bases(:, base_idx, k))
+            stitched_position = stitched_position + proj_val * tangent_bases(:, base_idx, k)
         end do
 
     end subroutine stitch_single_anchor_point
@@ -1847,10 +2111,18 @@ contains
         real(real64)   :: max_disp, disp, conv_tol
         real(real64)   :: work_coords(dim, n_points)
         real(real64)   :: anchor_centers(dim, n_points)
+        integer(int64) :: prof_t0, prof_t1, prof_rate  ! PROFILING
+        real(real64)   :: prof_total                   ! PROFILING
 
         call set_ok(ierr)
         work_coords = coords
         converged   = .false.
+
+        ! PROFILING: reset accumulators for this run
+        prof_growth = 0.0_real64 ; prof_atlas = 0.0_real64 ; prof_svd = 0.0_real64
+        prof_intersect = 0.0_real64 ; prof_stitch = 0.0_real64 ; prof_skeleton = 0.0_real64
+        prof_growth_query = 0.0_real64 ; prof_growth_covdsyev = 0.0_real64
+        prof_n_calls = 0
 
         ! --- Dataset-relative convergence tolerance ---
         ! conv_tol is a small fraction (relative_conv_tol) of the data's own
@@ -1934,6 +2206,7 @@ contains
         ! --- Backbone graph: built here (not by the caller) from the anchor
         ! adjacency graph's MST, for both the iteration-1 snapshot and the
         ! converged result -- see build_skeleton_edges_alloc for the full rationale.
+        call system_clock(prof_t0, prof_rate)  ! PROFILING
         call build_skeleton_edges_alloc(n_points, dim, manifold_dim, is_anchor_mask_1, anchor_centers_1, &
                                   tangent_bases_1, primary_anchor_1, secondary_anchor_1, &
                                   radii_1, skeleton_iter1, max_edges, edge_from_1, edge_to_1, &
@@ -1944,6 +2217,35 @@ contains
                                   tangent_bases, primary_anchor_final, secondary_anchor_final, &
                                   sphere_radii, skeleton_coords, max_edges, edge_from_final, edge_to_final, &
                                   n_edges_final, anchor_role_final, ierr)
+        call system_clock(prof_t1) ; prof_skeleton = real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
+
+        ! PROFILING: print the per-stage breakdown for this run
+        prof_total = prof_growth + prof_atlas + prof_svd + prof_intersect + prof_stitch + prof_skeleton
+        if (prof_total > 0.0_real64) then
+            print '(A,I4,A)', "  --- LoManLe profile (", prof_n_calls, " lomanle_pass calls) ---"
+            print '(A,F10.3,A,F5.1,A)', "  Steps 0-3   growth:     ", prof_growth,    "s (", 100.0_real64*prof_growth/prof_total,    "%)"
+            if (prof_growth_query + prof_growth_covdsyev > 0.0_real64) then
+                ! NOTE: query_time_i/covdsyev_time_i are measured PER POINT inside the
+                ! !$omp parallel do in grow_adaptive_neighborhoods, then summed across
+                ! all points/threads -- so these two numbers are aggregate CPU-time
+                ! (like "user" time), not wall-clock, and will sum to roughly
+                ! (wall-clock growth time) x (thread count). Only their RATIO to each
+                ! other is meaningful for "which sub-step dominates growth"; don't
+                ! compare them directly to prof_growth (wall-clock) above.
+                block
+                    real(real64) :: prof_growth_subtotal
+                    prof_growth_subtotal = prof_growth_query + prof_growth_covdsyev
+                    print '(A,F10.3,A,F5.1,A)', "    kd_knn_query+sort (CPU-time):  ", prof_growth_query,    "s (", 100.0_real64*prof_growth_query/prof_growth_subtotal,    "% of growth CPU-time)"
+                    print '(A,F10.3,A,F5.1,A)', "    cov+dsyev+stability (CPU-time):", prof_growth_covdsyev, "s (", 100.0_real64*prof_growth_covdsyev/prof_growth_subtotal, "% of growth CPU-time)"
+                end block
+            end if
+            print '(A,F10.3,A,F5.1,A)', "  Steps 4-5b  atlas:      ", prof_atlas,     "s (", 100.0_real64*prof_atlas/prof_total,     "%)"
+            print '(A,F10.3,A,F5.1,A)', "  Step  6     svd:        ", prof_svd,       "s (", 100.0_real64*prof_svd/prof_total,       "%)"
+            print '(A,F10.3,A,F5.1,A)', "  Steps 6.5-9 intersect:  ", prof_intersect, "s (", 100.0_real64*prof_intersect/prof_total, "%)"
+            print '(A,F10.3,A,F5.1,A)', "  Step  10    stitch:     ", prof_stitch,    "s (", 100.0_real64*prof_stitch/prof_total,    "%)"
+            print '(A,F10.3,A,F5.1,A)', "  skeleton/MST (x2):      ", prof_skeleton,  "s (", 100.0_real64*prof_skeleton/prof_total,  "%)"
+            print '(A,F10.3,A)',        "  TOTAL:                  ", prof_total, "s"
+        end if
 
     end subroutine lomanle_compute
 

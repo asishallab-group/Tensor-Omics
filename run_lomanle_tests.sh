@@ -1,10 +1,17 @@
 #!/bin/bash
 
 # --- 1. Compilation ---
-./build.sh
+# TOX_MAX_PERFORMANCE=1 turns on the "optimization" feature in fpm.toml
+# (-O3 -march=native -fopenmp -funroll-loops -ftree-vectorize) -- plain
+# ./build.sh does NOT apply these by default, so without it the OpenMP
+# parallel loops in lomanle.F90 silently run single-threaded.
+TOX_MAX_PERFORMANCE=1 ./build.sh
 echo "Compiling test_lomanle with LAPACK support..."
-MOD_DIR=$(dirname "$(find build -name 'lomanle_mod.mod' | head -1)")
-gfortran -O2 -I "$MOD_DIR" -o build/test_lomanle \
+# Picks the most recently built lomanle_mod.mod: with more than one
+# build/gfortran_*/ profile directory around (e.g. a previous non-MAX_PERFORMANCE
+# build left over), `find | head -1` can silently grab a stale one.
+MOD_DIR=$(dirname "$(find build -name 'lomanle_mod.mod' -exec ls -t {} + | head -1)")
+gfortran -fopenmp -O2 -I "$MOD_DIR" -o build/test_lomanle \
     test_aux/test_lomanle.f90 \
     build/libtensor-omics.so \
     -Lexternal -lloess-netlib -lloess-netlib-drotg -llapack -lblas
@@ -57,7 +64,7 @@ process_file() {
                                     echo "Parameters: k_min=$k, manifold_dim=$m_dim, gap_threshold=$g_thresh, o_max=$o_max, o_min=$o_min, stability=$stability, scale_factor=$scale_factor, max_iter=$max_iter, conv_tol=$conv_tol, ambient_dim=$ambient_dim"
 
                                     # Execute Fortran with the 11 arguments
-                                    ./build/test_lomanle "$f" "$k" "$m_dim" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol" "$ambient_dim"
+                                    time ./build/test_lomanle "$f" "$k" "$m_dim" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol" "$ambient_dim"
 
                                     if [ $? -ne 0 ]; then
                                         echo "Error during Fortran execution."
