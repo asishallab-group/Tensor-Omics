@@ -158,12 +158,12 @@ point_in_anchor(point, anchor)
 
 Then we define an edge between two anchors when they share at least one point.
 
-We then create CSR structures:
+We then create Compressed Sparse Row (CSR) structures:
 
 * point → edges;
 * edge → points.
 
-Finally we run BFS to group the connected overlap regions.
+Finally we run Breadth First Search (BFS) to group the connected overlap regions.
 
 Computationally, that part is well thought out: CSR avoids scanning every edge for every point.
 
