@@ -30,7 +30,7 @@ _lib.read_expression_vectors_tsv_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
+    np.ctypeslib.ndpointer(ndim=1),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -89,7 +89,7 @@ def read_expression_vectors_tsv(
         gene_col,
         value_cols,
         start_row,
-        delimiter=None,
+        delimiter='\t',
 ):
     r"""Read expression vectors from csv/tsv files
 
@@ -109,8 +109,9 @@ def read_expression_vectors_tsv(
         Indicies of columns containing values
     start_row : int
         Row in the expression vectors to start in
-    delimiter : str, optional
-        optional delimiter, default is tab
+    delimiter : str, optional, default '\t'
+        optional delimiter
+        The default value is `char(9)`.
 
     Returns
     -------
@@ -150,8 +151,7 @@ def read_expression_vectors_tsv(
         raise TypeError(f"'value_cols' must be an array of np.int32: {error}") from None
     if value_cols.ndim != 1:
         raise ValueError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}")
-    if delimiter is not None:
-        delimiter = np.array([str(delimiter).encode()], dtype="S1")
+    delimiter = np.array([str(delimiter).encode()], dtype="S1")
 
     # what the inputs already say, rather than asking for it again
     file_list_strlen = file_list.itemsize

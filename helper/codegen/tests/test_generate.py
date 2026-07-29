@@ -10,18 +10,41 @@ from pathlib import Path
 import pytest
 
 from codegen import cli
-from codegen.config import Paths
+from codegen.config import CONVENTIONS, Paths
+from codegen.diagnostics import DiagnosticBag
+from codegen.frontend.ford_frontend import FordFrontend
 from codegen.generate import generate, generate_and_write
 
 from conftest import REPO_ROOT
 
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 #: the real tox_errors lives here, so a full generate can build the error module
-REAL_SRC = Path("src/tox")
+# The whole source tree: a DM_DEFAULT may reference a parameter from another package
+# (max_angle's default is f42_utils's PI), and constant resolution only sees the modules
+# that are parsed. The generator is always run on the full tree, so these end-to-end tests
+# are too. Parsing it per test is slow, so the `real_project` fixture parses it once and the
+# tests reuse it through generate(parsed=...); only the CLI tests, which go through argv,
+# parse for themselves.
+REAL_SRC = Path("src")
 
 
 def paths(root: Path, src: Path = FIXTURE_SRC) -> Paths:
     return Paths(root=root, src_dir=src)
+
+
+@pytest.fixture(scope="module")
+def real_project():
+    """Parse the whole real source once, for the tests that generate from it.
+
+    Ford is the one slow stage, and the rest of the pipeline is idempotent on the parsed
+    project (roles are re-derived, not accumulated), so every generate() test can pass this
+    in as `parsed=` instead of re-running Ford. Only the CLI tests, which drive argv, parse
+    for themselves.
+    """
+    bag = DiagnosticBag()
+    parsed = FordFrontend(paths(REPO_ROOT, REAL_SRC), bag, CONVENTIONS).parse()
+    assert bag.errors == (), bag.render()
+    return parsed
 
 
 class TestGenerate:
@@ -32,39 +55,38 @@ class TestGenerate:
         assert not result.ok
         assert any("tox_errors" in e.message for e in result.diagnostics.errors)
 
-    def test_a_source_tree_with_tox_errors_generates_cleanly(self):
-        # src/tox has tox_errors but no C-interface tags: scaffolding only, no errors
-        result = generate(paths(REPO_ROOT, REAL_SRC))
+    def test_a_source_tree_with_tox_errors_generates_cleanly(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
 
         assert result.ok, result.diagnostics.render()
 
-    def test_every_target_is_produced(self):
-        result = generate(paths(REPO_ROOT, REAL_SRC))
+    def test_every_target_is_produced(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
 
         suffixes = {file.path.suffix for file in result.files}
         assert {".py", ".h", ".R"} <= suffixes
 
-    def test_the_error_module_is_generated_for_each_language(self):
-        result = generate(paths(REPO_ROOT, REAL_SRC))
+    def test_the_error_module_is_generated_for_each_language(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
 
         names = {file.path.name for file in result.files}
         assert "error_handling.py" in names
         assert "error_handling.R" in names
 
-    def test_a_single_target_produces_only_that_target(self):
-        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",))
+    def test_a_single_target_produces_only_that_target(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
 
         suffixes = {file.path.suffix for file in result.files}
         assert suffixes == {".py"}
 
-    def test_auto_output_from_is_generated_not_skipped(self):
-        # fx_cluster's expert twin has n_work via DM_OUTPUT_FROM(AUTO); it is now generated
-        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",))
+    def test_auto_output_from_is_generated_not_skipped(self, real_project):
+        # every DM_OUTPUT_FROM(AUTO) in the tree resolves, so none is skipped with a warning
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
 
         assert not any("DM_OUTPUT_FROM" in w.message for w in result.diagnostics.warnings)
 
-    def test_files_are_not_written_by_generate(self, isolated_repo):
-        result = generate(paths(isolated_repo, REAL_SRC), targets=("python",))
+    def test_files_are_not_written_by_generate(self, isolated_repo, real_project):
+        result = generate(paths(isolated_repo, REAL_SRC), targets=("python",), parsed=real_project)
 
         # generate() builds content only; nothing reaches disk
         assert not (isolated_repo / "python").exists()
@@ -79,29 +101,35 @@ class TestGenerate:
 
 
 class TestGenerateAndWrite:
-    def test_it_writes_the_files(self, isolated_repo):
-        result = generate_and_write(paths(isolated_repo, REAL_SRC), targets=("python",))
+    def test_it_writes_the_files(self, isolated_repo, real_project):
+        result = generate_and_write(
+            paths(isolated_repo, REAL_SRC), targets=("python",), parsed=real_project
+        )
 
         assert result.ok
         assert (isolated_repo / "python" / "tensor_omics" / "error_handling.py").is_file()
 
-    def test_clean_removes_a_stale_file(self, isolated_repo):
+    def test_clean_removes_a_stale_file(self, isolated_repo, real_project):
         out = isolated_repo / "python" / "tensor_omics"
         out.mkdir(parents=True)
         stale = out / "was_exported_once.py"
         stale.write_text("# a wrapper for a procedure no longer exported")
 
-        generate_and_write(paths(isolated_repo, REAL_SRC), targets=("python",), clean=True)
+        generate_and_write(
+            paths(isolated_repo, REAL_SRC), targets=("python",), clean=True, parsed=real_project
+        )
 
         assert not stale.exists()
 
-    def test_no_clean_keeps_a_stale_file(self, isolated_repo):
+    def test_no_clean_keeps_a_stale_file(self, isolated_repo, real_project):
         out = isolated_repo / "python" / "tensor_omics"
         out.mkdir(parents=True)
         stale = out / "leftover.py"
         stale.write_text("# left alone")
 
-        generate_and_write(paths(isolated_repo, REAL_SRC), targets=("python",), clean=False)
+        generate_and_write(
+            paths(isolated_repo, REAL_SRC), targets=("python",), clean=False, parsed=real_project
+        )
 
         assert stale.exists()
 

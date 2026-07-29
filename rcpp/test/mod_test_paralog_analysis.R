@@ -55,7 +55,6 @@ test_paralog_functions <- function() {
     genes = paralogs,
     filtered_paralogs_mask = as.integer(dosage_mask[, 1]),
     max_subset_size = work_info$max_subset_size,
-    n_paralog_subsets = work_info$work_array_size,
     gain_gamma = 0.1,
     max_angle = pi
   )
@@ -64,6 +63,19 @@ test_paralog_functions <- function() {
   assert_true(dosage_result$n_results == 3L)
   dosage_found <- dosage_result$work_arr_paralog_subsets[1, seq_len(dosage_result$n_results)]
   assert_true(all(dosage_found == c(6L, 3L, 5L)))
+
+  # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+  # feedback): the same result comes back at once, not after a runaway subset-size loop
+  capped <- detect_dosage_effect(
+    ancestor = ancestor,
+    genes = paralogs,
+    filtered_paralogs_mask = as.integer(dosage_mask[, 1]),
+    max_subset_size = 2000000000L,
+    gain_gamma = 0.1,
+    max_angle = pi
+  )
+  assert_true(capped$n_results == 3L)
+  assert_true(all(capped$work_arr_paralog_subsets[1, seq_len(capped$n_results)] == c(6L, 3L, 5L)))
 
   # Testing subfunctionalization detection
   norms <- sqrt(colSums(paralogs ^ 2))
@@ -78,7 +90,6 @@ test_paralog_functions <- function() {
     rdi_threshold = 0.5,
     filtered_paralogs_mask = as.integer(subfunc_mask[, 1]),
     max_subset_size = subfunc_info$max_subset_size,
-    n_paralog_subsets = subfunc_info$work_array_size,
     paralog_norms = norms,
     sorted_paralog_norms_perm = sorted_perm
   )

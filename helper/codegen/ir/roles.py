@@ -97,6 +97,26 @@ class OutputFromPlan:
     #: AUTO -> the languages call it; JUST_INFO -> the doc only tells the caller to
     is_automatic: bool
 
+    @property
+    def inout_feedback(self) -> tuple[ProducerInput, ...]:
+        """The producer inputs it refines in place, that a consumer argument supplied.
+
+        An `intent(inout)` producer input is returned alongside the annotated output with a
+        possibly different value -- `calc_work_arr_paralog_subsets_size` caps the
+        `max_subset_size` it is handed to what actually fits. After the AUTO call the
+        consumer must adopt that returned value, not the raw one it passed in, or it works
+        with a stale figure. Constants are never fed back (nothing supplied them).
+        """
+        fed_back = []
+        for supply in self.inputs:
+            if supply.argument is None:
+                continue
+            producer_input = self.producer.argument(supply.name)
+            intent = producer_input.intent if producer_input else None
+            if intent and intent.is_input and intent.is_output:
+                fed_back.append(supply)
+        return tuple(fed_back)
+
 
 @dataclass
 class ArgumentRoles:
@@ -273,6 +293,18 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
+        if not directive.is_automatic:
+            # JUST_INFO is documentation only: the caller still supplies the argument, and
+            # nothing calls the producer. So the consumer need not be able to feed the
+            # producer's inputs -- a pointer to a producer whose inputs live elsewhere (a
+            # filter that needs data the consumer never sees) is exactly what JUST_INFO is
+            # for. Record the relation, resolving no inputs; the producer existing, being
+            # exported, and owning the named output (checked above) is all that must hold.
+            argument.roles.computed_from = OutputFromPlan(
+                producer=producer, output=output, inputs=(), is_automatic=False,
+            )
+            continue
+
         renames = _producer_input_table(argument, consumer, producer,
                                         diagnostics, conventions)
         if renames is None:
@@ -284,6 +316,12 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             if producer_input is output or not producer_input.intent.is_input:
                 continue
             if producer_input.name.lower() == "ierr":
+                continue
+            if producer_input.roles and producer_input.roles.is_derived:
+                # the producer's own wrapper derives this input (an extent read off one of
+                # its array arguments, a shape, a mask count, or a nested producer) and
+                # drops it from its signature, so the call must not -- and need not --
+                # supply it: the producer recomputes it from the array inputs it is passed
                 continue
             supplier = renames.get(producer_input.name.lower(), producer_input.name)
             match = consumer.argument(supplier)

@@ -87,6 +87,9 @@ class RWrapperEmitter:
                 suffix = "" if not calls else f"_{len(calls)}"
                 calls[key] = f".{producer}_result{suffix}"
                 writer.line(f"{calls[key]} <- {producer}({call_args})")
+                for supply in plan.inout_feedback:
+                    # the producer refined a value we handed it (e.g. capped it); adopt it
+                    writer.line(f"{supply.argument} <- {calls[key]}${supply.name}")
             writer.line(f"{argument.name} <- {calls[key]}${plan.output.name}")
             wrote = True
         if wrote:

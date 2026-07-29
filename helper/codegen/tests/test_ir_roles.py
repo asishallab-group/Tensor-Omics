@@ -531,6 +531,20 @@ class TestOutputFrom:
         assert any("n_absent" in e.message and "no argument of the same name" in e.message
                    for e in bag.errors)
 
+    def test_just_info_does_not_require_the_consumer_to_feed_the_producer(self, bag):
+        # a JUST_INFO pointer is documentation only: nothing is called, so the consumer
+        # need not be able to supply the producer's inputs (the filter-mask case, where the
+        # producer needs data the consumer never sees). AUTO in the same shape errors.
+        project = self._consumer(directive_mode="JUST_INFO", producer_inputs=("n_absent",))
+
+        analyse_project(project, bag)
+
+        assert bag.errors == ()
+        roles = project.procedure("m", "uses_work").argument("n_work").roles
+        assert roles.computed_from is not None
+        assert roles.computed_from.inputs == ()
+        assert not roles.is_computed
+
     def test_a_producer_in_another_module_is_resolved(self, bag):
         from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
 
@@ -552,6 +566,38 @@ class TestOutputFrom:
         assert bag.errors == ()
         assert plan is not None
         assert plan.producer.module.name == "other"
+
+    def test_an_inout_producer_input_is_fed_back(self, bag):
+        # the producer refines an input in place (caps it), so after the AUTO call the
+        # consumer must adopt the returned value, not the raw one it passed in
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(output_from=OutputFrom("n_work", "sizer", "m",
+                                                         OutputFromMode.AUTO)),
+        )
+        consumer = b.procedure("uses_work", b.integer("cap"), work, b.ierr())
+        producer = b.procedure(
+            "sizer", b.integer("cap", Intent.INOUT), b.integer("n_work", Intent.OUT), b.ierr()
+        )
+        project = b.project(b.module("m", consumer, producer))
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert bag.errors == ()
+        # cap is passed in AND fed back; a plain input is not
+        assert [s.name for s in plan.inputs] == ["cap"]
+        assert [(s.name, s.argument) for s in plan.inout_feedback] == [("cap", "cap")]
+
+    def test_a_plain_input_is_not_fed_back(self, bag):
+        project = self._consumer(producer_inputs=("n",))
+
+        analyse_project(project, bag)
+
+        plan = project.procedure("m", "uses_work").argument("n_work").roles.computed_from
+        assert plan.inout_feedback == ()
 
     def test_a_table_supplies_a_renamed_producer_input(self, bag):
         project = self._consumer(

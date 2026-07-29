@@ -74,11 +74,12 @@ contains
             !! Row in the expression vectors to start in
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=1, kind=c_char), dimension(1), intent(in), optional :: delimiter
-            !! optional delimiter, default is tab
+        character(len=1, kind=c_char), dimension(1), intent(in), target :: delimiter
+            !! optional delimiter
+            !! The default value is `char(9)`.
         character(len=:), allocatable, dimension(:) :: file_list_f
         character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=1), allocatable :: delimiter_f
+        character(len=1) :: delimiter_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -96,19 +97,18 @@ contains
         M_CHECK_ARRAY_NON_NULL(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_expression_vectors_elements_dim_1 * n_expression_vectors_elements_dim_2)
         M_CHECK_ARRAY_NON_NULL(value_cols, n_value_cols_elements)
+        M_CHECK_ARRAY_NON_NULL(delimiter, 1)
 
         call c_char_2d_as_string(file_list, file_list_f, ierr)
         if (is_err(ierr)) return
         call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
         if (is_err(ierr)) return
-        if (present(delimiter)) then
-            block
-                character(len=:), allocatable :: converted
-                call c_char_1d_as_string(delimiter, converted, ierr)
-                if (is_err(ierr)) return
-                delimiter_f = converted
-            end block
-        end if
+        block
+            character(len=:), allocatable :: converted
+            call c_char_1d_as_string(delimiter, converted, ierr)
+            if (is_err(ierr)) return
+            delimiter_f = converted
+        end block
 
         call read_expression_vectors_tsv(&
             file_list = file_list_f,&

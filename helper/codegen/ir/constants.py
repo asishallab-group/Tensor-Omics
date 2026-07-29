@@ -20,6 +20,7 @@ as an error naming the expression rather than raising NameError from inside `eva
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from typing import Callable, Mapping
@@ -77,8 +78,23 @@ def _real(*args):
     return float(_drop_kinds(args)[0])
 
 
-#: The intrinsics a default value may use. Deliberately small: a default that needs more
-#: than this is a design smell, per the discussion in issue #131.
+def _fortran_modulo(a, b):
+    # modulo(a, b) takes the sign of the divisor (Python's % does too); mod() takes a's.
+    if b == 0:
+        raise ConstantError("modulo by zero")
+    return a % b
+
+
+def _sign(a, b):
+    # sign(a, b) = |a| with the sign of b; preserves a's int/float type. b == 0 -> +|a|.
+    return abs(a) if b >= 0 else -abs(a)
+
+
+#: The intrinsics a default value may use. The set is generous on purpose (FES, 2026-07-29):
+#: any elemental numeric/character intrinsic that has a well-defined constant value is fair
+#: game, so a default like PI = 4*atan(1) evaluates rather than being rejected. Type-model
+#: inquiries (huge/tiny/epsilon) are intentionally left out: their value depends on the kind
+#: of the argument, which this evaluator does not track, so they would resolve unsoundly.
 INTRINSICS: Mapping[str, Callable] = {
     "achar": lambda i, *rest: chr(int(i)),
     "char": lambda i, *rest: chr(int(i)),
@@ -88,14 +104,37 @@ INTRINSICS: Mapping[str, Callable] = {
     "real": _real,
     "dble": lambda x: float(x),
     "nint": lambda x, *rest: int(round(float(x))),
+    "floor": lambda x, *rest: math.floor(float(x)),
+    "ceiling": lambda x, *rest: math.ceil(float(x)),
+    "aint": lambda x, *rest: float(math.trunc(float(x))),
+    "anint": lambda x, *rest: float(round(float(x))),
     "abs": abs,
     "max": max,
     "min": min,
     "mod": _fortran_mod,
+    "modulo": _fortran_modulo,
+    "sign": _sign,
     "len": len,
     "len_trim": lambda s: len(s.rstrip()),
     "trim": lambda s: s.rstrip(),
-    "sqrt": lambda x: float(x) ** 0.5,
+    "sqrt": lambda x: math.sqrt(float(x)),
+    "exp": lambda x: math.exp(float(x)),
+    "log": lambda x: math.log(float(x)),
+    "log10": lambda x: math.log10(float(x)),
+    "hypot": lambda x, y: math.hypot(float(x), float(y)),
+    "sin": lambda x: math.sin(float(x)),
+    "cos": lambda x: math.cos(float(x)),
+    "tan": lambda x: math.tan(float(x)),
+    "asin": lambda x: math.asin(float(x)),
+    "acos": lambda x: math.acos(float(x)),
+    "atan": lambda x: math.atan(float(x)),
+    "atan2": lambda y, x: math.atan2(float(y), float(x)),
+    "sinh": lambda x: math.sinh(float(x)),
+    "cosh": lambda x: math.cosh(float(x)),
+    "tanh": lambda x: math.tanh(float(x)),
+    "asinh": lambda x: math.asinh(float(x)),
+    "acosh": lambda x: math.acosh(float(x)),
+    "atanh": lambda x: math.atanh(float(x)),
 }
 
 

@@ -56,8 +56,8 @@ _lib.detect_dosage_effect_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
-    nullable(ctypes.POINTER(ctypes.c_double)),
-    nullable(ctypes.POINTER(ctypes.c_double)),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -297,9 +297,8 @@ def detect_dosage_effect(
         genes,
         filtered_paralogs_mask,
         max_subset_size,
-        n_paralog_subsets,
-        max_angle=None,
-        gain_gamma=None,
+        max_angle=3.141592653589793,
+        gain_gamma=0.1,
 ):
     r"""Identifies subsets of paralogs with small angle to the `ancestor` (max_angle) and sum to a magnitude significantly exceeding `norm(ancestor)` (gain)
 
@@ -310,15 +309,19 @@ def detect_dosage_effect(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with genes' indices kept by pattern set to 1, else 0.
+        It is recommended to compute this argument from the `masks` output produced by [[tox_paralog_analysis(module):filter_paralogs_by_pattern_dosage_effect]].
     max_subset_size : int
-        maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    n_paralog_subsets : int
-        number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    max_angle : float, optional
-        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned, default is Pi
-    gain_gamma : float, optional
-        positive magnitude gain for dosage effect, default 0.1
+        maximum subset size of checked gene subsets. Too large a value is capped to the
+        maximum valid size. The interfaces cap it automatically while sizing the work
+        array; a Fortran caller caps it by calling
+        [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+    max_angle : float, optional, default 3.141592653589793
+        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+        The default value is `4.0_real64*atan(1.0_real64)`.
+    gain_gamma : float, optional, default 0.1
+        positive magnitude gain for dosage effect
+        The default value is `0.1_real64`.
 
     Returns
     -------
@@ -367,6 +370,11 @@ def detect_dosage_effect(
     n_dims = ancestor.shape[0]
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
+    n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
+
     # Fortran cannot check that shared extents agree; this can
     if genes.shape[0] != n_dims:
         raise ValueError(f"'genes' has {genes.shape[0]} along axis 0, but "
@@ -394,8 +402,8 @@ def detect_dosage_effect(
         tmp_active_mask,
         tmp_paralog_vector,
         ctypes.byref(ierr),
-        None if max_angle is None else ctypes.byref(ctypes.c_double(max_angle)),
-        None if gain_gamma is None else ctypes.byref(ctypes.c_double(gain_gamma)),
+        ctypes.byref(ctypes.c_double(max_angle)),
+        ctypes.byref(ctypes.c_double(gain_gamma)),
     )
 
     check_err_code(ierr.value, _DETECT_DOSAGE_EFFECT_ARGUMENTS)
@@ -411,7 +419,6 @@ def detect_subfunctionalization(
         rdi_threshold,
         filtered_paralogs_mask,
         max_subset_size,
-        n_paralog_subsets,
         paralog_norms,
         sorted_paralog_norms_perm,
 ):
@@ -426,11 +433,13 @@ def detect_subfunctionalization(
     rdi_threshold : float
         max allowed residual distance from `ancestor`
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with genes' indices kept by pattern set to 1, else 0.
+        It is recommended to compute this argument from the `masks` output produced by [[tox_paralog_analysis(module):filter_paralogs_by_pattern_subfunctionalization]].
     max_subset_size : int
-        maximum subset size of checked gene subsets. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-    n_paralog_subsets : int
-        number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+        maximum subset size of checked gene subsets. Too large a value is capped to the
+        maximum valid size. The interfaces cap it automatically while sizing the work
+        array; a Fortran caller caps it by calling
+        [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
         needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
@@ -494,6 +503,11 @@ def detect_subfunctionalization(
     n_genes = genes.shape[1]
     n_dims = ancestor.shape[0]
     n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
+    n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
     # Fortran cannot check that shared extents agree; this can
     if paralog_norms.shape[0] != n_genes:

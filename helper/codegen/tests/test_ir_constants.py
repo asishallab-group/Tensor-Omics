@@ -161,9 +161,11 @@ class TestIntrinsics:
         assert evaluate("achar(max(9, 8))") == "\t"
 
     def test_a_non_whitelisted_intrinsic_is_rejected(self, evaluate):
-        # the old evaluator turned acos(x) into np.arcnp.cos(x) via chained replaces
-        with pytest.raises(ConstantError, match="'acos' is not an intrinsic"):
-            evaluate("acos(1.0_real64)")
+        # the elemental math intrinsics are whitelisted (acos et al.), but a special
+        # function like the Bessel functions is not -- an unknown name is reported, not
+        # silently turned into garbage the way the old str.replace evaluator did
+        with pytest.raises(ConstantError, match="'bessel_j0' is not an intrinsic"):
+            evaluate("bessel_j0(1.0_real64)")
 
     def test_the_error_lists_what_is_available(self, evaluate):
         with pytest.raises(ConstantError, match="achar"):
@@ -324,3 +326,34 @@ class TestRealWorldDefaults:
     )
     def test_defaults_used_on_131_code_gen(self, evaluate, expression, expected):
         assert evaluate(expression) == pytest.approx(expected)
+
+
+class TestMathIntrinsics:
+    """The elemental numeric intrinsics (added 2026-07-29 so PI-style defaults evaluate)."""
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [
+            # PI is a module parameter defined this way in f42_utils; evaluating its own
+            # initialiser is what lets DM_DEFAULT(PI) resolve without injecting a value
+            ("4.0_real64*atan(1.0_real64)", math.pi),
+            ("atan(1.0_real64)", math.pi / 4),
+            ("acos(-1.0_real64)", math.pi),
+            ("2.0*asin(1.0)", math.pi),
+            ("exp(0.0)", 1.0),
+            ("log(1.0)", 0.0),
+            ("sqrt(2.0)", math.sqrt(2)),
+            ("hypot(3.0, 4.0)", 5.0),
+            ("sin(0.0)", 0.0),
+            ("cos(0.0)", 1.0),
+            ("tanh(0.0)", 0.0),
+        ],
+    )
+    def test_elemental_math(self, evaluate, expression, expected):
+        assert evaluate(expression) == pytest.approx(expected)
+
+    def test_a_type_model_inquiry_is_still_not_evaluable(self, evaluate):
+        # huge/tiny/epsilon depend on the kind of the argument, which the evaluator does
+        # not track, so they are deliberately left out and must be reported, not guessed
+        with pytest.raises(ConstantError, match="not an intrinsic"):
+            evaluate("huge(1_int32)")

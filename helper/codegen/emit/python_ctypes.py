@@ -651,6 +651,9 @@ class PythonEmitter:
                 calls[key] = f"_{producer}_result" if len(calls) == 0 else \
                     f"_{producer}_result_{len(calls)}"
                 lines.line(f"{calls[key]} = {producer}({call_args})")
+                for supply in plan.inout_feedback:
+                    # the producer refined a value we handed it (e.g. capped it); adopt it
+                    lines.line(f'{supply.argument} = {calls[key]}["{supply.name}"]')
             lines.line(f'{argument.name} = {calls[key]}["{plan.output.name}"]')
         if lines:
             writer.line("# work out what other procedures must supply, per DM_OUTPUT_FROM")

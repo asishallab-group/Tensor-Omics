@@ -82,12 +82,24 @@ def test_paralog_functions():
         genes=paralogs,
         filtered_paralogs_mask=dosage_mask,
         max_subset_size=actual_max_subset_size,
-        n_paralog_subsets=work_array_size,
         gain_gamma=0.1,
         max_angle=math.pi
     )
     assert (dosage_result['work_arr_paralog_subsets'] == [[6, 3, 5]]).all(), "Dosage Effect results should be [[6, 3, 5]], got " + str(dosage_result['work_arr_paralog_subsets'])
     assert dosage_result['n_results'] == 3, "Expected Dosage Effect n_results to be 3, got " + str(dosage_result['n_results'])
+
+    # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+    # feedback): the same result comes back at once, not after a runaway subset-size loop
+    capped = detect_dosage_effect(
+        ancestor=ancestor,
+        genes=paralogs,
+        filtered_paralogs_mask=dosage_mask,
+        max_subset_size=2_000_000_000,
+        gain_gamma=0.1,
+        max_angle=math.pi
+    )
+    assert capped['n_results'] == 3, "Over-large max_subset_size should be capped, got n_results " + str(capped['n_results'])
+    assert (capped['work_arr_paralog_subsets'] == [[6, 3, 5]]).all(), "Capped run should match, got " + str(capped['work_arr_paralog_subsets'])
 
     # Testing Subfunctionalization Detection
 
@@ -104,7 +116,6 @@ def test_paralog_functions():
         rdi_threshold=0.5,
         filtered_paralogs_mask=subfunc_mask,
         max_subset_size=subfunc_max_subset_size,
-        n_paralog_subsets=subfunc_work_size,
         paralog_norms=norms,
         sorted_paralog_norms_perm=sorted_perm
     )

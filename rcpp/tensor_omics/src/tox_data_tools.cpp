@@ -14,15 +14,7 @@ extern "C" {
 }
 
 // [[Rcpp::export(.read_expression_vectors_tsv_rcpp)]]
-List read_expression_vectors_tsv_rcpp(CharacterVector file_list, CharacterVector gene_ids, NumericVector expression_vectors, int n_header_rows, int gene_col, IntegerVector value_cols, int start_row, Nullable<CharacterVector> delimiter = R_NilValue) {
-    // optionals: a null pointer and size 0 when the caller omits them
-    int delimiter_size = 0;
-    CharacterVector delimiter_val;
-    if (delimiter.isNotNull()) {
-        delimiter_val = delimiter.get();
-        delimiter_size = delimiter_val.size();
-    }
-
+List read_expression_vectors_tsv_rcpp(CharacterVector file_list, CharacterVector gene_ids, NumericVector expression_vectors, int n_header_rows, int gene_col, IntegerVector value_cols, int start_row, CharacterVector delimiter) {
     // derived from the inputs, not asked of the caller
     int file_list_strlen = tox::max_strlen(file_list);
     int n_file_list_elements = (int) file_list.size();
@@ -38,7 +30,7 @@ List read_expression_vectors_tsv_rcpp(CharacterVector file_list, CharacterVector
     // convert what C cannot take directly
     tox::CharBuffer file_list_c(file_list, file_list_strlen);
     tox::CharBuffer gene_ids_c(gene_ids, gene_ids_strlen);
-    tox::CharBuffer delimiter_c(delimiter_val, 1);
+    tox::CharBuffer delimiter_c(delimiter, 1);
 
     // outputs and work space
     int ierr = 0;
@@ -59,7 +51,7 @@ List read_expression_vectors_tsv_rcpp(CharacterVector file_list, CharacterVector
         &n_value_cols_elements,
         &start_row,
         &ierr,
-        delimiter.isNotNull() ? delimiter_c.data() : nullptr
+        delimiter_c.data()
     );
 
     return List::create(

@@ -68,7 +68,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         character(len=1), intent(in), optional :: delimiter
-            !! optional delimiter, default is tab
+            !! optional delimiter
+            !! DM_DEFAULT(char(9))
 
         integer(int32) :: i, j, k, unit, ios, idx, n_genes, expected_idx, n_value_cols
         integer(int32) :: current_sample, n_columns_in_file, n_valid_cols

@@ -74,25 +74,7 @@ List detect_neofunctionalization_rcpp(NumericVector ancestors, NumericVector gen
 }
 
 // [[Rcpp::export(.detect_dosage_effect_rcpp)]]
-List detect_dosage_effect_rcpp(NumericVector ancestor, NumericVector genes, IntegerVector filtered_paralogs_mask, int max_subset_size, int n_paralog_subsets, Nullable<NumericVector> max_angle = R_NilValue, Nullable<NumericVector> gain_gamma = R_NilValue) {
-    // optionals: a null pointer and size 0 when the caller omits them
-    const double* max_angle_p = nullptr;
-    int max_angle_size = 0;
-    NumericVector max_angle_val;
-    if (max_angle.isNotNull()) {
-        max_angle_val = max_angle.get();
-        max_angle_p = max_angle_val.begin();
-        max_angle_size = max_angle_val.size();
-    }
-    const double* gain_gamma_p = nullptr;
-    int gain_gamma_size = 0;
-    NumericVector gain_gamma_val;
-    if (gain_gamma.isNotNull()) {
-        gain_gamma_val = gain_gamma.get();
-        gain_gamma_p = gain_gamma_val.begin();
-        gain_gamma_size = gain_gamma_val.size();
-    }
-
+List detect_dosage_effect_rcpp(NumericVector ancestor, NumericVector genes, IntegerVector filtered_paralogs_mask, int max_subset_size, int n_paralog_subsets, double max_angle, double gain_gamma) {
     // derived from the inputs, not asked of the caller
     int n_genes = (int) IntegerVector(genes.attr("dim"))[1];
     int n_dims = (int) ancestor.size();
@@ -120,8 +102,8 @@ List detect_dosage_effect_rcpp(NumericVector ancestor, NumericVector genes, Inte
         tmp_active_mask.data(),
         tmp_paralog_vector.data(),
         &ierr,
-        max_angle_p,
-        gain_gamma_p
+        &max_angle,
+        &gain_gamma
     );
 
     return List::create(

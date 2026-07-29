@@ -57,15 +57,22 @@ def generate(
     targets: tuple[str, ...] = ("c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
+    parsed: ParsedProject | None = None,
 ) -> Result:
     """Build the interface files, without writing them.
 
     Returns them in `Result.files` so a caller can inspect or diff before committing to
     disk. Diagnostics are collected throughout; `Result.ok` is false if any are errors,
     and no files should be written in that case.
+
+    `parsed` lets a caller supply an already-parsed project and skip the Ford run -- the
+    one slow, side-effect-free stage. The rest of the pipeline is idempotent on it, so a
+    test that exercises many generate options over the same real source can parse it once
+    and reuse it. When omitted, the source at `paths` is parsed as usual.
     """
     diagnostics = DiagnosticBag()
-    parsed = FordFrontend(paths, diagnostics, conventions).parse()
+    if parsed is None:
+        parsed = FordFrontend(paths, diagnostics, conventions).parse()
 
     analyse_project(parsed.project, diagnostics, conventions)
     validate_project(parsed.project, diagnostics, conventions)
@@ -92,13 +99,15 @@ def generate_and_write(
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
     clean: bool = True,
+    parsed: ParsedProject | None = None,
 ) -> Result:
     """Generate and, if there are no errors, write the files to disk.
 
     `clean` removes each target's output directory first, so a routine that stops being
-    exported does not leave a stale wrapper behind.
+    exported does not leave a stale wrapper behind. `parsed` is passed through to
+    `generate` to reuse an already-parsed project (see there).
     """
-    result = generate(paths, targets, conventions, library)
+    result = generate(paths, targets, conventions, library, parsed=parsed)
     if not result.ok:
         return result
 

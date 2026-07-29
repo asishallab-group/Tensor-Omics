@@ -9,12 +9,12 @@
 #' @param gene_col a integer scalar. Index of column with gene_ids
 #' @param value_cols a integer vector. Indicies of columns containing values
 #' @param start_row a integer scalar. Row in the expression vectors to start in
-#' @param delimiter a string. optional delimiter, default is tab
+#' @param delimiter a string. optional delimiter
 #' @return Array of expression vectors
 #'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_expression_vectors_tsv}.
 #' @export
-read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter = NULL) {
+read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter = "	") {
     file_list <- .tox_as_character(file_list, "file_list")
     gene_ids <- .tox_as_character(gene_ids, "gene_ids")
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -22,8 +22,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
     gene_col <- .tox_as_integer_scalar(gene_col, "gene_col")
     value_cols <- .tox_as_integer_vector(value_cols, "value_cols")
     start_row <- .tox_as_integer_scalar(start_row, "start_row")
-    if (!is.null(delimiter))
-        delimiter <- .tox_as_character(delimiter, "delimiter")
+    delimiter <- .tox_as_character(delimiter, "delimiter")
     .result <- .read_expression_vectors_tsv_rcpp(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter)
     .arguments <- c("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "ierr", "delimiter")
     .status <- check_err_code(.result$ierr, .arguments)
