@@ -63,7 +63,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Normalize all factors in a single trajectory independently across time
-    !| Input: `trajectory(n_factors, n_timepoints)` for ONE sample/entity
+    !| Input: `trajectory(n_timepoints, n_factors)` for ONE sample/entity
     pure subroutine normalize_single_trajectory(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status)
         integer(int32), intent(in) :: n_factors
             !! Number of factors/variables
