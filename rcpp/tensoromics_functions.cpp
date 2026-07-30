@@ -170,6 +170,13 @@ void detect_outliers_c(
   double* percentile
 );
 
+void tox_normalize_vectors_unit_length_c(
+  double* expression_vectors,
+  int* n_samples,
+  int* n_genes,
+  double* unit_vectors,
+  int* ierr
+);
 void tox_detect_angle_outliers_pipeline_c(
   int* n_samples,
   int* n_genes,
@@ -4693,6 +4700,31 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     Named("quantile") = quantile,
     Named("ierr") = ierr
   );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_normalize_vectors_unit_length_rcpp(
+        Rcpp::NumericMatrix expression_vectors) {
+
+    int n_samples = expression_vectors.nrow();
+    int n_genes   = expression_vectors.ncol();
+
+    Rcpp::NumericMatrix unit_vectors(n_samples, n_genes);
+
+    int ierr = 0;
+
+    tox_normalize_vectors_unit_length_c(
+        expression_vectors.begin(),
+        &n_samples,
+        &n_genes,
+        unit_vectors.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("unit_vectors") = unit_vectors,
+        Rcpp::Named("ierr") = ierr
+    );
 }
 
 // [[Rcpp::export]]

@@ -3593,6 +3593,27 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
   return(result)
 }
 
+#> tox_get_outliers_by_angle:tox_normalize_vectors_unit_length_c: Normalizes expression vectors to unit length
+#' Normalizes expression vectors to unit length
+#'
+#' @param expression_vectors Numeric matrix (n_samples x n_genes).
+#'
+#' @return A list with unit_vectors, ierr.
+#' @export
+tox_normalize_vectors_unit_length <- function(
+    expression_vectors
+) {
+  validate_numeric_matrix(expression_vectors, "expression_vectors")
+
+  result <- tox_normalize_vectors_unit_length_rcpp(
+    expression_vectors
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
 #> tox_get_outliers_by_angle:tox_detect_angle_outliers_pipeline_c: Complete pipeline for angle-based outlier detection
 #' Complete pipeline for angle-based outlier detection
 #'

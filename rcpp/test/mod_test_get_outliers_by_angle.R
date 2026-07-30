@@ -13,6 +13,49 @@ ERR_NO_STABLE_DIRECTION = 401L
 ERR_NO_ANGULAR_VARIATION = 402L
 
 ## ------------------------------------------------------------------
+## 0. Unit-length normalization tests
+## ------------------------------------------------------------------
+
+test_normalize_vectors_unit_length_basic <- function() {
+  n_samples <- 3L
+  n_genes   <- 3L
+
+  expression_vectors <- matrix(c(
+    1.0, 2.0, 2.0,   # Gene 1: norm = 3.0
+    0.0, 1.0, 0.0,   # Gene 2: norm = 1.0
+    1.0, 0.0, 0.0    # Gene 3: norm = 1.0
+  ), nrow = n_samples, ncol = n_genes, byrow = FALSE)
+
+  res <- tox_normalize_vectors_unit_length(expression_vectors)
+
+  assert_equal_int(res$ierr, ERR_OK, "normalize_vectors_unit_length_basic: ierr mismatch")
+
+  unit_vectors <- res$unit_vectors
+  for (i in seq_len(n_genes)) {
+    norm_i <- sqrt(sum(unit_vectors[, i]^2))
+    assert_true(abs(norm_i - 1.0) < EPS,
+               sprintf("normalize_vectors_unit_length_basic: column %d not normalized (norm=%f)", i, norm_i))
+  }
+}
+
+test_normalize_vectors_unit_length_zero_norm <- function() {
+  n_samples <- 3L
+  n_genes   <- 2L
+
+  expression_vectors <- matrix(c(
+    1.0, 2.0, 2.0,   # Gene 1: norm = 3.0
+    0.0, 0.0, 0.0    # Gene 2: ZERO VECTOR
+  ), nrow = n_samples, ncol = n_genes, byrow = FALSE)
+
+  res <- tryCatch({
+    tox_normalize_vectors_unit_length(expression_vectors)
+  }, error = function(e) e)
+
+  assert_true(inherits(res, "error"),
+             "normalize_vectors_unit_length_zero_norm: expected an error for a zero-norm vector")
+}
+
+## ------------------------------------------------------------------
 ## 1. Spherical pipeline tests
 ## ------------------------------------------------------------------
 
