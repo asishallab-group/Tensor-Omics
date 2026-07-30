@@ -542,6 +542,76 @@ There are three cases.
 
 ---
 
+### Potential Stitching Experiment
+
+Identify for all manifolds (spheres) involved in local stitching the noise structure around the manifolds. Noise structure here is information contained in the residuals, i.e. the orthogonals between the manifold and the ambient space vectors. If the manifolds pass each other within their respective noise regions, assume a bi- or multi-furcation and stitch. If not, assume they are separate manifolds that just pass each other close by.
+
+ChatGPT said on this:
+```
+Yes — I think this is a very good stitching criterion.
+
+The key idea is:
+
+> Two local manifolds should be considered connected not merely because their anchor spheres overlap, but because their **estimated uncertainty / noise tubes overlap in a geometrically compatible way**.
+
+For each local chart, you already have:
+
+* tangent subspace,
+* residual vectors in the normal space,
+* hence a local estimate of normal variance.
+
+So instead of a scalar radius, each chart can have a local normal covariance:
+
+[
+\Sigma_{\perp}
+]
+
+which defines an anisotropic tube around the manifold.
+
+Then for two charts (A) and (B):
+
+1. find their closest manifold points;
+2. compute the separation vector;
+3. ask whether that separation is plausible under the combined normal uncertainty of both charts;
+4. only then consider stitching.
+
+A simple version could use Mahalanobis distance with
+
+[
+\Sigma_{\text{combined}}
+========================
+
+\Sigma_{\perp,A}+\Sigma_{\perp,B}
+]
+
+and test whether the chart-to-chart separation lies inside some confidence region.
+
+That would distinguish:
+
+* **true bifurcation / junction**: the two manifolds approach within their respective noise envelopes;
+* **near miss**: Euclidean distance is small, but the gap is larger than the expected residual variation.
+
+I would add one more condition though:
+
+> noise-tube overlap should be necessary, but probably not sufficient.
+
+You would also want some geometric compatibility, such as tangent-angle structure indicating continuation or branching rather than arbitrary crossing.
+
+So something like:
+
+[
+\text{stitch}
+=============
+
+\text{noise-overlap}
+\land
+\text{tangent-compatible}
+]
+
+This feels substantially more principled than “shared sphere points = stitch.”
+```
+
+
 ### Case 1: Point Belongs to Multiple Anchors
 
 If:
