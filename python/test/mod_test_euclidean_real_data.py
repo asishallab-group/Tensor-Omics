@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Real data example for Euclidean distance functions using Python wrapper
-Uses tensoromics_functions.py wrapper functions (mirrors R euclidean_real_data.R)
+Uses tensor_omics.py wrapper functions (mirrors R euclidean_real_data.R)
 """
 
 import numpy as np
@@ -10,7 +10,7 @@ import sys
 import os
 from pathlib import Path
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import euclidean_distance, distance_to_centroid
 from test_helpers import run_all_tests

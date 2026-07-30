@@ -1,13 +1,13 @@
 """
 Comprehensive Python test suite for data integration preprocessing functions in tensoromics.
-Uses tensoromics_functions.py wrapper function (mirrors Fortran test suite)
+Uses tensor_omics.py wrapper function (mirrors Fortran test suite)
 """
 import numpy as np
 import sys
 import os
 from pathlib import Path
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from test_helpers import run_all_tests
 from tensor_omics import euclidean_distance, distance_to_centroid

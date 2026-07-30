@@ -1,6 +1,6 @@
 # =====================
 # Comprehensive R test suite for outlier detection
-# Uses tensoromics_functions.R wrapper functions
+# Uses tensor_omics.R wrapper functions
 # =====================
 
 # Source the main functions

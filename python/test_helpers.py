@@ -1,5 +1,6 @@
 from sys import argv as args, exit
 import numpy as np
+from tensor_omics.error_handling import ToxError
 
 ANSI_START = "\033["
 FG256_START = f"{ANSI_START}38;5;"
@@ -50,7 +51,7 @@ def run_all_tests(functions, script_file_name=args[0], test_only=True):
             test_func()
             cprint(f"@green.✓ @copper.{test_name} @green.passed@cream..")
             passed += 1
-        except AssertionError as e:
+        except (AssertionError, ToxError) as e:
             cprint(f"@red.✗ @dark_copper.{test_name} @red.FAILED@cream.: @error.{e}")
             failed += 1
         # except Exception as e:

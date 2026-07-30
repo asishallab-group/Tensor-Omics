@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Comprehensive Python test suite for outlier detection functions
-Uses tensoromics_functions.py wrapper functions (mirrors R get_outliers.R tests)
+Uses tensor_omics.py wrapper functions (mirrors R get_outliers.R tests)
 """
 
 import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
     compute_family_scaling,

@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (serialize_char_helper, serialize_int_helper, serialize_real_helper,
                           serialize_logical_helper, serialize_complex_helper,

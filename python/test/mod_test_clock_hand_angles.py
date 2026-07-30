@@ -10,7 +10,7 @@ import sys
 import os
 import math
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import clock_hand_angle_between_vectors, clock_hand_angles_for_shift_vectors
 from test_helpers import *

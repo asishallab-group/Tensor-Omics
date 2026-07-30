@@ -107,7 +107,7 @@ run_real_data_example <- function() {
     }
   }
   
-  # Load data and wrapper functions (library already loaded in tensoromics_functions.R)
+  # Load data and wrapper functions (library already loaded in tensor_omics.R)
   
   # Generate mapping and load data
   mapping_data <- generate_gene_to_family_mapping(
@@ -126,7 +126,7 @@ run_real_data_example <- function() {
   
   d <- nrow(gene_expr_matrix)
   
-  # Call distance_to_centroid wrapper function directly from tensoromics_functions.R
+  # Call distance_to_centroid wrapper function directly from tensor_omics.R
   distances <- distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family)
   
   # Create results dataframe

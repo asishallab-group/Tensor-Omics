@@ -1,14 +1,14 @@
 
 """
 Comprehensive Python test suite for compute_edf function
-Uses tensoromics_functions.py wrapper function (mirrors Fortran test suite)
+Uses tensor_omics.py wrapper function (mirrors Fortran test suite)
 """
 
 import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import compute_edf, compute_edf_expert
 from test_helpers import run_all_tests, assert_error

@@ -8,7 +8,7 @@ import sys
 import os
 from math import pi as PI
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
     compute_contributions,

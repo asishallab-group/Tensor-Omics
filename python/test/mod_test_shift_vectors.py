@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Python test suite for shift vector field (mirrors Fortran unit tests)
-Uses the modular tensoromics_functions module
+Uses the modular tensor_omics module
 """
 
 import numpy as np

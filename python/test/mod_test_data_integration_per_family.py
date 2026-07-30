@@ -1,15 +1,15 @@
 """
 Comprehensive Python test suite for data integration per family functions in tensoromics.
-Uses tensoromics_functions.py wrapper function (mirrors Fortran test suite)
+Uses tensor_omics.py wrapper function (mirrors Fortran test suite)
 """
 import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from test_helpers import run_all_tests
-from tensoromics_functions import (
+from tensor_omics import (
     fjct_compute_jsd,
     fjct_compute_jsd_expert,
     fjct_compute_contribution_scores,
@@ -93,7 +93,6 @@ def test_fjct():
         shared_residual_range
     )
 
-    assert res["ierr"] == 0
     assert res["total_included_n_reps"] == expected_total_included_n_reps
     np.testing.assert_array_equal(res["included_n_reps_S1"], expected_included_n_reps_S1)
     np.testing.assert_array_equal(res["included_n_reps_S2"], expected_included_n_reps_S2)
@@ -112,7 +111,6 @@ def test_fjct():
         shared_residual_range
     )
 
-    assert res["ierr"] == 0
     assert res["total_included_n_reps"] == expected_total_included_n_reps
     np.testing.assert_array_equal(res["included_n_reps_S1"], expected_included_n_reps_S1)
     np.testing.assert_array_equal(res["included_n_reps_S2"], expected_included_n_reps_S2)
@@ -156,7 +154,6 @@ def test_fjct():
         shared_residual_range
     )
 
-    assert res["ierr"] == 0
     assert res["total_included_n_reps"] == expected_total_included_n_reps
     np.testing.assert_array_equal(res["included_n_reps_S1"], expected_included_n_reps_S1)
     np.testing.assert_array_equal(res["included_n_reps_S2"], expected_included_n_reps_S2)
@@ -175,7 +172,6 @@ def test_fjct():
         shared_residual_range
     )
 
-    assert res["ierr"] == 0
     assert res["total_included_n_reps"] == expected_total_included_n_reps
     np.testing.assert_array_equal(res["included_n_reps_S1"], expected_included_n_reps_S1)
     np.testing.assert_array_equal(res["included_n_reps_S2"], expected_included_n_reps_S2)
@@ -207,7 +203,6 @@ def test_fjct():
         total_included_n_reps
     )
 
-    assert res2["ierr"] == 0
     np.testing.assert_allclose(res2["support_weights"], expected_support_weights, atol=TOL)
     np.testing.assert_allclose(res2["contribution_scores"], expected_contribution_scores, atol=TOL)
 
