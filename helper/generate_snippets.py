@@ -37,7 +37,14 @@ FuncDef = Tuple[str, ArgList]
 
 
 def main():
-    fortran_wrappers, fortran_modules = generate_fortran_snippets("src/**/*.[fF]90", ["src/config.F90", "src/safeguard.F90"])
+    fortran_wrappers, fortran_modules = generate_fortran_snippets("src/**/*.[fF]90",
+                                                                  ignored_files=[
+                                                                      "src/config.F90",
+                                                                      "src/safeguard.F90",
+                                                                      "src/f42/serde/f42_serde_utils.F90",
+                                                                      "src/f42/serde/arrays/deserialize/f42_serde_arrays_deserialize.F90",
+                                                                      "src/f42/serde/arrays/serialize/f42_serde_arrays_serialize.F90"
+                                                                  ])
     generate_interfacing_snippets("python/*.py", "Python", fortran_modules, fortran_wrappers={*fortran_wrappers})
     generate_interfacing_snippets("rcpp/*.R", "R", fortran_modules, fortran_wrappers={*fortran_wrappers})
 
@@ -233,9 +240,8 @@ def generate_interfacing_snippets(file_pattern: str, lang: InterfacingLanguage, 
                 update_interfacing_snippets(module_snippets, body, module, wrapped_func_name, description, is_void, defined_function, lang, fortran_wrappers, file_name, line_number)
 
     # guarantee that each Fortran C wrapper has a related python snippet/function
-    # TODO: once Rcpp is complete, remove the Python condition everywhere in this script
-    if lang == "Python" and len(fortran_wrappers) > 0:
-        raise RuntimeError(f"Missing Python wrappers for: {", ".join(fortran_wrappers)}")
+    if len(fortran_wrappers) > 0:
+        raise RuntimeError(f"Missing {lang} wrappers for: {", ".join(fortran_wrappers)}")
 
     write_snippets(f42_snippets, tox_snippets, lang)
 
@@ -317,8 +323,8 @@ def update_interfacing_snippets(snippets: Snippets, body: Body, module: ModuleNa
             # helpers don't have a fortran wrapper, so their function name will be taken for the snippet
             if module.endswith(":helper"):
                 wrapped_func_name = func_name
-            # remove fortran wrapper from set to avoid duplicates (TODO: once Rcpp migration is done, remove Python condition)
-            elif lang == "Python":
+            # remove fortran wrapper from set to avoid duplicates
+            else:
                 fortran_wrappers.discard(wrapped_func_name.lower())
 
             snippets.update(generate_definition_snippet(body, description, module, wrapped_func_name, lang, snippets["_kind"]))

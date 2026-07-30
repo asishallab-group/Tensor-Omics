@@ -1,7 +1,7 @@
 name: 'Workflow related to Pull Requests'
 description: 'Triggers all workflows needed for Pull Requests'
 
-run-name: 'PR ${{ github.event.pull_request.number }}, Author: ${{ github.actor }}, Commit: ${{ github.event.pull_request.head.sha }}'
+run-name: 'PR ${{ github.event.pull_request.number }}, Author: ${{ github.actor }}, PR-Title: ${{ github.event.pull_request.title }}, Commit: ${{ github.event.pull_request.head.sha }}'
 
 on:
   pull_request:
@@ -19,15 +19,18 @@ on:
       - test_runner.sh
       - build.sh
       - build_utils.sh
+      - fpm.toml
 
 jobs:
   run_tests:
     strategy:
       matrix:
         compiler: [ifx, gfortran]
+        max_performance_flag: [--max-performance, ""]
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}
+      extra_build_args: ${{ matrix.max_performance_flag }}
 
       # This is the commit of the PR branch head
       ref: ${{ github.event.pull_request.head.sha }}

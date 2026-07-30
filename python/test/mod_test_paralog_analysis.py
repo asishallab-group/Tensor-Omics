@@ -16,6 +16,7 @@ from tensoromics_functions import (
     tox_detect_neofunctionalization,
     tox_normalize_unit_length
 )
+from test_helpers import run_all_tests
 
 
 def test_paralog_functions():
@@ -97,8 +98,6 @@ def test_paralog_functions():
     single_mask = tox_mask_chunk_count(1)
     assert single_mask == 1, "Single paralog mask chunk count should be 1, got " + str(single_mask)
 
-    print("✅ Paralog functions passed.")
-
 
 def test_detect_neofunctionalization():
     # -------------------------------
@@ -145,19 +144,6 @@ def test_detect_neofunctionalization():
                          [False, False]], dtype=bool, order="F")
     assert np.array_equal(neofunc, expected), "Case 2 output mismatch"
 
-    print("✅ Neofunctionalization passed.")
 
-
-def main():
-    print("=================================================")
-    print("    TOX PARALOG ANALYSIS PYTHON INTERFACE TESTS")
-    print("=================================================")
-    print()
-
-    # Run the tests
-    test_paralog_functions()
-    test_detect_neofunctionalization()
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    run_all_tests(globals().values())
