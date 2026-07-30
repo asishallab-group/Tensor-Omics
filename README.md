@@ -174,6 +174,7 @@ Usage:
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--directive=<directive>`: Define a preprocessor directive, can be used multiple times, like `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`
 - `--diagnostics`: While `--max-performance` enables optimization flags, this one enables flags for diagnostics, which helps for debugging. Can be combined with `--max-performance` though.
+- `--debug`: Implies `--diagnostics` (debug symbols, backtracing, runtime checks) plus `-O0`, avoiding gdb showing optimized-out variables or misleading source stepping.
 - `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
   *Note: With using this option, the `--max_performance` option won't have any effect*
 - environment variable `FC` is supported as well for specifying compiler, with precedence `--compiler > $TOX_COMPILER > $FC`.
@@ -219,6 +220,7 @@ Additionally to the options from `build.sh` specified above, the `test_runner.sh
 - `--test-target=<target>`: Inspect `fpm.toml` to see which test targets exist. Currently there is only `run_tests`, which is the default here.
 - `--keep-files`: All temporary files created by the runner here in the root of the repo will be removed by default. To keep them for debugging, add this option.
 - `--keep-<ext>`: The more fine-grained variant to `--keep-files`, so e.g. `--keep-zip` or `--keep-txt` will keep the temporary `*.txt` and `*.zip` files created during tests.
+- `--debug`: Additionally to the compile-time effects described under `build.sh`'s `--debug`, runs the compiled test executable under `gdb` (via `fpm test --runner`), landing you directly in a debugger session against the real test binary, e.g. `bash test_runner.sh --debug <suite_name> <test_name>`.
 
 ---
 

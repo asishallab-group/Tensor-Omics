@@ -29,18 +29,18 @@ function init() {
 
 function utils_fpm() {
   cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
-  declare prefix="fpm build"
+  declare -a prefix=(fpm build)
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
-    prefix="fpm test --target ${2:-run_tests}"
+    prefix=(fpm test --target "${2:-run_tests}")
     libpath=build:"$libpath"
     if [[ $TOX_DEBUG ]]; then
-      prefix="gdb --args $prefix"
+      prefix+=(--runner "gdb --args")
     fi
   elif [[ "$1" == "list" ]]; then
-    prefix="fpm build --list"
+    prefix=(fpm build --list)
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -94,7 +94,7 @@ function get_flags_and_features() {
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
     FLAGS="-DMAX_PERFORMANCE -O3"
-  elif [[ $TOX_DIAGNOSTICS ]]; then
+  elif [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
     FLAGS="-O0"
   fi
   if [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
