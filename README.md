@@ -39,6 +39,12 @@ This repository contains the source code, methods, snippets, and tests for the *
 /doc
   └── ...       # Documentation generated automatically using FORD (Fortran documentation tool)
 
+/external
+  └── ...       # Third-party Fortran sources (e.g. LOESS) and compiled external libraries
+
+/material
+  └── ...       # Example/reference datasets (.tsv) used by tests and demos
+
 /misc
   └── ...       # Tensor Omics documentation, coding guides and helper dockerfile to compile the project
 
@@ -62,20 +68,24 @@ This repository contains the source code, methods, snippets, and tests for the *
   ├── helper_rcpp_wrapper.py    # generates Rcpp wrapper subroutines
   └── generate_snippets.py      # auto-generates VS Code snippet files from source code
 
-build.sh          # Compile and generate shared libraries
-ford.yml          # Generates FORD documentation
-.fpm.toml         # Defines compilation options
-test_runner.sh    # Compile and run Fortran unit tests
-run_all_tests.sh  # Run the full test suite (Fortran + Python + R)
+build.sh            # Compile and generate shared libraries
+build_externals.sh  # Compile the bundled external libraries (LOESS, etc.)
+build_utils.sh      # Shared helper functions used by the build scripts
+ford.yml            # Generates FORD documentation
+.fpm.toml           # Defines compilation options
+test_runner.sh      # Compile and run Fortran unit tests
+run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
 ```
 
 * **`/build`** stores shared libraries, compiled objects, and binary files resulting from Fortran compilation. It keeps the repository clean by separating source from compiled code.
 * **`/doc`** contains auto-generated documentation built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
+* **`/external`** bundles third-party Fortran sources (e.g. the LOESS routines in `external/loess/`) that are compiled by `build_externals.sh` into `external/lib/`.
+* **`/material`** holds example and reference datasets (`.tsv`) used by the tests and usage demonstrations.
 * **`/misc`** contains the team's coding guidelines (`misc/Fortran_Coding_Guides.pdf`), the detailed method description (`misc/Tensor_Omics_Methods.pdf`), and the Dockerfile (`misc/gfortran.docker`) used to compile the project without installing anything beyond Docker.
 * **`/python`** includes Python scripts that coordinate analysis workflows.
 * **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows.
 * **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines. See `snippets/readme.md` for details.
-* **`/src`** contains performance-critical Fortran code compiled during the build process. All `.f90` files must include `precompiler_constants.f90`. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
+* **`/src`** contains performance-critical Fortran code compiled during the build process. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
 * **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Test files (`mod_test_*.f90`) generally correspond to full modules from `src/`, though newly added subroutines or utility functions from utils are sometimes isolated into their own test cases. See `test/readme.md` for details.
 * **`/helper`** is a temporary development aid for generating C wrappers (`helper_c_wrapper.py`), Rcpp wrappers (`helper_rcpp_wrapper.py`), and VS Code snippet files (`generate_snippets.py`). See `helper/readme.md` for details.
 
@@ -158,7 +168,7 @@ On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use
 ./build.sh
 ```
 
-**Maximum performance** — gfortran with additional optimisation flags:
+**Maximum performance** — enables the `optimization` build profile (adds `-O3` and performance-oriented code paths):
 
 ```bash
 ./build.sh --max-performance
