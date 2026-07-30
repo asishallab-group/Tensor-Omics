@@ -186,6 +186,19 @@ On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use
 FC=ifx ./build.sh --max-performance 
 ```
 
+### Build options
+
+Beyond the profiles above, `build.sh` accepts several options (which `test_runner.sh` inherits):
+
+* `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
+* `--max-performance` — enable the `optimization` profile (`-O3` and performance-oriented code paths).
+* `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
+* `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
+* `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`.
+* `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
+
+> **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
+
 ### Python integration
 
 The `python/` folder contains the wrapper functions needed to call Tensor Omics subroutines from Python, along with example scripts in `python/test/` that demonstrate usage and can serve as a starting point for your own analyses.
@@ -332,6 +345,16 @@ You can also run specific suites or tests in debug mode:
 ```
 
 If `gdb` is not installed on your system, install it first. For command reference, see the [gdb manual](https://sourceware.org/gdb/current/onlinedocs/gdb/).
+
+### Test runner options
+
+`test_runner.sh` accepts all of the [build options](#build-options) above, plus a few test-specific ones:
+
+* `--skip-kinds-test` — skip the compile-time check that C types match the Fortran kinds. Handy to avoid the extra clean build it otherwise triggers, since the check always passes on an unchanged platform.
+* `--reuse-mod-files` — keep `fpm`'s test module files instead of removing them before each run. Speeds up test recompilation; use when debugging tests.
+* `--test-target=<target>` — select the test target from `fpm.toml` (currently only `run_tests`, which is the default).
+* `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).
+* `--keep-<ext>` — the fine-grained variant of `--keep-files`, keeping only files of a given extension, e.g. `--keep-zip` or `--keep-txt`.
 
 ---
 
