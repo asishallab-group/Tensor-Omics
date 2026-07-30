@@ -5,6 +5,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from tensoromics_functions import tox_vector_RAP_projection, tox_field_RAP_projection
+from test_helpers import run_all_tests
 
 
 def test_omics_vector_RAP_projection_call():
@@ -24,7 +25,6 @@ def test_omics_vector_RAP_projection_call():
     for i_vec in range(projections.shape[1]):
         col = projections[:, i_vec]
         assert np.isclose(col.sum(), 0), f"{i_vec}. column not correct: Sum is {col.sum()}, should be zero"
-    print("test_omics_vector_RAP_projection_call PASSED")
 
 
 def test_omics_field_RAP_projection_call():
@@ -44,14 +44,7 @@ def test_omics_field_RAP_projection_call():
     for i_vec in range(projections.shape[1]):
         col = projections[:, i_vec]
         assert np.isclose(col.sum(), 0), f"{i_vec}. column not correct: Sum is {col.sum()}, should be zero"
-    print("test_omics_field_RAP_projection_call PASSED")
 
 
-def main():
-    test_omics_vector_RAP_projection_call()
-    test_omics_field_RAP_projection_call()
-    print("All RAP projection tests PASSED.")
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    run_all_tests(globals().values())

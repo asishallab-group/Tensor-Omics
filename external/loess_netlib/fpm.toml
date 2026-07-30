@@ -1,0 +1,21 @@
+name = "loess-netlib"
+version = "0.1.0"
+license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "static" 
+
+[features]
+
+netlib.gfortran.flags = "-O2 -std=legacy -ffixed-line-length-none -fallow-argument-mismatch -fPIC -w"
+netlib.fortran.implicit-typing = true
+netlib.fortran.source-form = "fixed"
+
+[profiles]
+default = ["netlib"]
+
+[dependencies]
+loess-netlib-drotg = { path = "./drotg" }

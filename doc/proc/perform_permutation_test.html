@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>perform_permutation_test &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">43 statements</a>
+                 title=" 0.2% of total for procedures.">30 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, mode, n_permutations, local_contributions, total_contributions, temp_factor, temp_dependent, ierr, random_seed)  
+    <h2>public  subroutine perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, local_contributions, total_contributions, tmp_factor, tmp_dependent, ierr, random_seed)  
 </h2>
     
 
@@ -169,7 +171,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~5"></span>
+              <span class="anchor" id="variable-trajectories~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -184,7 +186,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~7"></span>
+              <span class="anchor" id="variable-n_factors~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -199,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~14"></span>
+              <span class="anchor" id="variable-n_samples~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -214,7 +216,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~7"></span>
+              <span class="anchor" id="variable-n_timepoints~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -274,7 +276,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~7"></span>
+              <span class="anchor" id="variable-baseline_mode"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -282,9 +284,31 @@
               
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
-                <p>Baseline mode: 1=RAW, 2=MIN, 3=MEAN</p>
+                <p>Used mode for baseline calculation (see <a href="../proc/compute_baselines_factor_dependent.html">compute_baselines_factor_dependent</a>)</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw/zero baseline</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>arithmetic mean</td>
+<td>3_int32</td>
+</tr>
+<tr>
+<td>minimum value</td>
+<td>2_int32</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
@@ -334,7 +358,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_factor"></span>
+              <span class="anchor" id="variable-tmp_factor"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -342,14 +366,14 @@
               dimension(n_timepoints)
             </td>
             <td>::</td>
-            <td><strong>temp_factor</strong></td>
+            <td><strong>tmp_factor</strong></td>
             <td>
                 <p>Working array to hold the factor in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_dependent"></span>
+              <span class="anchor" id="variable-tmp_dependent"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -357,14 +381,14 @@
               dimension(n_timepoints)
             </td>
             <td>::</td>
-            <td><strong>temp_dependent</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>Working array to hold the random dependent in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~204"></span>
+              <span class="anchor" id="variable-ierr~99"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -419,14 +443,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

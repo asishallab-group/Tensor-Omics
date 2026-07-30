@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>loess_decomposition &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -166,7 +167,7 @@
 
         <h2>Subroutines</h2>
             <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-lowesd"></span> <h3>public  subroutine lowesd(mode, int_workspace, int_workspace_size, real_workspace_size, real_workspace, dim, n, span, degree, nvmax, setlf)  
+    <div class="card-header codesum"><span class="anchor" id="proc-lowesd"></span> <h3>public  subroutine lowesd(iv19_code, int_workspace, int_workspace_size, real_workspace_size, real_workspace, n_dim, n, span, degree, max_neighborhood_size, save_factorization)  
 </h3></div>
     <div class="card-body">
         <p>Perform LOESS decomposition.
@@ -186,7 +187,7 @@ It initializes the integer and real workspace arrays based on the input paramete
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~4"></span>
+              <span class="anchor" id="variable-iv19_code"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -194,9 +195,10 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>iv19_code</strong></td>
             <td>
-                <p>Mode of operation</p>
+                <p>Packed netlib <code>iv(19)</code> model-selection code (family/surface/statistics digits); see
+<a href="../proc/loess_fit_plain.html">loess_fit_plain</a> for the fixed value used by this codebase.</p>
             </td>
         </tr>
         <tr>
@@ -261,7 +263,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dim"></span>
+              <span class="anchor" id="variable-n_dim"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -269,14 +271,14 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>dim</strong></td>
+            <td><strong>n_dim</strong></td>
             <td>
                 <p>Dimensionality of the data</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n"></span>
+              <span class="anchor" id="variable-n~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -291,7 +293,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~4"></span>
+              <span class="anchor" id="variable-span~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -306,7 +308,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~4"></span>
+              <span class="anchor" id="variable-degree~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -321,7 +323,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax"></span>
+              <span class="anchor" id="variable-max_neighborhood_size"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -329,14 +331,14 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
                 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~2"></span>
+              <span class="anchor" id="variable-save_factorization"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -344,7 +346,7 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
                 <p>Save matrix factorization flag</p>
             </td>
@@ -367,14 +369,14 @@ It initializes the integer and real workspace arrays based on the input paramete
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

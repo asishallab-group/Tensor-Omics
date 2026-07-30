@@ -1,6 +1,7 @@
 # Comprehensive R test suite for shift vector field (mirrors Fortran unit tests)
 # Source the main functions
 source("rcpp/tensoromics_functions.R")
+source("rcpp/test_helpers.R")
 
 # 1. Test correct mapping between families and genes
 test_correct_family_mapping <- function() {
@@ -13,9 +14,8 @@ test_correct_family_mapping <- function() {
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
-  stopifnot(all(dim(shift_vectors) == c(6,5)))
-  stopifnot(all(abs(shift_vectors - expected) < 1e-12))
-  cat("test_correct_family_mapping passed\n")
+  assert_true(all(dim(shift_vectors) == c(6,5)))
+  assert_true(all(abs(shift_vectors - expected) < 1e-12))
 }
 
 # 2. Test for invalid family id mapping raising error
@@ -23,15 +23,7 @@ test_invalid_family_mapping <- function() {
   expression_vectors <- matrix(c(1,2,3,4,5,6), nrow=3, ncol=2)
   family_centroids <- matrix(c(5,4,3,2,1,0, -1,-2,-3), nrow=3, ncol=3)
   gene_to_centroid <- c(3,4) # 4 is invalid
-  error_caught <- FALSE
-  tryCatch({
-    tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  }, error = function(e) {
-    error_caught <<- TRUE
-    stopifnot(grepl("Invalid input", e$message) || grepl("invalid", e$message))
-  })
-  stopifnot(error_caught)
-  cat("test_invalid_family_mapping passed\n")
+  assert_error(tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for invalid family")
 }
 
 # 3. Test for zero distance between paralog and centroid
@@ -44,8 +36,7 @@ test_zero_distance <- function() {
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
-  stopifnot(all(abs(shift_vectors - expected) < 1e-12))
-  cat("test_zero_distance passed\n")
+  assert_true(all(abs(shift_vectors - expected) < 1e-12))
 }
 
 # 4. Test for multiple genes per family centroid
@@ -58,8 +49,7 @@ test_multiple_genes_per_family <- function() {
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
-  stopifnot(all(abs(shift_vectors - expected) < 1e-12))
-  cat("test_multiple_genes_per_family passed\n")
+  assert_true(all(abs(shift_vectors - expected) < 1e-12))
 }
 
 # 5. Test for single gene per family centroid
@@ -72,8 +62,7 @@ test_single_gene_per_family <- function() {
   expected_centroids <- sapply(gene_to_centroid, function(idx) family_centroids[, idx])
   expected_shifts <- expression_vectors - expected_centroids
   expected <- rbind(expected_centroids, expected_shifts)
-  stopifnot(all(abs(shift_vectors - expected) < 1e-12))
-  cat("test_single_gene_per_family passed\n")
+  assert_true(all(abs(shift_vectors - expected) < 1e-12))
 }
 
 # 6. Test for dimension edge cases (0 genes with dimension 1 and 1 family)
@@ -81,30 +70,7 @@ test_dimension_edge_cases <- function() {
   expression_vectors <- matrix(numeric(0), nrow=1, ncol=0)
   family_centroids <- matrix(0, nrow=1, ncol=1)
   gene_to_centroid <- integer(0)
-  error_caught <- FALSE
-  tryCatch({
-    tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
-  }, error = function(e) {
-    error_caught <<- TRUE
-    stopifnot(grepl("empty input", tolower(e$message)) || grepl("zero", tolower(e$message)))
-  })
-  stopifnot(error_caught)
-  cat("test_dimension_edge_cases passed\n")
+  assert_error(tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for empty input")
 }
 
-# Run all tests
-cat("=================================================\n")
-cat("    SHIFT VECTOR FIELD FULL R INTERFACE TESTS\n")
-cat("=================================================\n\n")
-
-test_correct_family_mapping()
-test_invalid_family_mapping()
-test_zero_distance()
-test_multiple_genes_per_family()
-test_single_gene_per_family()
-test_dimension_edge_cases()
-
-cat("=================================================\n")
-cat("             ALL TESTS COMPLETED\n")
-cat("=================================================\n")
-cat("If you see this message, all shift vector R interface tests passed successfully!\n")
+run_all_tests()

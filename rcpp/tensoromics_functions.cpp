@@ -1,6 +1,8 @@
 #include <Rcpp.h>
-
 using namespace Rcpp;
+
+static_assert(sizeof(Rcomplex) == sizeof(double _Complex) && alignof(Rcomplex) == alignof(double _Complex), "Rcomplex layout is incompatible with C's 'double _Complex' and thus Fortran's 'c_double_complex'");
+ 
 
 // ===================================================================
 // FORTRAN FUNCTIONS
@@ -145,7 +147,7 @@ void identify_outliers_c(
   int* perm,
   int* is_outlier_int,
   double* threshold,
-  double* p_values,
+  double* quantile,
   double* percentile,
   int* ierr
 );
@@ -163,7 +165,7 @@ void detect_outliers_c(
   double* loess_x,
   double* loess_y,
   int* loess_n,
-  double* p_values,
+  double* quantile,
   int* ierr,
   double* percentile
 );
@@ -234,12 +236,12 @@ void tox_loess_c(
   int* ierr
 );
 
-void empirical_p_values_c(
+void scaled_distance_quantile_c(
   int* n_genes,
   double* rdi,
   double* sorted_rdi,
   int* perm,
-  double* p_values,
+  double* quantile,
   double* c_const,
   int* ierr
 );
@@ -439,12 +441,11 @@ void clock_hand_angle_between_vectors_c(
 );
 
 void clock_hand_angles_for_shift_vectors_c(
-  const double* origins,
-  const double* targets,
+  const double* fields,
   const int* n_dims,
-  const int* n_vecs,
-  const int* vecs_selection_mask,
-  const int* n_selected_vecs,
+  const int* n_fields,
+  const int* fields_selection_mask,
+  const int* n_selected_fields,
   const int* selected_axes_for_signed,
   double* signed_angles,
   int* ierr
@@ -701,7 +702,7 @@ void construct_neighborhoods_c(
   int* ierr
 );
 
-void normalize_variable_timeseries_C(
+void normalize_variable_timeseries_c(
   const double* v,
   double* v_norm,
   const int* n_points,
@@ -709,7 +710,7 @@ void normalize_variable_timeseries_C(
   int* status
 );
 
-void normalize_single_trajectory_C(
+void normalize_single_trajectory_c(
   const double* trajectory,
   double* trajectory_norm,
   const int* n_factors,
@@ -718,7 +719,7 @@ void normalize_single_trajectory_C(
   int* status
 );
 
-void normalize_all_trajectories_C(
+void normalize_all_trajectories_c(
   const double* trajectories,
   double* trajectories_norm,
   const int* n_factors,
@@ -732,7 +733,8 @@ void euclidean_distance_c(
   const double* vec1,
   const double* vec2,
   const int* d,
-  double* result
+  double* result,
+  int* ierr
 );
 
 void distance_to_centroid_c(
@@ -742,7 +744,8 @@ void distance_to_centroid_c(
   const double* centroids,
   const int* gene_to_fam,
   double* distances,
-  const int* d
+  const int* d,
+  int* ierr
 );
 
 void compute_tissue_versatility_c(
@@ -796,7 +799,7 @@ void mask_chunk_count_c(
   int* ierr
 );
 
-void calc_work_arr_paralog_subsets_size(
+void calc_work_arr_paralog_subsets_size_c(
   const int* max_subset_size,
   const int* n_genes,
   int* work_array_size,
@@ -805,7 +808,7 @@ void calc_work_arr_paralog_subsets_size(
   int* ierr
 );
 
-void filter_paralogs_by_pattern_dosage_effect(
+void filter_paralogs_by_pattern_dosage_effect_c(
   const double* gene_angles,
   const double* threshold,
   const int* n_genes,
@@ -885,30 +888,15 @@ void group_centroid_c(
   const char* mode,
   const int* ortholog_set,
   int* selected_indices,
-  const int* selected_indices_len,
   int* ierr
 );
 
-void build_kd_index_C(
+void build_kd_index_c(
   const double* points,
   const int* num_dimensions,
   const int* num_points,
   int* kd_indices,
   const int* dimension_order,
-  int* workspace,
-  double* value_buffer,
-  int* permutation,
-  int* left_stack,
-  int* right_stack,
-  int* ierr
-);
-
-void which_c(
-  const int* mask,
-  const int* n,
-  int* idx_out,
-  const int* m_max,
-  int* m_out,
   int* ierr
 );
 
@@ -926,113 +914,116 @@ void loess_smooth_2d_c(
   int* ierr
 );
 
-void deserialize_int_nd_C(
+void deserialize_int_nd_c(
   int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void deserialize_real_nd_C(
+void deserialize_real_nd_c(
   double* arr,
-  const int* arr_size,
-  const char* filename_ascii,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void deserialize_char_nd_C(
-  char* ascii_arr,
-  const int* clen,
-  const int* total_array_size,
-  const char* filename_ascii,
+void deserialize_char_nd_c(
+  char* strings,
+  const int* string_len,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void serialize_int_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_real_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_char_nd_C(
-  const char* ascii_arr,
-  const int* dims,
-  const int* ndim,
-  const int* clen,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void deserialize_logical_nd_C(
-  int* arr,
-  const int* arr_size,
-  const char* filename_ascii,
-  const int* fn_len,
-  int* ierr
-);
-
-void serialize_logical_nd_C(
+void serialize_int_nd_c(
   const int* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void serialize_complex_nd_C(
-  const void* arr,
-  const int* dims,
-  const int* ndim,
-  const char* filename_ascii,
+void serialize_real_nd_c(
+  const double* arr,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void deserialize_complex_nd_C(
-  void* arr,
-  const int* arr_size,
-  const char* filename_ascii,
+void serialize_char_nd_c(
+  const char* strings,
+  const int* string_len,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
   const int* fn_len,
   int* ierr
 );
 
-void get_array_metadata_C(
-  const char* filename_ascii,
+void deserialize_logical_nd_c(
+  int* arr,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
+  const int* fn_len,
+  int* ierr
+);
+
+void serialize_logical_nd_c(
+  const int* arr,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
+  const int* fn_len,
+  int* ierr
+);
+
+void serialize_complex_nd_c(
+  const double _Complex* arr,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
+  const int* fn_len,
+  int* ierr
+);
+
+void deserialize_complex_nd_c(
+  double _Complex* arr,
+  const int* orig_shape,
+  const int* n_dims,
+  const char* filename,
+  const int* fn_len,
+  int* ierr
+);
+
+void get_array_metadata_c(
+  const char* filename,
   const int* fn_len,
   int* dims_out,
   const int* dims_out_capacity,
   int* ndims,
-  int* ierr,
-  int* clen
-);
-
-void build_bst_index_C(
-  const double* values,
-  const int* num_values,
-  int* sorted_indices,
-  int* left_stack,
-  int* right_stack,
+  int* type_code,
   int* ierr
 );
 
-void bst_range_query_C(
+void build_bst_index_c(
+  const double* values,
+  const int* num_values,
+  int* sorted_indices,
+  int* ierr
+);
+
+void bst_range_query_c(
   const double* values,
   const int* sorted_indices,
   const int* num_values,
@@ -1043,7 +1034,7 @@ void bst_range_query_C(
   int* ierr
 );
 
-void build_spherical_kd_C(
+void build_spherical_kd_c(
   const double* vectors,
   const int* num_dimensions,
   const int* num_vectors,
@@ -1057,7 +1048,7 @@ void build_spherical_kd_C(
   int* ierr
 );
 
-void read_expression_vectors_tsv_C(
+void read_expression_vectors_tsv_c(
   const char* file_list_raw,
   const int* file_list_len,
   const int* n_files,
@@ -1074,7 +1065,7 @@ void read_expression_vectors_tsv_C(
   int* ierr
 );
 
-void read_gene_ids_from_tsv_file_C(
+void read_gene_ids_from_tsv_file_c(
   const char* filename_raw,
   const int* fn_len,
   char* gene_ids_raw,
@@ -1085,7 +1076,7 @@ void read_gene_ids_from_tsv_file_C(
   int* ierr
 );
 
-void read_orthofinder_file_C(
+void read_orthofinder_file_c(
   const char* filename_raw,
   const int* fn_len,
   const char* gene_ids_raw,
@@ -1098,7 +1089,7 @@ void read_orthofinder_file_C(
   int* ierr
 );
 
-void filter_unassigned_genes_C(
+void filter_unassigned_genes_c(
   const char* gene_ids_raw,
   const int* gene_ids_len,
   const int* n_genes,
@@ -1108,7 +1099,7 @@ void filter_unassigned_genes_C(
   int* ierr
 );
 
-void validate_data_structure_C(
+void validate_data_structure_c(
   const int* n_genes,
   const int* n_families,
   const int* n_samples,
@@ -1123,14 +1114,14 @@ void validate_data_structure_C(
   int* ierr
 );
 
-void validate_gene_to_family_mapping_C(
+void validate_gene_to_family_mapping_c(
   const int* gene_to_fam,
   const int* n_genes,
   const int* n_families,
   int* ierr
 );
 
-void validate_expression_data_C(
+void validate_expression_data_c(
   const double* expression_vectors,
   const int* n_genes,
   const int* n_samples,
@@ -1138,14 +1129,14 @@ void validate_expression_data_C(
   int* ierr
 );
 
-void validate_family_centroids_C(
+void validate_family_centroids_c(
   const double* family_centroids,
   const int* n_families,
   const int* n_samples,
   int* ierr
 );
 
-void validate_shift_vectors_C(
+void validate_shift_vectors_c(
   const double* shift_vectors,
   const double* expression_vectors,
   const double* family_centroids,
@@ -1156,14 +1147,14 @@ void validate_shift_vectors_C(
   int* ierr
 );
 
-void validate_string_array_uniqueness_C(
+void validate_string_array_uniqueness_c(
   const char* str_arr,
   const int* str_len,
   const int* n_strings,
   int* ierr
 );
 
-void validate_all_data_C(
+void validate_all_data_c(
   const int* n_genes,
   const int* n_families,
   const int* n_samples,
@@ -1177,6 +1168,46 @@ void validate_all_data_C(
   const double* shift_vectors,
   int* ierr
 );
+
+// Calculates the length of the longest contained string in the Rcpp::CharacterVector
+int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
+    int max_len = 0;
+    for (int j = 0; j < string_vec.size(); ++j)
+        max_len = std::max(max_len, (int)std::strlen(CHAR(string_vec[j])));
+    return std::max(max_len, 1);
+}
+
+// Pack R strings (Rcpp::CharacterVector) into a Fortran-compatible column-major char matrix (flattened)
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+std::vector<char> r_to_c_CharacterVector(const CharacterVector& string_vec_R, int max_string_length) {
+    int n_strings = string_vec_R.size();
+    std::vector<char> string_vec_C(max_string_length * n_strings, '\0');  // null-pad
+
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        // Get C string for current STRSXP
+        const char* str = Rcpp::String(string_vec_R[i_string]).get_cstring();
+        int len = std::min((int)std::strlen(str), max_string_length);
+        std::memcpy(string_vec_C.data() + i_string * max_string_length, str, len);
+    }
+    return string_vec_C;
+}
+
+// Unpack Fortran-compatible column-major char matrix (flattened) to a into a Rcpp::CharacterVector
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+Rcpp::CharacterVector c_to_r_CharacterVector(const std::vector<char>& string_vec_C, int n_strings, int max_string_length) {
+    Rcpp::CharacterVector string_vec_R(n_strings);
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        const char* str = string_vec_C.data() + i_string * max_string_length;
+
+        // find the first null char to determine length
+        int len = strnlen(str, max_string_length);
+        string_vec_R[i_string] = std::string(str, len);
+    }
+    return string_vec_R;
+}
+
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -1266,7 +1297,7 @@ List tox_k_means_clustering_rcpp(int n_clusters,
   //' @return List with merge indices, heights, cluster sizes, and error code
   // [[Rcpp::export]]
   List tox_linkage_clustering_rcpp(NumericMatrix distances,
-                   std::string method) {
+                   Rcpp::String method) {
     int n_points = distances.nrow();
     IntegerVector merge_i(n_points - 1);
     IntegerVector merge_j(n_points - 1);
@@ -1274,17 +1305,13 @@ List tox_k_means_clustering_rcpp(int n_clusters,
     IntegerVector cluster_sizes(n_points - 1);
     int ierr = 0;
 
-    char method_c[8] = {' '};
-    size_t len = std::min(method.size(), size_t(8));
-    std::memcpy(method_c, method.c_str(), len);
-
     linkage_clustering_c(distances.begin(),
                &n_points,
                merge_i.begin(),
                merge_j.begin(),
                heights.begin(),
                cluster_sizes.begin(),
-               method_c,
+               method.get_cstring(),
                &ierr);
 
     return List::create(Named("merge_i") = merge_i,
@@ -1299,19 +1326,22 @@ List tox_k_means_clustering_rcpp(int n_clusters,
 //'
 //' @param vec1 First numeric vector
 //' @param vec2 Second numeric vector
-//' @return Euclidean distance (double)
+//' @return NamedList[euclidean_distance(double), ierr]
 // [[Rcpp::export]]
-double tox_euclidean_distance_rcpp(NumericVector vec1,
+List tox_euclidean_distance_rcpp(NumericVector vec1,
                                    NumericVector vec2) {
     int d = vec1.length();
     double result = 0.0;
+    int ierr = 0;
 
     euclidean_distance_c(vec1.begin(),
                          vec2.begin(),
                          &d,
-                         &result);
+                         &result,
+                         &ierr);
 
-    return result;
+    return List::create(Named("euclidean_distance") = result,
+      Named("ierr") = ierr);
 }
 
 
@@ -1383,35 +1413,33 @@ List tox_clock_hand_angle_between_vectors_rcpp(NumericVector v1,
 
 //' Calculate clock hand angles for shift vectors
 //'
-//' @param origins Numeric matrix of origin vectors (axes x vectors)
-//' @param targets Numeric matrix of target vectors (axes x vectors)
-//' @param vecs_selection_mask Integer vector indicating selected vectors
+//' @param fields Numeric matrix of shift vectors
+//' @param fields_selection_mask Integer vector indicating selected vectors
 //' @param selected_axes_for_signed Integer vector indicating selected axes for signed angle calculation
 //' @return List with signed angles 
 // [[Rcpp::export]]
-List tox_clock_hand_angles_for_shift_vectors_rcpp(NumericMatrix origins,
-                                                  NumericMatrix targets,
-                                                  IntegerVector vecs_selection_mask,
+List tox_clock_hand_angles_for_shift_vectors_rcpp(NumericVector fields,
+                                                  IntegerVector fields_selection_mask,
                                                   IntegerVector selected_axes_for_signed) {
-    int n_dims = origins.nrow();
-    int n_vecs = origins.ncol();
-    NumericVector signed_angles(n_vecs);
+    IntegerVector dim = fields.attr("dim");
+    int n_dims = dim[0];
+    int n_fields = dim[2];
+    NumericVector signed_angles(n_fields);
     int ierr = 0;
 
     // Count selected vectors
-    int n_selected_vecs = 0;
-    for (int i = 0; i < n_vecs; ++i) {
-        if (vecs_selection_mask[i] != 0) {
-            ++n_selected_vecs;
+    int n_selected_fields = 0;
+    for (int i = 0; i < n_fields; ++i) {
+        if (fields_selection_mask[i] != 0) {
+            ++n_selected_fields;
         }
     }
 
-    clock_hand_angles_for_shift_vectors_c(origins.begin(),
-                                          targets.begin(),
+    clock_hand_angles_for_shift_vectors_c(fields.begin(),
                                           &n_dims,
-                                          &n_vecs,
-                                          vecs_selection_mask.begin(),
-                                          &n_selected_vecs,
+                                          &n_fields,
+                                          fields_selection_mask.begin(),
+                                          &n_selected_fields,
                                           selected_axes_for_signed.begin(),
                                           signed_angles.begin(),
                                           &ierr);
@@ -1423,18 +1451,19 @@ List tox_clock_hand_angles_for_shift_vectors_rcpp(NumericMatrix origins,
 
 //' Calculate distances from genes to their family centroids
 //'
-//' @param genes Numeric vector of gene expression values
-//' @param centroids Numeric vector of family centroid values
+//' @param genes Numeric matrix of gene expression values
+//' @param centroids Numeric matrix of family centroid values
 //' @param gene_to_fam Integer vector mapping each gene to its family
 //' @param d Number of dimensions
-//' @return Numeric vector of distances
+//' @Named List[distances(NumericVector), ierr]
 // [[Rcpp::export]]
-NumericVector tox_distance_to_centroid_rcpp(NumericVector genes,
-                                            NumericVector centroids,
-                                            IntegerVector gene_to_fam,
-                                            int d) {
-    int n_genes = genes.length() / d;
-    int n_families = centroids.length() / d;
+List tox_distance_to_centroid_rcpp(NumericMatrix genes,
+                                   NumericMatrix centroids,
+                                   IntegerVector gene_to_fam) {
+    int n_genes = genes.ncol();
+    int n_families = centroids.ncol();
+    int n_elements = genes.nrow();
+    int ierr = 0;
 
     NumericVector distances(n_genes);
 
@@ -1444,9 +1473,11 @@ NumericVector tox_distance_to_centroid_rcpp(NumericVector genes,
                            centroids.begin(),
                            gene_to_fam.begin(),
                            distances.begin(),
-                           &d);
+                           &n_elements,
+                           &ierr);
 
-    return distances;
+    return List::create(Named("distances") = distances,
+                        Named("ierr") = ierr);
 }
 
 //' Determine shared residual range for JSD calculation (expert method)
@@ -2179,14 +2210,9 @@ List tox_normalize_unit_length_rcpp(NumericVector vector) {
 // [[Rcpp::export]]
 List tox_compute_baselines_factor_dependent_rcpp(NumericVector factor,
                                                  NumericVector dependent,
-                                                 std::string mode) {
+                                                 Rcpp::String mode) {
   int n_timepoints = factor.size();
   
-  // Fortran expects mode as a char array (e.g., 'raw', 'min', 'mean'), pad/truncate to 8 chars
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
-
   double factor_baseline = 0.0;
   double dependent_baseline = 0.0;
   int ierr = 0;
@@ -2194,7 +2220,7 @@ List tox_compute_baselines_factor_dependent_rcpp(NumericVector factor,
   compute_baselines_factor_dependent_c(factor.begin(),
                                        dependent.begin(),
                                        &n_timepoints,
-                                       mode_c,
+                                       mode.get_cstring(),
                                        &factor_baseline,
                                        &dependent_baseline,
                                        &ierr);
@@ -2216,7 +2242,7 @@ List tox_normalize_variable_timeseries_rcpp(NumericVector v) {
   int ierr = 0;
   int status = 0;
 
-  normalize_variable_timeseries_C(v.begin(),
+  normalize_variable_timeseries_c(v.begin(),
                                   v_norm.begin(),
                                   &n_points,
                                   &ierr,
@@ -2231,7 +2257,7 @@ List tox_normalize_variable_timeseries_rcpp(NumericVector v) {
 //' Normalize all factors in a single trajectory independently
 //'
 //' @param trajectory Numeric matrix (timepoints x factors)
-//' @return List with normalized trajectory, status code, and error code
+//' @return List with normalized trajectory, status codes per factor, and error code
 // [[Rcpp::export]]
 List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
 
@@ -2239,14 +2265,14 @@ List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
   int n_factors = trajectory.ncol();
   NumericMatrix trajectory_norm(n_timepoints, n_factors);
   int ierr = 0;
-  int status = 0;
+  IntegerVector status(n_factors);
 
-  normalize_single_trajectory_C(trajectory.begin(),
+  normalize_single_trajectory_c(trajectory.begin(),
                                 trajectory_norm.begin(),
                                 &n_factors,
                                 &n_timepoints,
                                 &ierr,
-                                &status);
+                                status.begin());
 
   return List::create(Named("traj_norm") = trajectory_norm,
                       Named("status") = status,
@@ -2260,7 +2286,7 @@ List tox_normalize_single_trajectory_rcpp(NumericMatrix trajectory) {
 //' @param n_factors Integer number of factors
 //' @param n_samples Integer number of samples
 //' @param n_timepoints Integer number of timepoints
-//' @return List with normalized trajectories, status code, and error code
+//' @return List with normalized trajectories, status codes per factor-sample pair, and error code
 // [[Rcpp::export]]
 List tox_normalize_all_trajectories_rcpp(NumericVector trajectories,
                                           int n_factors,
@@ -2269,15 +2295,15 @@ List tox_normalize_all_trajectories_rcpp(NumericVector trajectories,
 
   NumericVector trajectories_norm(n_factors * n_samples * n_timepoints);
   int ierr = 0;
-  int status = 0;
+  IntegerMatrix status(n_factors, n_samples);
 
-  normalize_all_trajectories_C(trajectories.begin(),
+  normalize_all_trajectories_c(trajectories.begin(),
                                 trajectories_norm.begin(),
                                 &n_factors,
                                 &n_samples,
                                 &n_timepoints,
                                 &ierr,
-                                &status);
+                                status.begin());
 
   return List::create(Named("traj_norm") = trajectories_norm,
                       Named("status") = status,
@@ -2376,25 +2402,15 @@ List tox_group_centroid_rcpp(NumericMatrix expression_vectors,
     int selected_indices_len = n_genes;
     int ierr = 0;
 
-    // Convert String to std::string first
-    std::string mode_str(mode);
-
-    // Create a char array with size 10 (matching Fortran expectation)
-    std::vector<char> mode_c(10, ' ');
-    for (size_t i = 0; i < mode_str.size() && i < 10; ++i) {
-        mode_c[i] = mode_str[i];
-    }
-
     group_centroid_c(expression_vectors.begin(),
                      &n_axes,
                      &n_genes,
                      gene_to_family.begin(),
                      &n_families,
                      centroid_matrix.begin(),
-                     mode_c.data(),
+                     mode.get_cstring(),
                      ortholog_set.begin(),
                      selected_indices.begin(),
-                     &selected_indices_len,
                      &ierr);
 
     return List::create(Named("centroid_matrix") = centroid_matrix,
@@ -2502,7 +2518,7 @@ List tox_calc_work_arr_paralog_subsets_size_rcpp(int max_subset_size,
     int work_array_size = 0;
     int ierr = 0;
 
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),
@@ -2533,7 +2549,7 @@ List tox_filter_paralogs_by_pattern_dosage_effect_rcpp(NumericVector gene_angles
     IntegerMatrix masks(n_mask_chunks, n_families);
     int ierr = 0;
 
-    filter_paralogs_by_pattern_dosage_effect(gene_angles.begin(),
+    filter_paralogs_by_pattern_dosage_effect_c(gene_angles.begin(),
                                              &threshold,
                                              &n_genes,
                                              &n_families,
@@ -2601,7 +2617,7 @@ List tox_filter_paralogs_by_pattern_subfunctionalization_rcpp(NumericVector gene
     int ierr = 0;
 
     int work_array_size = 0;
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),
@@ -2679,7 +2695,7 @@ List tox_filter_paralogs_by_pattern_subfunctionalization_rcpp(NumericVector gene
     int ierr = 0;
 
     int work_array_size = 0;
-    calc_work_arr_paralog_subsets_size(&max_subset_size,
+    calc_work_arr_paralog_subsets_size_c(&max_subset_size,
                                        &n_genes,
                                        &work_array_size,
                                        filtered_paralogs_mask.begin(),
@@ -2746,57 +2762,16 @@ List tox_build_kd_index_rcpp(NumericMatrix X,
     int n = X.ncol();
 
     IntegerVector kd_ix(n);
-    IntegerVector work(n);
-    NumericVector subarray(n);
-    IntegerVector perm(n);
-    IntegerVector stack_left(n);
-    IntegerVector stack_right(n);
     int ierr = 0;
 
-    build_kd_index_C(X.begin(),
+    build_kd_index_c(X.begin(),
                      &d,
                      &n,
                      kd_ix.begin(),
                      dim_order.begin(),
-                     work.begin(),
-                     subarray.begin(),
-                     perm.begin(),
-                     stack_left.begin(),
-                     stack_right.begin(),
                      &ierr);
 
     return List::create(Named("kd_ix") = kd_ix,
-                        Named("ierr") = ierr);
-}
-
-//'Identify indices of non-zero elements in a mask vector
-//'
-//' @param mask Integer vector mask (0/1 values)
-//' @param m_max Maximum number of indices to return
-//' @return List with output indices and number of indices found
-// [[Rcpp::export]]
-List tox_which_rcpp(IntegerVector mask, 
-                    int m_max) {
-
-  int n = mask.size();
-
-    IntegerVector idx_out(m_max);
-    int m_out = 0;
-    int ierr = 0;
-
-    which_c(mask.begin(),
-            &n,
-            idx_out.begin(),
-            &m_max,
-            &m_out,
-            &ierr);
-
-    if (m_out > m_max) {
-      m_out = m_max;
-    }
-
-    return List::create(Named("idx_out") = idx_out,
-                        Named("m_out") = m_out,
                         Named("ierr") = ierr);
 }
 
@@ -2843,42 +2818,26 @@ List tox_loess_smooth_2d_rcpp(int n_total,
 }
 
 
-// Helper function to convert string to char array with null termination
-inline std::vector<char> filename_to_ascii(const std::string& filename, int& out_len) {
-    // Allocate +1 for null termination like Python version
-    std::vector<char> ascii(filename.size() + 1, 0);
-    for (size_t i = 0; i < filename.size(); ++i) {
-        ascii[i] = static_cast<char>(filename[i]);
-    }
-    // ascii[filename.size()] = 0;  // already initialized to 0
-    out_len = static_cast<int>(ascii.size());
-    return ascii;
-}
-
 //' Calculate serialization of integer arrays to binary files with specified filenames
 //'
 //' @param arr Integer vector (potentially with dim attribute for multi-dimensional arrays)
 //' @param filename String specifying the output filename for serialization
 //' @return  error code from serialization function
 // [[Rcpp::export]]
-int tox_serialize_int_array_rcpp(IntegerVector arr, std::string filename) {
+int tox_serialize_int_array_rcpp(IntegerVector arr, Rcpp::String filename) {
     IntegerVector dim = arr.hasAttribute("dim")
                             ? as<IntegerVector>(arr.attr("dim"))
                             : IntegerVector::create((int)arr.size());
     int ndim = dim.size();
-    std::vector<int> dims(ndim);
-    for (int i = 0; i < ndim; ++i) {
-        dims[i] = dim[i];
-    }
-
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
     int ierr = 0;
 
-    serialize_int_nd_C((void*)arr.begin(),
-                       dims.data(),
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
+
+    serialize_int_nd_c(arr.begin(),
+                       dim.begin(),
                        &ndim,
-                       fname.data(),
+                       filename_c,
                        &fn_len,
                        &ierr);
 
@@ -2892,7 +2851,7 @@ int tox_serialize_int_array_rcpp(IntegerVector arr, std::string filename) {
 //' @return  error code from serialization function
 // [[Rcpp::export]]
 int tox_serialize_real_array_rcpp(NumericVector arr, 
-                                  std::string filename) {
+                                  Rcpp::String filename) {
 
     IntegerVector dim = arr.hasAttribute("dim")
                             ? as<IntegerVector>(arr.attr("dim"))
@@ -2903,14 +2862,15 @@ int tox_serialize_real_array_rcpp(NumericVector arr,
         dims[i] = dim[i];
     }
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
     int ierr = 0;
 
-    serialize_real_nd_C((void*)arr.begin(),
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
+
+    serialize_real_nd_c(arr.begin(),
                         dims.data(),
                         &ndim,
-                        fname.data(),
+                        filename_c,
                         &fn_len,
                         &ierr);
 
@@ -2924,50 +2884,26 @@ int tox_serialize_real_array_rcpp(NumericVector arr,
 //' @return  error code from serialization function
 // [[Rcpp::export]]
 int tox_serialize_char_array_rcpp(CharacterVector carr, 
-                                  std::string filename) {
+                                  Rcpp::String filename) {
 
     IntegerVector dim = carr.hasAttribute("dim")
-                            ? as<IntegerVector>(carr.attr("dim"))
+                            ? carr.attr("dim")
                             : IntegerVector::create((int)carr.size());
     int ndim = dim.size();
-    std::vector<int> dims(ndim);
-    for (int i = 0; i < ndim; ++i) {
-        dims[i] = dim[i];
-    }
 
-    int total = 1;
-    for (int i = 0; i < ndim; ++i) {
-        total *= dims[i];
-    }
+    int clen = get_max_string_length(carr);
+    std::vector<char> carr_c = r_to_c_CharacterVector(carr, clen);
 
-    int clen = 0;
-    for (int i = 0; i < total; ++i) {
-        std::string s = as<std::string>(carr[i]);
-        if ((int)s.size() > clen) {
-            clen = (int)s.size();
-        }
-    }
-    if (clen == 0) {
-        clen = 1;
-    }
-
-    std::vector<char> ascii_flat(total * clen, 0);
-    for (int i = 0; i < total; ++i) {
-        std::string s = as<std::string>(carr[i]);
-        for (int j = 0; j < (int)s.size() && j < clen; ++j) {
-            ascii_flat[i * clen + j] = static_cast<char>(s[j]);
-        }
-    }
-
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
     int ierr = 0;
 
-    serialize_char_nd_C(ascii_flat.data(),
-                        dims.data(),
-                        &ndim,
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
+
+    serialize_char_nd_c(carr_c.data(),
                         &clen,
-                        fname.data(),
+                        dim.begin(),
+                        &ndim,
+                        filename_c,
                         &fn_len,
                         &ierr);
 
@@ -2981,7 +2917,7 @@ int tox_serialize_char_array_rcpp(CharacterVector carr,
 //' @return  error code from serialization function
 // [[Rcpp::export]]
 int tox_serialize_logical_array_rcpp(LogicalVector arr, 
-                                     std::string filename) {
+                                     Rcpp::String filename) {
 
     IntegerVector dim = arr.hasAttribute("dim")
                             ? as<IntegerVector>(arr.attr("dim"))
@@ -3003,14 +2939,14 @@ int tox_serialize_logical_array_rcpp(LogicalVector arr,
         int_arr[i] = arr[i] ? 1 : 0;
     }
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
     int ierr = 0;
 
-    serialize_logical_nd_C(int_arr.data(),
+    serialize_logical_nd_c(int_arr.data(),
                            dims.data(),
                            &ndim,
-                           fname.data(),
+                           filename_c,
                            &fn_len,
                            &ierr);
 
@@ -3025,26 +2961,22 @@ int tox_serialize_logical_array_rcpp(LogicalVector arr,
 //' @return  error code from serialization function
 // [[Rcpp::export]]
 int tox_serialize_complex_array_rcpp(ComplexVector arr, 
-                                     std::string filename) {
+                                     Rcpp::String filename) {
 
     IntegerVector dim = arr.hasAttribute("dim")
                             ? as<IntegerVector>(arr.attr("dim"))
                             : IntegerVector::create((int)arr.size());
     int ndim = dim.size();
-    std::vector<int> dims(ndim);
-    for (int i = 0; i < ndim; ++i) {
-        dims[i] = dim[i];
-    }
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
     int ierr = 0;
 
     // Call Fortran C binding directly with complex array
-    serialize_complex_nd_C((void*)arr.begin(),
-                           dims.data(),
+    serialize_complex_nd_c(reinterpret_cast<double _Complex*>(arr.begin()),
+                           dim.begin(),
                            &ndim,
-                           fname.data(),
+                           filename_c,
                            &fn_len,
                            &ierr);
 
@@ -3056,23 +2988,24 @@ int tox_serialize_complex_array_rcpp(ComplexVector arr,
 //' @param max_dims Maximum number of dimensions to read (default 5)
 //' @return List with deserialized values and dimensions
 // [[Rcpp::export]]
-List tox_deserialize_int_array_rcpp(std::string filename, 
+List tox_deserialize_int_array_rcpp(Rcpp::String filename, 
                                     int max_dims = 5) {
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
-    int clen = 0;
+    int type_code = 0;
 
-    get_array_metadata_C(fname.data(),
+    get_array_metadata_c(filename_c,
                          &fn_len,
                          dims_out.data(),
                          &max_dims,
                          &ndims,
-                         &ierr,
-                         &clen);
+                         &type_code,
+                         &ierr
+                         );
 
     if (ierr != 0) {
         return List::create(Named("ierr") = ierr);
@@ -3085,9 +3018,10 @@ List tox_deserialize_int_array_rcpp(std::string filename,
 
     IntegerVector out(total);
 
-    deserialize_int_nd_C(out.begin(),
-                         &total,
-                         fname.data(),
+    deserialize_int_nd_c(out.begin(),
+                         dims_out.data(),
+                         &ndims,
+                         filename_c,
                          &fn_len,
                          &ierr);
 
@@ -3104,23 +3038,24 @@ List tox_deserialize_int_array_rcpp(std::string filename,
 //' @param max_dims Maximum number of dimensions to read (default 5)
 //' @return List with deserialized values and dimensions
 // [[Rcpp::export]]
-List tox_deserialize_real_array_rcpp(std::string filename, 
+List tox_deserialize_real_array_rcpp(Rcpp::String filename, 
                                      int max_dims = 5) {
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
-    int clen = 0;
+    int type_code = 0;
 
-      get_array_metadata_C(fname.data(),
+      get_array_metadata_c(filename_c,
                          &fn_len,
                          dims_out.data(),
                          &max_dims,
                          &ndims,
-                         &ierr,
-                         &clen);
+                         &type_code,
+                         &ierr
+                         );
 
     if (ierr != 0) {
         return List::create(Named("ierr") = ierr);
@@ -3133,9 +3068,10 @@ List tox_deserialize_real_array_rcpp(std::string filename,
 
     NumericVector out(total);
 
-    deserialize_real_nd_C(out.begin(),
-                          &total,
-                          fname.data(),
+    deserialize_real_nd_c(out.begin(),
+                          dims_out.data(),
+                          &ndims,
+                          filename_c,
                           &fn_len,
                           &ierr);
 
@@ -3145,100 +3081,84 @@ List tox_deserialize_real_array_rcpp(std::string filename,
                         Named("ierr") = ierr);
 }
 
-//' Calculate deserialization of real (double) arrays from binary files with specified filenames
+//' Calculate deserialization of character arrays from binary files with specified filenames
 //'
 //' @param filename String specifying the input filename for deserialization
 //' @param max_dims Maximum number of dimensions to read (default 5)
 //' @return List with deserialized values and dimensions
 // [[Rcpp::export]]
-List tox_deserialize_char_array_rcpp(std::string filename, 
+List tox_deserialize_char_array_rcpp(Rcpp::String filename, 
                                      int max_dims = 5) {
-
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
     int clen = 0;
 
-      get_array_metadata_C(fname.data(),
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
+
+    get_array_metadata_c(filename_c,
                          &fn_len,
                          dims_out.data(),
                          &max_dims,
                          &ndims,
-                         &ierr,
-                         &clen);
+                         &clen,
+                         &ierr
+                         );
 
     if (ierr != 0) {
         return List::create(Named("ierr") = ierr);
     }
 
-    int total = 1;
+    int n_strings = 1;
     for (int i = 0; i < ndims; ++i) {
-        total *= dims_out[i];
+        n_strings *= dims_out[i];
     }
 
-    std::vector<char> ascii_out(total * clen);
+    std::vector<char> string_vec_C(n_strings * clen);
 
-    deserialize_char_nd_C(ascii_out.data(),
+    deserialize_char_nd_c(string_vec_C.data(),
                           &clen,
-                          &total,
-                          fname.data(),
+                          dims_out.data(),
+                          &ndims,
+                          filename_c,
                           &fn_len,
                           &ierr);
 
-    CharacterVector out(total);
-    for (int i = 0; i < total; ++i) {
-        std::string s;
-        for (int j = 0; j < clen; ++j) {
-            char ch = ascii_out[i * clen + j];
-            if (ch == '\0') {
-                break;
-            }
-            s.push_back(ch);
-        }
+    CharacterVector string_vec_R = c_to_r_CharacterVector(string_vec_C, n_strings, clen);
+    string_vec_R.attr("dim") = IntegerVector(dims_out.begin(), dims_out.begin() + ndims);
 
-        // Trim trailing whitespace
-        size_t end = s.find_last_not_of(" \t\n\r\f\v");
-        if (end != std::string::npos) {
-            s = s.substr(0, end + 1);
-        } else {
-            s.clear();  // String was all whitespace
-        }
-
-        out[i] = s;
-    }
-
-    return List::create(Named("values") = out,
-                        Named("dims") = IntegerVector(dims_out.begin(), dims_out.begin() + ndims),
+    return List::create(Named("values") = string_vec_R,
+                        Named("dims") = string_vec_R.attr("dim"),
                         Named("ndim") = ndims,
                         Named("ierr") = ierr);
 }
 
 
-//' Calculate deserialization of character arrays from binary files with specified filenames, including conversion from fixed-length ASCII representation
+//' Calculate deserialization of logical arrays from binary files with specified filenames, including conversion from fixed-length ASCII representation
 //'
 //' @param filename String specifying the input filename for deserialization
 //' @param max_dims Maximum number of dimensions to read (default 5)
 //' @return List with deserialized values and dimensions
 // [[Rcpp::export]]
-List tox_deserialize_logical_array_rcpp(std::string filename, 
+List tox_deserialize_logical_array_rcpp(Rcpp::String filename, 
                                         int max_dims = 5) {
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
-    int clen = 0;
+    int type_code = 0;
 
-     get_array_metadata_C(fname.data(),
+     get_array_metadata_c(filename_c,
                          &fn_len,
                          dims_out.data(),
                          &max_dims,
                          &ndims,
-                         &ierr,
-                         &clen);
+                         &type_code,
+                         &ierr
+                         );
 
     if (ierr != 0) {
         return List::create(Named("ierr") = ierr);
@@ -3251,9 +3171,10 @@ List tox_deserialize_logical_array_rcpp(std::string filename,
 
     std::vector<int> int_out(total);
 
-    deserialize_logical_nd_C(int_out.data(),
-                             &total,
-                             fname.data(),
+    deserialize_logical_nd_c(int_out.data(),
+                             dims_out.data(),
+                             &ndims,
+                             filename_c,
                              &fn_len,
                              &ierr);
 
@@ -3276,23 +3197,25 @@ List tox_deserialize_logical_array_rcpp(std::string filename,
 //' @param max_dims Maximum number of dimensions to read (default 5)
 //' @return List with deserialized values and dimensions
 // [[Rcpp::export]]
-List tox_deserialize_complex_array_rcpp(std::string filename, 
+List tox_deserialize_complex_array_rcpp(Rcpp::String filename, 
                                         int max_dims = 5) {
 
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
     std::vector<int> dims_out(max_dims);
     int ndims = 0;
     int ierr = 0;
-    int clen = 0;
+    int type_code = 0;
 
-      get_array_metadata_C(fname.data(),
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
+
+      get_array_metadata_c(filename_c,
                          &fn_len,
                          dims_out.data(),
                          &max_dims,
                          &ndims,
-                         &ierr,
-                         &clen);
+                         &type_code,
+                         &ierr
+                         );
 
     if (ierr != 0) {
         return List::create(Named("ierr") = ierr);
@@ -3305,9 +3228,10 @@ List tox_deserialize_complex_array_rcpp(std::string filename,
 
     ComplexVector out(total);
 
-    deserialize_complex_nd_C((void*)out.begin(),
-                             &total,
-                             fname.data(),
+    deserialize_complex_nd_c(reinterpret_cast<double _Complex*>(out.begin()),
+                             dims_out.data(),
+                             &ndims,
+                             filename_c,
                              &fn_len,
                              &ierr);
 
@@ -3324,33 +3248,28 @@ List tox_deserialize_complex_array_rcpp(std::string filename,
 //' @param with_clen Logical indicating whether to include character length in the output (default FALSE)
 //' @return List with dimensions, number of dimensions, and optionally character length and error code
 // [[Rcpp::export]]
-List tox_get_array_metadata_rcpp(std::string filename,
-                                int dims_out_capacity = 5,
-                                bool with_clen = false) {
-    int fn_len = 0;
-    auto fname = filename_to_ascii(filename, fn_len);
+List tox_get_array_metadata_rcpp(Rcpp::String filename,
+                                int dims_out_capacity = 5) {
     IntegerVector dims_res(dims_out_capacity);
     int ndims = 0;
     int ierr = 0;
-    int clen = 0;
+    int type_code = 0;
 
-        get_array_metadata_C(fname.data(),
-                             &fn_len, 
-                             dims_res.begin(), 
-                             &dims_out_capacity, 
-                             &ndims, 
-                             &ierr,
-                             &clen);
+    const char* filename_c = filename.get_cstring();
+    int fn_len = strlen(filename_c);
 
-    if (with_clen) {
-        return List::create(Named("dims") = dims_res,
-                            Named("ndim") = ndims,
-                            Named("clen") = clen,
-                            Named("ierr") = ierr);
-    }
+    get_array_metadata_c(filename_c,
+                         &fn_len, 
+                         dims_res.begin(), 
+                         &dims_out_capacity, 
+                         &ndims,
+                         &type_code,
+                         &ierr
+                         );
 
     return List::create(Named("dims") = dims_res,
                         Named("ndim") = ndims,
+                        Named("type_code") = type_code,
                         Named("ierr") = ierr);
 }
 
@@ -3359,23 +3278,20 @@ List tox_get_array_metadata_rcpp(std::string filename,
 //' @param values Numeric vector to index
 //' @return Integer vector of sorted indices (1-based Fortran indices preserved) for the BST index
 // [[Rcpp::export]]
-IntegerVector tox_build_bst_index_rcpp(NumericVector values) {
+List tox_build_bst_index_rcpp(NumericVector values) {
 
-    int num_values = static_cast<int>(values.size());
+    int num_values = values.size();
     IntegerVector sorted_indices(num_values);
-    IntegerVector left_stack(num_values);
-    IntegerVector right_stack(num_values);
     int ierr = 0;
 
-    build_bst_index_C(values.begin(),
+    build_bst_index_c(values.begin(),
                       &num_values,
                       sorted_indices.begin(),
-                      left_stack.begin(),
-                      right_stack.begin(),
                       &ierr);
 
     // Return sorted indices (1-based Fortran indices preserved)
-    return sorted_indices;
+    return List::create(Named("bst_index") = sorted_indices,
+                        Named("ierr") = ierr);
 }
 
 //' Perform a range query on a binary search tree index for a numeric vector, returning indices of values within the specified bounds
@@ -3396,7 +3312,7 @@ List tox_bst_range_query_rcpp(NumericVector values,
     int num_matches = 0;
     int ierr = 0;
 
-    bst_range_query_C(values.begin(),
+    bst_range_query_c(values.begin(),
                       sorted_indices.begin(),
                       &num_values,
                       &lower_bound,
@@ -3429,7 +3345,7 @@ List tox_build_spherical_kd_rcpp(NumericMatrix V,
     IntegerVector stack_right(n);
     int ierr = 0;
 
-    build_spherical_kd_C(V.begin(),
+    build_spherical_kd_c(V.begin(),
                          &d,
                          &n,
                          sphere_ix.begin(),
@@ -3447,37 +3363,40 @@ List tox_build_spherical_kd_rcpp(NumericMatrix V,
 
 //' Calculate reading of expression vectors from TSV files
 //'
-//' @param file_list_raw Raw matrix of filenames (one per column) for TSV files to read
-//' @param gene_ids_raw Raw matrix of gene IDs to match against the TSV files
+//' @param file_list CharacterVector of filenames for TSV files to read
+//' @param gene_ids CharacterVector of gene IDs to match against the TSV files
 //' @param value_cols Integer vector of column indices in the TSV files that contain expression values
-//' @param delimiter_raw Raw vector specifying the delimiter used in the TSV files
+//' @param delimiter String specifying the delimiter used in the TSV files
 //' @param n_samples Integer specifying the expected number of samples (rows) in the TSV files
 //' @param n_header_rows Integer specifying the number of header rows to skip in the TSV files
 //' @param gene_col Integer specifying the column index in the TSV files that contains gene IDs
 //' @return List with expression vector matrix and error code from reading function
 // [[Rcpp::export]]
-List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
-                                         RawMatrix gene_ids_raw,
+List tox_read_expression_vectors_tsv_rcpp(CharacterVector file_list,
+                                         CharacterVector gene_ids,
                                          IntegerVector value_cols,
-                                         RawVector delimiter_raw,
+                                         Rcpp::String delimiter,
                                          int n_samples,
                                          int n_header_rows,
                                          int gene_col) {
 
-    int file_list_len = file_list_raw.nrow();
-    int n_files = file_list_raw.ncol();
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
+    int max_filename_len = get_max_string_length(file_list);
+    std::vector<char> file_list_C = r_to_c_CharacterVector(file_list, max_filename_len);
+    int n_files = file_list.size();
+
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+    int n_genes = gene_ids.size();
     int n_value_cols = value_cols.size();
 
     NumericMatrix expression_vectors(n_samples, n_genes);
     int ierr = 0;
 
-    read_expression_vectors_tsv_C(reinterpret_cast<const char*>(file_list_raw.begin()),
-                                  &file_list_len,
+    read_expression_vectors_tsv_c(file_list_C.data(),
+                                  &max_filename_len,
                                   &n_files,
-                                  reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                                  &gene_ids_len,
+                                  gene_ids_C.data(),
+                                  &max_gene_id_len,
                                   &n_genes,
                                   expression_vectors.begin(),
                                   &n_samples,
@@ -3485,7 +3404,7 @@ List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
                                   &gene_col,
                                   value_cols.begin(),
                                   &n_value_cols,
-                                  reinterpret_cast<const char*>(delimiter_raw.begin()),
+                                  delimiter.get_cstring(),
                                   &ierr);
 
     return List::create(Named("expression_vectors") = expression_vectors,
@@ -3494,107 +3413,112 @@ List tox_read_expression_vectors_tsv_rcpp(RawMatrix file_list_raw,
 
  //' Calculate reading of gene IDs from TSV files, returning a raw matrix of gene IDs and an error code
  //'
- //' @param filename_raw Raw vector specifying the filename of the TSV file to read
+ //' @param filename String specifying the filename of the TSV file to read
  //' @param n_genes Integer specifying the expected number of genes (columns) in the TSV
  //' @param gene_ids_len Integer specifying the maximum length of gene IDs (rows) to read from the TSV file
  //' @param n_header_rows Integer specifying the number of header rows to skip in the TSV file 
  //' @param gene_col Integer specifying the column index in the TSV file that contains gene IDs
  //' @return List with raw matrix of gene IDs and error code from reading function         
 // [[Rcpp::export]]
-List tox_read_gene_ids_from_tsv_file_rcpp(RawVector filename_raw,
+List tox_read_gene_ids_from_tsv_file_rcpp(Rcpp::String filename,
                                          int n_genes,
                                          int gene_ids_len,
                                          int n_header_rows,
                                          int gene_col) {
 
-    RawMatrix gene_ids_raw(gene_ids_len, n_genes);
-    std::fill(gene_ids_raw.begin(), gene_ids_raw.end(), static_cast<Rbyte>(0));
+    std::vector<char> gene_ids_C(gene_ids_len * n_genes, '\0');
 
     int ierr = 0;
-    int fn_len = filename_raw.size();
+    int fn_len = strlen(filename.get_cstring());
 
-    read_gene_ids_from_tsv_file_C(reinterpret_cast<const char*>(filename_raw.begin()),
+    read_gene_ids_from_tsv_file_c(filename.get_cstring(),
                                   &fn_len,
-                                  reinterpret_cast<char*>(gene_ids_raw.begin()),
+                                  gene_ids_C.data(),
                                   &gene_ids_len,
                                   &n_genes,
                                   &n_header_rows,
                                   &gene_col,
                                   &ierr);
 
-    return List::create(Named("gene_ids_raw") = gene_ids_raw,
+    CharacterVector gene_ids_R = c_to_r_CharacterVector(gene_ids_C, n_genes, gene_ids_len);
+
+    return List::create(Named("gene_ids") = gene_ids_R,
                         Named("ierr") = ierr);
 }
 
 //' Calculate reading of OrthoFinder output files to extract family IDs and gene-to-family mappings
 //'
-//' @param filename_raw Raw vector specifying the filename of the OrthoFinder output file to read
-//' @param gene_ids_raw Raw matrix of gene IDs to match against the OrthoFinder output file
+//' @param filename Rcpp::String specifying the filename of the OrthoFinder output file to read
+//' @param gene_ids CharacterVector of gene IDs to match against the OrthoFinder output file
 //' @param n_families Integer specifying the expected number of families (columns) in the OrthoFinder output file
-//' @param family_ids_len Integer specifying the maximum length of family IDs (rows) to read from the OrthoFinder output file
+//' @param max_family_id_len Integer specifying the maximum length of family IDs (rows) to read from the OrthoFinder output file
 //' @return List with raw matrix of family IDs, integer vector mapping genes to families, and error code from reading function
 // [[Rcpp::export]]
-List tox_read_orthofinder_file_rcpp(RawVector filename_raw,
-                                   RawMatrix gene_ids_raw,
+List tox_read_orthofinder_file_rcpp(Rcpp::String filename,
+                                   CharacterVector gene_ids,
                                    int n_families,
-                                   int family_ids_len) {
+                                   int max_family_id_len) {
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
 
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
-
-    RawMatrix family_ids_raw(family_ids_len, n_families);
-    std::fill(family_ids_raw.begin(), family_ids_raw.end(), static_cast<Rbyte>(0));
-    IntegerVector gene_to_fam(n_genes);
+    std::vector<char> family_ids_C(max_family_id_len * n_families, '\0');
+    IntegerVector gene_to_fam(n_gene_ids);
     int ierr = 0;
-    int fn_len = filename_raw.size();
+    int fn_len = strlen(filename.get_cstring());
 
-    read_orthofinder_file_C(reinterpret_cast<const char*>(filename_raw.begin()),
+    read_orthofinder_file_c(filename.get_cstring(),
                             &fn_len,
-                            reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                            &gene_ids_len,
-                            &n_genes,
-                            reinterpret_cast<char*>(family_ids_raw.begin()),
-                            &family_ids_len,
+                            gene_ids_C.data(),
+                            &max_gene_id_len,
+                            &n_gene_ids,
+                            family_ids_C.data(),
+                            &max_family_id_len,
                             &n_families,
                             gene_to_fam.begin(),
                             &ierr);
 
-    return List::create(Named("family_ids_raw") = family_ids_raw,
+    CharacterVector family_ids_R = c_to_r_CharacterVector(family_ids_C, n_families, max_family_id_len);
+
+    return List::create(Named("family_ids") = family_ids_R,
                         Named("gene_to_fam") = gene_to_fam,
                         Named("ierr") = ierr);
 }
 
 //' Calculate validation of data structure for gene IDs, family IDs, gene-to-family mappings, expression vectors, family centroids, and shift vectors
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to validate
-//' @param gene_family_ids_raw Raw matrix of family IDs to validate
+//' @param gene_ids CharacterVector of gene IDs to validate
+//' @param gene_family_ids CharacterVector of family IDs to validate
 //' @param gene_to_fam Integer vector mapping genes to families to validate
 //' @param expression_vectors Numeric matrix of expression vectors to validate
 //' @param family_centroids Numeric matrix of family centroids to validate
 //' @param shift_vectors Numeric matrix of shift vectors to validate
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_data_structure_rcpp(RawMatrix gene_ids_raw,
-                                     RawMatrix gene_family_ids_raw,
+int tox_validate_data_structure_rcpp(CharacterVector gene_ids,
+                                     CharacterVector gene_family_ids,
                                      IntegerVector gene_to_fam,
                                      NumericMatrix expression_vectors,
                                      NumericMatrix family_centroids,
                                      NumericMatrix shift_vectors) {
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
 
-    int n_genes = gene_ids_raw.ncol();
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_families = gene_family_ids_raw.ncol();
-    int fam_len = gene_family_ids_raw.nrow();
+    int max_gene_family_id_len = get_max_string_length(gene_family_ids);
+    int n_gene_families = gene_family_ids.size();
+    std::vector<char> gene_family_ids_C = r_to_c_CharacterVector(gene_family_ids, max_gene_family_id_len);
+
     int n_samples = expression_vectors.nrow();
     int ierr = 0;
 
-    validate_data_structure_C(&n_genes,
-                             &n_families,
+    validate_data_structure_c(&n_gene_ids,
+                             &n_gene_families,
                              &n_samples,
-                             reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                             &gene_ids_len,
-                             reinterpret_cast<const char*>(gene_family_ids_raw.begin()),
-                             &fam_len,
+                             gene_ids_C.data(),
+                             &max_gene_id_len,
+                             gene_family_ids_C.data(),
+                             &max_gene_family_id_len,
                              gene_to_fam.begin(),
                              expression_vectors.begin(),
                              family_centroids.begin(),
@@ -3606,23 +3530,25 @@ int tox_validate_data_structure_rcpp(RawMatrix gene_ids_raw,
 
 //' Calculate filtering of unassigned genes based on gene IDs and gene-to-family mappings
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to filter
+//' @param gene_ids CharacterVector of gene IDs to filter
 //' @param gene_to_fam Integer vector mapping genes to families to use for filtering
 //' @return List with integer mask indicating which genes are assigned to families, number of genes kept after filtering, and error code from filtering function
 // [[Rcpp::export]]
 
-List tox_filter_unassigned_genes_rcpp(RawMatrix gene_ids_raw,
+List tox_filter_unassigned_genes_rcpp(CharacterVector gene_ids,
                                       IntegerVector gene_to_fam) {
 
-    int gene_ids_len = gene_ids_raw.nrow();
-    int n_genes = gene_ids_raw.ncol();
-    IntegerVector mask(n_genes);
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_gene_ids = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+
+    IntegerVector mask(n_gene_ids);
     int n_genes_kept = 0;
     int ierr = 0;
 
-    filter_unassigned_genes_C(reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                              &gene_ids_len,
-                              &n_genes,
+    filter_unassigned_genes_c(gene_ids_C.data(),
+                              &max_gene_id_len,
+                              &n_gene_ids,
                               gene_to_fam.begin(),
                               mask.begin(),
                               &n_genes_kept,
@@ -3643,7 +3569,7 @@ int tox_validate_gene_to_family_mapping_rcpp(IntegerVector gene_to_fam,
     int n_genes = gene_to_fam.size();
     int ierr = 0;
 
-    validate_gene_to_family_mapping_C(gene_to_fam.begin(),
+    validate_gene_to_family_mapping_c(gene_to_fam.begin(),
                                      &n_genes,
                                      &n_families,
                                      &ierr);
@@ -3664,7 +3590,7 @@ int tox_validate_expression_data_rcpp(NumericMatrix expression_vectors,
     int flag = check_non_negative ? 1 : 0;
     int ierr = 0;
 
-    validate_expression_data_C(expression_vectors.begin(),
+    validate_expression_data_c(expression_vectors.begin(),
                               &n_genes,
                               &n_samples,
                               &flag,
@@ -3683,7 +3609,7 @@ int tox_validate_family_centroids_rcpp(NumericMatrix family_centroids) {
     int n_families = family_centroids.ncol();
     int ierr = 0;
 
-    validate_family_centroids_C(family_centroids.begin(),
+    validate_family_centroids_c(family_centroids.begin(),
                                 &n_families,
                                 &n_samples,
                                 &ierr);
@@ -3708,7 +3634,7 @@ int tox_validate_shift_vectors_rcpp(NumericMatrix shift_vectors,
     int n_families = family_centroids.ncol();
     int ierr = 0;
 
-    validate_shift_vectors_C(shift_vectors.begin(),
+    validate_shift_vectors_c(shift_vectors.begin(),
                              expression_vectors.begin(),
                              family_centroids.begin(),
                              gene_to_fam.begin(),
@@ -3722,17 +3648,18 @@ int tox_validate_shift_vectors_rcpp(NumericMatrix shift_vectors,
 
 //' Calculate validation of string array uniqueness based on raw matrix of strings, checking for duplicates
 //'
-//' @param string_arr_raw Raw matrix of strings to validate for uniqueness
+//' @param string_arr CharacterVector of strings to validate for uniqueness
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_string_array_uniqueness_rcpp(RawMatrix string_arr_raw) {
+int tox_validate_string_array_uniqueness_rcpp(CharacterVector string_arr) {
 
-    int str_len = string_arr_raw.nrow();
-    int n_strings = string_arr_raw.ncol();
+    int max_string_len = get_max_string_length(string_arr);
+    int n_strings = string_arr.size();
+    std::vector<char> string_arr_C = r_to_c_CharacterVector(string_arr, max_string_len);
     int ierr = 0;
 
-    validate_string_array_uniqueness_C(reinterpret_cast<const char*>(string_arr_raw.begin()),
-                                       &str_len,
+    validate_string_array_uniqueness_c(string_arr_C.data(),
+                                       &max_string_len,
                                        &n_strings,
                                        &ierr);
 
@@ -3741,35 +3668,38 @@ int tox_validate_string_array_uniqueness_rcpp(RawMatrix string_arr_raw) {
 
 //' Calculate validation of all data components together, including gene IDs, family IDs, gene-to-family mappings, expression vectors, family centroids, and shift vectors
 //'
-//' @param gene_ids_raw Raw matrix of gene IDs to validate
-//' @param gene_family_ids_raw Raw matrix of family IDs to validate
+//' @param gene_ids CharacterVector of gene IDs to validate
+//' @param gene_family_ids CharacterVector of family IDs to validate
 //' @param gene_to_fam Integer vector mapping genes to families to validate
 //' @param expression_vectors Numeric matrix of expression vectors to validate
 //' @param family_centroids Numeric matrix of family centroids to validate
 //' @param shift_vectors Numeric matrix of shift vectors to validate
 //' @return  error code from validation function
 // [[Rcpp::export]]
-int tox_validate_all_data_rcpp(RawMatrix gene_ids_raw,
-                               RawMatrix gene_family_ids_raw,
+int tox_validate_all_data_rcpp(CharacterVector gene_ids,
+                               CharacterVector gene_family_ids,
                                IntegerVector gene_to_fam,
                                NumericMatrix expression_vectors,
                                NumericMatrix family_centroids,
                                NumericMatrix shift_vectors) {
 
-    int n_genes = gene_ids_raw.ncol();
-    int gene_len = gene_ids_raw.nrow();
-    int n_families = gene_family_ids_raw.ncol();
-    int fam_len = gene_family_ids_raw.nrow();
+    int max_gene_id_len = get_max_string_length(gene_ids);
+    int n_genes = gene_ids.size();
+    std::vector<char> gene_ids_C = r_to_c_CharacterVector(gene_ids, max_gene_id_len);
+
+    int max_gene_family_id_len = get_max_string_length(gene_family_ids);
+    int n_gene_families = gene_family_ids.size();
+    std::vector<char> gene_family_ids_C = r_to_c_CharacterVector(gene_family_ids, max_gene_family_id_len);
     int n_samples = expression_vectors.nrow();
     int ierr = 0;
 
-    validate_all_data_C(&n_genes,
-                        &n_families,
+    validate_all_data_c(&n_genes,
+                        &n_gene_families,
                         &n_samples,
-                        reinterpret_cast<const char*>(gene_ids_raw.begin()),
-                        &gene_len,
-                        reinterpret_cast<const char*>(gene_family_ids_raw.begin()),
-                        &fam_len,
+                        gene_ids_C.data(),
+                        &max_gene_id_len,
+                        gene_family_ids_C.data(),
+                        &max_gene_family_id_len,
                         gene_to_fam.begin(),
                         expression_vectors.begin(),
                         family_centroids.begin(),
@@ -3862,7 +3792,7 @@ List tox_omics_field_RAP_projection_rcpp(NumericMatrix vecs,
 // [[Rcpp::export]]
 List tox_compute_contributions_rcpp(NumericVector factor,
                                     NumericVector dependent,
-                                    std::string mode) {
+                                    Rcpp::String mode) {
 
   int n_dims = factor.size();
   NumericVector local_contributions(n_dims);
@@ -3870,14 +3800,10 @@ List tox_compute_contributions_rcpp(NumericVector factor,
   int ierr = 0;
 
   
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
-
   compute_contributions_c(factor.begin(),
                          dependent.begin(),
                          &n_dims,
-                         mode_c,
+                         mode.get_cstring(),
                          local_contributions.begin(),
                          &total_contribution,
                          &ierr);
@@ -3907,7 +3833,7 @@ List tox_compute_all_contributions_rcpp(NumericVector trajectories,
                                         int n_selected_factors,
                                         IntegerVector dependent_indices,
                                         int n_selected_dependents,
-                                        std::string mode) {
+                                        Rcpp::String mode) {
 
   // Dimensions for output arrays
   int n_tp = n_timepoints;
@@ -3920,11 +3846,6 @@ List tox_compute_all_contributions_rcpp(NumericVector trajectories,
   NumericVector temp_dependent(n_timepoints);
   int ierr = 0;
 
-  // Fortran expects mode as a char array (e.g., 'raw', 'min', 'mean'), pad/truncate to 8 chars
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
-
   compute_all_contributions_c(trajectories.begin(),
                               &n_factors,
                               &n_samples,
@@ -3933,7 +3854,7 @@ List tox_compute_all_contributions_rcpp(NumericVector trajectories,
                               &n_selected_factors,
                               dependent_indices.begin(),
                               &n_selected_dependents,
-                              mode_c,
+                              mode.get_cstring(),
                               local_contributions.begin(),
                               total_contributions.begin(),
                               temp_factors.begin(),
@@ -3965,15 +3886,11 @@ List tox_perform_permutation_test_rcpp(NumericVector trajectories,
                                        int factor_idx,
                                        int dependent_idx,
                                        int sample_idx,
-                                       std::string mode,
+                                       Rcpp::String mode,
                                        int n_permutations,
                                        int random_seed) {
  
                                         
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
-
   NumericMatrix local_contributions(n_timepoints, n_permutations);
   NumericVector total_contributions(n_permutations);
   NumericVector temp_factor(n_timepoints);
@@ -3987,7 +3904,7 @@ List tox_perform_permutation_test_rcpp(NumericVector trajectories,
                              &factor_idx,
                              &dependent_idx,
                              &sample_idx,
-                             mode_c,
+                             mode.get_cstring(),
                              &n_permutations,
                              local_contributions.begin(),
                              total_contributions.begin(),
@@ -4141,7 +4058,7 @@ List tox_compute_velocity_acceleration_contributions_rcpp(NumericVector trajecto
                                                           int n_factors,
                                                           int n_samples,
                                                           int n_timepoints,
-                                                          std::string mode) {
+                                                          Rcpp::String mode) {
 
   // Allocate workspace arrays
   NumericVector factor_workspace((n_timepoints - 1) * n_factors);
@@ -4154,16 +4071,13 @@ List tox_compute_velocity_acceleration_contributions_rcpp(NumericVector trajecto
   NumericVector contrib_acceleration(n_factors * n_factors * n_samples);
   NumericVector acceleration_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
   int ierr = 0;
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
 
   compute_velocity_acceleration_contributions_c(
     trajectories.begin(),
     &n_factors,
     &n_samples,
     &n_timepoints,
-    mode_c,
+    mode.get_cstring(),
     factor_workspace.begin(),
     dependent_workspace.begin(),
     contributions_workspace.begin(),
@@ -4201,22 +4115,19 @@ List tox_compute_velocity_acceleration_contributions_alloc_rcpp(NumericVector tr
                                                                int n_factors,
                                                                int n_samples,
                                                                int n_timepoints,
-                                                               std::string mode) {
+                                                               Rcpp::String mode) {
 
   NumericVector contrib_velocity(n_factors * n_factors * n_samples);
   NumericVector velocity_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
   NumericVector contrib_acceleration(n_factors * n_factors * n_samples);
   NumericVector acceleration_contribution_series(n_timepoints * n_factors * n_factors * n_samples);
   int ierr = 0;
-  char mode_c[8] = {' '};
-  size_t len = std::min(mode.size(), size_t(8));
-  std::memcpy(mode_c, mode.c_str(), len);
 
   compute_velocity_acceleration_contributions_alloc_c(trajectories.begin(),
                                                      &n_factors,
                                                      &n_samples,
                                                      &n_timepoints,
-                                                     mode_c,
+                                                     mode.get_cstring(),
                                                      contrib_velocity.begin(),
                                                      velocity_contribution_series.begin(),
                                                      contrib_acceleration.begin(),
@@ -4567,14 +4478,14 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
 
   IntegerVector is_outlier_int(n_genes);
   double threshold = 0.0;
-  NumericVector p_values(n_genes);
+  NumericVector quantile(n_genes);
   int ierr = 0;
 
   identify_outliers_c(
     &n_genes,
     rdi.begin(), sorted_rdi.begin(), perm.begin(),
     is_outlier_int.begin(),
-    &threshold, p_values.begin(),
+    &threshold, quantile.begin(),
     &percentile, &ierr
   );
 
@@ -4587,7 +4498,7 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
   return List::create(
     Named("is_outlier") = is_outlier,
     Named("threshold") = threshold,
-    Named("p_values") = p_values,
+    Named("quantile") = quantile,
     Named("perm") = perm,
     Named("ierr") = ierr
   );
@@ -4597,7 +4508,7 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
 List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families, double percentile) {
   int n_genes = distances.size();
   NumericVector work_array(n_genes);
-  NumericVector p_values(n_genes);
+  NumericVector quantile(n_genes);
   IntegerVector perm(n_genes);
   IntegerVector stack_left(n_genes);
   IntegerVector stack_right(n_genes);
@@ -4614,7 +4525,7 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     perm.begin(), stack_left.begin(), stack_right.begin(),
     is_outlier_int.begin(),
     loess_x.begin(), loess_y.begin(), loess_n.begin(),
-    p_values.begin(), &ierr,
+    quantile.begin(), &ierr,
     &percentile
   );
 
@@ -4629,7 +4540,7 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     Named("loess_x") = loess_x,
     Named("loess_y") = loess_y,
     Named("loess_n") = loess_n,
-    Named("p_values") = p_values,
+    Named("quantile") = quantile,
     Named("ierr") = ierr
   );
 }
@@ -4719,15 +4630,15 @@ List tox_loess_rcpp(NumericVector x, NumericVector y, double span, int degree,
 }
 
 // [[Rcpp::export]]
-NumericVector tox_empirical_p_values_rcpp(
+NumericVector tox_scaled_distance_quantile_rcpp(
     Rcpp::NumericVector distribution,
     double c_const
 ) {
     int n_genes = distribution.size();
-    Rcpp::NumericVector p_values(n_genes);
+    Rcpp::NumericVector quantile(n_genes);
     NumericVector sorted_rdi = clone(distribution);
 
-    // clamp negatives to 0 
+    // clamp negatives to 0
     std::transform(sorted_rdi.begin(), sorted_rdi.end(), sorted_rdi.begin(),
                     [](double v) { return v < 0.0 ? 0.0 : v; });
 
@@ -4739,20 +4650,20 @@ NumericVector tox_empirical_p_values_rcpp(
         return sorted_rdi[i] < sorted_rdi[j];
     });
 
-    // 1-based 
+    // 1-based
     for (int k = 0; k < n_genes; ++k) perm[k] += 1;
-    
+
     int ierr = 0;
 
-    empirical_p_values_c(
+    scaled_distance_quantile_c(
         &n_genes,
         distribution.begin(),
         sorted_rdi.begin(),
         perm.begin(),
-        p_values.begin(),
+        quantile.begin(),
         &c_const,
         &ierr
     );
 
-    return p_values;
+    return quantile;
 }

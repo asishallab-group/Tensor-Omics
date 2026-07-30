@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_shift_vector_field_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_shift_vector_field_c(d, n_genes, n_families, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr) bind(C, name="compute_shift_vector_field_c")  
+    <h2>pure subroutine compute_shift_vector_field_c(n_tissues, n_genes, n_families, expression_vectors, family_centroids, gene_to_fam, shift_vectors, ierr) bind(C, name="compute_shift_vector_field_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -184,7 +185,7 @@ When using these C wrapper functions, no copies of the arrays will be created. T
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-d~5"></span>
+              <span class="anchor" id="variable-n_tissues~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -192,14 +193,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
               target
             </td>
             <td>::</td>
-            <td><strong>d</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
                 <p>Expression vector dimension</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~35"></span>
+              <span class="anchor" id="variable-n_genes~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -214,7 +215,7 @@ When using these C wrapper functions, no copies of the arrays will be created. T
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~9"></span>
+              <span class="anchor" id="variable-n_families~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -229,7 +230,7 @@ When using these C wrapper functions, no copies of the arrays will be created. T
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~5"></span>
+              <span class="anchor" id="variable-expression_vectors~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -237,14 +238,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
               target
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(d,n_genes)</td>
+            <td><strong>expression_vectors</strong>(n_tissues,n_genes)</td>
             <td>
-                <p>Gene expression matrix <code>(d × n_genes)</code></p>
+                <p>Gene expression matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~5"></span>
+              <span class="anchor" id="variable-family_centroids~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -252,14 +253,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
               target
             </td>
             <td>::</td>
-            <td><strong>family_centroids</strong>(d,n_families)</td>
+            <td><strong>family_centroids</strong>(n_tissues,n_families)</td>
             <td>
-                <p>Family centroid matrix <code>(d × n_families)</code></p>
+                <p>Family centroid matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_centroid~2"></span>
+              <span class="anchor" id="variable-gene_to_fam~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -267,14 +268,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
               target
             </td>
             <td>::</td>
-            <td><strong>gene_to_centroid</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong>(n_genes)</td>
             <td>
-                <p>Mapping from genes to families (family IDs for each gene in <code>expression_vectors</code>)</p>
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~5"></span>
+              <span class="anchor" id="variable-shift_vectors~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -282,14 +283,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
               target
             </td>
             <td>::</td>
-            <td><strong>shift_vectors</strong>(2*d,n_genes)</td>
+            <td><strong>shift_vectors</strong>(n_tissues,2,n_genes)</td>
             <td>
-                <p>Output, real matrix array, size = 2d x <code>n_genes</code>, stores the centroid of the gene's family in rows 1..d and the shift vectors in rows d+1...2d</p>
+                <p>Output, real matrix array, stores the centroid of the gene's family in <code>shift_vectors(:, 1, i_gene)</code> (zero vector if no family assigned) shift vectors in <code>shift_vectors(:, 2, i_gene)</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~126"></span>
+              <span class="anchor" id="variable-ierr~220"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -329,14 +330,14 @@ When using these C wrapper functions, no copies of the arrays will be created. T
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>
