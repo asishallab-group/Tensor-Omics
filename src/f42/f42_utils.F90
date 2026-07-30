@@ -434,6 +434,7 @@ contains
 
         norm_product = sqrt(norm1_sq)*sqrt(norm2_sq)
         if (is_close(norm_product, 0.0_real64)) then
+            angle = 0.0_real64
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
