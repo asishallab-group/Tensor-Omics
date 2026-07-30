@@ -296,7 +296,7 @@ The test suite provides a scalable system for organizing and executing Fortran u
 3. **`asserts.f90`** — assertion library for validating results.
 
 * **Suite Registration:** Each test module must implement a public function named `get_all_<src_module_name>_tests` that matches the `get_all_interface` abstract interface defined in `test_suite.f90`. This function aggregates and returns an array of all `test_case` structures defined within that module.
-* Test modules must be named `mod_test_<module_name>.[fF]90.` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
+* Test modules must be named `mod_test_<module_name>.[fF]90` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
 
 ### Running tests
 
