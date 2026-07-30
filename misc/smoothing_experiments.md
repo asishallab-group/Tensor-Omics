@@ -1103,3 +1103,10 @@ To process a specific dataset with a single parameter combination:
 ```bash
 ./run_lomanle_tests.sh results/data/2d/circular_arc_noise_high.csv 30 1 3.0 0.3 0.10 0.90 2.5 50 0.01 2
 ```
+
+## Idea Box / To Dos / Open Questions
+
+This section was written on Vivian's last day with us in a meeting between Asis and Vivian.
+
+<img width="1980" height="1218" alt="image" src="https://github.com/user-attachments/assets/3785a415-0c97-4fd6-b04c-02496addc49f" />
+
