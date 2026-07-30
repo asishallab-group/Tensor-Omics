@@ -61,7 +61,6 @@
 !/rcpp/tensor_omics/src/*.cpp
 !/rcpp/tensor_omics/src/*.h
 !/rcpp/*.R
-!/rcpp/tensoromics_functions.cpp
 
 # misc
 !/misc
