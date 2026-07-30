@@ -132,7 +132,7 @@ fprettify -i 4 -l 1000 <path-to-file>
 
 The \texttt{-l 1000} flag sets a generous line-length limit so that \texttt{fprettify} does not introduce spurious line continuations in long argument lists.
 
-\subsection{One Dummy Argument Declaration Per Line}
+\subsection{One Dummy Argument Declaration Per Line}\label{sec:one-arg-per-line}
 
 Each dummy argument (subroutine/function parameter) must be declared on its own line. This is required so that every argument can carry its own FORD documentation comment:
 
@@ -359,7 +359,7 @@ Every \texttt{validate\_*} routine, as well as \texttt{set\_err}, accepts an opt
 call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
 call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
 call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
-if (n_clusters > n_points) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+if (n_clusters > n_points) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
 
 call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
 call validate_all_in_range_real(centroids, size(centroids, kind=int32), ierr, arg_pos=5_int32)
@@ -376,8 +376,8 @@ call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WA
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
 \begin{itemize}
-  \item \texttt{set\_err(ierr, code)}: Sets \texttt{ierr} to \texttt{code} only if \texttt{ierr} is currently \texttt{ERR\_OK}. Preserves the first error encountered.
-  \item \texttt{set\_err\_once(ierr, code)}: Identical in behaviour to \texttt{set\_err}; provided as a more explicit alias to signal intent when chaining multiple fallible calls.
+  \item \texttt{set\_err(ierr, code)}: \emph{Unconditionally} sets \texttt{ierr} to \texttt{code}, overwriting any error already stored. Use it only when \texttt{ierr} is known to be \texttt{ERR\_OK} (e.g.\ the first check after \texttt{set\_ok}), or when you deliberately want the new code to take precedence.
+  \item \texttt{set\_err\_once(ierr, code)}: Sets \texttt{ierr} to \texttt{code} \emph{only if \texttt{ierr} is currently \texttt{ERR\_OK}}, preserving the first error encountered. This is the safe default when chaining multiple fallible calls, and is exactly what the \texttt{validate\_*} routines use internally.
 \end{itemize}
 
 \subsection{Never Silent Errors}
@@ -599,19 +599,21 @@ integer(int32), intent(out) :: tmp_perm(n_genes)
 real(real64),   intent(out) :: tmp_loess_y(n_genes)
 \end{lstlisting}
 
-\subsection{Pointer Views Over Subarrays}
+\subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
 
-When working with large matrices in the \texttt{\_alloc} or pipeline layer, use Fortran pointer re-association to create zero-copy views into existing arrays instead of allocating new storage. This is particularly useful for obtaining column or row slices from an already-allocated output matrix:
+When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
 
 \begin{lstlisting}[language=Fortran]
-! Create a transposed pointer view into the output array (no copy)
-real(real64), dimension(:, :), pointer :: transposed_view
-transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
-! Now use a column slice as a work pointer
-tmp_col_ptr => transposed_view(:, 1)
+! Reinterpret a contiguous buffer as a 2-D work view (no copy, no allocation)
+real(real64), dimension(:, :), pointer :: work_view
+work_view(1:n_genes, 1:n_tissues) => output_buffer
+! A column slice can then serve as a work pointer
+tmp_col_ptr => work_view(:, 1)
 \end{lstlisting}
 
-This pattern avoids allocating a separate temporary matrix when the required data already exists in the output buffer.
+\textbf{This reshapes; it does not transpose.} Bounds-remapping reinterprets the linear, column-major storage under the new shape: \texttt{work\_view(i, j)} is element \texttt{(j-1)*n\_genes + i} of \texttt{output\_buffer}, \emph{not} \texttt{output\_buffer(j, i)}. A genuine transpose reorders elements and therefore requires moving data (e.g.\ \texttt{transpose} into a separate buffer); a pointer view can never transpose. The target must be contiguous.
+
+Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
 
 \subsection{Always Use Pointers, Never Value-Copy Scalars in C Wrappers}
 
@@ -817,7 +819,11 @@ integer(c_int), intent(in), target :: filename_len
 character(len=1, kind=c_char), dimension(filename_len), intent(in), target :: filename
 
 ! CORRECT: multi-dimensional string arrays (len=1 per character element, kind=c_char)
-integer(c_int), intent(in), target :: max_str_len, d1, d2, d3
+! One dummy argument per line (see Section 3); each can carry its own FORD comment
+integer(c_int), intent(in), target :: max_str_len
+integer(c_int), intent(in), target :: d1
+integer(c_int), intent(in), target :: d2
+integer(c_int), intent(in), target :: d3
 character(len=1, kind=c_char), dimension(max_str_len, d1, d2, d3), intent(in), target :: strings_nd
 
 ! WRONG: positional parameter character(c_char) means len=c_char=1, kind=default
