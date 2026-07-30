@@ -4,7 +4,7 @@ FROM archlinux:latest
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
     pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy && \
-    pacman -Sy --noconfirm r gcc-fortran git && \
+    pacman -Sy --noconfirm r git gdb && \
     pacman -Scc --noconfirm
 
 # Install fpm binary

@@ -34,6 +34,9 @@ function utils_fpm() {
   if [[ "$1" == "test" ]]; then
     prefix="fpm test --target ${2:-run_tests}"
     libpath=build:"$libpath"
+    if [[ $TOX_DEBUG ]]; then
+      prefix="gdb --args $prefix"
+    fi
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
@@ -94,7 +97,7 @@ function get_flags_and_features() {
   elif [[ $TOX_DIAGNOSTICS ]]; then
     FLAGS="-O0"
   fi
-  if [[ $TOX_DIAGNOSTICS ]]; then
+  if [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
     FEATURES="$FEATURES,diagnostics"
   fi
   FEATURES="$FEATURES,default"
