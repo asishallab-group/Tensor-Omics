@@ -2029,6 +2029,1016 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
     }
 
 
+#> tox_get_outliers_by_angle:tox_normalize_vectors_unit_length_c: Normalizes expression vectors to unit length
+def tox_normalize_vectors_unit_length(expression_vectors):
+    """
+    Wrapper for tox_normalize_vectors_unit_length_c: normalizes expression vectors to unit length.
+
+    Args:
+        expression_vectors (np.ndarray): Expression vectors [n_samples, n_genes]
+
+    Returns:
+        np.ndarray: Unit vectors [n_samples, n_genes]
+    """
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
+    n_samples, n_genes = expression_vectors.shape
+
+    unit_vectors = np.zeros((n_samples, n_genes), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_normalize_vectors_unit_length_c = lib.tox_normalize_vectors_unit_length_c
+    tox_normalize_vectors_unit_length_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_samples
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # unit_vectors
+        ctypes.POINTER(ctypes.c_int)   # ierr
+    ]
+    tox_normalize_vectors_unit_length_c.restype = None
+
+    tox_normalize_vectors_unit_length_c(
+        expression_vectors,
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        unit_vectors,
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
+    _readonly(unit_vectors)
+
+    return unit_vectors
+
+
+#> tox_get_outliers_by_angle:tox_detect_angle_outliers_pipeline_c: Complete pipeline for angle-based outlier detection
+def tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile=95.0, min_angular_dispersion=1.0e-02, max_angular_dispersion=np.sqrt(-2 * np.log(0.5))):
+    """
+    Complete pipeline for angle-based outlier detection.
+
+    Full workflow: normalize vectors → compute family directions → compute angles →
+    scale by dispersion → detect outliers
+
+    Args:
+        expression_vectors (np.ndarray): Gene expression vectors [n_samples, n_genes]
+        gene_to_fam (np.ndarray): Gene to family mapping [n_genes] (1-based indices, 0 = unassigned)
+        percentile (float): Percentile threshold for outlier detection (0-100)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'is_outlier': Boolean array [n_genes] indicating outlier status
+            - 'z_scores': Scaled angles (z-scores) [n_genes]
+            - 'ierr': Error code
+            - 'status': Status code for family-specific issues
+    """
+    expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_samples, n_genes = expression_vectors.shape
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0  # Family count from maximum index
+
+    # Output arrays
+    is_outlier = np.empty(n_genes, dtype=np.int32)  # C int for logical conversion
+    z_scores = np.empty(n_genes, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+    threshold = ctypes.c_double(0.0)
+
+    # Get the function and set argtypes
+    tox_detect_angle_outliers_pipeline_c = lib.tox_detect_angle_outliers_pipeline_c
+    tox_detect_angle_outliers_pipeline_c.argtypes = [
+        ctypes.POINTER(ctypes.c_int),  # n_samples
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        ctypes.POINTER(ctypes.c_double),  # percentile
+        ctypes.POINTER(ctypes.c_double),  # threshold
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int),  # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # status
+        ctypes.POINTER(ctypes.c_double),   # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)   # max_family_dispersion
+    ]
+    tox_detect_angle_outliers_pipeline_c.restype = None
+
+    # Call the main C wrapper
+    tox_detect_angle_outliers_pipeline_c(
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        expression_vectors,
+        gene_to_fam,
+        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(threshold),
+        is_outlier,
+        z_scores,
+        ctypes.byref(ierr),
+        status,
+        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
+        ctypes.byref(ctypes.c_double(max_angular_dispersion))
+    )
+    check_err_code(ierr.value)
+
+    # Convert C int (0/1) back to Python bool
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(is_outlier_bool, z_scores)
+
+    return {
+        "is_outlier": is_outlier_bool,
+        "z_scores": z_scores,
+        "ierr": ierr.value,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle:tox_compute_family_direction_expert_c: Compute family reference direction and angular dispersion with pre-sorted permutation array
+def tox_compute_family_direction_expert(unit_vectors, gene_to_fam, min_angular_dispersion=1.0e-02, max_angular_dispersion=np.sqrt(-2 * np.log(0.5))):
+    """
+    Expert wrapper for tox_compute_family_direction_expert_c: compute family reference direction 
+    and angular dispersion with pre-sorted permutation array.
+
+    Args:
+        unit_vectors (np.ndarray): Unit vectors [n_samples, n_genes]
+        gene_to_fam (np.ndarray): Gene to family mapping [n_genes] (1-based indices, 0 = unassigned)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'family_directions': Family reference directions [n_samples, n_families]
+            - 'angular_dispersions': Angular dispersions σ_θ,F [n_families]
+            - 'family_counts': Number of genes per family [n_families]
+            - 'ierr': Error code
+            - 'status': Status code for family-specific issues
+    """
+    unit_vectors = np.asfortranarray(unit_vectors, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_samples, n_genes = unit_vectors.shape
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0  # Family count from maximum index
+
+    # Output arrays
+    family_directions = np.empty((n_samples, n_families), dtype=np.float64, order='F')
+    angular_dispersions = np.empty(n_families, dtype=np.float64)
+    tmp_member_counts = np.empty(n_families, dtype=np.int32)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+
+    tmp_member_counts = np.empty(n_families, dtype=np.int32)
+
+    # Get the function and set argtypes
+    tox_compute_family_direction_expert_c = lib.tox_compute_family_direction_expert_c
+    tox_compute_family_direction_expert_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # unit_vectors
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # family_directions
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angular_dispersions
+        ctypes.POINTER(ctypes.c_int),  # n_samples
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
+        ctypes.POINTER(ctypes.c_int),  # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # status
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # tmp_member_counts
+        ctypes.POINTER(ctypes.c_double),   # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)   # max_family_dispersion
+    ]
+    tox_compute_family_direction_expert_c.restype = None
+
+    tox_compute_family_direction_expert_c(
+        unit_vectors,
+        gene_to_fam,
+        family_directions,
+        angular_dispersions,
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ierr),
+        status,
+        tmp_member_counts,
+        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
+        ctypes.byref(ctypes.c_double(max_angular_dispersion))
+    )
+    check_err_code(ierr.value)
+
+    _readonly(family_directions, angular_dispersions)
+
+    return {
+        "family_directions": family_directions,
+        "angular_dispersions": angular_dispersions,
+        "ierr": ierr.value,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle:tox_compute_family_direction_c: Compute family reference direction and angular dispersion with automatic allocation
+def tox_compute_family_direction(unit_vectors, gene_to_fam, min_angular_dispersion=1.0e-02, max_angular_dispersion=np.sqrt(-2 * np.log(0.5))):
+    """
+    Wrapper for tox_compute_family_direction_c: compute family reference direction 
+    and angular dispersion with automatic allocation.
+
+    Args:
+        unit_vectors (np.ndarray): Unit vectors [n_samples, n_genes]
+        gene_to_fam (np.ndarray): Gene to family mapping [n_genes] (1-based indices, 0 = unassigned)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'family_directions': Family reference directions [n_samples, n_families]
+            - 'angular_dispersions': Angular dispersions σ_θ,F [n_families]
+            - 'family_counts': Number of genes per family [n_families]
+            - 'ierr': Error code
+            - 'status': Status code for family-specific issues
+    """
+    unit_vectors = np.asfortranarray(unit_vectors, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_samples, n_genes = unit_vectors.shape
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0  # Family count from maximum index
+
+    # Output arrays
+    family_directions = np.zeros((n_samples, n_families), dtype=np.float64, order='F')
+    angular_dispersions = np.zeros(n_families, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+
+    # Get the function and set argtypes
+    tox_compute_family_direction_c = lib.tox_compute_family_direction_c
+    tox_compute_family_direction_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # unit_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_samples
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # family_directions
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angular_dispersions
+        ctypes.POINTER(ctypes.c_int),  # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # status
+        ctypes.POINTER(ctypes.c_double),   # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)   # max_family_dispersion
+    ]
+    tox_compute_family_direction_c.restype = None
+
+    tox_compute_family_direction_c(
+        unit_vectors,
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        family_directions,
+        angular_dispersions,
+        ctypes.byref(ierr),
+        status,
+        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
+        ctypes.byref(ctypes.c_double(max_angular_dispersion))
+    )
+    check_err_code(ierr.value)
+
+    _readonly(family_directions, angular_dispersions)
+
+    return {
+        "family_directions": family_directions,
+        "angular_dispersions": angular_dispersions,
+        "ierr": ierr.value,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle:tox_compute_angles_to_direction_c: Compute angles between each gene and its family reference direction
+def tox_compute_angles_to_direction(unit_vectors, family_directions, gene_to_fam):
+    """
+    Wrapper for tox_compute_angles_to_direction_c: compute angles between 
+    each gene and its family reference direction.
+
+    Args:
+        unit_vectors (np.ndarray): Unit vectors [n_samples, n_genes]
+        family_directions (np.ndarray): Family reference directions [n_samples, n_families]
+        gene_to_fam (np.ndarray): Gene to family mapping [n_genes] (1-based indices, 0 = unassigned)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'angles': Angles in radians [0, π], -1.0 for invalid [n_genes]
+            - 'ierr': Error code
+    """
+    unit_vectors = np.asfortranarray(unit_vectors, dtype=np.float64)
+    family_directions = np.asfortranarray(family_directions, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_samples, n_genes = unit_vectors.shape
+    n_families = family_directions.shape[1]
+
+    # Output array
+    angles = np.zeros(n_genes, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_compute_angles_to_direction_c = lib.tox_compute_angles_to_direction_c
+    tox_compute_angles_to_direction_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # unit_vectors
+        ctypes.POINTER(ctypes.c_int),  # n_samples
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # family_directions
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angles
+        ctypes.POINTER(ctypes.c_int)   # ierr
+    ]
+    tox_compute_angles_to_direction_c.restype = None
+
+    tox_compute_angles_to_direction_c(
+        unit_vectors,
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        family_directions,
+        angles,
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
+
+    _readonly(angles)
+
+    return {
+        "angles": angles,
+        "ierr": ierr.value
+    }
+
+
+#> tox_get_outliers_by_angle:tox_z_scores_by_dispersion_c: Compute scaled angles by angular dispersion (z-scores)
+def tox_z_scores_by_dispersion(angles, angular_dispersions, gene_to_fam):
+    """
+    Wrapper for tox_z_scores_by_dispersion_c: compute scaled angles 
+    by angular dispersion (z-scores).
+
+    Args:
+        angles (np.ndarray): Angles in radians [0, π], -1.0 for invalid [n_genes]
+        angular_dispersions (np.ndarray): Angular dispersions σ_θ,F [n_families]
+        gene_to_fam (np.ndarray): Gene to family mapping [n_genes] (1-based indices, 0 = unassigned)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'z_scores': Scaled angles (z-scores), -1.0 for invalid [n_genes]
+            - 'ierr': Error code
+    """
+    angles = np.ascontiguousarray(angles, dtype=np.float64)
+    angular_dispersions = np.ascontiguousarray(angular_dispersions, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = angles.shape[0]
+    n_families = angular_dispersions.shape[0]
+
+    # Output array
+    z_scores = np.zeros(n_genes, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_z_scores_by_dispersion_c = lib.tox_z_scores_by_dispersion_c
+    tox_z_scores_by_dispersion_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angles
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_int),  # n_families
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angular_dispersions
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int)   # ierr
+    ]
+    tox_z_scores_by_dispersion_c.restype = None
+
+    tox_z_scores_by_dispersion_c(
+        angles,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        gene_to_fam,
+        angular_dispersions,
+        z_scores,
+        ctypes.byref(ierr)
+    )
+    check_err_code(ierr.value)
+
+    _readonly(z_scores)
+
+    return {
+        "z_scores": z_scores,
+        "ierr": ierr.value
+    }
+
+
+#> tox_get_outliers_by_angle:tox_angle_outliers_c: Compute angle based outliers
+def tox_angle_outliers(z_scores, percentile=95.0):
+    """
+    Wrapper for tox_angle_outliers_c: identify directional outliers 
+    based on scaled angles using percentile threshold.
+
+    Args:
+        z_scores (np.ndarray): Scaled angles (z-scores), -1.0 for invalid [n_genes]
+        percentile (float): Percentile threshold (0.0 < p < 100.0)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'is_outlier': Boolean array indicating outlier status per gene [n_genes]
+            - 'threshold': Computed threshold value for outlier detection
+            - 'ierr': Error code
+    """
+    z_scores = np.ascontiguousarray(z_scores, dtype=np.float64)
+    n_genes = z_scores.shape[0]
+
+    # Output arrays
+    is_outlier = np.empty(n_genes, dtype=np.int32)  # C int for logical conversion
+    threshold = ctypes.c_double(0.0)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_angle_outliers_c = lib.tox_angle_outliers_c
+    tox_angle_outliers_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int),  # n_genes
+        ctypes.POINTER(ctypes.c_double),  # percentile
+        ctypes.POINTER(ctypes.c_double),  # threshold
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier
+        ctypes.POINTER(ctypes.c_int),   # ierr
+    ]
+    tox_angle_outliers_c.restype = None
+
+    tox_angle_outliers_c(
+        z_scores,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(threshold),
+        is_outlier,
+        ctypes.byref(ierr),
+    )
+    check_err_code(ierr.value)
+
+    # Convert C int (0/1) back to Python bool
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(is_outlier_bool)
+
+    return {
+        "is_outlier": is_outlier_bool,
+        "threshold": threshold.value,
+        "ierr": ierr.value
+    }
+
+
+#> tox_get_outliers_by_angle:tox_angle_outliers_expert_c: Compute angle based outliers
+def tox_angle_outliers_expert(
+    z_scores,
+    threshold
+):
+    """
+    Wrapper for tox_angle_outliers_expert_c.
+
+    Args:
+        z_scores (np.ndarray): Scaled angles, shape (n_genes,)
+        threshold (float): `z_scores` exceeding this value will be identified as outliers
+
+    Returns:
+        dict with keys: is_outlier, threshold, ierr
+    """
+
+    # ------------------------------------------------------------
+    # Ensure correct dtypes and contiguity
+    # ------------------------------------------------------------
+    z_scores = np.ascontiguousarray(z_scores, dtype=np.float64)
+
+    n_genes = z_scores.shape[0]
+
+    # ------------------------------------------------------------
+    # Output buffers
+    # ------------------------------------------------------------
+    is_outlier = np.empty(n_genes, dtype=np.int32)
+    threshold = ctypes.c_double(threshold)
+    ierr = ctypes.c_int(0)
+
+    # Scalars passed by reference
+    c_n_genes = ctypes.c_int(n_genes)
+
+    # ------------------------------------------------------------
+    # Bind Fortran/C routine
+    # ------------------------------------------------------------
+    tox_angle_outliers_expert_c = lib.tox_angle_outliers_expert_c
+    tox_angle_outliers_expert_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_double),                                # threshold
+        np.ctypeslib.ndpointer(dtype=np.int32,   flags="C_CONTIGUOUS"),  # is_outlier
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # ierr
+    ]
+    tox_angle_outliers_expert_c.restype = None
+
+    tox_angle_outliers_expert_c(
+        z_scores,
+        ctypes.byref(threshold),
+        is_outlier,
+        ctypes.byref(c_n_genes),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(is_outlier_bool)
+
+    return {
+        "is_outlier": is_outlier_bool,
+        "threshold": threshold.value,
+        "ierr": ierr.value,
+    }
+
+
+#> tox_get_outliers_by_angle_rap:tox_detect_angle_outliers_pipeline_rap_c: Complete pipeline for RAP angle-based outlier detection
+def tox_detect_angle_outliers_pipeline_rap(
+    rap_angles,
+    gene_to_fam,
+    percentile=95.0,
+    min_family_dispersion=1.0e-02,
+    max_family_dispersion=np.sqrt(-2 * np.log(0.5))
+):
+    """
+    Wrapper for tox_detect_angle_outliers_pipeline_rap_c: 
+    Complete pipeline for RAP angle-based outlier detection.
+
+    Args:
+        rap_angles (np.ndarray): RAP angles in radians (-π, π], shape (n_genes,)
+        gene_to_fam (np.ndarray): Gene to family mapping (0 for unassigned), shape (n_genes,)
+        percentile (float): Percentile threshold (0.0-100.0)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'z_scores': Scaled angles (z-scores) for each gene
+            - 'is_outlier': Boolean array indicating outlier status per gene
+            - 'status': Status code
+    """
+    rap_angles = np.ascontiguousarray(rap_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = rap_angles.shape[0]
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0
+
+    if n_families == 0:
+        raise ValueError("No valid families found in gene_to_fam array")
+
+    # Output arrays
+    z_scores = np.empty(n_genes, dtype=np.float64)
+    is_outlier = np.empty(n_genes, dtype=np.int32)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+    threshold = ctypes.c_double(0.0)
+
+    # Get the function and set argtypes
+    tox_detect_angle_outliers_pipeline_rap_c = lib.tox_detect_angle_outliers_pipeline_rap_c
+    tox_detect_angle_outliers_pipeline_rap_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rap_angles
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        ctypes.POINTER(ctypes.c_double),                                # percentile
+        ctypes.POINTER(ctypes.c_double),                                # threshold
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier
+        ctypes.POINTER(ctypes.c_int),                                   # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),                                    # status
+        ctypes.POINTER(ctypes.c_double),    # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)    # max_family_dispersion
+    ]
+    tox_detect_angle_outliers_pipeline_rap_c.restype = None
+
+    # Call the C wrapper
+    tox_detect_angle_outliers_pipeline_rap_c(
+        rap_angles,
+        gene_to_fam,
+        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(threshold),
+        z_scores,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        is_outlier,
+        ctypes.byref(ierr),
+        status,
+        ctypes.byref(ctypes.c_double(min_family_dispersion)),
+        ctypes.byref(ctypes.c_double(max_family_dispersion))
+    )
+
+    check_err_code(ierr.value)
+
+    # Convert C int (0/1) back to Python bool
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(z_scores, is_outlier_bool)
+
+    return {
+        "z_scores": z_scores,
+        "is_outlier": is_outlier_bool,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle_rap:tox_compute_family_direction_rap_c: Compute circular mean and dispersion for each gene family
+def tox_compute_family_direction_rap(
+    rap_angles,
+    gene_to_fam,
+    min_family_dispersion=1.0e-02,
+    max_family_dispersion=np.sqrt(-2 * np.log(0.5))
+):
+    """
+    Wrapper for tox_compute_family_direction_rap_c:
+    Compute circular mean and dispersion for each gene family.
+
+    Args:
+        rap_angles (np.ndarray): RAP angles in radians (-π, π], shape (n_genes,)
+        gene_to_fam (np.ndarray): Gene to family mapping (0 for unassigned), shape (n_genes,)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'family_mean_angles': Family mean angles in radians (-π, π]
+            - 'family_dispersions': Angular dispersions σ_φ,F
+            - 'family_counts': Number of genes per family
+            - 'status': Status code
+    """
+    rap_angles = np.ascontiguousarray(rap_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = rap_angles.shape[0]
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0
+
+    if n_families == 0:
+        raise ValueError("No valid families found in gene_to_fam array")
+
+    # Output arrays
+    family_mean_angles = np.empty(n_families, dtype=np.float64)
+    family_dispersions = np.empty(n_families, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+
+    # Get the function and set argtypes
+    tox_compute_family_direction_rap_c = lib.tox_compute_family_direction_rap_c
+    tox_compute_family_direction_rap_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rap_angles
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_mean_angles
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_dispersions
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        ctypes.POINTER(ctypes.c_int),                                   # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),                                    # status
+        ctypes.POINTER(ctypes.c_double),    # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)    # max_family_dispersion
+    ]
+    tox_compute_family_direction_rap_c.restype = None
+
+    # Call the C wrapper
+    tox_compute_family_direction_rap_c(
+        rap_angles,
+        gene_to_fam,
+        family_mean_angles,
+        family_dispersions,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ierr),
+        status,
+        ctypes.byref(ctypes.c_double(min_family_dispersion)),
+        ctypes.byref(ctypes.c_double(max_family_dispersion))
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(family_mean_angles, family_dispersions)
+
+    return {
+        "family_mean_angles": family_mean_angles,
+        "family_dispersions": family_dispersions,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle_rap:tox_compute_family_direction_rap_expert_c: Compute circular mean and dispersion for each gene family
+def tox_compute_family_direction_rap_expert(
+    rap_angles,
+    gene_to_fam,
+    min_family_dispersion=1.0e-02,
+    max_family_dispersion=np.sqrt(-2 * np.log(0.5))
+):
+    """
+    Wrapper for tox_compute_family_direction_rap_expert_c:
+    Expert version with pre-computed permutation.
+
+    Args:
+        rap_angles (np.ndarray): RAP angles in radians (-π, π], shape (n_genes,)
+        gene_to_fam (np.ndarray): Gene to family mapping (0 for unassigned), shape (n_genes,)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'family_mean_angles': Family mean angles in radians (-π, π]
+            - 'family_dispersions': Angular dispersions σ_φ,F
+            - 'family_counts': Number of genes per family
+            - 'status': Status code
+    """
+    rap_angles = np.ascontiguousarray(rap_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = rap_angles.shape[0]
+    n_families = int(np.max(gene_to_fam)) if len(gene_to_fam) > 0 else 0
+
+    if n_families == 0:
+        raise ValueError("No valid families found in gene_to_fam array")
+
+    # Output arrays
+    family_mean_angles = np.empty(n_families, dtype=np.float64)
+    family_dispersions = np.empty(n_families, dtype=np.float64)
+    tmp_member_counts = np.empty(n_families, dtype=np.int32)
+    ierr = ctypes.c_int(0)
+    status = np.zeros(n_families, dtype=np.int32)
+
+    # Get the function and set argtypes
+    tox_compute_family_direction_rap_expert_c = lib.tox_compute_family_direction_rap_expert_c
+    tox_compute_family_direction_rap_expert_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rap_angles
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_mean_angles
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_dispersions
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        ctypes.POINTER(ctypes.c_int),                                   # ierr
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),                                    # status
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # tmp_member_counts
+        ctypes.POINTER(ctypes.c_double),    # min_family_dispersion
+        ctypes.POINTER(ctypes.c_double)    # max_family_dispersion
+    ]
+    tox_compute_family_direction_rap_expert_c.restype = None
+
+    # Call the C wrapper
+    tox_compute_family_direction_rap_expert_c(
+        rap_angles,
+        gene_to_fam,
+        family_mean_angles,
+        family_dispersions,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ierr),
+        status,
+        tmp_member_counts,
+        ctypes.byref(ctypes.c_double(min_family_dispersion)),
+        ctypes.byref(ctypes.c_double(max_family_dispersion))
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(family_mean_angles, family_dispersions)
+
+    return {
+        "family_mean_angles": family_mean_angles,
+        "family_dispersions": family_dispersions,
+        "status": status
+    }
+
+
+#> tox_get_outliers_by_angle_rap:tox_compute_angular_deviations_rap_c: Compute wrapped angular deviations between genes and family means
+def tox_compute_angular_deviations_rap(
+    rap_angles,
+    family_mean_angles,
+    gene_to_fam
+):
+    """
+    Wrapper for tox_compute_angular_deviations_rap_c:
+    Compute wrapped angular deviations between genes and family means.
+
+    Args:
+        rap_angles (np.ndarray): RAP angles in radians (-π, π], shape (n_genes,)
+        family_mean_angles (np.ndarray): Family mean angles in radians (-π, π], shape (n_families,)
+        gene_to_fam (np.ndarray): Gene to family mapping (0 for unassigned), shape (n_genes,)
+
+    Returns:
+        'angular_deviations': Absolute wrapped angular deviations [0, π] per gene
+    """
+    rap_angles = np.ascontiguousarray(rap_angles, dtype=np.float64)
+    family_mean_angles = np.ascontiguousarray(family_mean_angles, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = rap_angles.shape[0]
+    n_families = family_mean_angles.shape[0]
+
+    if gene_to_fam.shape[0] != n_genes:
+        raise ValueError(f"gene_to_fam shape {gene_to_fam.shape} doesn't match n_genes {n_genes}")
+
+    # Output array
+    angular_deviations = np.empty(n_genes, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_compute_angular_deviations_rap_c = lib.tox_compute_angular_deviations_rap_c
+    tox_compute_angular_deviations_rap_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # rap_angles
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_mean_angles
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angular_deviations
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        ctypes.POINTER(ctypes.c_int)                                    # ierr
+    ]
+    tox_compute_angular_deviations_rap_c.restype = None
+
+    # Call the C wrapper
+    tox_compute_angular_deviations_rap_c(
+        rap_angles,
+        family_mean_angles,
+        gene_to_fam,
+        angular_deviations,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ierr)
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(angular_deviations)
+
+    return angular_deviations
+
+
+#> tox_get_outliers_by_angle_rap:tox_z_scores_by_dispersion_rap_c: Scale angular deviations by family dispersion (z-scores)
+def tox_z_scores_by_dispersion_rap(
+    angular_deviations,
+    family_dispersions,
+    gene_to_fam
+):
+    """
+    Wrapper for tox_z_scores_by_dispersion_rap_c:
+    Scale angular deviations by family dispersion (z-scores).
+
+    Args:
+        angular_deviations (np.ndarray): Angular deviations in radians [0, π], shape (n_genes,)
+        family_dispersions (np.ndarray): Angular dispersions σ_φ,F, shape (n_families,)
+        gene_to_fam (np.ndarray): Gene to family mapping, shape (n_genes,)
+
+    Returns:
+        'z_scores': Scaled angles (z-scores) per gene
+    """
+    angular_deviations = np.ascontiguousarray(angular_deviations, dtype=np.float64)
+    family_dispersions = np.ascontiguousarray(family_dispersions, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+
+    n_genes = angular_deviations.shape[0]
+    n_families = family_dispersions.shape[0]
+
+    if gene_to_fam.shape[0] != n_genes:
+        raise ValueError(f"gene_to_fam shape {gene_to_fam.shape} doesn't match n_genes {n_genes}")
+
+    # Output array
+    z_scores = np.empty(n_genes, dtype=np.float64)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_z_scores_by_dispersion_rap_c = lib.tox_z_scores_by_dispersion_rap_c
+    tox_z_scores_by_dispersion_rap_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # angular_deviations
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # family_dispersions
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        ctypes.POINTER(ctypes.c_int)                                    # ierr
+    ]
+    tox_z_scores_by_dispersion_rap_c.restype = None
+
+    # Call the C wrapper
+    tox_z_scores_by_dispersion_rap_c(
+        angular_deviations,
+        family_dispersions,
+        gene_to_fam,
+        z_scores,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_families)),
+        ctypes.byref(ierr)
+    )
+
+    check_err_code(ierr.value)
+
+    _readonly(z_scores)
+
+    return z_scores
+
+
+#> tox_get_outliers_by_angle_rap:tox_angle_outliers_rap_c: Identify directional outliers based on scaled RAP angles
+def tox_angle_outliers_rap(
+    z_scores,
+    percentile=95.0
+):
+    """
+    Wrapper for tox_angle_outliers_rap_c:
+    Identify directional outliers based on scaled RAP angles.
+
+    Args:
+        z_scores (np.ndarray): Scaled angles (z-scores), -1.0 for invalid, shape (n_genes,)
+        percentile (float): Percentile threshold (0.0 < p < 100.0)
+
+    Returns:
+        dict: Dictionary containing:
+            - 'is_outlier': Boolean array indicating outlier status per gene
+            - 'threshold': Computed threshold value for outlier detection
+    """
+    z_scores = np.ascontiguousarray(z_scores, dtype=np.float64)
+    n_genes = z_scores.shape[0]
+
+    # Output arrays
+    is_outlier = np.empty(n_genes, dtype=np.int32)
+    threshold = ctypes.c_double(0.0)
+    ierr = ctypes.c_int(0)
+
+    # Get the function and set argtypes
+    tox_angle_outliers_rap_c = lib.tox_angle_outliers_rap_c
+    tox_angle_outliers_rap_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_double),                                # percentile
+        ctypes.POINTER(ctypes.c_double),                                # threshold
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier
+        ctypes.POINTER(ctypes.c_int),                                    # ierr
+    ]
+    tox_angle_outliers_rap_c.restype = None
+
+    # Call the C wrapper
+    tox_angle_outliers_rap_c(
+        z_scores,
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(threshold),
+        is_outlier,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)
+
+    # Convert C int (0/1) back to Python bool
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(is_outlier_bool)
+
+    return {
+        "is_outlier": is_outlier_bool,
+        "threshold": threshold.value,
+        "ierr": ierr.value
+    }
+
+
+#> tox_get_outliers_by_angle_rap:tox_angle_outliers_rap_expert_c: Identify directional outliers based on scaled RAP angles
+def tox_angle_outliers_rap_expert(
+    z_scores,
+    threshold
+):
+    """
+    Wrapper for tox_angle_outliers_rap_expert_c:
+    Expert version taking an already-computed threshold instead of a percentile.
+
+    Args:
+        z_scores (np.ndarray): Scaled angles, shape (n_genes,)
+        threshold (float): `z_scores` exceeding this value will be identified as outliers
+
+    Returns:
+        dict: Dictionary containing:
+            - 'is_outlier': Boolean array indicating outlier status per gene
+            - 'ierr': Error code
+    """
+    # Ensure correct dtypes and contiguity
+    z_scores = np.ascontiguousarray(z_scores, dtype=np.float64)
+
+    n_genes = z_scores.shape[0]
+
+    # Output arrays
+    is_outlier = np.empty(n_genes, dtype=np.int32)
+    threshold = ctypes.c_double(threshold)
+    ierr = ctypes.c_int(0)
+
+    # Scalars passed by reference
+    c_n_genes = ctypes.c_int(n_genes)
+
+    # Get the function and set argtypes
+    tox_angle_outliers_rap_expert_c = lib.tox_angle_outliers_rap_expert_c
+    tox_angle_outliers_rap_expert_c.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # z_scores
+        ctypes.POINTER(ctypes.c_double),                                # threshold
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        ctypes.POINTER(ctypes.c_int)                                    # ierr
+    ]
+    tox_angle_outliers_rap_expert_c.restype = None
+
+    # Call the C wrapper
+    tox_angle_outliers_rap_expert_c(
+        z_scores,
+        ctypes.byref(threshold),
+        is_outlier,
+        ctypes.byref(c_n_genes),
+        ctypes.byref(ierr)
+    )
+
+    check_err_code(ierr.value)
+
+
+    is_outlier_bool = is_outlier.astype(bool)
+    _readonly(is_outlier_bool)
+
+    return {
+        "is_outlier": is_outlier_bool,
+        "ierr": ierr.value,
+    }
+
+
 #> tox_shift_vectors:compute_shift_vector_field_c: Computes the shift vector field for each gene expression vector based on its family centroid
 def tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid):
     """

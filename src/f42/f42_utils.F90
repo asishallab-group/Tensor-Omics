@@ -444,6 +444,20 @@ contains
     end subroutine angle_between
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| Wrap angle to (-π, π]
+    pure function wrap_angle(angle) result(wrapped)
+        real(real64), intent(in) :: angle
+            !! angle to wrap, in radians
+        real(real64) :: wrapped
+
+        real(real64), parameter :: PI2 = 2.0_real64*PI
+
+        wrapped = modulo(angle + PI, PI2) - PI
+
+        if (wrapped <= -PI) wrapped = wrapped + PI2
+    end function wrap_angle
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Returns the given degrees in positive radian value \( -90^{\circ} \Rightarrow \frac{3\cdot \pi}{2}, \text{not} -\frac{\pi}{2} \)
     pure real(real64) function radians(degrees)
         real(real64), intent(in) :: degrees

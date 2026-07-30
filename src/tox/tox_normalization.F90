@@ -4,7 +4,7 @@
 module tox_normalization
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, ERR_SIZE_MISMATCH
+    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, validate_all_in_range_real, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
     use tox_loess, only: loess_alloc
 
@@ -45,6 +45,55 @@ contains
             vector(i_dim) = vector(i_dim)/vector_norm
         end do
     end subroutine normalize_unit_length
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Normalizes a set of expression vectors (one per gene) to unit length.
+    pure subroutine tox_normalize_vectors_unit_length(expression_vectors, unit_vectors, n_samples, n_genes, ierr)
+        integer(int32), intent(in) :: n_samples
+            !! Number of samples (dimension of expression vectors)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes
+        real(real64), intent(in) :: expression_vectors(n_samples, n_genes)
+            !! Gene expression vectors, shape (n_samples, n_genes)
+        real(real64), intent(out) :: unit_vectors(n_samples, n_genes)
+            !! Output unit vectors, same shape
+        integer(int32), intent(out) :: ierr
+            !! Error code, 0 on success
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(n_samples, ierr)
+        call validate_dimension_size(n_genes, ierr)
+        call validate_all_in_range_real(expression_vectors, size(expression_vectors, kind=int32), ierr)
+        if (is_err(ierr)) return
+
+        call tox_normalize_vectors_unit_length_helper(expression_vectors, unit_vectors, n_samples, n_genes, ierr)
+    end subroutine tox_normalize_vectors_unit_length
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Normalize expression vectors to unit length
+    pure subroutine tox_normalize_vectors_unit_length_helper(expression_vectors, unit_vectors, n_samples, n_genes, ierr)
+        integer(int32), intent(in) :: n_samples
+            !! Number of samples (dimension of expression vectors)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes
+        real(real64), intent(in) :: expression_vectors(n_samples, n_genes)
+            !! Gene expression vectors, shape (n_samples, n_genes)
+        real(real64), intent(out) :: unit_vectors(n_samples, n_genes)
+            !! Output unit vectors, same shape
+        integer(int32), intent(out) :: ierr
+            !! Error code, 0 on success
+
+        integer(int32) :: i_gene
+
+        call set_ok(ierr)
+        unit_vectors = expression_vectors
+
+        do i_gene = 1, n_genes
+            call normalize_unit_length(unit_vectors(:, i_gene), n_samples, ierr)
+            if (is_err(ierr)) return
+        end do
+    end subroutine tox_normalize_vectors_unit_length_helper
 
     !> AUTHOR_VIVIAN_BASS
     !| Complete normalization pipeline for gene expression data.
@@ -874,3 +923,33 @@ pure subroutine normalize_unit_length_c(vector, n_dims, ierr) bind(C, name="norm
 
     call normalize_unit_length(vector, n_dims, ierr)
 end subroutine normalize_unit_length_c
+
+!> C wrapper for [[tox_normalization(module):tox_normalize_vectors_unit_length(subroutine)]]
+pure subroutine tox_normalize_vectors_unit_length_c(expression_vectors, n_samples, n_genes, &
+                                                     unit_vectors, ierr) &
+    bind(C, name="tox_normalize_vectors_unit_length_c")
+    use tox_normalization, only: tox_normalize_vectors_unit_length
+    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    M_USE_NULL_VALIDATION
+    implicit none
+
+    integer(c_int), intent(in), target :: n_samples
+        !! number of samples
+    integer(c_int), intent(in), target :: n_genes
+        !! number of genes
+    real(c_double), intent(in), target :: expression_vectors(n_samples, n_genes)
+        !! input expression vectors
+    real(c_double), intent(out), target :: unit_vectors(n_samples, n_genes)
+        !! output unit vectors
+    integer(c_int), intent(out), target :: ierr
+        !! error code
+
+    M_CHECK_IERR_NON_NULL
+    M_CHECK_NON_NULL(n_samples)
+    M_CHECK_NON_NULL(n_genes)
+    M_CHECK_NON_NULL(expression_vectors)
+    M_CHECK_NON_NULL(unit_vectors)
+
+    call tox_normalize_vectors_unit_length(expression_vectors, unit_vectors, &
+                                            n_samples, n_genes, ierr)
+end subroutine tox_normalize_vectors_unit_length_c
