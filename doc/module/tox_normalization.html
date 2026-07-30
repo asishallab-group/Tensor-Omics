@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_normalization &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 4.2% of total for modules and submodules.">368 statements</a>
+                 title=" 4.3% of total for modules and submodules.">370 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -178,10 +179,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_loess.html'>tox_loess</a></li>
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
@@ -207,6 +208,7 @@
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Normalizes an input vector to unit length in-place</p>
@@ -224,7 +226,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector"></span>
+              <span class="anchor" id="variable-vector~4"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -239,7 +241,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims"></span>
+              <span class="anchor" id="variable-n_dims~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -254,7 +256,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~100"></span>
+              <span class="anchor" id="variable-ierr~317"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -280,6 +282,7 @@
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Complete normalization pipeline for gene expression data.
@@ -299,7 +302,7 @@ Final result is in log_transformed_expr. If fold change is needed, call calc_fch
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~15"></span>
+              <span class="anchor" id="variable-n_genes~60"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -329,7 +332,7 @@ Final result is in log_transformed_expr. If fold change is needed, call calc_fch
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~5"></span>
+              <span class="anchor" id="variable-expr~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -375,7 +378,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues"></span>
+              <span class="anchor" id="variable-n_tissues~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -390,7 +393,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~11"></span>
+              <span class="anchor" id="variable-span~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -405,7 +408,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~11"></span>
+              <span class="anchor" id="variable-degree~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -435,7 +438,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~101"></span>
+              <span class="anchor" id="variable-ierr~318"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -461,6 +464,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
@@ -480,7 +484,7 @@ gene-wise mean expression and empirical standard deviation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~16"></span>
+              <span class="anchor" id="variable-n_genes~61"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -510,7 +514,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~6"></span>
+              <span class="anchor" id="variable-expr~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -540,7 +544,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~12"></span>
+              <span class="anchor" id="variable-span~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -555,7 +559,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~12"></span>
+              <span class="anchor" id="variable-degree~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -570,7 +574,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~102"></span>
+              <span class="anchor" id="variable-ierr~319"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -596,6 +600,7 @@ gene-wise mean expression and empirical standard deviation.</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
@@ -615,7 +620,7 @@ gene-wise mean expression and empirical standard deviation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~17"></span>
+              <span class="anchor" id="variable-n_genes~62"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -645,7 +650,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~7"></span>
+              <span class="anchor" id="variable-expr~13"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -720,7 +725,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~13"></span>
+              <span class="anchor" id="variable-span~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -735,7 +740,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~13"></span>
+              <span class="anchor" id="variable-degree~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -750,7 +755,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~103"></span>
+              <span class="anchor" id="variable-ierr~320"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -776,6 +781,7 @@ gene-wise mean expression and empirical standard deviation.</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
@@ -794,7 +800,7 @@ across tissues (not classical standard deviation).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~18"></span>
+              <span class="anchor" id="variable-n_genes~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -824,7 +830,7 @@ across tissues (not classical standard deviation).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~8"></span>
+              <span class="anchor" id="variable-expr~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -854,7 +860,7 @@ across tissues (not classical standard deviation).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~104"></span>
+              <span class="anchor" id="variable-ierr~321"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -880,6 +886,7 @@ across tissues (not classical standard deviation).</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
@@ -898,7 +905,7 @@ across tissues (not classical standard deviation).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~19"></span>
+              <span class="anchor" id="variable-n_genes~64"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -928,7 +935,7 @@ across tissues (not classical standard deviation).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~9"></span>
+              <span class="anchor" id="variable-expr~15"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -954,6 +961,7 @@ across tissues (not classical standard deviation).</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Quantile normalization of a gene expression matrix (F42-compliant).
@@ -972,7 +980,7 @@ Computes average expression per rank across tissues.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~20"></span>
+              <span class="anchor" id="variable-n_genes~65"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1002,7 +1010,7 @@ Computes average expression per rank across tissues.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~10"></span>
+              <span class="anchor" id="variable-expr~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1077,7 +1085,7 @@ Computes average expression per rank across tissues.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~105"></span>
+              <span class="anchor" id="variable-ierr~322"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1103,6 +1111,7 @@ Computes average expression per rank across tissues.</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Quantile normalization of a gene expression matrix (F42-compliant).
@@ -1121,7 +1130,7 @@ Computes average expression per rank across tissues.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~21"></span>
+              <span class="anchor" id="variable-n_genes~66"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1151,7 +1160,7 @@ Computes average expression per rank across tissues.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~11"></span>
+              <span class="anchor" id="variable-expr~17"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1222,6 +1231,7 @@ Computes average expression per rank across tissues.</p>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
@@ -1243,7 +1253,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~22"></span>
+              <span class="anchor" id="variable-n_genes~67"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1258,7 +1268,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
+              <span class="anchor" id="variable-n_tissues~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1273,7 +1283,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~12"></span>
+              <span class="anchor" id="variable-expr~18"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1303,7 +1313,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~106"></span>
+              <span class="anchor" id="variable-ierr~323"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1329,6 +1339,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
@@ -1350,7 +1361,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~23"></span>
+              <span class="anchor" id="variable-n_genes~68"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1365,7 +1376,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~3"></span>
+              <span class="anchor" id="variable-n_tissues~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1380,7 +1391,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~13"></span>
+              <span class="anchor" id="variable-expr~19"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1395,7 +1406,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~107"></span>
+              <span class="anchor" id="variable-ierr~324"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1421,6 +1432,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Calculate tissue averages by averaging replicates within each tissue.
@@ -1440,7 +1452,7 @@ expression per gene.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~24"></span>
+              <span class="anchor" id="variable-n_genes~69"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1455,7 +1467,7 @@ expression per gene.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~4"></span>
+              <span class="anchor" id="variable-n_tissues~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1486,7 +1498,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~14"></span>
+              <span class="anchor" id="variable-expr~20"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1516,7 +1528,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~108"></span>
+              <span class="anchor" id="variable-ierr~325"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1542,6 +1554,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>(no input validation) Calculate tissue averages by averaging replicates within each group.
@@ -1561,7 +1574,7 @@ expression per gene.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~25"></span>
+              <span class="anchor" id="variable-n_genes~70"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1576,7 +1589,7 @@ expression per gene.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~5"></span>
+              <span class="anchor" id="variable-n_tissues~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1607,7 +1620,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~15"></span>
+              <span class="anchor" id="variable-expr~21"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1648,6 +1661,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
   <p>Calculate <code>log2 fold changes</code> between condition and control groups.
@@ -1668,7 +1682,7 @@ value in the condition group, for all genes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~26"></span>
+              <span class="anchor" id="variable-n_genes~71"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1683,7 +1697,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~6"></span>
+              <span class="anchor" id="variable-n_tissues~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1698,7 +1712,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_pairs"></span>
+              <span class="anchor" id="variable-n_pairs~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1743,7 +1757,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~16"></span>
+              <span class="anchor" id="variable-expr~22"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1773,7 +1787,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~109"></span>
+              <span class="anchor" id="variable-ierr~326"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1809,14 +1823,14 @@ value in the condition group, for all genes.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

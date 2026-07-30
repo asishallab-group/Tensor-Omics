@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>group_centroid &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">46 statements</a>
+                 title=" 0.2% of total for procedures.">27 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, selected_indices, ierr, ortholog_set)  
+    <h2>public pure subroutine group_centroid(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ierr, ortholog_set)  
 </h2>
     
 
@@ -169,22 +171,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~20"></span>
+              <span class="anchor" id="variable-expression_vectors~23"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_axes, n_genes)
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_axes,n_genes)</td>
+            <td><strong>expression_vectors</strong></td>
             <td>
                 <p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~15"></span>
+              <span class="anchor" id="variable-n_axes~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -199,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~78"></span>
+              <span class="anchor" id="variable-n_genes~81"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -217,19 +219,19 @@
               <span class="anchor" id="variable-gene_to_family~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>gene_to_family</strong>(n_genes)</td>
+            <td><strong>gene_to_family</strong></td>
             <td>
-                <p>An array mapping each gene (by index) to a family ID.</p>
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~29"></span>
+              <span class="anchor" id="variable-n_families~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -247,19 +249,19 @@
               <span class="anchor" id="variable-centroid_matrix"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_axes, n_families)
             </td>
             <td>::</td>
-            <td><strong>centroid_matrix</strong>(n_axes,n_families)</td>
+            <td><strong>centroid_matrix</strong></td>
             <td>
                 <p>The output matrix (n_axes x n_families) to store the computed centroids.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~21"></span>
+              <span class="anchor" id="variable-mode~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -269,27 +271,45 @@
             <td>::</td>
             <td><strong>mode</strong></td>
             <td>
-                <p>A integer constant indicating the mode of operation ("all" or "orthologs").</p>
+                <p>used mode for grouping</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Group Orthologs</td>
+<td>0_int32</td>
+</tr>
+<tr>
+<td>Group all</td>
+<td>1_int32</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_indices"></span>
+              <span class="anchor" id="variable-tmp_group_indices"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>selected_indices</strong>(n_genes)</td>
+            <td><strong>tmp_group_indices</strong></td>
             <td>
                 <p>An output array for storing indices.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~319"></span>
+              <span class="anchor" id="variable-ierr~336"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -299,7 +319,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0 - success, non-zero = error</p>
+                <p>Error code</p>
             </td>
         </tr>
         <tr>
@@ -308,11 +328,11 @@
               logical,
             </td>
 <td>intent(in),</td>
-              <td>optional</td>            <td>
-              
+              <td>optional,</td>            <td>
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>ortholog_set</strong>(n_genes)</td>
+            <td><strong>ortholog_set</strong></td>
             <td>
                 <p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
             </td>
@@ -344,14 +364,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

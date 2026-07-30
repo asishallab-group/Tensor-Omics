@@ -1,5 +1,5 @@
 !> In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
-!| Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort, 
+!| Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort,
 !| composition can introduce batch effects that are not easily detectable from mean expression levels alone.
 !|
 !| This ambiguity has direct consequences for downstream analyses in Tensor Omics. Integrating incompatible replicate sets can:
@@ -147,9 +147,9 @@ module tox_data_integration
         end subroutine pool_means_helper
     end interface pool_means_helper
 
-        !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
-        !|
-        !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
+    !> Calculate the number of neighbors to be used for [[tox_data_integration(module):construct_neighborhoods(interface)]].
+    !|
+    !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.
     interface calc_neighborhood_size
         pure module function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
             integer(int32), intent(in) :: n_pool
@@ -170,7 +170,7 @@ module tox_data_integration
     interface construct_neighborhoods_alloc
         !> Construct neighborhood-based residual sets (kNN)
         pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
-                                                      neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
+                                                             neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
             integer(int32), intent(in) :: n_points
                 !! Number of reference points
             integer(int32), intent(in) :: n_genes_S
@@ -227,7 +227,7 @@ module tox_data_integration
     interface construct_neighborhoods_helper
         !> (no input validation) Construct neighborhood-based residual sets (kNN)
         pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, tmp_distances, tmp_distances_perm, &
-                                                       neighborhood_residuals, neighborhood_indices, n_neighbors)
+                                                              neighborhood_residuals, neighborhood_indices, n_neighbors)
             integer(int32), intent(in) :: n_points
                 !! Number of reference points
             integer(int32), intent(in) :: n_genes_S
@@ -279,7 +279,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             integer(int32), intent(out) :: ierr
                 !! Error code
             integer(int32), intent(in), optional :: random_seed
@@ -294,9 +294,9 @@ module tox_data_integration
     interface gjct_permutation_test
         !> Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
         module subroutine gjct_permutation_test( &
-                neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
-                tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
-                ierr, random_seed, neighbor_mask_S1, neighbor_mask_S2 &
+            neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
+            tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
+            ierr, random_seed, neighbor_mask_S1, neighbor_mask_S2 &
             )
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -321,7 +321,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors), intent(out) :: tmp_pool
                 !! Working array for shuffling the concatenated residuals from both studies per reference point
             real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
@@ -352,9 +352,9 @@ module tox_data_integration
     interface gjct_permutation_test_helper
         !> (no input validation) Estimates how likely the observed divergence is to occur by chance under the null hypothesis that both studies are exchangeable
         module subroutine gjct_permutation_test_helper( &
-                neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
-                tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
-                random_seed, neighbor_mask_S1, neighbor_mask_S2 &
+            neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
+            tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
+            random_seed, neighbor_mask_S1, neighbor_mask_S2 &
             )
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -379,7 +379,7 @@ module tox_data_integration
             real(real64), dimension(n_permutations), intent(out) :: jsd_null
                 !! Vector of global divergence values obtained under the null hypothesis
             real(real64), intent(out) :: p_value
-                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations} \)
+                !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
             real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors), intent(out), target :: tmp_pool
                 !! Working array for shuffling the concatenated residuals from both studies per reference point
             real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
@@ -414,11 +414,11 @@ module tox_data_integration
                 !! Number of replicates in study 2
             integer(int32), intent(in) :: n_neighbors
                 !! Number of neighbors in the studies
-            real(real64), dimension(n_reps_S1 * n_neighbors), intent(inout) :: reference_point_S1
+            real(real64), dimension(n_reps_S1*n_neighbors), intent(inout) :: reference_point_S1
                 !! Residuals for one reference point in study 1, will be shuffled in-place
-            real(real64), dimension(n_reps_S2 * n_neighbors), intent(inout) :: reference_point_S2
+            real(real64), dimension(n_reps_S2*n_neighbors), intent(inout) :: reference_point_S2
                 !! Residuals for one reference point in study 2, will be shuffled in-place
-            real(real64), dimension((n_reps_S1 + n_reps_S2) * n_neighbors), intent(out) :: pool_flat
+            real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), intent(out) :: pool_flat
                 !! Working array for shuffling the concatenated residuals from both studies per reference point
         end subroutine shuffle_reference_point_helper
     end interface shuffle_reference_point_helper
@@ -543,9 +543,9 @@ module tox_data_integration
             integer(int32), intent(in) :: n_bins
                 !! Number of equally sized histogram bins in range [-R,R]
             real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
-                !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
+                !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
             real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
-                !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
+                !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
             real(real64), dimension(n_points), intent(out) :: js_divergences
                 !! Jensen-Shannon divergence per reference point
             integer(int32), intent(out) :: ierr
@@ -561,9 +561,9 @@ module tox_data_integration
             integer(int32), intent(in) :: n_bins
                 !! Number of equally sized histogram bins in range [-R,R]
             real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
-                !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
+                !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 1
             real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S2
-                !! Computed normalized hostogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
+                !! Computed normalized histogram counts from [[tox_data_integration(module):build_residual_histograms(interface)]] for study 2
             real(real64), dimension(n_points), intent(out) :: js_divergences
                 !! Jensen-Shannon divergence per reference point
         end subroutine compute_divergence_per_reference_point_helper
@@ -652,9 +652,9 @@ module tox_data_integration
     interface fjct_compute_jsd_alloc
         !> Computes the family-level compatibility score `global_js_divergence` between two studies for a single gene family (`family_idx`), by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family
         pure module subroutine fjct_compute_jsd_alloc(family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
-                neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
-                included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, ierr &
-            )
+                                                      neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
+                                                      included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, ierr &
+                                                      )
             integer(int32), intent(in) :: n_genes_S1
                 !! Number of genes in study 1
             integer(int32), intent(in) :: n_genes_S2
@@ -703,7 +703,7 @@ module tox_data_integration
     end interface fjct_compute_jsd_alloc
 
     interface fjct_compute_jsd
-        !> Computes the compatibility score `global_js_divergence` between two studies per sub-neighborhood/family for a single gene family (`family_idx`), by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family
+        !> Computes the compatibility score `global_js_divergence` between two studies for a single sub-neighborhood/family, by reusing the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2` (typically all neighbors belonging to one gene family; see [[tox_data_integration(module):fjct_compute_jsd_alloc(interface)]] for the family-index-based entry point that builds these masks)
         pure module subroutine fjct_compute_jsd(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, ierr)
             integer(int32), intent(in) :: n_reps_S1
                 !! Number of replicates in study 1
@@ -748,6 +748,12 @@ module tox_data_integration
         end subroutine fjct_compute_jsd
     end interface fjct_compute_jsd
 
+    !> Computes the per-family/per-sub-neighborhood contribution score that combines
+    !|
+    !| 1. how divergent the family is between the studies, and
+    !| 2. how much residual support the family has overall,
+    !|
+    !| using the outputs from [[tox_data_integration(module):fjct_compute_jsd(interface)]], collected for the analyzed sub-neighborhoods.
     interface fjct_compute_contribution_scores
         pure module subroutine fjct_compute_contribution_scores(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores, ierr)
             integer(int32), intent(in) :: k_families
@@ -768,8 +774,8 @@ module tox_data_integration
     interface fjct_compute_contribution_scores_helper
         !> (no input validation) Computes the per-family/per-sub-neighborhood contribution score that combines
         !|
-        !| 1. how divergent the family is between the studies (``), and
-        !| 2. how much residual support the family has overall (),
+        !| 1. how divergent the family is between the studies (`global_js_divergences`), and
+        !| 2. how much residual support the family has overall (`total_included_n_reps_per_f`),
         !|
         !| using the outputs from [[tox_data_integration_per_family(module):fjct_compute_jsd(subroutine)]], collected for the analyzed sub-neighborhoods.
         pure module subroutine fjct_compute_contribution_scores_helper(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores)

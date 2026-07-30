@@ -14,7 +14,7 @@ module f42_utils_c
     public :: loess_smooth_2d_c
     public :: compute_edf_expert_c
     public :: compute_edf_c
-    public :: compute_empirical_p_values_c
+    public :: compute_scaled_distance_quantile_c
 
 contains
 
@@ -185,25 +185,29 @@ contains
         )
     end subroutine compute_edf_c
 
-    !> summary: C-wrapper for [[f42_utils(module):compute_empirical_p_values(subroutine)]]
-    !| Implements:
-    !| P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !> summary: C-wrapper for [[f42_utils(module):compute_scaled_distance_quantile(subroutine)]]
+    !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    !| observed distribution it was drawn from, not an independently generated null distribution.
+    !| It instead measures how extreme an observed distance is relative to all observed distances.
     !|
-    !| Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    !| Implements:
+    !| Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !|
+    !| Because distances are non-negative, a one-sided upper-tail quantile is used.
     !|
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    subroutine compute_empirical_p_values_c(&
+    subroutine compute_scaled_distance_quantile_c(&
             n_genes,&
             rdi,&
             sorted_rdi,&
             perm,&
-            p_values,&
+            quantile,&
             c_const,&
             ierr&
-        ) bind(C, name="compute_empirical_p_values_c")
-        use f42_utils, only: compute_empirical_p_values
+        ) bind(C, name="compute_scaled_distance_quantile_c")
+        use f42_utils, only: compute_scaled_distance_quantile
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes being processed.
@@ -213,8 +217,8 @@ contains
             !! empirical distribution D with non negative values
         integer(c_int), dimension(n_genes), intent(in), target :: perm
             !! Permutation array with sorted indices for sorted_rdi
-        real(c_double), dimension(n_genes), intent(out), target :: p_values
-            !! Output array to store the computed p-values for each gene.
+        real(c_double), dimension(n_genes), intent(out), target :: quantile
+            !! Output array to store the computed quantile for each gene.
         real(c_double), intent(in), target :: c_const
             !! Constant used in the computation, typically 1
         integer(c_int), intent(out), target :: ierr
@@ -227,17 +231,17 @@ contains
         M_CHECK_ARRAY_NON_NULL(rdi, n_genes)
         M_CHECK_ARRAY_NON_NULL(sorted_rdi, n_genes)
         M_CHECK_ARRAY_NON_NULL(perm, n_genes)
-        M_CHECK_ARRAY_NON_NULL(p_values, n_genes)
+        M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
-        call compute_empirical_p_values(&
+        call compute_scaled_distance_quantile(&
             n_genes = n_genes,&
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&
             perm = perm,&
-            p_values = p_values,&
+            quantile = quantile,&
             c_const = c_const&
         )
-    end subroutine compute_empirical_p_values_c
+    end subroutine compute_scaled_distance_quantile_c
 
 end module f42_utils_c
 #endif

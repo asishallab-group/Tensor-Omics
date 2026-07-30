@@ -10,7 +10,7 @@ extern "C" {
     void loess_smooth_2d_c(const int*, const int*, const double*, const double*, const int*, const int*, const double*, const double*, const double*, double*, int*);
     void compute_edf_expert_c(const double*, const int*, const int*, double*, double*, int*, int*);
     void compute_edf_c(const double*, const int*, double*, double*, int*, int*);
-    void compute_empirical_p_values_c(const int*, const double*, const double*, const int*, double*, const double*, int*);
+    void compute_scaled_distance_quantile_c(const int*, const double*, const double*, const int*, double*, const double*, int*);
 }
 
 // [[Rcpp::export(.loess_smooth_2d_rcpp)]]
@@ -101,27 +101,27 @@ List compute_edf_rcpp(NumericVector values) {
     );
 }
 
-// [[Rcpp::export(.compute_empirical_p_values_rcpp)]]
-List compute_empirical_p_values_rcpp(NumericVector rdi, NumericVector sorted_rdi, IntegerVector perm, double c_const) {
+// [[Rcpp::export(.compute_scaled_distance_quantile_rcpp)]]
+List compute_scaled_distance_quantile_rcpp(NumericVector rdi, NumericVector sorted_rdi, IntegerVector perm, double c_const) {
     // derived from the inputs, not asked of the caller
     int n_genes = (int) rdi.size();
 
     // outputs and work space
-    NumericVector p_values(n_genes);
+    NumericVector quantile(n_genes);
     int ierr = 0;
 
-    compute_empirical_p_values_c(
+    compute_scaled_distance_quantile_c(
         &n_genes,
         rdi.begin(),
         sorted_rdi.begin(),
         perm.begin(),
-        p_values.begin(),
+        quantile.begin(),
         &c_const,
         &ierr
     );
 
     return List::create(
-        _["p_values"] = p_values,
+        _["quantile"] = quantile,
         _["ierr"] = ierr
     );
 }

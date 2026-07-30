@@ -350,7 +350,7 @@ contains
 
     !> summary: C-wrapper for [[tox_get_outliers(module):identify_outliers(subroutine)]]
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-    !| If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
+    !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
     subroutine identify_outliers_c(&
             n_genes,&
             rdi,&
@@ -358,7 +358,7 @@ contains
             perm,&
             is_outlier,&
             threshold,&
-            p_values,&
+            quantile,&
             percentile,&
             ierr&
         ) bind(C, name="identify_outliers_c")
@@ -376,8 +376,11 @@ contains
             !! Output boolean array indicating outliers
         real(c_double), intent(out), target :: threshold
             !! Output threshold value used for detection
-        real(c_double), dimension(n_genes), intent(out), target :: p_values
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(c_double), dimension(n_genes), intent(out), target :: quantile
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
         real(c_double), intent(in), target :: percentile
             !! Percentile threshold (top 5% for the default).
             !! The default value is `95.0_real64`.
@@ -394,7 +397,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(sorted_rdi, n_genes)
         M_CHECK_ARRAY_NON_NULL(perm, n_genes)
         M_CHECK_ARRAY_NON_NULL(is_outlier, n_genes)
-        M_CHECK_ARRAY_NON_NULL(p_values, n_genes)
+        M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
         call identify_outliers(&
             n_genes = n_genes,&
@@ -403,7 +406,7 @@ contains
             perm = perm,&
             is_outlier = is_outlier_f,&
             threshold = threshold,&
-            p_values = p_values,&
+            quantile = quantile,&
             percentile = percentile&
         )
 
@@ -428,7 +431,7 @@ contains
             loess_x,&
             loess_y,&
             loess_n,&
-            p_values,&
+            quantile,&
             ierr,&
             percentile&
         ) bind(C, name="detect_outliers_c")
@@ -458,8 +461,11 @@ contains
             !! Reference y-coordinates (length n_total).
         integer(c_int), dimension(n_families), intent(out), target :: loess_n
             !! Indices of reference points used for smoothing.
-        real(c_double), dimension(n_genes), intent(out), target :: p_values
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(c_double), dimension(n_genes), intent(out), target :: quantile
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         real(c_double), intent(in), target :: percentile
@@ -482,7 +488,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_x, n_families)
         M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
-        M_CHECK_ARRAY_NON_NULL(p_values, n_genes)
+        M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
         call detect_outliers(&
             n_genes = n_genes,&
@@ -497,7 +503,7 @@ contains
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
-            p_values = p_values,&
+            quantile = quantile,&
             ierr = ierr,&
             percentile = percentile&
         )

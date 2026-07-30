@@ -147,7 +147,7 @@ void identify_outliers_c(
   int* perm,
   int* is_outlier_int,
   double* threshold,
-  double* p_values,
+  double* quantile,
   double* percentile,
   int* ierr
 );
@@ -165,7 +165,7 @@ void detect_outliers_c(
   double* loess_x,
   double* loess_y,
   int* loess_n,
-  double* p_values,
+  double* quantile,
   int* ierr,
   double* percentile
 );
@@ -236,12 +236,12 @@ void tox_loess_c(
   int* ierr
 );
 
-void empirical_p_values_c(
+void scaled_distance_quantile_c(
   int* n_genes,
   double* rdi,
   double* sorted_rdi,
   int* perm,
-  double* p_values,
+  double* quantile,
   double* c_const,
   int* ierr
 );
@@ -4478,14 +4478,14 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
 
   IntegerVector is_outlier_int(n_genes);
   double threshold = 0.0;
-  NumericVector p_values(n_genes);
+  NumericVector quantile(n_genes);
   int ierr = 0;
 
   identify_outliers_c(
     &n_genes,
     rdi.begin(), sorted_rdi.begin(), perm.begin(),
     is_outlier_int.begin(),
-    &threshold, p_values.begin(),
+    &threshold, quantile.begin(),
     &percentile, &ierr
   );
 
@@ -4498,7 +4498,7 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
   return List::create(
     Named("is_outlier") = is_outlier,
     Named("threshold") = threshold,
-    Named("p_values") = p_values,
+    Named("quantile") = quantile,
     Named("perm") = perm,
     Named("ierr") = ierr
   );
@@ -4508,7 +4508,7 @@ List tox_identify_outliers_rcpp(NumericVector rdi, double percentile) {
 List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam, int n_families, double percentile) {
   int n_genes = distances.size();
   NumericVector work_array(n_genes);
-  NumericVector p_values(n_genes);
+  NumericVector quantile(n_genes);
   IntegerVector perm(n_genes);
   IntegerVector stack_left(n_genes);
   IntegerVector stack_right(n_genes);
@@ -4525,7 +4525,7 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     perm.begin(), stack_left.begin(), stack_right.begin(),
     is_outlier_int.begin(),
     loess_x.begin(), loess_y.begin(), loess_n.begin(),
-    p_values.begin(), &ierr,
+    quantile.begin(), &ierr,
     &percentile
   );
 
@@ -4540,7 +4540,7 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     Named("loess_x") = loess_x,
     Named("loess_y") = loess_y,
     Named("loess_n") = loess_n,
-    Named("p_values") = p_values,
+    Named("quantile") = quantile,
     Named("ierr") = ierr
   );
 }
@@ -4630,15 +4630,15 @@ List tox_loess_rcpp(NumericVector x, NumericVector y, double span, int degree,
 }
 
 // [[Rcpp::export]]
-NumericVector tox_empirical_p_values_rcpp(
+NumericVector tox_scaled_distance_quantile_rcpp(
     Rcpp::NumericVector distribution,
     double c_const
 ) {
     int n_genes = distribution.size();
-    Rcpp::NumericVector p_values(n_genes);
+    Rcpp::NumericVector quantile(n_genes);
     NumericVector sorted_rdi = clone(distribution);
 
-    // clamp negatives to 0 
+    // clamp negatives to 0
     std::transform(sorted_rdi.begin(), sorted_rdi.end(), sorted_rdi.begin(),
                     [](double v) { return v < 0.0 ? 0.0 : v; });
 
@@ -4650,20 +4650,20 @@ NumericVector tox_empirical_p_values_rcpp(
         return sorted_rdi[i] < sorted_rdi[j];
     });
 
-    // 1-based 
+    // 1-based
     for (int k = 0; k < n_genes; ++k) perm[k] += 1;
-    
+
     int ierr = 0;
 
-    empirical_p_values_c(
+    scaled_distance_quantile_c(
         &n_genes,
         distribution.begin(),
         sorted_rdi.begin(),
         perm.begin(),
-        p_values.begin(),
+        quantile.begin(),
         &c_const,
         &ierr
     );
 
-    return p_values;
+    return quantile;
 }

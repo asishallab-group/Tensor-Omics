@@ -52,7 +52,7 @@ from .f42_utils import (
     loess_smooth_2d,
     compute_edf_expert,
     compute_edf,
-    compute_empirical_p_values,
+    compute_scaled_distance_quantile,
 )
 from .tox_clustering import (
     cluster_factor_trajectories_k_means,
@@ -195,13 +195,13 @@ __all__ = [
     "compute_divergence_per_reference_point",
     "compute_edf",
     "compute_edf_expert",
-    "compute_empirical_p_values",
     "compute_family_scaling",
     "compute_family_scaling_expert",
     "compute_gene_means",
     "compute_p_values",
     "compute_rdi",
     "compute_residuals",
+    "compute_scaled_distance_quantile",
     "compute_shift_vector_field",
     "compute_tissue_versatility",
     "compute_velocity_acceleration_contributions",

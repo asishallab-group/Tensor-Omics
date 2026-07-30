@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_get_outliers &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.7% of total for modules and submodules.">321 statements</a>
+                 title=" 4.6% of total for modules and submodules.">391 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -170,12 +171,12 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_loess.html'>tox_loess</a></li>
                   <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
+                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_loess.html'>tox_loess</a></li>
               </ul>
             </li>
         </ul>
@@ -198,7 +199,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-compute_family_scaling"></span> <h3>public  subroutine <a href='../proc/compute_family_scaling.html'>compute_family_scaling</a>(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute family scaling factors (dscale) to normalize distances.
 Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p>
 
@@ -215,7 +220,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes"></span>
+              <span class="anchor" id="variable-n_genes~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -230,7 +235,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families"></span>
+              <span class="anchor" id="variable-n_families~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -245,7 +250,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances"></span>
+              <span class="anchor" id="variable-distances~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -260,7 +265,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam"></span>
+              <span class="anchor" id="variable-gene_to_fam~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -320,7 +325,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used"></span>
+              <span class="anchor" id="variable-indices_used~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -350,7 +355,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left"></span>
+              <span class="anchor" id="variable-tmp_stack_left~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -365,7 +370,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right"></span>
+              <span class="anchor" id="variable-tmp_stack_right~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -665,7 +670,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~14"></span>
+              <span class="anchor" id="variable-ierr~236"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -689,8 +694,12 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
     <div class="card-header codesum"><span class="anchor" id="proc-compute_family_scaling_alloc"></span> <h3>public  subroutine <a href='../proc/compute_family_scaling_alloc.html'>compute_family_scaling_alloc</a>(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, ierr)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Helper routine that allocates internal arrays and calls compute_family_scaling.
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Helper routine that allocates internal arrays and calls <a href="../proc/compute_family_scaling.html">compute_family_scaling</a>.
 This makes usage easier since users don't need to care about internal array requirements.</p>
 
   <h4>Arguments</h4>
@@ -706,7 +715,7 @@ This makes usage easier since users don't need to care about internal array requ
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~2"></span>
+              <span class="anchor" id="variable-n_genes~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -721,7 +730,7 @@ This makes usage easier since users don't need to care about internal array requ
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~2"></span>
+              <span class="anchor" id="variable-n_families~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -736,7 +745,7 @@ This makes usage easier since users don't need to care about internal array requ
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~2"></span>
+              <span class="anchor" id="variable-distances~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -751,7 +760,7 @@ This makes usage easier since users don't need to care about internal array requ
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~2"></span>
+              <span class="anchor" id="variable-gene_to_fam~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -811,7 +820,7 @@ This makes usage easier since users don't need to care about internal array requ
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~2"></span>
+              <span class="anchor" id="variable-indices_used~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -826,7 +835,7 @@ This makes usage easier since users don't need to care about internal array requ
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~15"></span>
+              <span class="anchor" id="variable-ierr~237"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -850,8 +859,12 @@ This makes usage easier since users don't need to care about internal array requ
     <div class="card-header codesum"><span class="anchor" id="proc-compute_rdi"></span> <h3>public pure subroutine <a href='../proc/compute_rdi.html'>compute_rdi</a>(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Compute the hybrid RDI for each gene.
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute the hybrid RDI (Relative Distance Index) for each gene.
 RDI = Euclidean distance / family scaling factor</p>
 
   <h4>Arguments</h4>
@@ -867,7 +880,7 @@ RDI = Euclidean distance / family scaling factor</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~3"></span>
+              <span class="anchor" id="variable-n_genes~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -882,7 +895,7 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~3"></span>
+              <span class="anchor" id="variable-distances~13"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -897,7 +910,7 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~3"></span>
+              <span class="anchor" id="variable-gene_to_fam~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -927,7 +940,7 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi"></span>
+              <span class="anchor" id="variable-rdi~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -942,7 +955,7 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi"></span>
+              <span class="anchor" id="variable-sorted_rdi~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -957,7 +970,7 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm"></span>
+              <span class="anchor" id="variable-perm~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1008,10 +1021,14 @@ RDI = Euclidean distance / family scaling factor</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-identify_outliers"></span> <h3>public pure subroutine <a href='../proc/identify_outliers.html'>identify_outliers</a>(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)  
+    <div class="card-header codesum"><span class="anchor" id="proc-identify_outliers"></span> <h3>public pure subroutine <a href='../proc/identify_outliers.html'>identify_outliers</a>(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Identify gene outliers based on the top percentile of RDI values.
 Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
 If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.</p>
@@ -1029,7 +1046,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~4"></span>
+              <span class="anchor" id="variable-n_genes~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1044,7 +1061,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~2"></span>
+              <span class="anchor" id="variable-rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1059,7 +1076,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~2"></span>
+              <span class="anchor" id="variable-sorted_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1074,7 +1091,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~2"></span>
+              <span class="anchor" id="variable-perm~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1119,7 +1136,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-p_values"></span>
+              <span class="anchor" id="variable-quantile~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1127,14 +1144,17 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
               
             </td>
             <td>::</td>
-            <td><strong>p_values</strong>(n_genes)</td>
+            <td><strong>quantile</strong>(n_genes)</td>
             <td>
-<p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+<p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail quantile is used.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile"></span>
+              <span class="anchor" id="variable-percentile~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1155,11 +1175,19 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers"></span> <h3>public  subroutine <a href='../proc/detect_outliers.html'>detect_outliers</a>(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, p_values, ierr, percentile)  
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers"></span> <h3>public  subroutine <a href='../proc/detect_outliers.html'>detect_outliers</a>(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Main routine to detect outliers using RDI and LOESS-based scaling.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Main routine to detect outliers using RDI and LOESS-based scaling.
+Orchestrates the full pipeline: computes per-family scaling factors via
+<a href="../proc/compute_family_scaling_alloc.html">compute_family_scaling_alloc</a>, derives the RDI per gene via
+<a href="../proc/compute_rdi.html">compute_rdi</a>, then flags outliers via
+<a href="../proc/identify_outliers.html">identify_outliers</a>.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1174,7 +1202,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~5"></span>
+              <span class="anchor" id="variable-n_genes~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1189,7 +1217,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~3"></span>
+              <span class="anchor" id="variable-n_families~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1204,7 +1232,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~4"></span>
+              <span class="anchor" id="variable-distances~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1219,7 +1247,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~4"></span>
+              <span class="anchor" id="variable-gene_to_fam~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1264,7 +1292,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~3"></span>
+              <span class="anchor" id="variable-tmp_stack_left~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1279,7 +1307,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~3"></span>
+              <span class="anchor" id="variable-tmp_stack_right~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1354,7 +1382,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-p_values~2"></span>
+              <span class="anchor" id="variable-quantile~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1362,14 +1390,17 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
               
             </td>
             <td>::</td>
-            <td><strong>p_values</strong>(n_genes)</td>
+            <td><strong>quantile</strong>(n_genes)</td>
             <td>
-<p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+<p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail quantile is used.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~16"></span>
+              <span class="anchor" id="variable-ierr~238"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1384,7 +1415,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~2"></span>
+              <span class="anchor" id="variable-percentile~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1420,14 +1451,14 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

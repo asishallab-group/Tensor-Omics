@@ -58,8 +58,8 @@ _lib.compute_edf_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_EDF_ARGUMENTS = ("values", "n_values", "unique_values", "cdf_values", "n_unique", "ierr",)
 
-_lib.compute_empirical_p_values_c.restype = None
-_lib.compute_empirical_p_values_c.argtypes = (
+_lib.compute_scaled_distance_quantile_c.restype = None
+_lib.compute_scaled_distance_quantile_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -70,7 +70,7 @@ _lib.compute_empirical_p_values_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_EMPIRICAL_P_VALUES_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "p_values", "c_const",)
+_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "quantile", "c_const",)
 
 def loess_smooth_2d(
         x_ref,
@@ -314,13 +314,13 @@ def compute_edf(
         "cdf_values": cdf_values[..., :n_unique.value],
     }
 
-def compute_empirical_p_values(
+def compute_scaled_distance_quantile(
         rdi,
         sorted_rdi,
         perm,
         c_const,
 ):
-    r"""Calculate empirical p-values for scaled expression distances (RDI)
+    r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
 
     Parameters
     ----------
@@ -335,8 +335,8 @@ def compute_empirical_p_values(
 
     Returns
     -------
-    p_values : np.ndarray[np.float64] of shape (n_genes,)
-        Output array to store the computed p-values for each gene.
+    quantile : np.ndarray[np.float64] of shape (n_genes,)
+        Output array to store the computed quantile for each gene.
 
     Raises
     ------
@@ -345,7 +345,7 @@ def compute_empirical_p_values(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_utils::compute_empirical_p_values`.
+    Generated from the Fortran procedure `f42_utils::compute_scaled_distance_quantile`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -381,19 +381,19 @@ def compute_empirical_p_values(
         )
 
     # outputs and work arrays, which the caller never sees
-    p_values = np.empty((n_genes,), dtype=np.float64, order='C')
+    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
-    _lib.compute_empirical_p_values_c(
+    _lib.compute_scaled_distance_quantile_c(
         ctypes.byref(ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         perm,
-        p_values,
+        quantile,
         ctypes.byref(ctypes.c_double(c_const)),
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EMPIRICAL_P_VALUES_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS)
 
-    return p_values
+    return quantile

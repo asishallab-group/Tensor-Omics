@@ -1477,26 +1477,29 @@ contains
     end subroutine calc_percentile_alloc
 
     !> M_EXPORT_C
-    !| summary: Calculate empirical p-values for scaled expression distances (RDI)
+    !| summary: Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
     !| AUTHOR_VIVIAN_BASS
+    !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    !| observed distribution it was drawn from, not an independently generated null distribution.
+    !| It instead measures how extreme an observed distance is relative to all observed distances.
     !|
     !| Implements:
-    !|   P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !|   Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
     !|
-    !| Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    !| Because distances are non-negative, a one-sided upper-tail quantile is used.
     !|
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    pure subroutine compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, c_const)
+    pure subroutine compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, c_const)
         integer(int32), intent(in) :: n_genes
             !! Number of genes being processed.
         real(real64), intent(in) :: rdi(n_genes)
             !! empirical distribution D
         real(real64), intent(in) :: sorted_rdi(n_genes)
             !! empirical distribution D with non negative values
-        real(real64), intent(out) :: p_values(n_genes)
-            !! Output array to store the computed p-values for each gene.
+        real(real64), intent(out) :: quantile(n_genes)
+            !! Output array to store the computed quantile for each gene.
         real(real64), intent(in) :: c_const
             !! Constant used in the computation, typically 1
         integer(int32), intent(in) :: perm(n_genes)
@@ -1507,16 +1510,16 @@ contains
 
         denom = real(n_genes, real64) + c_const
         if (denom <= 0.0_real64) then
-            p_values = 1.0_real64
+            quantile = 1.0_real64
             return
         end if
 
         do i = 1, n_genes
             d = rdi(i)
 
-            ! Invalid / negative => not an outlier: p = 1
+            ! Invalid / negative => not an outlier: quantile = 1
             if (d < 0.0_real64) then
-                p_values(i) = 1.0_real64
+                quantile(i) = 1.0_real64
                 cycle
             end if
 
@@ -1528,9 +1531,9 @@ contains
                 count_ge = 0_int32
             end if
 
-            p_values(i) = (real(count_ge, real64) + c_const)/denom
+            quantile(i) = (real(count_ge, real64) + c_const)/denom
         end do
 
-    end subroutine compute_empirical_p_values
+    end subroutine compute_scaled_distance_quantile
 
 end module f42_utils

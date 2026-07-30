@@ -99,7 +99,7 @@ _lib.identify_outliers_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "p_values", "percentile",)
+_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile",)
 
 _lib.detect_outliers_c.restype = None
 _lib.detect_outliers_c.argtypes = (
@@ -121,7 +121,7 @@ _lib.detect_outliers_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "p_values", "ierr", "percentile",)
+_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile",)
 
 def compute_family_scaling_expert(
         n_families,
@@ -494,8 +494,11 @@ def identify_outliers(
             Output boolean array indicating outliers
         threshold : float
             Output threshold value used for detection
-        p_values : np.ndarray[np.float64] of shape (n_genes,)
-            Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        quantile : np.ndarray[np.float64] of shape (n_genes,)
+            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            upper-tail quantile is used.
 
     Raises
     ------
@@ -542,7 +545,7 @@ def identify_outliers(
     # outputs and work arrays, which the caller never sees
     is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
     threshold = ctypes.c_double(0)
-    p_values = np.empty((n_genes,), dtype=np.float64, order='C')
+    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.identify_outliers_c(
@@ -552,7 +555,7 @@ def identify_outliers(
         perm,
         is_outlier,
         ctypes.byref(threshold),
-        p_values,
+        quantile,
         ctypes.byref(ctypes.c_double(percentile)),
         ctypes.byref(ierr),
     )
@@ -562,7 +565,7 @@ def identify_outliers(
     return {
         "is_outlier": is_outlier,
         "threshold": threshold.value,
-        "p_values": p_values,
+        "quantile": quantile,
     }
 
 def detect_outliers(
@@ -598,8 +601,11 @@ def detect_outliers(
             Reference y-coordinates (length n_total).
         loess_n : np.ndarray[np.int32] of shape (n_families,)
             Indices of reference points used for smoothing.
-        p_values : np.ndarray[np.float64] of shape (n_genes,)
-            Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        quantile : np.ndarray[np.float64] of shape (n_genes,)
+            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            upper-tail quantile is used.
 
     Raises
     ------
@@ -642,7 +648,7 @@ def detect_outliers(
     loess_x = np.empty((n_families,), dtype=np.float64, order='C')
     loess_y = np.empty((n_families,), dtype=np.float64, order='C')
     loess_n = np.empty((n_families,), dtype=np.int32, order='C')
-    p_values = np.empty((n_genes,), dtype=np.float64, order='C')
+    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.detect_outliers_c(
@@ -658,7 +664,7 @@ def detect_outliers(
         loess_x,
         loess_y,
         loess_n,
-        p_values,
+        quantile,
         ctypes.byref(ierr),
         ctypes.byref(ctypes.c_double(percentile)),
     )
@@ -670,5 +676,5 @@ def detect_outliers(
         "loess_x": loess_x,
         "loess_y": loess_y,
         "loess_n": loess_n,
-        "p_values": p_values,
+        "quantile": quantile,
     }

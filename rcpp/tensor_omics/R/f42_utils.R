@@ -82,12 +82,16 @@ compute_edf <- function(values) {
     )
 }
 
-#' Calculate empirical p-values for scaled expression distances (RDI)
+#' Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+#'
+#' This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+#' observed distribution it was drawn from, not an independently generated null distribution.
+#' It instead measures how extreme an observed distance is relative to all observed distances.
 #'
 #' Implements:
-#' P(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+#' Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
 #'
-#' Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+#' Because distances are non-negative, a one-sided upper-tail quantile is used.
 #'
 #' Assumptions / preconditions:
 #' - sorted_rdi(1:n_genes) contains the empirical distribution D.
@@ -97,11 +101,11 @@ compute_edf <- function(values) {
 #' @param sorted_rdi a numeric vector. empirical distribution D with non negative values
 #' @param perm a integer vector. Permutation array with sorted indices for sorted_rdi
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
-#' @return Output array to store the computed p-values for each gene.
+#' @return Output array to store the computed quantile for each gene.
 #'
-#' Generated from the Fortran procedure \code{f42_utils::compute_empirical_p_values}.
+#' Generated from the Fortran procedure \code{f42_utils::compute_scaled_distance_quantile}.
 #' @export
-compute_empirical_p_values <- function(rdi, sorted_rdi, perm, c_const) {
+compute_scaled_distance_quantile <- function(rdi, sorted_rdi, perm, c_const) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     perm <- .tox_as_integer_vector(perm, "perm")
@@ -111,9 +115,9 @@ compute_empirical_p_values <- function(rdi, sorted_rdi, perm, c_const) {
     if (length(perm) != length(rdi))
         .tox_shape_error("perm", length(perm), "rdi", length(rdi))
 
-    .result <- .compute_empirical_p_values_rcpp(rdi, sorted_rdi, perm, c_const)
-    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "p_values", "c_const")
+    .result <- .compute_scaled_distance_quantile_rcpp(rdi, sorted_rdi, perm, c_const)
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "quantile", "c_const")
     .status <- check_err_code(.result$ierr, .arguments)
 
-    .result$p_values
+    .result$quantile
 }

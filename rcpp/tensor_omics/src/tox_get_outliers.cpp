@@ -167,7 +167,7 @@ List identify_outliers_rcpp(NumericVector rdi, NumericVector sorted_rdi, Integer
     // outputs and work space
     tox::BoolBuffer is_outlier_c(n_genes);
     double threshold = 0;
-    NumericVector p_values(n_genes);
+    NumericVector quantile(n_genes);
     int ierr = 0;
 
     identify_outliers_c(
@@ -177,7 +177,7 @@ List identify_outliers_rcpp(NumericVector rdi, NumericVector sorted_rdi, Integer
         perm.begin(),
         is_outlier_c.data(),
         &threshold,
-        p_values.begin(),
+        quantile.begin(),
         &percentile,
         &ierr
     );
@@ -188,7 +188,7 @@ List identify_outliers_rcpp(NumericVector rdi, NumericVector sorted_rdi, Integer
     return List::create(
         _["is_outlier"] = is_outlier,
         _["threshold"] = threshold,
-        _["p_values"] = p_values,
+        _["quantile"] = quantile,
         _["ierr"] = ierr
     );
 }
@@ -207,7 +207,7 @@ List detect_outliers_rcpp(int n_families, NumericVector distances, IntegerVector
     NumericVector loess_x(n_families);
     NumericVector loess_y(n_families);
     IntegerVector loess_n(n_families);
-    NumericVector p_values(n_genes);
+    NumericVector quantile(n_genes);
     int ierr = 0;
 
     detect_outliers_c(
@@ -223,7 +223,7 @@ List detect_outliers_rcpp(int n_families, NumericVector distances, IntegerVector
         loess_x.begin(),
         loess_y.begin(),
         loess_n.begin(),
-        p_values.begin(),
+        quantile.begin(),
         &ierr,
         &percentile
     );
@@ -236,7 +236,7 @@ List detect_outliers_rcpp(int n_families, NumericVector distances, IntegerVector
         _["loess_x"] = loess_x,
         _["loess_y"] = loess_y,
         _["loess_n"] = loess_n,
-        _["p_values"] = p_values,
+        _["quantile"] = quantile,
         _["ierr"] = ierr
     );
 }

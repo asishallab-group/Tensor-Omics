@@ -106,13 +106,13 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' Identify gene outliers based on the top percentile of RDI values
 #'
 #' Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-#' If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
+#' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
 #'
 #' @param rdi a numeric vector. Array of RDI values for each gene
 #' @param sorted_rdi a numeric vector. Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
 #' @param perm a integer vector. Permutation array with sorted indices
 #' @param percentile a numeric scalar. Percentile threshold (top 5% for the default).
-#' @return a named list with elements `is_outlier`, `threshold`, `p_values`.
+#' @return a named list with elements `is_outlier`, `threshold`, `quantile`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::identify_outliers}.
 #' @export
@@ -127,13 +127,13 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
         .tox_shape_error("perm", length(perm), "rdi", length(rdi))
 
     .result <- .identify_outliers_rcpp(rdi, sorted_rdi, perm, percentile)
-    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "p_values", "percentile")
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
         is_outlier = .result$is_outlier,
         threshold = .result$threshold,
-        p_values = .result$p_values
+        quantile = .result$quantile
     )
 }
 
@@ -148,7 +148,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param percentile a numeric scalar. Percentile threshold for outlier detection.
-#' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `p_values`.
+#' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `quantile`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}.
 #' @export
@@ -161,7 +161,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
     .result <- .detect_outliers_rcpp(n_families, distances, gene_to_fam, percentile)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "p_values", "ierr", "percentile")
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
@@ -169,6 +169,6 @@ detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.
         loess_x = .result$loess_x,
         loess_y = .result$loess_y,
         loess_n = .result$loess_n,
-        p_values = .result$p_values
+        quantile = .result$quantile
     )
 }

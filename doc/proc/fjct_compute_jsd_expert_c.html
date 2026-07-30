@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>fjct_compute_jsd_expert_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -156,10 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
               </ul>
             </li>
         </ul>
@@ -183,12 +184,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~15"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~12"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_reps_S1,n_neighbors,n_points), target
+              dimension(n_reps_S1, n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_residuals_S1</strong></td>
@@ -199,12 +200,12 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~15"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~12"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_reps_S2,n_neighbors,n_points), target
+              dimension(n_reps_S2, n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_residuals_S2</strong></td>
@@ -215,7 +216,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~21"></span>
+              <span class="anchor" id="variable-n_reps_s1~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -230,7 +231,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~21"></span>
+              <span class="anchor" id="variable-n_reps_s2~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -245,7 +246,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~37"></span>
+              <span class="anchor" id="variable-n_neighbors~31"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -260,7 +261,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~67"></span>
+              <span class="anchor" id="variable-n_points~63"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -275,12 +276,12 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~13"></span>
+              <span class="anchor" id="variable-neighbor_mask_s1~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_neighbors,n_points), target
+              dimension(n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighbor_mask_S1</strong></td>
@@ -290,12 +291,12 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~13"></span>
+              <span class="anchor" id="variable-neighbor_mask_s2~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_neighbors,n_points), target
+              dimension(n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighbor_mask_S2</strong></td>
@@ -305,7 +306,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~27"></span>
+              <span class="anchor" id="variable-n_bins~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -320,7 +321,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~30"></span>
+              <span class="anchor" id="variable-shared_residual_range~25"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -430,7 +431,7 @@ NaN is explicitly allowed for missing values</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_points,n_bins), target
+              dimension(n_points, n_bins), target
             </td>
             <td>::</td>
             <td><strong>pmf_S1</strong></td>
@@ -445,7 +446,7 @@ NaN is explicitly allowed for missing values</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_points,n_bins), target
+              dimension(n_points, n_bins), target
             </td>
             <td>::</td>
             <td><strong>pmf_S2</strong></td>
@@ -455,12 +456,12 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~11"></span>
+              <span class="anchor" id="variable-tmp_counts~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_points,n_bins), target
+              dimension(n_points, n_bins), target
             </td>
             <td>::</td>
             <td><strong>tmp_counts</strong></td>
@@ -470,7 +471,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~326"></span>
+              <span class="anchor" id="variable-ierr~181"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -510,14 +511,14 @@ NaN is explicitly allowed for missing values</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

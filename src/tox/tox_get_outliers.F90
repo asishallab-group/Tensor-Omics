@@ -4,7 +4,7 @@
 module tox_get_outliers
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values, init_perm
+    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_scaled_distance_quantile, init_perm
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     M_IMPLICIT_NONE
@@ -501,8 +501,8 @@ contains
     !| summary: Identify gene outliers based on the top percentile of RDI values
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
-    !| If sorted_rdi contains negatives or perm is not sorted, tmp_residuals may be invalid.
-    pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)
+    !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
+    pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         real(real64), intent(in) :: rdi(n_genes)
@@ -518,8 +518,11 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold (top 5% for the default).
             !! DM_DEFAULT(95.0_real64)
-        real(real64), intent(out) :: p_values(n_genes)
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(real64), intent(out) :: quantile(n_genes)
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
 
         integer(int32) :: i, idx
         real(real64) :: perc_pos, percentile_val
@@ -558,7 +561,7 @@ contains
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, 1.0_real64)
+        call compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
 
     end subroutine identify_outliers
 
@@ -571,7 +574,7 @@ contains
     !| [[tox_get_outliers(module):identify_outliers(subroutine)]].
     subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, &
                                tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                               is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
+                               is_outlier, loess_x, loess_y, loess_n, quantile, ierr, &
                                percentile)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -602,8 +605,11 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold for outlier detection.
             !! DM_DEFAULT(95.0_real64)
-        real(real64), intent(out) :: p_values(n_genes)
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(real64), intent(out) :: quantile(n_genes)
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
 
         ! Local variables
         real(real64) :: dscale(n_families)
@@ -626,6 +632,6 @@ contains
                                           loess_x, loess_y, loess_n, ierr)
         if (is_err(ierr)) return
         call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right)
-        call identify_outliers(n_genes, rdi, tmp_work_array, tmp_perm, is_outlier, threshold, p_values, percentile_val)
+        call identify_outliers(n_genes, rdi, tmp_work_array, tmp_perm, is_outlier, threshold, quantile, percentile_val)
     end subroutine detect_outliers
 end module tox_get_outliers

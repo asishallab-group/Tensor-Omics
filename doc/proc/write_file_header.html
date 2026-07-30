@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>write_file_header &ndash; TensorOmics</title>
@@ -85,23 +85,25 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">32 statements</a>
+                 title=" 0.3% of total for procedures.">39 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_array_utils.F90"> Source File</a>
+              <a href="../src/f42_serde_arrays_utils.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_array_utils.f90.html'>f42_array_utils.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_array_utils.html'>f42_array_utils</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_serde_arrays_utils.f90.html'>f42_serde_arrays_utils.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></li>
             <li class="breadcrumb-item active" aria-current="page">write_file_header</li>
           </ol>
         </nav>
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine write_file_header(filename, unit, type_code, ndim, dims, ierr, clen)  
+    <h2>public  subroutine write_file_header(filename, unit, type_code, ndim, dims, ierr)  
 </h2>
     
 
@@ -169,7 +171,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~92"></span>
+              <span class="anchor" id="variable-filename~73"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -184,7 +186,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~73"></span>
+              <span class="anchor" id="variable-unit~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -199,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-type_code~31"></span>
+              <span class="anchor" id="variable-type_code~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -209,12 +211,42 @@
             <td>::</td>
             <td><strong>type_code</strong></td>
             <td>
-                <p>type code of the array (1=int, 2=real, 3=char)</p>
+                <p>type code of the array</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>integer</td>
+<td>-1_int32</td>
+</tr>
+<tr>
+<td>real</td>
+<td>-2_int32</td>
+</tr>
+<tr>
+<td>complex</td>
+<td>-4_int32</td>
+</tr>
+<tr>
+<td>logical</td>
+<td>-3_int32</td>
+</tr>
+<tr>
+<td>character</td>
+<td>string length</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ndim~12"></span>
+              <span class="anchor" id="variable-ndim"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,7 +261,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dims~68"></span>
+              <span class="anchor" id="variable-dims~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -244,7 +276,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~330"></span>
+              <span class="anchor" id="variable-ierr~262"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -255,21 +287,6 @@
             <td><strong>ierr</strong></td>
             <td>
                 <p>error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-clen~39"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>clen</strong></td>
-            <td>
-                <p>character length (only for character arrays)</p>
             </td>
         </tr>
     </tbody>
@@ -299,14 +316,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>
