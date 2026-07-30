@@ -68,18 +68,17 @@ This repository contains the source code, methods, snippets, and tests for the *
   ├── helper_rcpp_wrapper.py    # generates Rcpp wrapper subroutines
   └── generate_snippets.py      # auto-generates VS Code snippet files from source code
 
-build.sh            # Compile and generate shared libraries
-build_externals.sh  # Compile the bundled external libraries (LOESS, etc.)
-build_utils.sh      # Shared helper functions used by the build scripts
-ford.yml            # Generates FORD documentation
-.fpm.toml           # Defines compilation options
+build.sh            # Compile and generate shared libraries (incl. bundled externals)
+build_utils.sh      # Shared helper functions used by the build and test scripts
+fpm.toml            # fpm compilation settings, also holds the FORD config
+authors.h           # Author metadata macros used in the FORD documentation
 test_runner.sh      # Compile and run Fortran unit tests
 run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
 ```
 
 * **`/build`** stores shared libraries, compiled objects, and binary files resulting from Fortran compilation. It keeps the repository clean by separating source from compiled code.
 * **`/doc`** contains auto-generated documentation built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
-* **`/external`** bundles third-party Fortran sources (e.g. the LOESS routines in `external/loess/`) that are compiled by `build_externals.sh` into `external/lib/`.
+* **`/external`** bundles third-party Fortran sources (e.g. the LOESS routines in `external/loess_netlib/`) that are compiled by `build.sh` into static libraries under `external/`.
 * **`/material`** holds example and reference datasets (`.tsv`) used by the tests and usage demonstrations.
 * **`/misc`** contains the team's coding guidelines (`misc/Fortran_Coding_Guides.pdf`), the detailed method description (`misc/Tensor_Omics_Methods.pdf`), and the Dockerfile (`misc/gfortran.docker`) used to compile the project without installing anything beyond Docker.
 * **`/python`** includes Python scripts that coordinate analysis workflows.
@@ -259,7 +258,7 @@ The documentation covers all public modules, subroutines, functions, and derived
 To regenerate the documentation after making changes to the source code, install FORD (`pip install ford`) and run:
 
 ```bash
-ford ford.yml
+ford concise_project_info.md
 ```
 
 ### Loading snippets into VS Code
