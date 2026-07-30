@@ -223,7 +223,7 @@ def normalization_pipeline(
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
     n_replicates = expr.shape[0]
-    n_tissues = log_transformed_expr.shape[0]
+    n_tissues = reps_per_tissue.shape[0]
 
     # outputs and work arrays, which the caller never sees
     log_transformed_expr = np.empty((n_tissues, n_genes,), dtype=np.float64, order='F')

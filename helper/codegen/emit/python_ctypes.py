@@ -774,7 +774,13 @@ class PythonEmitter:
         return f"0 if {owner.name} is None else {expression}"
 
     def _extent_provider(self, argument: CArgument, wrapper: CWrapper) -> str:
-        """The first input array that already knows this extent."""
+        """The first input array that already knows this extent.
+
+        Only an input's shape may be read: an output array is allocated *from* this
+        extent, so it does not exist yet when the extent is settled. When an extent is
+        named by both (e.g. `reps_per_tissue(n_tissues)` and the output
+        `log_transformed_expr(n_tissues, n_genes)`) the input is the one to read.
+        """
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
             if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
@@ -783,17 +789,14 @@ class PythonEmitter:
                 # its extents travel separately, so the only thing an extent of it can
                 # mean is how many elements there are altogether
                 return f"{owner.name}.size"
+            axis = self._axis_of(argument.name, c_owner)
+            if axis is not None:
+                return f"{owner.name}.shape[{axis}]"
         # an output sized by a shape argument: the count is the product of that shape
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
             if c_owner is not None and c_owner.shape_arg is not None:
                 return f"int(np.prod({c_owner.shape_arg}))"
-            if c_owner.is_temporary:
-                # allocated from this extent, so it cannot also be its source
-                continue
-            axis = self._axis_of(argument.name, c_owner)
-            if axis is not None:
-                return f"{owner.name}.shape[{axis}]"
         return ""
 
     @staticmethod

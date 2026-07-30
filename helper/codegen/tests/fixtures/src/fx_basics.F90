@@ -69,6 +69,34 @@ contains
     end subroutine fx_sum_matrix
 
     !> M_EXPORT_C
+    !| summary: An output extent also named by a later input array, which must source it
+    !| author: A Developer
+    subroutine fx_grouped_output(n_cols, n_out, values, averaged, group_sizes, ierr)
+        integer(int32), intent(in) :: n_cols
+            !! columns of `values` and `averaged`
+        integer(int32), intent(in) :: n_out
+            !! output rows; also the number of `group_sizes`
+        real(real64), dimension(n_cols), intent(in) :: values
+            !! one value per column
+        real(real64), dimension(n_out, n_cols), intent(out) :: averaged
+            !! grouped output; its first extent `n_out` is shared with `group_sizes`
+        integer(int32), dimension(n_out), intent(in) :: group_sizes
+            !! one size per output group -- a *later* input carrying the same extent, so
+            !! `n_out` must be read off it rather than the not-yet-allocated `averaged`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i_out, i_col
+
+        call set_ok(ierr)
+        do i_col = 1, n_cols
+            do i_out = 1, n_out
+                averaged(i_out, i_col) = values(i_col)*real(group_sizes(i_out), real64)
+            end do
+        end do
+    end subroutine fx_grouped_output
+
+    !> M_EXPORT_C
     !| summary: Every optional flavour at once
     !| author: A Developer
     subroutine fx_optionals(values, n_values, span, max_iter, use_quantile, tmp_work, ierr)

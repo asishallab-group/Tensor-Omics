@@ -213,6 +213,22 @@ class TestResultsAreRight:
 
         assert tox.fx_sum_matrix(matrix, np.array([10.0, 100.0])) == pytest.approx(640.0)
 
+    def test_an_output_extent_is_sourced_from_the_input_not_the_output(self, tox):
+        # n_out is an extent of both the intent(out) `averaged` and the intent(in)
+        # `group_sizes`, with the output declared first. It must be read off the input:
+        # the output is allocated *from* n_out and does not exist yet.
+        # Regression -- the emitter used to read `averaged.shape[0]`, an UnboundLocalError.
+        source = (Path(tox.__file__).parent / "fx_basics.py").read_text()
+        body = source.split("def fx_grouped_output")[1]
+        assert "n_out = group_sizes.shape[0]" in body
+
+    def test_a_shared_output_extent_wrapper_runs(self, tox, np):
+        # averaged[i_out, i_col] = values[i_col] * group_sizes[i_out]
+        averaged = tox.fx_grouped_output(
+            np.array([1.0, 2.0]), np.array([3, 5], dtype=np.int32))
+        assert averaged.shape == (2, 2)
+        assert np.allclose(averaged, [[3.0, 6.0], [5.0, 10.0]])
+
     def test_a_list_is_accepted_as_an_input_array(self, tox, np):
         assert tox.fx_count_positive([-1.0, 2.0, 3.0]) == 2
 

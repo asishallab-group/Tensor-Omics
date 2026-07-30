@@ -59,8 +59,9 @@ def test_pipeline_vs_manual():
 
     # Manual with quantile: std_dev → quantile → avg → log2
     temp1 = normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
-    temp2 = quantile_normalization(temp1)
-    temp3 = calc_tiss_avg(temp2, group_c)
+    # quantile_normalization returns the rank means alongside the matrix
+    temp2 = quantile_normalization(temp1)["normalized_expr"]
+    temp3 = calc_tiss_avg(group_c, temp2)
     result_manual_quantile = log2_transformation(temp3)
 
     # Test WITHOUT quantile normalization
@@ -70,7 +71,7 @@ def test_pipeline_vs_manual():
 
     # Manual without quantile: std_dev → avg → log2
     temp1_no_q = normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
-    temp2_no_q = calc_tiss_avg(temp1_no_q, group_c)
+    temp2_no_q = calc_tiss_avg(group_c, temp1_no_q)
     result_manual_no_quantile = log2_transformation(temp2_no_q)
 
     # Verify shapes
