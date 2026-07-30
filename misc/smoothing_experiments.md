@@ -763,17 +763,43 @@ This section documents the performance work done on `src/lomanle.F90` (2026-07-2
 
 ### 18.1 Complexity, before and after
 
-| Step | Before | After |
+
+| Step | Before | After (2026-07-27)|
 | --- | --- | --- |
+| 0 — KD-tree construction (§3) | O(n log n) | unchanged |
+| 1-3 — adaptive growth (§4) | O(n · k · log n), degrading toward O(n · k) once k/n is large (poor KD-tree pruning, §18.6) | same complexity class -- the query-batching fix in §18.6 only reduces the constant factor, and only when growth takes many steps from a small k_min |
+| 4 — density sort (§6) | O(n log n) | unchanged |
 | 5 — anchor selection (§7) | O(n_anchor · n²) | O(n_anchor · n · log n) |
+| 5b — orphan absorption (§8) | O(n_orphans · n) | unchanged |
 | 6 — per-anchor SVD (§9) | O(n_anchor · n) | O(n_anchor · log n) |
 | 7 — membership matrix (§11) | O(n_anchor · n) | O(n_anchor · log n) |
 | 8 — anchor intersection edges (§12) | O(n_anchor² · n) | O(n_anchor · n) |
+| 9 — BFS intersection regions (§14) | O(n_edges + n_points) | unchanged -- already efficient, see §13 |
 | 10 — stitching, per-point anchor lookup (§15) | O(n_anchor) per point | O(anchor_count(i)) per point |
+| MST Tier 1 (§16.3) | O(n_anchor log n_anchor) | unchanged |
+| MST Tier 2 (§16.4) | O(n_anchor²), O(dim) per pair | unchanged, see §18.7 |
+| member-chain sorting (§16.7) | O(n log(n / n_anchor)) | unchanged, see §18.7 |
 
-The dominant remaining term is Step 5's O(n_anchor · n · log n): the greedy loop still re-scans **all** n candidates on every one of the n_anchor iterations (a candidate's overlap ratio can change whenever *any* nearby anchor gets picked, not just the most recent one, so there's no cheap way to know which candidates are still "clean" without re-checking). Restructuring that into an event-driven / priority-queue scheme (only re-evaluate a candidate when a nearby anchor was actually just added) could in principle remove that n_anchor factor entirely -- see §18.5 for why this hasn't been done yet.
+`k` in the Steps 1-3 row is a given point's own converged adaptive neighborhood size (grows from `k_min`, so on the order of `k_min` unless growth needed several steps to satisfy the gap/stability thresholds).
 
-Since n_anchor ≈ n / (points per anchor), the practical worst case is still roughly quadratic in n, just with a much smaller constant and a log n where there used to be a full factor of n.
+The dominant remaining term is Step 5's O(n_anchor · n · log n): the greedy loop still re-scans **all** n candidates on every one of the n_anchor iterations (a candidate's overlap ratio can change whenever *any* nearby anchor gets picked, not just the most recent one, so there's no cheap way to know which candidates are still "clean" without re-checking). Restructuring that into an event-driven / priority-queue scheme (only re-evaluate a candidate when a nearby anchor was actually just added) could in principle remove that n_anchor factor entirely -- see §18.7 for why this hasn't been done yet.
+
+**Why the log is base n, not base n_anchor.** Every `kd_range_query_list`/`kd_range_query_mask` call in Step 5 walks a KD-tree built over the full n points, not over the n_anchor anchors -- so each individual query costs O(log n + m̄) regardless of how many anchors exist. n_anchor only controls *how many times* that O(n log n) candidate sweep gets repeated (once per anchor picked), not the cost of any single query within it:
+
+```text
+per outer iteration:  n candidates x O(log n + m̄) per query  ≈  O(n log n)
+total (n_anchor iterations):                                    O(n_anchor · n · log n)
+```
+
+**O(n_anchor · n · log n) is the real bound, and the one to reason about in practice** -- n_anchor is typically a small fraction of n (hundreds of anchors for tens of thousands of points is normal, since each anchor's sphere covers many points), so this is nowhere near quadratic in n for realistic inputs. n is what sets *each individual query's own* cost (log n, since that's the depth of the tree being walked); n_anchor is only the *multiplier* on how many times that O(n log n) sweep repeats -- the two variables are genuinely independent, and collapsing them into a single-variable bound throws away real information.
+
+The only reason to ever fall back to a single-variable bound is a *worst-case sanity check*: n_anchor ≤ n always holds (there can't be more anchors than points), so in the degenerate case where nearly every point ends up seeding its own anchor (e.g. an extremely sparse or disconnected point cloud that keeps failing the o_min/o_max overlap constraint), n_anchor approaches n and
+
+```text
+O(n_anchor · n · log n)  ≤  O(n · n · log n)  =  O(n² log n)
+```
+
+-- but this is a ceiling for a pathological input, not a description of typical behavior. Report n_anchor · n · log n; only mention n² log n as "and it can't get worse than this, even in the degenerate case."
 
 ### 18.2 The mechanism: two new KD-tree queries
 
@@ -783,6 +809,8 @@ Since n_anchor ≈ n / (points per anchor), the practical worst case is still ro
 * **`kd_range_query_list`**: fills a caller-provided compact index buffer + count. Needed anywhere the O(n) mask reset itself would defeat the purpose of the query -- e.g. Step 5's per-candidate overlap check, called up to n times per anchor.
 
 Both replace the `dist_sq = sum((coords(:,i) - coords(:,j))**2); if (dist_sq <= radius**2) ...` brute-force loop pattern that used to appear (independently) in `select_atlas_anchors`, `compute_anchor_svd`, `build_membership_matrix`, and `absorb_orphans`.
+
+**This win shrinks as the query radius grows, and can vanish entirely.** A KD-tree prunes a subtree only when it can prove no point inside it is within the query radius; once the radius already covers a large fraction of the dataset, fewer and fewer subtrees can be ruled out, and the query degrades from O(log n + m̄) toward a full O(n) scan -- no better than the brute-force loop it replaced, just with extra tree-traversal bookkeeping on top. Measured directly: at k_min values that keep anchor spheres small relative to n (e.g. k_min=200 of n=5,000, §18.6's table), Step 5 sped up substantially; at k_min values where spheres already cover a large slice of the dataset (e.g. k_min=800 of n=5,000, or k_min=8,000 of n=50,000 -- both ~16% of n), the measured wall-clock difference for Step 5 was within noise of zero. Same mechanism, same conclusion, is why the growth-phase caching fix in §18.6 didn't help those same large-k_min cases either.
 
 **A real bug this surfaced, worth remembering:** the first version of the `compute_anchor_svd` swap produced *different* (though still structurally valid) output than the original -- not because the query was wrong (verified correct against brute force, zero mismatches on real data), but because `kd_range_query_list` returns points in KD-tree traversal order, not ascending point-index order. The center/covariance summation in `compute_anchor_svd` is a floating-point accumulation, and floating-point addition isn't associative -- a different summation order gives a last-bit-different result, which cascades through `lomanle_compute`'s outer convergence loop (often not fully converged within `max_iterations`) into a visibly different final skeleton. Fixed by sorting the compact result back to ascending index order before accumulating (cheap relative to the O(n) scan it replaced). `select_atlas_anchors` and `build_membership_matrix` didn't need this fix: they only ever produce integer counts or boolean masks from the query result, and neither is order-sensitive.
 
@@ -831,7 +859,7 @@ The working hypothesis was that this was caused by `grow_one_point_neighborhood`
 * **MST Tier-2 candidate generation** (`count_tier2_candidate_pairs`, §16.4) is still an O(n_anchor²) pairwise scan, just with O(dim) work per pair rather than O(n) -- cheap in every case measured so far (n_anchor stayed in the hundreds), but a real O(n_anchor²) term if n_anchor ever gets much larger.
 * **`build_member_chains`/`emit_branch`'s comparison sorts** (§16.7) could in principle become an O(1) bucket sort / 1D binning instead of an O(m log m) `sort_array`, since points are being ordered by a single projected coordinate -- low priority, these sort small per-anchor/per-branch clusters, not the whole dataset, so the log factor is not currently worth the added complexity.
 
-### 18.8 Measured wall-clock times
+### 18.8 Measured wall-clock times -- local machine, 12 threads
 
 Measured on a local machine with **12 threads** (`TOX_MAX_PERFORMANCE=1`, i.e. the fully optimized + parallel build described above). `iter` is the outer convergence-loop iteration count (`max_iterations`).
 
@@ -851,6 +879,29 @@ Measured on a local machine with **12 threads** (`TOX_MAX_PERFORMANCE=1`, i.e. t
 | 50,000 | 8,000 | 50 | 8m 48.9s |
 
 For reference, before any of the work in this section (no KD-tree range queries, no OpenMP, no `-O3`/`-march=native`), the n=5,000/k_min=10/iter=3 case alone took 74s -- close to what the n=50,000/k_min=8,000/iter=10 row above takes now, at 100x the points and over 3x the iterations.
+
+### 18.9 Measured wall-clock times -- server, 128 threads
+
+Same build (`TOX_MAX_PERFORMANCE=1`), run via `run_lomanle_tests.sh` on the bioserver with **128 threads** `circular_arc_noise_high` / `circular_arc_2d_noise_high`, vs. the `s_curve` datasets used for the local table in §18.8.
+
+| n points | k_min | iter | wall-clock time |
+| --- | --- | --- | --- |
+| 500 | 30 | 10 | 0.21 s |
+| 500 | 30 | 50 | 0.37 s |
+| 500 | 80 | 10 | 0.19 s |
+| 500 | 80 | 50 | 0.27 s |
+| 5,000 | 300 | 10 | 0.67 s |
+| 5,000 | 300 | 50 | 1.80 s |
+| 5,000 | 800 | 10 | 0.56 s |
+| 5,000 | 800 | 50 | 1.36 s |
+| 50,000 | 3,000 | 10 | 26.6 s |
+| 50,000 | 3,000 | 50 | 1m 10.5s |
+| 50,000 | 8,000 | 10 | 25.9 s |
+| 50,000 | 8,000 | 50 | 1m 25.5s |
+
+At n=50,000 this is roughly 5-6x faster than the 12-thread table for the same `k_min`/`iter` (e.g. k_min=8,000/iter=50: 8m 48.9s at 12 threads vs. 1m 25.5s at 128 threads) -- sublinear in the thread-count ratio (~10.7x more threads).
+
+**The n=500 rows are *not* faster than the 12-thread table, some are slower**, and that's expected too: every run in this log shows a near-constant `sys` time of ~7.3-8.2s *regardless of problem size* -- consistent with fixed OpenMP thread-pool spin-up/spin-down overhead across 128 threads, paid once per `!$omp parallel do` region entry/exit. For a genuinely tiny problem (n=500) that overhead is comparable to or larger than the actual work, so throwing more threads at it doesn't help and can hurt slightly. It only pays off once the per-region work is large enough to amortize it, which is already true by n=5,000 and clearly true by n=50,000.
 
 ---
 

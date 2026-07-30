@@ -71,9 +71,13 @@ process_file() {
                                         continue
                                     fi
 
-                                    # Define output CSV name including k, g, overlap, stability and iteration parameters
+                                    # Define output CSV name including every parameter that can vary across
+                                    # runs (k, manifold_dim, g, both overlap bounds, stability, scale, iteration
+                                    # cap, conv_tol, ambient dim) -- omitting any of these risks two different
+                                    # parameter combinations silently overwriting each other's output files.
                                     base_name=$(basename "$f" .csv)
-                                    csv_out="results/data/${base_name}_k${k}_g${g_thresh}_omax${o_max}_st${stability}_sf${scale_factor}_mi${max_iter}_ct${conv_tol}_lomanle.csv"
+                                    csv_out="results/data/${base_name}_k${k}_manifold-dim${m_dim}_g${g_thresh}_omax${o_max}_omin${o_min}_st${stability}_sf${scale_factor}_mi${max_iter}_ct${conv_tol}_ambient-dim${ambient_dim}_lomanle.csv"
+
                                     edges_out="${csv_out%.csv}_edges.csv"
                                     echo "Saving output to: $csv_out"
                                     mv lomanle_output.csv "$csv_out"
@@ -82,7 +86,7 @@ process_file() {
 
                                     # R SCRIPT CALL (Passes parameters for plotting)
                                     echo "Generating visualization..."
-                                    Rscript r/plot_lomanle_spheres.R "$csv_out" "$k" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol"
+                                    Rscript r/plot_lomanle_spheres.R "$csv_out" "$k" "$g_thresh" "$o_max" "$o_min" "$stability" "$scale_factor" "$max_iter" "$conv_tol" "$m_dim" "$ambient_dim"
                                 done
                             done
                         done

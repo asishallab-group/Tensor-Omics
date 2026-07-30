@@ -7,11 +7,12 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 5) {
-  stop("Usage: Rscript plot_lomanle_spheres.R <file.csv> <k_min> <g_threshold> <o_max> <o_min> [stability_threshold] [scale_factor] [max_iterations] [relative_conv_tol]")
+  stop("Usage: Rscript plot_lomanle_spheres.R <file.csv> <k_min> <g_threshold> <o_max> <o_min> [stability_threshold] [scale_factor] [max_iterations] [relative_conv_tol] [manifold_dim] [ambient_dim]")
 }
-# stability_threshold/scale_factor/max_iterations/relative_conv_tol are only
-# used for figure captions, so older invocations without them still work.
-for (idx in 6:9) {
+# stability_threshold/scale_factor/max_iterations/relative_conv_tol/manifold_dim/
+# ambient_dim are only used for figure captions, so older invocations without
+# them still work.
+for (idx in 6:11) {
   if (length(args) < idx) args[idx] <- NA
 }
 
@@ -22,6 +23,8 @@ param_caption <- function(args, sep = ", ") {
   if (!is.na(args[7])) parts <- c(parts, paste("scale_factor =", args[7]))
   if (!is.na(args[8])) parts <- c(parts, paste("max_iter =", args[8]))
   if (!is.na(args[9])) parts <- c(parts, paste("conv_tol =", args[9]))
+  if (!is.na(args[10])) parts <- c(parts, paste("manifold_dim =", args[10]))
+  if (!is.na(args[11])) parts <- c(parts, paste("ambient_dim =", args[11]))
   paste(parts, collapse = sep)
 }
 
