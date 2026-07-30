@@ -132,7 +132,7 @@ fprettify -i 4 -l 1000 <path-to-file>
 
 The \texttt{-l 1000} flag sets a generous line-length limit so that \texttt{fprettify} does not introduce spurious line continuations in long argument lists.
 
-\subsection{One Dummy Argument Declaration Per Line}
+\subsection{One Dummy Argument Declaration Per Line}\label{sec:one-arg-per-line}
 
 Each dummy argument (subroutine/function parameter) must be declared on its own line. This is required so that every argument can carry its own FORD documentation comment:
 
@@ -359,7 +359,7 @@ Every \texttt{validate\_*} routine, as well as \texttt{set\_err}, accepts an opt
 call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
 call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
 call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
-if (n_clusters > n_points) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+if (n_clusters > n_points) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
 
 call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
 call validate_all_in_range_real(centroids, size(centroids, kind=int32), ierr, arg_pos=5_int32)
@@ -376,8 +376,8 @@ call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WA
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
 \begin{itemize}
-  \item \texttt{set\_err(ierr, code)}: Sets \texttt{ierr} to \texttt{code} only if \texttt{ierr} is currently \texttt{ERR\_OK}. Preserves the first error encountered.
-  \item \texttt{set\_err\_once(ierr, code)}: Identical in behaviour to \texttt{set\_err}; provided as a more explicit alias to signal intent when chaining multiple fallible calls.
+  \item \texttt{set\_err(ierr, code)}: \emph{Unconditionally} sets \texttt{ierr} to \texttt{code}, overwriting any error already stored. Use it only when \texttt{ierr} is known to be \texttt{ERR\_OK} (e.g.\ the first check after \texttt{set\_ok}), or when you deliberately want the new code to take precedence.
+  \item \texttt{set\_err\_once(ierr, code)}: Sets \texttt{ierr} to \texttt{code} \emph{only if \texttt{ierr} is currently \texttt{ERR\_OK}}, preserving the first error encountered. This is the safe default when chaining multiple fallible calls, and is exactly what the \texttt{validate\_*} routines use internally.
 \end{itemize}
 
 \subsection{Never Silent Errors}
@@ -817,7 +817,11 @@ integer(c_int), intent(in), target :: filename_len
 character(len=1, kind=c_char), dimension(filename_len), intent(in), target :: filename
 
 ! CORRECT: multi-dimensional string arrays (len=1 per character element, kind=c_char)
-integer(c_int), intent(in), target :: max_str_len, d1, d2, d3
+! One dummy argument per line (see Section 3); each can carry its own FORD comment
+integer(c_int), intent(in), target :: max_str_len
+integer(c_int), intent(in), target :: d1
+integer(c_int), intent(in), target :: d2
+integer(c_int), intent(in), target :: d3
 character(len=1, kind=c_char), dimension(max_str_len, d1, d2, d3), intent(in), target :: strings_nd
 
 ! WRONG: positional parameter character(c_char) means len=c_char=1, kind=default
