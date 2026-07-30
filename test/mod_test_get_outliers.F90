@@ -173,7 +173,7 @@ contains
 
   !> Test: Full outlier detection workflow.
   !> This test checks the complete workflow of outlier detection, including scaling, RDI calculation,
-  !> outlier identification, and empirical p-values, for a small example with multiple families.
+  !> outlier identification, and empirical quantile, for a small example with multiple families.
   subroutine test_detect_outliers_basic()
     use, intrinsic :: iso_fortran_env, only: int32, real64
     implicit none
@@ -192,7 +192,7 @@ contains
 
     real(real64)   :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)
-    real(real64)   :: p_values(n_genes)
+    real(real64)   :: quantile(n_genes)
 
     integer(int32) :: f, j, idx
     integer(int32) :: i_out, i_norm
@@ -212,7 +212,7 @@ contains
     call detect_outliers( &
         n_genes, n_families, distances, gene_to_fam, &
         work_array, perm, stack_left, stack_right, &
-        is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
+        is_outlier, loess_x, loess_y, loess_n, quantile, ierr, &
         60.0_real64)
 
     call assert_equal_int(ierr, 0, "ierr should be 0 (test_detect_outliers_basic)")
@@ -222,26 +222,26 @@ contains
     ! P-VALUE SANITY CHECKS
     ! --------------------------------------------------------------------------
 
-    ! 1) All p-values must be in (0, 1] for this test (no negative RDIs expected)
+    ! 1) All quantile must be in (0, 1] for this test (no negative RDIs expected)
     do idx = 1, n_genes
-      call assert_true(p_values(idx) > 0.0_real64, "p-values must be > 0")
-      call assert_true(p_values(idx) <= 1.0_real64, "p-values must be <= 1")
+      call assert_true(quantile(idx) > 0.0_real64, "quantile must be > 0")
+      call assert_true(quantile(idx) <= 1.0_real64, "quantile must be <= 1")
     end do
 
-    ! 2) For each family: the constructed outlier (j=6) should have a smaller p-value
+    ! 2) For each family: the constructed outlier (j=6) should have a smaller quantile
     !    than a typical in-family point (j=1).
     do f = 1, n_families
       i_norm = (f-1_int32)*genes_per_fam + 1_int32  ! j=1
       i_out  = (f-1_int32)*genes_per_fam + 6_int32  ! j=6 (big offset 20.0)
 
-      call assert_true(p_values(i_out) <= p_values(i_norm), "Outlier must have <= p-value than normal")
+      call assert_true(quantile(i_out) <= quantile(i_norm), "Outlier must have <= quantile than normal")
     end do
 
-    ! 3) If a gene is marked as outlier, it should have relatively small p-value.
+    ! 3) If a gene is marked as outlier, it should have relatively small quantile.
     !    (We do not enforce a fixed alpha here because selection is percentile-based.)
     do idx = 1, n_genes
       if (is_outlier(idx)) then
-        call assert_true(p_values(idx) < 0.50_real64, "Outliers should have p-values below 0.5 in this construction")
+        call assert_true(quantile(idx) < 0.50_real64, "Outliers should have quantile below 0.5 in this construction")
       end if
     end do
 
@@ -254,7 +254,7 @@ contains
     implicit none
 
     integer(int32), parameter :: n_genes=4
-    real(real64) :: rdi(n_genes), sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -271,7 +271,7 @@ contains
     ! values ascending: 0.1 (idx2), 0.2 (idx4), 0.3 (idx1), 0.4 (idx3)
     perm = [2_int32, 4_int32, 1_int32, 3_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 75.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 75.0_real64)
 
     ! percentile 75%: idx = ceil(4*0.75)=3
     ! threshold = sorted_rdi(perm(3)) = sorted_rdi(1) = 0.3
@@ -283,16 +283,16 @@ contains
     call assert_false(is_outlier(2), "Gene 2 (0.1) is not outlier")
     call assert_false(is_outlier(4), "Gene 4 (0.2) is not outlier")
 
-    ! Validate p-values (upper-tail empirical with c=1), returned in gene order (same as rdi):
+    ! Validate quantile (upper-tail empirical with c=1), returned in gene order (same as rdi):
     ! distribution values = [0.1,0.2,0.3,0.4]
     ! d=0.3 => count_ge=2 (0.3,0.4) => p=(2+1)/5=0.6
     ! d=0.1 => count_ge=4 => p=(4+1)/5=1.0
     ! d=0.4 => count_ge=1 => p=(1+1)/5=0.4
     ! d=0.2 => count_ge=3 => p=(3+1)/5=0.8
-    call assert_equal_real(p_values(1), 3.0_real64/denom, 1d-12, "p(gene1,d=0.3)=(2+c)/(n+c)=0.6")
-    call assert_equal_real(p_values(2), 5.0_real64/denom, 1d-12, "p(gene2,d=0.1)=(4+c)/(n+c)=1.0")
-    call assert_equal_real(p_values(3), 2.0_real64/denom, 1d-12, "p(gene3,d=0.4)=(1+c)/(n+c)=0.4")
-    call assert_equal_real(p_values(4), 4.0_real64/denom, 1d-12, "p(gene4,d=0.2)=(3+c)/(n+c)=0.8")
+    call assert_equal_real(quantile(1), 3.0_real64/denom, 1d-12, "quantile(gene1,d=0.3)=(2+c)/(n+c)=0.6")
+    call assert_equal_real(quantile(2), 5.0_real64/denom, 1d-12, "quantile(gene2,d=0.1)=(4+c)/(n+c)=1.0")
+    call assert_equal_real(quantile(3), 2.0_real64/denom, 1d-12, "quantile(gene3,d=0.4)=(1+c)/(n+c)=0.4")
+    call assert_equal_real(quantile(4), 4.0_real64/denom, 1d-12, "quantile(gene4,d=0.2)=(3+c)/(n+c)=0.8")
   end subroutine test_identify_outliers_basic
 
 
@@ -303,7 +303,7 @@ contains
     implicit none
 
     integer(int32), parameter :: n_genes=4
-    real(real64) :: rdi(n_genes), sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -316,17 +316,17 @@ contains
     ! ascending by value: 10(idx2), 11(idx4), 12(idx1), 13(idx3)
     perm = [2_int32, 4_int32, 1_int32, 3_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 0.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.0_real64)
 
     call assert_equal_real(threshold, 10.0_real64, 1d-12, "Percentile 0 -> threshold must be min (10)")
     call assert_true(all(is_outlier), "All are outliers at 0 percentile (all rdi>0)")
 
-    ! p-values sanity checks:
+    ! quantile sanity checks:
     ! distribution values = [10,11,12,13]
     ! gene2 has d=10 => count_ge=4 => p=(4+1)/5=1.0
     ! gene3 has d=13 => count_ge=1 => p=(1+1)/5=0.4
-    call assert_equal_real(p_values(2), 5.0_real64/denom, 1d-12, "p(d=10)=1.0")
-    call assert_equal_real(p_values(3), 2.0_real64/denom, 1d-12, "p(d=13)=0.4")
+    call assert_equal_real(quantile(2), 5.0_real64/denom, 1d-12, "quantile(d=10)=1.0")
+    call assert_equal_real(quantile(3), 2.0_real64/denom, 1d-12, "quantile(d=13)=0.4")
   end subroutine test_all_outliers
 
 
@@ -339,7 +339,7 @@ contains
 
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
-    real(real64) :: sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -349,14 +349,14 @@ contains
     sorted_rdi = rdi
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
 
     call assert_equal_real(threshold, 0.4_real64, 1d-12, "Percentile 100 -> threshold must be maximum")
     call assert_false(any(is_outlier(1:3)), "No outliers below maximum at 100 percentile")
     call assert_true(is_outlier(4), "Maximum value must be outlier at 100 percentile")
 
-    ! p-values: d=0.4 => count_ge=1 => p=(1+1)/5=0.4
-    call assert_equal_real(p_values(4), 2.0_real64/denom, 1d-12, "p(max)=0.4 with c=1")
+    ! quantile: d=0.4 => count_ge=1 => p=(1+1)/5=0.4
+    call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(max)=0.4 with c=1")
   end subroutine test_no_outliers
 
 
@@ -367,7 +367,7 @@ contains
 
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
-    real(real64) :: sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -378,18 +378,18 @@ contains
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
     ! Percentile 0 -> threshold = minimum (1.0)
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 0.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.0_real64)
     call assert_equal_real(threshold, 1.0_real64, 1d-12, "p=0 -> threshold=min")
     call assert_true(all(is_outlier), "All positive values must be outliers at percentile 0")
 
-    ! p-values spot checks (distribution [1,2,3,4]):
+    ! quantile spot checks (distribution [1,2,3,4]):
     ! d=1 => count_ge=4 => p=(4+1)/5=1.0
     ! d=4 => count_ge=1 => p=(1+1)/5=0.4
-    call assert_equal_real(p_values(1), 5.0_real64/denom, 1d-12, "p(d=1)=1.0")
-    call assert_equal_real(p_values(4), 2.0_real64/denom, 1d-12, "p(d=4)=0.4")
+    call assert_equal_real(quantile(1), 5.0_real64/denom, 1d-12, "quantile(d=1)=1.0")
+    call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(d=4)=0.4")
 
     ! Percentile 100 -> threshold = maximum (4.0)
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
     call assert_equal_real(threshold, 4.0_real64, 1d-12, "p=100 -> threshold=max")
     call assert_false(any(is_outlier(1:3)), "Values below max not outliers at percentile 100")
     call assert_true(is_outlier(4), "Max value is outlier at percentile 100")
@@ -404,7 +404,7 @@ contains
 
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 2.0_real64, 3.0_real64]
-    real(real64) :: sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -418,16 +418,16 @@ contains
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
     ! percentile 50 -> idx = ceil(4*0.5)=2 -> threshold = second smallest = 2.0
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 50.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 50.0_real64)
 
     call assert_equal_real(threshold, 2.0_real64, 1d-12, "Threshold must be 2.0 at 50 percentile")
     call assert_true(is_outlier(2), "First 2.0 must be outlier")
     call assert_true(is_outlier(3), "Second 2.0 must be outlier")
     call assert_false(is_outlier(1), "1.0 must not be outlier")
 
-    ! p-values for d=2: count_ge=3 (2,2,3) => p=(3+1)/5=0.8
-    call assert_equal_real(p_values(2), 4.0_real64/denom, 1d-12, "p(d=2)=0.8")
-    call assert_equal_real(p_values(3), 4.0_real64/denom, 1d-12, "p(d=2)=0.8 (duplicate)")
+    ! quantile for d=2: count_ge=3 (2,2,3) => p=(3+1)/5=0.8
+    call assert_equal_real(quantile(2), 4.0_real64/denom, 1d-12, "quantile(d=2)=0.8")
+    call assert_equal_real(quantile(3), 4.0_real64/denom, 1d-12, "quantile(d=2)=0.8 (duplicate)")
   end subroutine test_identical_rdi_at_threshold
 
 
@@ -438,7 +438,7 @@ contains
 
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
-    real(real64) :: sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -448,7 +448,7 @@ contains
     sorted_rdi = rdi
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile)
 
     ! Default percentile 95: idx=ceil(4*0.95)=4 -> threshold=max=0.4
     call assert_equal_real(threshold, 0.4_real64, 1d-12, "Default percentile 95 -> threshold must be max")
@@ -456,7 +456,7 @@ contains
     call assert_false(any(is_outlier(1:3)), "Others are not outliers (default percentile)")
 
     ! p(max)= (1+c)/(n+c)=2/5=0.4
-    call assert_equal_real(p_values(4), 2.0_real64/denom, 1d-12, "p(max)=0.4")
+    call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(max)=0.4")
   end subroutine test_identify_outliers_default_percentile
 
 
@@ -468,7 +468,7 @@ contains
 
     integer(int32), parameter :: n_genes=5
     real(real64) :: rdi(n_genes) = [-0.1_real64, -0.2_real64, -0.3_real64, -0.4_real64, -0.5_real64]
-    real(real64) :: sorted_rdi(n_genes), p_values(n_genes)
+    real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
     logical :: is_outlier(n_genes)
     real(real64) :: threshold
@@ -482,14 +482,14 @@ contains
     ! All values equal (0). Any perm is fine.
     perm = [1_int32, 2_int32, 3_int32, 4_int32, 5_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, 80.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 80.0_real64)
 
     call assert_equal_real(threshold, 0.0_real64, 1d-12, "All-negative -> clamped distribution -> threshold 0")
     call assert_true(.not. any(is_outlier), "All-negative RDI should not be outliers")
 
-    ! Your compute_empirical_p_values rule: if d<0 => p=1 (per your earlier design),
-    ! so all p-values must be 1 here.
-    call assert_true(all(abs(p_values - 1.0_real64) < 1d-12), "All-negative rdi -> p_values must be 1.0 for all genes")
+    ! Your compute_scaled_distance_quantile rule: if d<0 => p=1 (per your earlier design),
+    ! so all quantile values must be 1 here.
+    call assert_true(all(abs(quantile - 1.0_real64) < 1d-12), "All-negative rdi -> quantile must be 1.0 for all genes")
   end subroutine test_all_negative_rdi
 
 
@@ -502,12 +502,12 @@ contains
     real(real64) :: work_array(n_genes)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
     logical :: is_outlier(n_genes)
-    real(real64) :: p_values(n_genes)
+    real(real64) :: quantile(n_genes)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)
     call detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, &
-      is_outlier, loess_x, loess_y, loess_n, p_values, ierr)
+      is_outlier, loess_x, loess_y, loess_n, quantile, ierr)
     call assert_equal_int(ierr, 201, 'detect_outliers propagates error_code 201 for invalid indices')
   end subroutine test_detect_outliers_invalid_indices
 
@@ -527,12 +527,12 @@ contains
 
     real(real64) :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)
-    real(real64) :: p_values(n_genes)
+    real(real64) :: quantile(n_genes)
 
     call detect_outliers( &
       n_genes, n_families, distances, gene_to_fam, &
       work_array, perm, stack_left, stack_right, &
-      is_outlier, loess_x, loess_y, loess_n, p_values, ierr)
+      is_outlier, loess_x, loess_y, loess_n, quantile, ierr)
 
     call assert_equal_int(ierr, 0, "No error for default percentile")
 
@@ -540,9 +540,9 @@ contains
     call assert_true(is_outlier(4), "Highest distance is outlier (default percentile)")
     call assert_false(any(is_outlier(1:3)), "Others are not outliers (default percentile)")
 
-    ! p-value sanity (should be in (0,1] if computed)
-    call assert_true(all(p_values > 0.0_real64), "p-values must be > 0")
-    call assert_true(all(p_values <= 1.0_real64), "p-values must be <= 1")
+    ! quantile sanity (should be in (0,1] if computed)
+    call assert_true(all(quantile > 0.0_real64), "quantile must be > 0")
+    call assert_true(all(quantile <= 1.0_real64), "quantile must be <= 1")
   end subroutine test_detect_outliers_default_percentile
 
 
@@ -582,7 +582,7 @@ contains
 
   !> Test: Single gene and family case.
   !> This test checks that for a single gene in a single family, scaling and RDI are both 0.0,
-  !> the gene is not an outlier, and the empirical p-value is 1.0.
+  !> the gene is not an outlier, and the empirical quantile is 1.0.
   subroutine test_single_gene_family()
     use, intrinsic :: iso_fortran_env, only: int32, real64
     implicit none
@@ -604,7 +604,7 @@ contains
 
     real(real64)   :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)  ! NOTE: used as workspace by scaling alloc in your detect_outliers
-    real(real64)   :: p_values(n_genes)
+    real(real64)   :: quantile(n_genes)
 
     ! 1) scaling (alloc wrapper)
     call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -618,12 +618,12 @@ contains
 
     call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)
 
-    ! 3) Outlier detection (and p-values)
+    ! 3) Outlier detection (and quantile)
     perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                         n_genes, n_families, distances, gene_to_fam, &
                         work_array, perm, stack_left, stack_right, &
-                        is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
+                        is_outlier, loess_x, loess_y, loess_n, quantile, ierr, &
                         95.0_real64)
 
     call assert_equal_int(ierr, 0, "detect_outliers ierr should be 0 (test_single_gene_family)")
@@ -632,8 +632,8 @@ contains
     call assert_equal_real(rdi(1),    0.0_real64, 1e-12_real64, "Single gene RDI")
     call assert_false(is_outlier(1), "Single gene not outlier")
 
-    ! Empirical p-value sanity for n=1: should be exactly 1.0 with c=1 and rdi=0
-    call assert_equal_real(p_values(1), 1.0_real64, 1e-12_real64, "Single gene p-value should be 1.0")
+    ! Empirical quantile sanity for n=1: should be exactly 1.0 with c=1 and rdi=0
+    call assert_equal_real(quantile(1), 1.0_real64, 1e-12_real64, "Single gene quantile should be 1.0")
   end subroutine test_single_gene_family
 
 
@@ -993,7 +993,7 @@ contains
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
     logical         :: is_outlier(n_genes)
-    real(real64)    :: p_values(n_genes)
+    real(real64)    :: quantile(n_genes)
 
     do i = 1, n_genes - 1
         distances(i) = 0.8_real64 + (real(i, real64) * 0.05_real64)
@@ -1004,16 +1004,16 @@ contains
     perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, work_rdi, &
-                         perm, sl, sr, is_outlier, lx, ly, ln, p_values, ierr, &
+                         perm, sl, sr, is_outlier, lx, ly, ln, quantile, ierr, &
                          percentile=90.0_real64)
 
     call assert_equal_int(ierr, 0, "Error code 0 (test_outliers_extreme_detection)")
     call assert_true(is_outlier(12), "The extreme gene (12) should be an outlier")
     call assert_false(is_outlier(1), "The 1st gene should not be an outlier")
 
-    ! p-value sanity: extreme should have smaller (or equal) p-value than a typical gene
-    call assert_true(p_values(12) <= p_values(1), "Extreme outlier should have <= p-value than a normal gene")
-    call assert_true(p_values(12) > 0.0_real64 .and. p_values(12) <= 1.0_real64, "p-values must be in (0,1]")
+    ! quantile sanity: extreme should have smaller (or equal) quantile than a typical gene
+    call assert_true(quantile(12) <= quantile(1), "Extreme outlier should have <= quantile than a normal gene")
+    call assert_true(quantile(12) > 0.0_real64 .and. quantile(12) <= 1.0_real64, "quantile must be in (0,1]")
   end subroutine test_outliers_extreme_detection
 
 
@@ -1032,7 +1032,7 @@ contains
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
     logical         :: is_outlier(n_genes)
-    real(real64)    :: p_values(n_genes)
+    real(real64)    :: quantile(n_genes)
 
     distances = 1.0_real64
     distances(1) = ieee_value(1.0_real64, ieee_quiet_nan)
@@ -1040,15 +1040,15 @@ contains
     perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, work_rdi, &
-                         perm, sl, sr, is_outlier, lx, ly, ln, p_values, ierr)
+                         perm, sl, sr, is_outlier, lx, ly, ln, quantile, ierr)
 
     call assert_equal_int(ierr, 0, "Should handle NaN without ierr (test_outliers_nan_handling)")
 
     ! Our design goal: NaNs should not be flagged as outliers.
     call assert_false(is_outlier(1), "NaN distance gene should not be marked as outlier")
 
-    ! p-value sanity: should be in (0,1] (implementation may set NaN RDI to p=1 via guard logic)
-    call assert_true(p_values(1) > 0.0_real64 .and. p_values(1) <= 1.0_real64, "NaN gene p-value must be in (0,1]")
+    ! quantile sanity: should be in (0,1] (implementation may set NaN RDI to quantile=1 via guard logic)
+    call assert_true(quantile(1) > 0.0_real64 .and. quantile(1) <= 1.0_real64, "NaN gene quantile must be in (0,1]")
   end subroutine test_outliers_nan_handling
 
 

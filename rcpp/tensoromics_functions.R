@@ -174,6 +174,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 #'   \item{loess_x}{Numeric vector of family median distances}
 #'   \item{loess_y}{Numeric vector of family standard deviations}
 #'   \item{loess_n}{Integer vector of number of genes used per family}
+#'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #'   \item{ierr}{Integer status code from backend routine}
 #' }
 tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
@@ -205,7 +206,7 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
     loess_x = result$loess_x,
     loess_y = result$loess_y,
     loess_n = result$loess_n,
-    p_values = result$p_values
+    quantile = result$quantile
   ))
 
 }
@@ -355,6 +356,7 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' \describe{
 #'   \item{is_outlier}{Logical vector indicating outliers}
 #'   \item{threshold}{Numeric RDI threshold value used}
+#'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #' }
 tox_identify_outliers <- function(rdi, percentile = 95.0) {
 
@@ -3568,21 +3570,25 @@ tox_loess <- function(x, y, span = 0.7, degree = 2, mode = 1, n_iters = 3) {
   return(result$yhat)
 }
 
-#> f42_utils:compute_empirical_p_values_c: Compute empirical p-values
-#' Calculate empirical p-values for a given distribution
-#' Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+#> f42_utils:compute_scaled_distance_quantile_c: Compute the empirical quantile (effect-size measure) of a distribution
+#' Calculate the empirical quantile (effect-size measure) for a given distribution
+#'
+#' This is NOT a null-hypothesis-testing p-value: each value is compared against the observed
+#' distribution it was drawn from, not an independently generated null distribution. It measures
+#' how extreme an observed value is relative to all observed values.
+#' Because distances are non-negative, a one-sided upper-tail quantile is used.
 #' @param distribution A numeric vector representing the distribution of values.
 #' @param c_const A constant used in the computation, typically 1.
 #'
-#' @return A numeric vector of p-values corresponding to the input distribution.
+#' @return A numeric vector of empirical quantiles corresponding to the input distribution.
 #' @export
 #'
 #' @examples
 #' distribution <- c(0.5, 1.2, 0.8, 0.3)
 #' c_const <- 1
-#' p_values <- compute_empirical_p_values(distribution, c_const)
-#' print(p_values)
-compute_empirical_p_values <- function(distribution, c_const) {
-  result <- tox_empirical_p_values_rcpp(distribution, c_const)
+#' quantile <- compute_scaled_distance_quantile(distribution, c_const)
+#' print(quantile)
+compute_scaled_distance_quantile <- function(distribution, c_const) {
+  result <- tox_scaled_distance_quantile_rcpp(distribution, c_const)
   return(result)
 }

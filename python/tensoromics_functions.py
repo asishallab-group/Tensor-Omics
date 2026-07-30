@@ -1902,7 +1902,7 @@ def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
 
     n_genes = len(rdi)
 
-    p_values = np.ones(n_genes, dtype=np.float64)
+    quantile = np.ones(n_genes, dtype=np.float64)
 
     # Prepare sorted RDI (copy and filter out negatives)
     # --- Build sorted_rdi (clamped) and perm (1-based, sorts sorted_rdi ascending) ---
@@ -1929,7 +1929,7 @@ def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # perm
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # is_outlier_int
         ctypes.POINTER(ctypes.c_double),  # threshold (output)
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # quantile
         ctypes.POINTER(ctypes.c_double),  # percentile
         ctypes.POINTER(ctypes.c_int),  # ierr
     ]
@@ -1937,7 +1937,7 @@ def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
 
     # Call Fortran routine
     identify_outliers_c(ctypes.byref(n_genes_c), rdi, sorted_rdi, perm, outliers_int,
-                        ctypes.byref(threshold_out), p_values, ctypes.c_double(percentile), ctypes.byref(ierr))
+                        ctypes.byref(threshold_out), quantile, ctypes.c_double(percentile), ctypes.byref(ierr))
 
     # Mark output as read-only
     _readonly(outliers_int)
@@ -1978,7 +1978,7 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
     loess_x = np.empty(n_families, dtype=np.float64)
     loess_y = np.empty(n_families, dtype=np.float64)
     loess_n = np.empty(n_families, dtype=np.int32)
-    p_values = np.empty(n_genes, dtype=np.float64)
+    quantile = np.empty(n_genes, dtype=np.float64)
     error_code = ctypes.c_int(0)
     n_genes_c    = ctypes.c_int(n_genes)
     n_families_c = ctypes.c_int(n_families)
@@ -2000,7 +2000,7 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_x
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # loess_y
         np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # loess_n
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # quantile
         ctypes.POINTER(ctypes.c_int),  # error_code
         ctypes.POINTER(ctypes.c_double),  # percentile
     ]
@@ -2010,7 +2010,7 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
     detect_outliers_c(
         ctypes.byref(n_genes_c), ctypes.byref(n_families_c), distances, gene_to_fam,
         work_array, perm, stack_left, stack_right,
-        outliers_int, loess_x, loess_y, loess_n, p_values,
+        outliers_int, loess_x, loess_y, loess_n, quantile,
         ctypes.byref(error_code), ctypes.byref(percentile_c)
     )
 
@@ -2025,7 +2025,7 @@ def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
         'loess_x': loess_x,
         'loess_y': loess_y,
         'loess_n': loess_n,
-        'p_values': p_values
+        'quantile': quantile
     }
 
 
@@ -5337,17 +5337,21 @@ def tox_loess(x, y, span, degree, mode, n_iters=3):
     return yhat
 
 
-#> f42_utils:compute_empirical_p_values_c: Compute empirical p-values from a distribution
-def compute_empirical_p_values(distribution, c_const):
+#> f42_utils:compute_scaled_distance_quantile_c: Compute the empirical quantile (effect-size measure) of a distribution
+def compute_scaled_distance_quantile(distribution, c_const):
     """
-    Compute empirical one-sided upper-tail empirical p-values from a distribution.
+    Compute the empirical one-sided upper-tail quantile (effect-size measure) of a distribution.
+
+    This is NOT a null-hypothesis-testing p-value: each value is compared against the observed
+    distribution it was drawn from, not an independently generated null distribution. It measures
+    how extreme an observed value is relative to all observed values.
 
     Args:
         distribution (array-like): Input distribution (1D). May contain negatives (treated as invalid).
         c_const (float): Stability constant (usually 1.0).
 
     Returns:
-        np.ndarray: Empirical p-values in the SAME order as `distribution`.
+        np.ndarray: Empirical quantile in the SAME order as `distribution`.
     Raises:
         RuntimeError: If Fortran routine returns error
     """
@@ -5368,36 +5372,36 @@ def compute_empirical_p_values(distribution, c_const):
     perm = np.ascontiguousarray(perm0 + 1, dtype=np.int32)  # Fortran expects 1-based
 
     # --- Outputs ---
-    p_values = np.zeros(n_elements, dtype=np.float64)
+    quantile = np.zeros(n_elements, dtype=np.float64)
 
     # --- ctypes setup ---
     n_c = ctypes.c_int(int(n_elements))
     c_c = ctypes.c_double(c_const)
     ierr = ctypes.c_int(0)
 
-    empirical_p_values_c = lib.empirical_p_values_c
-    empirical_p_values_c.argtypes = [
+    scaled_distance_quantile_c = lib.scaled_distance_quantile_c
+    scaled_distance_quantile_c.argtypes = [
         ctypes.POINTER(ctypes.c_int),  # n_elements
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # distribution (rdi)
         np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # sorted_rdi
         np.ctypeslib.ndpointer(dtype=np.int32,  flags="C_CONTIGUOUS"),   # perm (1-based)
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # p_values
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # quantile
         ctypes.POINTER(ctypes.c_double),  # c_const
         ctypes.POINTER(ctypes.c_int)      # ierr
     ]
-    empirical_p_values_c.restype = None
+    scaled_distance_quantile_c.restype = None
 
     # --- Call Fortran routine (IMPORTANT: order matters) ---
-    empirical_p_values_c(
+    scaled_distance_quantile_c(
         ctypes.byref(n_c),
         dist,
         sorted_rdi,
         perm,
-        p_values,
+        quantile,
         ctypes.byref(c_c),
         ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value)
-    _readonly(p_values)
-    return p_values
+    _readonly(quantile)
+    return quantile

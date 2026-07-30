@@ -4,7 +4,7 @@
 
 module mod_test_empirical_pvalue
   use asserts
-  use f42_utils, only: binary_search_insertion, compute_empirical_p_values
+  use f42_utils, only: binary_search_insertion, compute_scaled_distance_quantile
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite
@@ -30,7 +30,7 @@ contains
   end function get_all_tests_empirical_pvalue
 
         ! ==========================================================================
-    ! TESTS: lower_bound_ge + compute_empirical_p_values
+    ! TESTS: lower_bound_ge + compute_scaled_distance_quantile
     ! ==========================================================================
 
     !> Helper: naive count of elements >= d in the perm-sorted distribution
@@ -133,10 +133,10 @@ contains
 
 
     ! ==========================================================================
-    ! compute_empirical_p_values
+    ! compute_scaled_distance_quantile
     ! ==========================================================================
 
-    !> Edge: denom <= 0 => p_values = 1
+    !> Edge: denom <= 0 => quantile = 1
     subroutine test_empirical_pvalues_denom_le_zero()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
@@ -151,7 +151,7 @@ contains
       rdi = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
 
       ! choose c so denom = n + c <= 0
-      call compute_empirical_p_values(n, rdi, s, perm, p, -4.0_real64)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, -4.0_real64)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "denom<=0 -> p=1 (1)")
       call assert_equal_real(p(2), 1.0_real64, 1d-12, "denom<=0 -> p=1 (2)")
@@ -174,7 +174,7 @@ contains
 
       rdi = [-1.0_real64, 0.0_real64, 2.0_real64, -5.0_real64, 4.0_real64]
 
-      call compute_empirical_p_values(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, c)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "negative rdi -> p=1")
       call assert_equal_real(p(4), 1.0_real64, 1d-12, "negative rdi -> p=1")
@@ -200,7 +200,7 @@ contains
       ! gene values: negative, equal min, above max, equal max
       rdi = [-0.5_real64, 0.0_real64, 10.0_real64, 3.0_real64]
 
-      call compute_empirical_p_values(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, c)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "negative -> p=1")
 
@@ -217,7 +217,7 @@ contains
     end subroutine test_empirical_pvalues_extremes
 
 
-    !> Duplicates: all genes with same d get same p-value; counts include equals (>=)
+    !> Duplicates: all genes with same d get same quantile; counts include equals (>=)
     subroutine test_empirical_pvalues_duplicates()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
@@ -236,14 +236,14 @@ contains
       ! genes include several 2's
       rdi = [2.0_real64, 9.0_real64, 1.0_real64, 2.0_real64, 5.0_real64, 2.0_real64]
 
-      call compute_empirical_p_values(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, c)
 
       ! for d=2: values >=2 are [2,2,2,5,9] => count=5 => (5+c)/(n+c)
       expected_for_2 = (5.0_real64 + c) / denom
 
       call assert_equal_real(p(1), expected_for_2, 1d-12, "d=2 -> (5+c)/(n+c)")
-      call assert_equal_real(p(4), expected_for_2, 1d-12, "d=2 -> same p-value")
-      call assert_equal_real(p(6), expected_for_2, 1d-12, "d=2 -> same p-value")
+      call assert_equal_real(p(4), expected_for_2, 1d-12, "d=2 -> same quantile")
+      call assert_equal_real(p(6), expected_for_2, 1d-12, "d=2 -> same quantile")
     end subroutine test_empirical_pvalues_duplicates
 
 
@@ -268,7 +268,7 @@ contains
 
       rdi = [-1.0_real64, 0.0_real64, 1.0_real64, 1.7_real64, 2.0_real64, 10.0_real64, 99.0_real64]
 
-      call compute_empirical_p_values(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, c)
 
       do i = 1, n
         if (rdi(i) < 0.0_real64) then
@@ -277,7 +277,7 @@ contains
           k = naive_count_ge(s, perm, n, rdi(i))
           expected = (real(k, real64) + c) / denom
         end if
-        call assert_equal_real(p(i), expected, 1d-12, "p-value must match naive counting for each gene")
+        call assert_equal_real(p(i), expected, 1d-12, "quantile must match naive counting for each gene")
       end do
     end subroutine test_empirical_pvalues_matches_naive_all
 
@@ -297,7 +297,7 @@ contains
 
       rdi = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
 
-      call compute_empirical_p_values(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_quantile(n, rdi, s, perm, p, c)
 
       call assert_true(p(1) >= p(2), "monotonic: p(0) >= p(1)")
       call assert_true(p(2) >= p(3), "monotonic: p(1) >= p(2)")
