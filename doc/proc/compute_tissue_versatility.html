@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_tissue_versatility &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">58 statements</a>
+                 title=" 0.2% of total for procedures.">22 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -201,15 +203,15 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~2"></span>
+              <span class="anchor" id="variable-expression_vectors~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_axes, n_vectors)
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_axes,n_vectors)</td>
+            <td><strong>expression_vectors</strong></td>
             <td>
                 <p>2D array (n_axes, n_vectors), each column is a gene expression vector</p>
             </td>
@@ -219,12 +221,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-exp_vecs_selection_index"></span>
               logical,
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>exp_vecs_selection_index</strong>(n_vectors)</td>
+            <td><strong>exp_vecs_selection_index</strong></td>
             <td>
                 <p>Logical array (n_vectors), .TRUE. for vectors to process</p>
             </td>
@@ -249,12 +251,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-axes_selection"></span>
               logical,
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_axes)
             </td>
             <td>::</td>
-            <td><strong>axes_selection</strong>(n_axes)</td>
+            <td><strong>axes_selection</strong></td>
             <td>
                 <p>Logical array (n_axes), .TRUE. for axes to include in calculation</p>
             </td>
@@ -279,12 +281,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-tissue_versatilities"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_selected_vectors)
             </td>
             <td>::</td>
-            <td><strong>tissue_versatilities</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_versatilities</strong></td>
             <td>
                 <p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities</p>
             </td>
@@ -294,19 +296,19 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-tissue_angles_deg"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_selected_vectors)
             </td>
             <td>::</td>
-            <td><strong>tissue_angles_deg</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_angles_deg</strong></td>
             <td>
                 <p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~123"></span>
+              <span class="anchor" id="variable-ierr~60"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -316,7 +318,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0 = success, non-zero = error</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -346,14 +348,14 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

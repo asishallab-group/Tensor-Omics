@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>detect_neofunctionalization_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">66 statements</a>
+                 title=" 0.5% of total for procedures.">65 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,9 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
@@ -193,12 +194,12 @@
             <td>::</td>
             <td><strong>ancestors</strong></td>
             <td>
-                
+                <p>RAP projected unit length expression vector of ancestral ortholog</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~26"></span>
+              <span class="anchor" id="variable-n_families~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -208,12 +209,12 @@
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                
+                <p>number of vectors in <code>ancestors</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~9"></span>
+              <span class="anchor" id="variable-genes~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -223,12 +224,12 @@
             <td>::</td>
             <td><strong>genes</strong></td>
             <td>
-                
+                <p>RAP projected unit length expression vectors of genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~13"></span>
+              <span class="anchor" id="variable-n_axes~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -238,12 +239,12 @@
             <td>::</td>
             <td><strong>n_axes</strong></td>
             <td>
-                
+                <p>size of <code>ancestors</code> vector and vectors in <code>genes</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~31"></span>
+              <span class="anchor" id="variable-gene_to_fam~30"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -253,12 +254,12 @@
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-                
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
+              <span class="anchor" id="variable-n_genes~50"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -268,7 +269,7 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>number of vectors in <code>genes</code></p>
             </td>
         </tr>
         <tr>
@@ -283,7 +284,7 @@
             <td>::</td>
             <td><strong>thresholds</strong></td>
             <td>
-                
+                <p>threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis</p>
             </td>
         </tr>
         <tr>
@@ -298,12 +299,12 @@
             <td>::</td>
             <td><strong>neofunc</strong></td>
             <td>
-                
+                <p>non-zero if neofunctionalization has been detected for the respective axes, always zero for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~298"></span>
+              <span class="anchor" id="variable-ierr~286"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -313,7 +314,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -343,14 +344,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

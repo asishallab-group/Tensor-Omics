@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>fjct_compute_jsd_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.8% of total for procedures.">115 statements</a>
+                 title=" 0.9% of total for procedures.">115 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,9 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
               </ul>
             </li>
         </ul>
@@ -182,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_idx~8"></span>
+              <span class="anchor" id="variable-family_idx~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -257,12 +258,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~14"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_reps_S1,n_neighbors,n_points), target
+              dimension(n_reps_S1, n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_residuals_S1</strong></td>
@@ -273,12 +274,12 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~14"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_reps_S2,n_neighbors,n_points), target
+              dimension(n_reps_S2, n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_residuals_S2</strong></td>
@@ -294,7 +295,7 @@ NaN is explicitly allowed for missing values</p>
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_neighbors,n_points), target
+              dimension(n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_genes_S1</strong></td>
@@ -310,7 +311,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_neighbors,n_points), target
+              dimension(n_neighbors, n_points), target
             </td>
             <td>::</td>
             <td><strong>neighborhood_genes_S2</strong></td>
@@ -321,7 +322,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~20"></span>
+              <span class="anchor" id="variable-n_reps_s1~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -336,7 +337,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~20"></span>
+              <span class="anchor" id="variable-n_reps_s2~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -351,7 +352,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~36"></span>
+              <span class="anchor" id="variable-n_neighbors~30"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -366,7 +367,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~66"></span>
+              <span class="anchor" id="variable-n_points~62"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -381,7 +382,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~26"></span>
+              <span class="anchor" id="variable-n_bins~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -397,7 +398,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~29"></span>
+              <span class="anchor" id="variable-shared_residual_range~24"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -503,7 +504,7 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~325"></span>
+              <span class="anchor" id="variable-ierr~180"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -543,14 +544,14 @@ of <a href="../interface/construct_neighborhoods.html">construct_neighborhoods</
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

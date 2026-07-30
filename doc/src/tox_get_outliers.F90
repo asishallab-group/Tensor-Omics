@@ -1,18 +1,19 @@
-#include "macros.h"
+#include <src/macros.h>
 
 !> Module to identify gene outliers based on their distances to family centroids.
 module tox_get_outliers
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_empirical_p_values
-    use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err_once, check_alloc_stat, is_err
+    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_scaled_distance_quantile, init_perm
+    use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     implicit none
 
 contains
 
-    !> Compute family scaling factors (dscale) to normalize distances.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Compute family scaling factors (dscale) to normalize distances.
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling( &
         n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -161,16 +162,18 @@ contains
             return
         end if
 
-        do i_valid = 1, n_valid
-            tmp_perm(i_valid) = i_valid
-        end do
+        call init_perm(tmp_perm)
 
         call sort_array(loess_x(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
+        ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
+        ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
+        ! different absolute expression ranges.
         call calc_percentile(loess_x(1:n_valid), tmp_perm(1:n_valid), 5.0_real64, eps_mean, ierr)
         if (is_err(ierr)) return
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
+        call init_perm(tmp_perm)
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         if (mod(n_valid, 2) == 0) then
             std_median = 0.5_real64*( &
@@ -180,9 +183,18 @@ contains
             std_median = loess_y(tmp_perm((n_valid + 1)/2))
         end if
 
+        ! Same idea as eps_mean above, scaled relative to the median stddev (1e-13 is a near-machine-
+        ! precision fraction) so the pseudo-count added to loess_y before log2 stays negligible except
+        ! when it is needed to keep near-zero stddevs away from log2(0).
         eps_sd = max(1.0e-13_real64*std_median, EPS_LOESS)
 
-        do concurrent (i_valid = 1:n_valid) local(tmp_ierr) shared(loess_x, eps_mean, loess_y, eps_sd, ierr)
+        ! Fit the mean-vs-stddev trend in log2 space: intra-family distance stddev scales roughly
+        ! multiplicatively with the mean distance, so a log/log relationship is closer to linear
+        ! (homoscedastic) than the raw scale, which is what LOESS assumes.
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
+        ! concurrent iterations would be an unsynchronized data race.
+        do i_valid = 1, n_valid
             call logx(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid), tmp_ierr)
             if (is_err(tmp_ierr)) ierr = tmp_ierr
             call logx(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid), tmp_ierr)
@@ -191,11 +203,18 @@ contains
 
         if (is_err(ierr)) return
 
+        call init_perm(tmp_perm)
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
+        ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
+        ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
         call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 1.0_real64, low_sd_cutoff, ierr)
 
         if (is_err(ierr)) return
 
+        ! Compact loess_x/loess_y/indices_used in place, keeping only families at or above the low-sd
+        ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
+        ! subset only. excluded_low_sd flags which families were dropped from the fit (they still get a
+        ! dscale prediction from the resulting curve further below).
         excluded_low_sd = 1_int32
         k = 0
 
@@ -256,7 +275,10 @@ contains
 
         if (is_err(ierr)) return
 
-        do concurrent (i_family = 1:n_families) local(tmp_ierr) shared(tmp_means_aux, eps_mean, tmp_z_mat, xmin, xmax, ierr)
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
+        ! concurrent iterations would be an unsynchronized data race.
+        do i_family = 1, n_families
             if (tmp_means_aux(i_family) >= 0.0_real64) then
                 call logx(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1), tmp_ierr)
                 if (is_err(tmp_ierr)) then
@@ -304,7 +326,8 @@ contains
 
     end subroutine compute_family_scaling
 
-    !> Helper routine that allocates internal arrays and calls compute_family_scaling.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Helper routine that allocates internal arrays and calls [[tox_get_outliers(module):compute_family_scaling(subroutine)]].
     !| This makes usage easier since users don't need to care about internal array requirements.
     subroutine compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
                                             loess_x, loess_y, indices_used, ierr)
@@ -336,7 +359,7 @@ contains
         real(real64), allocatable :: tmp_means_aux(:)
 
         ! LOESS workspace
-        integer(int32) :: liv, lv, istat
+        integer(int32) :: liv, lv
         integer(int32), allocatable :: tmp_iv(:), tmp_pi(:)
         real(real64), allocatable :: tmp_wv(:), tmp_diagl(:), tmp_w_init(:), tmp_z_mat(:, :), tmp_rw(:), tmp_ww(:), tmp_res(:), tmp_yhat(:)
 
@@ -348,23 +371,27 @@ contains
         logical, parameter :: setlf = .false.
 
         call set_ok(ierr)
-        call set_ok(istat)
 
         ! Workspace sizes
         call tox_loess_required_workspace(1_int32, n_families, liv, lv, setlf)
 
-        allocate (tmp_iv(liv), tmp_wv(lv), stat=istat)
-        call check_alloc_stat(istat, ierr)
-        if (is_err(ierr)) return
+        M_ALLOCATE(tmp_iv(liv))
+        M_ALLOCATE(tmp_wv(lv))
 
         ! For robust we also need arrays sized to n_valid (<= n_families).
-        allocate (tmp_diagl(n_families), tmp_w_init(n_families), tmp_z_mat(n_families, 1), &
-                  tmp_rw(n_families), tmp_ww(n_families), tmp_res(n_families), tmp_pi(n_families), &
-                  tmp_yhat(n_families), tmp_perm(n_genes), tmp_stack_left(n_genes), &
-                  tmp_stack_right(n_genes), excluded_low_sd(n_families), tmp_means_aux(n_families), stat=istat)
-
-        call check_alloc_stat(istat, ierr)
-        if (is_err(ierr)) return
+        M_ALLOCATE(tmp_diagl(n_families))
+        M_ALLOCATE(tmp_w_init(n_families))
+        M_ALLOCATE(tmp_z_mat(n_families, 1))
+        M_ALLOCATE(tmp_rw(n_families))
+        M_ALLOCATE(tmp_ww(n_families))
+        M_ALLOCATE(tmp_res(n_families))
+        M_ALLOCATE(tmp_pi(n_families))
+        M_ALLOCATE(tmp_yhat(n_families))
+        M_ALLOCATE(tmp_perm(n_genes))
+        M_ALLOCATE(tmp_stack_left(n_genes))
+        M_ALLOCATE(tmp_stack_right(n_genes))
+        M_ALLOCATE(excluded_low_sd(n_families))
+        M_ALLOCATE(tmp_means_aux(n_families))
 
         ! Initialize (important for netlib)
         tmp_iv = 1_int32
@@ -382,7 +409,8 @@ contains
 
     end subroutine compute_family_scaling_alloc
 
-    !> Compute the hybrid RDI for each gene.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Compute the hybrid RDI (Relative Distance Index) for each gene.
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
                                 stack_left, stack_right)
@@ -443,10 +471,11 @@ contains
 
     end subroutine compute_rdi
 
-    !> Identify gene outliers based on the top percentile of RDI values.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Identify gene outliers based on the top percentile of RDI values.
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
-    pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)
+    pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         real(real64), intent(in) :: rdi(n_genes)
@@ -461,8 +490,11 @@ contains
             !! Output threshold value used for detection
         real(real64), intent(in), optional :: percentile
             !! (optional) Percentile threshold (default: 95 for top 5%)
-        real(real64), intent(out) :: p_values(n_genes)
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(real64), intent(out) :: quantile(n_genes)
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
 
         integer(int32) :: i, idx
         real(real64) :: perc_pos, percentile_val
@@ -477,7 +509,16 @@ contains
         ! Initialize output
         is_outlier = .false.
 
-        ! Calculate the position corresponding to the desired percentile
+        ! Guard against n_genes < 1: idx would otherwise be clamped to 0 below (idx<1 -> 1,
+        ! then idx>n_genes==0 -> 0), causing an out-of-bounds access at sorted_rdi(perm(idx)).
+        if (n_genes < 1) then
+            threshold = 0.0_real64
+            return
+        end if
+
+        ! Nearest-rank percentile: round the fractional rank up to the next integer index into the
+        ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
+        ! interpolated one.
         perc_pos = (n_genes*percentile_val)/100.0_real64
         idx = ceiling(perc_pos)
         ! Clamp idx to valid range
@@ -492,14 +533,19 @@ contains
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_empirical_p_values(n_genes, rdi, sorted_rdi, perm, p_values, 1.0_real64)
+        call compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
 
     end subroutine identify_outliers
 
-    !> Main routine to detect outliers using RDI and LOESS-based scaling.
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Main routine to detect outliers using RDI and LOESS-based scaling.
+    !| Orchestrates the full pipeline: computes per-family scaling factors via
+    !| [[tox_get_outliers(module):compute_family_scaling_alloc(subroutine)]], derives the RDI per gene via
+    !| [[tox_get_outliers(module):compute_rdi(subroutine)]], then flags outliers via
+    !| [[tox_get_outliers(module):identify_outliers(subroutine)]].
     subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, &
                                tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                               is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
+                               is_outlier, loess_x, loess_y, loess_n, quantile, ierr, &
                                percentile)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -529,8 +575,11 @@ contains
             !! Error code
         real(real64), intent(in), optional :: percentile
             !! (optional) Percentile threshold for outlier detection (default: 95)
-        real(real64), intent(out) :: p_values(n_genes)
-            !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+        real(real64), intent(out) :: quantile(n_genes)
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
 
         ! Local variables
         real(real64) :: dscale(n_families)
@@ -547,15 +596,13 @@ contains
         end if
 
         ! Always initialize permutation array
-        do i = 1, n_genes
-            tmp_perm(i) = i
-        end do
+        call init_perm(tmp_perm)
 
         call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
                                           loess_x, loess_y, loess_n, ierr)
         if (is_err(ierr)) return
         call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right)
-        call identify_outliers(n_genes, rdi, tmp_work_array, tmp_perm, is_outlier, threshold, p_values, percentile_val)
+        call identify_outliers(n_genes, rdi, tmp_work_array, tmp_perm, is_outlier, threshold, quantile, percentile_val)
     end subroutine detect_outliers
 end module tox_get_outliers
 
@@ -653,7 +700,7 @@ end subroutine compute_rdi_c
 
 !> C wrapper for identify_outliers.
 !| Calls identify_outliers with C-compatible types for external interface.
-subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile, ierr) &
+subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile, ierr) &
     bind(C, name="identify_outliers_c")
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_get_outliers, only: identify_outliers
@@ -677,8 +724,11 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, thres
         !! Output threshold value used for detection
     real(c_double), intent(in), target :: percentile
         !! Percentile threshold for outlier detection
-    real(c_double), intent(out), target :: p_values(n_genes)
-        !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    real(c_double), intent(out), target :: quantile(n_genes)
+        !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+        !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+        !! upper-tail quantile is used.
     integer(c_int), intent(out), target :: ierr
         !! Error code
 
@@ -692,13 +742,13 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, thres
     M_CHECK_NON_NULL(is_outlier)
     M_CHECK_NON_NULL(threshold)
     M_CHECK_NON_NULL(percentile)
-    M_CHECK_NON_NULL(p_values)
+    M_CHECK_NON_NULL(quantile)
 
     M_ALLOCATE(is_outlier_f(n_genes))
 
     call set_ok(ierr)
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier_f, threshold, p_values, percentile)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier_f, threshold, quantile, percentile)
 
     call logical_as_c_int(is_outlier_f, is_outlier)
 end subroutine identify_outliers_c
@@ -707,7 +757,7 @@ end subroutine identify_outliers_c
 !| Calls detect_outliers with C-compatible types for external interface.
 subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
                              tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                             is_outlier, loess_x, loess_y, loess_n, p_values, ierr, &
+                             is_outlier, loess_x, loess_y, loess_n, quantile, ierr, &
                              percentile) bind(C, name="detect_outliers_c")
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_get_outliers, only: detect_outliers
@@ -741,8 +791,11 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
         !! Reference y-coordinates for LOESS
     integer(c_int), intent(out), target :: loess_n(n_families)
         !! Indices of reference points used for smoothing
-    real(c_double), intent(out), target :: p_values(n_genes)
-        !! Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+    real(c_double), intent(out), target :: quantile(n_genes)
+        !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+        !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+        !! upper-tail quantile is used.
     integer(c_int), intent(out), target :: ierr
         !! Error code
     real(c_double), intent(in), target :: percentile
@@ -763,14 +816,14 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
     M_CHECK_NON_NULL(loess_x)
     M_CHECK_NON_NULL(loess_y)
     M_CHECK_NON_NULL(loess_n)
-    M_CHECK_NON_NULL(p_values)
+    M_CHECK_NON_NULL(quantile)
     M_CHECK_NON_NULL(percentile)
 
     M_ALLOCATE(is_outlier_f(n_genes))
 
     call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
                          tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, &
-                         is_outlier_f, loess_x, loess_y, loess_n, p_values, ierr, &
+                         is_outlier_f, loess_x, loess_y, loess_n, quantile, ierr, &
                          percentile)
 
     if (is_ok(ierr)) then

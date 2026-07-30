@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>quicksort_real &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">46 statements</a>
+                 title=" 0.3% of total for procedures.">47 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine quicksort_real(array, perm, n, stack_left, stack_right)  
+    <h2>public pure subroutine quicksort_real(array, perm, n, tmp_stack_left, tmp_stack_right)  
 </h2>
     
 
@@ -170,7 +172,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~10"></span>
+              <span class="anchor" id="variable-array~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -178,14 +180,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n)</td>
             <td>
                 <p>Real input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~12"></span>
+              <span class="anchor" id="variable-perm~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -193,14 +195,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
                 <p>Permutation vector that will be sorted</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~15"></span>
+              <span class="anchor" id="variable-n~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -215,30 +217,30 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~6"></span>
+              <span class="anchor" id="variable-tmp_stack_left~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(n)</td>
             <td>
                 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~6"></span>
+              <span class="anchor" id="variable-tmp_stack_right~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(n)</td>
             <td>
                 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -270,14 +272,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_velocity_acceleration_contributions &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">64 statements</a>
+                 title=" 0.5% of total for procedures.">65 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_velocity_acceleration_contributions(trajectories, n_factors, n_samples, n_timepoints, mode, factor_workspace, dependent_workspace, contributions_workspace, contrib_velocity, velocity_contribution_series, contrib_acceleration, acceleration_contribution_series, ierr)  
+    <h2>public pure subroutine compute_velocity_acceleration_contributions(trajectories, n_factors, n_samples, n_timepoints, baseline_mode, tmp_factors, tmp_dependent, tmp_contributions, contrib_velocity, velocity_contribution_series, contrib_acceleration, acceleration_contribution_series, ierr)  
 </h2>
     
 
@@ -164,7 +166,7 @@ Velocity and acceleration use time-first layouts:</p>
 <li><code>acceleration</code> -&gt; <code>(max(0, n_timepoints-2), n_factors, n_samples)</code></li>
 </ul>
 <p>This keeps slices like <code>velocity(:, factor, sample)</code> contiguous,
-avoids expensive temporaries, and improves cache efficiency.</p>
+avoids expensive tmporaries, and improves cache efficiency.</p>
 </div>
 
 
@@ -181,7 +183,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~10"></span>
+              <span class="anchor" id="variable-trajectories~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -196,7 +198,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~14"></span>
+              <span class="anchor" id="variable-n_factors~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -211,7 +213,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~21"></span>
+              <span class="anchor" id="variable-n_samples~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -241,7 +243,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~13"></span>
+              <span class="anchor" id="variable-baseline_mode~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -249,52 +251,73 @@ avoids expensive temporaries, and improves cache efficiency.</p>
               
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
-                <p>Baseline mode: 1=RAW, 2=MIN, 3=MEAN</p>
+                <table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw/zero baseline</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>arithmetic mean</td>
+<td>3_int32</td>
+</tr>
+<tr>
+<td>minimum value</td>
+<td>2_int32</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-factor_workspace"></span>
+              <span class="anchor" id="variable-tmp_factors~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_timepoints-1, n_factors)
+              dimension(n_timepoints - 1, n_factors)
             </td>
             <td>::</td>
-            <td><strong>factor_workspace</strong></td>
+            <td><strong>tmp_factors</strong></td>
             <td>
                 <p>workspace for factor data (used for velocity and acceleration)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dependent_workspace"></span>
+              <span class="anchor" id="variable-tmp_dependent~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_timepoints-1)
+              dimension(n_timepoints - 1)
             </td>
             <td>::</td>
-            <td><strong>dependent_workspace</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>workspace for dependent data (used for velocity and acceleration)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-contributions_workspace"></span>
+              <span class="anchor" id="variable-tmp_contributions"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_timepoints-1)
+              dimension(n_timepoints - 1)
             </td>
             <td>::</td>
-            <td><strong>contributions_workspace</strong></td>
+            <td><strong>tmp_contributions</strong></td>
             <td>
                 <p>workspace for contribution calculations (used for velocity and acceleration)</p>
             </td>
@@ -306,7 +329,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_factors, n_factors,n_samples)
+              dimension(n_factors, n_factors, n_samples)
             </td>
             <td>::</td>
             <td><strong>contrib_velocity</strong></td>
@@ -336,7 +359,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_factors, n_factors,n_samples)
+              dimension(n_factors, n_factors, n_samples)
             </td>
             <td>::</td>
             <td><strong>contrib_acceleration</strong></td>
@@ -361,7 +384,7 @@ avoids expensive temporaries, and improves cache efficiency.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~215"></span>
+              <span class="anchor" id="variable-ierr~111"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -401,14 +424,14 @@ avoids expensive temporaries, and improves cache efficiency.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

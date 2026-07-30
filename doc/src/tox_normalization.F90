@@ -1,10 +1,10 @@
-#include "macros.h"
+#include <src/macros.h>
 
 !> Module with normalization routines for tensor omics.
 module tox_normalization
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int
+    use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
     use tox_loess, only: loess_alloc
 
@@ -95,8 +95,19 @@ contains
 
         if (is_err(ierr)) return
 
+        if (sum(reps_per_tissue) /= n_replicates) then
+            call set_err(ierr, ERR_SIZE_MISMATCH)
+            return
+        end if
+
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
+        ! Reuse spare columns of the (n_genes, n_tissues) output buffer as scratch space for the
+        ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of allocating fresh
+        ! (n_genes)-sized temporaries, since those columns are still unwritten at this point and get
+        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output. Only
+        ! the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be reused this
+        ! way; any remaining scratch vectors are heap-allocated instead.
         log_transformed_expr_transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
         tmp_loess_x_ptr => log_transformed_expr_transposed_view(:, 1)
         select case (n_tissues)
@@ -133,7 +144,6 @@ contains
         end if
 
         call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr_copy, log_transformed_expr)
-        if (is_err(ierr)) return
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
@@ -224,6 +234,10 @@ contains
             tmp_loess_x(i_gene) = mean_val
             tmp_loess_y(i_gene) = std_dev(expr(:, i_gene))
 
+            ! Genes with zero variance across replicates carry no information about the mean-vs-sd
+            ! trend and would only produce a degenerate (division-by-zero) target for LOESS, so they
+            ! are dropped from the fit here. Since n_valid <= i_gene always, this compacts the arrays
+            ! in place (overwriting already-consumed slots) rather than needing a separate buffer.
             if (is_close(tmp_loess_y(i_gene), 0.0_real64)) cycle
 
             n_valid = n_valid + 1
@@ -232,6 +246,8 @@ contains
             tmp_indices_used(n_valid) = i_gene
         end do
 
+        ! Require a handful of points so the LOESS fit below is not driven by noise from too few
+        ! (mean, sd) pairs.
         if (n_valid < 5) then
             call set_err(ierr, ERR_INVALID_INPUT)
             return
@@ -463,8 +479,11 @@ contains
         call set_ok(ierr)
 
         ! Loop through all elements in the flattened input matrix
-        do concurrent (i_gene = 1:n_genes) shared(n_tissues, expr, ierr)
-            do concurrent (i_group = 1:n_tissues) local(tmp_ierr, expr_val) shared(expr, ierr, i_gene)
+        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
+        ! scalar written on the (rare/exceptional) error path -- writing it from concurrent
+        ! iterations would be an unsynchronized data race.
+        do i_gene = 1, n_genes
+            do i_group = 1, n_tissues
                 ! Apply the log2(x + 1) transformation
                 expr_val = expr(i_group, i_gene) + 1.0_real64
                 call logx(expr_val, 2.0_real64, expr(i_group, i_gene), tmp_ierr)
@@ -528,12 +547,8 @@ contains
 
         ! === Loop over each group ===
         do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
-            do concurrent (i_group = 1:n_tissues) local(start_idx, stop_idx, sum_val) shared(reps_per_tissue, expr, tissue_averages)
-                if (i_group == 1) then
-                    start_idx = 1
-                else
-                    start_idx = sum(reps_per_tissue(:i_group-1)) + 1
-                end if
+            start_idx = 1
+            do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
                 sum_val = 0.0_real64
@@ -542,6 +557,7 @@ contains
                 end do
 
                 tissue_averages(i_group, i_gene) = sum_val / real(reps_per_tissue(i_group), real64)
+                start_idx = stop_idx + 1
             end do
         end do
     end subroutine calc_tiss_avg_helper
@@ -580,6 +596,8 @@ contains
         call validate_dimension_size(n_genes, ierr)
         call validate_dimension_size(n_tissues, ierr)
         call validate_dimension_size(n_pairs, ierr)
+        call validate_all_in_range_int(control_tissues, n_pairs, ierr, min=1_int32, max=n_tissues)
+        call validate_all_in_range_int(condition_tissues, n_pairs, ierr, min=1_int32, max=n_tissues)
 
         if (is_err(ierr)) return
 

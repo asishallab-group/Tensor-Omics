@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>jct_compute_jsd_pipeline_helper &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -185,7 +186,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~6"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -200,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~6"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -215,7 +216,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~9"></span>
+              <span class="anchor" id="variable-n_reps_s1~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -230,7 +231,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~9"></span>
+              <span class="anchor" id="variable-n_reps_s2~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -245,7 +246,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~19"></span>
+              <span class="anchor" id="variable-n_neighbors~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -260,7 +261,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~33"></span>
+              <span class="anchor" id="variable-n_points~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -275,7 +276,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~16"></span>
+              <span class="anchor" id="variable-n_bins~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -290,7 +291,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~19"></span>
+              <span class="anchor" id="variable-shared_residual_range~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -305,7 +306,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~12"></span>
+              <span class="anchor" id="variable-js_divergences~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -320,7 +321,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s1~7"></span>
+              <span class="anchor" id="variable-included_n_reps_s1~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -335,7 +336,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s2~7"></span>
+              <span class="anchor" id="variable-included_n_reps_s2~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -350,7 +351,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergence~7"></span>
+              <span class="anchor" id="variable-global_js_divergence~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -365,7 +366,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~7"></span>
+              <span class="anchor" id="variable-weights~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -380,7 +381,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1~7"></span>
+              <span class="anchor" id="variable-pmf_s1~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -395,7 +396,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2~7"></span>
+              <span class="anchor" id="variable-pmf_s2~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -410,7 +411,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~4"></span>
+              <span class="anchor" id="variable-tmp_counts~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -425,7 +426,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~5"></span>
+              <span class="anchor" id="variable-neighbor_mask_s1~4"></span>
               logical,
             </td>
 <td>intent(in),</td>
@@ -440,7 +441,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~5"></span>
+              <span class="anchor" id="variable-neighbor_mask_s2~4"></span>
               logical,
             </td>
 <td>intent(in),</td>
@@ -471,14 +472,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

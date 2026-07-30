@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_data_read_write &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for modules and submodules.">85 statements</a>
+                 title=" 0.9% of total for modules and submodules.">81 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -177,14 +178,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_real.html'>f42_serialize_real</a></li>
-                  <li class="list-inline-item"><a href='f42_deserialize_real.html'>f42_deserialize_real</a></li>
-                  <li class="list-inline-item"><a href='f42_deserialize_char.html'>f42_deserialize_char</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_char.html'>f42_serialize_char</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_int.html'>f42_serialize_int</a></li>
-                  <li class="list-inline-item"><a href='f42_deserialize_int.html'>f42_deserialize_int</a></li>
+                  <li class="list-inline-item"><a href='f42_serde_arrays_deserialize.html'>f42_serde_arrays_deserialize</a></li>
+                  <li class="list-inline-item"><a href='f42_serde_arrays_serialize.html'>f42_serde_arrays_serialize</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
@@ -209,7 +206,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_char_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -224,12 +222,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~4"></span>
+              <span class="anchor" id="variable-gene_ids~15"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>gene_ids</strong>(:)</td>
@@ -239,7 +237,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~48"></span>
+              <span class="anchor" id="variable-filename~85"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -254,7 +252,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~146"></span>
+              <span class="anchor" id="variable-ierr~301"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -279,7 +277,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -294,12 +293,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~6"></span>
+              <span class="anchor" id="variable-expression_vectors~19"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>expression_vectors</strong>(:,:)</td>
@@ -309,7 +308,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~49"></span>
+              <span class="anchor" id="variable-filename~86"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -324,7 +323,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~147"></span>
+              <span class="anchor" id="variable-ierr~302"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -349,7 +348,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_int_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_int_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -364,12 +364,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~12"></span>
+              <span class="anchor" id="variable-gene_to_fam~33"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>gene_to_fam</strong>(:)</td>
@@ -379,7 +379,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~50"></span>
+              <span class="anchor" id="variable-filename~87"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -394,7 +394,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~148"></span>
+              <span class="anchor" id="variable-ierr~303"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -404,7 +404,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code (0 if successful)</p>
             </td>
         </tr>
     </tbody>
@@ -419,7 +419,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_char_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -434,12 +435,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~4"></span>
+              <span class="anchor" id="variable-family_ids~6"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>family_ids</strong>(:)</td>
@@ -449,7 +450,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~51"></span>
+              <span class="anchor" id="variable-filename~88"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -464,7 +465,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~149"></span>
+              <span class="anchor" id="variable-ierr~304"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -489,7 +490,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -504,12 +506,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~6"></span>
+              <span class="anchor" id="variable-family_centroids~15"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>family_centroids</strong>(:,:)</td>
@@ -519,7 +521,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~52"></span>
+              <span class="anchor" id="variable-filename~89"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -534,7 +536,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~150"></span>
+              <span class="anchor" id="variable-ierr~305"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -559,7 +561,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -574,12 +577,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~6"></span>
+              <span class="anchor" id="variable-shift_vectors~13"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>shift_vectors</strong>(:,:)</td>
@@ -589,7 +592,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~53"></span>
+              <span class="anchor" id="variable-filename~90"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -604,7 +607,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~151"></span>
+              <span class="anchor" id="variable-ierr~306"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -629,7 +632,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_char_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -644,12 +648,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~5"></span>
+              <span class="anchor" id="variable-gene_ids~16"></span>
               character(len=*),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>gene_ids</strong>(:)</td>
@@ -659,7 +663,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~54"></span>
+              <span class="anchor" id="variable-filename~91"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -674,7 +678,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~152"></span>
+              <span class="anchor" id="variable-ierr~307"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -699,7 +703,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -714,12 +719,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~7"></span>
+              <span class="anchor" id="variable-expression_vectors~20"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>expression_vectors</strong>(:,:)</td>
@@ -729,7 +734,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~55"></span>
+              <span class="anchor" id="variable-filename~92"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -744,7 +749,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~153"></span>
+              <span class="anchor" id="variable-ierr~308"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -769,7 +774,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_int_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_int_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -784,12 +790,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~13"></span>
+              <span class="anchor" id="variable-gene_to_fam~34"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>gene_to_fam</strong>(:)</td>
@@ -799,7 +805,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~56"></span>
+              <span class="anchor" id="variable-filename~93"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -814,7 +820,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~154"></span>
+              <span class="anchor" id="variable-ierr~309"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -839,7 +845,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_char_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -854,12 +861,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~5"></span>
+              <span class="anchor" id="variable-family_ids~7"></span>
               character(len=*),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>family_ids</strong>(:)</td>
@@ -869,7 +876,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~57"></span>
+              <span class="anchor" id="variable-filename~94"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -884,7 +891,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~155"></span>
+              <span class="anchor" id="variable-ierr~310"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -909,7 +916,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -924,12 +932,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~7"></span>
+              <span class="anchor" id="variable-family_centroids~16"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>family_centroids</strong>(:,:)</td>
@@ -939,7 +947,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~58"></span>
+              <span class="anchor" id="variable-filename~95"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -954,7 +962,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~156"></span>
+              <span class="anchor" id="variable-ierr~311"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -979,7 +987,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -994,12 +1003,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~7"></span>
+              <span class="anchor" id="variable-shift_vectors~14"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>shift_vectors</strong>(:,:)</td>
@@ -1009,7 +1018,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~59"></span>
+              <span class="anchor" id="variable-filename~96"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1024,7 +1033,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~157"></span>
+              <span class="anchor" id="variable-ierr~312"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1060,14 +1069,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

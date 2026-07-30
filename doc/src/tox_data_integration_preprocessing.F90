@@ -1,13 +1,13 @@
-#include "macros.h"
+#include <src/macros.h>
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
 !|
 !| This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.
-submodule (tox_data_integration) tox_data_integration_preprocessing
+submodule(tox_data_integration) tox_data_integration_preprocessing
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_is_finite
-    use f42_utils, only: heapsort_real, calc_percentile_helper, clamp
+    use f42_utils, only: sort_array_heapsort, calc_percentile_helper, clamp
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, is_err, set_ok, validate_dimension_size, ERR_ALLOC_FAIL, set_err
     implicit none
 
@@ -109,7 +109,7 @@ contains
 
         do concurrent(i_gene=1:n_genes)
             do concurrent(i_rep=1:n_reps) shared(expr, resid, means, i_gene)
-                if (.not. ieee_is_nan(expr(i_rep, i_gene))) then
+                if ((.not. ieee_is_nan(expr(i_rep, i_gene))) .and. ieee_is_finite(expr(i_rep, i_gene))) then
                     resid(i_rep, i_gene) = expr(i_rep, i_gene) - means(i_gene)
                 else
                     resid(i_rep, i_gene) = M_NAN
@@ -165,7 +165,7 @@ contains
             perm(pool_idx) = pool_idx
         end do
 
-        call heapsort_real(pooled_means, perm)
+        call sort_array_heapsort(pooled_means, perm)
 
         call pool_means(pooled_means, perm, pool_size, n_points, n_pool, x_star, ierr)
 
@@ -235,7 +235,7 @@ contains
                 quantile_level = real(i_point, real64)/real(n_points + 1, real64)*100.0_real64
 
                 ! Use calc_percentile to compute the value
-                call calc_percentile_helper(pooled_means(:n_pool), pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
+                call calc_percentile_helper(pooled_means, pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
             end do
         end if
     end subroutine pool_means_helper
@@ -267,7 +267,7 @@ contains
         if (max_neighbors < min_neighbors) then
             n_neighbors = max_neighbors
 
-        ! Take at least `min_neighbors` neighbors. It could be lower if there are too many reference points -> low steps across x_star.
+            ! Take at least `min_neighbors` neighbors. It could be lower if there are too many reference points -> low steps across x_star.
         else
             n_neighbors = int(clamp(n_pool/(2*n_points), min_val=min_neighbors, max_val=max_neighbors))
         end if
@@ -287,7 +287,7 @@ contains
 
     !> Construct neighborhood-based residual sets (kNN)
     pure module subroutine construct_neighborhoods_alloc(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
-                                                  neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
+                                                         neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -313,7 +313,7 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_distances_perm
 
         call set_ok(ierr)
-        call validate_dimension_size(n_neighbors, ierr)
+        call validate_dimension_size(n_genes_S, ierr)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_distances(n_genes_S))
@@ -359,7 +359,7 @@ contains
         call validate_dimension_size(n_neighbors, ierr)
 
         n_possible_neighbors = 0_int32
-        do concurrent (i_gene = 1:n_genes_S) shared(mean_S) reduce(+:n_possible_neighbors)
+        do concurrent(i_gene=1:n_genes_S) shared(mean_S) reduce(+:n_possible_neighbors)
             if (.not. ieee_is_nan(mean_S(i_gene))) then
                 n_possible_neighbors = n_possible_neighbors + 1
             end if
@@ -375,7 +375,7 @@ contains
 
     !> (no input validation) Construct neighborhood-based residual sets (kNN)
     pure module subroutine construct_neighborhoods_helper(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, tmp_distances, tmp_distances_perm, &
-                                                   neighborhood_residuals, neighborhood_indices, n_neighbors)
+                                                          neighborhood_residuals, neighborhood_indices, n_neighbors)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -402,6 +402,7 @@ contains
         integer(int32) :: i_point, i_gene, gene_idx
 
         ! Process each reference point
+        !TODO optimize: the kNN search per reference point is embarrassingly parallel (each i_point is independent), but this is a plain sequential `do` because `tmp_distances`/`tmp_distances_perm` are single shared scratch buffers reused/sorted in-place across iterations. Sizing them `(n_genes_S, n_points)` would let this become `do concurrent` and parallelize what is likely the hottest loop in the preprocessing pipeline.
         do i_point = 1, n_points
 
             ! Calculate distances.
@@ -413,9 +414,9 @@ contains
             end do
 
             ! Sort distances using heapsort
-            ! heapsort_real will reorder tmp_distances_perm so that tmp_distances(tmp_distances_perm(1:n_genes_S)) is sorted
+            ! sort_array_heapsort will reorder tmp_distances_perm so that tmp_distances(tmp_distances_perm(1:n_genes_S)) is sorted
             ! `calc_neighborhood_size` guarantees that the NaN `mean_S` indices are not included after sorting (they come after tmp_distances_perm(:n_neighbors))
-            call heapsort_real(tmp_distances, tmp_distances_perm)
+            call sort_array_heapsort(tmp_distances, tmp_distances_perm)
 
             ! Store the n_neighbors nearest neighbor indices
             ! tmp_distances_perm(1:n_neighbors) now contain indices of genes with smallest distances
@@ -491,7 +492,7 @@ end subroutine compute_residuals_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):pool_means_alloc(interface)]]
 pure subroutine pool_means_c(n_genes_S1, mean_S1, n_genes_S2, mean_S2, &
-    n_points, n_pool, x_star, ierr) bind(C, name="pool_means_c")
+                             n_points, n_pool, x_star, ierr) bind(C, name="pool_means_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: pool_means_alloc
@@ -529,7 +530,7 @@ end subroutine pool_means_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):pool_means(interface)]]
 pure subroutine pool_means_expert_c(pooled_means, pooled_means_perm, &
-    pool_size, n_points, n_pool, x_star, ierr) &
+                                    pool_size, n_points, n_pool, x_star, ierr) &
     bind(C, name="pool_means_expert_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
@@ -565,7 +566,7 @@ end subroutine pool_means_expert_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):calc_neighborhood_size(interface)]]
 pure subroutine calc_neighborhood_size_c(n_pool, n_points, n_genes_S, mean_S, &
-    desired_size, n_neighbors, ierr) bind(C, name="calc_neighborhood_size_c")
+                                         desired_size, n_neighbors, ierr) bind(C, name="calc_neighborhood_size_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use tox_data_integration, only: calc_neighborhood_size
@@ -606,7 +607,7 @@ end subroutine calc_neighborhood_size_c
 
 !> C-compatible wrapper for [[tox_data_integration(module):construct_neighborhoods_alloc(interface)]]
 pure subroutine construct_neighborhoods_c(n_points, x_star, n_genes_S, mean_S, &
-    n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr) &
+                                          n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr) &
     bind(C, name="construct_neighborhoods_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double

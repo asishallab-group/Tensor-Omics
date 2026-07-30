@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_tissue_versatility_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">55 statements</a>
+                 title=" 0.5% of total for procedures.">70 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -156,9 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_tissue_versatility.html'>tox_tissue_versatility</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +185,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~2"></span>
+              <span class="anchor" id="variable-n_axes~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +200,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vectors~2"></span>
+              <span class="anchor" id="variable-n_vectors~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,37 +215,37 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~3"></span>
+              <span class="anchor" id="variable-expression_vectors~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_axes, n_vectors), target
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_axes,n_vectors)</td>
+            <td><strong>expression_vectors</strong></td>
             <td>
                 <p>2D array (n_axes, n_vectors), each column is a gene expression vector (column-major)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-exp_vecs_selection_index~2"></span>
+              <span class="anchor" id="variable-exp_vecs_selection_index~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_vectors), target
             </td>
             <td>::</td>
-            <td><strong>exp_vecs_selection_index</strong>(n_vectors)</td>
+            <td><strong>exp_vecs_selection_index</strong></td>
             <td>
                 <p>Integer array (n_vectors), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vectors~2"></span>
+              <span class="anchor" id="variable-n_selected_vectors~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -258,22 +260,22 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection~2"></span>
+              <span class="anchor" id="variable-axes_selection~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_axes), target
             </td>
             <td>::</td>
-            <td><strong>axes_selection</strong>(n_axes)</td>
+            <td><strong>axes_selection</strong></td>
             <td>
                 <p>Integer array (n_axes), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~2"></span>
+              <span class="anchor" id="variable-n_selected_axes~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -288,37 +290,37 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tissue_versatilities~2"></span>
+              <span class="anchor" id="variable-tissue_versatilities~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_selected_vectors), target
             </td>
             <td>::</td>
-            <td><strong>tissue_versatilities</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_versatilities</strong></td>
             <td>
                 <p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities for selected vectors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tissue_angles_deg~2"></span>
+              <span class="anchor" id="variable-tissue_angles_deg~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_selected_vectors), target
             </td>
             <td>::</td>
-            <td><strong>tissue_angles_deg</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_angles_deg</strong></td>
             <td>
                 <p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees for selected vectors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~124"></span>
+              <span class="anchor" id="variable-ierr~61"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -328,7 +330,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0 = success, non-zero = error</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -358,14 +360,14 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>
