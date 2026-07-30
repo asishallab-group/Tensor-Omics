@@ -143,7 +143,7 @@ docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
 
 ### Native compilation
 
-If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `/build/<compiler>/`, and creates a symbolic link to the resulting shared library (`libtensor-omics.so`) so that Python and R always find the same path.
+If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `build/<compiler>_<hash>/`, and copies the resulting shared library (`libtensor-omics.so`) into `build/` so that Python and R always find it at the same path.
 
 gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not yet available in standard package repositories (May 2026).
 
@@ -304,8 +304,8 @@ The test suite provides a scalable system for organizing and executing Fortran u
 
 1. **`run_tests.f90`** — main program handling command-line arguments and dispatching all test calls.
 2. **`test_suite.f90`** — The core orchestration module. It defines abstract interfaces, registries, and runner subroutines to dynamically collect and execute tests across different suites.
-2. **Test modules** — Test files that generally correspond to complete modules in `src/`. They may also be dedicated to specific standalone or newly added subroutines, particularly those from utils.
-3. **`asserts.f90`** — assertion library for validating results.
+3. **Test modules** — Test files that generally correspond to complete modules in `src/`. They may also be dedicated to specific standalone or newly added subroutines, particularly those from utils.
+4. **`asserts.f90`** — assertion library for validating results.
 
 * **Suite Registration:** Each test module must implement a public function named `get_all_<src_module_name>_tests` that matches the `get_all_interface` abstract interface defined in `test_suite.f90`. This function aggregates and returns an array of all `test_case` structures defined within that module.
 * Test modules must be named `mod_test_<module_name>.[fF]90` to ensure they are compiled before `run_tests.f90`. Files are compiled in alphabetical order; name test files accordingly. See `test/readme.md` for details.
