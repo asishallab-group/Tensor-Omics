@@ -599,19 +599,21 @@ integer(int32), intent(out) :: tmp_perm(n_genes)
 real(real64),   intent(out) :: tmp_loess_y(n_genes)
 \end{lstlisting}
 
-\subsection{Pointer Views Over Subarrays}
+\subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
 
-When working with large matrices in the \texttt{\_alloc} or pipeline layer, use Fortran pointer re-association to create zero-copy views into existing arrays instead of allocating new storage. This is particularly useful for obtaining column or row slices from an already-allocated output matrix:
+When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
 
 \begin{lstlisting}[language=Fortran]
-! Create a transposed pointer view into the output array (no copy)
-real(real64), dimension(:, :), pointer :: transposed_view
-transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
-! Now use a column slice as a work pointer
-tmp_col_ptr => transposed_view(:, 1)
+! Reinterpret a contiguous buffer as a 2-D work view (no copy, no allocation)
+real(real64), dimension(:, :), pointer :: work_view
+work_view(1:n_genes, 1:n_tissues) => output_buffer
+! A column slice can then serve as a work pointer
+tmp_col_ptr => work_view(:, 1)
 \end{lstlisting}
 
-This pattern avoids allocating a separate temporary matrix when the required data already exists in the output buffer.
+\textbf{This reshapes; it does not transpose.} Bounds-remapping reinterprets the linear, column-major storage under the new shape: \texttt{work\_view(i, j)} is element \texttt{(j-1)*n\_genes + i} of \texttt{output\_buffer}, \emph{not} \texttt{output\_buffer(j, i)}. A genuine transpose reorders elements and therefore requires moving data (e.g.\ \texttt{transpose} into a separate buffer); a pointer view can never transpose. The target must be contiguous.
+
+Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
 
 \subsection{Always Use Pointers, Never Value-Copy Scalars in C Wrappers}
 
