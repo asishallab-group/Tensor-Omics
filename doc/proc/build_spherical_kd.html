@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>build_spherical_kd &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">15 statements</a>
+                 title=" 0.1% of total for procedures.">13 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,11 +151,14 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine build_spherical_kd(vectors, num_dimensions, num_vectors, sphere_indices, dimension_order, workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)  
+    <h2>public pure subroutine build_spherical_kd(vectors, n_dimensions, n_vectors, sphere_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
 </h2>
     
 
-    <p>Build spherical k-d tree index</p>
+    <p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors), with
+caller-provided workspace (no internal allocation). See
+<a href="../proc/build_spherical_kd_alloc.html">build_spherical_kd_alloc</a> for the allocating variant and
+a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
 
 
     <h3>Arguments</h3>
@@ -172,19 +177,19 @@
               <span class="anchor" id="variable-vectors"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_dimensions, n_vectors)
             </td>
             <td>::</td>
-            <td><strong>vectors</strong>(num_dimensions,num_vectors)</td>
+            <td><strong>vectors</strong></td>
             <td>
                 <p>Input unit vectors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_dimensions~3"></span>
+              <span class="anchor" id="variable-n_dimensions~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -192,14 +197,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>num_dimensions</strong></td>
+            <td><strong>n_dimensions</strong></td>
             <td>
                 <p>Number of dimensions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_vectors"></span>
+              <span class="anchor" id="variable-n_vectors~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -207,7 +212,7 @@
               
             </td>
             <td>::</td>
-            <td><strong>num_vectors</strong></td>
+            <td><strong>n_vectors</strong></td>
             <td>
                 <p>Number of vectors</p>
             </td>
@@ -217,124 +222,94 @@
               <span class="anchor" id="variable-sphere_indices"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>sphere_indices</strong>(num_vectors)</td>
+            <td><strong>sphere_indices</strong></td>
             <td>
                 <p>Output index array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~2"></span>
+              <span class="anchor" id="variable-dimension_order~5"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_dimensions)
             </td>
             <td>::</td>
-            <td><strong>dimension_order</strong>(num_dimensions)</td>
+            <td><strong>dimension_order</strong></td>
             <td>
                 <p>Dimension order</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-workspace~3"></span>
+              <span class="anchor" id="variable-tmp_workspace~6"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>workspace</strong>(num_vectors)</td>
+            <td><strong>tmp_workspace</strong></td>
             <td>
                 <p>Workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value_buffer~3"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~6"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>value_buffer</strong>(num_vectors)</td>
+            <td><strong>tmp_value_buffer</strong></td>
             <td>
                 <p>Value buffer</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation~3"></span>
+              <span class="anchor" id="variable-tmp_permutation~6"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>permutation</strong>(num_vectors)</td>
+            <td><strong>tmp_permutation</strong></td>
             <td>
                 <p>Permutation array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-left_stack~5"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(3, n_vectors)
             </td>
             <td>::</td>
-            <td><strong>left_stack</strong>(num_vectors)</td>
-            <td>
-                <p>Left stack</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-right_stack~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_stack</strong>(num_vectors)</td>
-            <td>
-                <p>Right stack</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-recursion_stack~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>recursion_stack</strong>(3,num_vectors)</td>
+            <td><strong>tmp_recursion_stack</strong></td>
             <td>
                 <p>Stack for recursive calls</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~276"></span>
+              <span class="anchor" id="variable-ierr~204"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -374,14 +349,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

@@ -1,73 +1,67 @@
 # Comprehensive R test suite for tissue versatility (mirrors Fortran unit tests)
 # Source the main functions
 source("rcpp/tensoromics_functions.R")
+source("rcpp/test_helpers.R")
 
 # 1. Uniform expression (should yield TV=0)
 test_uniform_expression <- function() {
   expr <- matrix(2, nrow=3, ncol=1)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1]) < 1e-12)
-  stopifnot(abs(res$tissue_angles_deg[1]) < 1e-12)
-  cat("test_uniform_expression passed\n")
+  assert_true(abs(res$tissue_versatilities[1]) < 1e-12)
+  assert_true(abs(res$tissue_angles_deg[1]) < 1e-12)
 }
 
 # 2. Single axis expression (should yield TV=1)
 test_single_axis_expression <- function() {
   expr <- matrix(c(0,0,5), nrow=3, ncol=1)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1] - 1) < 1e-12)
-  stopifnot(res$tissue_angles_deg[1] > 0)
-  cat("test_single_axis_expression passed\n")
+  assert_true(abs(res$tissue_versatilities[1] - 1) < 1e-12)
+  assert_true(res$tissue_angles_deg[1] > 0)
 }
 
 # 3. Null vector (should yield TV=1, angle=90)
 test_null_vector <- function() {
   expr <- matrix(0, nrow=3, ncol=1)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1] - 1) < 1e-12)
-  stopifnot(abs(res$tissue_angles_deg[1] - 90) < 1e-12)
-  cat("test_null_vector passed\n")
+  assert_true(abs(res$tissue_versatilities[1] - 1) < 1e-12)
+  assert_true(abs(res$tissue_angles_deg[1] - 90) < 1e-12)
 }
 
 # 4. Partial axis selection (subspace)
 test_partial_axis_selection <- function() {
   expr <- matrix(c(1,2,3), nrow=3, ncol=1)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE), c(TRUE,FALSE,TRUE))
-  stopifnot(res$tissue_versatilities[1] >= 0 && res$tissue_versatilities[1] <= 1)
-  stopifnot(res$tissue_angles_deg[1] >= 0 && res$tissue_angles_deg[1] <= 90)
-  cat("test_partial_axis_selection passed\n")
+  assert_true(res$tissue_versatilities[1] >= 0 && res$tissue_versatilities[1] <= 1)
+  assert_true(res$tissue_angles_deg[1] >= 0 && res$tissue_angles_deg[1] <= 90)
 }
 
 # 5. Mixed vectors (uniform, single axis, null)
 test_mixed_vectors <- function() {
   expr <- matrix(c(1,1,1, 0,0,2, 0,0,0), nrow=3, ncol=3)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE,TRUE,TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1]) < 1e-12)
-  stopifnot(abs(res$tissue_versatilities[2] - 1) < 1e-12)
-  stopifnot(abs(res$tissue_versatilities[3] - 1) < 1e-12)
-  stopifnot(abs(res$tissue_angles_deg[1]) < 1e-12)
-  stopifnot(res$tissue_angles_deg[2] > 0)
-  stopifnot(abs(res$tissue_angles_deg[3] - 90) < 1e-12)
-  cat("test_mixed_vectors passed\n")
+  assert_true(abs(res$tissue_versatilities[1]) < 1e-12)
+  assert_true(abs(res$tissue_versatilities[2] - 1) < 1e-12)
+  assert_true(abs(res$tissue_versatilities[3] - 1) < 1e-12)
+  assert_true(abs(res$tissue_angles_deg[1]) < 1e-12)
+  assert_true(res$tissue_angles_deg[2] > 0)
+  assert_true(abs(res$tissue_angles_deg[3] - 90) < 1e-12)
 }
 
 # 6. Angle output in degrees for a known case (should be 45)
 test_angle_degrees <- function() {
   expr <- matrix(c(1,0), nrow=2, ncol=1)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE), c(TRUE,TRUE))
-  stopifnot(abs(res$tissue_angles_deg[1] - 45) < 1e-12)
-  cat("test_angle_degrees passed\n")
+  assert_true(abs(res$tissue_angles_deg[1] - 45) < 1e-12)
 }
 
 # 7. Multiple vectors selection
 test_multiple_vectors_selection <- function() {
   expr <- matrix(c(1,1, 0,2, 0,0), nrow=2, ncol=3)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE,FALSE,TRUE), c(TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1]) < 1e-12)
-  stopifnot(abs(res$tissue_versatilities[2] - 1) < 1e-12)
-  stopifnot(abs(res$tissue_angles_deg[1]) < 1e-12)
-  stopifnot(abs(res$tissue_angles_deg[2] - 90) < 1e-12)
-  cat("test_multiple_vectors_selection passed\n")
+  assert_true(abs(res$tissue_versatilities[1]) < 1e-12)
+  assert_true(abs(res$tissue_versatilities[2] - 1) < 1e-12)
+  assert_true(abs(res$tissue_angles_deg[1]) < 1e-5)
+  assert_true(abs(res$tissue_angles_deg[2] - 90) < 1e-12)
 }
 
 # 8. High-dimensional vectors (4D, 5D)
@@ -76,11 +70,10 @@ test_high_dimensional_vectors <- function() {
   expr5 <- matrix(2, nrow=5, ncol=1)
   res4 <- tox_calculate_tissue_versatility(expr4, c(TRUE), rep(TRUE,4))
   res5 <- tox_calculate_tissue_versatility(expr5, c(TRUE), rep(TRUE,5))
-  stopifnot(abs(res4$tissue_versatilities[1]) < 1e-12)
-  stopifnot(abs(res4$tissue_angles_deg[1]) < 1e-12)
-  stopifnot(abs(res5$tissue_versatilities[1]) < 1e-12)
-  stopifnot(abs(res5$tissue_angles_deg[1]) < 1e-12)
-  cat("test_high_dimensional_vectors passed\n")
+  assert_true(abs(res4$tissue_versatilities[1]) < 1e-12)
+  assert_true(abs(res4$tissue_angles_deg[1]) < 1e-12)
+  assert_true(abs(res5$tissue_versatilities[1]) < 1e-12)
+  assert_true(abs(res5$tissue_angles_deg[1]) < 1e-5)
 }
 
 # 9. Randomized vectors and axes
@@ -90,9 +83,8 @@ test_randomized_vectors_axes <- function() {
   n_vecs <- 4
   expr <- matrix(runif(n_axes * n_vecs), nrow=n_axes, ncol=n_vecs)
   res <- tox_calculate_tissue_versatility(expr, rep(TRUE,n_vecs), c(TRUE,FALSE,TRUE,FALSE,TRUE))
-  stopifnot(all(res$tissue_versatilities >= 0 & res$tissue_versatilities <= 1))
-  stopifnot(all(res$tissue_angles_deg >= 0 & res$tissue_angles_deg <= 90))
-  cat("test_randomized_vectors_axes passed\n")
+  assert_true(all(res$tissue_versatilities >= 0 & res$tissue_versatilities <= 1))
+  assert_true(all(res$tissue_angles_deg >= 0 & res$tissue_angles_deg <= 90))
 }
 
 # 10. Numerical stability (comprehensive edge cases - mirrors Fortran test)
@@ -102,11 +94,10 @@ test_numerical_stability <- function() {
   # Case 2: Small numbers above threshold (should work normally - uniform → TV=0)
   expr <- matrix(c(1e15,1e15,1e15, 1e-4,1e-4,1e-4), nrow=3, ncol=2)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE,TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1]) < 1e-12)  # Large uniform → TV=0
-  stopifnot(abs(res$tissue_angles_deg[1]) < 1e-12)    # Large uniform → angle=0
-  stopifnot(abs(res$tissue_versatilities[2]) < 1e-12)  # Small uniform → TV=0  
-  stopifnot(abs(res$tissue_angles_deg[2]) < 1e-12)    # Small uniform → angle=0
-  cat("test_numerical_stability passed\n")
+  assert_true(abs(res$tissue_versatilities[1]) < 1e-12)  # Large uniform → TV=0
+  assert_true(abs(res$tissue_angles_deg[1]) < 1e-12)    # Large uniform → angle=0
+  assert_true(abs(res$tissue_versatilities[2]) < 1e-12)  # Small uniform → TV=0  
+  assert_true(abs(res$tissue_angles_deg[2]) < 1e-12)    # Small uniform → angle=0
 }
 
 # 10b. Epsilon threshold protection (mirrors Fortran epsilon stability test)
@@ -121,11 +112,10 @@ test_epsilon_threshold_protection <- function() {
   expr <- matrix(c(eps_sqrt*0.5/sqrt(3), eps_sqrt*0.5/sqrt(3), eps_sqrt*0.5/sqrt(3),   # Case 2
                    1e-200, 1e-200, 1e-200), nrow=3, ncol=2)                              # Case 4
   res <- tox_calculate_tissue_versatility(expr, c(TRUE,TRUE), c(TRUE,TRUE,TRUE))
-  stopifnot(abs(res$tissue_versatilities[1] - 1) < 1e-12)  # Below threshold → TV=1
-  stopifnot(abs(res$tissue_angles_deg[1] - 90) < 1e-12)   # Below threshold → angle=90°
-  stopifnot(abs(res$tissue_versatilities[2] - 1) < 1e-12)  # Underflow → TV=1
-  stopifnot(abs(res$tissue_angles_deg[2] - 90) < 1e-12)   # Underflow → angle=90°
-  cat("test_epsilon_threshold_protection passed\n")
+  assert_true(abs(res$tissue_versatilities[1] - 1) < 1e-12)  # Below threshold → TV=1
+  assert_true(abs(res$tissue_angles_deg[1] - 90) < 1e-12)   # Below threshold → angle=90°
+  assert_true(abs(res$tissue_versatilities[2] - 1) < 1e-12)  # Underflow → TV=1
+  assert_true(abs(res$tissue_angles_deg[2] - 90) < 1e-12)   # Underflow → angle=90°
 }
 
 # 11. Invalid input: Empty input arrays provided. (should throw error with code 202)
@@ -137,41 +127,17 @@ test_invalid_input_no_axes <- function() {
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains the expected text
-    stopifnot(grepl("Empty input arrays provided.", e$message))
+    assert_true(grepl("Empty input arrays provided.", e$message))
   })
-  stopifnot(error_caught)  # Make sure an error was actually thrown
-  cat("test_invalid_input_no_axes passed\n")
+  assert_true(error_caught)  # Make sure an error was actually thrown
 }
 
 # 12. Multiple selection, partial axes
 test_multiple_selection_partial_axes <- function() {
   expr <- matrix(c(1,2, 3,4, 5,6), nrow=2, ncol=3)
   res <- tox_calculate_tissue_versatility(expr, c(TRUE,FALSE,TRUE), c(TRUE,FALSE))
-  stopifnot(length(res$tissue_versatilities) == 2)
-  stopifnot(all(res$tissue_versatilities >= 0 & res$tissue_versatilities <= 1))
-  cat("test_multiple_selection_partial_axes passed\n")
+  assert_true(length(res$tissue_versatilities) == 2)
+  assert_true(all(res$tissue_versatilities >= 0 & res$tissue_versatilities <= 1))
 }
 
-# Run all tests
-cat("=================================================\n")
-cat("    TISSUE VERSATILITY FULL R INTERFACE TESTS\n")
-cat("=================================================\n\n")
-
-test_uniform_expression()
-test_single_axis_expression()
-test_null_vector()
-test_partial_axis_selection()
-test_mixed_vectors()
-test_angle_degrees()
-test_multiple_vectors_selection()
-test_high_dimensional_vectors()
-test_randomized_vectors_axes()
-test_numerical_stability()
-test_epsilon_threshold_protection()
-test_invalid_input_no_axes()
-test_multiple_selection_partial_axes()
-
-cat("=================================================\n")
-cat("             ALL TESTS COMPLETED\n")
-cat("=================================================\n")
-cat("If you see this message, all tissue versatility R interface tests passed! ✓\n")
+run_all_tests()

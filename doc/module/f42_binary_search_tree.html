@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>f42_binary_search_tree &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.9% of total for modules and submodules.">69 statements</a>
+                 title=" 0.7% of total for modules and submodules.">59 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -171,7 +172,9 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+This module provides routines to build a BST index (via sorting), access sorted values,
+and perform range queries over a real-valued array using the sorted index.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
@@ -179,9 +182,9 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -203,7 +206,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-get_sorted_value"></span> <h3>public  function <a href='../proc/get_sorted_value.html'>get_sorted_value</a>(values, sorted_indices, position, ierr) result(sorted_value)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Get the value at the sorted position.</p>
 
   <h4>Arguments</h4>
@@ -219,7 +226,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~2"></span>
+              <span class="anchor" id="variable-values~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -249,7 +256,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-position"></span>
+              <span class="anchor" id="variable-position~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -264,7 +271,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~34"></span>
+              <span class="anchor" id="variable-ierr~258"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -295,10 +302,14 @@
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_bst_index"></span> <h3>public pure subroutine <a href='../proc/build_bst_index.html'>build_bst_index</a>(values, num_values, sorted_indices, left_stack, right_stack, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-build_bst_index"></span> <h3>public pure subroutine <a href='../proc/build_bst_index.html'>build_bst_index</a>(values, n_values, sorted_indices, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Build the BST index by sorting indices using values in x.</p>
 
   <h4>Arguments</h4>
@@ -314,7 +325,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values"></span>
+              <span class="anchor" id="variable-values~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -322,14 +333,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>values</strong>(num_values)</td>
+            <td><strong>values</strong>(n_values)</td>
             <td>
 <p>Input real array to be indexed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_values"></span>
+              <span class="anchor" id="variable-n_values~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -337,7 +348,7 @@
               
             </td>
             <td>::</td>
-            <td><strong>num_values</strong></td>
+            <td><strong>n_values</strong></td>
             <td>
 <p>Number of elements in values array</p>
             </td>
@@ -352,44 +363,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>sorted_indices</strong>(num_values)</td>
+            <td><strong>sorted_indices</strong>(n_values)</td>
             <td>
 <p>Output permutation index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-left_stack"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>left_stack</strong>(num_values)</td>
-            <td>
-<p>Manual stack for left indices</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-right_stack"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_stack</strong>(num_values)</td>
-            <td>
-<p>Manual stack for right indices</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~33"></span>
+              <span class="anchor" id="variable-ierr~257"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -410,10 +391,14 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bst_range_query"></span> <h3>public pure subroutine <a href='../proc/bst_range_query.html'>bst_range_query</a>(values, sorted_indices, num_values, lower_bound, upper_bound, output_indices, num_matches, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-bst_range_query"></span> <h3>public pure subroutine <a href='../proc/bst_range_query.html'>bst_range_query</a>(values, sorted_indices, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Perform a 1D range query over the sorted index.</p>
 
   <h4>Arguments</h4>
@@ -429,7 +414,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~3"></span>
+              <span class="anchor" id="variable-values~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -437,7 +422,7 @@
               
             </td>
             <td>::</td>
-            <td><strong>values</strong>(num_values)</td>
+            <td><strong>values</strong>(n_values)</td>
             <td>
 <p>Input real array</p>
             </td>
@@ -452,14 +437,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>sorted_indices</strong>(num_values)</td>
+            <td><strong>sorted_indices</strong>(n_values)</td>
             <td>
 <p>Permutation index array (sorted)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_values~2"></span>
+              <span class="anchor" id="variable-n_values~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -467,7 +452,7 @@
               
             </td>
             <td>::</td>
-            <td><strong>num_values</strong></td>
+            <td><strong>n_values</strong></td>
             <td>
 <p>Number of elements</p>
             </td>
@@ -512,14 +497,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>output_indices</strong>(num_values)</td>
+            <td><strong>output_indices</strong>(n_values)</td>
             <td>
 <p>Output array of matching indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_matches"></span>
+              <span class="anchor" id="variable-n_matches"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -527,14 +512,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>num_matches</strong></td>
+            <td><strong>n_matches</strong></td>
             <td>
 <p>Number of matches found</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~35"></span>
+              <span class="anchor" id="variable-ierr~259"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -570,14 +555,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

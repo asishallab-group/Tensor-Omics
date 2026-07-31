@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>identify_outliers_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">16 statements</a>
+                 title=" 0.5% of total for procedures.">61 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, is_outlier_int, threshold, percentile) bind(C, name="identify_outliers_c")  
+    <h2> subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile, ierr) bind(C, name="identify_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,9 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
                   <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +185,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~68"></span>
+              <span class="anchor" id="variable-n_genes~37"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +200,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~5"></span>
+              <span class="anchor" id="variable-rdi~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -213,7 +215,7 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~4"></span>
+              <span class="anchor" id="variable-sorted_rdi~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -223,12 +225,27 @@ Calls identify_outliers with C-compatible types for external interface.</p>
             <td>::</td>
             <td><strong>sorted_rdi</strong>(n_genes)</td>
             <td>
-                <p>Sorted RDI array (must be sorted in ascending order before calling)</p>
+                <p>Filtered RDI array (no negatives, no NaNs)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier_int"></span>
+              <span class="anchor" id="variable-perm~32"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_genes)</td>
+            <td>
+                <p>Permutation array with sorted indices</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-is_outlier~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -236,14 +253,14 @@ Calls identify_outliers with C-compatible types for external interface.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>is_outlier_int</strong>(n_genes)</td>
+            <td><strong>is_outlier</strong>(n_genes)</td>
             <td>
                 <p>Output integer array indicating outliers (1=outlier, 0=not)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~8"></span>
+              <span class="anchor" id="variable-threshold~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -258,7 +275,25 @@ Calls identify_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~3"></span>
+              <span class="anchor" id="variable-quantile~5"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>quantile</strong>(n_genes)</td>
+            <td>
+                <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail quantile is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -269,6 +304,21 @@ Calls identify_outliers with C-compatible types for external interface.</p>
             <td><strong>percentile</strong></td>
             <td>
                 <p>Percentile threshold for outlier detection</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~241"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -298,14 +348,14 @@ Calls identify_outliers with C-compatible types for external interface.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

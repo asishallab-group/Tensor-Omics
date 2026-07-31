@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_data_read_write &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.1% of total for modules and submodules.">85 statements</a>
+                 title=" 0.9% of total for modules and submodules.">81 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -177,15 +178,11 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_deserialize_real.html'>f42_deserialize_real</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_real.html'>f42_serialize_real</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='f42_deserialize_char.html'>f42_deserialize_char</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_int.html'>f42_serialize_int</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='f42_serde_arrays_deserialize.html'>f42_serde_arrays_deserialize</a></li>
+                  <li class="list-inline-item"><a href='f42_serde_arrays_serialize.html'>f42_serde_arrays_serialize</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_serialize_char.html'>f42_serialize_char</a></li>
-                  <li class="list-inline-item"><a href='f42_deserialize_int.html'>f42_deserialize_int</a></li>
               </ul>
             </li>
         </ul>
@@ -209,7 +206,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_char_1D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -227,9 +225,9 @@
               <span class="anchor" id="variable-gene_ids~15"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>gene_ids</strong>(:)</td>
@@ -239,7 +237,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~84"></span>
+              <span class="anchor" id="variable-filename~85"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -250,6 +248,574 @@
             <td><strong>filename</strong></td>
             <td>
 <p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~301"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_expression_vectors"></span> <h3>public  subroutine <a href='../proc/save_expression_vectors.html'>save_expression_vectors</a>(expression_vectors, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~19"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong>(:,:)</td>
+            <td>
+<p>Expression vectors to write</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~86"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~302"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_gene_to_family"></span> <h3>public  subroutine <a href='../proc/save_gene_to_family.html'>save_gene_to_family</a>(gene_to_fam, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_int_1D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong>(:)</td>
+            <td>
+<p>Gene to family mapping to write</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~87"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~303"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_family_ids"></span> <h3>public  subroutine <a href='../proc/save_family_ids.html'>save_family_ids</a>(family_ids, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids~6"></span>
+              character(len=*),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>family_ids</strong>(:)</td>
+            <td>
+<p>Family IDs to write</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~88"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~304"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_family_centroids"></span> <h3>public  subroutine <a href='../proc/save_family_centroids.html'>save_family_centroids</a>(family_centroids, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids~15"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids</strong>(:,:)</td>
+            <td>
+<p>Family centroids to write</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~89"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~305"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_shift_vectors"></span> <h3>public  subroutine <a href='../proc/save_shift_vectors.html'>save_shift_vectors</a>(shift_vectors, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors~13"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong>(:,:)</td>
+            <td>
+<p>Shift vectors to write</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~90"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to write to</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~306"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-load_gene_ids"></span> <h3>public  subroutine <a href='../proc/load_gene_ids.html'>load_gene_ids</a>(gene_ids, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids~16"></span>
+              character(len=*),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids</strong>(:)</td>
+            <td>
+<p>Gene IDs to read</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~91"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to read from</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~307"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-load_expression_vectors"></span> <h3>public  subroutine <a href='../proc/load_expression_vectors.html'>load_expression_vectors</a>(expression_vectors, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~20"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong>(:,:)</td>
+            <td>
+<p>Expression vectors to read</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~92"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to read from</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~308"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code (0 if successful)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-load_gene_to_family"></span> <h3>public  subroutine <a href='../proc/load_gene_to_family.html'>load_gene_to_family</a>(gene_to_fam, filename, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_int_1D function</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~34"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong>(:)</td>
+            <td>
+<p>Gene to family mapping to read</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filename~93"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>filename</strong></td>
+            <td>
+<p>Filename to read from</p>
             </td>
         </tr>
         <tr>
@@ -275,11 +841,12 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-save_expression_vectors"></span> <h3>public  subroutine <a href='../proc/save_expression_vectors.html'>save_expression_vectors</a>(expression_vectors, filename, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-load_family_ids"></span> <h3>public  subroutine <a href='../proc/load_family_ids.html'>load_family_ids</a>(family_ids, filename, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for serialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -294,22 +861,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~21"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-family_ids~7"></span>
+              character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(:,:)</td>
+            <td><strong>family_ids</strong>(:)</td>
             <td>
-<p>Expression vectors to write</p>
+<p>Family IDs to read</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~85"></span>
+              <span class="anchor" id="variable-filename~94"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -319,7 +886,7 @@
             <td>::</td>
             <td><strong>filename</strong></td>
             <td>
-<p>Filename to write to</p>
+<p>Filename to read from</p>
             </td>
         </tr>
         <tr>
@@ -345,571 +912,12 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-save_gene_to_family"></span> <h3>public  subroutine <a href='../proc/save_gene_to_family.html'>save_gene_to_family</a>(gene_to_fam, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for serialize_int_1D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~32"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong>(:)</td>
-            <td>
-<p>Gene to family mapping to write</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~86"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to write to</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~311"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-save_family_ids"></span> <h3>public  subroutine <a href='../proc/save_family_ids.html'>save_family_ids</a>(family_ids, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for serialize_char_1D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-family_ids~6"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>family_ids</strong>(:)</td>
-            <td>
-<p>Family IDs to write</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~87"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to write to</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~312"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-save_family_centroids"></span> <h3>public  subroutine <a href='../proc/save_family_centroids.html'>save_family_centroids</a>(family_centroids, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for serialize_real_2D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-family_centroids~14"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>family_centroids</strong>(:,:)</td>
-            <td>
-<p>Family centroids to write</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~88"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to write to</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~313"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-save_shift_vectors"></span> <h3>public  subroutine <a href='../proc/save_shift_vectors.html'>save_shift_vectors</a>(shift_vectors, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for serialize_real_2D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shift_vectors~12"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>shift_vectors</strong>(:,:)</td>
-            <td>
-<p>Shift vectors to write</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~89"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to write to</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~314"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-load_gene_ids"></span> <h3>public  subroutine <a href='../proc/load_gene_ids.html'>load_gene_ids</a>(gene_ids, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for deserialize_char_1D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_ids~16"></span>
-              character(len=*),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>gene_ids</strong>(:)</td>
-            <td>
-<p>Gene IDs to read</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~90"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to read from</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~315"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-load_expression_vectors"></span> <h3>public  subroutine <a href='../proc/load_expression_vectors.html'>load_expression_vectors</a>(expression_vectors, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for deserialize_real_2D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expression_vectors~22"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>expression_vectors</strong>(:,:)</td>
-            <td>
-<p>Expression vectors to read</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~91"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to read from</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~316"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-load_gene_to_family"></span> <h3>public  subroutine <a href='../proc/load_gene_to_family.html'>load_gene_to_family</a>(gene_to_fam, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for deserialize_int_1D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~33"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong>(:)</td>
-            <td>
-<p>Gene to family mapping to read</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~92"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to read from</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~317"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-load_family_ids"></span> <h3>public  subroutine <a href='../proc/load_family_ids.html'>load_family_ids</a>(family_ids, filename, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Wrapper for deserialize_char_1D function</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-family_ids~7"></span>
-              character(len=*),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>family_ids</strong>(:)</td>
-            <td>
-<p>Family IDs to read</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filename~93"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>filename</strong></td>
-            <td>
-<p>Filename to read from</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~318"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code (0 if successful)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-load_family_centroids"></span> <h3>public  subroutine <a href='../proc/load_family_centroids.html'>load_family_centroids</a>(family_centroids, filename, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -924,12 +932,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~15"></span>
+              <span class="anchor" id="variable-family_centroids~16"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>family_centroids</strong>(:,:)</td>
@@ -939,7 +947,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~94"></span>
+              <span class="anchor" id="variable-filename~95"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -954,7 +962,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~319"></span>
+              <span class="anchor" id="variable-ierr~311"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -979,7 +987,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Wrapper for deserialize_real_2D function</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -994,12 +1003,12 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~13"></span>
+              <span class="anchor" id="variable-shift_vectors~14"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>shift_vectors</strong>(:,:)</td>
@@ -1009,7 +1018,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~95"></span>
+              <span class="anchor" id="variable-filename~96"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1024,7 +1033,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~320"></span>
+              <span class="anchor" id="variable-ierr~312"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1060,14 +1069,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

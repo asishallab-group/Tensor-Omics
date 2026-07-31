@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_trajectory_normalization &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for modules and submodules.">81 statements</a>
+                 title=" 1.0% of total for modules and submodules.">89 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -142,7 +143,7 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_variable_timeseries">normalize_variable_timeseries</a>
             <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_single_trajectory">normalize_single_trajectory</a>
-            <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_all_trajectories">normalize_all_trajectories</a>
+            <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_all_trajectories_alloc">normalize_all_trajectories_alloc</a>
         </div>
       </div>
     </div>
@@ -161,16 +162,17 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Module for min-max normalization of factor trajectories over time.
+Each factor's time series is independently rescaled to <code>[0,1]</code> per sample/entity.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
               </ul>
             </li>
@@ -194,7 +196,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-normalize_variable_timeseries"></span> <h3>public pure subroutine <a href='../proc/normalize_variable_timeseries.html'>normalize_variable_timeseries</a>(v, v_norm, n_points, ierr, status)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Normalize a single variable across time using min-max scaling</p>
 
   <h4>Arguments</h4>
@@ -240,7 +246,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~17"></span>
+              <span class="anchor" id="variable-n_points~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -255,7 +261,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~86"></span>
+              <span class="anchor" id="variable-ierr~62"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -294,9 +300,13 @@
     <div class="card-header codesum"><span class="anchor" id="proc-normalize_single_trajectory"></span> <h3>public pure subroutine <a href='../proc/normalize_single_trajectory.html'>normalize_single_trajectory</a>(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Normalize all factors in a single trajectory independently across time
-Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
+Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -311,7 +321,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory~4"></span>
+              <span class="anchor" id="variable-trajectory"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -341,7 +351,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~16"></span>
+              <span class="anchor" id="variable-n_factors"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -356,7 +366,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~25"></span>
+              <span class="anchor" id="variable-n_timepoints"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -371,7 +381,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~87"></span>
+              <span class="anchor" id="variable-ierr~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -389,9 +399,9 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
               <span class="anchor" id="variable-status~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_factors)
             </td>
             <td>::</td>
             <td><strong>status</strong></td>
@@ -407,12 +417,16 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories.html'>normalize_all_trajectories</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status)  
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_alloc"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories_alloc.html'>normalize_all_trajectories_alloc</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Normalize all trajectories across multiple entities
-Input: trajectories(n_factors, n_samples, n_timepoints)
+Input: <code>trajectories(n_factors, n_samples, n_timepoints)</code>
 Normalizes each factor independently across time for each sample</p>
 
   <h4>Arguments</h4>
@@ -428,7 +442,7 @@ Normalizes each factor independently across time for each sample</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~13"></span>
+              <span class="anchor" id="variable-trajectories"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -458,7 +472,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~17"></span>
+              <span class="anchor" id="variable-n_factors~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -473,7 +487,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~25"></span>
+              <span class="anchor" id="variable-n_samples~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -488,7 +502,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~26"></span>
+              <span class="anchor" id="variable-n_timepoints~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -503,7 +517,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~88"></span>
+              <span class="anchor" id="variable-ierr~64"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -521,9 +535,9 @@ Normalizes each factor independently across time for each sample</p>
               <span class="anchor" id="variable-status~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_factors, n_samples)
             </td>
             <td>::</td>
             <td><strong>status</strong></td>
@@ -554,14 +568,14 @@ Normalizes each factor independently across time for each sample</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

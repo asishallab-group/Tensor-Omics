@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_paralog_analysis &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 6.3% of total for modules and submodules.">508 statements</a>
+                 title=" 6.3% of total for modules and submodules.">535 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -197,16 +198,21 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.</p>
+<p>Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
+starting from single genes. At every extension step the candidate is scored against the pattern-specific
+criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
+subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
+extended further, which keeps the combinatorial subset search tractable.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
               </ul>
             </li>
@@ -242,9 +248,9 @@ parameter
             <td>::</td>
             <td><strong>DOSAGE_PATTERN</strong></td>
 <td> =</td>
-                <td>0</td>
+                <td>0_int32</td>
             <td>
-                
+                <p>Code for detecting dosage effect in <a href="../proc/detect_patterns.html">detect_patterns</a></p>
             </td>
         </tr>
         <tr>
@@ -259,9 +265,9 @@ parameter
             <td>::</td>
             <td><strong>SUBFUNC_PATTERN</strong></td>
 <td> =</td>
-                <td>1</td>
+                <td>1_int32</td>
             <td>
-                
+                <p>Code for detecting subfunctionalization in <a href="../proc/detect_patterns.html">detect_patterns</a></p>
             </td>
         </tr>
     </tbody>
@@ -280,7 +286,11 @@ parameter
     <div class="card-header codesum"><span class="anchor" id="proc-mask_get_first_successor_idx"></span> <h3>public pure function <a href='../proc/mask_get_first_successor_idx.html'>mask_get_first_successor_idx</a>(bit_mask) result(idx)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Helper function that returns the index after the last active gene in <code>bit_mask</code>, so the first succeeding gene.</p>
 
   <h4>Arguments</h4>
@@ -325,7 +335,11 @@ parameter
     <div class="card-header codesum"><span class="anchor" id="proc-mask_check_state"></span> <h3>public pure function <a href='../proc/mask_check_state.html'>mask_check_state</a>(bit_mask, i_gene) result(state)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Checks the state of a bit/paralog in <code>bit_mask</code> -&gt; .true. if 1 else .false.</p>
 
   <h4>Arguments</h4>
@@ -356,7 +370,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_gene~14"></span>
+              <span class="anchor" id="variable-i_gene~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -390,7 +404,11 @@ parameter
     <div class="card-header codesum"><span class="anchor" id="proc-detect_neofunctionalization"></span> <h3>public pure subroutine <a href='../proc/detect_neofunctionalization.html'>detect_neofunctionalization</a>(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.</p>
 
   <h4>Arguments</h4>
@@ -421,7 +439,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~15"></span>
+              <span class="anchor" id="variable-n_families~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -436,7 +454,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~4"></span>
+              <span class="anchor" id="variable-genes~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -451,7 +469,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~12"></span>
+              <span class="anchor" id="variable-n_axes~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -466,7 +484,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~16"></span>
+              <span class="anchor" id="variable-gene_to_fam~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -476,12 +494,12 @@ parameter
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-<p>mapping of gene index to family index</p>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~29"></span>
+              <span class="anchor" id="variable-n_genes~40"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -521,12 +539,12 @@ parameter
             <td>::</td>
             <td><strong>neofunc</strong></td>
             <td>
-<p><code>.true.</code> if neofunctionalization has been detected for the respective axes</p>
+<p><code>.true.</code> if neofunctionalization has been detected for the respective axes, always <code>.false.</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~168"></span>
+              <span class="anchor" id="variable-ierr~271"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -536,7 +554,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -547,10 +565,14 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_dosage_effect"></span> <h3>public pure subroutine <a href='../proc/detect_dosage_effect.html'>detect_dosage_effect</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, ierr, max_angle, gain_gamma)  
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_dosage_effect"></span> <h3>public pure subroutine <a href='../proc/detect_dosage_effect.html'>detect_dosage_effect</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Identifies subsets of paralogs with small angle to the <code>ancestor</code> (max_angle) and sum to a magnitude significantly exceeding <code>norm(ancestor)</code> (gain)</p>
 
   <h4>Arguments</h4>
@@ -581,7 +603,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~5"></span>
+              <span class="anchor" id="variable-genes~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -596,7 +618,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~30"></span>
+              <span class="anchor" id="variable-n_genes~41"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -611,7 +633,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~9"></span>
+              <span class="anchor" id="variable-n_dims~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -716,7 +738,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask"></span>
+              <span class="anchor" id="variable-tmp_active_mask"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -724,14 +746,14 @@ parameter
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>active_mask</strong></td>
+            <td><strong>tmp_active_mask</strong></td>
             <td>
 <p>working array to hold the extended subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -739,14 +761,14 @@ parameter
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
 <p>vector used for pruning subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~169"></span>
+              <span class="anchor" id="variable-ierr~272"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -756,7 +778,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
         <tr>
@@ -797,10 +819,14 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_subfunctionalization"></span> <h3>public pure subroutine <a href='../proc/detect_subfunctionalization.html'>detect_subfunctionalization</a>(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, temp_work_array, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_subfunctionalization"></span> <h3>public pure subroutine <a href='../proc/detect_subfunctionalization.html'>detect_subfunctionalization</a>(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Identifies subsets of paralogs exhibiting significant angles to the <code>ancestor</code></p>
 
   <h4>Arguments</h4>
@@ -831,7 +857,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~6"></span>
+              <span class="anchor" id="variable-genes~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -846,7 +872,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~31"></span>
+              <span class="anchor" id="variable-n_genes~42"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -861,7 +887,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~10"></span>
+              <span class="anchor" id="variable-n_dims~28"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -981,7 +1007,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask~2"></span>
+              <span class="anchor" id="variable-tmp_active_mask~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -989,14 +1015,14 @@ parameter
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>active_mask</strong></td>
+            <td><strong>tmp_active_mask</strong></td>
             <td>
 <p>working array to hold the extended subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~2"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1004,7 +1030,7 @@ parameter
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
 <p>vector used for pruning subsets</p>
             </td>
@@ -1041,7 +1067,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_work_array"></span>
+              <span class="anchor" id="variable-tmp_work_array~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1049,14 +1075,14 @@ parameter
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>temp_work_array</strong></td>
+            <td><strong>tmp_work_array</strong></td>
             <td>
 <p>needed for efficient check of minimum value after a certain index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~170"></span>
+              <span class="anchor" id="variable-ierr~273"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1066,7 +1092,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1077,10 +1103,14 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_patterns"></span> <h3>public pure subroutine <a href='../proc/detect_patterns.html'>detect_patterns</a>(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_patterns"></span> <h3>public pure subroutine <a href='../proc/detect_patterns.html'>detect_patterns</a>(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on <code>pattern</code></p>
 
   <h4>Arguments</h4>
@@ -1111,7 +1141,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~7"></span>
+              <span class="anchor" id="variable-genes~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1126,7 +1156,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~32"></span>
+              <span class="anchor" id="variable-n_genes~43"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1141,7 +1171,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~11"></span>
+              <span class="anchor" id="variable-n_dims~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1261,7 +1291,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask~3"></span>
+              <span class="anchor" id="variable-tmp_active_mask~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1269,14 +1299,14 @@ parameter
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>active_mask</strong></td>
+            <td><strong>tmp_active_mask</strong></td>
             <td>
 <p>working array to hold the extended subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~3"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1284,7 +1314,7 @@ parameter
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
 <p>vector used for pruning subsets</p>
             </td>
@@ -1366,7 +1396,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_temp_work_array"></span>
+              <span class="anchor" id="variable-tmp_subfunc_work_array"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1374,14 +1404,14 @@ parameter
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>subfunc_temp_work_array</strong></td>
+            <td><strong>tmp_subfunc_work_array</strong></td>
             <td>
 <p>in subfunctionalization mode needed for efficient check of minimum value after a certain index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~171"></span>
+              <span class="anchor" id="variable-ierr~274"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1391,7 +1421,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1402,10 +1432,14 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-generate_subsets_helper"></span> <h3>public pure subroutine <a href='../proc/generate_subsets_helper.html'>generate_subsets_helper</a>(candidate_mask, filtered_paralogs_mask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, temp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-generate_subsets_helper"></span> <h3>public pure subroutine <a href='../proc/generate_subsets_helper.html'>generate_subsets_helper</a>(candidate_mask, filtered_paralogs_mask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Generates subsets for <code>candidate_mask</code> by extending it with one valid gene.
 Subsets with bad gene constellation will be pruned,
 others will be added to the work array, either as new active subset that will be extended in coming iterations or as result.</p><a href="../proc/generate_subsets_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
@@ -1498,7 +1532,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~8"></span>
+              <span class="anchor" id="variable-genes~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1513,7 +1547,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~33"></span>
+              <span class="anchor" id="variable-n_genes~44"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1528,7 +1562,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~12"></span>
+              <span class="anchor" id="variable-n_dims~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1543,7 +1577,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~4"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~4"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1551,7 +1585,7 @@ others will be added to the work array, either as new active subset that will be
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
 <p>vector used for pruning subsets</p>
             </td>
@@ -1708,7 +1742,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_temp_work_array~2"></span>
+              <span class="anchor" id="variable-tmp_subfunc_work_array~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1716,14 +1750,14 @@ others will be added to the work array, either as new active subset that will be
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>subfunc_temp_work_array</strong></td>
+            <td><strong>tmp_subfunc_work_array</strong></td>
             <td>
 <p>in subfunctionalization mode needed for efficient check of minimum value after a certain index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~172"></span>
+              <span class="anchor" id="variable-ierr~275"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1733,7 +1767,7 @@ others will be added to the work array, either as new active subset that will be
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1747,7 +1781,11 @@ others will be added to the work array, either as new active subset that will be
     <div class="card-header codesum"><span class="anchor" id="proc-fill_array_with_minvals_for_each_idx"></span> <h3>public pure subroutine <a href='../proc/fill_array_with_minvals_for_each_idx.html'>fill_array_with_minvals_for_each_idx</a>(out_arr, src_arr, sorted_src_arr_perm, src_arr_len, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Helper for subfunctionalization pruning. It initializes a working array with each index i holding the min value in subarray src_arr(i:src_arr_len)</p>
 
   <h4>Arguments</h4>
@@ -1823,7 +1861,7 @@ others will be added to the work array, either as new active subset that will be
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~173"></span>
+              <span class="anchor" id="variable-ierr~276"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1833,7 +1871,7 @@ others will be added to the work array, either as new active subset that will be
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1847,7 +1885,11 @@ others will be added to the work array, either as new active subset that will be
     <div class="card-header codesum"><span class="anchor" id="proc-take_active_mask_helper"></span> <h3>public pure subroutine <a href='../proc/take_active_mask_helper.html'>take_active_mask_helper</a>(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, active_mask, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>For memory efficiency this subroutine helps holding different kinds of masks in a single array.
 To achieve this, <code>subsets</code> has this structure: [...results, ...active_masks, ...new_active_masks]
 This routine removes an active mask from the <code>subsets</code> array and returns it in <code>active_mask</code>.</p>
@@ -1955,7 +1997,7 @@ This routine removes an active mask from the <code>subsets</code> array and retu
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask~4"></span>
+              <span class="anchor" id="variable-active_mask"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1970,7 +2012,7 @@ This routine removes an active mask from the <code>subsets</code> array and retu
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~174"></span>
+              <span class="anchor" id="variable-ierr~277"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1980,7 +2022,7 @@ This routine removes an active mask from the <code>subsets</code> array and retu
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1994,7 +2036,11 @@ This routine removes an active mask from the <code>subsets</code> array and retu
     <div class="card-header codesum"><span class="anchor" id="proc-add_to_results_helper"></span> <h3>public pure subroutine <a href='../proc/add_to_results_helper.html'>add_to_results_helper</a>(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, result, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>For memory efficiency this subroutine helps holding different kinds of masks in a single array.
 To achieve this, <code>subsets</code> has this structure: [...results, ...active_masks, ...new_active_masks]
 This routine adds a result mask to <code>subsets</code> array.</p>
@@ -2102,7 +2148,7 @@ This routine adds a result mask to <code>subsets</code> array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-result~3"></span>
+              <span class="anchor" id="variable-result"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2117,7 +2163,7 @@ This routine adds a result mask to <code>subsets</code> array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~175"></span>
+              <span class="anchor" id="variable-ierr~278"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2127,7 +2173,7 @@ This routine adds a result mask to <code>subsets</code> array.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2141,7 +2187,11 @@ This routine adds a result mask to <code>subsets</code> array.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-add_new_active_mask_helper"></span> <h3>public pure subroutine <a href='../proc/add_new_active_mask_helper.html'>add_new_active_mask_helper</a>(subsets, n_mask_chunks, n_subsets, n_results, n_active_masks, n_new_active_masks, new_active_mask, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>For memory efficiency this subroutine helps holding different kinds of masks in a single array.
 To achieve this, <code>subsets</code> has this structure: [...results, ...active_masks, ...new_active_masks]
 This routine adds a new active mask to the <code>subsets</code> array.</p>
@@ -2264,7 +2314,7 @@ This routine adds a new active mask to the <code>subsets</code> array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~176"></span>
+              <span class="anchor" id="variable-ierr~279"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2274,7 +2324,7 @@ This routine adds a new active mask to the <code>subsets</code> array.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2288,7 +2338,11 @@ This routine adds a new active mask to the <code>subsets</code> array.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-mask_chunk_count"></span> <h3>public pure subroutine <a href='../proc/mask_chunk_count.html'>mask_chunk_count</a>(n_genes, count)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>This subroutine easily determines the needed chunk count for subset bit masks, as an integer has only 32 bits.</p>
 
   <h4>Arguments</h4>
@@ -2304,7 +2358,7 @@ This routine adds a new active mask to the <code>subsets</code> array.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~45"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2343,7 +2397,11 @@ This routine adds a new active mask to the <code>subsets</code> array.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-filter_paralogs_by_pattern_subfunctionalization"></span> <h3>public pure subroutine <a href='../proc/filter_paralogs_by_pattern_subfunctionalization.html'>filter_paralogs_by_pattern_subfunctionalization</a>(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>This subroutine prefilters the genes for subfunctionalization,
 as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.</p>
 
@@ -2375,7 +2433,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold"></span>
+              <span class="anchor" id="variable-threshold~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2390,7 +2448,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~35"></span>
+              <span class="anchor" id="variable-n_genes~46"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2405,7 +2463,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~16"></span>
+              <span class="anchor" id="variable-n_families~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2420,7 +2478,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~17"></span>
+              <span class="anchor" id="variable-gene_to_fam~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2465,7 +2523,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~177"></span>
+              <span class="anchor" id="variable-ierr~280"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2475,7 +2533,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2489,7 +2547,11 @@ as genes that are already too close in angle to the ancestor don't match the pat
     <div class="card-header codesum"><span class="anchor" id="proc-filter_paralogs_by_pattern_dosage_effect"></span> <h3>public pure subroutine <a href='../proc/filter_paralogs_by_pattern_dosage_effect.html'>filter_paralogs_by_pattern_dosage_effect</a>(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>This subroutine prefilters the genes for dosage effect,
 as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.</p>
 
@@ -2521,7 +2583,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~2"></span>
+              <span class="anchor" id="variable-threshold~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2536,7 +2598,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~36"></span>
+              <span class="anchor" id="variable-n_genes~47"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2551,7 +2613,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~17"></span>
+              <span class="anchor" id="variable-n_families~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2566,7 +2628,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~18"></span>
+              <span class="anchor" id="variable-gene_to_fam~28"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2611,7 +2673,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~178"></span>
+              <span class="anchor" id="variable-ierr~281"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2621,7 +2683,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2635,7 +2697,11 @@ as genes that are already too distant in angle to the ancestor don't match the p
     <div class="card-header codesum"><span class="anchor" id="proc-filter_paralogs_by_pattern"></span> <h3>public pure subroutine <a href='../proc/filter_paralogs_by_pattern.html'>filter_paralogs_by_pattern</a>(pattern, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.</p>
 
   <h4>Arguments</h4>
@@ -2681,7 +2747,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~3"></span>
+              <span class="anchor" id="variable-threshold~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2696,7 +2762,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~37"></span>
+              <span class="anchor" id="variable-n_genes~48"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2711,7 +2777,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~18"></span>
+              <span class="anchor" id="variable-n_families~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2726,7 +2792,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~19"></span>
+              <span class="anchor" id="variable-gene_to_fam~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2771,7 +2837,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~179"></span>
+              <span class="anchor" id="variable-ierr~282"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2781,7 +2847,7 @@ as genes that are already too distant in angle to the ancestor don't match the p
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2795,7 +2861,11 @@ as genes that are already too distant in angle to the ancestor don't match the p
     <div class="card-header codesum"><span class="anchor" id="proc-calc_work_arr_paralog_subsets_size"></span> <h3>public pure subroutine <a href='../proc/calc_work_arr_paralog_subsets_size.html'>calc_work_arr_paralog_subsets_size</a>(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>The <code>detect_*</code> subroutines need a work array for the to be tested subsets.
 In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
 This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.</p><a href="../proc/calc_work_arr_paralog_subsets_size.html" class="pull-right"><emph>Read more&hellip;</emph></a>
@@ -2828,7 +2898,7 @@ This is the reason why the work array holds the results as well, as all subsets 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~38"></span>
+              <span class="anchor" id="variable-n_genes~49"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2888,7 +2958,7 @@ This is the reason why the work array holds the results as well, as all subsets 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~180"></span>
+              <span class="anchor" id="variable-ierr~283"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2912,7 +2982,11 @@ This is the reason why the work array holds the results as well, as all subsets 
     <div class="card-header codesum"><span class="anchor" id="proc-mask_set_state"></span> <h3>public pure subroutine <a href='../proc/mask_set_state.html'>mask_set_state</a>(bit_mask, i_gene, state, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sets the state of a bit/gene in <code>bit_mask</code></p>
 
   <h4>Arguments</h4>
@@ -2943,7 +3017,7 @@ This is the reason why the work array holds the results as well, as all subsets 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_gene~13"></span>
+              <span class="anchor" id="variable-i_gene~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2973,7 +3047,7 @@ This is the reason why the work array holds the results as well, as all subsets 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~181"></span>
+              <span class="anchor" id="variable-ierr~284"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2983,7 +3057,7 @@ This is the reason why the work array holds the results as well, as all subsets 
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>error code</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -3009,14 +3083,14 @@ This is the reason why the work array holds the results as well, as all subsets 
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

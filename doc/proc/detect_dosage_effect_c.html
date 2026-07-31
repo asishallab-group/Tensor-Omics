@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>detect_dosage_effect_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine detect_dosage_effect_c(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, max_angle, gain_gamma, ierr) bind(C, name="detect_dosage_effect_c")  
+    <h2>pure subroutine detect_dosage_effect_c(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr) bind(C, name="detect_dosage_effect_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,9 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -197,7 +198,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~10"></span>
+              <span class="anchor" id="variable-genes~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -212,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~40"></span>
+              <span class="anchor" id="variable-n_genes~51"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -227,7 +228,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~13"></span>
+              <span class="anchor" id="variable-n_dims~31"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -315,7 +316,7 @@
                 <p>working array to hold bitmask encoded subsets for detection.</p>
 <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>Each bitmask is built of 32 bit chunks. <code>(n_genes + 31) / 32</code> is equivalent to <code>ceil(n_genes / 32)</code> and represents the number of chunks</p>
+<p>Each bitmask is built of 32 bit chunks. <code>(n_genes + 31) / 32</code> is equivalent to <code>ceil(n_genes / 32.0_real64)</code> and represents the number of chunks</p>
 </div>
             </td>
         </tr>
@@ -336,7 +337,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask~5"></span>
+              <span class="anchor" id="variable-tmp_active_mask~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -344,14 +345,14 @@
               dimension(n_mask_chunks), target
             </td>
             <td>::</td>
-            <td><strong>active_mask</strong></td>
+            <td><strong>tmp_active_mask</strong></td>
             <td>
                 <p>working array to hold the extended subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~5"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -359,7 +360,7 @@
               dimension(n_dims), target
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
                 <p>vector used for pruning subsets</p>
             </td>
@@ -396,7 +397,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~184"></span>
+              <span class="anchor" id="variable-ierr~287"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -406,7 +407,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -436,14 +437,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

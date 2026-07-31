@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>euclidean_distance_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">10 statements</a>
+                 title=" 0.2% of total for procedures.">30 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine euclidean_distance_c(vec1, vec2, d, result) bind(C, name="euclidean_distance_c")  
+    <h2>pure subroutine euclidean_distance_c(vec1, vec2, n_elements, result, ierr) bind(C, name="euclidean_distance_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,8 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></li>
               </ul>
             </li>
         </ul>
@@ -182,37 +184,37 @@ Exposes euclidean_distance to C via iso_c_binding types.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec1~2"></span>
+              <span class="anchor" id="variable-vec1~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_elements), target
             </td>
             <td>::</td>
-            <td><strong>vec1</strong>(d)</td>
+            <td><strong>vec1</strong></td>
             <td>
                 <p>First expression vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec2~2"></span>
+              <span class="anchor" id="variable-vec2~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_elements), target
             </td>
             <td>::</td>
-            <td><strong>vec2</strong>(d)</td>
+            <td><strong>vec2</strong></td>
             <td>
                 <p>Second expression vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-d~5"></span>
+              <span class="anchor" id="variable-n_elements~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -220,14 +222,14 @@ Exposes euclidean_distance to C via iso_c_binding types.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>d</strong></td>
+            <td><strong>n_elements</strong></td>
             <td>
                 <p>Dimension of both vectors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-result~2"></span>
+              <span class="anchor" id="variable-result~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -238,6 +240,21 @@ Exposes euclidean_distance to C via iso_c_binding types.</p>
             <td><strong>result</strong></td>
             <td>
                 <p>Output scalar distance</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~315"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -267,14 +284,14 @@ Exposes euclidean_distance to C via iso_c_binding types.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

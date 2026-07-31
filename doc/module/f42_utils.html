@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>f42_utils &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 9.2% of total for modules and submodules.">740 statements</a>
+                 title="10.4% of total for modules and submodules.">885 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -131,6 +132,7 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_utils.html#variable-pi">PI</a>
             <a class="list-group-item" href="../module/f42_utils.html#variable-eps">EPS</a>
+            <a class="list-group-item" href="../module/f42_utils.html#variable-log_2">LOG_2</a>
         </div>
       </div>
     </div>
@@ -152,6 +154,9 @@
             <a class="list-group-item" href="../module/f42_utils.html#interface-sort_array_heapsort">sort_array_heapsort</a>
             <a class="list-group-item" href="../module/f42_utils.html#interface-shuffle_vector">shuffle_vector</a>
             <a class="list-group-item" href="../module/f42_utils.html#interface-clamp">clamp</a>
+            <a class="list-group-item" href="../module/f42_utils.html#interface-operator%28.lessthan.%29">operator(.lessthan.)</a>
+            <a class="list-group-item" href="../module/f42_utils.html#interface-operator%28.greaterthan.%29">operator(.greaterthan.)</a>
+            <a class="list-group-item" href="../module/f42_utils.html#interface-operator%28.isclose.%29">operator(.isclose.)</a>
         </div>
       </div>
     </div>
@@ -165,6 +170,10 @@
       </a>
       <div id="funcs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_utils.html#proc-mean">mean</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-std_dev">std_dev</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-binary_search_insertion">binary_search_insertion</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-binary_search">binary_search</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-clamp_real">clamp_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-clamp_int">clamp_int</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-rand_range">rand_range</a>
@@ -173,9 +182,11 @@
             <a class="list-group-item" href="../module/f42_utils.html#proc-is_close">is_close</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-next_power_of_two">next_power_of_two</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-radians">radians</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-degrees">degrees</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-norm">norm</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-real_less">real_less</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-real_greater">real_greater</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile_rank">calc_percentile_rank</a>
         </div>
       </div>
     </div>
@@ -187,6 +198,7 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_utils.html#proc-init_perm">init_perm</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-logx">logx</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-init_random">init_random</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-shuffle_vector_real">shuffle_vector_real</a>
@@ -198,23 +210,29 @@
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_integer">sort_integer</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_character">sort_character</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_real_heapsort">sort_real_heapsort</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-sort_real_heapsort_expl_size">sort_real_heapsort_expl_size</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_integer_heapsort">sort_integer_heapsort</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-sort_character_heapsort">sort_character_heapsort</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-quicksort_real">quicksort_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-quicksort_int">quicksort_int</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-quicksort_char">quicksort_char</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-heapsort_real">heapsort_real</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-heapify_real">heapify_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-heapsort_integer">heapsort_integer</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-heapify_integer">heapify_integer</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-heapsort_character">heapsort_character</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-heapify_character">heapify_character</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-swap_int">swap_int</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-swap_real">swap_real</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-which">which</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-loess_smooth_2d">loess_smooth_2d</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-compute_edf">compute_edf</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-compute_edf_helper">compute_edf_helper</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-compute_edf_alloc">compute_edf_alloc</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile">calc_percentile</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile_helper">calc_percentile_helper</a>
             <a class="list-group-item" href="../module/f42_utils.html#proc-calc_percentile_alloc">calc_percentile_alloc</a>
+            <a class="list-group-item" href="../module/f42_utils.html#proc-compute_scaled_distance_quantile">compute_scaled_distance_quantile</a>
         </div>
       </div>
     </div>
@@ -241,10 +259,10 @@ This module provides general-purpose utility functions for data analysis, to be 
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -281,7 +299,7 @@ parameter
 <td> =</td>
                 <td>4.0_real64*atan(1.0_real64)</td>
             <td>
-                
+                <p>The mathematical constant <script type="math/tex"> \pi </script>.</p>
             </td>
         </tr>
         <tr>
@@ -298,7 +316,24 @@ parameter
 <td> =</td>
                 <td>epsilon(1.0_real64)</td>
             <td>
-                
+                <p>Machine epsilon for <code>real64</code>, the base tolerance used by <a href="../proc/is_close.html">is_close</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-log_2"></span>
+              real(kind=real64),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>LOG_2</strong></td>
+<td> =</td>
+                <td>log(2.0_real64)</td>
+            <td>
+                <p>Natural logarithm of 2, used to compute base-2 logarithms in <a href="../proc/logx.html">logx</a>.</p>
             </td>
         </tr>
     </tbody>
@@ -316,13 +351,22 @@ parameter
       <h3>public        interface <a href='../interface/sort_array.html'>sort_array</a> 
       </h3>
     </div>
+      <div class="card-body">
+        <p>Generic indirect (permutation-based) sort, dispatches on the array's element type.
+See <a href="../proc/sort_real.html">sort_real</a>, <a href="../proc/sort_integer.html">sort_integer</a>,
+<a href="../proc/sort_character.html">sort_character</a> for the implementations. Uses quicksort.</p>
+      </div>
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
-    public pure subroutine <a href='../proc/sort_real.html'>sort_real</a>(array, perm, stack_left, stack_right)  
+    public pure subroutine <a href='../proc/sort_real.html'>sort_real</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a real array indirectly using quicksort.
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
 
@@ -354,7 +398,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~11"></span>
+              <span class="anchor" id="variable-perm~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -369,30 +413,30 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~9"></span>
+              <span class="anchor" id="variable-tmp_stack_left"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~9"></span>
+              <span class="anchor" id="variable-tmp_stack_right"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -404,10 +448,14 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
           </li>
           <li class="list-group-item">
                 <h3>
-    public pure subroutine <a href='../proc/sort_integer.html'>sort_integer</a>(array, perm, stack_left, stack_right)  
+    public pure subroutine <a href='../proc/sort_integer.html'>sort_integer</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort an integer array indirectly using quicksort.
 Similar to <code>sort_real</code>, but for integer input.</p>
 
@@ -439,7 +487,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~12"></span>
+              <span class="anchor" id="variable-perm~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -454,30 +502,30 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~10"></span>
+              <span class="anchor" id="variable-tmp_stack_left~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~10"></span>
+              <span class="anchor" id="variable-tmp_stack_right~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -489,10 +537,14 @@ Similar to <code>sort_real</code>, but for integer input.</p>
           </li>
           <li class="list-group-item">
                 <h3>
-    public pure subroutine <a href='../proc/sort_character.html'>sort_character</a>(array, perm, stack_left, stack_right)  
+    public pure subroutine <a href='../proc/sort_character.html'>sort_character</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a character array indirectly using quicksort.
 Uses lexicographic ordering and permutation vector sorting.</p>
 
@@ -524,7 +576,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~13"></span>
+              <span class="anchor" id="variable-perm~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -539,30 +591,30 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~11"></span>
+              <span class="anchor" id="variable-tmp_stack_left~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~11"></span>
+              <span class="anchor" id="variable-tmp_stack_right~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -581,13 +633,23 @@ Uses lexicographic ordering and permutation vector sorting.</p>
       <h3>public        interface <a href='../interface/sort_array_heapsort.html'>sort_array_heapsort</a> 
       </h3>
     </div>
+      <div class="card-body">
+        <p>Generic indirect (permutation-based) heapsort, dispatches on the array's element type.
+Prefer this over <a href="../interface/sort_array.html">sort_array</a> when a worst-case O(n log n)
+guarantee is needed (quicksort's manual-stack partitioning can degrade on adversarial input),
+or when the temporary quicksort stack workspace should be avoided.</p>
+      </div>
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
     public pure subroutine <a href='../proc/sort_real_heapsort.html'>sort_real_heapsort</a>(array, perm)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a real array indirectly using heapsort.
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
 
@@ -607,9 +669,9 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
               <span class="anchor" id="variable-array~7"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -619,12 +681,12 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~14"></span>
+              <span class="anchor" id="variable-perm~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -642,7 +704,11 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     public pure subroutine <a href='../proc/sort_integer_heapsort.html'>sort_integer_heapsort</a>(array, perm)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort an integer array indirectly using heapsort.
 Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
 
@@ -659,12 +725,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~8"></span>
+              <span class="anchor" id="variable-array~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -674,12 +740,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~15"></span>
+              <span class="anchor" id="variable-perm~11"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -697,7 +763,11 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     public pure subroutine <a href='../proc/sort_character_heapsort.html'>sort_character_heapsort</a>(array, perm)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a character array indirectly using heapsort.
 Uses lexicographic ordering and permutation vector sorting.</p>
 
@@ -714,12 +784,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~9"></span>
+              <span class="anchor" id="variable-array~10"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -729,7 +799,66 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~16"></span>
+              <span class="anchor" id="variable-perm~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(:)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+          </li>
+          <li class="list-group-item">
+                <h3>
+    public pure subroutine <a href='../proc/sort_real_heapsort_expl_size.html'>sort_real_heapsort_expl_size</a>(array, perm, n)  
+
+    </h3>
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Sort a real explicit-size array indirectly using heapsort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(n)</td>
+            <td>
+<p>Real input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -737,9 +866,24 @@ Uses lexicographic ordering and permutation vector sorting.</p>
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n</strong></td>
+            <td>
+<p>Size of <code>array</code></p>
             </td>
         </tr>
     </tbody>
@@ -756,13 +900,20 @@ Uses lexicographic ordering and permutation vector sorting.</p>
       <h3>public        interface <a href='../interface/shuffle_vector.html'>shuffle_vector</a> 
       </h3>
     </div>
+      <div class="card-body">
+        <p>Generic in-place Fisher-Yates shuffle, dispatches on the vector's element type.</p>
+      </div>
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
     public  subroutine <a href='../proc/shuffle_vector_real.html'>shuffle_vector_real</a>(vec)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
 
   <h4>Arguments</h4>
@@ -778,7 +929,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~6"></span>
+              <span class="anchor" id="variable-vec~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -801,7 +952,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     public  subroutine <a href='../proc/shuffle_vector_int.html'>shuffle_vector_int</a>(vec)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
 
   <h4>Arguments</h4>
@@ -817,7 +972,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~7"></span>
+              <span class="anchor" id="variable-vec~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout),</td>
@@ -844,13 +999,20 @@ Uses lexicographic ordering and permutation vector sorting.</p>
       <h3>public        interface <a href='../interface/clamp.html'>clamp</a> 
       </h3>
     </div>
+      <div class="card-body">
+        <p>Generic clamp of a scalar into <code>[min_val, max_val]</code>, dispatches on the value's type.</p>
+      </div>
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
     public pure function <a href='../proc/clamp_real.html'>clamp_real</a>(val, min_val, max_val) result(clamped)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
 
   <h4>Arguments</h4>
@@ -924,7 +1086,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     public pure function <a href='../proc/clamp_int.html'>clamp_int</a>(val, min_val, max_val) result(clamped)  
 
     </h3>
-    
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
 
   <h4>Arguments</h4>
@@ -996,6 +1162,234 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     </ul>
   </div>
 
+              <div class="card">
+    <div class="card-header bg-light codesum">
+      <span class="anchor" id="interface-operator%28.lessthan.%29"></span>
+      <h3>public        interface <a href='../interface/operator(.lessthan.).html'>operator(.lessthan.)</a> 
+      </h3>
+    </div>
+      <div class="card-body">
+        <p>NaN-aware <code>&lt;</code> comparison operator for <code>real(real64)</code>; see <a href="../proc/real_less.html">real_less</a>.</p>
+      </div>
+    <ul class="list-group">
+          <li class="list-group-item">
+                <h3>
+    public pure function <a href='../proc/real_less.html'>real_less</a>(lhs, rhs)  
+
+    </h3>
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lhs"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lhs</strong></td>
+            <td>
+<p>left side of the comparison <code>lhs &lt; rhs</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rhs"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>rhs</strong></td>
+            <td>
+<p>right side of the comparison <code>lhs &lt; rhs</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>logical</small>
+    </h4>
+    
+
+          </li>
+    </ul>
+  </div>
+
+              <div class="card">
+    <div class="card-header bg-light codesum">
+      <span class="anchor" id="interface-operator%28.greaterthan.%29"></span>
+      <h3>public        interface <a href='../interface/operator(.greaterthan.).html'>operator(.greaterthan.)</a> 
+      </h3>
+    </div>
+      <div class="card-body">
+        <p>NaN-aware <code>&gt;</code> comparison operator for <code>real(real64)</code>; see <a href="../proc/real_greater.html">real_greater</a>.</p>
+      </div>
+    <ul class="list-group">
+          <li class="list-group-item">
+                <h3>
+    public pure function <a href='../proc/real_greater.html'>real_greater</a>(lhs, rhs)  
+
+    </h3>
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lhs~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lhs</strong></td>
+            <td>
+<p>left side of the comparison <code>lhs &gt; rhs</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rhs~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>rhs</strong></td>
+            <td>
+<p>right side of the comparison <code>lhs &gt; rhs</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>logical</small>
+    </h4>
+    
+
+          </li>
+    </ul>
+  </div>
+
+              <div class="card">
+    <div class="card-header bg-light codesum">
+      <span class="anchor" id="interface-operator%28.isclose.%29"></span>
+      <h3>public        interface <a href='../interface/operator(.isclose.).html'>operator(.isclose.)</a> 
+      </h3>
+    </div>
+      <div class="card-body">
+        <p>Tolerance-based approximate equality operator for <code>real(real64)</code>; see <a href="../proc/is_close.html">is_close</a>.</p>
+      </div>
+    <ul class="list-group">
+          <li class="list-group-item">
+                <h3>
+    public pure function <a href='../proc/is_close.html'>is_close</a>(a, b)  
+
+    </h3>
+        <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Checks if two values are close to eachother, using a tolerance of <code>max(1d-12, EPS*max(abs(a), abs(b)))</code> with <code>EPS=epsilon(1.0_real64)</code></p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-a"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>a</strong></td>
+            <td>
+<p>First variable of comparison <code>a==b</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-b"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>b</strong></td>
+            <td>
+<p>Second variable of comparison <code>a==b</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>logical</small>
+    </h4>
+    
+
+          </li>
+    </ul>
+  </div>
+
         </section>
         <br>
 
@@ -1004,10 +1398,315 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         <section>
           <h2>Functions</h2>
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-mean"></span> <h3>public pure function <a href='../proc/mean.html'>mean</a>(vec)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculates the arithmetic mean of vector</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Vector to compute the mean value from</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-std_dev"></span> <h3>public pure function <a href='../proc/std_dev.html'>std_dev</a>(vec, do_bessel_correction)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculates the standard deviation of vector, with or without Bessel's correction</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>Vector to compute the standard deviation value from</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-do_bessel_correction"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>do_bessel_correction</strong></td>
+            <td>
+<p>Tells whether to apply the bessel's correction or not, default: <code>.false.</code></p><a href="../proc/std_dev.html#variable-do_bessel_correction" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-binary_search_insertion"></span> <h3>public pure function <a href='../proc/binary_search_insertion.html'>binary_search_insertion</a>(arr, perm, value, lower_idx, upper_idx) result(idx)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Function to find the position to place a value in a sorted array using binary search</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arr~55"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:), contiguous
+            </td>
+            <td>::</td>
+            <td><strong>arr</strong></td>
+            <td>
+<p>Array of values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(size(arr, kind=int32))
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Sorting permutation of <code>arr</code>, NaNs sorted to the end</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>Value to find</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lower_idx"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lower_idx</strong></td>
+            <td>
+<p>The lower index to start searching in the array, default <code>1</code> -&gt; searching in <code>perm(lower_idx:upper_idx)</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-upper_idx"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>upper_idx</strong></td>
+            <td>
+<p>The upper index to stop searching in the array, default <code>size(arr)</code> -&gt; searching in <code>perm(lower_idx:upper_idx)</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-binary_search"></span> <h3>public pure function <a href='../proc/binary_search.html'>binary_search</a>(arr, perm, value) result(idx)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Function to find a value in a sorted array using binary search. Returns -1 if not found</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arr~56"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:), contiguous
+            </td>
+            <td>::</td>
+            <td><strong>arr</strong></td>
+            <td>
+<p>Array of values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(size(arr, kind=int32))
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Sorting permutation of <code>arr</code>, NaNs sorted to the end</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>Value to find</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-clamp_real"></span> <h3>public pure function <a href='../proc/clamp_real.html'>clamp_real</a>(val, min_val, max_val) result(clamped)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
 
   <h4>Arguments</h4>
@@ -1082,7 +1781,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-clamp_int"></span> <h3>public pure function <a href='../proc/clamp_int.html'>clamp_int</a>(val, min_val, max_val) result(clamped)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Clamps a value into a range <code>min_val &lt;= val &lt;= max_val</code>. If <code>max_val &lt; min_val</code>, <code>min_val</code> is returned</p>
 
   <h4>Arguments</h4>
@@ -1157,7 +1860,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-rand_range"></span> <h3>public  function <a href='../proc/rand_range.html'>rand_range</a>(min, max) result(rand_num)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Returns a random real number <code>min &lt;= rand_num &lt; max</code>. If <code>min &gt; max</code>, it will be <code>max &lt;= rand_num &lt; min</code>. If <code>min == max</code>, it will be <code>min</code>.</p>
 
   <h4>Arguments</h4>
@@ -1183,7 +1890,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
             <td>::</td>
             <td><strong>min</strong></td>
             <td>
-
+<p>Lower bound</p>
             </td>
         </tr>
         <tr>
@@ -1198,7 +1905,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
             <td>::</td>
             <td><strong>max</strong></td>
             <td>
-
+<p>Upper bound</p>
             </td>
         </tr>
     </tbody>
@@ -1217,8 +1924,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-below"></span> <h3>public pure function <a href='../proc/below.html'>below</a>(val)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus <code>below(0.0_real64)==-tiny(1.0_real64)</code> and <code>below(tiny(1.0_real64))==0.0_real64</code></p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1262,8 +1973,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-above"></span> <h3>public pure function <a href='../proc/above.html'>above</a>(val)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus <code>above(0.0_real64)==tiny(1.0_real64)</code> and <code>above(-tiny(1.0_real64))==0.0_real64</code></p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1307,8 +2022,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-is_close"></span> <h3>public pure function <a href='../proc/is_close.html'>is_close</a>(a, b)  
 </h3></div>
     <div class="card-body">
-          
-  
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Checks if two values are close to eachother, using a tolerance of <code>max(1d-12, EPS*max(abs(a), abs(b)))</code> with <code>EPS=epsilon(1.0_real64)</code></p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1323,7 +2042,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~2"></span>
+              <span class="anchor" id="variable-a"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1333,12 +2052,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
             <td>::</td>
             <td><strong>a</strong></td>
             <td>
-<p>First variable of comparison a==b</p>
+<p>First variable of comparison <code>a==b</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~2"></span>
+              <span class="anchor" id="variable-b"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1348,7 +2067,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
             <td>::</td>
             <td><strong>b</strong></td>
             <td>
-<p>Second variable of comparison a==b</p>
+<p>Second variable of comparison <code>a==b</code></p>
             </td>
         </tr>
     </tbody>
@@ -1367,7 +2086,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-next_power_of_two"></span> <h3>public  function <a href='../proc/next_power_of_two.html'>next_power_of_two</a>(n) result(power)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Find the next power of two greater than or equal to n</p>
 
   <h4>Arguments</h4>
@@ -1383,7 +2106,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~5"></span>
+              <span class="anchor" id="variable-n~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1412,7 +2135,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-radians"></span> <h3>public pure function <a href='../proc/radians.html'>radians</a>(degrees)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Returns the given degrees in positive radian value <script type="math/tex"> -90^{\circ} \Rightarrow \frac{3\cdot \pi}{2}, \text{not} -\frac{\pi}{2} </script>
 </p>
 
@@ -1455,10 +2182,64 @@ Uses lexicographic ordering and permutation vector sorting.</p>
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-degrees"></span> <h3>public pure function <a href='../proc/degrees.html'>degrees</a>(radians)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Returns the given radians in positive degree value <script type="math/tex"> -\frac{\pi}{2} \Rightarrow 270^{\circ}, \text{not} -90^{\circ} </script>
+</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radians~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>radians</strong></td>
+            <td>
+<p>radians to be converted</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-norm"></span> <h3>public pure function <a href='../proc/norm.html'>norm</a>(vector)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Calculates the euclidean norm of a vector</p>
 
   <h4>Arguments</h4>
@@ -1474,7 +2255,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~3"></span>
+              <span class="anchor" id="variable-vector"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1500,13 +2281,15 @@ Uses lexicographic ordering and permutation vector sorting.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-real_less"></span> <h3>public pure function <a href='../proc/real_less.html'>real_less</a>(a, b)  
+    <div class="card-header codesum"><span class="anchor" id="proc-real_less"></span> <h3>public pure function <a href='../proc/real_less.html'>real_less</a>(lhs, rhs)  
 </h3></div>
     <div class="card-body">
-          
-  <p>NaN-aware less-than comparison for real(real64).
-Finite values are always considered smaller than NaN.
-Two NaNs are treated as equal (neither less nor greater).</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1521,7 +2304,7 @@ Two NaNs are treated as equal (neither less nor greater).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~5"></span>
+              <span class="anchor" id="variable-lhs"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1529,14 +2312,14 @@ Two NaNs are treated as equal (neither less nor greater).</p>
               
             </td>
             <td>::</td>
-            <td><strong>a</strong></td>
+            <td><strong>lhs</strong></td>
             <td>
-
+<p>left side of the comparison <code>lhs &lt; rhs</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~5"></span>
+              <span class="anchor" id="variable-rhs"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1544,9 +2327,9 @@ Two NaNs are treated as equal (neither less nor greater).</p>
               
             </td>
             <td>::</td>
-            <td><strong>b</strong></td>
+            <td><strong>rhs</strong></td>
             <td>
-
+<p>right side of the comparison <code>lhs &lt; rhs</code></p>
             </td>
         </tr>
     </tbody>
@@ -1562,13 +2345,15 @@ Two NaNs are treated as equal (neither less nor greater).</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-real_greater"></span> <h3>public pure function <a href='../proc/real_greater.html'>real_greater</a>(a, b)  
+    <div class="card-header codesum"><span class="anchor" id="proc-real_greater"></span> <h3>public pure function <a href='../proc/real_greater.html'>real_greater</a>(lhs, rhs)  
 </h3></div>
     <div class="card-body">
-          
-  <p>NaN-aware greater-than comparison for real(real64).
-NaN is treated as greater than any finite number.
-Two NaNs are treated as equal.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1583,7 +2368,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~6"></span>
+              <span class="anchor" id="variable-lhs~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1591,14 +2376,14 @@ Two NaNs are treated as equal.</p>
               
             </td>
             <td>::</td>
-            <td><strong>a</strong></td>
+            <td><strong>lhs</strong></td>
             <td>
-
+<p>left side of the comparison <code>lhs &gt; rhs</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~6"></span>
+              <span class="anchor" id="variable-rhs~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1606,9 +2391,9 @@ Two NaNs are treated as equal.</p>
               
             </td>
             <td>::</td>
-            <td><strong>b</strong></td>
+            <td><strong>rhs</strong></td>
             <td>
-
+<p>right side of the comparison <code>lhs &gt; rhs</code></p>
             </td>
         </tr>
     </tbody>
@@ -1617,6 +2402,70 @@ Two NaNs are treated as equal.</p>
     <h4>
     Return Value
     <small>logical</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_rank"></span> <h3>public pure function <a href='../proc/calc_percentile_rank.html'>calc_percentile_rank</a>(percentile, n) result(rank)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculate the fractional index using linear interpolation method</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>percentile</strong></td>
+            <td>
+<p>desired percentile (0-100)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n</strong></td>
+            <td>
+<p>Sample size</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
     </h4>
     
 
@@ -1629,10 +2478,58 @@ Two NaNs are treated as equal.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-init_perm"></span> <h3>public pure subroutine <a href='../proc/init_perm.html'>init_perm</a>(perm)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Initializes a permutation vector with ascending indices</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Permutation vector to initialize with indices</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-logx"></span> <h3>public pure subroutine <a href='../proc/logx.html'>logx</a>(val, base, exponent, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute logarithm for any base</p>
 
   <h4>Arguments</h4>
@@ -1693,7 +2590,7 @@ Two NaNs are treated as equal.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~286"></span>
+              <span class="anchor" id="variable-ierr~208"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1717,7 +2614,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-init_random"></span> <h3>public  subroutine <a href='../proc/init_random.html'>init_random</a>(seed)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Initialize Fortran's random number generator</p>
 
   <h4>Arguments</h4>
@@ -1757,7 +2658,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-shuffle_vector_real"></span> <h3>public  subroutine <a href='../proc/shuffle_vector_real.html'>shuffle_vector_real</a>(vec)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
 
   <h4>Arguments</h4>
@@ -1773,7 +2678,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~6"></span>
+              <span class="anchor" id="variable-vec~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1797,7 +2702,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-shuffle_vector_int"></span> <h3>public  subroutine <a href='../proc/shuffle_vector_int.html'>shuffle_vector_int</a>(vec)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Shuffle a vector in-place, using Fisher-Yates shuffle</p>
 
   <h4>Arguments</h4>
@@ -1813,7 +2722,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~7"></span>
+              <span class="anchor" id="variable-vec~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout),</td>
@@ -1837,7 +2746,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-angle_between"></span> <h3>public pure subroutine <a href='../proc/angle_between.html'>angle_between</a>(v1, v2, n_dims, angle, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Computes the radian angle between two vectors</p>
 
   <h4>Arguments</h4>
@@ -1853,7 +2766,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~3"></span>
+              <span class="anchor" id="variable-v1"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1868,7 +2781,7 @@ Two NaNs are treated as equal.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~3"></span>
+              <span class="anchor" id="variable-v2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1883,7 +2796,7 @@ Two NaNs are treated as equal.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~21"></span>
+              <span class="anchor" id="variable-n_dims~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1913,7 +2826,7 @@ Two NaNs are treated as equal.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~287"></span>
+              <span class="anchor" id="variable-ierr~209"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1937,7 +2850,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-add_vector"></span> <h3>public pure subroutine <a href='../proc/add_vector.html'>add_vector</a>(vector, to_be_added)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Adds two vectors in-place</p>
 
   <h4>Arguments</h4>
@@ -1953,7 +2870,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~4"></span>
+              <span class="anchor" id="variable-vector~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1992,7 +2909,11 @@ Two NaNs are treated as equal.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-subtract_vector"></span> <h3>public pure subroutine <a href='../proc/subtract_vector.html'>subtract_vector</a>(vector, to_be_subtracted)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Subtracts two vectors in-place</p>
 
   <h4>Arguments</h4>
@@ -2008,7 +2929,7 @@ Two NaNs are treated as equal.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~5"></span>
+              <span class="anchor" id="variable-vector~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -2044,10 +2965,14 @@ Two NaNs are treated as equal.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-sort_real"></span> <h3>public pure subroutine <a href='../proc/sort_real.html'>sort_real</a>(array, perm, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-sort_real"></span> <h3>public pure subroutine <a href='../proc/sort_real.html'>sort_real</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a real array indirectly using quicksort.
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
 
@@ -2079,7 +3004,7 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~11"></span>
+              <span class="anchor" id="variable-perm~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2094,30 +3019,30 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~9"></span>
+              <span class="anchor" id="variable-tmp_stack_left"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~9"></span>
+              <span class="anchor" id="variable-tmp_stack_right"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2130,10 +3055,14 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-sort_integer"></span> <h3>public pure subroutine <a href='../proc/sort_integer.html'>sort_integer</a>(array, perm, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-sort_integer"></span> <h3>public pure subroutine <a href='../proc/sort_integer.html'>sort_integer</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort an integer array indirectly using quicksort.
 Similar to <code>sort_real</code>, but for integer input.</p>
 
@@ -2165,7 +3094,7 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~12"></span>
+              <span class="anchor" id="variable-perm~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2180,30 +3109,30 @@ Similar to <code>sort_real</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~10"></span>
+              <span class="anchor" id="variable-tmp_stack_left~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~10"></span>
+              <span class="anchor" id="variable-tmp_stack_right~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2216,10 +3145,14 @@ Similar to <code>sort_real</code>, but for integer input.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-sort_character"></span> <h3>public pure subroutine <a href='../proc/sort_character.html'>sort_character</a>(array, perm, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-sort_character"></span> <h3>public pure subroutine <a href='../proc/sort_character.html'>sort_character</a>(array, perm, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a character array indirectly using quicksort.
 Uses lexicographic ordering and permutation vector sorting.</p>
 
@@ -2251,7 +3184,7 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~13"></span>
+              <span class="anchor" id="variable-perm~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2266,30 +3199,30 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~11"></span>
+              <span class="anchor" id="variable-tmp_stack_left~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(:)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~11"></span>
+              <span class="anchor" id="variable-tmp_stack_right~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(:)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2305,7 +3238,11 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-sort_real_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_real_heapsort.html'>sort_real_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a real array indirectly using heapsort.
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
 
@@ -2325,9 +3262,9 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
               <span class="anchor" id="variable-array~7"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -2337,12 +3274,12 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~14"></span>
+              <span class="anchor" id="variable-perm~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -2358,10 +3295,89 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-sort_real_heapsort_expl_size"></span> <h3>public pure subroutine <a href='../proc/sort_real_heapsort_expl_size.html'>sort_real_heapsort_expl_size</a>(array, perm, n)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Sort a real explicit-size array indirectly using heapsort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(n)</td>
+            <td>
+<p>Real input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n</strong></td>
+            <td>
+<p>Size of <code>array</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-sort_integer_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_integer_heapsort.html'>sort_integer_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort an integer array indirectly using heapsort.
 Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
 
@@ -2378,12 +3394,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~8"></span>
+              <span class="anchor" id="variable-array~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -2393,12 +3409,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~15"></span>
+              <span class="anchor" id="variable-perm~11"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -2417,7 +3433,11 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-sort_character_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_character_heapsort.html'>sort_character_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a character array indirectly using heapsort.
 Uses lexicographic ordering and permutation vector sorting.</p>
 
@@ -2434,12 +3454,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~9"></span>
+              <span class="anchor" id="variable-array~10"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -2449,12 +3469,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~16"></span>
+              <span class="anchor" id="variable-perm~12"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -2470,10 +3490,14 @@ Uses lexicographic ordering and permutation vector sorting.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_real"></span> <h3>public pure subroutine <a href='../proc/quicksort_real.html'>quicksort_real</a>(array, perm, n, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_real"></span> <h3>public pure subroutine <a href='../proc/quicksort_real.html'>quicksort_real</a>(array, perm, n, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Internal quicksort implementation for real arrays.
 Sorts indirectly using the permutation vector <code>perm</code>. Manual stack replaces recursion.</p>
 
@@ -2490,7 +3514,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~10"></span>
+              <span class="anchor" id="variable-array~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2498,14 +3522,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n)</td>
             <td>
 <p>Real input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~17"></span>
+              <span class="anchor" id="variable-perm~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2513,14 +3537,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~6"></span>
+              <span class="anchor" id="variable-n~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2535,30 +3559,30 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~12"></span>
+              <span class="anchor" id="variable-tmp_stack_left~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(n)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~12"></span>
+              <span class="anchor" id="variable-tmp_stack_right~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(n)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2571,10 +3595,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_int"></span> <h3>public pure subroutine <a href='../proc/quicksort_int.html'>quicksort_int</a>(array, perm, n, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_int"></span> <h3>public pure subroutine <a href='../proc/quicksort_int.html'>quicksort_int</a>(array, perm, n, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Internal quicksort implementation for integer arrays.
 Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <code>quicksort_real</code>.</p>
 
@@ -2591,7 +3619,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~11"></span>
+              <span class="anchor" id="variable-array~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2599,14 +3627,14 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n)</td>
             <td>
 <p>Integer input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~18"></span>
+              <span class="anchor" id="variable-perm~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2614,14 +3642,14 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~7"></span>
+              <span class="anchor" id="variable-n~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2636,30 +3664,30 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~13"></span>
+              <span class="anchor" id="variable-tmp_stack_left~5"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(n)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~13"></span>
+              <span class="anchor" id="variable-tmp_stack_right~5"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(n)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2672,10 +3700,14 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_char"></span> <h3>public pure subroutine <a href='../proc/quicksort_char.html'>quicksort_char</a>(array, perm, n, stack_left, stack_right)  
+    <div class="card-header codesum"><span class="anchor" id="proc-quicksort_char"></span> <h3>public pure subroutine <a href='../proc/quicksort_char.html'>quicksort_char</a>(array, perm, n, tmp_stack_left, tmp_stack_right)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Internal quicksort implementation for character arrays.
 Lexicographic quicksort using string comparison, indirect via <code>perm</code>.</p>
 
@@ -2692,7 +3724,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~12"></span>
+              <span class="anchor" id="variable-array~13"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2700,14 +3732,14 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n)</td>
             <td>
 <p>Character input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~19"></span>
+              <span class="anchor" id="variable-perm~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2715,14 +3747,14 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~8"></span>
+              <span class="anchor" id="variable-n~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2737,30 +3769,30 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~14"></span>
+              <span class="anchor" id="variable-tmp_stack_left~6"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(:)</td>
+            <td><strong>tmp_stack_left</strong>(n)</td>
             <td>
 <p>Manual stack of left indices for quicksort recursion</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~14"></span>
+              <span class="anchor" id="variable-tmp_stack_right~6"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(:)</td>
+            <td><strong>tmp_stack_right</strong>(n)</td>
             <td>
 <p>Manual stack of right indices for quicksort recursion</p>
             </td>
@@ -2773,10 +3805,14 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_real"></span> <h3>public pure subroutine <a href='../proc/heapsort_real.html'>heapsort_real</a>(array, perm)  
+    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_real"></span> <h3>public pure subroutine <a href='../proc/heapsort_real.html'>heapsort_real</a>(array, perm, n_arr, n_perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sorts indirectly using the permutation vector <code>perm</code>. Uses <code>heapify_real</code> to maintain heap property.</p>
 
   <h4>Arguments</h4>
@@ -2792,7 +3828,7 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~13"></span>
+              <span class="anchor" id="variable-array~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -2800,14 +3836,14 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n_arr)</td>
             <td>
 <p>Real input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~20"></span>
+              <span class="anchor" id="variable-perm~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2815,9 +3851,39 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n_perm)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_arr"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_arr</strong></td>
+            <td>
+<p>Size of <code>arr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_perm"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_perm</strong></td>
+            <td>
+<p>Size of <code>perm</code></p>
             </td>
         </tr>
     </tbody>
@@ -2828,10 +3894,107 @@ Lexicographic quicksort using string comparison, indirect via <code>perm</code>.
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_integer"></span> <h3>public pure subroutine <a href='../proc/heapsort_integer.html'>heapsort_integer</a>(array, perm)  
+    <div class="card-header codesum"><span class="anchor" id="proc-heapify_real"></span> <h3>public pure subroutine <a href='../proc/heapify_real.html'>heapify_real</a>(array, perm, heap_size, root)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~15"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(:)</td>
+            <td>
+<p>Real input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(:)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-heap_size"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>heap_size</strong></td>
+            <td>
+<p>Size of the heap</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-root"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>root</strong></td>
+            <td>
+<p>Root index</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_integer"></span> <h3>public pure subroutine <a href='../proc/heapsort_integer.html'>heapsort_integer</a>(array, perm, n_arr, n_perm)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Internal heapsort implementation for integer arrays.
 Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <code>heapsort_real</code>.</p>
 
@@ -2848,7 +4011,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~15"></span>
+              <span class="anchor" id="variable-array~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2856,14 +4019,14 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>array</strong>(n_arr)</td>
             <td>
 <p>Integer input array to sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~22"></span>
+              <span class="anchor" id="variable-perm~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2871,9 +4034,39 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n_perm)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_arr~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_arr</strong></td>
+            <td>
+<p>Size of <code>arr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_perm~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_perm</strong></td>
+            <td>
+<p>Size of <code>perm</code></p>
             </td>
         </tr>
     </tbody>
@@ -2884,10 +4077,107 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_character"></span> <h3>public pure subroutine <a href='../proc/heapsort_character.html'>heapsort_character</a>(array, perm)  
+    <div class="card-header codesum"><span class="anchor" id="proc-heapify_integer"></span> <h3>public pure subroutine <a href='../proc/heapify_integer.html'>heapify_integer</a>(array, perm, heap_size, root)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(:)</td>
+            <td>
+<p>Integer input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~19"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(:)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-heap_size~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>heap_size</strong></td>
+            <td>
+<p>Size of the heap</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-root~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>root</strong></td>
+            <td>
+<p>Root index</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-heapsort_character"></span> <h3>public pure subroutine <a href='../proc/heapsort_character.html'>heapsort_character</a>(array, perm, n_arr, n_perm)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Internal heapsort implementation for character arrays.
 Lexicographic heapsort using string comparison, indirect via <code>perm</code>.</p>
 
@@ -2904,12 +4194,105 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~17"></span>
+              <span class="anchor" id="variable-array~18"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(n_arr)</td>
+            <td>
+<p>Character input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~20"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_perm)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_arr~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_arr</strong></td>
+            <td>
+<p>Size of <code>arr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_perm~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_perm</strong></td>
+            <td>
+<p>Size of <code>perm</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-heapify_character"></span> <h3>public pure subroutine <a href='../proc/heapify_character.html'>heapify_character</a>(array, perm, heap_size, root)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~19"></span>
+              character(len=*),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -2919,17 +4302,47 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~24"></span>
+              <span class="anchor" id="variable-perm~21"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-heap_size~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>heap_size</strong></td>
+            <td>
+<p>Size of the heap</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-root~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>root</strong></td>
+            <td>
+<p>Root index</p>
             </td>
         </tr>
     </tbody>
@@ -2943,7 +4356,11 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <div class="card-header codesum"><span class="anchor" id="proc-swap_int"></span> <h3>public pure subroutine <a href='../proc/swap_int.html'>swap_int</a>(a, b)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Swap two integer values in-place.</p>
 
   <h4>Arguments</h4>
@@ -2959,7 +4376,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~3"></span>
+              <span class="anchor" id="variable-a~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2974,7 +4391,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~3"></span>
+              <span class="anchor" id="variable-b~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2998,7 +4415,11 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <div class="card-header codesum"><span class="anchor" id="proc-swap_real"></span> <h3>public pure subroutine <a href='../proc/swap_real.html'>swap_real</a>(a, b)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Swap two real values in-place.</p>
 
   <h4>Arguments</h4>
@@ -3014,7 +4435,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~4"></span>
+              <span class="anchor" id="variable-a~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -3029,7 +4450,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~4"></span>
+              <span class="anchor" id="variable-b~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -3053,7 +4474,11 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <div class="card-header codesum"><span class="anchor" id="proc-which"></span> <h3>public pure subroutine <a href='../proc/which.html'>which</a>(mask, n, idx_out, m_max, m_out, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Finds the indices of the true values in a logical mask.</p>
 
   <h4>Arguments</h4>
@@ -3077,14 +4502,14 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
               
             </td>
             <td>::</td>
-            <td><strong>mask</strong>(:)</td>
+            <td><strong>mask</strong>(n)</td>
             <td>
 <p>Logical array of size n.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~12"></span>
+              <span class="anchor" id="variable-n~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3107,7 +4532,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
               
             </td>
             <td>::</td>
-            <td><strong>idx_out</strong>(:)</td>
+            <td><strong>idx_out</strong>(m_max)</td>
             <td>
 <p>Integer array to store the indices of true values.</p>
             </td>
@@ -3124,7 +4549,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
             <td>::</td>
             <td><strong>m_max</strong></td>
             <td>
-<p>Maximum size of idx_out.</p>
+<p>Maximum size of <code>idx_out</code>.</p>
             </td>
         </tr>
         <tr>
@@ -3139,12 +4564,12 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
             <td>::</td>
             <td><strong>m_out</strong></td>
             <td>
-<p>Actual size of idx_out (number of true values found).</p>
+<p>Actual size of <code>idx_out</code> (number of true values found).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~288"></span>
+              <span class="anchor" id="variable-ierr~210"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3154,7 +4579,7 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code: 0=ok, 201=invalid input, 202=empty input</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -3168,9 +4593,13 @@ Lexicographic heapsort using string comparison, indirect via <code>perm</code>.<
     <div class="card-header codesum"><span class="anchor" id="proc-loess_smooth_2d"></span> <h3>public pure subroutine <a href='../proc/loess_smooth_2d.html'>loess_smooth_2d</a>(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, kernel_sigma, kernel_cutoff, y_out, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Performs LOESS smoothing on a set of data points.
-Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
+Smooths <code>y_ref</code> at <code>x_query</code> using reference points <code>x_ref</code>, <code>y_ref</code>, and kernel parameters.
 The user must pre-filter data and provide only valid indices in indices_used.</p>
 
   <h4>Arguments</h4>
@@ -3246,7 +4675,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~5"></span>
+              <span class="anchor" id="variable-indices_used"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3316,7 +4745,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <td>::</td>
             <td><strong>kernel_cutoff</strong></td>
             <td>
-<p>Cutoff for the kernel.</p>
+<p>Cutoff for the kernel, not used if zero</p>
             </td>
         </tr>
         <tr>
@@ -3336,7 +4765,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~289"></span>
+              <span class="anchor" id="variable-ierr~211"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3346,7 +4775,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code: 0=ok, 201=invalid input, 202=empty input</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -3360,10 +4789,14 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
     <div class="card-header codesum"><span class="anchor" id="proc-compute_edf"></span> <h3>public pure subroutine <a href='../proc/compute_edf.html'>compute_edf</a>(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
 Returns the sorted unique values and their cumulative frequencies in [0,1].
-Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
+Assumes <code>values</code> is already sorted by <code>values[perm]</code>. Caller controls sorting algorithm.
 The number of unique values can be determined by finding the last non-zero cdf_value.</p>
 
   <h4>Arguments</h4>
@@ -3379,7 +4812,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~7"></span>
+              <span class="anchor" id="variable-values~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -3409,7 +4842,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~26"></span>
+              <span class="anchor" id="variable-perm~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3469,7 +4902,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~290"></span>
+              <span class="anchor" id="variable-ierr~212"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3479,7 +4912,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code: 0=ok, 201=invalid input, 202=empty input</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -3490,13 +4923,18 @@ The number of unique values can be determined by finding the last non-zero cdf_v
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_alloc"></span> <h3>public pure subroutine <a href='../proc/compute_edf_alloc.html'>compute_edf_alloc</a>(values, n_values, unique_values, cdf_values, n_unique, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_helper"></span> <h3>public pure subroutine <a href='../proc/compute_edf_helper.html'>compute_edf_helper</a>(values, n_values, perm, unique_values, cdf_values, n_unique)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Helper routine that sorts and calls compute_edf.
-Allocates workspace internally and performs sorting before computing EDF.
-Use this for convenience; use compute_edf directly for custom sorting.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
+Returns the sorted unique values and their cumulative frequencies in [0,1].
+Assumes <code>values</code> is already sorted by <code>values[perm]</code>. Caller controls sorting algorithm.
+The number of unique values can be determined by finding the last non-zero cdf_value.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -3511,7 +4949,7 @@ Use this for convenience; use compute_edf directly for custom sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~8"></span>
+              <span class="anchor" id="variable-values~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -3537,6 +4975,21 @@ Use this for convenience; use compute_edf directly for custom sorting.</p>
             <td><strong>n_values</strong></td>
             <td>
 <p>Number of values in the input array.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~23"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_values)</td>
+            <td>
+<p>Pre-sorted permutation indices (must be sorted by values[perm]).</p>
             </td>
         </tr>
         <tr>
@@ -3584,21 +5037,6 @@ Use this for convenience; use compute_edf directly for custom sorting.</p>
 <p>Number of unique values found (actual size of output arrays)</p>
             </td>
         </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~291"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code: 0=ok, 201=invalid input, 202=empty input</p>
-            </td>
-        </tr>
     </tbody>
   </table>
 
@@ -3607,12 +5045,17 @@ Use this for convenience; use compute_edf directly for custom sorting.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile"></span> <h3>public pure subroutine <a href='../proc/calc_percentile.html'>calc_percentile</a>(array, permutation, percentile, value, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_alloc"></span> <h3>public pure subroutine <a href='../proc/compute_edf_alloc.html'>compute_edf_alloc</a>(values, n_values, unique_values, cdf_values, n_unique, ierr)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Calculate the percentile of an array given a sorted permutation.
-Uses linear interpolation between adjacent values.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Helper routine that sorts and calls compute_edf.
+Allocates workspace internally and performs sorting before computing EDF.
+Use this for convenience; use compute_edf directly for custom sorting.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -3627,7 +5070,7 @@ Uses linear interpolation between adjacent values.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~19"></span>
+              <span class="anchor" id="variable-values~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -3635,14 +5078,14 @@ Uses linear interpolation between adjacent values.</p>
               
             </td>
             <td>::</td>
-            <td><strong>array</strong>(:)</td>
+            <td><strong>values</strong>(n_values)</td>
             <td>
-<p>input array</p>
+<p>Array of observed data values (e.g., contributions or spikes).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation~6"></span>
+              <span class="anchor" id="variable-n_values~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3650,29 +5093,14 @@ Uses linear interpolation between adjacent values.</p>
               
             </td>
             <td>::</td>
-            <td><strong>permutation</strong>(:)</td>
+            <td><strong>n_values</strong></td>
             <td>
-<p>permutation vector representing sorted order</p>
+<p>Number of values in the input array.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>percentile</strong></td>
-            <td>
-<p>desired percentile (0-100)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-value~5"></span>
+              <span class="anchor" id="variable-unique_values~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -3680,14 +5108,44 @@ Uses linear interpolation between adjacent values.</p>
               
             </td>
             <td>::</td>
-            <td><strong>value</strong></td>
+            <td><strong>unique_values</strong>(n_values)</td>
             <td>
-<p>output percentile value</p>
+<p>Sorted unique data values.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~292"></span>
+              <span class="anchor" id="variable-cdf_values~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>cdf_values</strong>(n_values)</td>
+            <td>
+<p>Corresponding cumulative frequencies between 0 and 1.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_unique~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_unique</strong></td>
+            <td>
+<p>Number of unique values found (actual size of output arrays)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~213"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3708,11 +5166,15 @@ Uses linear interpolation between adjacent values.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_helper"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_helper.html'>calc_percentile_helper</a>(array, permutation, percentile, value)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile"></span> <h3>public pure subroutine <a href='../proc/calc_percentile.html'>calc_percentile</a>(array, permutation, percentile, value, ierr)  
 </h3></div>
     <div class="card-body">
-          
-  <p>(no input validation) Calculate the percentile of an array given a sorted permutation.
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculate the percentile of an array given a sorted permutation.
 Uses linear interpolation between adjacent values.</p>
 
   <h4>Arguments</h4>
@@ -3743,7 +5205,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation~7"></span>
+              <span class="anchor" id="variable-permutation"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3758,7 +5220,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~6"></span>
+              <span class="anchor" id="variable-percentile"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -3773,7 +5235,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~6"></span>
+              <span class="anchor" id="variable-value~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -3786,6 +5248,21 @@ Uses linear interpolation between adjacent values.</p>
 <p>output percentile value</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~214"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -3794,11 +5271,16 @@ Uses linear interpolation between adjacent values.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_alloc"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_alloc.html'>calc_percentile_alloc</a>(array, percentile, value, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_helper"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_helper.html'>calc_percentile_helper</a>(array, permutation, percentile, value)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Calculate the percentile of an array, allocating necessary arrays when no sorting permutation is given</p><a href="../proc/calc_percentile_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Calculate the percentile of an array given a sorted permutation.
+Uses linear interpolation between adjacent values.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -3823,12 +5305,101 @@ Uses linear interpolation between adjacent values.</p>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
             <td>
+<p>input array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-permutation~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>permutation</strong>(:)</td>
+            <td>
+<p>permutation vector representing sorted order</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>percentile</strong></td>
+            <td>
+<p>desired percentile (0-100)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>output percentile value</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_alloc"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_alloc.html'>calc_percentile_alloc</a>(array, percentile, value, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculate the percentile of an array, allocating necessary arrays when no sorting permutation is given</p><a href="../proc/calc_percentile_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~22"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(:)</td>
+            <td>
 <p>Input array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~7"></span>
+              <span class="anchor" id="variable-percentile~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -3843,7 +5414,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~7"></span>
+              <span class="anchor" id="variable-value~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -3858,7 +5429,7 @@ Uses linear interpolation between adjacent values.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~293"></span>
+              <span class="anchor" id="variable-ierr~215"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3869,6 +5440,128 @@ Uses linear interpolation between adjacent values.</p>
             <td><strong>ierr</strong></td>
             <td>
 <p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile.html'>compute_scaled_distance_quantile</a>(n_genes, rdi, sorted_rdi, perm, quantile, c_const)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI).
+This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+observed distribution it was drawn from, not an independently generated null distribution.
+It instead measures how extreme an observed distance is relative to all observed distances.</p><a href="../proc/compute_scaled_distance_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~25"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes being processed.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong>(n_genes)</td>
+            <td>
+<p>empirical distribution D</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td>
+<p>empirical distribution D with non negative values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~26"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(n_genes)</td>
+            <td>
+<p>Permutation array with sorted indices for sorted_rdi</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-quantile"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>quantile</strong>(n_genes)</td>
+            <td>
+<p>Output array to store the computed quantile for each gene.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-c_const"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>c_const</strong></td>
+            <td>
+<p>Constant used in the computation, typically 1</p>
             </td>
         </tr>
     </tbody>
@@ -3894,14 +5587,14 @@ Uses linear interpolation between adjacent values.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

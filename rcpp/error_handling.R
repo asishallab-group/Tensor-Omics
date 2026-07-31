@@ -1,45 +1,73 @@
 #> tox_helper: throw error in error case
-check_err_code <- function(ierr) {
-  if (ierr == 0) return(invisible(NULL))
-  msg <- switch(as.character(ierr),
+check_err_code <- function(ierr, arg_pos_map = setNames(list(), character())) {
+  # R equivalent of Python's divmod
+  arg_pos <- ierr %/% 10000
+  code    <- ierr %% 10000
+
+  if (code == 0) {
+    return(invisible(NULL))
+  }
+
+  msg_map <- list(
     # I/O errors
-    '101' = "Could not open file.",
-    '102' = "Could not read magic number.",
-    '103' = "Could not read type code.",
-    '104' = "Could not read number of dimensions.",
-    '105' = "Could not read array dimensions",
-    '106' = "Could not read character length.",
-    '107' = "Could not read array data.",
-    '112' = "Could not write magic number",
-    '113' = "Could not write type code",
-    '114' = "Could not write number of dimensions",
-    '115' = "Could not write dimensions",
-    '116' = "Could not write character length",
-    '117' = "Could not write array data",
-    # ADD MORE HERE
-    
+    `101` = "Could not open file.",
+    `102` = "Could not read magic number.",
+    `103` = "Could not read type code.",
+    `104` = "Could not read number of dimensions.",
+    `105` = "Could not read array dimensions.",
+    `106` = "Could not read character length.",
+    `107` = "Could not read array data.",
+    `112` = "Could not write magic number",
+    `113` = "Could not write type code",
+    `114` = "Could not write number of dimensions",
+    `115` = "Could not write dimensions",
+    `116` = "Could not write character length",
+    `117` = "Could not write array data",
+    `121` = "Could not add file to archive.",
+    `122` = "Could not extract file from archive.",
+    `123` = "Failed to close the file.",
+
     # FORMAT ERRORS
-    '200' = "Invalid format detected.",
-    '201' = "Invalid input provided.",
-    '202' = "Empty input arrays provided.",
-    '203' = "Dimension mismatch detected.",
-    '204' = "NaN or Inf found in input data.",
-    '205' = "Unsupported data type encountered.",
-    '206' = "Array size mismatch detected",
+    `200` = "Invalid format detected.",
+    `201` = "Invalid input provided.",
+    `202` = "Empty input arrays provided.",
+    `203` = "Dimension mismatch detected.",
+    `204` = "NaN or Inf found in input data.",
+    `205` = "Unsupported data type encountered.",
+    `206` = "Array size mismatch detected",
+    `207` = "String exceeds buffer size.",
+    `208` = "Array index out of bounds",
+    `209` = "Division by Zero",
 
     # MEMORY ERRORS
-    '301' = "Memory allocation failed.",
-    '302' = "Null pointer reference encountered.",
+    `301` = "Memory allocation failed.",
+    `302` = "Null pointer reference encountered.",
 
     # FORTRAN RUNTIME ERRORS
-    '5002' = "Fortran runtime error: unit not open / not connected.",
+    `5002` = "Fortran runtime error: unit not open / not connected.",
 
     # Internal errors
-    '9001' = "Internal error: unexpected state.",
-    '9999' = "Unknown error.",
-    paste("Unmapped error code:", ierr)
+    `9001` = "Internal error: unexpected state.",
+    `9999` = "Unknown error."
   )
-  stop(msg)
+
+  msg <- msg_map[[as.character(code)]]
+
+  if (!is.null(msg)) {
+    arg <- arg_pos_map[[as.character(arg_pos)]]
+
+    if (!is.null(arg)) {
+      stop(sprintf("Argument '%s', the %s. argument of the called Fortran function, triggered: %s", arg, arg_pos, msg), call. = FALSE)
+    } else if (arg_pos == 0) {
+      stop(msg, call. = FALSE)
+    } else {
+      stop(sprintf("The %s. argument of the called Fortran function triggered: %s",
+                   arg_pos, msg),
+           call. = FALSE)
+    }
+  } else {
+    warning(sprintf("Unmapped error code: %s", ierr), call. = FALSE)
+  }
 }
 
 #>skip snippets
@@ -54,8 +82,13 @@ validate_is_numeric <- function(x, name = deparse(substitute(x))) {
   invisible(TRUE)
 }
 
+validate_is_list <- function(x, name = deparse(substitute(x))) {
+  if (!is.list(x)) stop(sprintf("%s must be list", name))
+  invisible(TRUE)
+}
+
 validate_is_integer <- function(x, name = deparse(substitute(x))) {
-  if (!is.integer(x)) stop(sprintf("%s must be an integer vector", name))
+  if (!is.integer(x)) stop(sprintf("%s must be integer", name))
   invisible(TRUE)
 }
 validate_is_scalar <- function(x, name = deparse(substitute(x))) {
@@ -64,12 +97,12 @@ validate_is_scalar <- function(x, name = deparse(substitute(x))) {
 }
 
 validate_is_logical <- function(x, name = deparse(substitute(x))) {
-  if (!is.logical(x)) stop(sprintf("%s must be a logical vector", name))
+  if (!is.logical(x)) stop(sprintf("%s must be logical", name))
   invisible(TRUE)
 }
 
 validate_is_character <- function(x, name = deparse(substitute(x))) {
-  if (!is.character(x)) stop(sprintf("%s must be a character vector", name))
+  if (!is.character(x)) stop(sprintf("%s must be character", name))
   invisible(TRUE)
 }
 
@@ -205,6 +238,12 @@ validate_numeric_scalar <- function(x, name = deparse(substitute(x))) {
   invisible(TRUE)
 }
 
+validate_integer_scalar <- function(x, name = deparse(substitute(x))) {
+  validate_is_integer(x, name)
+  validate_is_scalar(x, name)
+  invisible(TRUE)
+}
+
 validate_numeric_matrix <- function(x, name = deparse(substitute(x)), dim = NULL) {
   validate_is_matrix(x, name = name, dim = dim)
   validate_is_numeric(x, name)
@@ -331,33 +370,12 @@ validate_index_vector_and_position <- function(ix, position, name = deparse(subs
   invisible(TRUE)
 }
 
-validate_group_vectors <- function(group_s, group_c, n_cols,
-                                   name_s = deparse(substitute(group_s)),
-                                   name_c = deparse(substitute(group_c))) {
-  validate_logical_or_index_vector(group_s, name = name_s)
-  validate_logical_or_index_vector(group_c, name = name_c)
-  validate_same_length(group_s, group_c, name_s, name_c)
-  validate_nonempty(group_s, name_s)
-  validate_positive_integer_scalar(n_cols, "n_cols")
-
-  if (any(group_s != as.integer(group_s), na.rm = TRUE)) {
-    stop(sprintf("%s must contain integer-valued starts", name_s))
-  }
-  if (any(group_c != as.integer(group_c), na.rm = TRUE)) {
-    stop(sprintf("%s must contain integer-valued counts", name_c))
-  }
-
-  group_s <- as.integer(group_s)
-  group_c <- as.integer(group_c)
-
-  validate_index_bounds(group_s, low = 1L, high = as.integer(n_cols), name = name_s)
-  if (any(group_c <= 0L, na.rm = TRUE)) {
-    stop(sprintf("%s must contain positive counts", name_c))
-  }
-  if (any(group_s + group_c - 1L > as.integer(n_cols), na.rm = TRUE)) {
-    stop("group_s and group_c define ranges outside input columns")
-  }
-
+validate_group_vectors <- function(reps_per_tissue, n_reps,
+                                   name_reps_per_tissue = deparse(substitute(reps_per_tissue))) {
+  validate_integer_vector(reps_per_tissue, name = name_reps_per_tissue)
+  validate_nonempty(reps_per_tissue, name_reps_per_tissue)
+  validate_positive_integer_scalar(n_reps, "n_reps")
+  validate_index_bounds(reps_per_tissue, low = 1L, high = n_reps, name = name_reps_per_tissue)
   invisible(TRUE)
 }
 

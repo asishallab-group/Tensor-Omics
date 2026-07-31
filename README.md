@@ -7,7 +7,11 @@ Designed for distributed high-performance computing, Tensor Omics is implemented
 
 ## Detailed Method Description
 
-Please read the manuscript `./misc/Tensor_Omics_Methods.pdf` for details.
+Please read the manuscript [`./misc/Tensor_Omics_Methods.pdf`](./misc/Tensor_Omics_Methods.pdf) for details.
+
+## Documentation
+
+You find the [here as Web Page](./doc) or as PDF in [`./misc/tox_manual.pdf`](./misc/tox_manual.pdf).
 
 ## Key Features
 
@@ -46,7 +50,7 @@ This repository contains the source code, methods, snippets and tests for the **
   └── ...       # R scripts that execute pipeline logic and invoke subroutines
 
 /snippets
-└── ...         #Code templates or reusable short logic blocks 
+└── ...         #Code templates or reusable short logic blocks
 
 /src
   └── ...       # Fortran backend
@@ -57,22 +61,24 @@ This repository contains the source code, methods, snippets and tests for the **
 /helper
   └── helper_c_wrapper.py       #  helper script to generate c wrappers subroutines
 
-build.sh        # Compile and generate shared libraries
-ford.yml        # Generates documentation
-fpm.toml        # Defines compilation options
-test_runner.sh  # Compile and generate unit test
+authors.h        # header file, defining macros for author meta tags for Ford documentation
+build.sh         # Compile and generate shared libraries
+build_utils.sh   # Several functions used by build.sh and test_runner.sh
+fpm.toml         # Defines fpm related compilation settings, also includes Ford config
+run_all_tests.sh # Convenience script for running all Fortran and Python, R tests
+test_runner.sh   # Compile and generate unit test
 
 ```
 
 ## Notes
 
-* **`/build`** is used to store shared libraries, compiled and binary files resulting from Fortran compilation. It keeps the repo clean by separating source and compiled code.
-* **`/doc`** contains the auto-generated documentation, which is built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
-* **`/misc`** contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
+* [**`/build`**](./build) is used to store shared libraries, compiled and binary files resulting from Fortran compilation. It keeps the repo clean by separating source and compiled code.
+* [**`/doc`**](./doc) contains the auto-generated documentation, which is built using [FORD](https://github.com/Fortran-FOSS-Programmers/ford) from annotated Fortran source files.
+* [**`/misc`**](./misc) contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
 
-* **`/python`** includes python scripts that coordinate analysis workflows
-* **`/r`** includes R scripts that coordinate analysis workflows
-* **`/snippets/`** includes frequently used or testable units of logic reused across development stages. 
+* [**`/python`**](./python) includes python scripts that coordinate analysis workflows
+* [**`/rcpp`**](./rcpp) includes R scripts that coordinate analysis workflows
+* [**`/snippets`**](./snippets) includes frequently used or testable units of logic reused across development stages.
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
     {
@@ -86,18 +92,18 @@ test_runner.sh  # Compile and generate unit test
         }
     }
   ```
-* **`/src`** contains performance-critical Fortran code. These are compiled during the build process.
+* [**`/src`**](./src) contains performance-critical Fortran code. These are compiled during the build process.
   - All `.f90` files should include `precompiler_constants.f90`
   - Subroutines that do not perform `input/output` operations or memory allocations must be declared as `pure`.
-* **`/test`** contains the unit tests for the Fortran subroutines.
+* [**`/test`**](./test) contains the unit tests for the Fortran subroutines.
 
   * The file `asserts.f90` must exist and can be modified if additional assert functions are needed.
   * There must be a central program called `run_tests.f90` which contains all the test calls defined in the modules.
-  * Each subroutine's tests should be placed in independent modules (one file per tested subroutine). 
+  * Each subroutine's tests should be placed in independent modules (one file per tested subroutine).
   * All test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Otherwise, compilation errors may occur.
   * Check details in `test/readme.md`
 
-* **`/helper`** this folder will not be included in the final version of TOX. For now, it serves to help us create the C wrapper for the subroutines more quickly and easily. See details in `helper/readme.md`.
+* [**`/helper`**](./helper) this folder will not be included in the final version of TOX. For now, it serves to help us create the C wrapper for the subroutines more quickly and easily. See details in `helper/readme.md`.
 
 ---
 
@@ -107,14 +113,14 @@ test_runner.sh  # Compile and generate unit test
 
 * Designed specifically for Fortran (unlike Doxygen which is general-purpose).
 * Supports documentation of modules, subroutines, functions, derived types, and more.
-* Uses `!!!` or `!>` comment syntax to annotate code.
+* Uses `!!` or `!>` comment syntax to annotate code.
 * Ideal for scientific and engineering projects using modern Fortran.
 * Easy to integrate into Git-based workflows.
 
 Example usage:
 
 ```bash
-ford ford.yml
+ford concise_project_info.md
 ```
 
 This generates an HTML site you can explore in a browser (`doc/index.html` by default).
@@ -136,11 +142,11 @@ See `snippets/readme.md` for details.
 
 The `build.sh` script will compile all the files located in the `src/` directory.
 
-It creates a directory for the compiled objects under `/build/<compiler>/`, and the resulting shared library will be named `libtensor-omics.so`.
+It creates a directory for the compiled objects under `/build/<compiler>_<hash>/`, and the resulting shared library will be `build/libtensor-omics.so`.
 
 This `.so` file is the one that must be loaded from R or Python.
 
-Every time the code is compiled, a new `/build/<compiler>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
+Every time the code is compiled, a new `/build/<compiler>_<hash>/` directory is created. To simplify access, the script creates a symbolic link to the latest compiled shared library so that R and Python can always load the same file consistently.
 
 Usage:
 
@@ -159,10 +165,20 @@ Usage:
 → Uses the `ifx` compiler with maximum performance flags.
 
 ```bash
-./build.sh --max-performance FC=ifx
+./build.sh --max-performance --compiler=ifx
 ```
 
-Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
+#### Further Options
+
+- `--clean-build`: Helpful for development to force `fpm` building the `src` from scratch. It removes the compiler-related directories in `build` and compiles uncached. When switching git branches, this is enabled by default. It can happen that `fpm` doesn't recognize certain changes if the overall module structure did not change. This option helps then (but also in other unusual changes, like switching WSL distro, so completely new environment).
+- `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
+- `--directive=<directive>`: Define a preprocessor directive, can be used multiple times, like `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`
+- `--diagnostics`: While `--max-performance` enables optimization flags, this one enables flags for diagnostics, which helps for debugging. Can be combined with `--max-performance` though.
+- `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
+  *Note: With using this option, the `--max_performance` option won't have any effect*
+- environment variable `FC` is supported as well for specifying compiler, with precedence `--compiler > $TOX_COMPILER > $FC`.
+
+*Note: The command line options `--<option>` will be translated into an uppercased variable with special characters replaced by underscores and a `TOX_` prefix, e.g. `--override-flags` or `--override:flags` becoming `TOX_OVERRIDE_FLAGS` with value `1`. Passing specific values is also possible via `--<option>=<value>`. Thus, instead of using the options as arguments, you could also define the variables. Keep in mind that the option will always beat the set variable, so `TOX_COMPILER=ifx FC=gfortran bash build.sh --compiler=nvfortran` will end up in using `nvfortran`, because `--compiler > $TOX_COMPILER > $FC` or more general `--<option_name> > $TOX_<uppercase_option_name_with_underscores>`. The support for `$FC` is just an additional feature.*
 
 ---
 
@@ -173,9 +189,9 @@ The test suite framework provides a robust and scalable system for organizing an
 
 #### Architecture
 
-1. **`run_tests.f90`** - Main program that handles command line arguments
+1. [**`/run_tests.f90`**](./run_tests.f90) - Main program that handles command line arguments
 2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`asserts.f90`** - Assertion function library for validating results
+3. [**`/asserts.f90`**](./asserts.f90) - Assertion function library for validating results
 
 #### System Usage
 
@@ -193,6 +209,16 @@ The test suite framework provides a robust and scalable system for organizing an
 Keep in mind that files are compiled in alphabetical order, please name your files accordingly.
 
 See `test/readme.md` for details.
+
+#### Command Line Options
+
+Additionally to the options from `build.sh` specified above, the `test_runner.sh` has some extra options:
+
+- `--skip-kinds-test`: The framework has a compile-time safeguard to ensure that C types match our Fortran kinds. As this is usually the case, the test script enforces mismatches and checks correct behavior. This option can skip that, which might be handy, because it will always pass on the same platform, while triggering a `--clean-build` afterwards, which takes its time.
+- `--reuse-mod-files`: By default, all module files for test modules created by `fpm` will be removed to enforce recompilation of the tests. This is because `fpm` doesn't recognize tiny but critical changes in `src`. As it usually works fine and saves time for test compilation, feel free to use this option when debugging tests.
+- `--test-target=<target>`: Inspect `fpm.toml` to see which test targets exist. Currently there is only `run_tests`, which is the default here.
+- `--keep-files`: All temporary files created by the runner here in the root of the repo will be removed by default. To keep them for debugging, add this option.
+- `--keep-<ext>`: The more fine-grained variant to `--keep-files`, so e.g. `--keep-zip` or `--keep-txt` will keep the temporary `*.txt` and `*.zip` files created during tests.
 
 ---
 
@@ -214,3 +240,7 @@ docker run -it -v `pwd`:/opt arch-gfortran ./build.sh
 Use `./test_runner.sh` if you want to run the unit tests for the modules. In case you want to test only one module, use `./test_runner.sh <test suite name>`, e.g. `./test_runner.sh get_outliers`
 
 Feel free to extend this README with additional information.
+
+## Without Docker Troubleshooting
+
+If you've installed `gfortran` via [Homebrew](https://brew.sh/), you might get some error like `Error: unknown pseudo-op: '.base64'`. In this case run `brew link binutils --force`, as mentioned in [this Homebrew discussion](https://github.com/orgs/Homebrew/discussions/6229#discussioncomment-16610565)

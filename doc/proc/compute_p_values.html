@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_p_values &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">36 statements</a>
+                 title=" 0.1% of total for procedures.">20 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_p_values(local_contributions_observed, total_contribution_observed, local_contributions_perm, total_contributions_perm, n_timepoints, n_permutations, local_p_values, total_p_value, ierr)  
+    <h2>public pure subroutine compute_p_values(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, local_p_values, total_p_value, ierr)  
 </h2>
     
 
@@ -200,7 +202,7 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions_perm"></span>
+              <span class="anchor" id="variable-local_contributions_perm_test"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -208,14 +210,14 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
               dimension(n_timepoints, n_permutations)
             </td>
             <td>::</td>
-            <td><strong>local_contributions_perm</strong></td>
+            <td><strong>local_contributions_perm_test</strong></td>
             <td>
                 <p>Per-timepoint contributions for the factor-dependent-random_sample combinations from <a href="../proc/perform_permutation_test.html">perform_permutation_test</a></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contributions_perm"></span>
+              <span class="anchor" id="variable-total_contributions_perm_test"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -223,14 +225,14 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
               dimension(n_permutations)
             </td>
             <td>::</td>
-            <td><strong>total_contributions_perm</strong></td>
+            <td><strong>total_contributions_perm_test</strong></td>
             <td>
                 <p>Total contribution (<code>sum(local_contributions)</code>) for the factor-dependent-random_sample combinations from <a href="../proc/perform_permutation_test.html">perform_permutation_test</a></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~2"></span>
+              <span class="anchor" id="variable-n_timepoints~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -245,7 +247,7 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_permutations~2"></span>
+              <span class="anchor" id="variable-n_permutations~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -270,7 +272,7 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
             <td>::</td>
             <td><strong>local_p_values</strong></td>
             <td>
-                <p>calculated p values for local contributions, like: <code>(local_contributions_perm &gt;= local_contributions_observed)/n_permutations</code></p>
+                <p>calculated p values for local contributions, like: <code>(local_contributions_perm_test &gt;= local_contributions_observed)/n_permutations</code></p>
             </td>
         </tr>
         <tr>
@@ -285,12 +287,12 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
             <td>::</td>
             <td><strong>total_p_value</strong></td>
             <td>
-                <p>calculated p values for total contributions, like: <code>(total_contributions_perm &gt;= total_contribution_observed)/n_permutations</code></p>
+                <p>calculated p values for total contributions, like: <code>(total_contributions_perm_test &gt;= total_contribution_observed)/n_permutations</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~3"></span>
+              <span class="anchor" id="variable-ierr~101"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -330,14 +332,14 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

@@ -1,7 +1,0 @@
-project: TensorOmics
-output_dir: doc
-author: TensorOmics Developers
-print_creation_date: true
-creation_date: "%Y-%m-%d %H:%M %z"
-
-# A high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets.

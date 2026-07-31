@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>All Modules &ndash; TensorOmics
@@ -86,173 +86,221 @@
 			   <tr class="active">
                  <td><a href='../module/config.html'>config</a></td>
                  <td><a href='../sourcefile/config.f90.html'>config.F90</a></td>
-                 <td></td>
+                 <td><p>Global, mutable runtime configuration flags (module variables, not parameters).
+Intended to be toggled by client code before calling into the library to enable
+diagnostic <code>print</code> output from the affected modules; both flags default to off.</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
-                 <td><a href='../sourcefile/f42_array_utils.f90.html'>f42_array_utils.F90</a></td>
-                 <td><p>Module for array utilities.</p></td>
-               </tr>
-<!---->			   <tr class="active">
                  <td><a href='../module/f42_binary_search_tree.html'>f42_binary_search_tree</a></td>
                  <td><a href='../sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></td>
-                 <td></td>
-               </tr>
-<!--active-->			   <tr class="">
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_char.f90.html'>f42_deserialize_char.F90</a></td>
-                 <td><p>Module for deserializing character arrays from files</p></td>
-               </tr>
-<!---->			   <tr class="active">
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_complex.f90.html'>f42_deserialize_complex.F90</a></td>
-                 <td><p>Module for deserializing complex arrays from files</p></td>
-               </tr>
-<!--active-->			   <tr class="">
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_int.f90.html'>f42_deserialize_int.F90</a></td>
-                 <td><p>Module for deserializing integer arrays from files</p></td>
-               </tr>
-<!---->			   <tr class="active">
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_logical.f90.html'>f42_deserialize_logical.F90</a></td>
-                 <td><p>Module for deserializing logical arrays from files</p></td>
-               </tr>
-<!--active-->			   <tr class="">
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_real.f90.html'>f42_deserialize_real.F90</a></td>
-                 <td><p>Module for deserializing real (double precision) arrays from binary files</p></td>
+                 <td><p>Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+This module provides routines to build a BST index (via sorting), access sorted values,
+and perform range queries over a real-valued array using the sorted index.</p></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
                  <td><a href='../sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></td>
-                 <td></td>
+                 <td><p>k-d tree spatial index over fixed-dimensional point sets.
+Builds a k-d tree by recursively partitioning <code>kd_indices</code> around the median point along a
+caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
+is safe to call from <code>pure</code> procedures. The tree is stored implicitly as an in-place-permuted
+index array rather than as linked nodes.</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
-                 <td><a href='../sourcefile/f42_serialize_char.f90.html'>f42_serialize_char.F90</a></td>
-                 <td><p>Module providing serialization and deserialization routines for character arrays
-of up to 5 dimensions, arrays are serialized to a custom binary format with a magic number and type/dimension metadata.</p></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize.html'>f42_serde_arrays_deserialize</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize.f90.html'>f42_serde_arrays_deserialize.F90</a></td>
+                 <td><p>Main array deserialization module, re-exporting all deserialization routines</p></td>
                </tr>
 <!---->			   <tr class="active">
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
-                 <td><a href='../sourcefile/f42_serialize_complex.f90.html'>f42_serialize_complex.F90</a></td>
-                 <td><p>Module for serializing complex arrays to binary files.</p></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_char.f90.html'>f42_serde_arrays_deserialize_char.F90</a></td>
+                 <td><p>Module for deserializing character arrays from files</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
-                 <td><a href='../sourcefile/f42_serialize_int.f90.html'>f42_serialize_int.F90</a></td>
-                 <td><p>Module for serializing integer arrays to binary files.</p></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_complex.f90.html'>f42_serde_arrays_deserialize_complex.F90</a></td>
+                 <td><p>Module for deserializing complex arrays from files</p></td>
                </tr>
 <!---->			   <tr class="active">
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
-                 <td><a href='../sourcefile/f42_serialize_logical.f90.html'>f42_serialize_logical.F90</a></td>
-                 <td><p>Module for serializing logical arrays to binary files.</p></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_int.f90.html'>f42_serde_arrays_deserialize_int.F90</a></td>
+                 <td><p>Module for deserializing integer arrays from files</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
-                 <td><a href='../sourcefile/f42_serialize_real.f90.html'>f42_serialize_real.F90</a></td>
-                 <td></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_logical.f90.html'>f42_serde_arrays_deserialize_logical.F90</a></td>
+                 <td><p>Module for deserializing logical arrays from files</p></td>
                </tr>
 <!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_real.f90.html'>f42_serde_arrays_deserialize_real.F90</a></td>
+                 <td><p>Module for deserializing real arrays from files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize.html'>f42_serde_arrays_serialize</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize.f90.html'>f42_serde_arrays_serialize.F90</a></td>
+                 <td><p>Main array serialization module, re-exporting all serialization routines</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_char.f90.html'>f42_serde_arrays_serialize_char.F90</a></td>
+                 <td><p>Module for serializing character arrays into files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_complex.f90.html'>f42_serde_arrays_serialize_complex.F90</a></td>
+                 <td><p>Module for serializing complex arrays into files</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_int.f90.html'>f42_serde_arrays_serialize_int.F90</a></td>
+                 <td><p>Module for serializing integer arrays into files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_logical.f90.html'>f42_serde_arrays_serialize_logical.F90</a></td>
+                 <td><p>Module for serializing logical arrays into files</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_real.f90.html'>f42_serde_arrays_serialize_real.F90</a></td>
+                 <td><p>Module for serializing real arrays into files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_utils.f90.html'>f42_serde_arrays_utils.F90</a></td>
+                 <td><p>Module for array utilities.</p><a href="../module/f42_serde_arrays_utils.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_utils.html'>f42_serde_utils</a></td>
+                 <td><a href='../sourcefile/f42_serde_utils.f90.html'>f42_serde_utils.F90</a></td>
+                 <td><p>Module for de-/serialization utilities.</p></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
                  <td><p>Utility module for data analysis.
 This module provides general-purpose utility functions for data analysis, to be used as needed.</p></td>
                </tr>
-<!--active-->			   <tr class="">
+<!---->			   <tr class="active">
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td><a href='../sourcefile/f42_xxh3_hashmap.f90.html'>f42_xxh3_hashmap.F90</a></td>
-                 <td></td>
-               </tr>
-<!---->			   <tr class="active">
-                 <td><a href='../module/safeguard.html'>safeguard</a></td>
-                 <td><a href='../sourcefile/safeguard.f90.html'>safeguard.F90</a></td>
-                 <td></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
+implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
+algorithm for hashing. Both containers grow automatically via <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>
+/ <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a> once the load factor exceeds
+<a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>.</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
-                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
-                 <td></td>
+                 <td><a href='../module/safeguard.html'>safeguard</a></td>
+                 <td><a href='../sourcefile/safeguard.f90.html'>safeguard.F90</a></td>
+                 <td><p>AUTHOR_FRANZ_ERIC_SILL
+This module ensures equivalence of used c types in this framework during compile time.
+Thus, it needs to be used by every module to be compiled first, <strong><em>and</em></strong> it is highly recommended to compile the framework manually.</p></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
                  <td><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></td>
-                 <td></td>
+                 <td><p>Module for clustering routines used in tensor-omics: k-means for factor/trajectory
+grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.</p></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td><a href='../sourcefile/tox_conversions.f90.html'>tox_conversions.F90</a></td>
-                 <td></td>
+                 <td><p>Module with conversion helpers between Fortran-native types and their <code>iso_c_binding</code> counterparts.
+Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
+characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.</p></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td><a href='../sourcefile/tox_data_accessors.f90.html'>tox_data_accessors.F90</a></td>
-                 <td></td>
+                 <td><p>Bounds-checked lookup and indexing helpers for the TensorOmics data model.</p><a href="../module/tox_data_accessors.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
+                 <td><a href='../sourcefile/tox_data_archive.f90.html'>tox_data_archive.F90</a></td>
+                 <td><p>Zip-archive backed persistence for TensorOmics data sets.</p><a href="../module/tox_data_archive.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_data_integration.html'>tox_data_integration</a></td>
                  <td><a href='../sourcefile/tox_data_integration.f90.html'>tox_data_integration.F90</a></td>
                  <td><p>In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
 Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort,
 composition can introduce batch effects that are not easily detectable from mean expression levels alone.</p><a href="../module/tox_data_integration.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-                  			   <tr class=" submod">
+                  			   <tr class="active submod">
                  <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_jsd.html'>tox_data_integration_jsd</a></td>
                  <td><a href='../sourcefile/tox_data_integration_jsd.f90.html'>tox_data_integration_jsd.F90</a></td>
                  <td><p>This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from <a href="../module/tox_data_integration_preprocessing.html">tox_data_integration_preprocessing</a>.</p><a href="../module/tox_data_integration_jsd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class=" submod">
+			   <tr class="active submod">
                  <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_per_family.html'>tox_data_integration_per_family</a></td>
                  <td><a href='../sourcefile/tox_data_integration_per_family.f90.html'>tox_data_integration_per_family.F90</a></td>
                  <td><p>This module implements subroutines to obtain the JSD value from neighborhood residuals obtained from <a href="../module/tox_data_integration_preprocessing.html">tox_data_integration_preprocessing</a>
 for specific sub-neighborhoods by using the pipeline from <a href="../module/tox_data_integration_jsd.html">tox_data_integration_jsd</a>.</p><a href="../module/tox_data_integration_per_family.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class=" submod">
+			   <tr class="active submod">
                  <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_preprocessing.html'>tox_data_integration_preprocessing</a></td>
                  <td><a href='../sourcefile/tox_data_integration_preprocessing.f90.html'>tox_data_integration_preprocessing.F90</a></td>
                  <td><p>This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.</p><a href="../module/tox_data_integration_preprocessing.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class=" submod">
+			   <tr class="active submod">
                  <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_stats.html'>tox_data_integration_stats</a></td>
                  <td><a href='../sourcefile/tox_data_integration_stats.f90.html'>tox_data_integration_stats.F90</a></td>
-                 <td><p>This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.</p><a href="../module/tox_data_integration_stats.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>This module implements a permutation test that estimates an empirical p-value for the weighted global JSD
+computed by <a href="../module/tox_data_integration_jsd.html">tox_data_integration_jsd</a>. Under the null hypothesis that both studies are
+exchangeable, S1/S2 residuals are repeatedly shuffled within each reference point's pooled neighborhood and
+the JSD pipeline is recomputed, giving a null distribution against which the observed JSD is compared.</p><a href="../module/tox_data_integration_stats.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 
-<!---->			   <tr class="active">
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td><a href='../sourcefile/tox_data_read_write.f90.html'>tox_data_read_write.F90</a></td>
                  <td><p>Wrappers for serialization/deserialization of arrays</p></td>
                </tr>
-<!--active-->			   <tr class="">
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
                  <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
-                 <td></td>
-               </tr>
-<!---->			   <tr class="active">
-                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
-                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
-                 <td></td>
+                 <td><p>Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+TSV/CSV files, OrthoFinder-style family files), plus small array-filtering helpers.</p><a href="../module/tox_data_tools.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
+                 <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
+                 <td><p>Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+and cross-array consistency).</p><a href="../module/tox_data_validation.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td><a href='../sourcefile/tox_errors.f90.html'>tox_errors.F90</a></td>
                  <td><p>error handling module for tensor-omics</p></td>
                </tr>
-<!---->			   <tr class="active">
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
                  <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
                  <td><p>Module with Euclidean distance computation routines for tensor omics.</p></td>
                </tr>
-<!--active-->			   <tr class="">
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
                  <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.F90</a></td>
-                 <td><p>Module for computing expression centroids of gene families.</p></td>
+                 <td><p>Module for computing expression centroids of gene families.</p><a href="../module/tox_gene_centroids.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-<!---->			   <tr class="active">
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
                  <td><p>Module to identify gene outliers based on their distances to family centroids.</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
+                 <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
+                 <td><p>Wraps the netlib LOESS (<code>dloess</code>/<code>lowesd</code> family) Fortran routines for local polynomial regression smoothing.
+This module exposes the netlib subroutines through Fortran interfaces (see below) and provides
+higher-level wrappers (<a href="../proc/loess_fit_plain.html">loess_fit_plain</a>, <a href="../proc/loess_fit_robust.html">loess_fit_robust</a>,
+<a href="../proc/loess_alloc.html">loess_alloc</a>) that size the required integer/real workspace and
+handle degenerate inputs (a single data point, a near-constant <code>x</code>, or too few unique <code>x</code> values for
+the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
+netlib routines themselves are not re-documented here beyond their calling convention.</p></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
@@ -262,7 +310,7 @@ for specific sub-neighborhoods by using the pipeline from <a href="../module/tox
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></td>
                  <td><a href='../sourcefile/tox_paralog_analysis.f90.html'>tox_paralog_analysis.F90</a></td>
-                 <td></td>
+                 <td><p>Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.</p><a href="../module/tox_paralog_analysis.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
@@ -284,12 +332,13 @@ quantifying how uniformly a gene is expressed across selected axes (tissues).</p
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
-                 <td></td>
+                 <td><p>Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.</p><a href="../module/tox_trajectory_contribution_analysis.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_trajectory_normalization.html'>tox_trajectory_normalization</a></td>
                  <td><a href='../sourcefile/tox_trajectory_normalization.f90.html'>tox_trajectory_normalization.F90</a></td>
-                 <td></td>
+                 <td><p>Module for min-max normalization of factor trajectories over time.
+Each factor's time series is independently rescaled to <code>[0,1]</code> per sample/entity.</p></td>
                </tr>
 <!---->			 </tbody></table>
              
@@ -303,14 +352,14 @@ quantifying how uniformly a gene is expressed across selected axes (tissues).</p
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

@@ -9,7 +9,7 @@ import os
 # Add parent directory to path to import tensoromics_functions
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 from tensoromics_functions import (
     tox_determine_shared_residual_range,
     tox_determine_shared_residual_range_expert,
@@ -54,20 +54,12 @@ def test_tox_determine_shared_residual_range():
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    try:
-        tox_determine_shared_residual_range(S1, S2, -1.0)
-        assert False, "Test 3 failed: expected ERR_INVALID_INPUT"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 4 — Quantile > 100 → error
     # ============================================================
-    try:
-        tox_determine_shared_residual_range(S1, S2, 150.0)
-        assert False, "Test 4 failed: expected ERR_INVALID_INPUT"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -146,20 +138,12 @@ def test_tox_determine_shared_residual_range_expert():
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    try:
-        tox_determine_shared_residual_range_expert(pool, perm, -1.0)
-        assert False, "Test 3 failed: expected ERR_INVALID_INPUT"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 4 — Quantile > 100 → error
     # ============================================================
-    try:
-        tox_determine_shared_residual_range_expert(pool, perm, 150.0)
-        assert False, "Test 4 failed: expected ERR_INVALID_INPUT"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 5 — NaNs must be ignored

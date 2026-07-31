@@ -1,6 +1,5 @@
 source("rcpp/tensoromics_functions.R")
-
-cat("=== Testing trajectory normalization R wrappers ===\n")
+source("rcpp/test_helpers.R")
 
 TOL <- 1e-10
 
@@ -12,9 +11,8 @@ test_normalize_variable_timeseries <- function() {
   res <- tox_normalize_variable_timeseries(x)
   expected <- c(0, 0.25, 0.5, 0.75, 1.0)
 
-  stopifnot(length(res$v_norm) == length(x))
-  stopifnot(all(abs(res$v_norm - expected) < TOL))
-  cat("test_normalize_variable_timeseries passed ✓\n")
+  assert_true(length(res$v_norm) == length(x))
+  assert_true(all(abs(res$v_norm - expected) < TOL))
 }
 
 # -----------------------------------------------------
@@ -31,10 +29,9 @@ test_normalize_single_trajectory <- function() {
   res <- tox_normalize_single_trajectory(trajectory)
 
   expected_col <- c(0, 1/3, 2/3, 1)
-  stopifnot(all(dim(res$traj_norm) == dim(trajectory)))
-  stopifnot(all(abs(res$traj_norm[, 1] - expected_col) < TOL))
-  stopifnot(all(abs(res$traj_norm[, 2] - expected_col) < TOL))
-  cat("test_normalize_single_trajectory passed ✓\n")
+  assert_true(all(dim(res$traj_norm) == dim(trajectory)))
+  assert_true(all(abs(res$traj_norm[, 1] - expected_col) < TOL))
+  assert_true(all(abs(res$traj_norm[, 2] - expected_col) < TOL))
 }
 
 # -----------------------------------------------------
@@ -49,21 +46,16 @@ test_normalize_all_trajectories <- function() {
 
   res <- tox_normalize_all_trajectories(trajectories)
 
-  stopifnot(all(dim(res$traj_norm) == dim(trajectories)))
+  assert_true(all(dim(res$traj_norm) == dim(trajectories)))
 
   for (i_factor in 1:dim(res$traj_norm)[1]) {
     for (i_sample in 1:dim(res$traj_norm)[2]) {
       ts <- res$traj_norm[i_factor, i_sample, ]
-      stopifnot(abs(min(ts) - 0) < TOL)
-      stopifnot(abs(max(ts) - 1) < TOL)
+      assert_true(abs(min(ts) - 0) < TOL)
+      assert_true(abs(max(ts) - 1) < TOL)
     }
   }
 
-  cat("test_normalize_all_trajectories passed ✓\n")
 }
 
-cat("\nRunning trajectory normalization tests...\n")
-test_normalize_variable_timeseries()
-test_normalize_single_trajectory()
-test_normalize_all_trajectories()
-cat("All trajectory normalization R tests passed.\n")
+run_all_tests()

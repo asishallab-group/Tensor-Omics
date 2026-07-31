@@ -1,173 +1,179 @@
-function get_alignment() {
-  ALIGN=32
-  # Detect capabilities in order of descending priority:
-  if lscpu | grep -q amx; then
-  ALIGN=128
-  elif lscpu | grep -q avx512; then
-  ALIGN=64
-  elif lscpu | grep -q avx2; then
-  ALIGN=32
-  elif lscpu | grep -q sse2; then
-  ALIGN=16
+DIRECTIVES=
+
+# define colors if output is not being piped
+if [[ -t 1 && -t 2 ]]; then
+  COLOR_GREEN="\033[38;5;154m"
+  COLOR_COPPER="\033[38;5;214m"
+  COLOR_DARK_COPPER="\033[38;5;208m"
+  COLOR_RED="\033[38;5;196m"
+  COLOR_LIGHT_GRAY="\033[38;5;252m"
+  COLOR_YELLOW="\033[38;5;226m"
+  COLOR_CREAM="\033[38;5;255m"
+  COLOR_ERROR="\033[38;5;222m"
+  COLOR_RESET="\033[0m"
+else
+  DIRECTIVES="-DNO_COLORS"
+fi
+
+function init() {
+  handle_args "$@"
+  # --compiler beats global $TOX_COMPILER beats global $FC
+  get_compiler
+
+  if [[ -z $(command -v $COMPILER) ]]; then
+    error "'$(echo_compiler $COMPILER)' not installed or accessible in current scope"
+    exit 1
   fi
-  echo $ALIGN
+  get_flags_and_features
 }
 
+function utils_fpm() {
+  cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
+  declare prefix="fpm build"
+  declare libpath="$LD_LIBRARY_PATH"
+  if [[ "$1" == "test" ]]; then
+    prefix="fpm test --target ${2:-run_tests}"
+    libpath=build:"$libpath"
+  elif [[ "$1" == "list" ]]; then
+    prefix="fpm build --list"
+  fi
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  exit_code=$?
+  rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
+  (exit $exit_code)
+}
+
+# gets compiler from context, it uses
+# 1. $TOX_COMPILER if defined (by --compiler)
+# 2. else $FC
+# falls back to gfortran if the set compiler is not known
 function get_compiler() {
-  # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-    echo ifx
-  elif [[ "$FC" == "nvfortran" ]]; then
-    echo nvfortran
-  else
-    echo gfortran
-  fi
-}
-
-function get_flags() {
-  # Libraries
-  echo -en "-lzip -lxxhash "
+  declare compiler=${TOX_COMPILER:-$FC}
+  declare default=gfortran
+  FEATURES=
 
   # Detect compiler and choose appropriate profile:
-  if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-    echo "-O2 -fopenmp-target-do-concurrent -warn all -diag-enable=all -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC"
-  elif [[ "$FC" == "nvfortran" ]]; then
-    echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore -Mbackslash"
-    # -Mbackslash makes backslashes treatened as raw characters instead of escapes 
+  if [[ "$compiler" == "ifx" ]]; then
+    FEATURES=ifx
+    COMPILER=ifx
+  elif [[ "$compiler" == "nvfortran" ]]; then
+    FEATURES=nvfortran
+    COMPILER=nvfortran
   else
-    echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
-  fi
-}
-
-function get_module_flag() {
-  if [[ $1 ]]; then
-    if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-      echo "-module $1"
-    elif [[ "$FC" == "nvfortran" ]]; then
-      echo "-module $1"
+    if [[ $compiler ]]; then
+      if [[ $compiler != "$default" ]]; then
+        if [[ $TOX_I_WANT_TO_USE_THIS_COMPILER ]]; then
+          FEATURES=unknown-compiler
+          COMPILER="$compiler"
+          return
+        else
+          warning "Compiler '$(echo_compiler $compiler)' not officially supported by Tensor Omics, trying '$(echo_compiler $default)' instead.
+Use '$COLOR_LIGHT_GRAY--i-want-to-use-this-compiler$COLOR_CREAM' to run with '$(echo_compiler $compiler)' anyway.
+Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compiler-related flags like '$COLOR_LIGHT_GRAY--override-flags=\"-O3 -fPIC\"$COLOR_RESET'
+"
+        fi
+      fi
     else
-      echo "-J$1"
+      warning "No compiler specified, using '$(echo_compiler $default)'. To specify the compiler, use $COLOR_LIGHT_GRAY--compiler=<$(echo_compiler compiler)$COLOR_LIGHT_GRAY>$COLOR_CREAM or the env variables $COLOR_LIGHT_GRAY\$$(echo_compiler FC)$COLOR_CREAM, $COLOR_LIGHT_GRAY\$$(echo_compiler TOX_COMPILER)"
     fi
+    FEATURES=$default
+    COMPILER=$default
   fi
+}
+
+function get_flags_and_features() {
+  if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
+    FLAGS="$TOX_OVERRIDE_FLAGS"
+    FEATURES=
+    return
+  fi
+
+  if [[ $TOX_MAX_PERFORMANCE ]]; then
+    FEATURES="$FEATURES,optimization"
+    FLAGS="-DMAX_PERFORMANCE -O3"
+  elif [[ $TOX_DIAGNOSTICS ]]; then
+    FLAGS="-O0"
+  fi
+  if [[ $TOX_DIAGNOSTICS ]]; then
+    FEATURES="$FEATURES,diagnostics"
+  fi
+  FEATURES="$FEATURES,default"
 }
 
 function handle_args() {
-  MAX_PERF_FLAG=""
   ARGS=""
-  DIRECTIVES=""
+  
   for arg in "$@"; do
-    if [[ "$arg" == "--max-performance" ]]; then
-      MAX_PERF_FLAG="-DMAX_PERFORMANCE"
-    elif [[ "$arg" == -D* ]]; then
-      DIRECTIVES="$DIRECTIVES $arg"
-    # genericly handle optional flags
-    elif [[ "$arg" == --* ]]; then
+    if [[ "$arg" == --* ]]; then
       declare undashed=${arg:2}
-      declare key=${undashed%=*}
-      declare val=${undashed##$key}
-      if [[ ! $val ]];then val=1;fi
-      declare -g "$(echo "$key" | sed 's/\W/_/g; s/\w/\U&/g')=$val"
+      declare key=${undashed%%=*}
+
+      # extract value after first '=' if present, else set to 1
+      val="${undashed#"$key"}"      # strip leading $key
+      if [[ "$val" == *=* ]]; then
+        val="${val#=}"                # strip leading '=' if present
+      else
+        val=1
+      fi
+
+      declare varname="$key"
+
+      # Replace non-alphanumeric with _
+      varname="${varname//[^a-zA-Z0-9]/_}"
+
+      # Uppercase everything
+      varname="TOX_${varname^^}"
+
+      if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
+        DIRECTIVES="$DIRECTIVES -D${val}"
+        TOX_CLEAN_BUILD=1
+      else
+        declare -g "${varname}=$val"
+      fi
     else
       ARGS="$ARGS $arg"
     fi
   done
+}
 
-  # if extra directives are added, a clean build is necessary. Otherwise fpm doesn't recompile
-  if [[ $DIRECTIVES ]]; then
-    CLEAN_BUILD=1
-  fi
+function find_and_mv_libs() {
+  while IFS= read -r line; do
+    if [[ $line == *.so || $line == *.a ]]; then
+      # remove leading whitespaces
+      lib="${line#"${line%%[![:space:]]*}"}"
+      cp "${lib}" "$2" 2>/dev/null
+    fi
+  done <<< "$1"
+}
+
+function echo_compiler() {
+  echo "$COLOR_COPPER$1$COLOR_CREAM"
+}
+
+function cecho() {
+  echo -e "$COLOR_CREAM$@$COLOR_RESET"
+}
+
+function error() {
+  stderr "${COLOR_RED}Error$COLOR_CREAM: $@"
+  exit 1
+}
+
+function warning() {
+  stderr "${COLOR_DARK_COPPER}Warning$COLOR_CREAM: $@"
 }
 
 function stderr() {
-  echo "$@" >&2
-}
-
-function check_build() {
-  if [[ "$@" ]]; then
-    missing=()
-    for c in "$@"; do
-      if [[ ! $(find build -name "$c") ]]; then
-        missing+=(" '$c'")
-      fi
-    done
-    if [[ "$missing" ]]; then
-      stderr "Missing files:$(IFS=', ';echo "${missing[*]}")"
-      return 1
-    fi
-  fi
-
-  mod_count=$(find build -name "*.mod" | wc -l)
-  obj_count=$(find build -name "*.o" | wc -l) 
-  so_count=$(find build -name "*.so" | wc -l)
-
-  if [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod files"
-    return 2
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o files"
-    return 3
-  elif [ $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .o and .so files"
-    return 4
-  elif [ $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .mod and .so files"
-    return 5
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ ! $so_count -eq 0 ]; then
-    stderr "Missing .o files"
-    return 6
-  elif [ ! $mod_count -eq 0 ] && [ $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .o and .so files"
-    return 7
-  elif [ ! $mod_count -eq 0 ] && [ ! $obj_count -eq 0 ] && [ $so_count -eq 0 ]; then
-    stderr "Missing .so files"
-    return 8
-  fi
+  cecho "$@" >&2
 }
 
 function check_exit_code() {
   code=$?
   if [[ ! $code -eq 0 ]]; then
     if [[ "$@" ]]; then
-      echo -en "$@ - "
+      error "$@ - ${COLOR_RED}Exit code${COLOR_CREAM}: $code"
+    else
+      error "${COLOR_RED}Exit code${COLOR_CREAM}: $code"
     fi
-    echo "Exit code: $code"
-    exit $code
   fi
-}
-
-function generate_fpm_toml() {
-  extra_libs=   # space, tab or comma separated list, like: "lib1, lib2"
-  if [[ "$2" == "ifx" ]]; then
-    extra_libs="iomp5"
-  fi
-
-  awk -v extra_libs="$extra_libs" '
-{
-  line = $0
-
-  # match category, like "build" from [build] or "test.dependencies" from [test.dependencies]
-  match($0, /^[ \t]*\[[ \t]*([a-z\.]+)[ \t]*\]/, arr)
-
-  if (arr[1]) {
-    category = arr[1]
-  }
-
-  if (category == "build") {
-    # match: link = [ "lib_1.0" , "lib_2.0" ]
-    # and extract the array elements
-    match($0, /^[ \t]*link[ \t]*=[ \t]*\[([ \ta-z,",_0-9\.]+)\]/, arr)
-
-    if (arr[1]) {
-      # unify separators, trim start and wrap each lib in: ",\"<lib>\""
-      gsub(/[\t,]/," ",extra_libs)
-      sub(/^ +/,"",extra_libs)
-      gsub(/[^ ]+/,",\"&\"",extra_libs)
-
-      line = sprintf("link = [%s %s]", arr[1], extra_libs)
-    }
-  }
-
-  print line
-}
-' $1
 }

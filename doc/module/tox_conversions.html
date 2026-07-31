@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_conversions &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.7% of total for modules and submodules.">139 statements</a>
+                 title=" 1.4% of total for modules and submodules.">123 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -146,7 +147,6 @@
             <a class="list-group-item" href="../module/tox_conversions.html#proc-char_as_c_char">char_as_c_char</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_1d_as_string">c_char_1d_as_string</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-string_as_c_char_1d">string_as_c_char_1d</a>
-            <a class="list-group-item" href="../module/tox_conversions.html#proc-string_as_c_char_1d_r">string_as_c_char_1d_r</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_2d_as_string">c_char_2d_as_string</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-string_as_c_char_2d">string_as_c_char_2d</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-int32_as_c_int64">int32_as_c_int64</a>
@@ -173,16 +173,18 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Module with conversion helpers between Fortran-native types and their <code>iso_c_binding</code> counterparts.
+Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
+characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -205,7 +207,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_int_as_logical"></span> <h3>public elemental subroutine <a href='../proc/c_int_as_logical.html'>c_int_as_logical</a>(c_val, f_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a c_int value to logical, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -260,7 +266,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-logical_as_c_int"></span> <h3>public elemental subroutine <a href='../proc/logical_as_c_int.html'>logical_as_c_int</a>(f_val, c_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a logical value to c_int, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -315,7 +325,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_char_as_char"></span> <h3>public elemental subroutine <a href='../proc/c_char_as_char.html'>c_char_as_char</a>(c_val, f_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a c_char value to fortran character, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -370,7 +384,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-char_as_c_char"></span> <h3>public elemental subroutine <a href='../proc/char_as_c_char.html'>char_as_c_char</a>(f_val, c_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a character value to c_char, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -425,7 +443,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_char_1d_as_string"></span> <h3>public pure subroutine <a href='../proc/c_char_1d_as_string.html'>c_char_1d_as_string</a>(c_char_array, str_out, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a 1D c_char array to string</p>
 
   <h4>Arguments</h4>
@@ -471,7 +493,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~191"></span>
+              <span class="anchor" id="variable-ierr~251"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -495,7 +517,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-string_as_c_char_1d"></span> <h3>public pure subroutine <a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a>(str, c_char_array)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a string to 1D c_char array</p>
 
   <h4>Arguments</h4>
@@ -547,65 +573,14 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-string_as_c_char_1d_r"></span> <h3>public pure subroutine <a href='../proc/string_as_c_char_1d_r.html'>string_as_c_char_1d_r</a>(str, c_char_array)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Converts a string to 1D c_char array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-str~2"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>str</strong></td>
-            <td>
-<p>Fortran string to be converted</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-c_char_array~3"></span>
-              character(kind=c_char, len=1),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>c_char_array</strong></td>
-            <td>
-<p>c_char array representing chars of <code>str</code>, will end with null char if space permits</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-c_char_2d_as_string"></span> <h3>public pure subroutine <a href='../proc/c_char_2d_as_string.html'>c_char_2d_as_string</a>(c_char_array, str_out, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a 2D c_char array to 1D string array</p>
 
   <h4>Arguments</h4>
@@ -621,7 +596,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_char_array~4"></span>
+              <span class="anchor" id="variable-c_char_array~3"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -651,7 +626,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~192"></span>
+              <span class="anchor" id="variable-ierr~252"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -675,7 +650,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-string_as_c_char_2d"></span> <h3>public pure subroutine <a href='../proc/string_as_c_char_2d.html'>string_as_c_char_2d</a>(strings, c_char_array)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts a 1D string array to 2D c_char array</p>
 
   <h4>Arguments</h4>
@@ -691,7 +670,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-strings"></span>
+              <span class="anchor" id="variable-strings~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -706,7 +685,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_char_array~5"></span>
+              <span class="anchor" id="variable-c_char_array~4"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(out),</td>
@@ -730,7 +709,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-int32_as_c_int64"></span> <h3>public elemental subroutine <a href='../proc/int32_as_c_int64.html'>int32_as_c_int64</a>(f_val, c_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts int32 to c_int64_t, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -785,7 +768,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_int64_as_int32"></span> <h3>public elemental subroutine <a href='../proc/c_int64_as_int32.html'>c_int64_as_int32</a>(c_val, f_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts c_int64_t to int32, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -840,7 +827,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-int32_as_c_size"></span> <h3>public elemental subroutine <a href='../proc/int32_as_c_size.html'>int32_as_c_size</a>(f_val, c_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts int32 to c_size_t, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -895,7 +886,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_size_as_int32"></span> <h3>public elemental subroutine <a href='../proc/c_size_as_int32.html'>c_size_as_int32</a>(c_val, f_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts c_size_t to int32, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -950,7 +945,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_int64_as_c_size"></span> <h3>public elemental subroutine <a href='../proc/c_int64_as_c_size.html'>c_int64_as_c_size</a>(c64_val, csize_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts c_int64_t to c_size_t, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -1005,7 +1004,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-c_size_as_c_int64"></span> <h3>public elemental subroutine <a href='../proc/c_size_as_c_int64.html'>c_size_as_c_int64</a>(csize_val, c64_val)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Converts c_size_t to c_int64_t, elemental -&gt; any shape</p>
 
   <h4>Arguments</h4>
@@ -1072,14 +1075,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

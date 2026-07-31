@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>detect_outliers &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">34 statements</a>
+                 title=" 0.2% of total for procedures.">32 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,11 +151,15 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, work_array, perm, stack_left, stack_right, is_outlier, loess_x, loess_y, loess_n, ierr, percentile)  
+    <h2>public  subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile)  
 </h2>
     
 
-    <p>Main routine to detect outliers using RDI and LOESS-based scaling.</p>
+    <p>Main routine to detect outliers using RDI and LOESS-based scaling.
+Orchestrates the full pipeline: computes per-family scaling factors via
+<a href="../proc/compute_family_scaling_alloc.html">compute_family_scaling_alloc</a>, derives the RDI per gene via
+<a href="../proc/compute_rdi.html">compute_rdi</a>, then flags outliers via
+<a href="../proc/identify_outliers.html">identify_outliers</a>.</p>
 
 
     <h3>Arguments</h3>
@@ -169,7 +175,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
+              <span class="anchor" id="variable-n_genes~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -184,7 +190,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~26"></span>
+              <span class="anchor" id="variable-n_families~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -199,7 +205,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~15"></span>
+              <span class="anchor" id="variable-distances~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -214,7 +220,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~26"></span>
+              <span class="anchor" id="variable-gene_to_fam~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,60 +235,60 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_array"></span>
+              <span class="anchor" id="variable-tmp_work_array"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>work_array</strong>(n_genes)</td>
+            <td><strong>tmp_work_array</strong>(n_genes)</td>
             <td>
                 <p>Work array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~8"></span>
+              <span class="anchor" id="variable-tmp_perm~3"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong>(n_genes)</td>
             <td>
                 <p>Permutation array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left~6"></span>
+              <span class="anchor" id="variable-tmp_stack_left~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(n_genes)</td>
+            <td><strong>tmp_stack_left</strong>(n_genes)</td>
             <td>
                 <p>Stack array for left indices during sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_right~6"></span>
+              <span class="anchor" id="variable-tmp_stack_right~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_right</strong>(n_genes)</td>
+            <td><strong>tmp_stack_right</strong>(n_genes)</td>
             <td>
                 <p>Stack array for right indices during sorting</p>
             </td>
@@ -307,7 +313,7 @@
               <span class="anchor" id="variable-loess_x~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -322,7 +328,7 @@
               <span class="anchor" id="variable-loess_y~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -337,7 +343,7 @@
               <span class="anchor" id="variable-loess_n"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
@@ -349,7 +355,25 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~282"></span>
+              <span class="anchor" id="variable-quantile~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>quantile</strong>(n_genes)</td>
+            <td>
+                <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail quantile is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~238"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -359,12 +383,12 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code: 0=ok, 201=invalid family indices</p>
+                <p>Error code</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~2"></span>
+              <span class="anchor" id="variable-percentile~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -404,14 +428,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

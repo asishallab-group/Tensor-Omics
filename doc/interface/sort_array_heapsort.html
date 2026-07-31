@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>sort_array_heapsort &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title="<p> 0.0% of total for procedures.</p>Including implementation: 18 statements,  0.1% of total for procedures.">3 statements</a>
+                 title="<p> 0.0% of total for procedures.</p>Including implementation: 25 statements,  0.2% of total for procedures.">4 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -150,6 +151,7 @@
             <a class="list-group-item" href="../interface/sort_array_heapsort.html#moduleprocedure-sort_real_heapsort">sort_real_heapsort</a>
             <a class="list-group-item" href="../interface/sort_array_heapsort.html#moduleprocedure-sort_integer_heapsort">sort_integer_heapsort</a>
             <a class="list-group-item" href="../interface/sort_array_heapsort.html#moduleprocedure-sort_character_heapsort">sort_character_heapsort</a>
+            <a class="list-group-item" href="../interface/sort_array_heapsort.html#moduleprocedure-sort_real_heapsort_expl_size">sort_real_heapsort_expl_size</a>
         </div>
       </div>
     </div>
@@ -163,8 +165,11 @@
 
     <div class="col-md-9" id='text'>
       <h2>public interface sort_array_heapsort</h2>
-      
-
+      <p>Generic indirect (permutation-based) heapsort, dispatches on the array's element type.
+Prefer this over <a href="../interface/sort_array.html">sort_array</a> when a worst-case O(n log n)
+guarantee is needed (quicksort's manual-stack partitioning can degrade on adversarial input),
+or when the temporary quicksort stack workspace should be avoided.</p>
+<br>
 
 
         <h2>Module Procedures</h2>
@@ -172,7 +177,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-sort_real_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_real_heapsort.html'>sort_real_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a real array indirectly using heapsort.
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
 
@@ -192,9 +201,9 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
               <span class="anchor" id="variable-array~7"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -204,12 +213,12 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~14"></span>
+              <span class="anchor" id="variable-perm~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -228,7 +237,11 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
     <div class="card-header codesum"><span class="anchor" id="proc-sort_integer_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_integer_heapsort.html'>sort_integer_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort an integer array indirectly using heapsort.
 Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
 
@@ -245,12 +258,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~8"></span>
+              <span class="anchor" id="variable-array~9"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -260,12 +273,12 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~15"></span>
+              <span class="anchor" id="variable-perm~11"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(inout),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>perm</strong>(:)</td>
@@ -284,7 +297,11 @@ Similar to <code>sort_real_heapsort</code>, but for integer input.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-sort_character_heapsort"></span> <h3>public pure subroutine <a href='../proc/sort_character_heapsort.html'>sort_character_heapsort</a>(array, perm)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/Mohamed-AKDI" target="_blank" >Mohamed Akdi</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Sort a character array indirectly using heapsort.
 Uses lexicographic ordering and permutation vector sorting.</p>
 
@@ -301,12 +318,12 @@ Uses lexicographic ordering and permutation vector sorting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~9"></span>
+              <span class="anchor" id="variable-array~10"></span>
               character(len=*),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              contiguous
             </td>
             <td>::</td>
             <td><strong>array</strong>(:)</td>
@@ -316,7 +333,67 @@ Uses lexicographic ordering and permutation vector sorting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~16"></span>
+              <span class="anchor" id="variable-perm~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              contiguous
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong>(:)</td>
+            <td>
+<p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+            <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-sort_real_heapsort_expl_size"></span> <h3>public pure subroutine <a href='../proc/sort_real_heapsort_expl_size.html'>sort_real_heapsort_expl_size</a>(array, perm, n)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Sort a real explicit-size array indirectly using heapsort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>array</strong>(n)</td>
+            <td>
+<p>Real input array to sort</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -324,9 +401,24 @@ Uses lexicographic ordering and permutation vector sorting.</p>
               
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(:)</td>
+            <td><strong>perm</strong>(n)</td>
             <td>
 <p>Permutation vector that will be sorted</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n</strong></td>
+            <td>
+<p>Size of <code>array</code></p>
             </td>
         </tr>
     </tbody>
@@ -346,14 +438,14 @@ Uses lexicographic ordering and permutation vector sorting.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

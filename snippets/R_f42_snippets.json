@@ -1,4 +1,149 @@
 {
+  "R Helper function 'save_tox_data'": {
+    "prefix": "f42:r_helper_save_tox_data",
+    "body": [
+      "#' Save standard conform tox data directly to zip archive",
+      "#' @param zip_filename Name of the zip file to create",
+      "#' @param gene_ids Character vector of gene IDs",
+      "#' @param gene_ids_name Filename for gene IDs in the archive",
+      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
+      "#' @param expression_vectors_name Filename for expression vectors in the archive",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "#' @param gene_to_fam_name Filename for gene to family mapping in the archive",
+      "#' @param family_ids Character vector of family IDs",
+      "#' @param family_ids_name Filename for family IDs in the archive",
+      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
+      "#' @param family_centroids_name Filename for family centroids in the archive",
+      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
+      "#' @param shift_vectors_name Filename for shift vectors in the archive",
+      "#' @param debug Specifying whether to print status messages or not",
+      "save_tox_data <- function(zip_filename,",
+      "                                 gene_ids = NULL, gene_ids_name = NULL,",
+      "                                 expression_vectors = NULL, expression_vectors_name = NULL,",
+      "                                 gene_to_fam = NULL, gene_to_fam_name = NULL,",
+      "                                 family_ids = NULL, family_ids_name = NULL,",
+      "                                 family_centroids = NULL, family_centroids_name = NULL,",
+      "                                 shift_vectors = NULL, shift_vectors_name = NULL, debug = TRUE) {",
+      "  ",
+      " ",
+      "  # Validation moved to error_handling.R",
+      "  validate_non_empty_string(zip_filename)",
+      "    ",
+      "    # Write files to temporary directory",
+      "  temp_files <- character(0)",
+      "  keys <- character(0)",
+      "  filenames <- character(0)",
+      "  ",
+      "  if (!is.null(gene_ids)) {",
+      "    validate_character_vector(gene_ids)",
+      "    tox_serialize_char_array(gene_ids, gene_ids_name)",
+      "    if(debug) {message(paste(\"Wrote gene IDs to\", gene_ids_name))}",
+      "    temp_files <- c(temp_files, gene_ids_name)",
+      "    keys <- c(keys, \"gene_ids\")",
+      "    filenames <- c(filenames, gene_ids_name)",
+      "  }",
+      "",
+      "  if (!is.null(expression_vectors)) {",
+      "    validate_numeric_matrix(expression_vectors)",
+      "    tox_serialize_real_array(expression_vectors, expression_vectors_name)",
+      "    if(debug) {message(paste(\"Wrote expression vectors to\", expression_vectors_name))}",
+      "    temp_files <- c(temp_files, expression_vectors_name)",
+      "    keys <- c(keys, \"expression\")",
+      "    filenames <- c(filenames, expression_vectors_name)",
+      "  }",
+      "  ",
+      "  if (!is.null(gene_to_fam)) {",
+      "    validate_integer_vector(gene_to_fam)",
+      "    tox_serialize_int_array(gene_to_fam, gene_to_fam_name)",
+      "    if(debug) {message(paste(\"Wrote gene to family to\", gene_to_fam_name))}",
+      "    temp_files <- c(temp_files, gene_to_fam_name)",
+      "    keys <- c(keys, \"gene_to_family\")",
+      "    filenames <- c(filenames, gene_to_fam_name)",
+      "  }",
+      "  ",
+      "  if (!is.null(family_ids)) {",
+      "    validate_character_vector(family_ids)",
+      "    tox_serialize_char_array(family_ids, family_ids_name)",
+      "    if(debug) {message(paste(\"Wrote family IDs to\", family_ids_name))}",
+      "    temp_files <- c(temp_files, family_ids_name)",
+      "    keys <- c(keys, \"family_ids\")",
+      "    filenames <- c(filenames, family_ids_name)",
+      "  }",
+      "  ",
+      "  if (!is.null(family_centroids)) {",
+      "    validate_numeric_matrix(family_centroids)",
+      "    tox_serialize_real_array(family_centroids, family_centroids_name)",
+      "    if(debug){ message(paste(\"Wrote family centroids to\", family_centroids_name))}",
+      "    temp_files <- c(temp_files, family_centroids_name)",
+      "    keys <- c(keys, \"family_centroids\")",
+      "    filenames <- c(filenames, family_centroids_name)",
+      "  }",
+      "  ",
+      "  if (!is.null(shift_vectors)) {",
+      "    validate_numeric_matrix(shift_vectors)",
+      "    tox_serialize_real_array(shift_vectors, shift_vectors_name)",
+      "    if(debug) { message(paste(\"Wrote shift vectors to\", shift_vectors_name))}",
+      "    temp_files <- c(temp_files, shift_vectors_name)",
+      "    keys <- c(keys, \"shift_vectors\")",
+      "    filenames <- c(filenames, shift_vectors_name)",
+      "  }",
+      "",
+      "  # Call the low-level function",
+      "  if (length(keys) > 0) {",
+      "    create_zip_archive(zip_filename, keys, filenames)",
+      "  } else {",
+      "    warning(\"No valid data provided to save - skipping archive creation\")",
+      "  }",
+      "",
+      "  # Clean up temporary files",
+      "  for (temp_file in temp_files) {",
+      "    if (file.exists(temp_file)) {",
+      "      file.remove(temp_file)",
+      "    }",
+      "  }",
+      "}",
+      ""
+    ],
+    "description": "Save tox data to zip archive"
+  },
+  "R call of 'save_tox_data'": {
+    "prefix": "f42:r_save_tox_data",
+    "body": [
+      "save_tox_data(${1:zip_filename}, ${2:gene_ids}, ${3:gene_ids_name}, ${4:expression_vectors}, ${5:expression_vectors_name}, ${6:gene_to_fam}, ${7:gene_to_fam_name}, ${8:family_ids}, ${9:family_ids_name}, ${10:family_centroids}, ${11:family_centroids_name}, ${12:shift_vectors}, ${13:shift_vectors_name}, ${14:debug})"
+    ],
+    "description": "Call of R helper 'save_tox_data'"
+  },
+  "R Helper function 'read_tox_data'": {
+    "prefix": "f42:r_helper_read_tox_data",
+    "body": [
+      "#' Load standard conform tox data directly from zip archive",
+      "#' @param zip_filename Name of the zip file to read from",
+      "#' @param gene_ids If not NULL, will attempt to read gene IDs from archive",
+      "#' @param expression_vectors If not NULL, will attempt to read expression vectors from archive",
+      "#' @param gene_to_fam If not NULL, will attempt to read gene to family mapping from archive",
+      "#' @param family_ids If not NULL, will attempt to read family IDs from archive",
+      "#' @param family_centroids If not NULL, will attempt to read family centroids from archive",
+      "#' @param shift_vectors If not NULL, will attempt to read shift vectors from archive",
+      "read_tox_data <- function(zip_filename,",
+      "                          gene_ids = NULL,",
+      "                          expression_vectors = NULL,",
+      "                          gene_to_fam = NULL,",
+      "                          family_ids = NULL,",
+      "                          family_centroids = NULL,",
+      "                          shift_vectors = NULL) {",
+      "  # stop(\"Zip archive helpers have been removed. Use an external zip tool instead.\")",
+      "}",
+      ""
+    ],
+    "description": "Read tox data from zip archive"
+  },
+  "R call of 'read_tox_data'": {
+    "prefix": "f42:r_read_tox_data",
+    "body": [
+      "read_tox_data(${1:zip_filename}, ${2:gene_ids}, ${3:expression_vectors}, ${4:gene_to_fam}, ${5:family_ids}, ${6:family_centroids}, ${7:shift_vectors})"
+    ],
+    "description": "Call of R helper 'read_tox_data'"
+  },
   "R Helper to Import necessary packages": {
     "prefix": "f42:r_helper_import_libs",
     "body": [
@@ -79,7 +224,7 @@
       "#' This function examines the input matrix for common data quality issues",
       "#' that could cause problems in downstream analysis.",
       "#'",
-      "#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.",
+      "#' @param input_matrix A numeric matrix with genes as columns and tissues as rows.",
       "#' @param show_details Logical indicating whether to show detailed information.",
       "#' @return A list with diagnostic information about the data quality.",
       "#' @examples",
@@ -194,7 +339,7 @@
       "#' This function handles NA, NaN, Inf values and genes that are all zeros",
       "#' to prepare data for Fortran normalization routines.",
       "#'",
-      "#' @param df_matrix A numeric matrix with genes as rows and tissues as columns",
+      "#' @param df_matrix A numeric matrix with genes as columns and tissues as rowss",
       "#' @param remove_all_zero_genes Logical, whether to remove genes that are all zeros",
       "#' @param na_strategy Strategy for handling NA values: \"remove_genes\", \"remove_samples\", \"impute_zero\", \"impute_mean\"",
       "#' @param min_expression_threshold Minimum expression value to consider (values below this become 0)",
@@ -348,33 +493,33 @@
   "R Helper function 'tox_prepare_indices_by_patterns'": {
     "prefix": "f42:r_helper_tox_prepare_indices_by_patterns",
     "body": [
-      "#' Prepare control and condition column indices based on naming patterns",
+      "#' Prepare control and condition tissue indices based on naming patterns",
       "#'",
-      "#' This helper function searches for columns in the input dataframe that match",
+      "#' This helper function searches for tissues in the input dataframe that match",
       "#' specified control and condition patterns. It builds the mapping necessary ",
       "#' to calculate fold changes.",
       "#'",
-      "#' @param df A data frame with expression data, genes as rows and tissues/conditions as columns.",
-      "#' @param control_pattern A string pattern used to identify control columns.",
-      "#' @param condition_patterns A character vector with patterns used to identify condition columns.",
+      "#' @param df A data frame with expression data, genes as columns and tissues/conditions as rows.",
+      "#' @param control_pattern A string pattern used to identify control tissues.",
+      "#' @param condition_patterns A character vector with patterns used to identify condition tissues.",
       "#' @return A list containing:",
       "#' \\describe{",
-      "#'   \\item{control_cols}{Indices of control columns}",
-      "#'   \\item{condition_cols}{Indices of condition columns}",
+      "#'   \\item{control_cols}{Indices of control tissues}",
+      "#'   \\item{condition_cols}{Indices of condition tissues}",
       "#'   \\item{condition_labels}{Column names for the resulting fold changes}",
       "#' }",
       "#'",
       "#' @examples",
       "#' indices_info <- tox_prepare_indices_by_patterns(df, control_pattern = \"dietM\", condition_patterns = c(\"dietP\"))",
       "tox_prepare_indices_by_patterns <- function(df, control_pattern, condition_patterns) {",
-      "  colnames_df <- colnames(df)",
+      "  rownames_df <- rownames(df)",
       "",
-      "  control_cols <- integer(0)         # Will store control column indices",
-      "  condition_cols <- integer(0)       # Will store condition column indices",
+      "  control_tissues <- integer(0)         # Will store control tissue indices",
+      "  condition_tissues <- integer(0)       # Will store condition tissue indices",
       "  condition_labels <- character(0)   # Labels for resulting logFC columns",
       "",
       "  # --- Find all control columns matching control_pattern ---",
-      "  control_candidates <- grep(control_pattern, colnames_df, value = TRUE)",
+      "  control_candidates <- grep(control_pattern, rownames_df, value = TRUE)",
       "",
       "  if (length(control_candidates) == 0) {",
       "    stop(\"No control columns found matching pattern: \", control_pattern)",
@@ -386,25 +531,25 @@
       "",
       "    for (cond_pattern in condition_patterns) {",
       "      pattern_to_match <- paste0(\"^\", tissue_prefix, \"_\", cond_pattern)",
-      "      matching_conditions <- grep(pattern_to_match, colnames_df, value = TRUE)",
+      "      matching_conditions <- grep(pattern_to_match, rownames_df, value = TRUE)",
       "",
       "      for (condition in matching_conditions) {",
-      "        control_cols <- c(control_cols, which(colnames_df == control))",
-      "        condition_cols <- c(condition_cols, which(colnames_df == condition))",
+      "        control_tissues <- c(control_tissues, which(rownames_df == control))",
+      "        condition_tissues <- c(condition_tissues, which(rownames_df == condition))",
       "        condition_labels <- c(condition_labels, paste0(condition, \"_logFC\"))",
       "      }",
       "    }",
       "  }",
       "",
-      "  if (length(control_cols) == 0) {",
+      "  if (length(control_tissues) == 0) {",
       "    stop(\"No valid control-condition pairs found!\")",
       "  }",
       "",
-      "  return(list(control_cols = control_cols, condition_cols = condition_cols, condition_labels = condition_labels))",
+      "  return(list(control_tissues = control_tissues, condition_tissues = condition_tissues, condition_labels = condition_labels))",
       "}",
       ""
     ],
-    "description": "Prepare control and condition column indices based on naming patterns"
+    "description": "Prepare control and condition tissue indices based on naming patterns"
   },
   "R call of 'tox_prepare_indices_by_patterns'": {
     "prefix": "f42:r_tox_prepare_indices_by_patterns",
@@ -447,7 +592,7 @@
     ],
     "description": "Call of R helper 'get_kd_point'"
   },
-  "R setup for 'get_array_metadata_c' from module 'f42_array_utils'": {
+  "R setup for 'get_array_metadata_c' from module 'f42_serde_arrays_utils'": {
     "prefix": "f42:r_setup_get_array_metadata_c",
     "body": [
       "#' Get array metadata from serialized file",
@@ -498,9 +643,9 @@
     "body": [
       "${1:result} <- tox_get_array_metadata(${2:filename}, ${3:max_dims}, ${4:with_clen})"
     ],
-    "description": "Call of R wrapper for 'get_array_metadata_c' from module 'f42_array_utils'"
+    "description": "Call of R wrapper for 'get_array_metadata_c' from module 'f42_serde_arrays_utils'"
   },
-  "R setup for 'deserialize_int_nd_C' from module 'f42_deserialize_int'": {
+  "R setup for 'deserialize_int_nd_C' from module 'f42_serde_arrays_deserialize_int'": {
     "prefix": "f42:r_setup_deserialize_int_nd_C",
     "body": [
       "#' @param filename Path to the serialized integer array file",
@@ -531,9 +676,9 @@
     "body": [
       "${1:result} <- tox_deserialize_int_array(${2:filename}, ${3:max_dims})"
     ],
-    "description": "Call of R wrapper for 'deserialize_int_nd_C' from module 'f42_deserialize_int'"
+    "description": "Call of R wrapper for 'deserialize_int_nd_C' from module 'f42_serde_arrays_deserialize_int'"
   },
-  "R setup for 'deserialize_real_nd_C' from module 'f42_deserialize_real'": {
+  "R setup for 'deserialize_real_nd_C' from module 'f42_serde_arrays_deserialize_real'": {
     "prefix": "f42:r_setup_deserialize_real_nd_C",
     "body": [
       "#' @param filename Path to the serialized real array file",
@@ -565,9 +710,9 @@
     "body": [
       "${1:result} <- tox_deserialize_real_array(${2:filename}, ${3:max_dims})"
     ],
-    "description": "Call of R wrapper for 'deserialize_real_nd_C' from module 'f42_deserialize_real'"
+    "description": "Call of R wrapper for 'deserialize_real_nd_C' from module 'f42_serde_arrays_deserialize_real'"
   },
-  "R setup for 'deserialize_char_nd_C' from module 'f42_deserialize_char'": {
+  "R setup for 'deserialize_char_nd_C' from module 'f42_serde_arrays_deserialize_char'": {
     "prefix": "f42:r_setup_deserialize_char_nd_C",
     "body": [
       "#' @param filename Path to the serialized character array file",
@@ -597,9 +742,9 @@
     "body": [
       "${1:result} <- tox_deserialize_char_array(${2:filename}, ${3:max_dims})"
     ],
-    "description": "Call of R wrapper for 'deserialize_char_nd_C' from module 'f42_deserialize_char'"
+    "description": "Call of R wrapper for 'deserialize_char_nd_C' from module 'f42_serde_arrays_deserialize_char'"
   },
-  "R setup for 'deserialize_logical_nd_C' from module 'f42_deserialize_logical'": {
+  "R setup for 'deserialize_logical_nd_C' from module 'f42_serde_arrays_deserialize_logical'": {
     "prefix": "f42:r_setup_deserialize_logical_nd_C",
     "body": [
       "#' @param filename Path to the serialized logical array file",
@@ -630,9 +775,9 @@
     "body": [
       "${1:result} <- tox_deserialize_logical_array(${2:filename}, ${3:max_dims})"
     ],
-    "description": "Call of R wrapper for 'deserialize_logical_nd_C' from module 'f42_deserialize_logical'"
+    "description": "Call of R wrapper for 'deserialize_logical_nd_C' from module 'f42_serde_arrays_deserialize_logical'"
   },
-  "R setup for 'deserialize_complex_nd_C' from module 'f42_deserialize_complex'": {
+  "R setup for 'deserialize_complex_nd_C' from module 'f42_serde_arrays_deserialize_complex'": {
     "prefix": "f42:r_setup_deserialize_complex_nd_C",
     "body": [
       "#' @param filename Path to the serialized complex array file",
@@ -663,9 +808,9 @@
     "body": [
       "${1:result} <- tox_deserialize_complex_array(${2:filename}, ${3:max_dims})"
     ],
-    "description": "Call of R wrapper for 'deserialize_complex_nd_C' from module 'f42_deserialize_complex'"
+    "description": "Call of R wrapper for 'deserialize_complex_nd_C' from module 'f42_serde_arrays_deserialize_complex'"
   },
-  "R setup for 'serialize_int_nd_C' from module 'f42_serialize_int'": {
+  "R setup for 'serialize_int_nd_C' from module 'f42_serde_arrays_serialize_int'": {
     "prefix": "f42:r_setup_serialize_int_nd_C",
     "body": [
       "#' @param arr An integer array to serialize",
@@ -695,9 +840,9 @@
     "body": [
       "${1:result} <- tox_serialize_int_array(${2:arr}, ${3:filename})"
     ],
-    "description": "Call of R wrapper for 'serialize_int_nd_C' from module 'f42_serialize_int'"
+    "description": "Call of R wrapper for 'serialize_int_nd_C' from module 'f42_serde_arrays_serialize_int'"
   },
-  "R setup for 'serialize_real_nd_C' from module 'f42_serialize_real'": {
+  "R setup for 'serialize_real_nd_C' from module 'f42_serde_arrays_serialize_real'": {
     "prefix": "f42:r_setup_serialize_real_nd_C",
     "body": [
       "#' @param arr A numeric array to serialize",
@@ -728,9 +873,9 @@
     "body": [
       "${1:result} <- tox_serialize_real_array(${2:arr}, ${3:filename})"
     ],
-    "description": "Call of R wrapper for 'serialize_real_nd_C' from module 'f42_serialize_real'"
+    "description": "Call of R wrapper for 'serialize_real_nd_C' from module 'f42_serde_arrays_serialize_real'"
   },
-  "R setup for 'serialize_char_nd_C' from module 'f42_serialize_char'": {
+  "R setup for 'serialize_char_nd_C' from module 'f42_serde_arrays_serialize_char'": {
     "prefix": "f42:r_setup_serialize_char_nd_C",
     "body": [
       "#' Serialize character array to file",
@@ -763,9 +908,9 @@
     "body": [
       "${1:result} <- tox_serialize_char_array(${2:arr}, ${3:filename})"
     ],
-    "description": "Call of R wrapper for 'serialize_char_nd_C' from module 'f42_serialize_char'"
+    "description": "Call of R wrapper for 'serialize_char_nd_C' from module 'f42_serde_arrays_serialize_char'"
   },
-  "R setup for 'serialize_logical_nd_C' from module 'f42_serialize_logical'": {
+  "R setup for 'serialize_logical_nd_C' from module 'f42_serde_arrays_serialize_logical'": {
     "prefix": "f42:r_setup_serialize_logical_nd_C",
     "body": [
       "#' @param arr A logical array to serialize",
@@ -796,9 +941,9 @@
     "body": [
       "${1:result} <- tox_serialize_logical_array(${2:arr}, ${3:filename})"
     ],
-    "description": "Call of R wrapper for 'serialize_logical_nd_C' from module 'f42_serialize_logical'"
+    "description": "Call of R wrapper for 'serialize_logical_nd_C' from module 'f42_serde_arrays_serialize_logical'"
   },
-  "R setup for 'serialize_complex_nd_C' from module 'f42_serialize_complex'": {
+  "R setup for 'serialize_complex_nd_C' from module 'f42_serde_arrays_serialize_complex'": {
     "prefix": "f42:r_setup_serialize_complex_nd_C",
     "body": [
       "#' @param arr A complex array to serialize",
@@ -828,7 +973,7 @@
     "body": [
       "${1:result} <- tox_serialize_complex_array(${2:arr}, ${3:filename})"
     ],
-    "description": "Call of R wrapper for 'serialize_complex_nd_C' from module 'f42_serialize_complex'"
+    "description": "Call of R wrapper for 'serialize_complex_nd_C' from module 'f42_serde_arrays_serialize_complex'"
   },
   "R setup for 'build_kd_index_c' from module 'f42_kd_tree'": {
     "prefix": "f42:r_setup_build_kd_index_c",
@@ -938,6 +1083,8 @@
       "",
       "  # Call the Rcpp forwarder",
       "  result <- tox_build_bst_index_rcpp(x)",
+      "",
+      "  check_err_code(result$ierr)",
       "",
       "  # Return index vector",
       "  return(result)",
@@ -1203,46 +1350,39 @@
     ],
     "description": "Call of R wrapper for 'compute_edf_expert_c' from module 'f42_utils'"
   },
-  "R setup for 'which_c' from module 'f42_utils'": {
-    "prefix": "f42:r_setup_which_c",
+  "R setup for 'compute_scaled_distance_quantile_c' from module 'f42_utils'": {
+    "prefix": "f42:r_setup_compute_scaled_distance_quantile_c",
     "body": [
-      "#' This function takes a logical or integer mask and returns the indices of the TRUE or non-zero elements, up to a specified maximum.",
-      "#' @param mask A logical or integer vector serving as the mask for which to find indices.",
-      "#' @param m_max An integer scalar specifying the maximum number of indices to return (default: length of mask).",
-      "#' @return An integer vector of indices corresponding to TRUE or non-zero elements in `mask`.",
-      "#' ",
-      "tox_which <- function(mask, m_max = length(mask)) {",
-      "  # Input Validation",
-      "",
-      "  if (is.logical(mask)) {",
-      "    mask <- as.integer(mask)",
-      "  }",
-      "  validate_integer_vector(mask)",
-      "  validate_positive_integer_scalar(m_max)",
-      "",
-      "  # Call the Rcpp forwarder",
-      "  result <- tox_which_rcpp(mask = mask, m_max = m_max)",
-      "",
-      "  # Check for errors",
-      "  check_err_code(result$ierr)",
-      "",
-      "  # Return indices of TRUE/non-zero elements (capped by m_max)",
-      "  m_out <- as.integer(result$m_out)",
-      "  n_take <- min(m_out, m_max, length(result$idx_out))",
-      "  if (n_take <= 0L) {",
-      "    return(integer(0))",
-      "  }",
-      "",
-      "  return(result$idx_out[seq_len(n_take)])",
+      "#' Calculate the empirical quantile (effect-size measure) for a given distribution",
+      "#'",
+      "#' This is NOT a null-hypothesis-testing p-value: each value is compared against the observed",
+      "#' distribution it was drawn from, not an independently generated null distribution. It measures",
+      "#' how extreme an observed value is relative to all observed values.",
+      "#' Because distances are non-negative, a one-sided upper-tail quantile is used.",
+      "#' @param distribution A numeric vector representing the distribution of values.",
+      "#' @param c_const A constant used in the computation, typically 1.",
+      "#'",
+      "#' @return A numeric vector of empirical quantiles corresponding to the input distribution.",
+      "#' @export",
+      "#'",
+      "#' @examples",
+      "#' distribution <- c(0.5, 1.2, 0.8, 0.3)",
+      "#' c_const <- 1",
+      "#' quantile <- compute_scaled_distance_quantile(distribution, c_const)",
+      "#' print(quantile)",
+      "compute_scaled_distance_quantile <- function(distribution, c_const) {",
+      "  result <- tox_scaled_distance_quantile_rcpp(distribution, c_const)",
+      "  return(result)",
+      "}",
       ""
     ],
-    "description": "Get indices of TRUE or non-zero elements in a mask"
+    "description": "Compute the empirical quantile (effect-size measure) of a distribution"
   },
-  "R call of 'tox_which'": {
-    "prefix": "f42:r_tox_which",
+  "R call of 'compute_scaled_distance_quantile'": {
+    "prefix": "f42:r_compute_scaled_distance_quantile",
     "body": [
-      "${1:result} <- tox_which(${2:mask}, ${3:m_max})"
+      "${1:result} <- compute_scaled_distance_quantile(${2:distribution}, ${3:c_const})"
     ],
-    "description": "Call of R wrapper for 'which_c' from module 'f42_utils'"
+    "description": "Call of R wrapper for 'compute_scaled_distance_quantile_c' from module 'f42_utils'"
   }
 }

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>calc_fchange_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">45 statements</a>
+                 title=" 0.3% of total for procedures.">45 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine calc_fchange_c(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr) bind(C, name="calc_fchange_c")  
+    <h2>pure subroutine calc_fchange_c(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr) bind(C, name="calc_fchange_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,8 +157,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
               </ul>
             </li>
@@ -166,7 +167,7 @@
     </div>
 
 
-    <p>C-compatible wrapper for calc_fchange</p>
+    <p>C wrapper for <a href="../proc/calc_fchange.html">calc_fchange</a></p>
 
 
     <h3>Arguments</h3>
@@ -182,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~59"></span>
+              <span class="anchor" id="variable-n_genes~77"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -192,12 +193,12 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                
+                <p>Number of genes (rows)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_cols~2"></span>
+              <span class="anchor" id="variable-n_tissues~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -205,14 +206,14 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_cols</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
-                
+                <p>Number of tissues</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_pairs~2"></span>
+              <span class="anchor" id="variable-n_pairs~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -222,72 +223,72 @@
             <td>::</td>
             <td><strong>n_pairs</strong></td>
             <td>
-                
+                <p>Number of control-condition pairs</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-control_cols~2"></span>
+              <span class="anchor" id="variable-control_tissues~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_pairs), target
             </td>
             <td>::</td>
-            <td><strong>control_cols</strong>(n_pairs)</td>
+            <td><strong>control_tissues</strong></td>
             <td>
-                
+                <p>Control tissue indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cond_cols~2"></span>
+              <span class="anchor" id="variable-condition_tissues~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_pairs), target
             </td>
             <td>::</td>
-            <td><strong>cond_cols</strong>(n_pairs)</td>
+            <td><strong>condition_tissues</strong></td>
             <td>
-                
+                <p>Condition tissue indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_matrix~2"></span>
+              <span class="anchor" id="variable-expr~28"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_tissues, n_genes), target
             </td>
             <td>::</td>
-            <td><strong>i_matrix</strong>(n_genes*n_cols)</td>
+            <td><strong>expr</strong></td>
             <td>
-                
+                <p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-o_matrix~2"></span>
+              <span class="anchor" id="variable-fold_changes~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_pairs, n_genes), target
             </td>
             <td>::</td>
-            <td><strong>o_matrix</strong>(n_genes*n_pairs)</td>
+            <td><strong>fold_changes</strong></td>
             <td>
-                
+                <p>Output matrix for fold changes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~234"></span>
+              <span class="anchor" id="variable-ierr~332"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -297,7 +298,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -327,14 +328,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

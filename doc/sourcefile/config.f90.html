@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>config.F90 &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.0% of total for source files.">6 statements</a>
+                 title=" 0.0% of total for source files.">5 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -167,15 +168,15 @@
 
       <section>
         <h2><span class="anchor" id="src"></span>Source Code</h2>
-        <div class="hl codehilite"><pre><span></span><a id="ln-1" name="ln-1" href="#ln-1"></a><span class="k">module </span><span class="n">config</span>
-<a id="ln-2" name="ln-2" href="#ln-2"></a><span class="w">  </span><span class="k">implicit none</span>
-<a id="ln-3" name="ln-3" href="#ln-3"></a><span class="cp">#ifdef DEFAULT_ALIGNMENT</span>
-<a id="ln-4" name="ln-4" href="#ln-4"></a><span class="w">  </span><span class="kt">integer</span><span class="p">,</span><span class="w"> </span><span class="k">parameter</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">alignment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DEFAULT_ALIGNMENT</span>
-<a id="ln-5" name="ln-5" href="#ln-5"></a><span class="cp">#else</span>
-<a id="ln-6" name="ln-6" href="#ln-6"></a><span class="w">  </span><span class="kt">integer</span><span class="p">,</span><span class="w"> </span><span class="k">parameter</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">alignment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span><span class="w">  </span><span class="c">! fallback</span>
-<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="cp">#endif</span>
-<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="w">  </span><span class="kt">logical</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">DEBUG</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">.</span><span class="n">false</span><span class="p">.</span>
-<a id="ln-9" name="ln-9" href="#ln-9"></a><span class="w">  </span><span class="kt">logical</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">debug_hashing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">.</span><span class="n">false</span><span class="p">.</span>
+        <div class="hl codehilite"><pre><span></span><a id="ln-1" name="ln-1" href="#ln-1"></a><span class="c">!&gt; Global, mutable runtime configuration flags (module variables, not parameters).</span>
+<a id="ln-2" name="ln-2" href="#ln-2"></a><span class="c">!| Intended to be toggled by client code before calling into the library to enable</span>
+<a id="ln-3" name="ln-3" href="#ln-3"></a><span class="c">!| diagnostic `print` output from the affected modules; both flags default to off.</span>
+<a id="ln-4" name="ln-4" href="#ln-4"></a><span class="k">module </span><span class="n">config</span>
+<a id="ln-5" name="ln-5" href="#ln-5"></a><span class="w">    </span><span class="k">implicit none</span>
+<a id="ln-6" name="ln-6" href="#ln-6"></a><span class="k">    </span><span class="kt">logical</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">DEBUG</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">.</span><span class="n">false</span><span class="p">.</span>
+<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="w">        </span><span class="c">!! Toggles debug messages for e.g. [[tox_data_archive(module)]]</span>
+<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="w">    </span><span class="kt">logical</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">debug_hashing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">.</span><span class="n">false</span><span class="p">.</span>
+<a id="ln-9" name="ln-9" href="#ln-9"></a><span class="w">        </span><span class="c">!! Toggles debug messages for [[f42_xxh3_hashmap(module)]]</span>
 <a id="ln-10" name="ln-10" href="#ln-10"></a><span class="k">end module </span><span class="n">config</span>
 </pre></div>
 
@@ -191,14 +192,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

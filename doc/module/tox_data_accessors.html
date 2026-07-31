@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_data_accessors &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.3% of total for modules and submodules.">103 statements</a>
+                 title=" 1.2% of total for modules and submodules.">103 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -174,16 +175,19 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Bounds-checked lookup and indexing helpers for the TensorOmics data model.</p>
+<p>Thin accessors over the raw gene/family arrays produced and consumed elsewhere in <code>tox_data_*</code>
+(e.g. <a href="../proc/read_tox_data.html">read_tox_data</a>): given an index, return the
+corresponding row/column/slice with bounds and shape checks; given an ID string, find its index.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -206,7 +210,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Helper function to find gene index</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Helper function to find gene index</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -266,7 +271,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Helper function to find family index</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Helper function to find family index</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -331,7 +337,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>returns family index for gene index</p>
+  <p>AUTHOR_AARON_SCHROEDER
+returns family index for gene index</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -346,7 +353,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_idx~4"></span>
+              <span class="anchor" id="variable-gene_idx~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -361,7 +368,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~31"></span>
+              <span class="anchor" id="variable-gene_to_fam~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -391,7 +398,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~305"></span>
+              <span class="anchor" id="variable-ierr~253"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -416,7 +423,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>get expression vector for a specific gene id</p>
+  <p>AUTHOR_AARON_SCHROEDER
+get expression vector for a specific gene id</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -431,7 +439,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_idx~5"></span>
+              <span class="anchor" id="variable-gene_idx~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -446,7 +454,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~20"></span>
+              <span class="anchor" id="variable-expression_vectors~18"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -476,7 +484,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~306"></span>
+              <span class="anchor" id="variable-ierr~254"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -501,7 +509,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>get family centroid for a specific family index</p>
+  <p>AUTHOR_AARON_SCHROEDER
+get family centroid for a specific family index</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -516,7 +525,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_idx~8"></span>
+              <span class="anchor" id="variable-family_idx~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -531,7 +540,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~13"></span>
+              <span class="anchor" id="variable-family_centroids~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -561,7 +570,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~307"></span>
+              <span class="anchor" id="variable-ierr~255"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -586,7 +595,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>returns the centroid and the shift of a gene</p>
+  <p>AUTHOR_AARON_SCHROEDER
+returns the centroid and the shift of a gene</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -601,7 +611,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_idx~6"></span>
+              <span class="anchor" id="variable-gene_idx~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -616,7 +626,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~11"></span>
+              <span class="anchor" id="variable-shift_vectors~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -631,7 +641,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-d~7"></span>
+              <span class="anchor" id="variable-d~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -676,7 +686,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~308"></span>
+              <span class="anchor" id="variable-ierr~256"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -712,14 +722,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-03-24 12:03 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>
