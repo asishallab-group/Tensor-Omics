@@ -318,12 +318,12 @@ contains
         call assert_equal_real(R, 10.65_real64, TOL, "test_determine_shared_residual_range: Test 1: R should be 10.65")
 
         ! ============================================================
-        ! Test 2 — Custom quantile (50%)
+        ! Test 2 — Custom quantile (median, q=0.5)
         ! ============================================================
         !
         ! Median of sorted array above = 0.5 * (sorted(12) + sorted(13)) = 5.5
         !
-        q = 50.0_real64
+        q = 0.5_real64
         call determine_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr, q)
         call assert_equal_int(ierr, ERR_OK, "test_determine_shared_residual_range: Test 2: ierr should be OK")
         call assert_equal_real(R, 4.0_real64, TOL, "test_determine_shared_residual_range: Test 2: R should be 4.0")
@@ -336,9 +336,9 @@ contains
         call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 3: ierr should be INVALID_INPUT")
 
         ! ============================================================
-        ! Test 4 — Quantile > 100 → error
+        ! Test 4 — Quantile > 1 → error
         ! ============================================================
-        q = above(100.0_real64)
+        q = above(1.0_real64)
         call determine_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr, q)
         call assert_equal_int(ierr, ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 4: ierr should be INVALID_INPUT")
 
