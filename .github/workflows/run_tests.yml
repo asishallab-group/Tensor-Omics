@@ -39,7 +39,9 @@ jobs:
         uses: ./.github/actions/install-R
 
       - name: Run R Tests
-        run: for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+        run: |
+          bash build.sh ${{ inputs.extra_build_args }} --compiler="${{ inputs.compiler }}"
+          for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
 
       - name: Install Python
         uses: ./.github/actions/install-Python
