@@ -167,7 +167,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 #' @param distances Numeric vector of gene distances
 #' @param gene_to_fam Integer vector mapping genes to family indices
 #' @param n_families Integer number of families
-#' @param percentile Percentile threshold for outlier detection (default: 95.0)
+#' @param percentile Percentile threshold in [0,1] for outlier detection (default: 0.95)
 #' @return A list with:
 #' \describe{
 #'   \item{is_outlier}{Logical vector indicating outliers}
@@ -177,7 +177,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 #'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #'   \item{ierr}{Integer status code from backend routine}
 #' }
-tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
+tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 0.95) {
 
   # Input Validation
   validate_numeric_vector(distances)
@@ -351,14 +351,14 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' against a percentile threshold of the sorted RDI distribution.
 #'
 #' @param rdi Numeric vector of RDI values
-#' @param percentile Percentile threshold (default: 95.0)
+#' @param percentile Percentile threshold in [0,1] (default: 0.95)
 #' @return A list with:
 #' \describe{
 #'   \item{is_outlier}{Logical vector indicating outliers}
 #'   \item{threshold}{Numeric RDI threshold value used}
 #'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #' }
-tox_identify_outliers <- function(rdi, percentile = 95.0) {
+tox_identify_outliers <- function(rdi, percentile = 0.95) {
 
   # Input Validation
   validate_numeric_vector(rdi)
