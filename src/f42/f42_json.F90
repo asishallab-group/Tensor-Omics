@@ -44,8 +44,16 @@ module f42_json
     end type json_object
 contains
 
+    !> Serializes `string` as a JSON string, escaping the mandatory control/quote characters.
+    !| @warning
+    !| Trailing whitespace is **not** preserved: only `string(1:len_trim(string))` is written.
+    !| This is intentional so that fixed-length (space-padded) Fortran `character` arrays -- the
+    !| usual input in this codebase -- serialize without their padding. If you need to keep a
+    !| genuine trailing space in a value, that is not supported by this routine.
+    !| @endwarning
     subroutine serialize_string(string, unit)
         character(len=*), intent(in) :: string
+            !! string to serialize; trailing blanks are stripped (see warning)
         integer(int32), intent(in) :: unit
 
         integer(int32) :: i_chr
@@ -238,6 +246,7 @@ contains
     end subroutine serialize_object
 
     !> Serializes a [[json_object(type)]] and writes it to the passed unit
+    !| Trailing whitespace of string keys and values is stripped, see [[serialize_string(subroutine)]].
     subroutine serialize_json_object(json_obj, unit, max_depth)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
@@ -255,6 +264,7 @@ contains
     end subroutine serialize_json_object
 
     !> Serializes a [[json_array(type)]] and writes it to the passed unit
+    !| Trailing whitespace of string values is stripped, see [[serialize_string(subroutine)]].
     subroutine serialize_json_array(json_arr, unit, max_depth)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize
