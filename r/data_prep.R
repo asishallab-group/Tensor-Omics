@@ -4,7 +4,7 @@
 # so the generator has nothing to emit for them. They are kept here, verbatim, because the
 # old public API exposed them and callers may rely on them.
 #
-#     source("rcpp/data_prep.R")
+#     source("r/data_prep.R")
 
 
 #> f42_helper: Diagnose data quality issues in gene expression matrix

@@ -4,8 +4,8 @@
 # =====================
 
 # Source the main functions
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # compute_rdi returns the sorted array and permutation identify_outliers wants, so the
 # pipeline composes directly. Only the sort prep for calling identify_outliers with a

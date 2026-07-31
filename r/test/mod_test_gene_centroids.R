@@ -1,7 +1,7 @@
 # Comprehensive R test suite for gene centroids interface functions
 
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # 1. Basic functionality in 'all' mode
 test_basic_all_mode <- function() {

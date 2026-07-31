@@ -4,8 +4,8 @@
 # =====================
 
 # Source the main functions
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # The generated interface exposes the Fortran routine as it is; the sort prep the old
 # wrapper did is here, so the assertions below stay about the numerics.

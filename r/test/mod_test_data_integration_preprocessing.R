@@ -1,6 +1,6 @@
 # test_tox_jensen_shannon_test.R
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # Test 1: Basic compute_gene_means
 test_compute_gene_means_basic <- function() {

@@ -1,7 +1,7 @@
 # Comprehensive R test suite for tox_paralog_analysis (mirrors python/test/mod_test_tox_paralog_analysis.py)
 
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 normalize_unit <- function(v) {
   n <- sqrt(sum(v * v))

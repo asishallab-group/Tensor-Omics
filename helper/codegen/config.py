@@ -108,7 +108,7 @@ class Paths:
     macros_header: Path = Path("src/macros.h")
     c_interface_dir: Path = Path("src/c_interface")
     python_out_dir: Path = Path("python/tensor_omics")
-    rcpp_out_dir: Path = Path("rcpp/tensor_omics")
+    r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")
 
     def resolve(self, path: Path) -> Path:

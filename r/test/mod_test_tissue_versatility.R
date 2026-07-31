@@ -1,7 +1,7 @@
 # Comprehensive R test suite for tissue versatility (mirrors Fortran unit tests)
 # Source the main functions
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # The two selection counts are derived from the masks, but the Fortran takes them.
 tissue_versatility <- function(expression_vectors, exp_vecs_selection_index, axes_selection) {

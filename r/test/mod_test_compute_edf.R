@@ -1,7 +1,7 @@
 
 # Set library path and compile
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 
 TOL <- 1e-12

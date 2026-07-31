@@ -1,6 +1,6 @@
 # Comprehensive R test suite for normalization_pipeline (mirrors Fortran unit tests)
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 test_basic <- function() {
   n_genes <- 10; n_tissues <- 6; n_grps <- 2

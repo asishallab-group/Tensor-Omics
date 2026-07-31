@@ -1,8 +1,8 @@
 # Comprehensive R test suite for LOESS interface functions
 # Validation of the R wrapper for plain and robust LOESS.
 
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # 1. Test Workspace Calculation
 test_workspace_calculation <- function() {

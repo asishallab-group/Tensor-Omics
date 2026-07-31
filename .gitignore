@@ -51,16 +51,16 @@
 !/python/*.py
 
 # R
-!/rcpp
-!/rcpp/test
-!/rcpp/test/mod_test_*.R
-!/rcpp/tensor_omics
-!/rcpp/tensor_omics/R
-!/rcpp/tensor_omics/R/*.R
-!/rcpp/tensor_omics/src
-!/rcpp/tensor_omics/src/*.c
-!/rcpp/tensor_omics/src/*.h
-!/rcpp/*.R
+!/r
+!/r/test
+!/r/test/mod_test_*.R
+!/r/tensor_omics
+!/r/tensor_omics/R
+!/r/tensor_omics/R/*.R
+!/r/tensor_omics/src
+!/r/tensor_omics/src/*.c
+!/r/tensor_omics/src/*.h
+!/r/*.R
 
 # misc
 !/misc

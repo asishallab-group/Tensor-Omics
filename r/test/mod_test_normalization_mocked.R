@@ -2,8 +2,8 @@
 # This script generates a small synthetic dataset and runs the full pipeline,
 # including fold change calculation for multiple conditions.
 
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 test_basic_calling <- function() {
   # --- Mocked gene expression data ---

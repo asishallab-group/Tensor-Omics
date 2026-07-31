@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/install-R
 
       - name: Run R Tests
-        run: for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+        run: for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
 
       - name: Install Python
         uses: ./.github/actions/install-Python

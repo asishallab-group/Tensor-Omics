@@ -1,16 +1,16 @@
 # Load the generated TensorOmics R interface into the calling environment.
 #
-# Hand-written, and it lives here rather than inside `rcpp/tensor_omics/` because that
+# Hand-written, and it lives here rather than inside `r/tensor_omics/` because that
 # whole directory is generated. It is the R counterpart of the generated
 # `python/tensor_omics/library.py`.
 #
 # Usage from the repository root:
-#     source("rcpp/load_tensor_omics.R")
+#     source("r/load_tensor_omics.R")
 #
 # The generated shims are pure C (`.Call`), compiled into one shared object with
-# `R CMD SHLIB` and cached under `rcpp/rcpp_cache`; only rebuilt when a source changes.
+# `R CMD SHLIB` and cached under `r/r_cache`; only rebuilt when a source changes.
 
-.tox_load <- function(root = "rcpp/tensor_omics", cache = "rcpp/rcpp_cache") {
+.tox_load <- function(root = "r/tensor_omics", cache = "r/r_cache") {
     build <- normalizePath("build", mustWork = TRUE)
     src <- normalizePath(file.path(root, "src"), mustWork = TRUE)
     dir.create(cache, showWarnings = FALSE, recursive = TRUE)

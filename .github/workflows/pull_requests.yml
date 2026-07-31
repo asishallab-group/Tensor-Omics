@@ -12,7 +12,7 @@ on:
       - .github/actions/install-Fortran/*
       - .github/actions/install-R/*
       - helper/generate_snippets.py
-      - rcpp/**
+      - r/**
       - python/**
       - src/**
       - test/**

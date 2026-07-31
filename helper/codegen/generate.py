@@ -148,7 +148,7 @@ def _python_files(interface: CInterface, catalogue, paths: Paths,
 
 def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
     emitter, wrapper = CCallEmitter(), RWrapperEmitter()
-    out = paths.resolve(paths.rcpp_out_dir)
+    out = paths.resolve(paths.r_out_dir)
     modules = list(interface)
     files = [
         GeneratedFile(out / "src" / "tox_marshal.h", emitter.marshal_header_content()),
@@ -198,7 +198,7 @@ def _clean(targets: tuple[str, ...], paths: Paths) -> None:
     if "r" in targets:
         # only the generated subdirectories, so a hand-written DESCRIPTION or NAMESPACE
         # alongside them is left alone
-        base = paths.resolve(paths.rcpp_out_dir)
+        base = paths.resolve(paths.r_out_dir)
         directories += [base / "src", base / "R"]
     for directory in directories:
         if directory.is_dir():

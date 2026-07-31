@@ -1,7 +1,7 @@
 # Comprehensive R test suite for shift vector field (mirrors Fortran unit tests)
 # Source the main functions
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # 1. Test correct mapping between families and genes
 test_correct_family_mapping <- function() {

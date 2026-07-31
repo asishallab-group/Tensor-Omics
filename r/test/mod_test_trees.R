@@ -1,5 +1,5 @@
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # Pure-R indexing helpers. They never called into Fortran -- the old hand-written
 # wrapper defined them in R -- so they live with the test rather than in the

@@ -40,7 +40,7 @@ FORTRAN, PYTHON, R = "fortran", "python", "r"
 _FILE_LANGUAGE = {FORTRAN: "Fortran", PYTHON: "Python", R: "R"}
 
 #: The R loader a user sources before calling any wrapper, relative to the repo root
-R_LOADER = "rcpp/load_tensor_omics.R"
+R_LOADER = "r/load_tensor_omics.R"
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 ## ==================== TESTS FOR RELATIVE AXIS CONTRIBUTIONS ====================
 # Load the compiled Fortran library
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 #' Assert that all values in a vector are in [0, 1]
 assert_in_range <- function(vec, min_val = 0, max_val = 1, message = "") {

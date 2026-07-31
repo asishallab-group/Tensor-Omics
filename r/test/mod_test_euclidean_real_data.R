@@ -5,8 +5,8 @@
 # Avoid requiring 'readr' in CI; use base R readers instead
 
 # Source the main functions
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # Function to generate gene_to_family mapping from Orthogroups.tsv file
 generate_gene_to_family_mapping <- function(orthogroups_file, centroids_file, gene_expression_file, 

@@ -1,5 +1,5 @@
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 test_k_means_clustering <- function() {
   # k_means_clustering returns valid output

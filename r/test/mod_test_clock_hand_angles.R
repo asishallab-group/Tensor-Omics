@@ -2,8 +2,8 @@
 # Uses Fortran wrappers for RAP projections and angle calculations
 
 # Load the compiled Fortran library
-source("rcpp/load_tensor_omics.R")
-source("rcpp/test_helpers.R")
+source("r/load_tensor_omics.R")
+source("r/test_helpers.R")
 
 # selected_axes_for_signed is ignored for n_dims <= 3, so any valid triple will do
 ANY_AXES <- c(1L, 2L, 3L)

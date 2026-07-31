@@ -77,7 +77,7 @@ test_runner.sh   # Compile and generate unit test
 * [**`/misc`**](./misc) contains the team's coding guidelines at [Fortran_Coding_Guides.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Fortran_Coding_Guides.pdf?ref_type=heads), the detailed description of Tensor Omics at [Tensor_Omics_Methods.pdf](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/Tensor_Omics_Methods.pdf?ref_type=heads), and a [Dockerfile](https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads) to compile the project without needing to install anything except Docker.
 
 * [**`/python`**](./python) includes python scripts that coordinate analysis workflows
-* [**`/rcpp`**](./rcpp) includes R scripts that coordinate analysis workflows
+* [**`/r`**](./r) includes R scripts that coordinate analysis workflows
 * [**`/snippets`**](./snippets) includes frequently used or testable units of logic reused across development stages.
   - Snippets should be easy to create and use. The goal is to give the user access to the subroutine names along with their respective arguments, and nothing more. Example:
   ```
