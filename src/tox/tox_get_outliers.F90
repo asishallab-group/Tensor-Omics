@@ -5,8 +5,8 @@ module tox_get_outliers
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx_helper, is_close, compute_scaled_distance_quantile, init_perm
-    use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
+    use f42_utils, only: sort_array, calc_percentile, logx_helper, above, is_close, compute_scaled_distance_quantile, init_perm
+    use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err, validate_all_in_range_real
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     implicit none
 
@@ -191,10 +191,18 @@ contains
         ! Fit the mean-vs-stddev trend in log2 space: intra-family distance stddev scales roughly
         ! multiplicatively with the mean distance, so a log/log relationship is closer to linear
         ! (homoscedastic) than the raw scale, which is what LOESS assumes.
-        ! `loess_x` (family mean distances) and `loess_y` (family distance stddevs) are non-negative by
-        ! construction and `eps_mean`/`eps_sd` are >= EPS_LOESS > 0, so the log arguments are always
-        ! strictly positive. `logx` therefore never faults here, letting the non-validating
-        ! `logx_helper` run in a race-free `do concurrent` with no shared `ierr`.
+        !
+        ! Validate the log2 arguments up front (sequentially, as `ierr` is a shared scalar), exactly as
+        ! `logx` would: `loess_x + eps_mean > 0` and `loess_y + eps_sd > 0`, rejecting NaN/Inf. This
+        ! does not assume the caller's `distances` are well-formed -- a NaN/Inf distance propagates into
+        ! `loess_x`/`loess_y` and is caught here. These same family means feed the second log2 loop
+        ! below via `tmp_means_aux` (identical values), so validating them here covers both loops.
+        ! With the arguments guaranteed valid, the transform runs as a race-free `do concurrent`
+        ! calling the non-validating `logx_helper` -- no per-iteration write to the shared `ierr`.
+        call validate_all_in_range_real(loess_x(1:n_valid) + eps_mean, n_valid, ierr, min=above(0.0_real64))
+        call validate_all_in_range_real(loess_y(1:n_valid) + eps_sd, n_valid, ierr, min=above(0.0_real64))
+        if (is_err(ierr)) return
+
         do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
             call logx_helper(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid))
             call logx_helper(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid))
@@ -272,9 +280,13 @@ contains
 
         if (is_err(ierr)) return
 
-        ! In the `>= 0` branch the log argument is `tmp_means_aux + eps_mean >= eps_mean > 0`, so
-        ! `logx` never faults; the non-validating `logx_helper` lets this run as a race-free
-        ! `do concurrent` with no shared `ierr` (each iteration writes only its own `tmp_z_mat` row).
+        ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
+        ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
+        ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
+        ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
+        ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
+        ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
+        ! (each iteration writes only its own `tmp_z_mat` row).
         do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_z_mat, eps_mean, xmin, xmax)
             if (tmp_means_aux(i_family) >= 0.0_real64) then
                 call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1))

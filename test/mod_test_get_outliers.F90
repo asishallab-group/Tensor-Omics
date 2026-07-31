@@ -12,7 +12,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(24))
+    allocate(all_tests(25))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -38,6 +38,7 @@ contains
     all_tests(22) = test_case("test_outliers_extreme_detection", test_outliers_extreme_detection)
     all_tests(23) = test_case("test_outliers_nan_handling", test_outliers_nan_handling)
     all_tests(24) = test_case("test_scaling_performance_benchmark",test_scaling_performance_benchmark)
+    all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
 
   end function get_all_tests_get_outliers
 
@@ -835,6 +836,35 @@ contains
     call assert_equal_int(ierr, 0, 'Error code 0 for single-gene families')
     call assert_true(all(dscale == 0.0_real64), 'All singleton families scaling 0.0')
   end subroutine test_single_gene_family_scaling
+
+  !> A non-finite distance must surface as an error, not silently flow into log2.
+  !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
+  !| `do concurrent`. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
+  !| propagates into a family mean -- is rejected with `ierr`, rather than producing a NaN/Inf scale.
+  subroutine test_family_scaling_non_finite_distance()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf
+    implicit none
+
+    integer(int32), parameter :: n_families = 2_int32
+    integer(int32), parameter :: n_genes    = 4_int32
+
+    real(real64)   :: distances(n_genes)
+    integer(int32) :: gene_to_fam(n_genes) = [1_int32, 1_int32, 2_int32, 2_int32]
+    real(real64)   :: dscale(n_families)
+    real(real64)   :: loess_x(n_families), loess_y(n_families)
+    integer(int32) :: indices_used(n_families)
+    integer(int32) :: ierr
+
+    ! Two families of two genes each (so n_valid = 2, past the single-family early return); one
+    ! distance is +Inf, making that family's mean +Inf.
+    distances = [ieee_value(1.0_real64, ieee_positive_inf), 1.0_real64, 2.0_real64, 3.0_real64]
+
+    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+                                      loess_x, loess_y, indices_used, ierr)
+
+    call assert_true(ierr /= 0, "Non-finite family mean must error, not reach log2 silently")
+  end subroutine test_family_scaling_non_finite_distance
 
   subroutine test_all_zero_distances_scaling()
     use, intrinsic :: iso_fortran_env, only: int32, real64
