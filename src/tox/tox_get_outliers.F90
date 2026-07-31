@@ -5,7 +5,7 @@ module tox_get_outliers
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_scaled_distance_quantile, init_perm
+    use f42_utils, only: sort_array, calc_percentile, logx_helper, is_close, compute_scaled_distance_quantile, init_perm
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
     implicit none
@@ -95,7 +95,7 @@ contains
             !! Error code
 
         ! Local variables
-        integer(int32) :: i_gene, i_family, i_valid, family_idx, n_in_family, n_valid, k, tmp_ierr
+        integer(int32) :: i_gene, i_family, i_valid, family_idx, n_in_family, n_valid, k
         real(real64)   :: stddev_dist, mean_dist, sumsq, dist_val
         real(real64) :: xmin, xmax, eps_mean, eps_sd, std_median
 
@@ -191,17 +191,14 @@ contains
         ! Fit the mean-vs-stddev trend in log2 space: intra-family distance stddev scales roughly
         ! multiplicatively with the mean distance, so a log/log relationship is closer to linear
         ! (homoscedastic) than the raw scale, which is what LOESS assumes.
-        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
-        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
-        ! concurrent iterations would be an unsynchronized data race.
-        do i_valid = 1, n_valid
-            call logx(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid), tmp_ierr)
-            if (is_err(tmp_ierr)) ierr = tmp_ierr
-            call logx(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid), tmp_ierr)
-            if (is_err(tmp_ierr)) ierr = tmp_ierr
+        ! `loess_x` (family mean distances) and `loess_y` (family distance stddevs) are non-negative by
+        ! construction and `eps_mean`/`eps_sd` are >= EPS_LOESS > 0, so the log arguments are always
+        ! strictly positive. `logx` therefore never faults here, letting the non-validating
+        ! `logx_helper` run in a race-free `do concurrent` with no shared `ierr`.
+        do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
+            call logx_helper(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid))
+            call logx_helper(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid))
         end do
-
-        if (is_err(ierr)) return
 
         call init_perm(tmp_perm)
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
@@ -275,24 +272,18 @@ contains
 
         if (is_err(ierr)) return
 
-        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
-        ! scalar conditionally written on the (rare/exceptional) error path -- writing it from
-        ! concurrent iterations would be an unsynchronized data race.
-        do i_family = 1, n_families
+        ! In the `>= 0` branch the log argument is `tmp_means_aux + eps_mean >= eps_mean > 0`, so
+        ! `logx` never faults; the non-validating `logx_helper` lets this run as a race-free
+        ! `do concurrent` with no shared `ierr` (each iteration writes only its own `tmp_z_mat` row).
+        do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_z_mat, eps_mean, xmin, xmax)
             if (tmp_means_aux(i_family) >= 0.0_real64) then
-                call logx(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1), tmp_ierr)
-                if (is_err(tmp_ierr)) then
-                    ierr = tmp_ierr
-                else
-                    if (tmp_z_mat(i_family, 1) < xmin) tmp_z_mat(i_family, 1) = xmin
-                    if (tmp_z_mat(i_family, 1) > xmax) tmp_z_mat(i_family, 1) = xmax
-                end if
+                call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_z_mat(i_family, 1))
+                if (tmp_z_mat(i_family, 1) < xmin) tmp_z_mat(i_family, 1) = xmin
+                if (tmp_z_mat(i_family, 1) > xmax) tmp_z_mat(i_family, 1) = xmax
             else
                 tmp_z_mat(i_family, 1) = xmin
             end if
         end do
-
-        if (is_err(ierr)) return
 
         call loess_evaluation(tmp_iv, liv, lv, tmp_wv, n_families, tmp_z_mat(1:n_families, 1:1), tmp_yhat(1:n_families))
 
