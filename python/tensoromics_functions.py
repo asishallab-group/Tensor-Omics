@@ -5434,6 +5434,18 @@ def tox_serialize_tox_data_as_flyer_json(
     n_families = len(family_ids)
     n_genes = len(gene_ids)
 
+    # --- validate consistent lengths before passing raw buffers to Fortran, ---
+    # --- otherwise a too-short array leads to an out-of-bounds read on the Fortran side ---
+    for name, seq in (
+        ("gene_species", gene_species),
+        ("gene_types", gene_types),
+        ("gene_to_fam", gene_to_fam),
+        ("sorted_gene_to_fam_perm", sorted_gene_to_fam_perm),
+        ("gene_outliers", gene_outliers),
+    ):
+        if len(seq) != n_genes:
+            raise ValueError(f"{name} has length {len(seq)}, expected n_genes={n_genes}")
+
     # --- string arrays as fixed-length c_char matrices (+ their string lengths) ---
     tissues_matrix, tissue_len = _strings_to_c_char_matrix(tissues)
     family_ids_matrix, family_id_len = _strings_to_c_char_matrix(family_ids)
@@ -5447,6 +5459,12 @@ def tox_serialize_tox_data_as_flyer_json(
     gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
     sorted_gene_to_fam_perm = np.ascontiguousarray(sorted_gene_to_fam_perm, dtype=np.int32)
     gene_outliers = np.ascontiguousarray(gene_outliers, dtype=np.int32)
+
+    # --- validate matrix shapes match the counts ---
+    if centroids.shape != (n_tissues, n_families):
+        raise ValueError(f"centroids has shape {centroids.shape}, expected ({n_tissues}, {n_families})")
+    if genes.shape != (n_tissues, n_genes):
+        raise ValueError(f"genes has shape {genes.shape}, expected ({n_tissues}, {n_genes})")
 
     # --- ctypes scalars ---
     n_tissues_c = ctypes.c_int(n_tissues)
