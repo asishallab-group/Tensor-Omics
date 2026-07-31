@@ -1193,11 +1193,11 @@ tox_mean_vector <- function(expression_vectors, gene_indices) {
 #'
 #' @param residual_pool Numeric vector of absolute residuals (NaNs removed)
 #' @param residual_pool_perm Integer vector giving the permutation that sorts `residual_pool`
-#' @param residual_range_quantile Numeric scalar (default 95.0)
+#' @param residual_range_quantile Numeric scalar, quantile in [0,1] (default 0.95)
 #'
 #' @return Numeric scalar: the shared residual range R
 #'
-tox_determine_shared_residual_range_expert <- function(residual_pool, residual_pool_perm, residual_range_quantile = 95.0) {
+tox_determine_shared_residual_range_expert <- function(residual_pool, residual_pool_perm, residual_range_quantile = 0.95) {
   # Input Validation
   validate_numeric_vector(residual_pool)
   validate_integer_vector(residual_pool_perm)
@@ -1227,11 +1227,11 @@ tox_determine_shared_residual_range_expert <- function(residual_pool, residual_p
 #'
 #' @param neighborhood_residuals_S1 Numeric array (n_reps x n_neighbors x n_points)
 #' @param neighborhood_residuals_S2 Numeric array (n_reps x n_neighbors x n_points)
-#' @param residual_range_quantile Numeric scalar (default 95.0)
+#' @param residual_range_quantile Numeric scalar, quantile in [0,1] (default 0.95)
 #'
 #' @return Numeric scalar: the shared residual range R
 #'
-tox_determine_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
+tox_determine_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 0.95) {
   # Input Validation
   validate_numeric_array(neighborhood_residuals_S1)
   validate_numeric_array(neighborhood_residuals_S2)
