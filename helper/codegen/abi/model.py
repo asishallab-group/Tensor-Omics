@@ -3,8 +3,8 @@
 This sits between the IR and the emitters. The IR says what the Fortran is; this says what
 C sees; the emitters render it. Keeping it a layer of its own is what makes the three
 targets agree by construction -- the Fortran wrapper, the Python `ctypes` binding and the
-Rcpp binding all read the *same* answer to "what does this function look like from C",
-rather than each working it out again and drifting.
+R C `.Call` binding all read the *same* answer to "what does this function look like from
+C", rather than each working it out again and drifting.
 
 Everything here is derived. `c_abi.build_wrapper` is the only thing that should construct
 it, and nothing downstream may modify it.

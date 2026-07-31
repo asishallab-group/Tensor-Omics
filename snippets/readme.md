@@ -122,21 +122,11 @@ To make this work, there are some requirements (otherwise helpful errors are thr
       ```
       ```r
       #> f42_helper-import_libs: Import necessary packages
-      library(Rcpp)
+      # Compile and load all TensorOmics C .Call wrappers (and error handling),
+      # linked against the Fortran library in build/
+      source("r/load_tensor_omics.R")
       
-      # Get absolute path to build directory containing the compiled Fortran library
-      
-      lib_path <- shQuote(normalizePath("build"))
-      
-      # Set up compilation flags for linking with Fortran library
-      Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
-      
-      # Compile and load all TensorOmics Rcpp wrapper functions (includes error_handling.cpp)
-      sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
-      
-      cat("✓ TensorOmics Rcpp functions loaded successfully\n")
-      
-      source("rcpp/error_handling.R")
+      cat("✓ TensorOmics functions loaded successfully\n")
       ```
       </details>
 
@@ -160,21 +150,11 @@ To make this work, there are some requirements (otherwise helpful errors are thr
       ```
       ```r
       #> f42_helper-import_libs: Import necessary packages
-      library(Rcpp)
+      # Compile and load all TensorOmics C .Call wrappers (and error handling),
+      # linked against the Fortran library in build/
+      source("r/load_tensor_omics.R")
       
-      # Get absolute path to build directory containing the compiled Fortran library
-      
-      lib_path <- shQuote(normalizePath("build"))
-      
-      # Set up compilation flags for linking with Fortran library
-      Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
-      
-      # Compile and load all TensorOmics Rcpp wrapper functions (includes error_handling.cpp)
-      sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
-      
-      cat("✓ TensorOmics Rcpp functions loaded successfully\n")
-      
-      source("rcpp/error_handling.R")
+      cat("✓ TensorOmics functions loaded successfully\n")
       
       # From here everything is ignored
       # ===================================================================
@@ -186,10 +166,10 @@ To make this work, there are some requirements (otherwise helpful errors are thr
 
 2. The snippet generation expects valid Python/R/Fortran syntax, this is not a linter.
 3. This generator enforces the anyway proposed module naming pattern `(f42|tox)_.*`, so each module name needs a matching prefix for what it is related to, either `tox` or `f42`.
-4. Each defined Fortran wrapper needs a defined Python function. E.g. if there is `subroutine_c` for module `f42_module` in Fortran, the generation will fail if there is no related `#> f42_module:subroutine_c: Bla bla` in Python. For R this is not checked because of the current switch from `.Fortran` to `Rcpp`
+4. Each defined Fortran wrapper needs a defined Python function. E.g. if there is `subroutine_c` for module `f42_module` in Fortran, the generation will fail if there is no related `#> f42_module:subroutine_c: Bla bla` in Python. For R this is not checked
 5. There is a special header implemented to skip all lines below it. The line must start with `#>skip snippets` in this case. Anyway, this shouldn't be needed. It was only added to allow the error handling in R to have the `check_err_code` at the beginning, while defining input validation functions afterwards that don't need snippets.
 6. The following files will be included for snippet generation:
     - `python/*.py`
-    - `rcpp/*.[rR]`
+    - `r/*.[rR]`
     - `src/**/*.[fF]90`, except `src/config.F90` and `src/safeguard.F90`
     - In case that more paths need to be included/excluded, just adjust the `main` function of `generate_snippets.py`. All `generate_*_snippets` functions support an `ignored_files: List[str]` argument, a list of paths.

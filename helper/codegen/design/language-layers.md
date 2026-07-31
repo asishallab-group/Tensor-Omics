@@ -65,12 +65,12 @@ was not.
 
 ---
 
-## Decision: validation lives in R, not in the C++ layer
+## Decision: validation lives in R, not in the C marshalling layer
 
-The natural instinct is to validate in C++, where the data is. It is the wrong instinct.
+The natural instinct is to validate in C, where the data is. It is the wrong instinct.
 
-`Rcpp::as<T>(SEXP)` receives only the SEXP. It cannot know the argument was called
-`weights`, so it cannot say so:
+The `.Call` shim receives only the `SEXP`; `REAL(x)` / `INTEGER(x)` hand back a bare
+pointer that cannot know the argument was called `weights`, so C cannot say so:
 
 ```
 Not compatible with requested type: [type=character; target=double].
@@ -87,22 +87,22 @@ if (!is.double(vector)) {
 
 `is.double()` is O(1). The message names the argument. `stop()` raises a **classed
 condition** (`tox_type_error` / `tox_error` / `error`) that `tryCatch` can select on --
-and constructing one from C++ means calling back into the package environment, which is
+and constructing one from C means calling back into the package environment, which is
 fragile and slow.
 
-And once R guarantees the type, `as<NumericVector>` in C++ **cannot fail**, so the whole
+And once R guarantees the type, `REAL(x)` in the C shim **cannot fail**, so the whole
 problem disappears rather than being worked around.
 
-So: **R validates and marshals nothing; C++ marshals and validates nothing.**
+So: **R validates and marshals nothing; C marshals and validates nothing.**
 
-*Rejected:* the `Tox*` C++ wrapper classes with an `as<>` interface, as sketched in issue
+*Rejected:* the `Tox*` C++ wrapper classes (Rcpp `as<>`), as sketched in issue
 #131. They exist to produce good type errors, and R produces better ones for less. The
 `Tox` prefix survives on the **conditions** (`tox_error`), where it earns its keep.
 
-*Known consequence:* validation is skippable by calling the internal `.<name>_rcpp`
-directly. That is acceptable for a dot-prefixed internal. If the C++ ever needs to be
-defensive on its own — because something else starts calling it — this decision flips, and
-the wrapper classes come back.
+*Known consequence:* validation is skippable by calling the internal `.Call("<name>_call", ...)`
+directly. That is acceptable for a dot-prefixed internal entry point. If the C ever needs to
+be defensive on its own — because something else starts calling it — this decision flips,
+and the marshalling layer grows validation of its own.
 
 ---
 
@@ -174,15 +174,15 @@ ToxInputError: invalid input arguments (argument 'n_dims')
 
 Status codes (`STAT_*`) are outcomes, not failures, and never raise.
 
-*Rejected:* raising from C++ in the R layer. `Rcpp::stop` cannot construct a classed
-condition without calling back into the package environment.
+*Rejected:* raising from C in the R layer. C has no way to construct a classed R condition
+without calling back into the package environment.
 
 *Consequence:* in R, type errors are raised by R before the call and Fortran errors by R
 after it — one place, one set of condition classes.
 
 ---
 
-## Decision: shape cross-checks happen in the interfacing language — and in R that is R, not C++
+## Decision: shape cross-checks happen in the interfacing language — and in R that is R, not C
 
 `matrix(n_rows, n_cols)` and `weights(n_cols)` share an extent. They agree **by
 declaration only** — Fortran has no way to check that the actual arguments agree, and a
@@ -197,12 +197,12 @@ ValueError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
 This is the single most valuable thing the generated layer does that a hand-written
 wrapper usually forgets.
 
-In R the check is in the **R** wrapper, not the C++. Everything a user can trip over --
+In R the check is in the **R** wrapper, not the C. Everything a user can trip over --
 wrong type, wrong shape, an `NA` -- is caught in one place and raised as a **classed
 condition** (`tox_type_error`, `tox_shape_error`, `tox_error`), so `tryCatch` can select
-on it. C++ raising these would mean calling back into the package environment, which is
-fragile. The split is clean: **R decides and raises; C++ marshals and calls.** C++
-re-derives the extents it needs for the call from the R objects it is handed (`x.size()`
+on it. C raising these would mean calling back into the package environment, which is
+fragile. The split is clean: **R decides and raises; C marshals and calls.** C
+re-derives the extents it needs for the call from the R objects it is handed (`Rf_length(x)`
 is free), rather than being passed them.
 
 ---
@@ -233,14 +233,13 @@ is evaluated once, in the ABI layer, so Python and R cannot disagree about it.
 
 ---
 
-## Decision: R keeps a hand-generated wrapper over the Rcpp function
+## Decision: R keeps a hand-generated wrapper over the C `.Call`
 
-`// [[Rcpp::export]]` already generates an R function. The extra layer buys three things
-it cannot:
+A raw `.Call` entry is not a usable R function. The R wrapper over it buys three things:
 
 1. a real signature — `span = 0.1`, not `span = NULL`
-2. roxygen2 on an actual R function rather than passed through `RcppExports.R`
-3. the clean user-facing name (`fx_normalize`, not `.fx_normalize_rcpp`)
+2. roxygen2 on an actual R function, plus validation in the caller's own language
+3. the clean user-facing name (`fx_normalize`, not `.Call("fx_normalize_call", ...)`)
 
 The cost is one R function call per invocation, which is nothing against the Fortran work.
 
@@ -262,9 +261,9 @@ markdown table for renamed inputs (the same shape as the mode table) is the even
 override, deferred until a case needs it.
 
 Python computes it inline, since the whole wrapper is one function. R computes it in the R
-wrapper and passes it to the C++ `.rcpp`, because the C call lives in C++ and C++ cannot
-call an R wrapper. So an AUTO argument is a *parameter* of `.rcpp` (R fills it) but never a
-parameter of the user-facing R or Python function. Two constraints, enforced with
+wrapper and passes it to the C `.Call` shim, because the shim cannot call an R wrapper. So
+an AUTO argument is a *parameter* of the `.Call` shim (R fills it) but never a parameter of
+the user-facing R or Python function. Two constraints, enforced with
 diagnostics: the producer must be exported (else there is no wrapper), and in the same
 module (a cross-module call would need an import).
 

@@ -1,11 +1,11 @@
 """Emitting the R half of the R interface.
 
-The thinking layer. Per `design/language-layers.md`, **R decides and raises, C++ marshals
+The thinking layer. Per `design/language-layers.md`, **R decides and raises, C marshals
 and calls**: this validates and coerces every input, cross-checks shapes, applies
-defaults, calls the internal `.<name>_rcpp`, and turns `ierr` into a raised condition. All
+defaults, calls the internal `.Call("<name>_call", ...)`, and turns `ierr` into a raised condition. All
 of it in one place, all raised as classed conditions a caller can `tryCatch`.
 
-It is a thin R function over the C++ one, but the thinness is the point -- everything a
+It is a thin R function over the C one, but the thinness is the point -- everything a
 user can get wrong is caught here, in their language, with their argument names.
 """
 
@@ -141,7 +141,7 @@ class RWrapperEmitter:
         """What the user supplies -- the R function's parameters.
 
         Computed (AUTO) arguments are excluded: R works them out itself. They are not,
-        however, excluded from the `.rcpp` call, which C++ needs them for.
+        however, excluded from the `.Call` shim, which C needs them for.
         """
         return [
             argument
@@ -152,14 +152,14 @@ class RWrapperEmitter:
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
-    def _rcpp_inputs(self, wrapper: CWrapper) -> list[CArgument]:
-        """What the .rcpp function receives: the user inputs, plus computed args R fills."""
+    def _call_inputs(self, wrapper: CWrapper) -> list[CArgument]:
+        """What the `.Call` shim receives: the user inputs, plus computed args R fills."""
         return [
             argument
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived_in_cpp(argument)
+            and not self._is_derived_in_c(argument)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -181,8 +181,8 @@ class RWrapperEmitter:
         return bool(roles and roles.is_derived)
 
     @staticmethod
-    def _is_derived_in_cpp(argument: CArgument) -> bool:
-        # C++ derives extents/shapes/counts, but not computed args (R passes those)
+    def _is_derived_in_c(argument: CArgument) -> bool:
+        # C derives extents/shapes/counts, but not computed args (R passes those)
         roles = argument.source.roles if argument.source else None
         if roles is None:
             return False
@@ -271,7 +271,7 @@ class RWrapperEmitter:
                 if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
                     continue
                 if c_owner.is_temporary:
-                    # a work array C++ allocates itself always agrees, and is not a
+                    # a work array C allocates itself always agrees, and is not a
                     # variable R has in scope
                     continue
                 axis = self._axis_of(argument.name, c_owner)
@@ -312,7 +312,7 @@ class RWrapperEmitter:
     # -- call and return --------------------------------------------------------
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
-        inputs = ", ".join(a.name for a in self._rcpp_inputs(wrapper))
+        inputs = ", ".join(a.name for a in self._call_inputs(wrapper))
         prefix = f'"{wrapper.stripped_name}_call"'
         args = f"{prefix}, {inputs}" if inputs else prefix
         writer.line(f".result <- .Call({args})")

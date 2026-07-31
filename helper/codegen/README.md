@@ -372,7 +372,7 @@ Run the suite:
 python -m pytest helper/codegen/tests -q
 ```
 
-The end-to-end tests skip cleanly without `gfortran` / `R` / `Rcpp`.
+The end-to-end tests skip cleanly without `gfortran` / `R`.
 
 ---
 

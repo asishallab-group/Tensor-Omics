@@ -1,6 +1,6 @@
 """Emitting the C half of the R interface.
 
-The split with R is the same one Rcpp used and is documented in
+The split with R is the same one the former Rcpp layer used and is documented in
 `design/language-layers.md`: **R decides and raises, C marshals and calls.** By the time a
 value reaches C it has been checked and coerced in R, so nothing here validates -- it
 converts what Fortran cannot take from R directly (R's int-based logicals, its strings) and
@@ -43,7 +43,7 @@ def _size_as_c(match: re.Match) -> str:
 
 
 def c_extent(extent: str) -> str:
-    """A Fortran extent expression as C, mirroring the Rcpp emitter's `cpp_extent`."""
+    """A Fortran extent expression as C (kind suffixes, `size(...)`, and `max`/`min`)."""
     extent = _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
     extent = _FORTRAN_SIZE.sub(_size_as_c, extent)
     return _FORTRAN_MINMAX.sub(r"tox_i\1(", extent)
@@ -87,7 +87,11 @@ def c_ctype(argument: CArgument) -> str:
 
 
 def _product(extents) -> str:
-    """The product of some extents, each parenthesised (see the Rcpp emitter's note)."""
+    """The product of some extents, each parenthesised.
+
+    `*` binds tighter than `-`, so an extent expression like `n - 1` must be parenthesised
+    before joining; a raw join would compute a different size and overrun the buffer.
+    """
     parts = [e if e.isidentifier() or e.isdigit() else f"({e})" for e in extents]
     return " * ".join(parts) if parts else "1"
 
@@ -187,10 +191,10 @@ class CCallEmitter:
         writer.line("}")
         return writer.render()
 
-    # -- argument classification (identical logic to the Rcpp emitter) ----------
+    # -- argument classification (mirrors r_wrapper, so R passes what C declares) ----------
 
     def _inputs(self, wrapper: CWrapper) -> list[CArgument]:
-        """The arguments the R wrapper passes in -- the same set Python and Rcpp ask for."""
+        """The arguments the R wrapper passes in -- the same set the Python emitter asks for."""
         return [
             argument
             for argument in wrapper
@@ -403,7 +407,7 @@ class CCallEmitter:
             writer.extend(lines)
             writer.blank()
 
-    # -- shared classification helpers (identical to the Rcpp emitter) ----------
+    # -- shared classification helpers -------------------------------------------
 
     @staticmethod
     def _converts_via_buffer(argument: CArgument) -> bool:
