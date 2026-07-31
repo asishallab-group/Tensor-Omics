@@ -148,17 +148,21 @@ def _python_files(interface: CInterface, catalogue, paths: Paths,
 
 def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
     emitter, wrapper = CCallEmitter(), RWrapperEmitter()
+    # the C `.Call` shims live under src/ so fpm compiles them into the one
+    # libtensor-omics.so (mirroring the generated src/c_interface/*.F90); the R-language
+    # wrappers live in the R package tree.
+    csrc = paths.resolve(paths.r_c_interface_dir)
     out = paths.resolve(paths.r_out_dir)
     modules = list(interface)
     files = [
-        GeneratedFile(out / "src" / "tox_marshal.h", emitter.marshal_header_content()),
-        GeneratedFile(out / "src" / "init.c", emitter.registration(modules)),
+        GeneratedFile(csrc / "tox_marshal.h", emitter.marshal_header_content()),
+        GeneratedFile(csrc / "init.c", emitter.registration(modules)),
         GeneratedFile(out / "R" / "tox_validate.R", wrapper.validators()),
         GeneratedFile(out / "R" / "error_handling.R", RErrorEmitter(catalogue).module()),
     ]
     for module in modules:
         files.append(
-            GeneratedFile(out / "src" / f"{module.stripped_name}.c", emitter.module(module))
+            GeneratedFile(csrc / f"{module.stripped_name}.c", emitter.module(module))
         )
         files.append(
             GeneratedFile(out / "R" / f"{module.stripped_name}.R", wrapper.module(module))
@@ -198,8 +202,10 @@ def _clean(targets: tuple[str, ...], paths: Paths) -> None:
     if "r" in targets:
         # only the generated subdirectories, so a hand-written DESCRIPTION or NAMESPACE
         # alongside them is left alone
-        base = paths.resolve(paths.r_out_dir)
-        directories += [base / "src", base / "R"]
+        directories += [
+            paths.resolve(paths.r_c_interface_dir),   # the C .Call shims
+            paths.resolve(paths.r_out_dir) / "R",     # the R wrappers
+        ]
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)

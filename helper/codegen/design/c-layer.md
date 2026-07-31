@@ -56,6 +56,32 @@ Not in the source files they wrap. From issue #131:
 
 ---
 
+## Decision: the R C shims are bundled into the library, omittable like the C interface
+
+The R interface is pure C (`.Call`) shims — generated into `src/r_interface/*.c` — that
+marshal R objects and call the `bind(C)` wrappers. They are **compiled by fpm into the one
+`libtensor-omics.so`** (fpm already scans `src/` recursively and rebuilds only changed
+files), so there is a single artifact and no separate R build step; the R loader just
+`dyn.load`s it and `.Call`s the entry points by name (resolved by dynamic symbol lookup —
+the `.so`'s hyphenated name means the registration `R_init_*` never auto-fires, which is
+fine).
+
+The shims are guarded by `#if !defined(NO_R_INTERFACE) && !defined(NO_C_INTERFACE)`, mirroring
+the Fortran wrappers' `#ifndef NO_C_INTERFACE`. So:
+
+- `./build.sh --directive=NO_R_INTERFACE` drops the R layer (the shims compile to empty
+  objects that need no R headers) while keeping the C ABI for Python/direct-C use;
+- `NO_C_INTERFACE` implies no R layer too — the shims call the `bind(C)` symbols, which are
+  gone — so the guard tests both;
+- if the R layer is wanted but R is not installed, the build **auto-disables it with a
+  warning** (it needs R's headers, via `R CMD config --cppflags`, only when included).
+
+The R headers reach the C compiler through fpm's `--c-flag` (its `--flag` is Fortran only);
+the `.so` links with R's symbols left undefined, resolved when R loads it, so it carries no
+`libR` dependency.
+
+---
+
 ## Decision: the null-check order is `ierr`, scalars, arrays
 
 This is the fix for the standing `TODO codegen` in `src/macros.h`.

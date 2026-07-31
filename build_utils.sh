@@ -25,6 +25,27 @@ function init() {
     exit 1
   fi
   get_flags_and_features
+  get_c_flags
+}
+
+# Flags for the C sources (the R .Call shims in src/r_interface). fpm's --flag is Fortran
+# only, so C needs its own. The shims are guarded by NO_R_INTERFACE / NO_C_INTERFACE, so when
+# either is set they compile to empty objects that need no R headers; otherwise they need R's
+# include path. If the R layer is wanted but R is not installed, drop it with a warning.
+function get_c_flags() {
+  C_FLAGS="-fPIC $DIRECTIVES"
+  if [[ "$DIRECTIVES" == *NO_R_INTERFACE* || "$DIRECTIVES" == *NO_C_INTERFACE* ]]; then
+    return
+  fi
+  if [[ -z $(command -v R) ]]; then
+    warning "'$(echo_compiler R)' not found -- building without the R interface.
+Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_INTERFACE$COLOR_CREAM' to silence this."
+    DIRECTIVES="$DIRECTIVES -DNO_R_INTERFACE"
+    C_FLAGS="$C_FLAGS -DNO_R_INTERFACE"
+    TOX_CLEAN_BUILD=1
+    return
+  fi
+  C_FLAGS="$C_FLAGS $(R CMD config --cppflags)"
 }
 
 function utils_fpm() {
@@ -37,7 +58,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix="fpm build --list"
   fi
-  LD_LIBRARY_PATH="$libpath" $prefix --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" $prefix --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "-Lexternal" --flag "-I." -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)

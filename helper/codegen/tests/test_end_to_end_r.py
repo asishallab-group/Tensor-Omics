@@ -1,14 +1,13 @@
 """The R pipeline: generate, build, and drive it through R.
 
-The R analogue of `test_end_to_end.py`. It generates the C and R from the fixtures,
-compiles the C `.Call` shims against the fixture Fortran library into one shared object
-with `R CMD SHLIB`, and runs a driver script that `dyn.load`s it, sources everything, and
-checks the answers and the classed conditions.
+The R analogue of `test_end_to_end.py`. It generates the C and R from the fixtures and
+compiles the Fortran fixtures *and* the C `.Call` shims into one `libfixtures.so` -- the
+same bundling fpm does for libtensor-omics.so in production -- then runs a driver script
+that `dyn.load`s it, sources everything, and checks the answers and the classed conditions.
 
-Skipped without gfortran and R. No Rcpp -- the shims are pure C.
+Skipped without gfortran, gcc and R. No Rcpp -- the shims are pure C.
 """
 
-import os
 import shutil
 import subprocess
 import textwrap
@@ -31,14 +30,15 @@ from codegen.ir.validate import validate_project
 from conftest import REPO_ROOT
 
 GFORTRAN = shutil.which("gfortran")
+GCC = shutil.which("gcc") or shutil.which("cc")
 RSCRIPT = shutil.which("Rscript")
 RBIN = shutil.which("R")
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 
 pytestmark = pytest.mark.skipif(
-    GFORTRAN is None or RSCRIPT is None or RBIN is None,
-    reason="needs gfortran and R",
+    GFORTRAN is None or GCC is None or RSCRIPT is None or RBIN is None,
+    reason="needs gfortran, gcc and R",
 )
 
 
@@ -69,15 +69,24 @@ def _generate(out: Path) -> None:
     (out / "error_handling.R").write_text(RErrorEmitter(catalogue).module())
 
 
-def _build_fortran(out: Path) -> Path:
-    # objects and the library go in a subdir: the Fortran module fx_basics.F90 and the C
-    # shim fx_basics.c would otherwise both produce fx_basics.o in `out` and collide.
-    fbuild = out / "fortran"
-    fbuild.mkdir(exist_ok=True)
+def _r_cppflags() -> list[str]:
+    out = subprocess.run([RBIN, "CMD", "config", "--cppflags"],
+                         capture_output=True, text=True, check=True).stdout
+    return out.split()
+
+
+def _build_lib(out: Path, with_r: bool = True) -> Path:
+    """Compile the Fortran fixtures and the generated C `.Call` shims into one
+    `libfixtures.so` -- mirroring the bundled production build, where fpm links the R shims
+    into libtensor-omics.so. With `with_r=False` the shims are compiled with
+    `-DNO_R_INTERFACE`, so they are empty objects and the library has no R entry points."""
+    lib_dir = out / ("lib_r" if with_r else "lib_nor")
+    lib_dir.mkdir(exist_ok=True)
     for name in ("fx_basics.F90", "fx_edges.F90"):
         shutil.copy(REPO_ROOT / FIXTURE_SRC / name, out / name)
-    flags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{fbuild}"]
+
     objects = []
+    fflags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{lib_dir}"]
     for source in (
         REPO_ROOT / "src/tox/tox_errors.F90",
         REPO_ROOT / "src/tox/tox_conversions.F90",
@@ -85,50 +94,42 @@ def _build_fortran(out: Path) -> Path:
         out / "fx_basics.F90", out / "fx_edges.F90",
         out / "fx_basics_c.F90", out / "fx_edges_c.F90",
     ):
-        obj = fbuild / f"{Path(source).stem}.o"
-        result = subprocess.run(
-            [GFORTRAN, *flags, "-c", str(source), "-o", str(obj)],
-            cwd=REPO_ROOT, capture_output=True, text=True,
-        )
+        obj = lib_dir / f"{Path(source).stem}.o"
+        result = subprocess.run([GFORTRAN, *fflags, "-c", str(source), "-o", str(obj)],
+                                cwd=REPO_ROOT, capture_output=True, text=True)
         assert result.returncode == 0, f"{source}:\n{result.stderr}"
         objects.append(str(obj))
-    library = fbuild / "libfixtures.so"
-    result = subprocess.run(
-        [GFORTRAN, "-shared", "-o", str(library), *objects],
-        cwd=REPO_ROOT, capture_output=True, text=True,
-    )
+
+    # the C `.Call` shims -> distinctly-named objects (fx_basics.c would otherwise collide
+    # with the Fortran fx_basics.o). R symbols stay undefined, resolved at dyn.load.
+    cflags = ["-fPIC", f"-I{out}", *_r_cppflags()] + ([] if with_r else ["-DNO_R_INTERFACE"])
+    for source in sorted(out.glob("*.c")):
+        obj = lib_dir / f"{source.stem}_shim.o"
+        result = subprocess.run([GCC, *cflags, "-c", str(source), "-o", str(obj)],
+                                cwd=REPO_ROOT, capture_output=True, text=True)
+        assert result.returncode == 0, f"{source}:\n{result.stderr}"
+        objects.append(str(obj))
+
+    library = lib_dir / "libfixtures.so"
+    result = subprocess.run([GFORTRAN, "-shared", "-o", str(library), *objects],
+                            cwd=REPO_ROOT, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    return fbuild
-
-
-def _build_shim(out: Path, libdir: Path) -> Path:
-    """Compile the generated C `.Call` shims into one `tensoromics.so` (R_init_tensoromics),
-    linked against the fixture Fortran library in `libdir`."""
-    sources = sorted(p.name for p in out.glob("*.c"))  # module .c files + init.c
-    environ = dict(os.environ)
-    environ["PKG_CPPFLAGS"] = f"-I{out}"
-    environ["PKG_LIBS"] = f"-L{libdir} -lfixtures -Wl,-rpath,{libdir}"
-    result = subprocess.run(
-        [RBIN, "CMD", "SHLIB", *sources, "-o", "tensoromics.so"],
-        cwd=out, capture_output=True, text=True, env=environ,
-    )
-    assert result.returncode == 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-    return out / "tensoromics.so"
+    return library
 
 
 @pytest.fixture(scope="session")
 def built(tmp_path_factory):
     out = tmp_path_factory.mktemp("e2e_r")
     _generate(out)
-    libdir = _build_fortran(out)
-    _build_shim(out, libdir)
+    library = _build_lib(out, with_r=True)
+    shutil.copy(library, out / "libfixtures.so")   # a stable path for run_r to dyn.load
     return out
 
 
 def run_r(built: Path, body: str) -> str:
-    """Load the compiled shim, source the generated R, run `body`, return its stdout."""
+    """Load the bundled library, source the generated R, run `body`, return its stdout."""
     script = textwrap.dedent(f"""
-        dyn.load("tensoromics.so")
+        dyn.load("libfixtures.so")
         source("error_handling.R"); source("tox_validate.R")
         source("fx_basics.R"); source("fx_edges.R")
         {body}
@@ -255,3 +256,16 @@ class TestClassedConditions:
                          tox_na_error = function(e) "caught"))
         """)
         assert out.strip() == "caught"
+
+
+class TestNoRInterface:
+    def test_no_r_interface_build_drops_the_call_shims(self, tmp_path_factory):
+        """Built with NO_R_INTERFACE, the library keeps the Fortran C ABI but has no R
+        `.Call` entry points -- the shims compiled to empty objects, needing no R headers."""
+        out = tmp_path_factory.mktemp("e2e_r_nor")
+        _generate(out)
+        library = _build_lib(out, with_r=False)
+        syms = subprocess.run(["nm", "-D", str(library)],
+                              capture_output=True, text=True).stdout
+        assert "fx_normalize_call" not in syms   # the R shim is gone
+        assert "fx_normalize_c" in syms          # the Fortran C ABI stays

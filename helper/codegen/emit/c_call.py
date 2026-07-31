@@ -26,6 +26,12 @@ from ..render import Writer
 #: The R shared object this interface is registered into (drives `R_init_<name>`).
 R_DLL_NAME = "tensoromics"
 
+#: The R shims compile into the one `libtensor-omics.so`. This guard drops them (and their
+#: R.h include) when the interface is built without R (`NO_R_INTERFACE`) or without the C ABI
+#: they call (`NO_C_INTERFACE`), leaving empty objects that need no R headers.
+_GUARD_OPEN = "#if !defined(NO_R_INTERFACE) && !defined(NO_C_INTERFACE)"
+_GUARD_CLOSE = "#endif  // R interface"
+
 #: A Fortran numeric literal's kind suffix -- `0_int32`. C has no such thing.
 _FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
 #: `size(arr)` / `size(arr, dim)` -- an extent stated in terms of another argument.
@@ -109,6 +115,7 @@ class CCallEmitter:
     def module(self, module: CWrapperModule) -> str:
         writer = Writer()
         writer.line("// Generated. Do not edit.")
+        writer.line(_GUARD_OPEN)
         writer.line("#include <R.h>")
         writer.line("#include <Rinternals.h>")
         writer.line(f'#include "{self.marshal_header}"')
@@ -123,6 +130,7 @@ class CCallEmitter:
             writer.block(self.function(wrapper))
             writer.blank(collapse=False)
 
+        writer.line(_GUARD_CLOSE)
         return writer.render(trailing_newline=True)
 
     def _extern_declaration(self, wrapper: CWrapper) -> str:
@@ -138,6 +146,7 @@ class CCallEmitter:
         entries = [w for module in modules for w in module]
         writer = Writer()
         writer.line("// Generated. Do not edit.")
+        writer.line(_GUARD_OPEN)
         writer.line("#include <R.h>")
         writer.line("#include <Rinternals.h>")
         writer.line("#include <R_ext/Rdynload.h>")
@@ -162,6 +171,7 @@ class CCallEmitter:
             writer.line("R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);")
             writer.line("R_useDynamicSymbols(dll, FALSE);")
         writer.line("}")
+        writer.line(_GUARD_CLOSE)
         return writer.render(trailing_newline=True)
 
     # -- function ---------------------------------------------------------------

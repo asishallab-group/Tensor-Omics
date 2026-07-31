@@ -107,6 +107,7 @@ class Paths:
     src_dir: Path = Path("src")
     macros_header: Path = Path("src/macros.h")
     c_interface_dir: Path = Path("src/c_interface")
+    r_c_interface_dir: Path = Path("src/r_interface")
     python_out_dir: Path = Path("python/tensor_omics")
     r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")

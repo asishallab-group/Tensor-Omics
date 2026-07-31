@@ -36,7 +36,8 @@
 # src all contained dirs
 !/src/**/[a-z]*/
 !/src/**/*.[Ff]90
-!/src/**/macros.h
+!/src/**/*.c
+!/src/**/*.h
 
 # snippets
 # the dir is allowed but the generated *_snippets.json inside stay ignored (large, regenerated)
@@ -50,16 +51,13 @@
 !/python/tensor_omics/*.py
 !/python/*.py
 
-# R
+# R (the generated C .Call shims live in src/r_interface/ so fpm bundles them into the .so)
 !/r
 !/r/test
 !/r/test/mod_test_*.R
 !/r/tensor_omics
 !/r/tensor_omics/R
 !/r/tensor_omics/R/*.R
-!/r/tensor_omics/src
-!/r/tensor_omics/src/*.c
-!/r/tensor_omics/src/*.h
 !/r/*.R
 
 # misc

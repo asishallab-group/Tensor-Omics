@@ -41,7 +41,7 @@ From one exported Fortran procedure, three things:
 |---|---|---|
 | C | `src/c_interface/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
 | Python | `python/tensor_omics/<module>.py` | a `ctypes` function with a numpydoc docstring |
-| R | `r/tensor_omics/{src,R}/<module>.*` | a C `.Call` function (marshalling) under an R function (validation, docs) |
+| R | `src/r_interface/<module>.c` + `r/tensor_omics/R/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
 | Snippets | `snippets/<Language>_<root>_snippets.json` | VS Code call/setup snippets, split by language and module root |
 
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
@@ -103,20 +103,22 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 |---|---|---|
 | `src_dir` | `src` | the sources to read (`--src`) |
 | `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
-| `c_interface_dir` | `src/c_interface` | **output**: the C wrappers |
+| `c_interface_dir` | `src/c_interface` | **output**: the Fortran C wrappers |
+| `r_c_interface_dir` | `src/r_interface` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
-| `r_out_dir` | `r/tensor_omics` | **output**: the R package |
+| `r_out_dir` | `r/tensor_omics` | **output**: the R wrappers + loader |
 | `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, git-ignored) |
 
 So a default run writes:
 
 ```
-src/c_interface/<module>_c.F90        # C wrappers, one per module
+src/c_interface/<module>_c.F90        # Fortran C wrappers, one per module
+src/r_interface/                      # R C .Call shims -- fpm compiles them into the .so
+    tox_marshal.h  init.c  <module>.c
 python/tensor_omics/
     __init__.py  library.py  error_handling.py
     <module>.py                       # one per module
 r/tensor_omics/
-    src/tox_marshal.h  src/init.c  src/<module>.c
     R/tox_validate.R   R/error_handling.R   R/<module>.R
 ```
 
