@@ -133,7 +133,7 @@ contains
     end subroutine serialize_scalar
 
     !> Serializes a [[json_array(type)]] and writes it to the passed unit
-    recursive subroutine serialize_array(json_arr, unit, depth, max_depth)
+    recursive subroutine serialize_array(json_arr, unit, depth, max_depth, truncated)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize
         integer(int32), intent(in) :: unit
@@ -142,6 +142,8 @@ contains
             !! Current depth of traversion
         integer(int32), intent(in) :: max_depth
             !! maximum recursion depth for traversion of `json_arr`
+        logical, intent(inout) :: truncated
+            !! set to `.true.` if `max_depth` was reached and a value was cut off to `null`
 
         write (unit, "('[')", advance="no")
         if (associated(json_arr%elements)) then
@@ -152,13 +154,13 @@ contains
                     type is (character(*))
                         n_elements = size(arr, dim=1, kind=int32)
                         do i_element = 1, n_elements
-                            call serialize_json_value(arr(i_element), unit, depth, max_depth)
+                            call serialize_json_value(arr(i_element), unit, depth, max_depth, truncated)
                             if (i_element < n_elements) write (unit, "(',')", advance="no")
                         end do
                     class default
                         n_elements = size(arr, dim=1, kind=int32)
                         do i_element = 1, n_elements
-                            call serialize_json_value(arr(i_element), unit, depth, max_depth)
+                            call serialize_json_value(arr(i_element), unit, depth, max_depth, truncated)
                             if (i_element < n_elements) write (unit, "(',')", advance="no")
                         end do
                 end select
@@ -169,7 +171,7 @@ contains
     end subroutine serialize_array
 
     !> Serializes any supported type, else `null`
-    recursive subroutine serialize_json_value(element, unit, depth, max_depth)
+    recursive subroutine serialize_json_value(element, unit, depth, max_depth, truncated)
         class(*), intent(in) :: element
             !! JSON value to serialize, can be either [[json_value(type)]] or any type supported by [[json_value(type)]]
         integer(int32), intent(in) :: unit
@@ -178,17 +180,19 @@ contains
             !! Current depth of traversion
         integer(int32), intent(in) :: max_depth
             !! maximum recursion depth for traversion of `element`
+        logical, intent(inout) :: truncated
+            !! set to `.true.` if `max_depth` was reached and this value was cut off to `null`
 
         if (depth < max_depth) then
             depth = depth + 1
             select type(element)
                 type is (json_array)
-                    call serialize_array(element, unit, depth, max_depth)
+                    call serialize_array(element, unit, depth, max_depth, truncated)
                 type is (json_object)
-                    call serialize_object(element, unit, depth, max_depth)
+                    call serialize_object(element, unit, depth, max_depth, truncated)
                 type is (json_value)
                     if (associated(element%value)) then
-                        call serialize_json_value(element%value, unit, depth, max_depth)
+                        call serialize_json_value(element%value, unit, depth, max_depth, truncated)
                     else
                         write (unit, "('null')", advance="no")
                     end if
@@ -197,12 +201,14 @@ contains
             end select
             depth = depth - 1
         else
+            ! max recursion depth reached: emit null and flag the truncation
+            truncated = .true.
             write (unit, "('null')", advance="no")
         end if
     end subroutine serialize_json_value
 
     !> Serializes a key-value pair
-    recursive subroutine serialize_key_value_pair(key, value, unit, depth, max_depth)
+    recursive subroutine serialize_key_value_pair(key, value, unit, depth, max_depth, truncated)
         character(len=*), intent(in) :: key
             !! Key of the pair
         class(*), intent(in) :: value
@@ -213,14 +219,16 @@ contains
             !! Current depth of traversion
         integer(int32), intent(in) :: max_depth
             !! maximum recursion depth that `depth` must not exceed
+        logical, intent(inout) :: truncated
+            !! set to `.true.` if `max_depth` was reached and a value was cut off to `null`
 
         call serialize_string(key, unit)
         write (unit, "(':')", advance="no")
-        call serialize_json_value(value, unit, depth, max_depth)
+        call serialize_json_value(value, unit, depth, max_depth, truncated)
     end subroutine serialize_key_value_pair
 
     !> Serializes a [[json_object(type)]] and writes it to the passed unit
-    recursive subroutine serialize_object(json_obj, unit, depth, max_depth)
+    recursive subroutine serialize_object(json_obj, unit, depth, max_depth, truncated)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
         integer(int32), intent(in) :: unit
@@ -229,6 +237,8 @@ contains
             !! Current depth of traversion
         integer(int32), intent(in) :: max_depth
             !! maximum recursion depth for traversion of `json_obj`
+        logical, intent(inout) :: truncated
+            !! set to `.true.` if `max_depth` was reached and a value was cut off to `null`
 
         write (unit, "('{')", advance="no")
         if (associated(json_obj%keys) .and. associated(json_obj%values)) then
@@ -237,7 +247,7 @@ contains
 
                 n_entries = min(size(json_obj%keys, dim=1, kind=int32), size(json_obj%values, dim=1, kind=int32))
                 do i_entry = 1, n_entries
-                    call serialize_key_value_pair(json_obj%keys(i_entry), json_obj%values(i_entry), unit, depth, max_depth)
+                    call serialize_key_value_pair(json_obj%keys(i_entry), json_obj%values(i_entry), unit, depth, max_depth, truncated)
                     if (i_entry < n_entries) write (unit, "(',')", advance="no")
                 end do
             end block
@@ -247,38 +257,48 @@ contains
 
     !> Serializes a [[json_object(type)]] and writes it to the passed unit
     !| Trailing whitespace of string keys and values is stripped, see [[serialize_string(subroutine)]].
-    subroutine serialize_json_object(json_obj, unit, max_depth)
+    subroutine serialize_json_object(json_obj, unit, max_depth, truncated)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
         integer(int32), intent(in) :: unit
             !! unit of the file to write to
         integer(int32), intent(in), optional :: max_depth
             !! maximum recursion depth for traversion of `json_obj`, default: 20
+        logical, intent(out), optional :: truncated
+            !! `.true.` if `max_depth` was reached and part of the object was cut off to `null`
 
         integer(int32) :: depth, actual_max_depth
+        logical :: was_truncated
 
         M_DEFAULT_VAL(max_depth, actual_max_depth, 20_int32)
 
         depth = 0_int32
-        call serialize_object(json_obj, unit, depth, actual_max_depth)
+        was_truncated = .false.
+        call serialize_object(json_obj, unit, depth, actual_max_depth, was_truncated)
+        if (present(truncated)) truncated = was_truncated
     end subroutine serialize_json_object
 
     !> Serializes a [[json_array(type)]] and writes it to the passed unit
     !| Trailing whitespace of string values is stripped, see [[serialize_string(subroutine)]].
-    subroutine serialize_json_array(json_arr, unit, max_depth)
+    subroutine serialize_json_array(json_arr, unit, max_depth, truncated)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize
         integer(int32), intent(in) :: unit
             !! unit of the file to write to
         integer(int32), intent(in), optional :: max_depth
             !! maximum recursion depth for traversion of `json_arr`, default: 20
+        logical, intent(out), optional :: truncated
+            !! `.true.` if `max_depth` was reached and part of the array was cut off to `null`
 
         integer(int32) :: depth, actual_max_depth
+        logical :: was_truncated
 
         M_DEFAULT_VAL(max_depth, actual_max_depth, 20_int32)
 
         depth = 0_int32
-        call serialize_array(json_arr, unit, depth, actual_max_depth)
+        was_truncated = .false.
+        call serialize_array(json_arr, unit, depth, actual_max_depth, was_truncated)
+        if (present(truncated)) truncated = was_truncated
     end subroutine serialize_json_array
 
 end module f42_json

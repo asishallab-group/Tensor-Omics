@@ -22,10 +22,11 @@ contains
     !> Get array of all available tests.
     function get_all_tests_json() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate(all_tests(2))
+        allocate(all_tests(3))
 
         all_tests(1) = test_case("test_f42_json_serialization", test_serialization)
         all_tests(2) = test_case("test_f42_flyer_serialization", test_flyer_serialization)
+        all_tests(3) = test_case("test_f42_json_recursion_limit", test_recursion_limit)
     end function get_all_tests_json
 
     subroutine test_serialization
@@ -214,6 +215,34 @@ contains
             "test_flyer_serialization"&
         )
     end subroutine test_flyer_serialization
+
+    subroutine test_recursion_limit
+        ! Verifies the `truncated` flag: it stays .false. for a structure that fits within
+        ! max_depth, and is set .true. once a (here self-referential) structure is cut off to null.
+        type(json_value), dimension(1), target :: elements
+        type(json_array), target :: arr
+        integer(int32), target :: val
+        integer(int32) :: unit, ierr
+        logical :: truncated
+
+        ! Case A: a shallow array is fully serialized -> not truncated
+        val = 42_int32
+        elements(1)%value => val
+        arr%elements => elements
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_recursion_limit: could not open file (shallow)")
+        call serialize_json_array(arr, unit, truncated=truncated)
+        call assert_true(.not. truncated, "test_recursion_limit: shallow array must not be truncated")
+        close(unit, status="delete")
+
+        ! Case B: a self-referential array is cut off at max_depth -> truncated
+        elements(1)%value => arr
+        open(newunit=unit, file="test_json.json", form='formatted', access='stream', status='replace', iostat=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_recursion_limit: could not open file (deep)")
+        call serialize_json_array(arr, unit, max_depth=3_int32, truncated=truncated)
+        call assert_true(truncated, "test_recursion_limit: self-referential array must be truncated")
+        close(unit, status="delete")
+    end subroutine test_recursion_limit
 
     subroutine helper_test_serialization(json_var, expected_fragment, test_case, max_depth)
         class(*), intent(in) :: json_var
