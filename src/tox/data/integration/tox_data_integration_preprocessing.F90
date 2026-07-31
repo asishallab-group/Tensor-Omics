@@ -232,7 +232,8 @@ contains
         else
             ! Compute reference points as empirical quantiles using the permutation
             do concurrent(i_point=1:n_points) local(quantile_level) shared(n_points, pooled_means, pooled_means_perm, n_pool, x_star)
-                quantile_level = real(i_point, real64)/real(n_points + 1, real64)*100.0_real64
+                ! Fraction in [0,1] as expected by calc_percentile_helper
+                quantile_level = real(i_point, real64)/real(n_points + 1, real64)
 
                 ! Use calc_percentile to compute the value
                 call calc_percentile_helper(pooled_means, pooled_means_perm(:n_pool), quantile_level, x_star(i_point))

@@ -168,7 +168,7 @@ contains
         ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
         ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
         ! different absolute expression ranges.
-        call calc_percentile(loess_x(1:n_valid), tmp_perm(1:n_valid), 5.0_real64, eps_mean, ierr)
+        call calc_percentile(loess_x(1:n_valid), tmp_perm(1:n_valid), 0.05_real64, eps_mean, ierr)
         if (is_err(ierr)) return
 
         eps_mean = max(eps_mean, EPS_LOESS)
@@ -207,7 +207,7 @@ contains
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
         ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
-        call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 1.0_real64, low_sd_cutoff, ierr)
+        call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 0.01_real64, low_sd_cutoff, ierr)
 
         if (is_err(ierr)) return
 
