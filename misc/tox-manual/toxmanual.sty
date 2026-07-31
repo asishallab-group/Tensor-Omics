@@ -1,0 +1,325 @@
+%% toxmanual.sty -- style package for the Tensor Omics (TOX) user manual.
+%%
+%% The TOX manual is a cookbook of analysis "recipes" (see issue #147). This
+%% package encodes the fixed recipe skeleton -- Purpose, Required input,
+%% Prerequisites ("depends on"), Workflow, Parameters, Expected results,
+%% Pitfalls, Interpretation, References -- as reusable commands/environments so
+%% authors write consistent, good-looking recipes with minimal boilerplate.
+%%
+%% Engine:  pdfLaTeX.   Document class:  KOMA-Script scrreprt (chapter/recipe).
+%% Usage:   \documentclass[11pt,a4paper]{scrreprt}
+%%          \usepackage{toxmanual}
+%%
+%% Maintainers: the TOX team, University of Applied Sciences Bingen.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{toxmanual}[2026/07/31 v0.1 Tensor Omics manual style]
+
+% ---------------------------------------------------------------------------
+% 1. Dependencies (all ship with a full TeX Live / MiKTeX install)
+% ---------------------------------------------------------------------------
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{amsmath}            % load amsmath/amssymb BEFORE newtx to avoid
+\RequirePackage{amssymb}            % a \Bbbk redefinition clash with newtxmath
+\RequirePackage{newtxtext}          % professional Times-like text ...
+\RequirePackage{newtxmath}          % ... and matching math
+\RequirePackage{microtype}          % even margins, subtle char protrusion
+\RequirePackage{geometry}
+\RequirePackage{graphicx}
+\RequirePackage{setspace}
+\RequirePackage{enumitem}
+\RequirePackage{keyval}
+\RequirePackage{array}
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\RequirePackage{longtable}
+\RequirePackage[table,dvipsnames]{xcolor}
+\RequirePackage{listings}
+\RequirePackage[skins,breakable,most]{tcolorbox}
+\RequirePackage{scrlayer-scrpage}   % KOMA headers/footers
+\RequirePackage{fontawesome5}       % small admonition icons
+\RequirePackage{hyperref}
+\RequirePackage{cleveref}           % load after hyperref: "Chapter N" refs
+\RequirePackage{underscore}         % raw `_` prints in text (paths, filenames)
+
+\geometry{margin=1in}
+
+% ---------------------------------------------------------------------------
+% 2. Branding palette -- single source of truth. Restyle the whole manual here.
+% ---------------------------------------------------------------------------
+\definecolor{toxblue}{RGB}{0,0,238}       % primary / links / titles (repo blue)
+\definecolor{toxink}{RGB}{34,34,34}       % near-black body ink
+% Admonition accents (line/title colour); box fill is a light tint of each.
+\definecolor{toxprereq}{RGB}{21,101,192}  % blue   -- prerequisites
+\definecolor{toxpitfall}{RGB}{201,105,0}  % amber  -- common pitfalls
+\definecolor{toxnote}{RGB}{0,131,143}      % teal   -- notes
+\definecolor{toxtip}{RGB}{106,59,166}      % violet -- tips
+\definecolor{toxinterp}{RGB}{46,125,50}    % green  -- interpretation
+\definecolor{toxresult}{RGB}{69,90,100}    % slate  -- expected results
+\definecolor{toxparam}{RGB}{55,71,79}      % slate  -- parameter-table header
+% Code-listing palette (kept identical to the repo's existing \lstset).
+\definecolor{toxkw}{RGB}{0,0,238}
+\definecolor{toxcomment}{RGB}{0,102,0}
+\definecolor{toxstring}{RGB}{128,0,128}
+\definecolor{toxcodebg}{gray}{0.96}
+\definecolor{toxcoderule}{gray}{0.70}
+
+% ---------------------------------------------------------------------------
+% 3. Links + heading styling
+% ---------------------------------------------------------------------------
+\hypersetup{
+  colorlinks=true,
+  linkcolor=toxblue,
+  urlcolor=toxblue,
+  citecolor=toxblue,
+  pdftitle={Tensor Omics User's Guide},
+  pdfsubject={Tensor Omics analysis recipes},
+}
+
+% KOMA heading fonts in brand blue.
+\addtokomafont{part}{\color{toxblue}}
+\addtokomafont{partnumber}{\color{toxblue}}
+\addtokomafont{chapter}{\color{toxblue}}
+\addtokomafont{section}{\color{toxblue}}
+\addtokomafont{subsection}{\color{toxblue}}
+\addtokomafont{subsubsection}{\color{toxblue}}
+\setkomafont{pagehead}{\normalfont\sffamily\small}
+\setkomafont{pagenumber}{\normalfont\sffamily\small}
+
+% Tight lists, matching the current manual.
+\setlist[itemize]{leftmargin=1.3em, noitemsep, topsep=2pt}
+\setlist[enumerate]{leftmargin=1.4em, noitemsep, topsep=2pt}
+
+% Running header: the current recipe (chapter) title, blue rule.
+\pagestyle{scrheadings}
+\clearpairofpagestyles
+\automark[chapter]{chapter}
+\ihead{\headmark}
+\ohead{\pagemark}
+\setkomafont{headsepline}{\color{toxblue}}
+\KOMAoptions{headsepline=0.4pt}
+
+% ---------------------------------------------------------------------------
+% 4. Code listings
+% ---------------------------------------------------------------------------
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{toxkw}\bfseries,
+  commentstyle=\color{toxcomment}\itshape,
+  stringstyle=\color{toxstring},
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  frame=single,
+  rulecolor=\color{toxcoderule},
+  backgroundcolor=\color{toxcodebg},
+  framesep=6pt,
+  xleftmargin=6pt,
+  xrightmargin=6pt,
+  upquote=true,
+  aboveskip=1em,
+  belowskip=1em,
+  captionpos=b,
+}
+
+% ---------------------------------------------------------------------------
+% 5. Admonition engine. \tox@admon builds every coloured callout uniformly.
+%    #1 accent colour  #2 fontawesome icon  #3 default title
+% ---------------------------------------------------------------------------
+\newtcolorbox{tox@admon}[3]{%
+  breakable, enhanced, sharp corners, boxrule=0pt, frame hidden,
+  colback=#1!7, borderline west={3pt}{0pt}{#1},
+  left=10pt, right=8pt, top=6pt, bottom=6pt,
+  fontupper=\normalfont,
+  before upper={\textbf{\color{#1}{#2}\hspace{0.5em}#3}\par\smallskip},
+}
+
+% Generic reusable admonitions ----------------------------------------------
+\newenvironment{note}
+  {\begin{tox@admon}{toxnote}{\faInfoCircle}{Note}}
+  {\end{tox@admon}}
+\newenvironment{tip}
+  {\begin{tox@admon}{toxtip}{\faLightbulb}{Tip}}
+  {\end{tox@admon}}
+\newenvironment{warning}
+  {\begin{tox@admon}{toxpitfall}{\faExclamationTriangle}{Warning}}
+  {\end{tox@admon}}
+
+% ---------------------------------------------------------------------------
+% 6. Title page. Defaults reproduce the current misc/tox_manual titlepage.
+% ---------------------------------------------------------------------------
+\newcommand{\tox@title}{Tensor Omics (TOX)}
+\newcommand{\tox@subtitle}{Analyze gene expression data and evolutionary
+  relationships between genes}
+\newcommand{\tox@guide}{User's Guide}
+\newcommand{\tox@authors}{%
+  Aaron Schr\"oder, Alexander Schwarzpaul, Anna Beketova, Asis Hallab,
+  Franz-Eric Sill, Jitu Daba, Jonathan Kurz, Laszlo Lang, Luka Faensen,
+  Mohamed Akdi, Stephanie Ped, Vivian Bass Vega}
+\newcommand{\tox@institution}{University of Applied Sciences Bingen, Germany}
+
+\newcommand{\toxtitle}[1]{\renewcommand{\tox@title}{#1}}
+\newcommand{\toxsubtitle}[1]{\renewcommand{\tox@subtitle}{#1}}
+\newcommand{\toxauthors}[1]{\renewcommand{\tox@authors}{#1}}
+\newcommand{\toxinstitution}[1]{\renewcommand{\tox@institution}{#1}}
+
+\newcommand{\toxtitlepage}{%
+  \begin{titlepage}
+    \vspace*{3cm}
+    \noindent{\Huge\bfseries\color{toxblue}\tox@title}\\[0.5cm]
+    \noindent{\Huge\bfseries\color{toxblue}\tox@subtitle}\\[1.5cm]
+    \noindent{\Huge\bfseries\color{toxblue}\tox@guide}
+    \vspace{2cm}\par
+    \noindent{\large\bfseries\tox@authors}\\[0.4cm]
+    {\small\tox@institution}
+    \vspace{2cm}\par
+    \noindent\textbf{Last revised \today}
+  \end{titlepage}%
+}
+
+% ---------------------------------------------------------------------------
+% 7. Recipe container. \begin{recipe}[label=rec:foo]{Title} ... \end{recipe}
+%    Opens a chapter, records a cross-ref label, and stores the human title so
+%    \dependson{rec:foo} elsewhere can print it.
+% ---------------------------------------------------------------------------
+% Title store: \csname tox@rname@<label>\endcsname -> "Title".
+\newcommand{\tox@storerecipename}[2]{%
+  \expandafter\gdef\csname tox@rname@#1\endcsname{#2}}
+\newcommand{\tox@recipename}[1]{%
+  \ifcsname tox@rname@#1\endcsname
+    \csname tox@rname@#1\endcsname
+  \else
+    \textbf{??}\PackageWarning{toxmanual}{Unknown recipe label `#1'}%
+  \fi}
+
+\define@key{tox@recipe}{label}{\def\tox@recipe@label{#1}}
+\newenvironment{recipe}[2][]{%
+  \def\tox@recipe@label{}%
+  \setkeys{tox@recipe}{#1}%
+  \chapter{#2}%
+  \ifx\tox@recipe@label\@empty\else
+    \label{\tox@recipe@label}%
+    \tox@storerecipename{\tox@recipe@label}{#2}%
+    % Persist the title to the .aux so forward \dependson refs resolve next run.
+    \protected@write\@auxout{}{%
+      \string\tox@storerecipename{\tox@recipe@label}{#2}}%
+  \fi
+}{%
+  % nothing at end; sections close naturally.
+}
+
+% Recipe "card": compact boxed metadata header at the top of a recipe.
+\newcommand{\recipepurpose}[1]{%
+  \begin{tcolorbox}[breakable,enhanced,sharp corners,boxrule=0pt,frame hidden,
+      colback=toxblue!7,borderline west={3pt}{0pt}{toxblue},
+      left=10pt,right=8pt,top=6pt,bottom=6pt,
+      before upper={\textbf{\color{toxblue}\faBullseye\hspace{0.5em}Purpose}%
+        \par\smallskip}]
+    #1
+  \end{tcolorbox}}
+\newcommand{\recipemaintainer}[1]{%
+  \par\smallskip\noindent
+  {\small\color{toxink}\faUserEdit\hspace{0.4em}\textbf{Maintainer:} #1}\par}
+
+% Required input data.
+\newenvironment{requiredinputs}
+  {\subsection*{\faDatabase\hspace{0.4em}Required Input Data}%
+   \begin{itemize}}
+  {\end{itemize}}
+
+% Prerequisites / "depends on" -----------------------------------------------
+% \dependson{rec:label} -> a bullet linking to that recipe by its stored title
+% and cleveref chapter number.
+\newcommand{\dependson}[1]{%
+  \item \emph{\tox@recipename{#1}} (see \cref{#1})}
+\newenvironment{prerequisites}
+  {\begin{tox@admon}{toxprereq}{\faSitemap}{Prerequisites / Depends on}%
+   \begin{itemize}[leftmargin=1.3em]}
+  {\end{itemize}\end{tox@admon}}
+
+% Cross-reference a recipe inline: \seerecipe{rec:label}
+\newcommand{\seerecipe}[1]{\emph{\tox@recipename{#1}} (\cref{#1})}
+
+% ---------------------------------------------------------------------------
+% 8. Body-section environments
+% ---------------------------------------------------------------------------
+% Step-by-step workflow.
+\newlist{tox@steplist}{enumerate}{1}
+\setlist[tox@steplist]{label=\textbf{\color{toxblue}Step~\arabic*.},
+  leftmargin=*, labelsep=0.6em, itemsep=4pt, topsep=4pt}
+\newenvironment{workflow}
+  {\subsection*{\faListOl\hspace{0.4em}Step-by-Step Workflow}%
+   \begin{tox@steplist}}
+  {\end{tox@steplist}}
+\newcommand{\step}[1]{\item #1}
+
+% Parameter table: \param{name}{controls}{when / which values}
+\newenvironment{parameters}{%
+  \subsection*{\faSlidersH\hspace{0.4em}Important Parameters}%
+  \par\noindent
+  \begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}
+                       >{\raggedright\arraybackslash}p{0.34\linewidth}
+                       >{\raggedright\arraybackslash}p{0.38\linewidth}@{}}
+    \rowcolor{toxparam}
+    {\color{white}\bfseries Parameter} &
+    {\color{white}\bfseries Controls} &
+    {\color{white}\bfseries When / which values} \\
+    \midrule\endhead
+}{%
+    \bottomrule
+  \end{longtable}\par
+}
+\newcommand{\param}[3]{\texttt{#1} & #2 & #3 \\}
+
+% Expected intermediate results.
+\newenvironment{expectedresults}
+  {\begin{tox@admon}{toxresult}{\faClipboardCheck}{Expected Results}}
+  {\end{tox@admon}}
+
+% Interpretation of the final output.
+\newenvironment{interpretation}
+  {\begin{tox@admon}{toxinterp}{\faSearch}{Interpretation}}
+  {\end{tox@admon}}
+
+% Common pitfalls (repeatable). Optional argument overrides the title.
+\newenvironment{pitfall}[1][Common Pitfall]
+  {\begin{tox@admon}{toxpitfall}{\faExclamationTriangle}{#1}}
+  {\end{tox@admon}}
+
+% References. Use \cite (with references.bib) or a plain list of \reference{}.
+\newenvironment{references}
+  {\subsection*{\faBook\hspace{0.4em}References}%
+   \begin{itemize}[leftmargin=1.3em]}
+  {\end{itemize}}
+\newcommand{\reference}[1]{\item #1}
+
+% ---------------------------------------------------------------------------
+% 9. Code examples & script links (enforce "link scripts, don't duplicate")
+% ---------------------------------------------------------------------------
+\newcommand{\tox@repourl}{%
+  https://github.com/asishallab-group/Tensor-Omics/blob/main/}
+\newcommand{\toxrepourl}[1]{\renewcommand{\tox@repourl}{#1}}
+
+% \examplescript{path/in/repo}{caption} -> boxed callout with a linked path.
+\newcommand{\examplescript}[2]{%
+  \begin{tcolorbox}[breakable,enhanced,sharp corners,boxrule=0pt,frame hidden,
+      colback=toxtip!7,borderline west={3pt}{0pt}{toxtip},
+      left=10pt,right=8pt,top=6pt,bottom=6pt,
+      before upper={\textbf{\color{toxtip}\faFileCode\hspace{0.5em}Example
+        script}\par\smallskip}]
+    #2\par\smallskip
+    \faLink\hspace{0.4em}%
+    \href{\tox@repourl #1}{\texttt{#1}}
+  \end{tcolorbox}}
+
+% \begin{codefragment}[language=bash,caption=...] ... \end{codefragment}
+\lstnewenvironment{codefragment}[1][]{\lstset{#1}}{}
+
+% Inline helpers (consistent \texttt styling).
+\newcommand{\file}[1]{\texttt{#1}}
+\newcommand{\cmd}[1]{\texttt{#1}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\optn}[1]{\texttt{#1}}
+
+\endinput
