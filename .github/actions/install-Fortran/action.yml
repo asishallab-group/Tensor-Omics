@@ -14,7 +14,7 @@ runs:
       if: ${{ inputs.compiler == 'ifx' }}
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm gcc  # ifx needs some libs from gcc
+        pacman -Sy --needed --noconfirm gcc g++  # ifx needs some libs from gcc, icx some of g++
         pacman -Scc --noconfirm
         for i in e5d4469d-33c1-4d48-8b45-48de1e6fb9e9/intel-dpcpp-cpp-compiler-2026.1.1.22.sh 09a1aab3-8441-4a4e-a243-1c1c8e15598c/intel-fortran-compiler-2026.1.1.19.sh
         do
