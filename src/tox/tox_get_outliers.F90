@@ -489,7 +489,7 @@ contains
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
         real(real64), intent(in), optional :: percentile
-            !! (optional) Percentile threshold (default: 95 for top 5%)
+            !! (optional) Percentile threshold as a fraction in [0,1] (default: 0.95 for top 5%)
         real(real64), intent(out) :: quantile(n_genes)
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -503,7 +503,7 @@ contains
         if (present(percentile)) then
             percentile_val = percentile
         else
-            percentile_val = 95.0_real64
+            percentile_val = 0.95_real64
         end if
 
         ! Initialize output
@@ -518,8 +518,8 @@ contains
 
         ! Nearest-rank percentile: round the fractional rank up to the next integer index into the
         ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
-        ! interpolated one.
-        perc_pos = (n_genes*percentile_val)/100.0_real64
+        ! interpolated one. `percentile_val` is a fraction in [0,1].
+        perc_pos = n_genes*percentile_val
         idx = ceiling(perc_pos)
         ! Clamp idx to valid range
         if (idx < 1) idx = 1
@@ -574,7 +574,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), intent(in), optional :: percentile
-            !! (optional) Percentile threshold for outlier detection (default: 95)
+            !! (optional) Percentile threshold in [0,1] for outlier detection (default: 0.95)
         real(real64), intent(out) :: quantile(n_genes)
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -592,7 +592,7 @@ contains
         if (present(percentile)) then
             percentile_val = percentile
         else
-            percentile_val = 95.0_real64
+            percentile_val = 0.95_real64
         end if
 
         ! Always initialize permutation array
@@ -723,7 +723,7 @@ subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, thres
     real(c_double), intent(out), target :: threshold
         !! Output threshold value used for detection
     real(c_double), intent(in), target :: percentile
-        !! Percentile threshold for outlier detection
+        !! Percentile threshold as a fraction in [0,1] for outlier detection
     real(c_double), intent(out), target :: quantile(n_genes)
         !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
         !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -799,7 +799,7 @@ subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, &
     integer(c_int), intent(out), target :: ierr
         !! Error code
     real(c_double), intent(in), target :: percentile
-        !! Percentile threshold for outlier detection
+        !! Percentile threshold as a fraction in [0,1] for outlier detection
 
     logical, dimension(:), allocatable :: is_outlier_f
 
