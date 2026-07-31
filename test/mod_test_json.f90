@@ -75,21 +75,21 @@ contains
         ! Case 1: basic object serialization test with recursion
         call helper_test_serialization(&
             object,&
-            '{"integer":-2147483647,"real": 1.7976931348623157E+308,"logical":true,"complex":[ 1.0000000000000000E+000,-1.0000000000000000E+000],"array":[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
+            '{"integer":-2147483647,"real":1.7976931348623157E+308,"logical":true,"complex":[1.0000000000000000E+000,-1.0000000000000000E+000],"array":[-2147483647,1.7976931348623157E+308,true,[1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
             "test_serialization: case 1 Object"&
         )
 
         ! Case 2: basic array serialization test with recursion
         call helper_test_serialization(&
             array,&
-            '[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
+            '[-2147483647,1.7976931348623157E+308,true,[1.0000000000000000E+000,-1.0000000000000000E+000],[-2147483647,',&
             "test_serialization: case 2 Array"&
         )
 
         ! Case 3: basic array serialization test with custom recursion limit
         call helper_test_serialization(&
             array,&
-            '[-2147483647, 1.7976931348623157E+308,true,[ 1.0000000000000000E+000,-1.0000000000000000E+000],[null,null,null,null,null,null],{"integer":null,"real":null,"logical":null,"complex":null,"array":null,"object":null}]',&
+            '[-2147483647,1.7976931348623157E+308,true,[1.0000000000000000E+000,-1.0000000000000000E+000],[null,null,null,null,null,null],{"integer":null,"real":null,"logical":null,"complex":null,"array":null,"object":null}]',&
             "test_serialization: case 3 custom recursion limit",&
             2_int32&
         )
@@ -199,17 +199,17 @@ contains
             '{' //&
                 '"tissues":["Adipose","Thyroid"],' //&
                 '"families":[' //&
-                    '{"family":"EMPTYFAM1","gene_indices":[],"centroid":[ 0.0000000000000000E+000, 0.0000000000000000E+000]},' //&
-                    '{"family":"OG0000000","gene_indices":[1,4],"centroid":[ 3.0104700677220000E-002, 7.5787842027790001E-002]},' //&
-                    '{"family":"OG0000001","gene_indices":[3,5],"centroid":[ 5.6083824483761002E-001, 1.5609971956068999E-001]},' //&
-                    '{"family":"EMPTYFAM2","gene_indices":[],"centroid":[ 0.0000000000000000E+000, 0.0000000000000000E+000]}' //&
+                    '{"family":"EMPTYFAM1","gene_indices":[],"centroid":[0.0000000000000000E+000,0.0000000000000000E+000]},' //&
+                    '{"family":"OG0000000","gene_indices":[1,4],"centroid":[3.0104700677220000E-002,7.5787842027790001E-002]},' //&
+                    '{"family":"OG0000001","gene_indices":[3,5],"centroid":[5.6083824483761002E-001,1.5609971956068999E-001]},' //&
+                    '{"family":"EMPTYFAM2","gene_indices":[],"centroid":[0.0000000000000000E+000,0.0000000000000000E+000]}' //&
                 '],' //&
                 '"genes":[' //&
-                    '{"coordinates":[ 5.4153013814222203E-002, 4.1979991981664000E-003],"id":"NP_001243379.1","family":"OG0000000","species":"Canis_lupus_protein.1","is_outlier":true,"type":"ortholog"},' //&
-                    '{"coordinates":[ 3.1415926535897931E+000, 2.7182818284590451E+000],"id":"UNASSIGNED.1","family":null,"species":"Whatever_protein","is_outlier":false,"type":"ortholog"},' //&
-                    '{"coordinates":[ 1.1156201021350001E+000, 3.0800143992321899E-001],"id":"XP_038381480.1","family":"OG0000001","species":"Canis_lupus_protein.2","is_outlier":false,"type":"paralog"},' //&
-                    '{"coordinates":[ 6.0563875402208003E-003, 1.4737768485740699E-001],"id":"NP_001243386.1","family":"OG0000000","species":"Canis_lupus_protein.3","is_outlier":false,"type":"ortholog"},' //&
-                    '{"coordinates":[ 6.0563875402208003E-003, 4.1979991981664000E-003],"id":"XP_038421312.1","family":"OG0000001","species":"Canis_lupus_protein.4","is_outlier":true,"type":"paralog"}' //&
+                    '{"coordinates":[5.4153013814222203E-002,4.1979991981664000E-003],"id":"NP_001243379.1","family":"OG0000000","species":"Canis_lupus_protein.1","is_outlier":true,"type":"ortholog"},' //&
+                    '{"coordinates":[3.1415926535897931E+000,2.7182818284590451E+000],"id":"UNASSIGNED.1","family":null,"species":"Whatever_protein","is_outlier":false,"type":"ortholog"},' //&
+                    '{"coordinates":[1.1156201021350001E+000,3.0800143992321899E-001],"id":"XP_038381480.1","family":"OG0000001","species":"Canis_lupus_protein.2","is_outlier":false,"type":"paralog"},' //&
+                    '{"coordinates":[6.0563875402208003E-003,1.4737768485740699E-001],"id":"NP_001243386.1","family":"OG0000000","species":"Canis_lupus_protein.3","is_outlier":false,"type":"ortholog"},' //&
+                    '{"coordinates":[6.0563875402208003E-003,4.1979991981664000E-003],"id":"XP_038421312.1","family":"OG0000001","species":"Canis_lupus_protein.4","is_outlier":true,"type":"paralog"}' //&
                 ']' //&
             '}',&
             "test_flyer_serialization"&

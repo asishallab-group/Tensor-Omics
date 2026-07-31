@@ -97,7 +97,8 @@ contains
         if (ieee_is_nan(real_num) .or. .not. ieee_is_finite(real_num)) then
             write (unit, "('null')", advance="no")
         else
-            write (unit, "(ES24.16E3)", advance="no") real_num
+            ! ES0.* -> minimal field width, so no leading blank is emitted for non-negative values
+            write (unit, "(ES0.16E3)", advance="no") real_num
         end if
     end subroutine serialize_real
 
