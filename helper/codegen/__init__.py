@@ -1,1 +1,1 @@
-"""Code generator for the TensorOmics C/Python/R interfaces."""
+"""Code generator for the TensorOmics C/Python/R bindings."""

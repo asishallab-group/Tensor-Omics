@@ -17,7 +17,7 @@ module tox_normalization
 
 contains
 
-    !> category: C-interface
+    !> category: C-binding
     !| Normalizes an input vector to unit length in-place
     pure subroutine normalize_unit_length(vector, n_dims, ierr)
         integer(int32), intent(in) :: n_dims

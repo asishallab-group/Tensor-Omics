@@ -47,11 +47,11 @@ def _generate(out: Path) -> None:
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_SRC), bag).parse()
     analyse_project(parsed.project, bag)
     validate_project(parsed.project, bag)
-    interface = build_project(parsed.project, bag)
+    binding = build_project(parsed.project, bag)
     assert bag.errors == (), bag.render()
 
     fortran, c, r = FortranCEmitter(), CCallEmitter(), RWrapperEmitter()
-    modules = list(interface)
+    modules = list(binding)
     (out / "tox_marshal.h").write_text(c.marshal_header_content())
     (out / "init.c").write_text(c.registration(modules))
     (out / "tox_validate.R").write_text(r.validators())
@@ -79,7 +79,7 @@ def _build_lib(out: Path, with_r: bool = True) -> Path:
     """Compile the Fortran fixtures and the generated C `.Call` shims into one
     `libfixtures.so` -- mirroring the bundled production build, where fpm links the R shims
     into libtensor-omics.so. With `with_r=False` the shims are compiled with
-    `-DNO_R_INTERFACE`, so they are empty objects and the library has no R entry points."""
+    `-DNO_R_BINDING`, so they are empty objects and the library has no R entry points."""
     lib_dir = out / ("lib_r" if with_r else "lib_nor")
     lib_dir.mkdir(exist_ok=True)
     for name in ("fx_basics.F90", "fx_edges.F90"):
@@ -102,7 +102,7 @@ def _build_lib(out: Path, with_r: bool = True) -> Path:
 
     # the C `.Call` shims -> distinctly-named objects (fx_basics.c would otherwise collide
     # with the Fortran fx_basics.o). R symbols stay undefined, resolved at dyn.load.
-    cflags = ["-fPIC", f"-I{out}", *_r_cppflags()] + ([] if with_r else ["-DNO_R_INTERFACE"])
+    cflags = ["-fPIC", f"-I{out}", *_r_cppflags()] + ([] if with_r else ["-DNO_R_BINDING"])
     for source in sorted(out.glob("*.c")):
         obj = lib_dir / f"{source.stem}_shim.o"
         result = subprocess.run([GCC, *cflags, "-c", str(source), "-o", str(obj)],
@@ -258,9 +258,9 @@ class TestClassedConditions:
         assert out.strip() == "caught"
 
 
-class TestNoRInterface:
-    def test_no_r_interface_build_drops_the_call_shims(self, tmp_path_factory):
-        """Built with NO_R_INTERFACE, the library keeps the Fortran C ABI but has no R
+class TestNoRBinding:
+    def test_no_r_binding_build_drops_the_call_shims(self, tmp_path_factory):
+        """Built with NO_R_BINDING, the library keeps the Fortran C ABI but has no R
         `.Call` entry points -- the shims compiled to empty objects, needing no R headers."""
         out = tmp_path_factory.mktemp("e2e_r_nor")
         _generate(out)
@@ -276,7 +276,7 @@ class TestPythonCanLoadTheBundledLibrary:
         """The one library carries the R shims (undefined R symbols), but must still load
         into a non-R host under the *default* eager binding: every R symbol is marked weak,
         so it resolves to null (Python never calls the R code). This guards the fix that lets
-        Python's ctypes load libtensor-omics.so once it also contains the R interface -- and,
+        Python's ctypes load libtensor-omics.so once it also contains the R binding -- and,
         because the load is eager, that the weak set is complete (a strong R symbol would
         make this fail)."""
         import ctypes

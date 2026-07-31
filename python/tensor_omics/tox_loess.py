@@ -1,4 +1,4 @@
-"""Python interface to Wraps the netlib LOESS (`dloess`/`lowesd` family) Fortran routines for local polynomial regression smoothing.
+"""Python binding to Wraps the netlib LOESS (`dloess`/`lowesd` family) Fortran routines for local polynomial regression smoothing.
 
 Generated from tox_loess. Do not edit.
 """

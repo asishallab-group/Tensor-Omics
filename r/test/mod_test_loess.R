@@ -1,4 +1,4 @@
-# Comprehensive R test suite for LOESS interface functions
+# Comprehensive R test suite for LOESS binding functions
 # Validation of the R wrapper for plain and robust LOESS.
 
 source("r/load_tensor_omics.R")

@@ -1,4 +1,4 @@
-"""The Python and R interfaces must ask their callers for the same things.
+"""The Python and R bindings must ask their callers for the same things.
 
 Both emitters decide, independently, which arguments a caller supplies and which the
 wrapper works out. They share the `roles` model but not the code, so a change to a role
@@ -41,20 +41,20 @@ def _build(src: Path):
 
 
 @pytest.fixture(scope="module")
-def interface():
+def binding():
     return _build(FIXTURE_SRC)
 
 
 @pytest.fixture(scope="module")
-def project_interface():
+def project_binding():
     """The real sources. The fixtures are deliberately small, and every divergence found
     so far was in `src/` -- the serde helpers, the outlier work arrays -- so checking the
     fixtures alone would have caught none of them."""
     return _build(Path("src"))
 
 
-def _wrappers(interface):
-    for module in interface:
+def _wrappers(binding):
+    for module in binding:
         for wrapper in module:
             yield wrapper
 
@@ -64,12 +64,12 @@ def _names(arguments):
 
 
 class TestTheTargetsAgree:
-    def test_every_wrapper_asks_for_the_same_arguments(self, interface):
+    def test_every_wrapper_asks_for_the_same_arguments(self, binding):
         python, r = PythonEmitter(), RWrapperEmitter()
 
         divergent = {
             wrapper.stripped_name: (_names(python._inputs(wrapper)), _names(r._inputs(wrapper)))
-            for wrapper in _wrappers(interface)
+            for wrapper in _wrappers(binding)
             if _names(python._inputs(wrapper)) != _names(r._inputs(wrapper))
         }
 
@@ -80,7 +80,7 @@ class TestTheTargetsAgree:
         )
 
 
-    def test_r_calls_c_with_the_arguments_c_declares(self, interface):
+    def test_r_calls_c_with_the_arguments_c_declares(self, binding):
         """The R wrapper and the C++ function it calls must agree, argument for argument.
 
         They are decided in two places -- `r_wrapper._call_inputs` and `c_call._inputs` --
@@ -92,7 +92,7 @@ class TestTheTargetsAgree:
 
         divergent = {
             wrapper.stripped_name: (_names(r._call_inputs(wrapper)), _names(c._inputs(wrapper)))
-            for wrapper in _wrappers(interface)
+            for wrapper in _wrappers(binding)
             if _names(r._call_inputs(wrapper)) != _names(c._inputs(wrapper))
         }
 
@@ -102,7 +102,7 @@ class TestTheTargetsAgree:
                         for name, (passed, declared) in sorted(divergent.items()))
         )
 
-    def test_no_argument_is_both_asked_for_and_derived(self, interface):
+    def test_no_argument_is_both_asked_for_and_derived(self, binding):
         """Deriving an argument the signature also asks for overwrites what was passed.
 
         It is the failure mode that reads as a mystery: the caller supplies a value, the
@@ -112,7 +112,7 @@ class TestTheTargetsAgree:
         emitter = PythonEmitter()
 
         overwritten = {}
-        for wrapper in _wrappers(interface):
+        for wrapper in _wrappers(binding):
             asked = set(_names(emitter._inputs(wrapper)))
             derived = {
                 argument.name for argument in wrapper
@@ -126,12 +126,12 @@ class TestTheTargetsAgree:
 
 
 class TestTheTargetsAgreeOnTheRealProject:
-    def test_every_wrapper_asks_for_the_same_arguments(self, project_interface):
+    def test_every_wrapper_asks_for_the_same_arguments(self, project_binding):
         python, r = PythonEmitter(), RWrapperEmitter()
 
         divergent = {
             wrapper.stripped_name: (_names(python._inputs(wrapper)), _names(r._inputs(wrapper)))
-            for wrapper in _wrappers(project_interface)
+            for wrapper in _wrappers(project_binding)
             if _names(python._inputs(wrapper)) != _names(r._inputs(wrapper))
         }
 
@@ -142,7 +142,7 @@ class TestTheTargetsAgreeOnTheRealProject:
         )
 
 
-    def test_r_calls_c_with_the_arguments_c_declares(self, project_interface):
+    def test_r_calls_c_with_the_arguments_c_declares(self, project_binding):
         """The R wrapper and the C++ function it calls must agree, argument for argument.
 
         They are decided in two places -- `r_wrapper._call_inputs` and `c_call._inputs` --
@@ -154,7 +154,7 @@ class TestTheTargetsAgreeOnTheRealProject:
 
         divergent = {
             wrapper.stripped_name: (_names(r._call_inputs(wrapper)), _names(c._inputs(wrapper)))
-            for wrapper in _wrappers(project_interface)
+            for wrapper in _wrappers(project_binding)
             if _names(r._call_inputs(wrapper)) != _names(c._inputs(wrapper))
         }
 
@@ -164,11 +164,11 @@ class TestTheTargetsAgreeOnTheRealProject:
                         for name, (passed, declared) in sorted(divergent.items()))
         )
 
-    def test_no_argument_is_both_asked_for_and_derived(self, project_interface):
+    def test_no_argument_is_both_asked_for_and_derived(self, project_binding):
         emitter = PythonEmitter()
 
         overwritten = {}
-        for wrapper in _wrappers(project_interface):
+        for wrapper in _wrappers(project_binding):
             asked = set(_names(emitter._inputs(wrapper)))
             derived = {
                 argument.name for argument in wrapper

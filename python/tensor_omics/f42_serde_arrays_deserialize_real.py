@@ -1,4 +1,4 @@
-"""Python interface to Module for deserializing real arrays from files
+"""Python binding to Module for deserializing real arrays from files
 
 Generated from f42_serde_arrays_deserialize_real. Do not edit.
 """

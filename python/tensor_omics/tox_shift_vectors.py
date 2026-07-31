@@ -1,4 +1,4 @@
-"""Python interface to Module for computing the shift vector field for all genes.
+"""Python binding to Module for computing the shift vector field for all genes.
 
 Generated from tox_shift_vectors. Do not edit.
 """

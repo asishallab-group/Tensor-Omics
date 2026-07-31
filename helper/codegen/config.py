@@ -32,7 +32,7 @@ class Conventions:
     #: The Ford `category` value marking a procedure for export. This is a fallback for a
     #: hand-built Conventions; a real run reads it from the `M_EXPORT_C` macro (see
     #: `frontend.export_category`), so the marker and the generator cannot drift.
-    c_interface_category: str = "C-interface"
+    c_binding_category: str = "C-binding"
 
     #: Suffix of the allocating variant of a procedure pair
     alloc_suffix: str = "_alloc"
@@ -106,8 +106,8 @@ class Paths:
     root: Path = field(default_factory=Path)
     src_dir: Path = Path("src")
     macros_header: Path = Path("src/macros.h")
-    c_interface_dir: Path = Path("src/c_interface")
-    r_c_interface_dir: Path = Path("src/r_interface")
+    c_binding_dir: Path = Path("src/bindings/c")
+    r_binding_dir: Path = Path("src/bindings/r")
     python_out_dir: Path = Path("python/tensor_omics")
     r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")

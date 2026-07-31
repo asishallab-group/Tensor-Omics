@@ -3,7 +3,7 @@
 These are the generator's **specification**. They are not part of the library and are
 never compiled into it.
 
-The real sources carry no `category: C-interface` tags yet, so there is nothing to
+The real sources carry no `category: C-binding` tags yet, so there is nothing to
 generate from. Rather than wait, the generator is developed and tested against these:
 small, complete specimens of every construct it claims to support. When the real sources
 are annotated, these stay — a fixture is a case someone chose deliberately, which is
@@ -31,7 +31,7 @@ warns is a fixture nobody reads carefully.
 
 The exception is deliberate: `fx_internal` breaks the export contract on purpose (a
 deferred-length string, a mode argument with no table) to prove that an **internal**
-procedure is held to none of it. It carries no `category: C-interface`, so nothing is
+procedure is held to none of it. It carries no `category: C-binding`, so nothing is
 generated from it, and it must produce no diagnostics either.
 
 ## What is where

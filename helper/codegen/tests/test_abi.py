@@ -58,9 +58,9 @@ class TestNaming:
             for procedure in module.exported_procedures:
                 analyse(procedure, bag)
 
-        interface = build_project(project, bag)
+        binding = build_project(project, bag)
 
-        assert interface.module("a_c").wrappers[0].name == "cluster_c"
+        assert binding.module("a_c").wrappers[0].name == "cluster_c"
 
     def test_the_module_gets_a_c_module(self, bag):
         module = b.module("tox_clustering", b.procedure("cluster", b.ierr()))
@@ -81,9 +81,9 @@ class TestModuleSelection:
             for procedure in module.exported_procedures:
                 analyse(procedure, bag)
 
-        interface = build_project(project, bag)
+        binding = build_project(project, bag)
 
-        assert [m.name for m in interface] == ["exports_c"]
+        assert [m.name for m in binding] == ["exports_c"]
 
     def test_only_exported_procedures_are_wrapped(self, bag):
         module = b.module(

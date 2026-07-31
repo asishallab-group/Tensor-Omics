@@ -1,6 +1,6 @@
 # Designing the language layers
 
-Why the Python and R interfaces are shaped the way they are, and what was rejected on the
+Why the Python and R bindings are shaped the way they are, and what was rejected on the
 way. If you find yourself asking "why didn't they just...", the answer should be here. If
 it isn't, that is a gap worth filling.
 
@@ -159,7 +159,7 @@ Numeric is the former, character the latter.
 
 ---
 
-## Decision: errors are raised by the interfacing language, not by C
+## Decision: errors are raised by the binding language, not by C
 
 `ierr` never reaches a caller. `check_err_code` decodes it and raises, in Python and in R
 alike, so a successful call returns its results and nothing else.
@@ -182,13 +182,13 @@ after it — one place, one set of condition classes.
 
 ---
 
-## Decision: shape cross-checks happen in the interfacing language — and in R that is R, not C
+## Decision: shape cross-checks happen in the binding language — and in R that is R, not C
 
 `matrix(n_rows, n_cols)` and `weights(n_cols)` share an extent. They agree **by
 declaration only** — Fortran has no way to check that the actual arguments agree, and a
 mismatch surfaces as a wrong answer or a segfault.
 
-So the interfacing language checks it, naming both arguments:
+So the binding language checks it, naming both arguments:
 
 ```
 ValueError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
@@ -221,7 +221,7 @@ fx_normalize(vector)          # not fx_normalize(vector, n_dims)
 
 ## Decision: an optional with a default is required in C
 
-From issue #131: the interfacing languages know the default and pass it, so C always
+From issue #131: the binding languages know the default and pass it, so C always
 receives a value. Only an optional with **no** default is nullable.
 
 This is what keeps the C wrapper flat. Every nullable optional is a branch, and the
@@ -249,7 +249,7 @@ The cost is one R function call per invocation, which is nothing against the For
 
 An argument documented `DM_OUTPUT_FROM(count, producer, module, AUTO)` is obtained by
 calling `producer` and taking its `count` output, so the caller never supplies it. The
-interfacing languages call the producer's **own generated wrapper**, not the C function --
+binding languages call the producer's **own generated wrapper**, not the C function --
 so its validation, error checking and result handling all come for free, and the value
 passed in is the consumer's already-prepared input, making the producer's conversions
 no-ops rather than a second copy.

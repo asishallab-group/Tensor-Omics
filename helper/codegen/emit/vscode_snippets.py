@@ -1,4 +1,4 @@
-"""Emitting VS Code snippets for the interface.
+"""Emitting VS Code snippets for the binding.
 
 A convenience layer over the same model the C/Python/R emitters read, so the snippets a
 developer expands cannot drift from the functions that actually exist.
@@ -19,7 +19,7 @@ What is emitted, and why:
   functions. R has no per-module unit -- everything is sourced through one loader -- so it
   gets a single global setup snippet rather than one per module.
 - **A handful of generic aids**: a Fortran `use ..., only:` per module, an error-handling
-  wrapper per interfacing language, and an error-code picker built from the catalogue.
+  wrapper per binding language, and an error-code picker built from the catalogue.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from ..abi.model import CArgument, CWrapper, CWrapperModule, CInterface
+from ..abi.model import CArgument, CWrapper, CWrapperModule, CBinding
 from ..ir.errors import ErrorCatalogue
 from .python_ctypes import PythonEmitter, python_literal
 from .r_wrapper import r_literal
@@ -70,11 +70,11 @@ class SnippetEmitter:
         # test guarantees R asks for the very same set, so either serves the snippets.
         self._python = PythonEmitter()
 
-    def snippets_files(self, interface: CInterface,
+    def snippets_files(self, binding: CBinding,
                        catalogue: ErrorCatalogue) -> dict[str, str]:
         """The generated files, keyed by bare file name (`fortran_tox_snippets.json`)."""
         buckets: dict[tuple[str, str], dict] = {}
-        for module in interface:
+        for module in binding:
             self._module_snippets(module, buckets)
         self._generic_snippets(catalogue, buckets)
         return {

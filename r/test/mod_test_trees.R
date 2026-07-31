@@ -3,7 +3,7 @@ source("r/test_helpers.R")
 
 # Pure-R indexing helpers. They never called into Fortran -- the old hand-written
 # wrapper defined them in R -- so they live with the test rather than in the
-# generated interface.
+# generated binding.
 get_sorted_value <- function(x, ix, position) as.numeric(x)[ix[position]]
 get_kd_point <- function(X, kd_ix, position) X[, kd_ix[position], drop = FALSE]
 

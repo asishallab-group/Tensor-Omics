@@ -63,7 +63,7 @@ class TestExtents:
         assert roles.is_derived
 
     def test_one_extent_can_serve_several_arrays(self):
-        # this is the cross-check the interfacing languages must make: Fortran cannot
+        # this is the cross-check the binding languages must make: Fortran cannot
         procedure = analysed(
             b.procedure(
                 "p",

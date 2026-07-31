@@ -33,20 +33,20 @@ def built():
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src")), bag).parse()
     analyse_project(parsed.project, bag)
     validate_project(parsed.project, bag)
-    interface = build_project(parsed.project, bag)
+    binding = build_project(parsed.project, bag)
     assert bag.errors == (), bag.render()
     catalogue = ErrorCatalogue.from_module(
         parsed.project.module("tox_errors"), bag, parsed.project.constant_values()
     )
-    return interface, catalogue
+    return binding, catalogue
 
 
 @pytest.fixture(scope="module")
 def files(built) -> dict:
     """Every generated file, `{file_name: parsed_json}`."""
-    interface, catalogue = built
+    binding, catalogue = built
     return {name: json.loads(content)
-            for name, content in SnippetEmitter().snippets_files(interface, catalogue).items()}
+            for name, content in SnippetEmitter().snippets_files(binding, catalogue).items()}
 
 
 @pytest.fixture(scope="module")
@@ -96,8 +96,8 @@ class TestStructure:
 class TestCalls:
     def test_python_and_r_calls_ask_for_the_same_arguments(self, built, files):
         """The parity the other suites guard, seen through the snippets."""
-        interface, _ = built
-        for module in interface:
+        binding, _ = built
+        for module in binding:
             root = _root(module)
             for wrapper in module:
                 key = f"{wrapper.stripped_name} (call)"
@@ -106,9 +106,9 @@ class TestCalls:
                 assert python == r, wrapper.stripped_name
 
     def test_a_call_asks_for_exactly_the_wrapper_inputs(self, built, files):
-        interface, _ = built
+        binding, _ = built
         emitter = PythonEmitter()
-        for module in interface:
+        for module in binding:
             root = _root(module)
             for wrapper in module:
                 expected = [a.name for a in emitter._inputs(wrapper)]
@@ -116,9 +116,9 @@ class TestCalls:
                 assert _argument_names(snippet) == expected, wrapper.stripped_name
 
     def test_a_mode_argument_becomes_a_choice(self, built, files):
-        interface, _ = built
+        binding, _ = built
         seen = False
-        for module in interface:
+        for module in binding:
             root = _root(module)
             for wrapper in module:
                 for argument in wrapper:
@@ -131,8 +131,8 @@ class TestCalls:
         assert seen, "no mode argument in src to exercise the choice path"
 
     def test_a_checked_variant_guards_ierr(self, built, files):
-        interface, _ = built
-        for module in interface:
+        binding, _ = built
+        for module in binding:
             bucket = _bucket(files, "Fortran", _root(module))
             for wrapper in module:
                 key = f"{wrapper.procedure.name} (call, checked)"
@@ -145,8 +145,8 @@ class TestCalls:
 
 class TestModuleAndGeneric:
     def test_each_module_has_use_and_import_snippets(self, built, files):
-        interface, _ = built
-        for module in interface:
+        binding, _ = built
+        for module in binding:
             root = _root(module)
             assert f"{module.stripped_name} (use)" in _bucket(files, "Fortran", root)
             assert f"{module.stripped_name} (import)" in _bucket(files, "Python", root)
@@ -158,8 +158,8 @@ class TestModuleAndGeneric:
         assert "tox_errors code" in _bucket(files, "Fortran", "tox")
 
     def test_the_error_picker_is_dropped_without_a_catalogue(self, built):
-        interface, _ = built
-        produced = SnippetEmitter().snippets_files(interface, ErrorCatalogue(()))
+        binding, _ = built
+        produced = SnippetEmitter().snippets_files(binding, ErrorCatalogue(()))
         fortran_tox = json.loads(produced["Fortran_tox_snippets.json"])
         assert "tox_errors code" not in fortran_tox
 

@@ -1,4 +1,4 @@
-"""Python interface to Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+"""Python binding to Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
 
 Generated from tox_data_validation. Do not edit.
 """

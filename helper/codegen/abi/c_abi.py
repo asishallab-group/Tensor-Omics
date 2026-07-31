@@ -19,7 +19,7 @@ from ..ir.constants import ConstantError, ConstantEvaluator
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
-from .model import CArgument, CInterface, Conversion, CWrapper, CWrapperModule, Origin
+from .model import CArgument, CBinding, Conversion, CWrapper, CWrapperModule, Origin
 
 #: Fortran kind -> the iso_c_binding kind C interoperates through.
 #:
@@ -53,7 +53,7 @@ KIND_MAP = {
 }
 
 #: The C kind of a logical. Agreed ABI: C passes a real bool rather than an int, so the
-#: interfacing languages hand over a boolean and not a 0/1 integer. The copy into a
+#: binding languages hand over a boolean and not a 0/1 integer. The copy into a
 #: default logical stays -- c_bool is one byte and a default logical is four -- but it is
 #: one copy instead of a conversion at both ends. A logical already declared c_bool needs
 #: no copy at all.
@@ -65,8 +65,8 @@ CHARACTER_C_KIND = "c_char"
 
 def build_project(project: Project, diagnostics: DiagnosticBag,
                   conventions: Conventions = CONVENTIONS,
-                  evaluator: ConstantEvaluator | None = None) -> CInterface:
-    """Build the C interface of every module that exports anything."""
+                  evaluator: ConstantEvaluator | None = None) -> CBinding:
+    """Build the C binding of every module that exports anything."""
     if evaluator is None:
         # The project's own parameters, so DM_DEFAULT(PI) resolves
         evaluator = ConstantEvaluator(project.constant_values())
@@ -76,7 +76,7 @@ def build_project(project: Project, diagnostics: DiagnosticBag,
             # A module with nothing to export produces no file at all
             continue
         modules.append(build_module(module, diagnostics, conventions, evaluator))
-    return CInterface(tuple(modules))
+    return CBinding(tuple(modules))
 
 
 def build_module(module: Module, diagnostics: DiagnosticBag,
@@ -108,7 +108,7 @@ def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) 
 
 
 def stripped_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
-    """The wrapper name without the `_c` suffix, as the interfacing languages call it."""
+    """The wrapper name without the `_c` suffix, as the binding languages call it."""
     name = procedure.name
     if procedure.is_alloc_variant:
         return name[: -len(conventions.alloc_suffix)]
@@ -266,7 +266,7 @@ class _Builder:
     def _default_of(self, argument: Argument):
         """The value an omitted optional takes, evaluated now.
 
-        The interfacing languages have to pass it, so it must be a value and not an
+        The binding languages have to pass it, so it must be a value and not an
         expression by the time they are emitted. A default that will not evaluate is
         reported here, once, rather than by each emitter in turn.
         """
@@ -290,7 +290,7 @@ class _Builder:
     def _is_nullable(argument: Argument) -> bool:
         """Whether C may pass a null pointer to mean "not given".
 
-        An optional with a `DM_DEFAULT` is *not* nullable: the interfacing languages know
+        An optional with a `DM_DEFAULT` is *not* nullable: the binding languages know
         the default and pass it, so C always receives a value. That is deliberate, from
         issue #131 -- every nullable optional is another branch in the wrapper, and the
         default has to be applied somewhere regardless. Applying it in Python and R keeps
@@ -378,7 +378,7 @@ class _Builder:
                 f"'{self.procedure.name}' already has one",
                 entity=entity,
                 note=(
-                    "this name is reserved for the argument the C interface adds; "
+                    "this name is reserved for the argument the C binding adds; "
                     "rename the Fortran one"
                 ),
             )

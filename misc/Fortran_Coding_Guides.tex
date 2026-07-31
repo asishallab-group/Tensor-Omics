@@ -172,9 +172,9 @@ subroutine greet(name, title)
 end subroutine greet
 \end{verbatim}
 
-\subsubsection{Workaround: Interface Overloading}
+\subsubsection{Workaround: Binding Overloading}
 
-To emulate default arguments, use multiple procedures with an interface:
+To emulate default arguments, use multiple procedures with an binding:
 
 \begin{verbatim}
 module greeter_mod
@@ -193,9 +193,9 @@ end module
 
 program main
   use greeter_mod
-  interface greet
+  binding greet
     module procedure greet1, greet2
-  end interface
+  end binding
 
   call greet("Josef")
   call greet("Josef", "Dr.")
@@ -207,9 +207,9 @@ end program
 \begin{itemize}
   \item Always check optional arguments with \texttt{PRESENT} before accessing them.
   \item Avoid relying on optional arguments for critical logic without default assignment.
-  \item Use interface overloading to simulate default values if needed for cleaner calling code.
+  \item Use binding overloading to simulate default values if needed for cleaner calling code.
   \item Do not use optional arguments in \texttt{elemental} procedures (not supported).
-  \item Document the behavior and defaults of optional arguments clearly in the procedure's interface documentation.
+  \item Document the behavior and defaults of optional arguments clearly in the procedure's binding documentation.
 \end{itemize}
 
 \section{Documenting Fortran Code with FORD}
@@ -226,7 +226,7 @@ end program
   \item Use \texttt{!>} for general descriptions of modules, subroutines, and functions.
   \item Use \texttt{!|} to document each argument.
   \item If relevant, add usage examples and warnings with \texttt{!!}.
-  \item Keep documentation up to date when the interface changes.
+  \item Keep documentation up to date when the binding changes.
   \item Generate documentation with FORD regularly and review the HTML output.
 \end{itemize}
 \subsection{Minimal example}
@@ -271,13 +271,13 @@ end module avmod
 
 
 
-\section{Fortran to other programming languages Interface}
+\section{Fortran to other programming languages Binding}
 
 The Tensor Omics project exposes Fortran functionality to Python and R through a unified architecture that relies exclusively on C bindings. This approach ensures efficiency, portability, and maintainability.
 
 \subsection{Architecture Overview}
 
-The interface follows a three-layer architecture:
+The binding follows a three-layer architecture:
 
 \begin{enumerate}
   \item \textbf{Core Fortran modules:} Pure computational routines implementing the scientific algorithms
@@ -285,7 +285,7 @@ The interface follows a three-layer architecture:
   \item \textbf{Language-specific layers:}
   \begin{itemize}
     \item \textbf{Python:} Functions in \texttt{tensoromics.py} that call C wrappers via \texttt{ctypes}
-    \item \textbf{R:} Functions in the \texttt{r/} package that call C wrappers via R's C \texttt{.Call} interface
+    \item \textbf{R:} Functions in the \texttt{r/} package that call C wrappers via R's C \texttt{.Call} binding
   \end{itemize}
 \end{enumerate}
 
@@ -387,7 +387,7 @@ The caller (Python or R) must:
   \item Maintain memory validity throughout the call
 \end{itemize}
 
-\subsection{Python Interface via ctypes}
+\subsection{Python Binding via ctypes}
 
 Python wrappers in \texttt{tensoromics\_functions.py} follow this pattern:
 
@@ -431,7 +431,7 @@ def relative_axes_expression_from_expression_vector(expression_vector):
 
 \end{verbatim}
 
-\subsection{R Interface via C \texttt{.Call}}
+\subsection{R Binding via C \texttt{.Call}}
 
 R wrappers in \texttt{tensoromics\_functions.cpp} follow this pattern:
 
@@ -491,7 +491,7 @@ To maintain API parity across Python and R, the following steps are \textbf{mand
 \begin{enumerate}
     \item \textbf{Core Implementation:} Write the pure Fortran function in the appropriate module
     \item \textbf{C Wrapper:} Create a \texttt{\_C} wrapper with \texttt{bind(C)}
-    \item \textbf{Python and R interfaces:} Run the code generator (\texttt{helper/generate\_code.py}); it emits the Python \texttt{ctypes} module (\texttt{python/tensor\_omics/}) and the R C \texttt{.Call} shim under an R wrapper (\texttt{r/tensor\_omics/}) from the documented Fortran source --- these are not hand-written
+    \item \textbf{Python and R bindings:} Run the code generator (\texttt{helper/generate\_code.py}); it emits the Python \texttt{ctypes} module (\texttt{python/tensor\_omics/}) and the R C \texttt{.Call} shim under an R wrapper (\texttt{r/tensor\_omics/}) from the documented Fortran source --- these are not hand-written
     \item \textbf{Documentation:} Update user manual with:
     \begin{itemize}
         \item Description of functionality
@@ -505,7 +505,7 @@ To maintain API parity across Python and R, the following steps are \textbf{mand
 \textbf{Memory Safety Warning:} When using direct array access from Python or R, users must ensure that arrays are not modified by other libraries (e.g., matplotlib, numpy, ggplot2) while Fortran code is accessing them. This can lead to undefined behavior or memory corruption.
 
 
-\subsection{Safe and Efficient Interface Design for \texttt{bind(C)} in Tensor Omics}
+\subsection{Safe and Efficient Binding Design for \texttt{bind(C)} in Tensor Omics}
 
 
 To expose Tensor Omics routines safely and portably, we use minimal \texttt{bind(C)} wrappers around internal Fortran procedures. Each wrapper is designed for ABI stability, no-copy interop, and zero semantic loss.
@@ -844,7 +844,7 @@ subroutine example(a)
 end subroutine
 \end{verbatim}
 
-\textbf{Meaning:} \texttt{a(:)} is an assumed-shape array. The compiler receives size and bounds information at runtime. Requires an explicit interface (typically via a module or \texttt{interface} block).
+\textbf{Meaning:} \texttt{a(:)} is an assumed-shape array. The compiler receives size and bounds information at runtime. Requires an explicit binding (typically via a module or \texttt{binding} block).
 
 \textbf{Advantages:}
 \begin{itemize}
@@ -865,7 +865,7 @@ subroutine process_matrix(A)
 end subroutine
 \end{verbatim}
 
-\textbf{Meaning:} Each colon represents a dimension of unknown size. Like 1D assumed-shape arrays, this requires an explicit interface and passes shape info at runtime.
+\textbf{Meaning:} Each colon represents a dimension of unknown size. Like 1D assumed-shape arrays, this requires an explicit binding and passes shape info at runtime.
 
 \textbf{Features:}
 \begin{itemize}
@@ -889,7 +889,7 @@ Notation & Bounds Known? & Safe? & Use Case \\
 \hline
 \end{tabular}
 
-\noindent For all assumed-shape forms (\texttt{(:)}, \texttt{(:,:)}), ensure the subroutine has an explicit interface or is in a module.
+\noindent For all assumed-shape forms (\texttt{(:)}, \texttt{(:,:)}), ensure the subroutine has an explicit binding or is in a module.
 
 
 \section{Memory Passing Behavior in Fortran (F42 Standard for Tensor Omics)}
@@ -986,7 +986,7 @@ Access full row & \texttt{real\_array(i, :)} & Yes \\
 Efficient memory handling is critical for Tensor Omics.  
 Understanding Fortran's passing conventions allows maximization of speed, minimization of hidden temporaries, and preservation of F42 computational standards.
 
-\section{Critical Practices in TOX Interfacing and Control Flow}
+\section{Critical Practices in TOX Binding and Control Flow}
 
 This section consolidates key implementation standards for TOX and F42 compliance: prohibition of \texttt{GOTO} and manual memory cleanup.
 
@@ -1069,7 +1069,7 @@ All control flow and memory management in TOX must follow F42 principles:
 \begin{itemize}
   \item Never use \texttt{GOTO} — always use structured constructs.
   \item Always provide manual cleanup subroutines for types containing allocatables.
-  \item Use C wrappers with \texttt{bind(C)} for interfacing with Python and R.
+  \item Use C wrappers with \texttt{bind(C)} for binding with Python and R.
   \item Ensure proper error handling via \texttt{ierr} parameter in all API functions.
 \end{itemize}
 
@@ -1078,7 +1078,7 @@ These principles ensure safety, readability, WASM compatibility, and long-term m
 \section{Scientific Kernel and API Design Specification}
 
 \subsection{Scope}
-This specification defines the design principles, coding conventions, and interface structure for the Tensor Omics Scientific Kernel (SK) and its associated API helper layers. The aim is to ensure performance, reproducibility, portability, and clarity of responsibility between computational components.
+This specification defines the design principles, coding conventions, and binding structure for the Tensor Omics Scientific Kernel (SK) and its associated API helper layers. The aim is to ensure performance, reproducibility, portability, and clarity of responsibility between computational components.
 
 \subsection{Scientific Kernel (SK)}
 
@@ -1156,8 +1156,8 @@ A Fortran derived type \texttt{tox\_data} serves as a container for all related 
     we expose the scientific kernel functions directly, users who want to be
     able to modify expression-vectors, family-centroids, or similar will be
     required to manage memory and their data manually.
-  \item Rich querying is provided via a GraphQL interface. We might implement a
-    `jq` interface on top of that, too.
+  \item Rich querying is provided via a GraphQL binding. We might implement a
+    `jq` binding on top of that, too.
 \end{enumerate}
 
 \subsection{Coarray Considerations}

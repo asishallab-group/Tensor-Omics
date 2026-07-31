@@ -1,7 +1,7 @@
 """Evaluation of Fortran constant expressions.
 
 `DM_DEFAULT(...)` states the value an optional argument takes when omitted, and the
-interfacing languages have to pass that value on, so the generator must know it at
+binding languages have to pass that value on, so the generator must know it at
 generation time. The contract is that it is a *constant expression*: literals, module
 parameters, and intrinsic calls over them.
 

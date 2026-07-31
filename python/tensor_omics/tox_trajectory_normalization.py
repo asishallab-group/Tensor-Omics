@@ -1,4 +1,4 @@
-"""Python interface to Module for min-max normalization of factor trajectories over time.
+"""Python binding to Module for min-max normalization of factor trajectories over time.
 
 Generated from tox_trajectory_normalization. Do not edit.
 """

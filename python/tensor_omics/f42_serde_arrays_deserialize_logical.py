@@ -1,4 +1,4 @@
-"""Python interface to Module for deserializing logical arrays from files
+"""Python binding to Module for deserializing logical arrays from files
 
 Generated from f42_serde_arrays_deserialize_logical. Do not edit.
 """

@@ -145,7 +145,7 @@ contains
 
         ! netlib reads iv and wv as workspace it has already seeded, so they are
         ! initialised here rather than by the caller: this routine is exported, and an
-        ! interfacing language hands it freshly allocated -- uninitialised -- memory.
+        ! binding language hands it freshly allocated -- uninitialised -- memory.
         tmp_int_workspace = 1_int32
         tmp_real_workspace = 0.0_real64
 
@@ -488,7 +488,7 @@ contains
         end where
 
         ! the quicksort permutes `perm`, so it has to start as the identity: seeded here
-        ! rather than by the caller, since this routine is exported and an interfacing
+        ! rather than by the caller, since this routine is exported and an binding
         ! language hands it freshly allocated memory
         call init_perm(perm)
 

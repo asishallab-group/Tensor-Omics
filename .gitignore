@@ -51,7 +51,7 @@
 !/python/tensor_omics/*.py
 !/python/*.py
 
-# R (the generated C .Call shims live in src/r_interface/ so fpm bundles them into the .so)
+# R (the generated C .Call shims live in src/bindings/r/ so fpm bundles them into the .so)
 !/r
 !/r/test
 !/r/test/mod_test_*.R

@@ -242,7 +242,7 @@ class TestOptionals:
         assert "if (c_associated" not in text
 
     def test_an_optional_with_a_default_is_required_in_c(self, bag, emitter):
-        # issue #131: the interfacing languages know the default and pass it, which is
+        # issue #131: the binding languages know the default and pass it, which is
         # what keeps the wrapper flat
         from codegen.ir.directives import Default, Directives
 
@@ -297,7 +297,7 @@ class TestModule:
     def test_the_module_is_named_and_guarded(self, bag, emitter):
         text = emit_module(b.module("fx_basics", normalize()), bag, emitter)
 
-        assert text.startswith("#ifndef NO_C_INTERFACE")
+        assert text.startswith("#ifndef NO_C_BINDING")
         assert "#include <src/macros.h>" in text
         assert "module fx_basics_c" in text
         assert text.rstrip().endswith("#endif")
@@ -366,12 +366,12 @@ def built(tmp_path_factory):
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=fixtures), bag).parse()
     analyse_project(parsed.project, bag)
     validate_project(parsed.project, bag)
-    interface = build_project(parsed.project, bag)
+    binding = build_project(parsed.project, bag)
 
     assert bag.errors == (), bag.render()
 
     emitter = FortranCEmitter()
-    for module in interface:
+    for module in binding:
         (out / f"{module.name}.F90").write_text(emitter.module(module))
     for fixture in (REPO_ROOT / fixtures).glob("*.F90"):
         shutil.copy(fixture, out / fixture.name)
@@ -392,10 +392,10 @@ class TestItCompiles:
     def test_the_generated_module_compiles(self, built, name):
         must_compile(built / f"{name}.F90", built)
 
-    def test_no_c_interface_compiles_the_whole_thing_out(self, built):
-        # the point of the #ifndef: one directive removes the C interface, and with it
+    def test_no_c_binding_compiles_the_whole_thing_out(self, built):
+        # the point of the #ifndef: one directive removes the C binding, and with it
         # the need for safeguard
-        must_compile(built / "fx_basics_c.F90", built, extra=["-DNO_C_INTERFACE"])
+        must_compile(built / "fx_basics_c.F90", built, extra=["-DNO_C_BINDING"])
 
     def test_an_undeclared_procedure_would_not_slip_through(self, built, tmp_path):
         # what implicit none (type, external) is for: a bare implicit none lets a call

@@ -1,4 +1,4 @@
-"""Python interface to k-d tree spatial index over fixed-dimensional point sets.
+"""Python binding to k-d tree spatial index over fixed-dimensional point sets.
 
 Generated from f42_kd_tree. Do not edit.
 """

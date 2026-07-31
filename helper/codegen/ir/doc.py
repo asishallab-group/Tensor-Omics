@@ -30,11 +30,11 @@ class DocParseError(Exception):
 
 _NAME = "[A-Za-z][A-Za-z_0-9]*"
 _COMPONENT_TYPES = (
-    "procedure|proc|subroutine|function|interface|absinterface|block|type|file|"
+    "procedure|proc|subroutine|function|binding|absbinding|block|type|file|"
     "module|submodule|program|namelist"
 )
 _ITEM_TYPES = (
-    "absinterface|bound|common|constructor|final|function|interface|modproc|"
+    "absbinding|bound|common|constructor|final|function|binding|modproc|"
     "subroutine|type|variable"
 )
 

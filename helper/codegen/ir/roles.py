@@ -84,7 +84,7 @@ class OutputFromPlan:
 
     For `DM_OUTPUT_FROM(count, mask_chunk_count, ..., AUTO)`: call `mask_chunk_count`,
     supply its inputs from the consumer's own arguments, and take its `count` output. The
-    interfacing languages call the producer's *generated wrapper*, so its own error
+    binding languages call the producer's *generated wrapper*, so its own error
     checking and result handling come for free.
     """
 
@@ -202,7 +202,7 @@ class ArgumentRoles:
 
     @property
     def is_derived(self) -> bool:
-        """Whether the interfacing languages can work this argument out themselves.
+        """Whether the binding languages can work this argument out themselves.
 
         Such an argument is not asked of the caller: it comes from another argument, or
         from calling another procedure.
@@ -279,7 +279,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"exported, so there is no wrapper to call",
                 entity=argument,
                 note=(
-                    f"add 'category: {CONVENTIONS.c_interface_category}' to "
+                    f"add 'category: {CONVENTIONS.c_binding_category}' to "
                     f"'{producer.name}'"
                 ),
             )

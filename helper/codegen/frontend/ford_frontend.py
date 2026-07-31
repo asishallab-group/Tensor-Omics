@@ -91,7 +91,7 @@ class FordFrontend:
         # the export category comes from M_EXPORT_C, so the marker and what the generator
         # recognises cannot drift; the passed conventions supply everything else
         self.conventions = replace(
-            conventions, c_interface_category=export_category(self.macros)
+            conventions, c_binding_category=export_category(self.macros)
         )
 
     def parse(self) -> ParsedProject:
@@ -132,7 +132,7 @@ class FordFrontend:
         # Absolute, so they do not depend on the working directory below
         settings.src_dir = [self.paths.resolve(self.paths.src_dir).resolve()]
         settings.exclude_dir = list(settings.exclude_dir) + [
-            str(self.paths.resolve(self.paths.c_interface_dir).resolve())
+            str(self.paths.resolve(self.paths.c_binding_dir).resolve())
         ]
 
         # fpm.toml configures `pcpp -D__GFORTRAN__ -I.`, whose include path is relative

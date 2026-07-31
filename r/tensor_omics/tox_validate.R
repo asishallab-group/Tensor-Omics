@@ -1,6 +1,6 @@
 # Generated. Do not edit.
 #
-# Coercion helpers for the R interface. Each checks the type and coerces, copying only
+# Coercion helpers for the R binding. Each checks the type and coerces, copying only
 # when it must, and raises a classed tox_type_error naming the argument. NA is checked
 # only where the check is free: integers (an ordinary Fortran number), logicals and
 # characters (converted anyway), never doubles (a NaN payload Fortran already catches).

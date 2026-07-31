@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Python test suite for gene centroids interface functions.
+Comprehensive Python test suite for gene centroids binding functions.
 Mirrors the Fortran unit tests in mod_test_gene_centroids.f90.
 """
 

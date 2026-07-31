@@ -1,4 +1,4 @@
-"""Python interface to Utility module for data analysis.
+"""Python binding to Utility module for data analysis.
 
 Generated from f42_utils. Do not edit.
 """

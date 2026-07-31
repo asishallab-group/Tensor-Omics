@@ -21,7 +21,7 @@ from codegen.ir.types import (
     Intent,
 )
 
-C_INTERFACE = Meta(summary="a summary", author="AUTHOR", category="C-interface")
+C_BINDING = Meta(summary="a summary", author="AUTHOR", category="C-binding")
 
 
 def _argument(type_, name, dimension, intent, doc, **kwargs):
@@ -60,7 +60,7 @@ def ierr(name="ierr"):
     return integer(name, Intent.OUT, doc="Error code")
 
 
-def procedure(name, *arguments, result=None, meta=C_INTERFACE, doc="", directives=None, **kwargs):
+def procedure(name, *arguments, result=None, meta=C_BINDING, doc="", directives=None, **kwargs):
     return Procedure(
         name=name,
         arguments=arguments,

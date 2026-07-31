@@ -8,7 +8,7 @@ value "for compatibility with existing R mapping".
 
 Two things the catalogue must model:
 
-- `ERR_*` codes are failures and raise in the interfacing languages. `STAT_*` codes are
+- `ERR_*` codes are failures and raise in the binding languages. `STAT_*` codes are
   outcomes, not failures, and must never raise. None exist yet; the split is by prefix so
   the first one added needs no change here.
 - An error code encodes the argument that caused it, as
@@ -37,7 +37,7 @@ DEFAULT_ARG_POS_FACTOR = 10000
 class ErrorGroup(Enum):
     """The coarse grouping `tox_errors` documents through its numeric ranges.
 
-    Used to give the interfacing languages a small hierarchy of exception types, rather
+    Used to give the binding languages a small hierarchy of exception types, rather
     than one type per code or a single opaque error.
     """
 
@@ -196,7 +196,7 @@ class ErrorCatalogue:
 
     @property
     def errors(self) -> tuple[ErrorCode, ...]:
-        """Failures. These raise in the interfacing languages."""
+        """Failures. These raise in the binding languages."""
         return tuple(c for c in self.codes if not c.is_status and not c.is_ok)
 
     @property

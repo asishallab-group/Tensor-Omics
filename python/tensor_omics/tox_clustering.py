@@ -1,4 +1,4 @@
-"""Python interface to Module for clustering routines used in tensor-omics: k-means for factor/trajectory
+"""Python binding to Module for clustering routines used in tensor-omics: k-means for factor/trajectory
 
 Generated from tox_clustering. Do not edit.
 """

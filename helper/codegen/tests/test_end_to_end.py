@@ -41,18 +41,18 @@ def _generate(out: Path) -> None:
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_SRC), bag).parse()
     analyse_project(parsed.project, bag)
     validate_project(parsed.project, bag)
-    interface = build_project(parsed.project, bag)
+    binding = build_project(parsed.project, bag)
     assert bag.errors == (), bag.render()
 
-    for module in interface:
+    for module in binding:
         (out / f"{module.name}.F90").write_text(FortranCEmitter().module(module))
 
     emitter = PythonEmitter(library="build/libfixtures.so")
     package = out / "tensor_omics"
     package.mkdir(exist_ok=True)
     (package / "library.py").write_text(emitter.library_module())
-    (package / "__init__.py").write_text(emitter.package_init(list(interface)))
-    for module in interface:
+    (package / "__init__.py").write_text(emitter.package_init(list(binding)))
+    for module in binding:
         (package / f"{module.stripped_name}.py").write_text(emitter.module(module))
 
     errors = DiagnosticBag()

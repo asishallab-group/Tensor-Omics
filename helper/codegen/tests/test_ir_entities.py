@@ -165,11 +165,11 @@ class TestProcedure:
 
 
 class TestExportSelection:
-    def test_the_c_interface_category_marks_a_procedure(self):
-        assert b.procedure("p", meta=Meta(category="C-interface")).is_exported
+    def test_the_c_binding_category_marks_a_procedure(self):
+        assert b.procedure("p", meta=Meta(category="C-binding")).is_exported
 
     def test_the_category_is_matched_case_insensitively_and_trimmed(self):
-        assert b.procedure("p", meta=Meta(category="  c-interface  ")).is_exported
+        assert b.procedure("p", meta=Meta(category="  c-binding  ")).is_exported
 
     def test_another_category_does_not_export(self):
         assert not b.procedure("p", meta=Meta(category="internal")).is_exported
@@ -180,7 +180,7 @@ class TestExportSelection:
     def test_a_module_lists_only_exported_procedures(self):
         module = b.module(
             "m",
-            b.procedure("exported", meta=Meta(category="C-interface")),
+            b.procedure("exported", meta=Meta(category="C-binding")),
             b.procedure("internal", meta=Meta()),
         )
 
@@ -255,7 +255,7 @@ class TestProject:
 
     def test_modules_with_exports(self):
         project = b.project(
-            b.module("a", b.procedure("p", meta=Meta(category="C-interface"))),
+            b.module("a", b.procedure("p", meta=Meta(category="C-binding"))),
             b.module("b", b.procedure("q", meta=Meta())),
         )
 

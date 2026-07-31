@@ -1,4 +1,4 @@
-"""Python interface to Zip-archive backed persistence for TensorOmics data sets.
+"""Python binding to Zip-archive backed persistence for TensorOmics data sets.
 
 Generated from tox_data_archive. Do not edit.
 """

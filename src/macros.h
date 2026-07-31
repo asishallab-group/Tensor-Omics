@@ -59,7 +59,7 @@
 ! pre-comment: `!> M_EXPORT_C`. Expands to a Ford `category` meta tag, so Ford still parses
 ! it, and the code generator reads the category value from this macro rather than
 ! hardcoding the string -- change it here and both the sources and the generator follow.
-#define M_EXPORT_C category: C-interface
+#define M_EXPORT_C category: C-binding
 
 ! =============================================================================
 ! Documentation macros (DM_)
@@ -80,7 +80,7 @@
 
 ! `DEFAULT_VAL` is the value an optional argument takes when it is omitted. It must
 ! be a constant expression, as the generator evaluates it at generation time to pass
-! it on from the interfacing languages.
+! it on from the binding languages.
 #define DM_DEFAULT(DEFAULT_VAL) The default value is `DEFAULT_VAL`.
 
 ! For an optional argument that has no default but is required in one specific mode:
@@ -95,7 +95,7 @@
 #define DM_RESULT_SIZE_IS(ARGUMENT) The first `ARGUMENT` elements will hold the results.
 
 ! The value of this argument comes from another procedure, typically a work array
-! size that cannot be foreseen. `MODE` is AUTO when the interfacing languages should
+! size that cannot be foreseen. `MODE` is AUTO when the binding languages should
 ! call `PROCEDURE` themselves, or JUST_INFO when the caller has to do it.
 #define DM_OUTPUT_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_OUTPUT_FROM_##MODE to compute this argument from the `ARGUMENT` output produced by [[MODULE(module):PROCEDURE]].
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*

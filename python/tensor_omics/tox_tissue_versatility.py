@@ -1,4 +1,4 @@
-"""Python interface to Module for calculating normalized tissue (axis) versatility.
+"""Python binding to Module for calculating normalized tissue (axis) versatility.
 
 Generated from tox_tissue_versatility. Do not edit.
 """

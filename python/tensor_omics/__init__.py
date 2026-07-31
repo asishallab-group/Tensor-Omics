@@ -1,4 +1,4 @@
-"""Python interface to tensor-omics.
+"""Python binding to tensor-omics.
 
 Generated. Do not edit.
 """

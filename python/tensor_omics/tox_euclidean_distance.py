@@ -1,4 +1,4 @@
-"""Python interface to Module with Euclidean distance computation routines for tensor omics.
+"""Python binding to Module with Euclidean distance computation routines for tensor omics.
 
 Generated from tox_euclidean_distance. Do not edit.
 """

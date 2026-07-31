@@ -1,4 +1,4 @@
-"""Emitting the C half of the R interface.
+"""Emitting the C half of the R binding.
 
 The split with R is the same one the former Rcpp layer used and is documented in
 `design/language-layers.md`: **R decides and raises, C marshals and calls.** By the time a
@@ -23,14 +23,14 @@ from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
-#: The R shared object this interface is registered into (drives `R_init_<name>`).
+#: The R shared object this binding is registered into (drives `R_init_<name>`).
 R_DLL_NAME = "tensoromics"
 
 #: The R shims compile into the one `libtensor-omics.so`. This guard drops them (and their
-#: R.h include) when the interface is built without R (`NO_R_INTERFACE`) or without the C ABI
-#: they call (`NO_C_INTERFACE`), leaving empty objects that need no R headers.
-_GUARD_OPEN = "#if !defined(NO_R_INTERFACE) && !defined(NO_C_INTERFACE)"
-_GUARD_CLOSE = "#endif  // R interface"
+#: R.h include) when the binding is built without R (`NO_R_BINDING`) or without the C ABI
+#: they call (`NO_C_BINDING`), leaving empty objects that need no R headers.
+_GUARD_OPEN = "#if !defined(NO_R_BINDING) && !defined(NO_C_BINDING)"
+_GUARD_CLOSE = "#endif  // R binding"
 
 #: Every R API symbol the shims reference. R provides them at dyn.load, but the one
 #: libtensor-omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
@@ -685,7 +685,7 @@ class CCallEmitter:
 
 _MARSHAL_HEADER = r'''// Generated. Do not edit.
 //
-// Marshalling helpers for the R interface. Pure C, R's C API only. These convert what
+// Marshalling helpers for the R binding. Pure C, R's C API only. These convert what
 // Fortran cannot take from R directly -- R's int-based logicals and its strings -- plus a
 // couple of small shape helpers. Transient buffers come from R_alloc and are freed when the
 // .Call returns, so there is nothing to free by hand and nothing to leak on an error

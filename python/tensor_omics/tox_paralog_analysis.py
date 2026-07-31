@@ -1,4 +1,4 @@
-"""Python interface to Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+"""Python binding to Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
 
 Generated from tox_paralog_analysis. Do not edit.
 """
@@ -313,7 +313,7 @@ def detect_dosage_effect(
         It is recommended to compute this argument from the `masks` output produced by [[tox_paralog_analysis(module):filter_paralogs_by_pattern_dosage_effect]].
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
-        maximum valid size. The interfaces cap it automatically while sizing the work
+        maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
     max_angle : float, optional, default 3.141592653589793
@@ -437,7 +437,7 @@ def detect_subfunctionalization(
         It is recommended to compute this argument from the `masks` output produced by [[tox_paralog_analysis(module):filter_paralogs_by_pattern_subfunctionalization]].
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
-        maximum valid size. The interfaces cap it automatically while sizing the work
+        maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)

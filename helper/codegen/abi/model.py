@@ -121,7 +121,7 @@ class CWrapper:
 
     #: The exported symbol, e.g. `fx_cluster_c`
     name: str
-    #: The symbol without the `_c` suffix, which the interfacing languages use
+    #: The symbol without the `_c` suffix, which the binding languages use
     stripped_name: str
     #: The procedure being wrapped
     procedure: Procedure
@@ -221,7 +221,7 @@ class CWrapperModule:
 
 
 @dataclass(frozen=True)
-class CInterface:
+class CBinding:
     """Every wrapper the project exports."""
 
     modules: tuple[CWrapperModule, ...]

@@ -1,4 +1,4 @@
-"""The pipeline, end to end: sources in, generated interfaces out.
+"""The pipeline, end to end: sources in, generated bindings out.
 
 Wires the stages together in the one order they can run: parse, work out roles, validate,
 build the C ABI, emit. Everything a caller might want to drive separately -- a different
@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .abi.c_abi import build_project
-from .abi.model import CInterface
+from .abi.model import CBinding
 from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
 from .emit.errors_python import PythonErrorEmitter
@@ -59,7 +59,7 @@ def generate(
     library: str = "build/libtensor-omics.so",
     parsed: ParsedProject | None = None,
 ) -> Result:
-    """Build the interface files, without writing them.
+    """Build the binding files, without writing them.
 
     Returns them in `Result.files` so a caller can inspect or diff before committing to
     disk. Diagnostics are collected throughout; `Result.ok` is false if any are errors,
@@ -77,18 +77,18 @@ def generate(
     analyse_project(parsed.project, diagnostics, conventions)
     validate_project(parsed.project, diagnostics, conventions)
 
-    interface = build_project(parsed.project, diagnostics, conventions)
+    binding = build_project(parsed.project, diagnostics, conventions)
     catalogue = _catalogue(parsed, diagnostics, conventions)
 
     files: list[GeneratedFile] = []
     if "c" in targets:
-        files += _c_files(interface, paths)
+        files += _c_files(binding, paths)
     if "python" in targets:
-        files += _python_files(interface, catalogue, paths, library)
+        files += _python_files(binding, catalogue, paths, library)
     if "r" in targets:
-        files += _r_files(interface, catalogue, paths)
+        files += _r_files(binding, catalogue, paths)
     if "snippets" in targets:
-        files += _snippets_files(interface, catalogue, paths)
+        files += _snippets_files(binding, catalogue, paths)
 
     return Result(diagnostics=diagnostics, files=files)
 
@@ -121,39 +121,39 @@ def generate_and_write(
 # -- per target -----------------------------------------------------------------
 
 
-def _c_files(interface: CInterface, paths: Paths) -> list[GeneratedFile]:
+def _c_files(binding: CBinding, paths: Paths) -> list[GeneratedFile]:
     emitter = FortranCEmitter()
-    out = paths.resolve(paths.c_interface_dir)
+    out = paths.resolve(paths.c_binding_dir)
     return [
         GeneratedFile(out / f"{module.name}.F90", emitter.module(module))
-        for module in interface
+        for module in binding
     ]
 
 
-def _python_files(interface: CInterface, catalogue, paths: Paths,
+def _python_files(binding: CBinding, catalogue, paths: Paths,
                   library: str) -> list[GeneratedFile]:
     emitter = PythonEmitter(library=library)
     out = paths.resolve(paths.python_out_dir)
     files = [
         GeneratedFile(out / "library.py", emitter.library_module()),
-        GeneratedFile(out / "__init__.py", emitter.package_init(list(interface))),
+        GeneratedFile(out / "__init__.py", emitter.package_init(list(binding))),
         GeneratedFile(out / "error_handling.py", PythonErrorEmitter(catalogue).module()),
     ]
     files += [
         GeneratedFile(out / f"{module.stripped_name}.py", emitter.module(module))
-        for module in interface
+        for module in binding
     ]
     return files
 
 
-def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
+def _r_files(binding: CBinding, catalogue, paths: Paths) -> list[GeneratedFile]:
     emitter, wrapper = CCallEmitter(), RWrapperEmitter()
     # the C `.Call` shims live under src/ so fpm compiles them into the one
-    # libtensor-omics.so (mirroring the generated src/c_interface/*.F90); the R-language
+    # libtensor-omics.so (mirroring the generated src/c_binding/*.F90); the R-language
     # wrappers live in the R package tree.
-    csrc = paths.resolve(paths.r_c_interface_dir)
+    csrc = paths.resolve(paths.r_binding_dir)
     out = paths.resolve(paths.r_out_dir)
-    modules = list(interface)
+    modules = list(binding)
     files = [
         GeneratedFile(csrc / "tox_marshal.h", emitter.marshal_header_content()),
         GeneratedFile(csrc / "init.c", emitter.registration(modules)),
@@ -170,9 +170,9 @@ def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFi
     return files
 
 
-def _snippets_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
+def _snippets_files(binding: CBinding, catalogue, paths: Paths) -> list[GeneratedFile]:
     out = paths.resolve(paths.snippets_dir)
-    files = SnippetEmitter().snippets_files(interface, catalogue)
+    files = SnippetEmitter().snippets_files(binding, catalogue)
     return [GeneratedFile(out / name, content) for name, content in files.items()]
 
 
@@ -197,11 +197,11 @@ def _clean(targets: tuple[str, ...], paths: Paths) -> None:
     directories = []
     globs = []
     if "c" in targets:
-        directories.append(paths.resolve(paths.c_interface_dir))
+        directories.append(paths.resolve(paths.c_binding_dir))
     if "python" in targets:
         directories.append(paths.resolve(paths.python_out_dir))
     if "r" in targets:
-        directories.append(paths.resolve(paths.r_c_interface_dir))   # the C .Call shims
+        directories.append(paths.resolve(paths.r_binding_dir))   # the C .Call shims
         # the R wrappers sit directly in r_out_dir; remove only the generated `.R` so a
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
         globs.append((paths.resolve(paths.r_out_dir), "*.R"))

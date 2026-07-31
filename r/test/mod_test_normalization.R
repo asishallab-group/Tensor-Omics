@@ -2,7 +2,7 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 # tox_diagnose_data_quality / tox_clean_data_for_normalization are pure R -- no Fortran
-# behind them -- so they live outside the generated interface
+# behind them -- so they live outside the generated binding
 source("r/data_prep.R")
 
 test_basic_calling <- function() {

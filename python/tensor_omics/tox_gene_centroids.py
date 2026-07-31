@@ -1,4 +1,4 @@
-"""Python interface to Module for computing expression centroids of gene families.
+"""Python binding to Module for computing expression centroids of gene families.
 
 Generated from tox_gene_centroids. Do not edit.
 """

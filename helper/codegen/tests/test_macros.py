@@ -199,7 +199,7 @@ class TestExportCategory:
         assert EXPORT_MACRO in macros
 
     def test_the_category_is_read_from_the_macro(self, macros):
-        assert export_category(macros) == "C-interface"
+        assert export_category(macros) == "C-binding"
 
     def test_it_expands_to_a_ford_category_tag(self, macros):
         # so Ford still parses it into meta.category

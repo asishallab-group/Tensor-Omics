@@ -7,7 +7,7 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 
-# The generated interface exposes the Fortran routine as it is; the sort prep the old
+# The generated binding exposes the Fortran routine as it is; the sort prep the old
 # wrapper did is here, so the assertions below stay about the numerics.
 scaled_distance_quantile <- function(distribution, c_const) {
   if (length(distribution) == 0) return(numeric(0))

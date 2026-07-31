@@ -1,4 +1,4 @@
-"""Emitting the Python interface.
+"""Emitting the Python binding.
 
 What the generated function does, and why:
 
@@ -225,7 +225,7 @@ class PythonEmitter:
         """The package's `__init__`, re-exporting every generated function."""
         writer = Writer()
         writer.block(
-            '"""Python interface to tensor-omics.\n'
+            '"""Python binding to tensor-omics.\n'
             "\n"
             "Generated. Do not edit.\n"
             '"""'
@@ -261,7 +261,7 @@ class PythonEmitter:
         writer = Writer()
         summary = module.doc.summary or f"the {module.stripped_name} module"
         writer.block(
-            f'"""Python interface to {summary}\n'
+            f'"""Python binding to {summary}\n'
             f"\n"
             f"Generated from {module.stripped_name}. Do not edit.\n"
             f'"""'

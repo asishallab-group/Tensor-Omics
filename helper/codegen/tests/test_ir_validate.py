@@ -283,13 +283,13 @@ class TestErrorArgument:
 
 class TestWarnings:
     def test_a_procedure_without_a_summary_warns(self, bag):
-        checked(b.procedure("p", meta=Meta(author="a", category="C-interface")), bag)
+        checked(b.procedure("p", meta=Meta(author="a", category="C-binding")), bag)
 
         assert bag.errors == ()
         assert "no summary meta tag" in bag.warnings[0].message
 
     def test_a_procedure_without_an_author_warns(self, bag):
-        checked(b.procedure("p", meta=Meta(summary="s", category="C-interface")), bag)
+        checked(b.procedure("p", meta=Meta(summary="s", category="C-binding")), bag)
 
         assert "no author meta tag" in bag.warnings[0].message
 
@@ -310,7 +310,7 @@ class TestWarnings:
         assert "module has no documentation" in bag.warnings[0].message
 
     def test_warnings_never_stop_generation(self, bag):
-        checked(b.procedure("p", b.integer("n", Intent.IN), meta=Meta(category="C-interface")), bag)
+        checked(b.procedure("p", b.integer("n", Intent.IN), meta=Meta(category="C-binding")), bag)
 
         bag.raise_if_errors()  # must not raise
 

@@ -1,4 +1,4 @@
-"""Python interface to Module for deserializing character arrays from files
+"""Python binding to Module for deserializing character arrays from files
 
 Generated from f42_serde_arrays_deserialize_char. Do not edit.
 """

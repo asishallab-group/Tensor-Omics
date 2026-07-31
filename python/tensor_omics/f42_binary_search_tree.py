@@ -1,4 +1,4 @@
-"""Python interface to Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+"""Python binding to Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
 
 Generated from f42_binary_search_tree. Do not edit.
 """

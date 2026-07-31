@@ -1,4 +1,4 @@
-"""Python interface to In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
+"""Python binding to In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
 
 Generated from tox_data_integration. Do not edit.
 """

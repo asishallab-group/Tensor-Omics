@@ -1,4 +1,4 @@
-"""Python interface to Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+"""Python binding to Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
 
 Generated from tox_data_tools. Do not edit.
 """

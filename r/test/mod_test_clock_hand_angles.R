@@ -1,4 +1,4 @@
-# R interface and tests for clock hand angle calculations
+# R binding and tests for clock hand angle calculations
 # Uses Fortran wrappers for RAP projections and angle calculations
 
 # Load the compiled Fortran library

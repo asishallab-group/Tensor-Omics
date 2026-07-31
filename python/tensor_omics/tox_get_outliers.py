@@ -1,4 +1,4 @@
-"""Python interface to Module to identify gene outliers based on their distances to family centroids.
+"""Python binding to Module to identify gene outliers based on their distances to family centroids.
 
 Generated from tox_get_outliers. Do not edit.
 """

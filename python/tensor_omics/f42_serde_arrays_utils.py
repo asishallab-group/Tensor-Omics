@@ -1,4 +1,4 @@
-"""Python interface to Module for array utilities.
+"""Python binding to Module for array utilities.
 
 Generated from f42_serde_arrays_utils. Do not edit.
 """

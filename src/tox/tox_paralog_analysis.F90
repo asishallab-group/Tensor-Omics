@@ -92,7 +92,7 @@ contains
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
-            !! maximum valid size. The interfaces cap it automatically while sizing the work
+            !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
         integer(int32), intent(in) :: n_paralog_subsets
@@ -150,7 +150,7 @@ contains
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
-            !! maximum valid size. The interfaces cap it automatically while sizing the work
+            !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
         integer(int32), intent(in) :: n_paralog_subsets

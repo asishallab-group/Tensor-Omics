@@ -1,4 +1,4 @@
-"""Python interface to Module with normalization routines for tensor omics.
+"""Python binding to Module with normalization routines for tensor omics.
 
 Generated from tox_normalization. Do not edit.
 """

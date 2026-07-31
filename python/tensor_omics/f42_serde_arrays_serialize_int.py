@@ -1,4 +1,4 @@
-"""Python interface to Module for serializing integer arrays into files
+"""Python binding to Module for serializing integer arrays into files
 
 Generated from f42_serde_arrays_serialize_int. Do not edit.
 """

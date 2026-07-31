@@ -1,4 +1,4 @@
-"""Python interface to Module for serializing logical arrays into files
+"""Python binding to Module for serializing logical arrays into files
 
 Generated from f42_serde_arrays_serialize_logical. Do not edit.
 """

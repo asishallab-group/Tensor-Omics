@@ -1,4 +1,4 @@
-"""Python interface to Module for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space
+"""Python binding to Module for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space
 
 Generated from tox_relative_axis_plane_tools. Do not edit.
 """

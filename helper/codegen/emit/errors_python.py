@@ -44,7 +44,7 @@ class PythonErrorEmitter:
 
     def _header(self, writer: Writer) -> None:
         writer.block(
-            '"""Errors raised by the tensor_omics interface.\n'
+            '"""Errors raised by the tensor_omics binding.\n'
             "\n"
             "Generated from tox_errors. Do not edit.\n"
             '"""'

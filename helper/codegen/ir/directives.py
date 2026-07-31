@@ -70,7 +70,7 @@ class ResultSizeIs:
 
 
 class OutputFromMode(Enum):
-    #: The interfacing languages call the procedure themselves
+    #: The binding languages call the procedure themselves
     AUTO = "auto"
     #: The caller has to call it; the generator only documents the fact
     JUST_INFO = "just_info"

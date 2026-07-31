@@ -28,20 +28,20 @@ function init() {
   get_c_flags
 }
 
-# Flags for the C sources (the R .Call shims in src/r_interface). fpm's --flag is Fortran
-# only, so C needs its own. The shims are guarded by NO_R_INTERFACE / NO_C_INTERFACE, so when
+# Flags for the C sources (the R .Call shims in src/bindings/r). fpm's --flag is Fortran
+# only, so C needs its own. The shims are guarded by NO_R_BINDING / NO_C_BINDING, so when
 # either is set they compile to empty objects that need no R headers; otherwise they need R's
 # include path. If the R layer is wanted but R is not installed, drop it with a warning.
 function get_c_flags() {
   C_FLAGS="-fPIC $DIRECTIVES"
-  if [[ "$DIRECTIVES" == *NO_R_INTERFACE* || "$DIRECTIVES" == *NO_C_INTERFACE* ]]; then
+  if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
     return
   fi
   if [[ -z $(command -v R) ]]; then
-    warning "'$(echo_compiler R)' not found -- building without the R interface.
-Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_INTERFACE$COLOR_CREAM' to silence this."
-    DIRECTIVES="$DIRECTIVES -DNO_R_INTERFACE"
-    C_FLAGS="$C_FLAGS -DNO_R_INTERFACE"
+    warning "'$(echo_compiler R)' not found -- building without the R binding.
+Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLOR_CREAM' to silence this."
+    DIRECTIVES="$DIRECTIVES -DNO_R_BINDING"
+    C_FLAGS="$C_FLAGS -DNO_R_BINDING"
     TOX_CLEAN_BUILD=1
     return
   fi

@@ -1,6 +1,6 @@
-# TensorOmics interface generator
+# TensorOmics binding generator
 
-Generates the C, Python and R interfaces to the Fortran library from the Fortran sources
+Generates the C, Python and R bindings to the Fortran library from the Fortran sources
 themselves. A procedure marked for export becomes a C-callable wrapper, a Python function,
 and an R function — with the documentation, error handling and argument validation derived
 from the Fortran, not restated by hand.
@@ -39,9 +39,9 @@ From one exported Fortran procedure, three things:
 
 | Target | Output | What it is |
 |---|---|---|
-| C | `src/c_interface/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
+| C | `src/bindings/c/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
 | Python | `python/tensor_omics/<module>.py` | a `ctypes` function with a numpydoc docstring |
-| R | `src/r_interface/<module>.c` + `r/tensor_omics/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
+| R | `src/bindings/r/<module>.c` + `r/tensor_omics/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
 | Snippets | `snippets/<Language>_<root>_snippets.json` | VS Code call/setup snippets, split by language and module root |
 
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
@@ -55,11 +55,11 @@ hand-written `snippets/toxdev_snippets.json` sits alongside and is tracked. Per 
 `ierr`) and a wrapper call for Python and R, arguments rendered as keyword tabstops -- a
 `mode`/`method` argument becomes a *choice* of its accepted values. Per module: a Fortran
 `use ..., only:` and a Python import (both a choice of that module's procedures). Plus
-generic aids: an R loader `source`, an error-handling wrapper per interfacing language, and
+generic aids: an R loader `source`, an error-handling wrapper per binding language, and
 an error-code picker. Every prefix starts with the module's root -- `f42:` or `tox:`, taken
 from the module name up to its first underscore.
 
-The generated interfaces are consistent by construction: all three read the *same* model of
+The generated bindings are consistent by construction: all three read the *same* model of
 what a procedure looks like from C (the `abi` layer), so they cannot drift.
 
 ---
@@ -74,7 +74,7 @@ python helper/generate_code.py --help
 ```
 
 Run from the repository root. `--check` is what a CI guard wants: it exits non-zero if the
-committed interfaces no longer match the sources.
+committed bindings no longer match the sources.
 
 Requirements: Python 3.11+ (`contextlib.chdir`), and `FORD`, `pcpp`, `numpy` (see
 `requirements-dev.txt`). The generator reads the Ford settings from `fpm.toml`.
@@ -103,8 +103,8 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 |---|---|---|
 | `src_dir` | `src` | the sources to read (`--src`) |
 | `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
-| `c_interface_dir` | `src/c_interface` | **output**: the Fortran C wrappers |
-| `r_c_interface_dir` | `src/r_interface` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
+| `c_binding_dir` | `src/bindings/c` | **output**: the Fortran C wrappers |
+| `r_binding_dir` | `src/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
 | `r_out_dir` | `r/tensor_omics` | **output**: the R wrappers + loader |
 | `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, git-ignored) |
@@ -112,8 +112,8 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 So a default run writes:
 
 ```
-src/c_interface/<module>_c.F90        # Fortran C wrappers, one per module
-src/r_interface/                      # R C .Call shims -- fpm compiles them into the .so
+src/bindings/c/<module>_c.F90        # Fortran C wrappers, one per module
+src/bindings/r/                      # R C .Call shims -- fpm compiles them into the .so
     tox_marshal.h  init.c  <module>.c
 python/tensor_omics/
     __init__.py  library.py  error_handling.py
@@ -196,7 +196,7 @@ Only tagged procedures are wrapped. Everything else is held to none of the rules
 - **Explicit `intent`** on every dummy argument. It decides constness in C and R, and
   whether an argument is an input, an output, or both.
 - **An error argument `ierr`**, `integer, intent(out)`. If a procedure has none, the wrapper
-  synthesises one — the interfacing languages always raise on error, so there must be a
+  synthesises one — the binding languages always raise on error, so there must be a
   channel. Give it one if it can fail.
 - **Kinded numeric types** (`real(real64)`, `integer(int32)`). A default kind has no
   defensible C mapping.
@@ -208,17 +208,17 @@ Only tagged procedures are wrapped. Everything else is held to none of the rules
 | Pattern | Meaning |
 |---|---|
 | `<p>_alloc` | the allocating variant; its wrapper is `<p>_c`. Its non-alloc twin `<p>` becomes `<p>_expert_c` |
-| `tmp_<name>` | a work array: allocated by the interfacing language, never returned, never asked for |
+| `tmp_<name>` | a work array: allocated by the binding language, never returned, never asked for |
 | `<arg>_shape` | carries the shape of a flat `<arg>` passed separately (rank-independent serialization) |
 | `n_selected_<arg>` | the count of an `<arg>_mask` / `<arg>_selection_mask`; computed from the mask |
 | `mode`, `method`, `*_mode`, `*_method` | a mode argument (see below) |
 
 Extents (`n_dims` in `vector(n_dims)`) are recognised automatically and never asked of the
-caller — the interfacing language takes them from the array.
+caller — the binding language takes them from the array.
 
 ### Mode arguments
 
-An integer argument compared against `MODE_*` / `METHOD_*` parameters. The interfacing
+An integer argument compared against `MODE_*` / `METHOD_*` parameters. The binding
 languages pass a **string**; the C wrapper maps it back. Document the accepted values in a
 markdown table — the argument's own name decides the prefix (`mode` → `MODE_`, `method` →
 `METHOD_`), and the header must agree:
@@ -251,7 +251,7 @@ never expands is an error (as is a misspelt `M_`/`CM_`/`DM_` anywhere in a doc c
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, AUTO)` | an input | obtained by calling `PROC`; the caller never supplies it |
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, JUST_INFO)` | an input | the caller supplies it; the doc says where to get it |
 
-An optional **with** a `DM_DEFAULT` is required in C — the interfacing languages know the
+An optional **with** a `DM_DEFAULT` is required in C — the binding languages know the
 default and pass it, which keeps the wrapper flat. Only an optional with no default is
 nullable.
 
@@ -337,7 +337,7 @@ the compiler or a run rejected the first attempt.
   not (wasteful and dishonest).
 - **`c_bool`** logicals cross as real booleans; a dummy already `logical(c_bool)` needs no
   copy.
-- **Shape cross-checks** the interfacing language makes but Fortran cannot: two arguments
+- **Shape cross-checks** the binding language makes but Fortran cannot: two arguments
   sharing an extent must agree, or a wrong answer / segfault results.
 - **Argument-named errors**: `ierr` encodes the offending argument's position, so an error
   names it (`invalid input arguments (argument 'n_dims')`).

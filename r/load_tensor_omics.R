@@ -1,4 +1,4 @@
-# Load the generated TensorOmics R interface into the calling environment.
+# Load the generated TensorOmics R binding into the calling environment.
 #
 # Hand-written, and it lives here rather than inside `r/tensor_omics/` because that
 # whole directory is generated. It is the R counterpart of the generated
@@ -9,8 +9,8 @@
 #
 # The C `.Call` shims are compiled into `build/libtensor-omics.so` by the ordinary build
 # (`./build.sh`), so there is nothing to compile here -- this loads that library and sources
-# the generated R wrappers. Build the library first, with the R interface included (the
-# default; i.e. not `--directive=NO_R_INTERFACE`).
+# the generated R wrappers. Build the library first, with the R binding included (the
+# default; i.e. not `--directive=NO_R_BINDING`).
 
 .tox_load <- function(root = "r/tensor_omics", lib = "build/libtensor-omics.so") {
     so <- normalizePath(lib, mustWork = TRUE)
@@ -21,11 +21,11 @@
     if (is.null(getLoadedDLLs()[["libtensor-omics"]])) dyn.load(so)
 
     # a wrapper reaches C through .Call by name (resolved by dynamic lookup); if the R shims
-    # were left out of the build (--directive=NO_R_INTERFACE, or R absent when it ran) the
+    # were left out of the build (--directive=NO_R_BINDING, or R absent when it ran) the
     # symbol is not there
     if (!is.loaded("loess_smooth_2d_call"))
-        stop("'", so, "' has no R interface -- rebuild it with the R interface included ",
-             "(drop --directive=NO_R_INTERFACE, and make sure R is installed).")
+        stop("'", so, "' has no R binding -- rebuild it with the R binding included ",
+             "(drop --directive=NO_R_BINDING, and make sure R is installed).")
 
     # error_handling and tox_validate first: the wrappers call into them
     scripts <- file.path(root, c("error_handling.R", "tox_validate.R"))

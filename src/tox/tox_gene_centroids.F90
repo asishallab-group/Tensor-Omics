@@ -2,7 +2,7 @@
 
 !> Module for computing expression centroids of gene families.
 !|
-!| This module contains the core scientific kernel. The C and R interface
+!| This module contains the core scientific kernel. The C and R bindings
 !| wrappers are defined outside the module for compatibility.
 module tox_gene_centroids
     use, intrinsic :: iso_fortran_env, only: int32, real64

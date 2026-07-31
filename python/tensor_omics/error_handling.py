@@ -1,4 +1,4 @@
-"""Errors raised by the tensor_omics interface.
+"""Errors raised by the tensor_omics binding.
 
 Generated from tox_errors. Do not edit.
 """

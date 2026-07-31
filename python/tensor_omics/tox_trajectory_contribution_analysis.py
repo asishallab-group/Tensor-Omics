@@ -1,4 +1,4 @@
-"""Python interface to Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+"""Python binding to Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
 
 Generated from tox_trajectory_contribution_analysis. Do not edit.
 """

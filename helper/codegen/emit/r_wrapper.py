@@ -1,4 +1,4 @@
-"""Emitting the R half of the R interface.
+"""Emitting the R half of the R binding.
 
 The thinking layer. Per `design/language-layers.md`, **R decides and raises, C marshals
 and calls**: this validates and coerces every input, cross-checks shapes, applies
@@ -381,7 +381,7 @@ def r_literal(value) -> str:
 
 _VALIDATORS = r'''# Generated. Do not edit.
 #
-# Coercion helpers for the R interface. Each checks the type and coerces, copying only
+# Coercion helpers for the R binding. Each checks the type and coerces, copying only
 # when it must, and raises a classed tox_type_error naming the argument. NA is checked
 # only where the check is free: integers (an ordinary Fortran number), logicals and
 # characters (converted anyway), never doubles (a NaN payload Fortran already catches).

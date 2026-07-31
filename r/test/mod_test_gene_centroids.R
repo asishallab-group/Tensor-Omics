@@ -1,4 +1,4 @@
-# Comprehensive R test suite for gene centroids interface functions
+# Comprehensive R test suite for gene centroids binding functions
 
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")

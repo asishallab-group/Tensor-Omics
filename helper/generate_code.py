@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the C, Python and R interfaces from the Fortran sources.
+"""Generate the C, Python and R bindings from the Fortran sources.
 
 Run from the repository root:
 

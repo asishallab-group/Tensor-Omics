@@ -184,9 +184,9 @@ class Procedure(Entity):
 
     @property
     def is_exported(self) -> bool:
-        """Whether the procedure carries the `category: C-interface` meta tag."""
+        """Whether the procedure carries the `category: C-binding` meta tag."""
         return self.meta.category.strip().lower() == (
-            self.conventions.c_interface_category.lower()
+            self.conventions.c_binding_category.lower()
         )
 
     @property

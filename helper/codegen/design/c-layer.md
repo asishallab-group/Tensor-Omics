@@ -49,16 +49,16 @@ convert, call, convert back.
 Not in the source files they wrap. From issue #131:
 
 1. `safeguard` is needed only by C-facing code, so only these modules use it
-2. the whole C interface can be compiled out with one directive — the wrappers are wrapped
-   in `#ifndef NO_C_INTERFACE`, and with them goes the `safeguard` dependency
+2. the whole C binding can be compiled out with one directive — the wrappers are wrapped
+   in `#ifndef NO_C_BINDING`, and with them goes the `safeguard` dependency
 3. the source files are not bloated with wrapper definitions
 4. the generator never touches hand-written source
 
 ---
 
-## Decision: the R C shims are bundled into the library, omittable like the C interface
+## Decision: the R C shims are bundled into the library, omittable like the C binding
 
-The R interface is pure C (`.Call`) shims — generated into `src/r_interface/*.c` — that
+The R binding is pure C (`.Call`) shims — generated into `src/bindings/r/*.c` — that
 marshal R objects and call the `bind(C)` wrappers. They are **compiled by fpm into the one
 `libtensor-omics.so`** (fpm already scans `src/` recursively and rebuilds only changed
 files), so there is a single artifact and no separate R build step; the R loader just
@@ -66,12 +66,12 @@ files), so there is a single artifact and no separate R build step; the R loader
 the `.so`'s hyphenated name means the registration `R_init_*` never auto-fires, which is
 fine).
 
-The shims are guarded by `#if !defined(NO_R_INTERFACE) && !defined(NO_C_INTERFACE)`, mirroring
-the Fortran wrappers' `#ifndef NO_C_INTERFACE`. So:
+The shims are guarded by `#if !defined(NO_R_BINDING) && !defined(NO_C_BINDING)`, mirroring
+the Fortran wrappers' `#ifndef NO_C_BINDING`. So:
 
-- `./build.sh --directive=NO_R_INTERFACE` drops the R layer (the shims compile to empty
+- `./build.sh --directive=NO_R_BINDING` drops the R layer (the shims compile to empty
   objects that need no R headers) while keeping the C ABI for Python/direct-C use;
-- `NO_C_INTERFACE` implies no R layer too — the shims call the `bind(C)` symbols, which are
+- `NO_C_BINDING` implies no R layer too — the shims call the `bind(C)` symbols, which are
   gone — so the guard tests both;
 - if the R layer is wanted but R is not installed, the build **auto-disables it with a
   warning** (it needs R's headers, via `R CMD config --cppflags`, only when included).
