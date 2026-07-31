@@ -94,11 +94,15 @@ contains
         integer(int32), intent(in) :: unit
             !! unit of the file to write to
 
+        character(len=32) :: buffer
+
         if (ieee_is_nan(real_num) .or. .not. ieee_is_finite(real_num)) then
             write (unit, "('null')", advance="no")
         else
-            ! ES0.* -> minimal field width, so no leading blank is emitted for non-negative values
-            write (unit, "(ES0.16E3)", advance="no") real_num
+            ! ES24.16E3 is portable across compilers (unlike the minimal-width ES0.*), but pads
+            ! non-negative values with a leading blank; trim(adjustl(...)) strips it portably.
+            write (buffer, "(ES24.16E3)") real_num
+            write (unit, "(A)", advance="no") trim(adjustl(buffer))
         end if
     end subroutine serialize_real
 
