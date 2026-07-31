@@ -97,6 +97,19 @@ contains
     end subroutine fx_grouped_output
 
     !> M_EXPORT_C
+    !| summary: An inout scalar the routine caps in place, handed back to the caller
+    !| author: A Developer
+    subroutine fx_cap_value(value, ierr)
+        integer(int32), intent(inout) :: value
+            !! capped at 10 and returned
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+        if (value > 10_int32) value = 10_int32
+    end subroutine fx_cap_value
+
+    !> M_EXPORT_C
     !| summary: Every optional flavour at once
     !| author: A Developer
     subroutine fx_optionals(values, n_values, span, max_iter, use_quantile, tmp_work, ierr)

@@ -21,7 +21,7 @@ from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
-from .emit.rcpp import RcppEmitter
+from .emit.c_call import CCallEmitter
 from .emit.vscode_snippets import SnippetEmitter
 from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
@@ -147,16 +147,18 @@ def _python_files(interface: CInterface, catalogue, paths: Paths,
 
 
 def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFile]:
-    rcpp, wrapper = RcppEmitter(), RWrapperEmitter()
+    emitter, wrapper = CCallEmitter(), RWrapperEmitter()
     out = paths.resolve(paths.rcpp_out_dir)
+    modules = list(interface)
     files = [
-        GeneratedFile(out / "src" / "tox_marshal.h", rcpp.marshal_header_content()),
+        GeneratedFile(out / "src" / "tox_marshal.h", emitter.marshal_header_content()),
+        GeneratedFile(out / "src" / "init.c", emitter.registration(modules)),
         GeneratedFile(out / "R" / "tox_validate.R", wrapper.validators()),
         GeneratedFile(out / "R" / "error_handling.R", RErrorEmitter(catalogue).module()),
     ]
-    for module in interface:
+    for module in modules:
         files.append(
-            GeneratedFile(out / "src" / f"{module.stripped_name}.cpp", rcpp.module(module))
+            GeneratedFile(out / "src" / f"{module.stripped_name}.c", emitter.module(module))
         )
         files.append(
             GeneratedFile(out / "R" / f"{module.stripped_name}.R", wrapper.module(module))

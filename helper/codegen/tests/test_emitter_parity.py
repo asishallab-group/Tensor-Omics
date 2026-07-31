@@ -20,7 +20,7 @@ from codegen.abi.c_abi import build_project
 from codegen.config import Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.emit.python_ctypes import PythonEmitter
-from codegen.emit.rcpp import RcppEmitter
+from codegen.emit.c_call import CCallEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
 from codegen.frontend.ford_frontend import FordFrontend
 from codegen.ir.roles import analyse_project
@@ -83,22 +83,22 @@ class TestTheTargetsAgree:
     def test_r_calls_cpp_with_the_arguments_cpp_declares(self, interface):
         """The R wrapper and the C++ function it calls must agree, argument for argument.
 
-        They are decided in two places -- `r_wrapper._rcpp_inputs` and `rcpp._inputs` --
+        They are decided in two places -- `r_wrapper._rcpp_inputs` and `c_call._inputs` --
         so a role change that reaches one and not the other produces an R function that
-        calls `.name_rcpp` with the wrong arguments. C++ is compiled separately, so
+        calls `.Call("name_call", ...)` with the wrong arguments. C is compiled separately, so
         nothing catches it until the call happens.
         """
-        r, cpp = RWrapperEmitter(), RcppEmitter()
+        r, c = RWrapperEmitter(), CCallEmitter()
 
         divergent = {
-            wrapper.stripped_name: (_names(r._rcpp_inputs(wrapper)), _names(cpp._inputs(wrapper)))
+            wrapper.stripped_name: (_names(r._rcpp_inputs(wrapper)), _names(c._inputs(wrapper)))
             for wrapper in _wrappers(interface)
-            if _names(r._rcpp_inputs(wrapper)) != _names(cpp._inputs(wrapper))
+            if _names(r._rcpp_inputs(wrapper)) != _names(c._inputs(wrapper))
         }
 
         assert not divergent, (
-            "the R wrapper and the C++ function disagree:\n"
-            + "\n".join(f"  {name}:\n    r passes:    {passed}\n    cpp expects: {declared}"
+            "the R wrapper and the C function disagree:\n"
+            + "\n".join(f"  {name}:\n    r passes:    {passed}\n    c expects:   {declared}"
                         for name, (passed, declared) in sorted(divergent.items()))
         )
 
@@ -145,22 +145,22 @@ class TestTheTargetsAgreeOnTheRealProject:
     def test_r_calls_cpp_with_the_arguments_cpp_declares(self, project_interface):
         """The R wrapper and the C++ function it calls must agree, argument for argument.
 
-        They are decided in two places -- `r_wrapper._rcpp_inputs` and `rcpp._inputs` --
+        They are decided in two places -- `r_wrapper._rcpp_inputs` and `c_call._inputs` --
         so a role change that reaches one and not the other produces an R function that
-        calls `.name_rcpp` with the wrong arguments. C++ is compiled separately, so
+        calls `.Call("name_call", ...)` with the wrong arguments. C is compiled separately, so
         nothing catches it until the call happens.
         """
-        r, cpp = RWrapperEmitter(), RcppEmitter()
+        r, c = RWrapperEmitter(), CCallEmitter()
 
         divergent = {
-            wrapper.stripped_name: (_names(r._rcpp_inputs(wrapper)), _names(cpp._inputs(wrapper)))
+            wrapper.stripped_name: (_names(r._rcpp_inputs(wrapper)), _names(c._inputs(wrapper)))
             for wrapper in _wrappers(project_interface)
-            if _names(r._rcpp_inputs(wrapper)) != _names(cpp._inputs(wrapper))
+            if _names(r._rcpp_inputs(wrapper)) != _names(c._inputs(wrapper))
         }
 
         assert not divergent, (
-            "the R wrapper and the C++ function disagree:\n"
-            + "\n".join(f"  {name}:\n    r passes:    {passed}\n    cpp expects: {declared}"
+            "the R wrapper and the C function disagree:\n"
+            + "\n".join(f"  {name}:\n    r passes:    {passed}\n    c expects:   {declared}"
                         for name, (passed, declared) in sorted(divergent.items()))
         )
 

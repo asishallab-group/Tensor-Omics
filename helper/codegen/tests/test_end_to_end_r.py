@@ -1,10 +1,11 @@
 """The R pipeline: generate, build, and drive it through R.
 
-The R analogue of `test_end_to_end.py`. It generates the C++ and R from the fixtures,
-compiles the C++ against the fixture Fortran library with `R CMD SHLIB`, and runs a
-driver script that sources everything and checks the answers and the classed conditions.
+The R analogue of `test_end_to_end.py`. It generates the C and R from the fixtures,
+compiles the C `.Call` shims against the fixture Fortran library into one shared object
+with `R CMD SHLIB`, and runs a driver script that `dyn.load`s it, sources everything, and
+checks the answers and the classed conditions.
 
-Skipped without gfortran, R and Rcpp.
+Skipped without gfortran and R. No Rcpp -- the shims are pure C.
 """
 
 import os
@@ -21,7 +22,7 @@ from codegen.diagnostics import DiagnosticBag
 from codegen.emit.errors_r import RErrorEmitter
 from codegen.emit.fortran_c import FortranCEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
-from codegen.emit.rcpp import RcppEmitter
+from codegen.emit.c_call import CCallEmitter
 from codegen.frontend.ford_frontend import FordFrontend
 from codegen.ir.errors import ErrorCatalogue
 from codegen.ir.roles import analyse_project
@@ -31,22 +32,13 @@ from conftest import REPO_ROOT
 
 GFORTRAN = shutil.which("gfortran")
 RSCRIPT = shutil.which("Rscript")
+RBIN = shutil.which("R")
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 
-def _has_rcpp() -> bool:
-    if RSCRIPT is None:
-        return False
-    result = subprocess.run(
-        [RSCRIPT, "-e", 'quit(status = !requireNamespace("Rcpp", quietly = TRUE))'],
-        capture_output=True,
-    )
-    return result.returncode == 0
-
-
 pytestmark = pytest.mark.skipif(
-    GFORTRAN is None or RSCRIPT is None or not _has_rcpp(),
-    reason="needs gfortran, R and Rcpp",
+    GFORTRAN is None or RSCRIPT is None or RBIN is None,
+    reason="needs gfortran and R",
 )
 
 
@@ -58,12 +50,14 @@ def _generate(out: Path) -> None:
     interface = build_project(parsed.project, bag)
     assert bag.errors == (), bag.render()
 
-    fortran, cpp, r = FortranCEmitter(), RcppEmitter(), RWrapperEmitter()
-    (out / "tox_marshal.h").write_text(cpp.marshal_header_content())
+    fortran, c, r = FortranCEmitter(), CCallEmitter(), RWrapperEmitter()
+    modules = list(interface)
+    (out / "tox_marshal.h").write_text(c.marshal_header_content())
+    (out / "init.c").write_text(c.registration(modules))
     (out / "tox_validate.R").write_text(r.validators())
-    for module in interface:
+    for module in modules:
         (out / f"{module.name}.F90").write_text(fortran.module(module))
-        (out / f"{module.stripped_name}.cpp").write_text(cpp.module(module))
+        (out / f"{module.stripped_name}.c").write_text(c.module(module))
         (out / f"{module.stripped_name}.R").write_text(r.module(module))
 
     errors = DiagnosticBag()
@@ -76,9 +70,13 @@ def _generate(out: Path) -> None:
 
 
 def _build_fortran(out: Path) -> Path:
+    # objects and the library go in a subdir: the Fortran module fx_basics.F90 and the C
+    # shim fx_basics.c would otherwise both produce fx_basics.o in `out` and collide.
+    fbuild = out / "fortran"
+    fbuild.mkdir(exist_ok=True)
     for name in ("fx_basics.F90", "fx_edges.F90"):
         shutil.copy(REPO_ROOT / FIXTURE_SRC / name, out / name)
-    flags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{out}"]
+    flags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{fbuild}"]
     objects = []
     for source in (
         REPO_ROOT / "src/tox/tox_errors.F90",
@@ -87,46 +85,56 @@ def _build_fortran(out: Path) -> Path:
         out / "fx_basics.F90", out / "fx_edges.F90",
         out / "fx_basics_c.F90", out / "fx_edges_c.F90",
     ):
-        obj = out / f"{Path(source).stem}.o"
+        obj = fbuild / f"{Path(source).stem}.o"
         result = subprocess.run(
             [GFORTRAN, *flags, "-c", str(source), "-o", str(obj)],
             cwd=REPO_ROOT, capture_output=True, text=True,
         )
         assert result.returncode == 0, f"{source}:\n{result.stderr}"
         objects.append(str(obj))
-    library = out / "libfixtures.so"
+    library = fbuild / "libfixtures.so"
     result = subprocess.run(
         [GFORTRAN, "-shared", "-o", str(library), *objects],
         cwd=REPO_ROOT, capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr
-    return library
+    return fbuild
+
+
+def _build_shim(out: Path, libdir: Path) -> Path:
+    """Compile the generated C `.Call` shims into one `tensoromics.so` (R_init_tensoromics),
+    linked against the fixture Fortran library in `libdir`."""
+    sources = sorted(p.name for p in out.glob("*.c"))  # module .c files + init.c
+    environ = dict(os.environ)
+    environ["PKG_CPPFLAGS"] = f"-I{out}"
+    environ["PKG_LIBS"] = f"-L{libdir} -lfixtures -Wl,-rpath,{libdir}"
+    result = subprocess.run(
+        [RBIN, "CMD", "SHLIB", *sources, "-o", "tensoromics.so"],
+        cwd=out, capture_output=True, text=True, env=environ,
+    )
+    assert result.returncode == 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    return out / "tensoromics.so"
 
 
 @pytest.fixture(scope="session")
 def built(tmp_path_factory):
     out = tmp_path_factory.mktemp("e2e_r")
     _generate(out)
-    _build_fortran(out)
+    libdir = _build_fortran(out)
+    _build_shim(out, libdir)
     return out
 
 
 def run_r(built: Path, body: str) -> str:
-    """Source the generated R, run `body`, return its stdout."""
+    """Load the compiled shim, source the generated R, run `body`, return its stdout."""
     script = textwrap.dedent(f"""
-        suppressMessages({{
-          Rcpp::sourceCpp("fx_basics.cpp")
-          Rcpp::sourceCpp("fx_edges.cpp")
-        }})
+        dyn.load("tensoromics.so")
         source("error_handling.R"); source("tox_validate.R")
         source("fx_basics.R"); source("fx_edges.R")
         {body}
     """)
-    environ = dict(os.environ)
-    environ["PKG_CPPFLAGS"] = f"-I{built}"
-    environ["PKG_LIBS"] = f"-L{built} -lfixtures -Wl,-rpath,{built}"
     result = subprocess.run(
-        [RSCRIPT, "-e", script], cwd=built, capture_output=True, text=True, env=environ,
+        [RSCRIPT, "-e", script], cwd=built, capture_output=True, text=True,
     )
     assert result.returncode == 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     return result.stdout
@@ -149,6 +157,11 @@ class TestResultsAreRight:
     def test_a_function_result_comes_back(self, built):
         out = run_r(built, 'cat(fx_count_positive(c(-1, 2, 3)))')
         assert int(out) == 2
+
+    def test_an_inout_scalar_is_capped_and_returned(self, built):
+        # the modified scalar comes back from its <name>_v local, not the SEXP argument
+        out = run_r(built, 'cat(fx_cap_value(15L), fx_cap_value(3L))')
+        assert [int(x) for x in out.split()] == [10, 3]
 
     def test_a_default_is_applied_when_the_argument_is_omitted(self, built):
         # fx_optionals has span/max_iter/use_quantile with DM_DEFAULT

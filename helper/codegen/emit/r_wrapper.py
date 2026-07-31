@@ -167,13 +167,13 @@ class RWrapperEmitter:
     def _must_be_supplied(argument: CArgument, wrapper: CWrapper) -> bool:
         """Whether a synthesised extent or strlen has to come from the caller after all.
 
-        Kept in step with the Rcpp emitter, which decides the same thing for the C++
+        Kept in step with the C emitter, which decides the same thing for the `.Call`
         signature: an extent or strlen that sizes only an *output* has nothing to be read
         off, so it stays a parameter on both sides.
         """
-        from .rcpp import RcppEmitter
+        from .c_call import CCallEmitter
 
-        return RcppEmitter()._must_be_supplied(argument, wrapper)
+        return CCallEmitter()._must_be_supplied(argument, wrapper)
 
     @staticmethod
     def _is_derived(argument: CArgument) -> bool:
@@ -313,7 +313,9 @@ class RWrapperEmitter:
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
         inputs = ", ".join(a.name for a in self._rcpp_inputs(wrapper))
-        writer.line(f".result <- .{wrapper.stripped_name}_rcpp({inputs})")
+        prefix = f'"{wrapper.stripped_name}_call"'
+        args = f"{prefix}, {inputs}" if inputs else prefix
+        writer.line(f".result <- .Call({args})")
         names = ", ".join(f'"{a.name}"' for a in wrapper.procedure.arguments)
         writer.line(f".arguments <- c({names})")
         writer.line(".status <- check_err_code(.result$ierr, .arguments)")
