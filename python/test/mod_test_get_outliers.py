@@ -292,7 +292,7 @@ def test_identify_outliers_basic():
     # RDI values with clear outlier
     rdi = np.array([0.5, 0.6, 0.4, 3.5, 0.5], dtype=np.float64)
 
-    result = tox_identify_outliers(rdi, percentile=80.0)  # Use 80th percentile
+    result = tox_identify_outliers(rdi, percentile=0.8)  # Use 80th percentile
 
     # Verify that gene with RDI=3.5 is identified as outlier
     assert result['outliers'][3] == True
@@ -304,7 +304,7 @@ def test_identify_outliers_no_outliers():
 
     rdi = np.array([0.5, 0.6, 0.4, 0.7, 0.5], dtype=np.float64)  # All low RDI
 
-    result = tox_identify_outliers(rdi, percentile=99.0)  # Very high percentile
+    result = tox_identify_outliers(rdi, percentile=0.99)  # Very high percentile
 
     # With very high percentile, few or no outliers should be found
     assert isinstance(result['outliers'], np.ndarray)
@@ -316,7 +316,7 @@ def test_identify_outliers_all_outliers():
 
     rdi = np.array([3.0, 4.0, 5.0, 3.5], dtype=np.float64)  # All high RDI
 
-    result = tox_identify_outliers(rdi, percentile=25.0)  # Low percentile = more outliers
+    result = tox_identify_outliers(rdi, percentile=0.25)  # Low percentile = more outliers
 
     # With low percentile, more outliers should be found
     assert sum(result['outliers']) >= 1
@@ -346,7 +346,7 @@ def test_detect_outliers_pipeline():
         5, 5, 5, 5,  # Family 5
         6, 6, 6, 6   # Family 6
     ], dtype=np.int32)
-    percentile = 90.0
+    percentile = 0.9
 
     result = tox_detect_outliers(distances, gene_to_fam, percentile)
 
@@ -378,7 +378,7 @@ def test_detect_outliers_performance():
     import time
     start_time = time.time()
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
 
     end_time = time.time()
     elapsed = end_time - start_time
@@ -397,14 +397,14 @@ def test_detect_outliers_edge_cases():
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 1, 1], dtype=np.int32)
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
     assert len(result['loess_x']) == 1
 
     # Case 2: Each gene in different family
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 2, 3], dtype=np.int32)
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=95.0)
+    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
     assert len(result['loess_x']) == 3
 
 

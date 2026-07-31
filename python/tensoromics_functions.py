@@ -1884,14 +1884,14 @@ def tox_compute_rdi(distances, gene_to_fam, dscale):
 
 
 #> tox_get_outliers:identify_outliers_c: Identify outliers based on RDI percentile or threshold
-def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
+def tox_identify_outliers(rdi, threshold=None, percentile=0.95):
     """
     Identify outliers based on RDI percentile or threshold
 
     Args:
         rdi: Relative Distance Index values
         threshold: Fixed RDI threshold (if None, uses percentile)
-        percentile: Percentile threshold for outlier detection (default: 95 for top 5%)
+        percentile: Percentile threshold in [0,1] for outlier detection (default: 0.95 for top 5%)
 
     Returns:
         dict: Dictionary containing:
@@ -1949,14 +1949,14 @@ def tox_identify_outliers(rdi, threshold=None, percentile=95.0):
 
 
 #> tox_get_outliers:detect_outliers_c: Complete outlier detection pipeline
-def tox_detect_outliers(distances, gene_to_fam, percentile=95.0):
+def tox_detect_outliers(distances, gene_to_fam, percentile=0.95):
     """
     Complete outlier detection pipeline
 
     Args:
         distances: Gene distances to centroids
         gene_to_fam: Gene-to-family mapping
-        percentile: Percentile threshold for outlier detection (default: 95 for top 5%)
+        percentile: Percentile threshold in [0,1] for outlier detection (default: 0.95 for top 5%)
 
     Returns:
         dict: Dictionary containing outliers and intermediate results
