@@ -204,6 +204,10 @@ class PythonEmitter:
             with writer.indent():
                 writer.line("if candidate and os.path.exists(candidate):")
                 with writer.indent():
+                    # The one library also carries the R `.Call` shims, whose R API symbols
+                    # are undefined until R loads it; they are marked weak in the shims so
+                    # this eager load resolves them to null (Python never calls them) while a
+                    # genuinely missing symbol still fails loudly here.
                     writer.line("_loaded = ctypes.CDLL(candidate)")
                     writer.line("return _loaded")
             writer.blank()

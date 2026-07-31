@@ -32,6 +32,34 @@ R_DLL_NAME = "tensoromics"
 _GUARD_OPEN = "#if !defined(NO_R_INTERFACE) && !defined(NO_C_INTERFACE)"
 _GUARD_CLOSE = "#endif  // R interface"
 
+#: Every R API symbol the shims reference. R provides them at dyn.load, but the one
+#: libtensor-omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
+#: lets that load succeed under eager binding -- the undefined R symbols resolve to null, and
+#: the R-only code that would use them never runs from Python -- while a *genuinely* missing
+#: symbol (a build regression) still fails loudly at load. R binds them to its real
+#: definitions at dyn.load. The `test_ctypes_loads_the_r_bundled_library` end-to-end test
+#: guards this list: if the emitter starts using an R symbol not here, that load fails.
+#: (NA_STRING is R_NaString; PROTECT/UNPROTECT are Rf_protect/Rf_unprotect; CHAR is R_CHAR.)
+_WEAK_R_SYMBOLS = (
+    "COMPLEX", "INTEGER", "LENGTH", "LOGICAL", "REAL", "STRING_ELT", "TYPEOF", "XLENGTH",
+    "SET_STRING_ELT", "SET_VECTOR_ELT",
+    "R_CHAR", "R_alloc", "R_DimSymbol", "R_NamesSymbol", "R_NilValue", "R_NaString",
+    "R_registerRoutines", "R_useDynamicSymbols",
+    "Rf_allocVector", "Rf_asInteger", "Rf_asLogical", "Rf_asReal", "Rf_coerceVector",
+    "Rf_duplicate", "Rf_getAttrib", "Rf_length", "Rf_mkChar", "Rf_mkCharLen",
+    "Rf_protect", "Rf_setAttrib", "Rf_unprotect",
+    "Rf_ScalarComplex", "Rf_ScalarInteger", "Rf_ScalarLogical", "Rf_ScalarReal",
+)
+
+
+def _weak_pragmas() -> list[str]:
+    """`#pragma weak` for every R symbol -- see `_WEAK_R_SYMBOLS`. Emitted at the top of a
+    translation unit (before any use) so the references resolve weakly."""
+    lines = ["// weak so the one library still loads into a non-R host (Python/ctypes);",
+             "// see helper/codegen/emit/c_call.py"]
+    lines += [f"#pragma weak {symbol}" for symbol in _WEAK_R_SYMBOLS]
+    return lines
+
 #: A Fortran numeric literal's kind suffix -- `0_int32`. C has no such thing.
 _FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
 #: `size(arr)` / `size(arr, dim)` -- an extent stated in terms of another argument.
@@ -108,7 +136,9 @@ class CCallEmitter:
         self.dll_name = dll_name
 
     def marshal_header_content(self) -> str:
-        return _MARSHAL_HEADER
+        # the pragmas go here (before the helpers, which use some of these symbols); the .c
+        # that includes this header sees them before its own uses too
+        return _MARSHAL_HEADER.replace("// __WEAK_PRAGMAS__", "\n".join(_weak_pragmas()))
 
     # -- module -----------------------------------------------------------------
 
@@ -150,6 +180,8 @@ class CCallEmitter:
         writer.line("#include <R.h>")
         writer.line("#include <Rinternals.h>")
         writer.line("#include <R_ext/Rdynload.h>")
+        for line in _weak_pragmas():
+            writer.line(line)
         writer.blank()
         writer.line("// forward declarations of the .Call entry points")
         for wrapper in entries:
@@ -664,6 +696,8 @@ _MARSHAL_HEADER = r'''// Generated. Do not edit.
 #include <R.h>
 #include <Rinternals.h>
 #include <string.h>
+
+// __WEAK_PRAGMAS__
 
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }

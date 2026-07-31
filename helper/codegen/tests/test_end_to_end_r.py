@@ -269,3 +269,16 @@ class TestNoRInterface:
                               capture_output=True, text=True).stdout
         assert "fx_normalize_call" not in syms   # the R shim is gone
         assert "fx_normalize_c" in syms          # the Fortran C ABI stays
+
+
+class TestPythonCanLoadTheBundledLibrary:
+    def test_ctypes_loads_the_r_bundled_library(self, built):
+        """The one library carries the R shims (undefined R symbols), but must still load
+        into a non-R host under the *default* eager binding: every R symbol is marked weak,
+        so it resolves to null (Python never calls the R code). This guards the fix that lets
+        Python's ctypes load libtensor-omics.so once it also contains the R interface -- and,
+        because the load is eager, that the weak set is complete (a strong R symbol would
+        make this fail)."""
+        import ctypes
+        lib = ctypes.CDLL(str(built / "libfixtures.so"))   # default mode == eager
+        assert hasattr(lib, "fx_normalize_c")   # a Fortran C-ABI symbol is callable

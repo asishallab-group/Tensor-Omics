@@ -80,6 +80,19 @@ The R headers reach the C compiler through fpm's `--c-flag` (its `--flag` is For
 the `.so` links with R's symbols left undefined, resolved when R loads it, so it carries no
 `libR` dependency.
 
+**The same `.so` is loaded by Python too** (`ctypes`), where there is no R to resolve those
+symbols. So *every* R API symbol the shims reference is marked `#pragma weak` (in
+`tox_marshal.h` and `init.c`, listed in `c_call._WEAK_R_SYMBOLS`): the ordinary eager load
+resolves them to null — Python never calls the R code that would use them — while a
+*genuinely* missing symbol (a build regression) still fails loudly at load. Weakening only
+the *data* symbols and loading `RTLD_LAZY` was rejected: it works, but defers real
+missing-symbol errors to first call. Adding an R symbol to the shims means adding it to the
+list; `test_ctypes_loads_the_r_bundled_library` catches an omission (its eager load fails).
+
+*Build caveat:* fpm content-hashes C sources and does not track their dependency on
+`tox_marshal.h`, so a change to that header alone will not trigger a recompile of the
+`.c` shims — force a clean build (a `--directive=...` does, or clear `build/<compiler>_*`).
+
 ---
 
 ## Decision: the null-check order is `ierr`, scalars, arrays

@@ -12,6 +12,44 @@
 #include <Rinternals.h>
 #include <string.h>
 
+// weak so the one library still loads into a non-R host (Python/ctypes);
+// see helper/codegen/emit/c_call.py
+#pragma weak COMPLEX
+#pragma weak INTEGER
+#pragma weak LENGTH
+#pragma weak LOGICAL
+#pragma weak REAL
+#pragma weak STRING_ELT
+#pragma weak TYPEOF
+#pragma weak XLENGTH
+#pragma weak SET_STRING_ELT
+#pragma weak SET_VECTOR_ELT
+#pragma weak R_CHAR
+#pragma weak R_alloc
+#pragma weak R_DimSymbol
+#pragma weak R_NamesSymbol
+#pragma weak R_NilValue
+#pragma weak R_NaString
+#pragma weak R_registerRoutines
+#pragma weak R_useDynamicSymbols
+#pragma weak Rf_allocVector
+#pragma weak Rf_asInteger
+#pragma weak Rf_asLogical
+#pragma weak Rf_asReal
+#pragma weak Rf_coerceVector
+#pragma weak Rf_duplicate
+#pragma weak Rf_getAttrib
+#pragma weak Rf_length
+#pragma weak Rf_mkChar
+#pragma weak Rf_mkCharLen
+#pragma weak Rf_protect
+#pragma weak Rf_setAttrib
+#pragma weak Rf_unprotect
+#pragma weak Rf_ScalarComplex
+#pragma weak Rf_ScalarInteger
+#pragma weak Rf_ScalarLogical
+#pragma weak Rf_ScalarReal
+
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }
 
