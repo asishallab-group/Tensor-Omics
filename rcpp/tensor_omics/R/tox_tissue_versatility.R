@@ -25,7 +25,7 @@ compute_tissue_versatility <- function(expression_vectors, exp_vecs_selection_in
     if (length(exp_vecs_selection_index) != dim(expression_vectors)[2])
         .tox_shape_error("exp_vecs_selection_index", length(exp_vecs_selection_index), "expression_vectors", dim(expression_vectors)[2])
 
-    .result <- .compute_tissue_versatility_rcpp(expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes)
+    .result <- .Call("compute_tissue_versatility_call", expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes)
     .arguments <- c("n_axes", "n_vectors", "expression_vectors", "exp_vecs_selection_index", "n_selected_vectors", "axes_selection", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -24,7 +24,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
     if (!is.null(random_seed))
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
-    .result <- .perform_permutation_test_rcpp(trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
+    .result <- .Call("perform_permutation_test_call", trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "tmp_factor", "tmp_dependent", "ierr", "random_seed")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -57,7 +57,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
     if (length(total_contributions_perm_test) != dim(local_contributions_perm_test)[2])
         .tox_shape_error("total_contributions_perm_test", length(total_contributions_perm_test), "local_contributions_perm_test", dim(local_contributions_perm_test)[2])
 
-    .result <- .compute_p_values_rcpp(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test)
+    .result <- .Call("compute_p_values_call", local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test)
     .arguments <- c("local_contributions_observed", "total_contribution_observed", "local_contributions_perm_test", "total_contributions_perm_test", "n_timepoints", "n_permutations", "local_p_values", "total_p_value", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -83,7 +83,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
     if (length(dependent) != length(factor))
         .tox_shape_error("dependent", length(dependent), "factor", length(factor))
 
-    .result <- .compute_contributions_rcpp(factor, dependent, baseline_mode)
+    .result <- .Call("compute_contributions_call", factor, dependent, baseline_mode)
     .arguments <- c("factor", "dependent", "n_dims", "baseline_mode", "local_contributions", "total_contribution", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -108,7 +108,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
     factor_indices <- .tox_as_integer_vector(factor_indices, "factor_indices")
     dependent_indices <- .tox_as_integer_vector(dependent_indices, "dependent_indices")
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
-    .result <- .compute_all_contributions_rcpp(trajectories, factor_indices, dependent_indices, baseline_mode)
+    .result <- .Call("compute_all_contributions_call", trajectories, factor_indices, dependent_indices, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -134,7 +134,7 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
     if (length(dependent) != length(factor))
         .tox_shape_error("dependent", length(dependent), "factor", length(factor))
 
-    .result <- .compute_baselines_factor_dependent_rcpp(factor, dependent, baseline_mode)
+    .result <- .Call("compute_baselines_factor_dependent_call", factor, dependent, baseline_mode)
     .arguments <- c("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -153,7 +153,7 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
 #' @export
 compute_velocity_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
-    .result <- .compute_velocity_trajectory_rcpp(trajectory)
+    .result <- .Call("compute_velocity_trajectory_call", trajectory)
     .arguments <- c("trajectory", "velocity", "n_timepoints", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -171,7 +171,7 @@ compute_velocity_trajectory <- function(trajectory) {
 compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_vector(velocity, "velocity")
     n_timepoints <- .tox_as_integer_scalar(n_timepoints, "n_timepoints")
-    .result <- .compute_acceleration_from_velocity_trajectory_rcpp(velocity, n_timepoints)
+    .result <- .Call("compute_acceleration_from_velocity_trajectory_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_timepoints", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -187,7 +187,7 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
 #' @export
 compute_velocity_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
-    .result <- .compute_velocity_trajectories_rcpp(trajectories)
+    .result <- .Call("compute_velocity_trajectories_call", trajectories)
     .arguments <- c("trajectories", "velocity", "n_factors", "n_samples", "n_timepoints", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -205,7 +205,7 @@ compute_velocity_trajectories <- function(trajectories) {
 compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_array(velocity, "velocity", 3L)
     n_timepoints <- .tox_as_integer_scalar(n_timepoints, "n_timepoints")
-    .result <- .compute_acceleration_from_velocity_rcpp(velocity, n_timepoints)
+    .result <- .Call("compute_acceleration_from_velocity_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -236,7 +236,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 compute_velocity_acceleration_contributions_expert <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
-    .result <- .compute_velocity_acceleration_contributions_expert_rcpp(trajectories, baseline_mode)
+    .result <- .Call("compute_velocity_acceleration_contributions_expert_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "tmp_factors", "tmp_dependent", "tmp_contributions", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -272,7 +272,7 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
 compute_velocity_acceleration_contributions <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
-    .result <- .compute_velocity_acceleration_contributions_rcpp(trajectories, baseline_mode)
+    .result <- .Call("compute_velocity_acceleration_contributions_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -16,7 +16,7 @@ tox_loess_required_workspace <- function(n_dim, max_neighborhood_size, save_fact
     n_dim <- .tox_as_integer_scalar(n_dim, "n_dim")
     max_neighborhood_size <- .tox_as_integer_scalar(max_neighborhood_size, "max_neighborhood_size")
     save_factorization <- .tox_as_logical(save_factorization, "save_factorization")
-    .result <- .tox_loess_required_workspace_rcpp(n_dim, max_neighborhood_size, save_factorization)
+    .result <- .Call("tox_loess_required_workspace_call", n_dim, max_neighborhood_size, save_factorization)
     .arguments <- c("n_dim", "max_neighborhood_size", "int_workspace_size", "real_workspace_size", "save_factorization")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -67,7 +67,7 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
     if (dim(eval_points)[1] != length(x))
         .tox_shape_error("eval_points", dim(eval_points)[1], "x", length(x))
 
-    .result <- .loess_fit_plain_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace_size, real_workspace_size)
+    .result <- .Call("loess_fit_plain_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace_size, real_workspace_size)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "fitted_values", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -135,7 +135,7 @@ loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neigh
     if (length(permutation_indices) != length(x))
         .tox_shape_error("permutation_indices", length(permutation_indices), "x", length(x))
 
-    .result <- .loess_fit_robust_rcpp(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace_size, real_workspace_size, robust_weights, combined_weights, residuals, permutation_indices)
+    .result <- .Call("loess_fit_robust_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace_size, real_workspace_size, robust_weights, combined_weights, residuals, permutation_indices)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "robust_weights", "combined_weights", "residuals", "permutation_indices", "fitted_values", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -178,7 +178,7 @@ loess <- function(x, y, span, degree, mode, n_iters = 3L) {
     degree <- .tox_as_integer_scalar(degree, "degree")
     mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
     n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
-    .result <- .loess_rcpp(x, y, span, degree, mode, n_iters)
+    .result <- .Call("loess_call", x, y, span, degree, mode, n_iters)
     .arguments <- c("x", "y", "span", "degree", "fitted_values", "mode", "n_iters", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

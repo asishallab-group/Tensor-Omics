@@ -16,7 +16,7 @@ euclidean_distance <- function(vec1, vec2) {
     if (length(vec2) != length(vec1))
         .tox_shape_error("vec2", length(vec2), "vec1", length(vec1))
 
-    .result <- .euclidean_distance_rcpp(vec1, vec2)
+    .result <- .Call("euclidean_distance_call", vec1, vec2)
     .arguments <- c("vec1", "vec2", "n_elements", "result", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -43,7 +43,7 @@ distance_to_centroid <- function(genes, centroids, gene_to_fam) {
     if (dim(centroids)[1] != dim(genes)[1])
         .tox_shape_error("centroids", dim(centroids)[1], "genes", dim(genes)[1])
 
-    .result <- .distance_to_centroid_rcpp(genes, centroids, gene_to_fam)
+    .result <- .Call("distance_to_centroid_call", genes, centroids, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -9,7 +9,7 @@
 #' @export
 build_bst_index <- function(values) {
     values <- .tox_as_double_vector(values, "values")
-    .result <- .build_bst_index_rcpp(values)
+    .result <- .Call("build_bst_index_call", values)
     .arguments <- c("values", "n_values", "sorted_indices", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -34,7 +34,7 @@ bst_range_query <- function(values, sorted_indices, lower_bound, upper_bound) {
     if (length(sorted_indices) != length(values))
         .tox_shape_error("sorted_indices", length(sorted_indices), "values", length(values))
 
-    .result <- .bst_range_query_rcpp(values, sorted_indices, lower_bound, upper_bound)
+    .result <- .Call("bst_range_query_call", values, sorted_indices, lower_bound, upper_bound)
     .arguments <- c("values", "sorted_indices", "n_values", "lower_bound", "upper_bound", "output_indices", "n_matches", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

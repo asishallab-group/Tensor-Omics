@@ -20,7 +20,7 @@ compute_shift_vector_field <- function(expression_vectors, family_centroids, gen
     if (length(gene_to_fam) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
 
-    .result <- .compute_shift_vector_field_rcpp(expression_vectors, family_centroids, gene_to_fam)
+    .result <- .Call("compute_shift_vector_field_call", expression_vectors, family_centroids, gene_to_fam)
     .arguments <- c("n_tissues", "n_genes", "n_families", "expression_vectors", "family_centroids", "gene_to_fam", "shift_vectors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

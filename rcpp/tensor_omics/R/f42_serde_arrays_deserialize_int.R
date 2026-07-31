@@ -12,7 +12,7 @@ deserialize_int_helper <- function(filename) {
     .get_array_metadata_result <- get_array_metadata(filename = filename, dims_out_capacity = 5L)
     arr_shape <- .get_array_metadata_result$dims_out
 
-    .result <- .deserialize_int_helper_rcpp(arr_shape, filename)
+    .result <- .Call("deserialize_int_helper_call", arr_shape, filename)
     .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -18,7 +18,7 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
     if (length(vecs_selection_mask) != dim(vecs)[2])
         .tox_shape_error("vecs_selection_mask", length(vecs_selection_mask), "vecs", dim(vecs)[2])
 
-    .result <- .omics_vector_RAP_projection_rcpp(vecs, vecs_selection_mask, axes_selection_mask)
+    .result <- .Call("omics_vector_RAP_projection_call", vecs, vecs_selection_mask, axes_selection_mask)
     .arguments <- c("vecs", "n_axes", "n_vecs", "vecs_selection_mask", "n_selected_vecs", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -43,7 +43,7 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
     if (length(fields_selection_mask) != dim(fields)[3])
         .tox_shape_error("fields_selection_mask", length(fields_selection_mask), "fields", dim(fields)[3])
 
-    .result <- .omics_field_RAP_projection_rcpp(fields, fields_selection_mask, axes_selection_mask)
+    .result <- .Call("omics_field_RAP_projection_call", fields, fields_selection_mask, axes_selection_mask)
     .arguments <- c("fields", "n_axes", "n_fields", "fields_selection_mask", "n_selected_fields", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -69,7 +69,7 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
     if (length(v2) != length(v1))
         .tox_shape_error("v2", length(v2), "v1", length(v1))
 
-    .result <- .clock_hand_angle_between_vectors_rcpp(v1, v2, selected_axes_for_signed)
+    .result <- .Call("clock_hand_angle_between_vectors_call", v1, v2, selected_axes_for_signed)
     .arguments <- c("v1", "v2", "n_dims", "signed_angle", "selected_axes_for_signed", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -92,7 +92,7 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
     if (length(fields_selection_mask) != dim(fields)[3])
         .tox_shape_error("fields_selection_mask", length(fields_selection_mask), "fields", dim(fields)[3])
 
-    .result <- .clock_hand_angles_for_shift_vectors_rcpp(fields, fields_selection_mask, selected_axes_for_signed)
+    .result <- .Call("clock_hand_angles_for_shift_vectors_call", fields, fields_selection_mask, selected_axes_for_signed)
     .arguments <- c("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -110,7 +110,7 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
 #' @export
 relative_axes_changes_from_shift_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
-    .result <- .relative_axes_changes_from_shift_vector_rcpp(vec)
+    .result <- .Call("relative_axes_changes_from_shift_vector_call", vec)
     .arguments <- c("vec", "n_axes", "contributions", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -128,7 +128,7 @@ relative_axes_changes_from_shift_vector <- function(vec) {
 #' @export
 relative_axes_expression_from_expression_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
-    .result <- .relative_axes_expression_from_expression_vector_rcpp(vec)
+    .result <- .Call("relative_axes_expression_from_expression_vector_call", vec)
     .arguments <- c("vec", "n_axes", "contributions", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

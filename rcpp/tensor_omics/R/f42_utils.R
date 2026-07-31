@@ -25,7 +25,7 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
     if (length(y_ref) != length(x_ref))
         .tox_shape_error("y_ref", length(y_ref), "x_ref", length(x_ref))
 
-    .result <- .loess_smooth_2d_rcpp(x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff)
+    .result <- .Call("loess_smooth_2d_call", x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff)
     .arguments <- c("n_total", "n_target", "x_ref", "y_ref", "indices_used", "n_used", "x_query", "kernel_sigma", "kernel_cutoff", "y_out", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -50,7 +50,7 @@ compute_edf_expert <- function(values, perm) {
     if (length(perm) != length(values))
         .tox_shape_error("perm", length(perm), "values", length(values))
 
-    .result <- .compute_edf_expert_rcpp(values, perm)
+    .result <- .Call("compute_edf_expert_call", values, perm)
     .arguments <- c("values", "n_values", "perm", "unique_values", "cdf_values", "n_unique", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -72,7 +72,7 @@ compute_edf_expert <- function(values, perm) {
 #' @export
 compute_edf <- function(values) {
     values <- .tox_as_double_vector(values, "values")
-    .result <- .compute_edf_rcpp(values)
+    .result <- .Call("compute_edf_call", values)
     .arguments <- c("values", "n_values", "unique_values", "cdf_values", "n_unique", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -115,7 +115,7 @@ compute_scaled_distance_quantile <- function(rdi, sorted_rdi, perm, c_const) {
     if (length(perm) != length(rdi))
         .tox_shape_error("perm", length(perm), "rdi", length(rdi))
 
-    .result <- .compute_scaled_distance_quantile_rcpp(rdi, sorted_rdi, perm, c_const)
+    .result <- .Call("compute_scaled_distance_quantile_call", rdi, sorted_rdi, perm, c_const)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "quantile", "c_const")
     .status <- check_err_code(.result$ierr, .arguments)
 

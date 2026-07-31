@@ -23,7 +23,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
     value_cols <- .tox_as_integer_vector(value_cols, "value_cols")
     start_row <- .tox_as_integer_scalar(start_row, "start_row")
     delimiter <- .tox_as_character(delimiter, "delimiter")
-    .result <- .read_expression_vectors_tsv_rcpp(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter)
+    .result <- .Call("read_expression_vectors_tsv_call", file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter)
     .arguments <- c("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "ierr", "delimiter")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -47,7 +47,7 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
     n_gene_ids_elements <- .tox_as_integer_scalar(n_gene_ids_elements, "n_gene_ids_elements")
     n_header_rows <- .tox_as_integer_scalar(n_header_rows, "n_header_rows")
     gene_col <- .tox_as_integer_scalar(gene_col, "gene_col")
-    .result <- .read_gene_ids_from_tsv_file_rcpp(filename, gene_ids_strlen, n_gene_ids_elements, n_header_rows, gene_col)
+    .result <- .Call("read_gene_ids_from_tsv_file_call", filename, gene_ids_strlen, n_gene_ids_elements, n_header_rows, gene_col)
     .arguments <- c("filename", "gene_ids", "n_header_rows", "gene_col", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -71,7 +71,7 @@ read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_famil
     family_ids_strlen <- .tox_as_integer_scalar(family_ids_strlen, "family_ids_strlen")
     n_family_ids_elements <- .tox_as_integer_scalar(n_family_ids_elements, "n_family_ids_elements")
     n_gene_to_fam_elements <- .tox_as_integer_scalar(n_gene_to_fam_elements, "n_gene_to_fam_elements")
-    .result <- .read_orthofinder_file_rcpp(filename, gene_ids, family_ids_strlen, n_family_ids_elements, n_gene_to_fam_elements)
+    .result <- .Call("read_orthofinder_file_call", filename, gene_ids, family_ids_strlen, n_family_ids_elements, n_gene_to_fam_elements)
     .arguments <- c("filename", "gene_ids", "family_ids", "gene_to_fam", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -90,7 +90,7 @@ read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_famil
 #' @export
 get_unassigned_mask <- function(gene_to_fam) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    .result <- .get_unassigned_mask_rcpp(gene_to_fam)
+    .result <- .Call("get_unassigned_mask_call", gene_to_fam)
     .arguments <- c("gene_to_fam", "mask", "n_genes_kept")
     .status <- check_err_code(.result$ierr, .arguments)
 

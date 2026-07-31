@@ -58,7 +58,7 @@
 !/rcpp/tensor_omics/R
 !/rcpp/tensor_omics/R/*.R
 !/rcpp/tensor_omics/src
-!/rcpp/tensor_omics/src/*.cpp
+!/rcpp/tensor_omics/src/*.c
 !/rcpp/tensor_omics/src/*.h
 !/rcpp/*.R
 

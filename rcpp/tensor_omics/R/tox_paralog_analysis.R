@@ -11,7 +11,7 @@
 mask_check_state <- function(bit_mask, i_gene) {
     bit_mask <- .tox_as_integer_vector(bit_mask, "bit_mask")
     i_gene <- .tox_as_integer_scalar(i_gene, "i_gene")
-    .result <- .mask_check_state_rcpp(bit_mask, i_gene)
+    .result <- .Call("mask_check_state_call", bit_mask, i_gene)
     .arguments <- c("bit_mask", "i_gene")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -40,7 +40,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
     if (length(gene_to_fam) != dim(genes)[2])
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "genes", dim(genes)[2])
 
-    .result <- .detect_neofunctionalization_rcpp(ancestors, genes, gene_to_fam, thresholds)
+    .result <- .Call("detect_neofunctionalization_call", ancestors, genes, gene_to_fam, thresholds)
     .arguments <- c("ancestors", "n_families", "genes", "n_axes", "gene_to_fam", "n_genes", "thresholds", "neofunc", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -73,7 +73,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
     if (dim(genes)[1] != length(ancestor))
         .tox_shape_error("genes", dim(genes)[1], "ancestor", length(ancestor))
 
-    .result <- .detect_dosage_effect_rcpp(ancestor, genes, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, max_angle, gain_gamma)
+    .result <- .Call("detect_dosage_effect_call", ancestor, genes, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, max_angle, gain_gamma)
     .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "tmp_active_mask", "tmp_paralog_vector", "ierr", "max_angle", "gain_gamma")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -115,7 +115,7 @@ detect_subfunctionalization <- function(ancestor, genes, rdi_threshold, filtered
     if (dim(genes)[1] != length(ancestor))
         .tox_shape_error("genes", dim(genes)[1], "ancestor", length(ancestor))
 
-    .result <- .detect_subfunctionalization_rcpp(ancestor, genes, rdi_threshold, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, paralog_norms, sorted_paralog_norms_perm)
+    .result <- .Call("detect_subfunctionalization_call", ancestor, genes, rdi_threshold, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, paralog_norms, sorted_paralog_norms_perm)
     .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "rdi_threshold", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "tmp_active_mask", "tmp_paralog_vector", "paralog_norms", "sorted_paralog_norms_perm", "tmp_work_array", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -134,7 +134,7 @@ detect_subfunctionalization <- function(ancestor, genes, rdi_threshold, filtered
 #' @export
 mask_chunk_count <- function(n_genes) {
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
-    .result <- .mask_chunk_count_rcpp(n_genes)
+    .result <- .Call("mask_chunk_count_call", n_genes)
     .arguments <- c("n_genes", "count")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -163,7 +163,7 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
     if (length(gene_to_fam) != length(gene_angles))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "gene_angles", length(gene_angles))
 
-    .result <- .filter_paralogs_by_pattern_subfunctionalization_rcpp(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
+    .result <- .Call("filter_paralogs_by_pattern_subfunctionalization_call", gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
     .arguments <- c("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -192,7 +192,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
     if (length(gene_to_fam) != length(gene_angles))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "gene_angles", length(gene_angles))
 
-    .result <- .filter_paralogs_by_pattern_dosage_effect_rcpp(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
+    .result <- .Call("filter_paralogs_by_pattern_dosage_effect_call", gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
     .arguments <- c("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -218,7 +218,7 @@ calc_work_arr_paralog_subsets_size <- function(max_subset_size, n_genes, filtere
     max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
     filtered_paralogs_mask <- .tox_as_integer_vector(filtered_paralogs_mask, "filtered_paralogs_mask")
-    .result <- .calc_work_arr_paralog_subsets_size_rcpp(max_subset_size, n_genes, filtered_paralogs_mask)
+    .result <- .Call("calc_work_arr_paralog_subsets_size_call", max_subset_size, n_genes, filtered_paralogs_mask)
     .arguments <- c("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_mask", "n_mask_chunks", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

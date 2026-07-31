@@ -16,7 +16,7 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
     if (dim(centroids)[1] != dim(trajectories)[1])
         .tox_shape_error("centroids", dim(centroids)[1], "trajectories", dim(trajectories)[1])
 
-    .result <- .cluster_factor_trajectories_k_means_rcpp(trajectories, centroids, max_iterations)
+    .result <- .Call("cluster_factor_trajectories_k_means_call", trajectories, centroids, max_iterations)
     .arguments <- c("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "ierr", "max_iterations")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -47,7 +47,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
     if (dim(centroids)[1] != dim(data_points)[1])
         .tox_shape_error("centroids", dim(centroids)[1], "data_points", dim(data_points)[1])
 
-    .result <- .k_means_clustering_rcpp(data_points, centroids, max_iterations)
+    .result <- .Call("k_means_clustering_call", data_points, centroids, max_iterations)
     .arguments <- c("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "ierr", "max_iterations")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -74,7 +74,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 linkage_clustering <- function(distances, method) {
     distances <- .tox_as_double_matrix(distances, "distances")
     method <- .tox_as_mode(method, "method", c("average", "weighted", "ward"))
-    .result <- .linkage_clustering_rcpp(distances, method)
+    .result <- .Call("linkage_clustering_call", distances, method)
     .arguments <- c("distances", "n_points", "merge_i", "merge_j", "heights", "cluster_sizes", "method", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

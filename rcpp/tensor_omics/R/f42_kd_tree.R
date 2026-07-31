@@ -14,7 +14,7 @@ build_kd_index <- function(points, dimension_order) {
     if (length(dimension_order) != dim(points)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "points", dim(points)[1])
 
-    .result <- .build_kd_index_rcpp(points, dimension_order)
+    .result <- .Call("build_kd_index_call", points, dimension_order)
     .arguments <- c("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -39,7 +39,7 @@ build_spherical_kd <- function(points, dimension_order) {
     if (length(dimension_order) != dim(points)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "points", dim(points)[1])
 
-    .result <- .build_spherical_kd_rcpp(points, dimension_order)
+    .result <- .Call("build_spherical_kd_call", points, dimension_order)
     .arguments <- c("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

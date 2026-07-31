@@ -13,7 +13,7 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")
     keys <- .tox_as_character(keys, "keys")
     filenames <- .tox_as_character(filenames, "filenames")
-    .result <- .create_zip_archive_rcpp(zip_filename, keys, filenames)
+    .result <- .Call("create_zip_archive_call", zip_filename, keys, filenames)
     .arguments <- c("zip_filename", "keys", "filenames", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -65,7 +65,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
         shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
     if (!is.null(shift_vectors_file))
         shift_vectors_file <- .tox_as_character(shift_vectors_file, "shift_vectors_file")
-    .result <- .save_tox_data_rcpp(zip_filename, gene_ids, gene_ids_file, expression, expression_file, gene_to_family, gene_to_family_file, family_ids, family_ids_file, family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
+    .result <- .Call("save_tox_data_call", zip_filename, gene_ids, gene_ids_file, expression, expression_file, gene_to_family, gene_to_family_file, family_ids, family_ids_file, family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
     .arguments <- c("zip_filename", "ierr", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -86,7 +86,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #' @export
 get_tox_data_dims <- function(zip_filename) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")
-    .result <- .get_tox_data_dims_rcpp(zip_filename)
+    .result <- .Call("get_tox_data_dims_call", zip_filename)
     .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "n_expression_rows", "n_expression_cols", "n_gene_to_family", "n_family_ids", "family_id_len", "n_family_centroids_rows", "n_family_centroids_cols", "n_shift_vectors_rows", "n_shift_vectors_cols", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -131,7 +131,7 @@ read_tox_data_into <- function(zip_filename) {
     n_shift_vectors_rows <- .get_tox_data_dims_result$n_shift_vectors_rows
     n_shift_vectors_cols <- .get_tox_data_dims_result$n_shift_vectors_cols
 
-    .result <- .read_tox_data_into_rcpp(zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols)
+    .result <- .Call("read_tox_data_into_call", zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols)
     .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

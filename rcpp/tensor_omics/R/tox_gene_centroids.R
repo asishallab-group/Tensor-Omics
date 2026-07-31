@@ -11,7 +11,7 @@
 mean_vector <- function(expression_vectors, gene_indices) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     gene_indices <- .tox_as_integer_vector(gene_indices, "gene_indices")
-    .result <- .mean_vector_rcpp(expression_vectors, gene_indices)
+    .result <- .Call("mean_vector_call", expression_vectors, gene_indices)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_indices", "n_selected_genes", "centroid", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -39,7 +39,7 @@ group_centroid <- function(expression_vectors, gene_to_family, n_families, mode,
     if (length(gene_to_family) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_family", length(gene_to_family), "expression_vectors", dim(expression_vectors)[2])
 
-    .result <- .group_centroid_rcpp(expression_vectors, gene_to_family, n_families, mode, ortholog_set)
+    .result <- .Call("group_centroid_call", expression_vectors, gene_to_family, n_families, mode, ortholog_set)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "mode", "tmp_group_indices", "ierr", "ortholog_set")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -30,7 +30,7 @@ compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, sp
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .compute_family_scaling_expert_rcpp(n_families, distances, gene_to_fam, int_workspace_size, real_workspace_size, span, degree, mode, n_iters)
+    .result <- .Call("compute_family_scaling_expert_call", n_families, distances, gene_to_fam, int_workspace_size, real_workspace_size, span, degree, mode, n_iters)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -62,7 +62,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam) {
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .compute_family_scaling_rcpp(n_families, distances, gene_to_fam)
+    .result <- .Call("compute_family_scaling_call", n_families, distances, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -92,7 +92,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .compute_rdi_rcpp(distances, gene_to_fam, dscale)
+    .result <- .Call("compute_rdi_call", distances, gene_to_fam, dscale)
     .arguments <- c("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "tmp_stack_left", "tmp_stack_right")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -126,7 +126,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
     if (length(perm) != length(rdi))
         .tox_shape_error("perm", length(perm), "rdi", length(rdi))
 
-    .result <- .identify_outliers_rcpp(rdi, sorted_rdi, perm, percentile)
+    .result <- .Call("identify_outliers_call", rdi, sorted_rdi, perm, percentile)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -160,7 +160,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .detect_outliers_rcpp(n_families, distances, gene_to_fam, percentile)
+    .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, percentile)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "tmp_work_array", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile")
     .status <- check_err_code(.result$ierr, .arguments)
 

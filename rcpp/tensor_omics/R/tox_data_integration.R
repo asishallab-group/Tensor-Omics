@@ -9,7 +9,7 @@
 #' @export
 compute_gene_means <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .compute_gene_means_rcpp(expr)
+    .result <- .Call("compute_gene_means_call", expr)
     .arguments <- c("n_genes", "n_reps", "expr", "means", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -30,7 +30,7 @@ compute_residuals <- function(expr, means) {
     if (length(means) != dim(expr)[2])
         .tox_shape_error("means", length(means), "expr", dim(expr)[2])
 
-    .result <- .compute_residuals_rcpp(expr, means)
+    .result <- .Call("compute_residuals_call", expr, means)
     .arguments <- c("n_genes", "n_reps", "expr", "means", "resid", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -50,7 +50,7 @@ pool_means <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
     mean_S2 <- .tox_as_double_vector(mean_S2, "mean_S2")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
-    .result <- .pool_means_rcpp(mean_S1, mean_S2, n_points)
+    .result <- .Call("pool_means_call", mean_S1, mean_S2, n_points)
     .arguments <- c("n_genes_S1", "mean_S1", "n_genes_S2", "mean_S2", "n_points", "n_pool", "x_star", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -76,7 +76,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     if (length(pooled_means_perm) != length(pooled_means))
         .tox_shape_error("pooled_means_perm", length(pooled_means_perm), "pooled_means", length(pooled_means))
 
-    .result <- .pool_means_expert_rcpp(pooled_means, pooled_means_perm, n_points)
+    .result <- .Call("pool_means_expert_call", pooled_means, pooled_means_perm, n_points)
     .arguments <- c("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -103,7 +103,7 @@ calc_neighborhood_size <- function(n_pool, n_points, mean_S, desired_size = 1000
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     mean_S <- .tox_as_double_vector(mean_S, "mean_S")
     desired_size <- .tox_as_integer_scalar(desired_size, "desired_size")
-    .result <- .calc_neighborhood_size_rcpp(n_pool, n_points, mean_S, desired_size)
+    .result <- .Call("calc_neighborhood_size_call", n_pool, n_points, mean_S, desired_size)
     .arguments <- c("n_pool", "n_points", "n_genes_S", "mean_S", "desired_size")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -128,7 +128,7 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
     if (dim(resid_S)[2] != length(mean_S))
         .tox_shape_error("resid_S", dim(resid_S)[2], "mean_S", length(mean_S))
 
-    .result <- .construct_neighborhoods_rcpp(x_star, mean_S, resid_S, n_neighbors)
+    .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors)
     .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -171,7 +171,7 @@ gjct_permutation_test <- function(neighborhood_residuals_S1, neighborhood_residu
     if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
         .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
 
-    .result <- .gjct_permutation_test_rcpp(neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
+    .result <- .Call("gjct_permutation_test_call", neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "ierr", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -214,7 +214,7 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1_copy, neighbo
     if (dim(neighborhood_residuals_S2_copy)[3] != dim(neighborhood_residuals_S1_copy)[3])
         .tox_shape_error("neighborhood_residuals_S2_copy", dim(neighborhood_residuals_S2_copy)[3], "neighborhood_residuals_S1_copy", dim(neighborhood_residuals_S1_copy)[3])
 
-    .result <- .gjct_permutation_test_expert_rcpp(neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
+    .result <- .Call("gjct_permutation_test_expert_call", neighborhood_residuals_S1_copy, neighborhood_residuals_S2_copy, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
     .arguments <- c("neighborhood_residuals_S1_copy", "neighborhood_residuals_S2_copy", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "tmp_pool", "tmp_pmf_S1", "tmp_pmf_S2", "tmp_counts", "tmp_included_n_reps_S1", "tmp_included_n_reps_S2", "tmp_js_divergences", "tmp_weights", "ierr", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -242,7 +242,7 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
     if (length(abs_residual_pool_perm) != length(abs_residual_pool))
         .tox_shape_error("abs_residual_pool_perm", length(abs_residual_pool_perm), "abs_residual_pool", length(abs_residual_pool))
 
-    .result <- .determine_shared_residual_range_expert_rcpp(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile)
+    .result <- .Call("determine_shared_residual_range_expert_call", abs_residual_pool, abs_residual_pool_perm, residual_range_quantile)
     .arguments <- c("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "ierr", "residual_range_quantile")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -267,7 +267,7 @@ determine_shared_residual_range <- function(neighborhood_residuals_S1, neighborh
     if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
         .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
 
-    .result <- .determine_shared_residual_range_rcpp(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
+    .result <- .Call("determine_shared_residual_range_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "ierr", "residual_range_quantile")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -290,7 +290,7 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
     n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
     if (!is.null(neighbor_mask))
         neighbor_mask <- .tox_as_logical(neighbor_mask, "neighbor_mask")
-    .result <- .build_residual_histograms_rcpp(neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
+    .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
     .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "ierr", "neighbor_mask")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -317,7 +317,7 @@ compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
     if (dim(pmf_S2)[2] != dim(pmf_S1)[2])
         .tox_shape_error("pmf_S2", dim(pmf_S2)[2], "pmf_S1", dim(pmf_S1)[2])
 
-    .result <- .compute_divergence_per_reference_point_rcpp(pmf_S1, pmf_S2)
+    .result <- .Call("compute_divergence_per_reference_point_call", pmf_S1, pmf_S2)
     .arguments <- c("pmf_S1", "pmf_S2", "n_points", "n_bins", "js_divergences", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -342,7 +342,7 @@ compute_weighted_global_divergence <- function(js_divergences, included_n_reps_S
     if (length(included_n_reps_S2) != length(js_divergences))
         .tox_shape_error("included_n_reps_S2", length(included_n_reps_S2), "js_divergences", length(js_divergences))
 
-    .result <- .compute_weighted_global_divergence_rcpp(js_divergences, included_n_reps_S1, included_n_reps_S2)
+    .result <- .Call("compute_weighted_global_divergence_call", js_divergences, included_n_reps_S1, included_n_reps_S2)
     .arguments <- c("js_divergences", "n_points", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -392,7 +392,7 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
     if (dim(neighborhood_genes_S2)[2] != dim(neighborhood_residuals_S1)[3])
         .tox_shape_error("neighborhood_genes_S2", dim(neighborhood_genes_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
 
-    .result <- .fjct_compute_jsd_rcpp(family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range)
+    .result <- .Call("fjct_compute_jsd_call", family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range)
     .arguments <- c("family_idx", "gene_to_family_S1", "gene_to_family_S2", "n_genes_S1", "n_genes_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_genes_S1", "neighborhood_genes_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "total_included_n_reps", "global_js_divergence", "weights", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -440,7 +440,7 @@ fjct_compute_jsd_expert <- function(neighborhood_residuals_S1, neighborhood_resi
     if (dim(neighbor_mask_S2)[2] != dim(neighborhood_residuals_S1)[3])
         .tox_shape_error("neighbor_mask_S2", dim(neighbor_mask_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
 
-    .result <- .fjct_compute_jsd_expert_rcpp(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range)
+    .result <- .Call("fjct_compute_jsd_expert_call", neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "neighbor_mask_S1", "neighbor_mask_S2", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "total_included_n_reps", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "tmp_counts", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -472,7 +472,7 @@ fjct_compute_contribution_scores <- function(global_js_divergences, total_includ
     if (length(total_included_n_reps_per_f) != length(global_js_divergences))
         .tox_shape_error("total_included_n_reps_per_f", length(total_included_n_reps_per_f), "global_js_divergences", length(global_js_divergences))
 
-    .result <- .fjct_compute_contribution_scores_rcpp(global_js_divergences, total_included_n_reps_per_f)
+    .result <- .Call("fjct_compute_contribution_scores_call", global_js_divergences, total_included_n_reps_per_f)
     .arguments <- c("global_js_divergences", "total_included_n_reps_per_f", "k_families", "support_weights", "contribution_scores", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

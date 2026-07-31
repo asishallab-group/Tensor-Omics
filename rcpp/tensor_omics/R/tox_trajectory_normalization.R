@@ -9,7 +9,7 @@
 #' @export
 normalize_variable_timeseries <- function(v) {
     v <- .tox_as_double_vector(v, "v")
-    .result <- .normalize_variable_timeseries_rcpp(v)
+    .result <- .Call("normalize_variable_timeseries_call", v)
     .arguments <- c("v", "v_norm", "n_points", "ierr", "status")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -28,7 +28,7 @@ normalize_variable_timeseries <- function(v) {
 #' @export
 normalize_single_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_matrix(trajectory, "trajectory")
-    .result <- .normalize_single_trajectory_rcpp(trajectory)
+    .result <- .Call("normalize_single_trajectory_call", trajectory)
     .arguments <- c("trajectory", "trajectory_norm", "n_factors", "n_timepoints", "ierr", "status")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -49,7 +49,7 @@ normalize_single_trajectory <- function(trajectory) {
 #' @export
 normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
-    .result <- .normalize_all_trajectories_rcpp(trajectories)
+    .result <- .Call("normalize_all_trajectories_call", trajectories)
     .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "ierr", "status")
     .status <- check_err_code(.result$ierr, .arguments)
 

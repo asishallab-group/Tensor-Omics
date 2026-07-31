@@ -25,7 +25,7 @@ validate_data_structure <- function(n_genes, n_families, n_samples, gene_ids, ge
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
     shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
-    .result <- .validate_data_structure_rcpp(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
+    .result <- .Call("validate_data_structure_call", n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
     .arguments <- c("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -43,7 +43,7 @@ validate_data_structure <- function(n_genes, n_families, n_samples, gene_ids, ge
 validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
-    .result <- .validate_gene_to_family_mapping_rcpp(gene_to_fam, n_families)
+    .result <- .Call("validate_gene_to_family_mapping_call", gene_to_fam, n_families)
     .arguments <- c("gene_to_fam", "n_families", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -61,7 +61,7 @@ validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
 validate_expression_data <- function(expression_vectors, check_non_negative) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     check_non_negative <- .tox_as_logical(check_non_negative, "check_non_negative")
-    .result <- .validate_expression_data_rcpp(expression_vectors, check_non_negative)
+    .result <- .Call("validate_expression_data_call", expression_vectors, check_non_negative)
     .arguments <- c("expression_vectors", "check_non_negative", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -77,7 +77,7 @@ validate_expression_data <- function(expression_vectors, check_non_negative) {
 #' @export
 validate_family_centroids <- function(family_centroids) {
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
-    .result <- .validate_family_centroids_rcpp(family_centroids)
+    .result <- .Call("validate_family_centroids_call", family_centroids)
     .arguments <- c("family_centroids", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -101,7 +101,7 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     n_samples <- .tox_as_integer_scalar(n_samples, "n_samples")
-    .result <- .validate_shift_vectors_rcpp(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples)
+    .result <- .Call("validate_shift_vectors_call", shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples)
     .arguments <- c("shift_vectors", "expression_vectors", "family_centroids", "gene_to_fam", "n_samples", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -117,7 +117,7 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
 #' @export
 validate_string_array_uniqueness <- function(str_arr) {
     str_arr <- .tox_as_character(str_arr, "str_arr")
-    .result <- .validate_string_array_uniqueness_rcpp(str_arr)
+    .result <- .Call("validate_string_array_uniqueness_call", str_arr)
     .arguments <- c("str_arr", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -153,7 +153,7 @@ validate_all_data <- function(n_genes, n_families, n_samples, gene_ids, gene_fam
     shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
     check_uniqueness <- .tox_as_logical(check_uniqueness, "check_uniqueness")
     check_shift_consistency <- .tox_as_logical(check_shift_consistency, "check_shift_consistency")
-    .result <- .validate_all_data_rcpp(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, check_uniqueness, check_shift_consistency)
+    .result <- .Call("validate_all_data_call", n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, check_uniqueness, check_shift_consistency)
     .arguments <- c("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "ierr", "check_uniqueness", "check_shift_consistency")
     .status <- check_err_code(.result$ierr, .arguments)
 

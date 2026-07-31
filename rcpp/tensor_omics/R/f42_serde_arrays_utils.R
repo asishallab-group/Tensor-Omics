@@ -11,7 +11,7 @@
 get_array_metadata <- function(filename, dims_out_capacity) {
     filename <- .tox_as_character(filename, "filename")
     dims_out_capacity <- .tox_as_integer_scalar(dims_out_capacity, "dims_out_capacity")
-    .result <- .get_array_metadata_rcpp(filename, dims_out_capacity)
+    .result <- .Call("get_array_metadata_call", filename, dims_out_capacity)
     .arguments <- c("filename", "dims_out", "dims_out_capacity", "ndims", "type_code", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

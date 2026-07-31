@@ -9,7 +9,7 @@
 #' @export
 normalize_unit_length <- function(vector) {
     vector <- .tox_as_double_vector(vector, "vector")
-    .result <- .normalize_unit_length_rcpp(vector)
+    .result <- .Call("normalize_unit_length_call", vector)
     .arguments <- c("vector", "n_dims", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -35,7 +35,7 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     span <- .tox_as_double_scalar(span, "span")
     degree <- .tox_as_integer_scalar(degree, "degree")
     use_quantile <- .tox_as_logical(use_quantile, "use_quantile")
-    .result <- .normalization_pipeline_rcpp(expr, reps_per_tissue, span, degree, use_quantile)
+    .result <- .Call("normalization_pipeline_call", expr, reps_per_tissue, span, degree, use_quantile)
     .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -58,7 +58,7 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
     expr <- .tox_as_double_matrix(expr, "expr")
     span <- .tox_as_double_scalar(span, "span")
     degree <- .tox_as_integer_scalar(degree, "degree")
-    .result <- .normalize_by_std_dev_rcpp(expr, span, degree)
+    .result <- .Call("normalize_by_std_dev_call", expr, span, degree)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "span", "degree", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -76,7 +76,7 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #' @export
 root_mean_sq_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .root_mean_sq_normalization_rcpp(expr)
+    .result <- .Call("root_mean_sq_normalization_call", expr)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -94,7 +94,7 @@ root_mean_sq_normalization <- function(expr) {
 #' @export
 quantile_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .quantile_normalization_rcpp(expr)
+    .result <- .Call("quantile_normalization_call", expr)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -118,7 +118,7 @@ quantile_normalization <- function(expr) {
 #' @export
 log2_transformation <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .log2_transformation_rcpp(expr)
+    .result <- .Call("log2_transformation_call", expr)
     .arguments <- c("n_genes", "n_tissues", "expr", "transformed_expr", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -139,7 +139,7 @@ log2_transformation <- function(expr) {
 calc_tiss_avg <- function(reps_per_tissue, expr) {
     reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
     expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .calc_tiss_avg_rcpp(reps_per_tissue, expr)
+    .result <- .Call("calc_tiss_avg_call", reps_per_tissue, expr)
     .arguments <- c("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
@@ -166,7 +166,7 @@ calc_fchange <- function(control_tissues, condition_tissues, expr) {
     if (length(condition_tissues) != length(control_tissues))
         .tox_shape_error("condition_tissues", length(condition_tissues), "control_tissues", length(control_tissues))
 
-    .result <- .calc_fchange_rcpp(control_tissues, condition_tissues, expr)
+    .result <- .Call("calc_fchange_call", control_tissues, condition_tissues, expr)
     .arguments <- c("n_genes", "n_tissues", "n_pairs", "control_tissues", "condition_tissues", "expr", "fold_changes", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 

@@ -13,7 +13,7 @@ deserialize_char_helper <- function(filename) {
     strlen <- .get_array_metadata_result$type_code
     arr_shape <- .get_array_metadata_result$dims_out
 
-    .result <- .deserialize_char_helper_rcpp(strlen, arr_shape, filename)
+    .result <- .Call("deserialize_char_helper_call", strlen, arr_shape, filename)
     .arguments <- c("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
