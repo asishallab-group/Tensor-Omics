@@ -4,6 +4,7 @@ module mod_test_json
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use f42_json
+    use tox_flyer_json, only: serialize_tox_data_as_flyer_json
     use tox_errors
     use test_suite
     implicit none
