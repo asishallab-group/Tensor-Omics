@@ -11,7 +11,7 @@ on:
       - .github/actions/install-Python/*
       - .github/actions/install-Fortran/*
       - .github/actions/install-R/*
-      - helper/generate_snippets.py
+      - helper/**
       - r/**
       - python/**
       - src/**

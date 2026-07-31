@@ -51,8 +51,7 @@ The `snippets` target (`emit/vscode_snippets.py`) emits VS Code snippets split i
 files -- `{Fortran,Python,R}_{f42,tox}_snippets.json` under `snippets/` -- the language in
 the file name (so no per-snippet `scope`) and the root keeping the two namespaces apart.
 These are **regenerated artifacts, git-ignored** (like the Python/R packages); the
-hand-written `snippets/toxdev_snippets.json` and `snippets/readme.md` sit alongside and are
-tracked. Per exported procedure: a native Fortran `call` (plus a variant that guards
+hand-written `snippets/toxdev_snippets.json` sits alongside and is tracked. Per exported procedure: a native Fortran `call` (plus a variant that guards
 `ierr`) and a wrapper call for Python and R, arguments rendered as keyword tabstops -- a
 `mode`/`method` argument becomes a *choice* of its accepted values. Per module: a Fortran
 `use ..., only:` and a Python import (both a choice of that module's procedures). Plus
