@@ -56,8 +56,7 @@
 !/r/test
 !/r/test/mod_test_*.R
 !/r/tensor_omics
-!/r/tensor_omics/R
-!/r/tensor_omics/R/*.R
+!/r/tensor_omics/*.R
 !/r/*.R
 
 # misc

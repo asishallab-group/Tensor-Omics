@@ -41,7 +41,7 @@ From one exported Fortran procedure, three things:
 |---|---|---|
 | C | `src/c_interface/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
 | Python | `python/tensor_omics/<module>.py` | a `ctypes` function with a numpydoc docstring |
-| R | `src/r_interface/<module>.c` + `r/tensor_omics/R/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
+| R | `src/r_interface/<module>.c` + `r/tensor_omics/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
 | Snippets | `snippets/<Language>_<root>_snippets.json` | VS Code call/setup snippets, split by language and module root |
 
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
@@ -119,7 +119,7 @@ python/tensor_omics/
     __init__.py  library.py  error_handling.py
     <module>.py                       # one per module
 r/tensor_omics/
-    R/tox_validate.R   R/error_handling.R   R/<module>.R
+    tox_validate.R   error_handling.R   <module>.R
 ```
 
 Two things worth knowing:

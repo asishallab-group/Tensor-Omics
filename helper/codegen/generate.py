@@ -157,15 +157,15 @@ def _r_files(interface: CInterface, catalogue, paths: Paths) -> list[GeneratedFi
     files = [
         GeneratedFile(csrc / "tox_marshal.h", emitter.marshal_header_content()),
         GeneratedFile(csrc / "init.c", emitter.registration(modules)),
-        GeneratedFile(out / "R" / "tox_validate.R", wrapper.validators()),
-        GeneratedFile(out / "R" / "error_handling.R", RErrorEmitter(catalogue).module()),
+        GeneratedFile(out / "tox_validate.R", wrapper.validators()),
+        GeneratedFile(out / "error_handling.R", RErrorEmitter(catalogue).module()),
     ]
     for module in modules:
         files.append(
             GeneratedFile(csrc / f"{module.stripped_name}.c", emitter.module(module))
         )
         files.append(
-            GeneratedFile(out / "R" / f"{module.stripped_name}.R", wrapper.module(module))
+            GeneratedFile(out / f"{module.stripped_name}.R", wrapper.module(module))
         )
     return files
 
@@ -195,17 +195,19 @@ def _catalogue(parsed: ParsedProject, diagnostics: DiagnosticBag,
 
 def _clean(targets: tuple[str, ...], paths: Paths) -> None:
     directories = []
+    globs = []
     if "c" in targets:
         directories.append(paths.resolve(paths.c_interface_dir))
     if "python" in targets:
         directories.append(paths.resolve(paths.python_out_dir))
     if "r" in targets:
-        # only the generated subdirectories, so a hand-written DESCRIPTION or NAMESPACE
-        # alongside them is left alone
-        directories += [
-            paths.resolve(paths.r_c_interface_dir),   # the C .Call shims
-            paths.resolve(paths.r_out_dir) / "R",     # the R wrappers
-        ]
+        directories.append(paths.resolve(paths.r_c_interface_dir))   # the C .Call shims
+        # the R wrappers sit directly in r_out_dir; remove only the generated `.R` so a
+        # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
+        globs.append((paths.resolve(paths.r_out_dir), "*.R"))
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)
+    for directory, pattern in globs:
+        for path in directory.glob(pattern):
+            path.unlink()

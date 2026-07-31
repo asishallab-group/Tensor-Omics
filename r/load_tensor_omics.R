@@ -28,8 +28,8 @@
              "(drop --directive=NO_R_INTERFACE, and make sure R is installed).")
 
     # error_handling and tox_validate first: the wrappers call into them
-    scripts <- file.path(root, "R", c("error_handling.R", "tox_validate.R"))
-    rest <- sort(list.files(file.path(root, "R"), pattern = "\\.R$", full.names = TRUE))
+    scripts <- file.path(root, c("error_handling.R", "tox_validate.R"))
+    rest <- sort(list.files(root, pattern = "\\.R$", full.names = TRUE))
     scripts <- c(scripts, setdiff(rest, scripts))
 
     for (script in scripts) {
