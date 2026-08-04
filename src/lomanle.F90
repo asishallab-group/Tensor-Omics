@@ -1471,6 +1471,10 @@ contains
         call set_ok(ierr)
         n_anchor = count(is_anchor_mask)
         if (n_anchor == 0) then
+            ! TODO: F42 "No I/O" violation (SK routine) -- also misleading, since
+            ! ierr stays OK and callers (lomanle_pass) treat n_anchor==0 as a
+            ! legitimate, silently-handled case, not an error. Surface via an
+            ! output argument instead of printing.
             print *, "Error: No anchors found."
             return
         end if
@@ -2196,6 +2200,8 @@ contains
         end do
 
         if (.not. converged) then
+            ! TODO: F42 "No I/O" violation (SK routine) -- surface non-convergence
+            ! via an output argument instead of printing to stdout.
             print '(A,I3,A,ES10.3,A,ES10.3,A)', "  WARNING: did not converge in ", max_iterations, &
                 " iterations. Last max_disp=", max_disp, " (conv_tol=", conv_tol, &
                 "; consider raising max_iterations or relative_conv_tol)"
@@ -2220,6 +2226,8 @@ contains
         call system_clock(prof_t1) ; prof_skeleton = real(prof_t1-prof_t0,real64)/real(prof_rate,real64)  ! PROFILING
 
         ! PROFILING: print the per-stage breakdown for this run
+        ! TODO: F42 "No I/O" violation (SK routine) -- route this profiling
+        ! breakdown through output arguments instead of printing to stdout.
         prof_total = prof_growth + prof_atlas + prof_svd + prof_intersect + prof_stitch + prof_skeleton
         if (prof_total > 0.0_real64) then
             print '(A,I4,A)', "  --- LoManLe profile (", prof_n_calls, " lomanle_pass calls) ---"
