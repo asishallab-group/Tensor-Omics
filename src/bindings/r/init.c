@@ -145,6 +145,7 @@ SEXP compute_velocity_acceleration_contributions_expert_call(SEXP, SEXP);
 SEXP compute_velocity_acceleration_contributions_call(SEXP, SEXP);
 SEXP normalize_variable_timeseries_call(SEXP);
 SEXP normalize_single_trajectory_call(SEXP);
+SEXP normalize_all_trajectories_expert_call(SEXP);
 SEXP normalize_all_trajectories_call(SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
@@ -251,6 +252,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_velocity_acceleration_contributions_call", (DL_FUNC) &compute_velocity_acceleration_contributions_call, 2},
     {"normalize_variable_timeseries_call", (DL_FUNC) &normalize_variable_timeseries_call, 1},
     {"normalize_single_trajectory_call", (DL_FUNC) &normalize_single_trajectory_call, 1},
+    {"normalize_all_trajectories_expert_call", (DL_FUNC) &normalize_all_trajectories_expert_call, 1},
     {"normalize_all_trajectories_call", (DL_FUNC) &normalize_all_trajectories_call, 1},
     {NULL, NULL, 0}
 };
