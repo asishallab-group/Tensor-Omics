@@ -61,6 +61,9 @@ class Conventions:
     mask_count_prefix: str = "n_selected_"
     #: Suffixes recognised on a mask argument, longest first so matching is unambiguous
     mask_suffixes: tuple[str, ...] = ("_selection_mask", "_mask")
+    #: A square real matrix whose name is one of these, or ends in `_<one>`, is validated for
+    #: distance-matrix structure (symmetry, non-negativity, zero diagonal) rather than finiteness
+    distance_matrix_suffixes: tuple[str, ...] = ("distances", "distance_matrix")
 
     #: Accepted spellings of a mode argument. A dummy is a mode argument if its name is
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).

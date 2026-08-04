@@ -42,6 +42,36 @@ def tmp_suffix_collision_kernel_module():
     )
 
 
+def mask_count_kernel_module():
+    """A kernel with a selection mask and its `n_selected_` count (the mask convention)."""
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "select_kernel",
+            real("values", Intent.IN, "(n_vecs)", doc="the data"),
+            integer("n_vecs", Intent.IN, doc="number of vectors"),
+            logical("vecs_selection_mask", Intent.IN, "(n_vecs)", doc="which vectors"),
+            integer("n_selected_vecs", Intent.IN, doc="count of .true. in vecs_selection_mask"),
+            real("result", Intent.OUT, "(n_selected_vecs)", doc="output"),
+            meta=Meta(summary="Select", author="AUTHOR"),
+        ),
+    )
+
+
+def distance_matrix_kernel_module():
+    """A kernel taking a square distance matrix (the distance-matrix convention)."""
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "cluster_kernel",
+            real("distances", Intent.INOUT, "(n_points, n_points)", doc="distance matrix"),
+            integer("n_points", Intent.IN, doc="number of points"),
+            integer("out_labels", Intent.OUT, "(n_points)", doc="labels"),
+            meta=Meta(summary="Cluster", author="AUTHOR"),
+        ),
+    )
+
+
 def mode_split_kernel_module():
     """A kernel with a mode argument whose table names a procedure per mode."""
     mode_table = [

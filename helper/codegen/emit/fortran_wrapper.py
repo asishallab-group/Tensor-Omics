@@ -184,6 +184,14 @@ class FortranWrapperEmitter:
         if any(self._is_allocating(p, module) for p in module):
             # M_ALLOCATE reports through set_err / ERR_ALLOC_FAIL
             names |= {"set_err", "ERR_ALLOC_FAIL"}
+        if any(self._is_distance_matrix(a) for p in module for a in p.arguments):
+            names.add("validate_distance_matrix")
+        if any(
+            a.roles is not None and a.roles.mask_count_of is not None
+            for p in module
+            for a in p.arguments
+        ):
+            names |= {"set_err_once", "ERR_INVALID_INPUT"}
         ordered = ["set_ok", "is_err"]
         return ordered + sorted(names - set(ordered))
 
@@ -387,12 +395,61 @@ class FortranWrapperEmitter:
             for array, call in calls:
                 if array is is_array and call:
                     writer.line(call)
+        for line in self._convention_checks(procedure):
+            writer.line(line)
         writer.line(f"if (is_err({error})) return")
+
+    def _convention_checks(self, procedure: Procedure) -> list[str]:
+        """Checks driven by a naming convention rather than a per-argument range.
+
+        A distance-matrix argument is validated for structure; a `n_selected_<x>` count is
+        validated against `count(<x>_mask)`. Both come from information the wrapper already has
+        (the argument's roles / shape), so the kernel need not carry them or an `ierr`.
+        """
+        error = self.conventions.error_arg
+        lines: list[str] = []
+        for position, argument in enumerate(procedure.arguments, start=1):
+            if self._is_distance_matrix(argument):
+                extent = argument.dimension.extents[0]
+                lines.append(
+                    f"call validate_distance_matrix({argument.name}, {extent}, {error}, "
+                    f"arg_pos={position}_int32)"
+                )
+        for position, argument in enumerate(procedure.arguments, start=1):
+            roles = argument.roles
+            if roles is None or roles.mask_count_of is None:
+                continue
+            mask = roles.mask_count_of
+            lines.append(
+                f"if (count({mask.name}, kind=int32) /= {argument.name}) "
+                f"call set_err_once({error}, ERR_INVALID_INPUT, arg_pos={position}_int32)"
+            )
+        return lines
+
+    def _is_distance_matrix(self, argument: Argument) -> bool:
+        """A square real matrix named by the distance-matrix convention.
+
+        It is validated for distance-matrix structure (symmetry, non-negativity, zero diagonal)
+        by `validate_distance_matrix`, which no per-argument range validator expresses, so it also
+        opts out of the finiteness contract.
+        """
+        if argument.type.base is not BaseType.REAL or not argument.intent.is_input:
+            return False
+        extents = argument.dimension.extents
+        if len(extents) != 2 or extents[0] != extents[1]:
+            return False
+        name = argument.name.lower()
+        return any(
+            name == suffix or name.endswith(f"_{suffix}")
+            for suffix in self.conventions.distance_matrix_suffixes
+        )
 
     def _validator_for(self, argument: Argument) -> str | None:
         """The `tox_errors` validator this argument needs, or None."""
         if not argument.intent.is_input:
             return None  # an output carries no value to check
+        if self._is_distance_matrix(argument):
+            return None  # validated by validate_distance_matrix, emitted as a convention check
         if (
             argument.roles is not None
             and argument.roles.is_extent

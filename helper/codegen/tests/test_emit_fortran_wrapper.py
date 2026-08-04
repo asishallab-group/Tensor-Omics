@@ -248,6 +248,47 @@ class TestModeSplitEmit:
         assert "MODE_SUBFUNC" in header
 
 
+class TestMaskCountConvention:
+    def emitted(self):
+        from builders import project
+        from test_synthesize import mask_count_kernel_module
+
+        return emitted(project(mask_count_kernel_module()))
+
+    def test_the_count_is_checked_against_the_mask(self):
+        # the wrapper, not the kernel, guards count(mask) == n_selected -- so the kernel stays
+        # pure and needs no ierr for it
+        text = self.emitted()
+        assert (
+            "if (count(vecs_selection_mask, kind=int32) /= n_selected_vecs) "
+            "call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)" in text
+        )
+
+    def test_it_imports_the_error_symbols(self):
+        header = self.emitted().split("contains", 1)[0]
+        assert "set_err_once" in header
+        assert "ERR_INVALID_INPUT" in header
+
+
+class TestDistanceMatrixConvention:
+    def emitted(self):
+        from builders import project
+        from test_synthesize import distance_matrix_kernel_module
+
+        return emitted(project(distance_matrix_kernel_module()))
+
+    def test_the_matrix_is_structurally_validated(self):
+        assert (
+            "call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)"
+            in self.emitted()
+        )
+
+    def test_the_matrix_opts_out_of_the_finiteness_check(self):
+        # validate_distance_matrix subsumes the real finiteness check, which would otherwise
+        # run on the same argument
+        assert "validate_all_in_range_real(distances" not in self.emitted()
+
+
 class TestAllocatingWrapper:
     def test_the_module_imports_what_the_alloc_needs(self):
         text = demo_alloc()
