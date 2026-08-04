@@ -9,7 +9,8 @@ void normalize_unit_length_c(double*, const int*, int*);
 void normalization_pipeline_c(const int*, const int*, const double*, double*, const int*, const int*, const double*, const int*, const unsigned char*, int*);
 void normalize_by_std_dev_c(const int*, const int*, const double*, double*, const double*, const int*, int*);
 void root_mean_sq_normalization_c(const int*, const int*, const double*, double*, int*);
-void quantile_normalization_c(const int*, const int*, const double*, double*, double*, double*, int*, int*);
+void quantile_normalization_expert_c(const int*, const int*, const double*, double*, double*, double*, int*, int*);
+void quantile_normalization_c(const int*, const int*, const double*, double*, double*, int*);
 void log2_transformation_c(const int*, const int*, const double*, double*, int*);
 void calc_tiss_avg_c(const int*, const int*, const int*, const double*, double*, int*);
 void calc_fchange_c(const int*, const int*, const int*, const int*, const int*, const double*, double*, int*);
@@ -149,7 +150,7 @@ SEXP root_mean_sq_normalization_call(SEXP expr) {
     return _out;
 }
 
-SEXP quantile_normalization_call(SEXP expr) {
+SEXP quantile_normalization_expert_call(SEXP expr) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[1];
@@ -163,7 +164,7 @@ SEXP quantile_normalization_call(SEXP expr) {
     int* tmp_perm = (int*) R_alloc(n_genes, sizeof(int));
     int ierr = 0;
 
-    quantile_normalization_c(
+    quantile_normalization_expert_c(
         &n_genes,
         &n_replicates,
         REAL(expr),
@@ -171,6 +172,40 @@ SEXP quantile_normalization_call(SEXP expr) {
         REAL(rank_means),
         tmp_genes_row,
         tmp_perm,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SET_VECTOR_ELT(_out, 0, normalized_expr);
+    SET_VECTOR_ELT(_out, 1, rank_means);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("normalized_expr"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("rank_means"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP quantile_normalization_call(SEXP expr) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_genes = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[1];
+    int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
+
+    // outputs and work space
+    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, n_replicates * n_genes)); nprot++;
+    { SEXP normalized_expr_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(normalized_expr_dim)[0] = n_replicates; INTEGER(normalized_expr_dim)[1] = n_genes; Rf_setAttrib(normalized_expr, R_DimSymbol, normalized_expr_dim); UNPROTECT(1); }
+    SEXP rank_means = PROTECT(Rf_allocVector(REALSXP, n_genes)); nprot++;
+    int ierr = 0;
+
+    quantile_normalization_c(
+        &n_genes,
+        &n_replicates,
+        REAL(expr),
+        REAL(normalized_expr),
+        REAL(rank_means),
         &ierr
     );
 

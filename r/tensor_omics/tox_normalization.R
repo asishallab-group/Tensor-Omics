@@ -92,10 +92,31 @@ root_mean_sq_normalization <- function(expr) {
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}.
 #' @export
+quantile_normalization_expert <- function(expr) {
+    expr <- .tox_as_double_matrix(expr, "expr")
+    .result <- .Call("quantile_normalization_expert_call", expr)
+    .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    list(
+        normalized_expr = .result$normalized_expr,
+        rank_means = .result$rank_means
+    )
+}
+
+#' Quantile normalization of a gene expression matrix (F42-compliant).
+#'
+#' Computes average expression per rank across tissues.
+#'
+#' @param expr a numeric matrix. Gene Expression matrix
+#' @return a named list with elements `normalized_expr`, `rank_means`.
+#'
+#' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization_alloc}.
+#' @export
 quantile_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("quantile_normalization_call", expr)
-    .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr")
+    .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(

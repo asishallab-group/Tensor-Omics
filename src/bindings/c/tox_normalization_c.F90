@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_normalization(module)]]
-!| Module with normalization routines for tensor omics.
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_normalization_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -14,6 +14,7 @@ module tox_normalization_c
     public :: normalization_pipeline_c
     public :: normalize_by_std_dev_c
     public :: root_mean_sq_normalization_c
+    public :: quantile_normalization_expert_c
     public :: quantile_normalization_c
     public :: log2_transformation_c
     public :: calc_tiss_avg_c
@@ -33,6 +34,8 @@ contains
             !! number of elements in `vector`
         real(c_double), dimension(n_dims), intent(inout), target :: vector
             !! Vector that will be normalized to unit length
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -72,6 +75,8 @@ contains
             !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -138,6 +143,8 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), intent(in), target :: span
@@ -186,10 +193,12 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -209,7 +218,7 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization(subroutine)]]
     !| Computes average expression per rank across tissues.
-    subroutine quantile_normalization_c(&
+    subroutine quantile_normalization_expert_c(&
             n_genes,&
             n_replicates,&
             expr,&
@@ -218,7 +227,7 @@ contains
             tmp_genes_row,&
             tmp_perm,&
             ierr&
-        ) bind(C, name="quantile_normalization_c")
+        ) bind(C, name="quantile_normalization_expert_c")
         use tox_normalization, only: quantile_normalization
 
         integer(c_int), intent(in), target :: n_genes
@@ -227,6 +236,8 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: rank_means
@@ -236,7 +247,7 @@ contains
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm
             !! Permutation vector
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -256,6 +267,51 @@ contains
             rank_means = rank_means,&
             tmp_genes_row = tmp_genes_row,&
             tmp_perm = tmp_perm,&
+            ierr = ierr&
+        )
+    end subroutine quantile_normalization_expert_c
+
+    !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization_alloc(subroutine)]]
+    !| Computes average expression per rank across tissues.
+    subroutine quantile_normalization_c(&
+            n_genes,&
+            n_replicates,&
+            expr,&
+            normalized_expr,&
+            rank_means,&
+            ierr&
+        ) bind(C, name="quantile_normalization_c")
+        use tox_normalization, only: quantile_normalization_alloc
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+            !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+            !! Normalized `expr`
+        real(c_double), dimension(n_genes), intent(out), target :: rank_means
+            !! Preallocated vector to store rank means
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(rank_means, n_genes)
+
+        call quantile_normalization_alloc(&
+            n_genes = n_genes,&
+            n_replicates = n_replicates,&
+            expr = expr,&
+            normalized_expr = normalized_expr,&
+            rank_means = rank_means,&
             ierr = ierr&
         )
     end subroutine quantile_normalization_c
@@ -280,6 +336,8 @@ contains
             !! Number of tissues
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: transformed_expr
             !! Log-transformed `expr`
         integer(c_int), intent(out), target :: ierr
@@ -321,12 +379,15 @@ contains
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(sum(reps_per_tissue), n_genes), intent(in), target :: expr
             !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -370,14 +431,20 @@ contains
             !! Number of control-condition pairs
         integer(c_int), dimension(n_pairs), intent(in), target :: control_tissues
             !! Control tissue indices
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_tissues`.
         integer(c_int), dimension(n_pairs), intent(in), target :: condition_tissues
             !! Condition tissue indices
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_tissues`.
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
             !! Output matrix for fold changes
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)

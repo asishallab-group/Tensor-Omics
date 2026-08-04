@@ -117,6 +117,7 @@ SEXP normalize_unit_length_call(SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalize_by_std_dev_call(SEXP, SEXP, SEXP);
 SEXP root_mean_sq_normalization_call(SEXP);
+SEXP quantile_normalization_expert_call(SEXP);
 SEXP quantile_normalization_call(SEXP);
 SEXP log2_transformation_call(SEXP);
 SEXP calc_tiss_avg_call(SEXP, SEXP);
@@ -229,6 +230,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},
     {"normalize_by_std_dev_call", (DL_FUNC) &normalize_by_std_dev_call, 3},
     {"root_mean_sq_normalization_call", (DL_FUNC) &root_mean_sq_normalization_call, 1},
+    {"quantile_normalization_expert_call", (DL_FUNC) &quantile_normalization_expert_call, 1},
     {"quantile_normalization_call", (DL_FUNC) &quantile_normalization_call, 1},
     {"log2_transformation_call", (DL_FUNC) &log2_transformation_call, 1},
     {"calc_tiss_avg_call", (DL_FUNC) &calc_tiss_avg_call, 2},
