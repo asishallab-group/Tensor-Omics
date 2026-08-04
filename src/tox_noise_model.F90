@@ -611,16 +611,20 @@ contains
     !| identical for every candidate bin count — recomputing it here per schedule
     !| step would repeat the same `O(n log n)` sort up to `STRATA_N_SCHEDULE_STEPS`
     !| times on identical data.
-    pure subroutine assign_residual_bins_helper(pooled_residuals, perm, n_pooled, n_bins, &
+    pure subroutine assign_residual_bins_helper(bin_values, perm, n_pooled, n_bins, &
                                                 bin_index_per_residual, bin_edges)
         integer(int32), intent(in) :: n_pooled
-        !! Number of valid entries in `pooled_residuals`
-        real(real64), dimension(n_pooled), intent(in) :: pooled_residuals
-        !! Pooled residual values
+        !! Number of valid entries in `bin_values`
+        real(real64), dimension(n_pooled), intent(in) :: bin_values
+        !! Per-residual quantity that DEFINES the bins. To stratify by expression /
+        !! variance regime we pass the SOURCE GENE MEAN of each residual (not the
+        !! residual value), so every residual of a gene lands in a single bin
+        !! (c_g == 1 by construction) and the stratum for a target gene can be selected
+        !! by its own mean.
         integer(int32), dimension(n_pooled), intent(in) :: perm
-        !! Ascending sort permutation of `pooled_residuals` (pre-computed by the caller)
+        !! Ascending sort permutation of `bin_values` (pre-computed by the caller)
         integer(int32), intent(in) :: n_bins
-        !! Number of quantile bins to divide the residuals into
+        !! Number of quantile bins to divide the values into
         integer(int32), dimension(n_pooled), intent(out) :: bin_index_per_residual
         !! Output: 1-based bin index for each residual
         real(real64), dimension(n_bins + 1), intent(out) :: bin_edges
@@ -631,7 +635,7 @@ contains
 
         percentile_step = 100.0_real64 / real(n_bins, real64)
         do i_edge = 1, n_bins + 1
-            call calc_percentile_helper(pooled_residuals, perm, &
+            call calc_percentile_helper(bin_values, perm, &
                                         percentile_step * real(i_edge - 1, real64), bin_edges(i_edge))
         end do
 
@@ -640,8 +644,8 @@ contains
             return
         end if
 
-        do concurrent(i_resid=1:n_pooled) shared(bin_index_per_residual, pooled_residuals, bin_edges, n_bins)
-            bin_index_per_residual(i_resid) = locate_bin_helper(pooled_residuals(i_resid), bin_edges, n_bins)
+        do concurrent(i_resid=1:n_pooled) shared(bin_index_per_residual, bin_values, bin_edges, n_bins)
+            bin_index_per_residual(i_resid) = locate_bin_helper(bin_values(i_resid), bin_edges, n_bins)
         end do
     end subroutine assign_residual_bins_helper
 
@@ -833,7 +837,7 @@ contains
     !| shared across every candidate bin count, since the quantile cutpoints for all
     !| schedule steps are read off the same ordering.
     pure subroutine stratify_residuals_helper( &
-        pooled_residuals, gene_id_per_residual, n_pooled, n_genes_total, &
+        means_sorted, gene_id_per_residual, n_pooled, n_genes_total, &
         tmp_bin_index_per_residual, tmp_bin_edges, &
         tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
         chosen_n_bins, chosen_bin_index_per_residual, chosen_bin_edges, criteria_met)
@@ -841,8 +845,10 @@ contains
         !! Number of pooled residuals to stratify
         integer(int32), intent(in) :: n_genes_total
         !! Total number of genes in the underlying sorted structure
-        real(real64), dimension(n_pooled), intent(in) :: pooled_residuals
-        !! Pooled residual values
+        real(real64), dimension(n_genes_total), intent(in) :: means_sorted
+        !! Sorted gene means (`sorted_data%means_sorted`). Bins are quantiles of the
+        !! per-residual SOURCE GENE MEAN, so residuals are stratified by expression /
+        !! variance regime rather than by residual value.
         integer(int32), dimension(n_pooled), intent(in) :: gene_id_per_residual
         !! Sorted-gene-slot id that each pooled residual came from
         integer(int32), dimension(n_pooled), intent(inout) :: tmp_bin_index_per_residual
@@ -873,20 +879,31 @@ contains
 
         integer(int32) :: i_step, n_bins, i_resid
         integer(int32) :: perm(n_pooled), stack_left(n_pooled), stack_right(n_pooled)
+        real(real64) :: gene_mean_per_residual(n_pooled)
         logical :: is_accepted
 
         criteria_met = .false.
 
-        ! Sort once: the permutation is identical for every candidate bin count.
+        ! Stratify by the SOURCE GENE MEAN of each residual (its expression / variance
+        ! regime), NOT by the residual value. Every residual of a gene then shares one
+        ! bin (c_g == 1 by construction), so the acceptance criteria become meaningful
+        ! and select_stratum_for_target -- which locates a gene MEAN in these edges -- is
+        ! on the correct scale.
+        do concurrent(i_resid=1:n_pooled) &
+            shared(gene_mean_per_residual, means_sorted, gene_id_per_residual)
+            gene_mean_per_residual(i_resid) = means_sorted(gene_id_per_residual(i_resid))
+        end do
+
+        ! Sort once by gene mean: the permutation is identical for every candidate bin count.
         do concurrent(i_resid=1:n_pooled) shared(perm)
             perm(i_resid) = i_resid
         end do
-        call sort_real(pooled_residuals, perm, stack_left, stack_right)
+        call sort_real(gene_mean_per_residual, perm, stack_left, stack_right)
 
         do i_step = 1, STRATA_N_SCHEDULE_STEPS
             n_bins = STRATA_BIN_COUNT_SCHEDULE(i_step)
 
-            call assign_residual_bins_helper(pooled_residuals, perm, n_pooled, n_bins, &
+            call assign_residual_bins_helper(gene_mean_per_residual, perm, n_pooled, n_bins, &
                                              tmp_bin_index_per_residual, tmp_bin_edges(1:n_bins + 1))
 
             call check_stratification_accepted_helper( &
@@ -1423,9 +1440,9 @@ contains
                 ! then restrict sampling to the stratum that contains this gene's
                 ! own mean (case mean for case pool, control mean for control pool).
 
-                ! Stratify case pool
+                ! Stratify case pool (bins are quantiles of the source-gene mean).
                 call stratify_residuals_helper( &
-                    tmp_pool_case(1:n_pool_case), &
+                    sorted_case%means_sorted, &
                     tmp_gene_id_pool_case(1:n_pool_case), &
                     n_pool_case, sorted_case%n_genes, &
                     tmp_strat_bin_index_per_residual_case(1:n_pool_case), tmp_strat_bin_edges_case, &
@@ -1442,9 +1459,9 @@ contains
                     tmp_chosen_bin_edges_case(1:chosen_n_bins_case + 1), chosen_n_bins_case, mean_case_val, &
                     tmp_own_stratum_pool_case(1:n_pool_case), case_stratum_count)
 
-                ! Stratify control pool
+                ! Stratify control pool (bins are quantiles of the source-gene mean).
                 call stratify_residuals_helper( &
-                    tmp_pool_control_own(1:n_pool_control_own), &
+                    sorted_control%means_sorted, &
                     tmp_gene_id_pool_control_own(1:n_pool_control_own), &
                     n_pool_control_own, sorted_control%n_genes, &
                     tmp_strat_bin_index_per_residual_control(1:n_pool_control_own), tmp_strat_bin_edges_control, &
