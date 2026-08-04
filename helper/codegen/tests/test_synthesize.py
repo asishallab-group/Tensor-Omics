@@ -17,7 +17,29 @@ from codegen.ir.entities import Meta
 from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
 
-from builders import ierr, integer, module, procedure, project, real
+from builders import ierr, integer, logical, module, procedure, project, real
+
+
+def tmp_suffix_collision_kernel_module():
+    """tmp_ work arrays whose names also match the shape / mask suffix conventions.
+
+    The tmp_ prefix must win: they are allocated as work arrays, not treated as a shape or
+    a mask (which the binding derives rather than allocates).
+    """
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "work_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            integer("tmp_shape", Intent.OUT, "(2)", doc="scratch that ends in _shape"),
+            logical(
+                "tmp_selection_mask", Intent.OUT, "(n)", doc="scratch that ends in _mask"
+            ),
+            real("result", Intent.OUT, "(n)", doc="output"),
+            meta=Meta(summary="Work", author="AUTHOR"),
+        ),
+    )
 
 
 def mode_split_kernel_module():

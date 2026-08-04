@@ -160,6 +160,32 @@ class TestTmpPermutation:
         assert "use f42_utils" not in text
 
 
+class TestSuffixCollisions:
+    def bodies(self):
+        from builders import project
+        from test_synthesize import tmp_suffix_collision_kernel_module
+
+        text = emitted(project(tmp_suffix_collision_kernel_module()))
+        start = text.index("subroutine work_alloc(")
+        return text[start : text.index("end subroutine work_alloc")], text
+
+    def test_a_tmp_shape_is_allocated_not_derived(self):
+        body, _ = self.bodies()
+        assert "M_ALLOCATE(tmp_shape(2))" in body
+        # dropped from the wrapper's signature (a work array), not carried as a dummy
+        signature = body.split(")", 1)[0]
+        assert "tmp_shape" not in signature
+
+    def test_a_tmp_mask_is_allocated_not_derived(self):
+        body, _ = self.bodies()
+        assert "M_ALLOCATE(tmp_selection_mask(n))" in body
+
+    def test_no_seeding_or_perm_helpers(self):
+        body, text = self.bodies()
+        assert "init_perm" not in body
+        assert "use f42_utils" not in text
+
+
 class TestKernelThatDeclaresIerr:
     def demo_ierr(self):
         from builders import project
