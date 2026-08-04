@@ -1,4 +1,4 @@
-"""Python binding to Module for computing the shift vector field for all genes.
+"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
 
 Generated from tox_shift_vectors. Do not edit.
 """
@@ -43,6 +43,9 @@ def compute_shift_vector_field(
         Family centroid matrix
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_families`.
+        The value `0_int32` is additionally accepted.
 
     Returns
     -------

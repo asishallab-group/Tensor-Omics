@@ -2,7 +2,7 @@
 
 #' Compute the shift vector field for all genes.
 #'
-#' Computes the shift vectors by substracting the corresponding family centroid from the expression vector.
+#' Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
 #'
 #' @param expression_vectors a numeric matrix. Gene expression matrix
 #' @param family_centroids a numeric matrix. Family centroid matrix
