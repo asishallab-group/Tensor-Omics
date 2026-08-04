@@ -1,4 +1,4 @@
-"""Python binding to Module for calculating normalized tissue (axis) versatility.
+"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
 
 Generated from tox_tissue_versatility. Do not edit.
 """

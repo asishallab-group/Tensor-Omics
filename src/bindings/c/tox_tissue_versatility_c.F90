@@ -2,9 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_tissue_versatility(module)]]
-!| Module for calculating normalized tissue (axis) versatility.
-!| This module implements the angle-based metric for tissue versatility,
-!| quantifying how uniformly a gene is expressed across selected axes (tissues).
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_tissue_versatility_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -19,6 +17,10 @@ contains
     !> summary: C-wrapper for [[tox_tissue_versatility(module):compute_tissue_versatility(subroutine)]]
     !| The metric is based on the angle between each gene expression vector and the space diagonal.
     !| Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
+    !|
+    !| The selection-consistency checks (`n_selected_axes` as a dimension, and each selection count
+    !| matching its claimed total) live here: they compare a `count(mask)` against a claimed size, which
+    !| the generated wrapper's per-argument validators cannot express.
     subroutine compute_tissue_versatility_c(&
             n_axes,&
             n_vectors,&

@@ -5,6 +5,10 @@
 #' The metric is based on the angle between each gene expression vector and the space diagonal.
 #' Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
 #'
+#' The selection-consistency checks (`n_selected_axes` as a dimension, and each selection count
+#' matching its claimed total) live here: they compare a `count(mask)` against a claimed size, which
+#' the generated wrapper's per-argument validators cannot express.
+#'
 #' @param expression_vectors a numeric matrix. 2D array (n_axes, n_vectors), each column is a gene expression vector
 #' @param exp_vecs_selection_index a logical vector. Logical array (n_vectors), .TRUE. for vectors to process
 #' @param n_selected_vectors a integer scalar. Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)
