@@ -10,7 +10,7 @@ from codegen.ir.entities import Meta
 from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
 
-from builders import integer, module, procedure, project, real
+from builders import ierr, integer, module, procedure, project, real
 
 C_BINDING = Meta(summary="a summary", author="AUTHOR", category="C-binding")
 
@@ -67,6 +67,21 @@ def kernel_module():
     )
 
 
+def ierr_kernel_module():
+    """A kernel that itself declares `ierr` -- it propagates a sub-helper's failure."""
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "risky_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length of `values`"),
+            real("result", Intent.OUT, "(n)", doc="the result"),
+            ierr(),
+            meta=Meta(summary="A fallible kernel", author="AUTHOR"),
+        ),
+    )
+
+
 class TestSynthesis:
     def test_a_generated_module_is_injected(self):
         result = synthesize_wrappers(project(kernel_module()))
@@ -102,6 +117,13 @@ class TestSynthesis:
         kernel = result.project.procedure("tox_demo_kernel", "scale_vector_kernel")
 
         assert kernel.argument("ierr") is None
+
+    def test_a_kernel_that_declares_ierr_gets_no_second_one(self):
+        result = synthesize_wrappers(project(ierr_kernel_module()))
+
+        foo = result.project.procedure("tox_demo", "risky")
+        names = [a.name for a in foo.arguments]
+        assert names == ["values", "n", "result", "ierr"]
 
     def test_the_spec_links_wrapper_to_kernel(self):
         result = synthesize_wrappers(project(kernel_module()))

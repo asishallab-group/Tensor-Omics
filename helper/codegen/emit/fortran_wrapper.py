@@ -215,14 +215,13 @@ class FortranWrapperEmitter:
         writer.blank()
         self._validation(writer, foo)
         writer.blank()
-        self._kernel_call(writer, self._kernel_name(foo, module), self._kernel_arguments(foo))
+        self._kernel_call(writer, foo, module)
 
     def _allocating_body(
         self, writer: Writer, alloc: Procedure, module: Module
     ) -> None:
         foo = self._sibling(module, alloc)
-        kernel_arguments = self._kernel_arguments(foo)
-        taken = [a for a in kernel_arguments if is_taken_over(a, self.conventions)]
+        taken = [a for a in self._kernel_arguments(foo) if is_taken_over(a, self.conventions)]
 
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)
@@ -233,7 +232,7 @@ class FortranWrapperEmitter:
         self._allocations(writer, taken)
         self._permutations(writer, taken)
         writer.blank()
-        self._kernel_call(writer, self._kernel_name(foo, module), kernel_arguments)
+        self._kernel_call(writer, foo, module)
 
     # -- names ------------------------------------------------------------------
 
@@ -251,9 +250,30 @@ class FortranWrapperEmitter:
         return module.procedure(self._base(alloc) + self.conventions.validating_suffix)
 
     def _kernel_arguments(self, foo: Procedure) -> list[Argument]:
-        """The kernel's own arguments: everything the validating wrapper carries but ierr."""
+        """The kernel's own arguments minus ierr -- the ones that may be taken over.
+
+        Used to work out the allocations and permutations; ierr is never among them, so
+        dropping it here is harmless and independent of whether the kernel declares one.
+        """
         error = self.conventions.error_arg.lower()
         return [a for a in foo.arguments if a.name.lower() != error]
+
+    def _kernel_call_arguments(self, foo: Procedure, module: Module) -> list[Argument]:
+        """The kernel's own signature, for the call.
+
+        Includes `ierr` exactly when the kernel declares one: a kernel that propagates a
+        sub-helper's failure takes `ierr`, a pure one does not, and the wrapper must pass on
+        whichever the kernel actually has. Resolved from the kernel itself when the project
+        is available; without it (a unit test) the kernel has no ierr, since synthesis only
+        appends one to the wrapper.
+        """
+        if self.project is not None:
+            kernel = self.project.procedure(
+                self._kernel_module(module), self._kernel_name(foo, module)
+            )
+            if kernel is not None:
+                return list(kernel.arguments)
+        return self._kernel_arguments(foo)
 
     # -- declarations -----------------------------------------------------------
 
@@ -455,8 +475,9 @@ class FortranWrapperEmitter:
 
     # -- the kernel call --------------------------------------------------------
 
-    def _kernel_call(self, writer: Writer, kernel: str, arguments) -> None:
-        # the kernel has no ierr (it does no reporting), so it is not passed on
+    def _kernel_call(self, writer: Writer, foo: Procedure, module: Module) -> None:
+        kernel = self._kernel_name(foo, module)
+        arguments = self._kernel_call_arguments(foo, module)
         self._call(writer, kernel, [(a.name, a.name) for a in arguments])
 
     def _call(self, writer: Writer, name: str, actuals) -> None:

@@ -11,14 +11,14 @@ from codegen.emit.fortran_wrapper import FortranWrapperEmitter
 from codegen.ir.roles import analyse_project
 from codegen.synthesize import synthesize_wrappers
 
-from test_synthesize import alloc_kernel_module, kernel_module
+from test_synthesize import alloc_kernel_module, ierr_kernel_module, kernel_module
 
 
 def emitted(module_source):
     project = synthesize_wrappers(module_source).project
     analyse_project(project, DiagnosticBag(), CONVENTIONS)
     generated = project.module("tox_demo")
-    return FortranWrapperEmitter().module(generated)
+    return FortranWrapperEmitter(project=project).module(generated)
 
 
 def demo():
@@ -104,6 +104,23 @@ class TestKernelCall:
         # the kernel has no ierr; the call must not invent one
         call = demo().split("call scale_vector_kernel(&", 1)[1]
         assert "ierr = ierr" not in call
+
+
+class TestKernelThatDeclaresIerr:
+    def demo_ierr(self):
+        from builders import project
+
+        return emitted(project(ierr_kernel_module()))
+
+    def test_the_wrapper_passes_ierr_to_a_kernel_that_declares_one(self):
+        # a kernel that propagates a sub-helper's error takes ierr; the wrapper must pass it
+        call = self.demo_ierr().split("call risky_kernel(&", 1)[1]
+        assert "ierr = ierr" in call
+
+    def test_the_wrapper_still_validates_and_bails(self):
+        text = self.demo_ierr()
+        assert "call set_ok(ierr)" in text
+        assert "if (is_err(ierr)) return" in text
 
 
 class TestAllocatingWrapper:
