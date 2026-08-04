@@ -181,7 +181,7 @@ class FortranWrapperEmitter:
                 validator = self._validator_for(argument)
                 if validator is not None:
                     names.add(validator)
-        if any(p.is_alloc_variant for p in module):
+        if any(self._is_allocating(p, module) for p in module):
             # M_ALLOCATE reports through set_err / ERR_ALLOC_FAIL
             names |= {"set_err", "ERR_ALLOC_FAIL"}
         ordered = ["set_ok", "is_err"]
@@ -190,7 +190,7 @@ class FortranWrapperEmitter:
     def _producers(self, module: Module) -> dict[str, set[str]]:
         producers: dict[str, set[str]] = {}
         for alloc in module:
-            if not alloc.is_alloc_variant:
+            if not self._is_allocating(alloc, module):
                 continue
             foo = self._sibling(module, alloc)
             for argument in self._kernel_arguments(foo):
@@ -206,11 +206,22 @@ class FortranWrapperEmitter:
         return any(
             is_permutation(a, self.conventions) and not is_temporary(a, self.conventions)
             for alloc in module
-            if alloc.is_alloc_variant
+            if self._is_allocating(alloc, module)
             for a in self._kernel_arguments(self._sibling(module, alloc))
         )
 
     # -- subroutine -------------------------------------------------------------
+
+    def _is_allocating(self, procedure: Procedure, module: Module) -> bool:
+        """Whether `procedure` is emitted with the allocating body.
+
+        True only for a real allocating wrapper: an `_alloc` variant that has a validating
+        sibling to take work arrays over from. A self-allocating *pipeline* kernel whose
+        public name merely ends in `_alloc` (so `is_alloc_variant` is true, e.g. `loess_alloc`)
+        has no such sibling -- it prepares its own work arrays internally -- and is emitted
+        with the ordinary validating body, its foo being a thin validate-then-call shim.
+        """
+        return procedure.is_alloc_variant and self._sibling(module, procedure) is not None
 
     def subroutine(self, procedure: Procedure, module: Module) -> str:
         writer = Writer()
@@ -218,13 +229,13 @@ class FortranWrapperEmitter:
         link = f"[[{self._kernel_module(module)}(module):{kernel}]]"
         summary = (
             f"Allocates its work arrays, then calls {link}."
-            if procedure.is_alloc_variant
+            if self._is_allocating(procedure, module)
             else f"Validates its inputs, then calls {link}."
         )
         writer.block(render_doc(procedure.doc, kind="procedure", summary=summary))
         self._signature(writer, procedure)
         with writer.indent():
-            if procedure.is_alloc_variant:
+            if self._is_allocating(procedure, module):
                 self._allocating_body(writer, procedure, module)
             else:
                 self._validating_body(writer, procedure, module)
