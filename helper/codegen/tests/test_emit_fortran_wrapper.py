@@ -21,6 +21,22 @@ def emitted(module_source):
     return FortranWrapperEmitter(project=project).module(generated)
 
 
+def emitted_with_info(module_source):
+    """Like `emitted`, but threading the per-wrapper info the mode-split path needs."""
+    from codegen.emit.fortran_wrapper import WrapperInfo
+
+    synthesis = synthesize_wrappers(module_source)
+    analyse_project(synthesis.project, DiagnosticBag(), CONVENTIONS)
+    info = {}
+    for spec in synthesis.specs:
+        for wrapper in (spec.validating, spec.allocating):
+            if wrapper is not None:
+                info[wrapper.name.lower()] = WrapperInfo(spec.kernel.name, spec.mode_fix)
+    return FortranWrapperEmitter(project=synthesis.project).module(
+        synthesis.project.module("tox_demo"), info
+    )
+
+
 def demo():
     from builders import project
 
@@ -121,6 +137,51 @@ class TestKernelThatDeclaresIerr:
         text = self.demo_ierr()
         assert "call set_ok(ierr)" in text
         assert "if (is_err(ierr)) return" in text
+
+
+class TestModeSplitEmit:
+    def emitted(self):
+        from builders import project
+        from test_synthesize import mode_split_kernel_module
+
+        return emitted_with_info(project(mode_split_kernel_module()))
+
+    def dosage(self):
+        text = self.emitted()
+        start = text.index("subroutine detect_dosage_effect(")
+        return text[start : text.index("end subroutine detect_dosage_effect")]
+
+    def subfunc(self):
+        text = self.emitted()
+        start = text.index("subroutine detect_subfunctionalization(")
+        return text[start : text.index("end subroutine detect_subfunctionalization")]
+
+    def test_each_mode_becomes_a_subroutine(self):
+        text = self.emitted()
+        assert "subroutine detect_dosage_effect(" in text
+        assert "subroutine detect_subfunctionalization(" in text
+        # no single runtime-mode procedure
+        assert "subroutine detect_patterns(" not in text
+
+    def test_the_kernel_call_fixes_the_mode(self):
+        dosage = self.dosage()
+        assert "call detect_patterns_kernel(&" in dosage
+        assert "pattern_mode = MODE_DOSAGE" in dosage
+
+    def test_the_required_argument_is_passed_in_its_mode(self):
+        dosage = self.dosage()
+        assert "threshold = threshold" in dosage
+
+    def test_the_argument_of_another_mode_is_omitted(self):
+        # detect_subfunctionalization takes no threshold, so its call must not name it
+        subfunc = self.subfunc()
+        assert "pattern_mode = MODE_SUBFUNC" in subfunc
+        assert "threshold" not in subfunc
+
+    def test_the_fixed_parameter_is_imported(self):
+        header = self.emitted().split("contains", 1)[0]
+        assert "MODE_DOSAGE" in header
+        assert "MODE_SUBFUNC" in header
 
 
 class TestAllocatingWrapper:

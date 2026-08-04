@@ -19,7 +19,7 @@ from .diagnostics import DiagnosticBag
 from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
-from .emit.fortran_wrapper import FortranWrapperEmitter
+from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
@@ -145,8 +145,18 @@ def _fortran_files(
     )
     out = paths.resolve(paths.tox_out_dir)
     generated = {spec.module_name for spec in synthesis.specs}
+    # per generated module: what each wrapper needs beyond its own signature -- the kernel it
+    # calls, and (for a per-mode wrapper) the mode it fixes
+    info: dict[str, dict[str, WrapperInfo]] = {}
+    for spec in synthesis.specs:
+        module_info = info.setdefault(spec.module_name, {})
+        for wrapper in (spec.validating, spec.allocating):
+            if wrapper is not None:
+                module_info[wrapper.name.lower()] = WrapperInfo(
+                    spec.kernel.name, spec.mode_fix
+                )
     return [
-        GeneratedFile(out / f"{module.name}.F90", emitter.module(module))
+        GeneratedFile(out / f"{module.name}.F90", emitter.module(module, info.get(module.name)))
         for module in project
         if module.name in generated
     ]

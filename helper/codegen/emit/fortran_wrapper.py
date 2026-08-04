@@ -21,17 +21,31 @@ its `DM_OUTPUT_FROM` plan -- off its sibling validating wrapper, which carries t
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ..config import CONVENTIONS, Conventions
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
 from ..render import Writer
-from ..synthesize import is_computed, is_permutation, is_taken_over, is_temporary
+from ..synthesize import ModeFix, is_computed, is_permutation, is_taken_over, is_temporary
 from .doc_ford import render_doc
 from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
 
 #: The exclusive-bound helpers a range expression may wrap a bound in, all from f42_utils.
 _BOUND_HELPERS = ("above", "below")
+
+
+@dataclass(frozen=True)
+class WrapperInfo:
+    """What the emitter needs about a generated wrapper beyond its own signature.
+
+    The kernel it calls (its name is not derivable for a mode-split wrapper, which is named
+    from the mode table) and, for a per-mode wrapper, the mode it fixes.
+    """
+
+    kernel_name: str
+    mode_fix: ModeFix | None = None
 
 
 class FortranWrapperEmitter:
@@ -46,10 +60,15 @@ class FortranWrapperEmitter:
         #: used to resolve module constants named in a `DM_MIN`/`DM_MAX` expression, so
         #: they can be imported; None in a unit test whose bounds use no constants
         self.project = project
+        #: per-wrapper info (kernel name, mode fix), keyed by lower-case procedure name;
+        #: set for the duration of a `module()` call. Empty in a unit test that passes none,
+        #: which drives the ordinary (non-split) path via the fallbacks below.
+        self._wrapper_info: dict[str, WrapperInfo] = {}
 
     # -- module -----------------------------------------------------------------
 
-    def module(self, module: Module) -> str:
+    def module(self, module: Module, wrapper_info: dict[str, WrapperInfo] | None = None) -> str:
+        self._wrapper_info = wrapper_info or {}
         writer = Writer()
         writer.line(f"#include <{self.macros_header}>")
         writer.blank()
@@ -98,6 +117,10 @@ class FortranWrapperEmitter:
             f42 |= {"init_perm", "sort_array_heapsort"}
         for helper_module, names in self._bound_imports(module).items():
             extra.setdefault(helper_module, set()).update(names)
+        for procedure in module:
+            fix = self._mode_fix(procedure)
+            if fix is not None:  # the parameter a per-mode wrapper fixes the mode to
+                extra.setdefault(fix.module, set()).add(fix.parameter)
         if f42:
             extra.setdefault("f42_utils", set()).update(f42)
 
@@ -244,7 +267,16 @@ class FortranWrapperEmitter:
         return name
 
     def _kernel_name(self, procedure: Procedure, module: Module) -> str:
+        # a mode-split wrapper is named from the mode table, so its kernel is not derivable
+        # from its name; take it from the spec when available
+        info = self._wrapper_info.get(procedure.name.lower())
+        if info is not None:
+            return info.kernel_name
         return f"{self._base(procedure)}{self.conventions.kernel_suffix}"
+
+    def _mode_fix(self, procedure: Procedure) -> ModeFix | None:
+        info = self._wrapper_info.get(procedure.name.lower())
+        return info.mode_fix if info is not None else None
 
     def _sibling(self, module: Module, alloc: Procedure) -> Procedure:
         return module.procedure(self._base(alloc) + self.conventions.validating_suffix)
@@ -478,7 +510,20 @@ class FortranWrapperEmitter:
     def _kernel_call(self, writer: Writer, foo: Procedure, module: Module) -> None:
         kernel = self._kernel_name(foo, module)
         arguments = self._kernel_call_arguments(foo, module)
-        self._call(writer, kernel, [(a.name, a.name) for a in arguments])
+        mode_fix = self._mode_fix(foo)
+        # the validating wrapper carries exactly the kernel arguments this variant supplies
+        # (as dummies, or -- in the allocating body -- as the locals it prepared); anything
+        # else is a mode fixed to its parameter, or an argument another mode takes and this
+        # one omits (an absent optional)
+        present = {a.name.lower() for a in foo.arguments}
+        actuals = []
+        for argument in arguments:
+            lowered = argument.name.lower()
+            if mode_fix is not None and lowered == mode_fix.argument.lower():
+                actuals.append((argument.name, mode_fix.parameter))
+            elif lowered in present:
+                actuals.append((argument.name, argument.name))
+        self._call(writer, kernel, actuals)
 
     def _call(self, writer: Writer, name: str, actuals) -> None:
         writer.line(f"call {name}(&")
