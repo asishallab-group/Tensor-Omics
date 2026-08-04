@@ -107,6 +107,27 @@ def kernel_module():
     )
 
 
+def tmp_perm_kernel_module():
+    """A kernel with a `tmp_`-prefixed permutation.
+
+    Unlike a caller-facing `<base>_perm` (which the allocating wrapper seeds and sorts), a
+    `tmp_..._perm` is a work buffer the kernel seeds and sorts itself, so the wrapper only
+    allocates it -- the tox_normalization quantile-normalisation case.
+    """
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "rank_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tmp_column", Intent.OUT, "(n)", doc="scratch column"),
+            integer("tmp_column_perm", Intent.OUT, "(n)", doc="scratch permutation"),
+            real("result", Intent.OUT, "(n)", doc="ranked output"),
+            meta=Meta(summary="Rank", author="AUTHOR"),
+        ),
+    )
+
+
 def ierr_kernel_module():
     """A kernel that itself declares `ierr` -- it propagates a sub-helper's failure."""
     return module(

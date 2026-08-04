@@ -137,6 +137,29 @@ class TestKernelCall:
         assert "ierr = ierr" not in call
 
 
+class TestTmpPermutation:
+    def bodies(self):
+        from builders import project
+        from test_synthesize import tmp_perm_kernel_module
+
+        text = emitted(project(tmp_perm_kernel_module()))
+        start = text.index("subroutine rank_alloc(")
+        return text[start : text.index("end subroutine rank_alloc")], text
+
+    def test_the_tmp_permutation_is_allocated(self):
+        body, _ = self.bodies()
+        assert "M_ALLOCATE(tmp_column_perm(n))" in body
+        assert "M_ALLOCATE(tmp_column(n))" in body
+
+    def test_it_is_not_seeded_or_sorted_by_the_wrapper(self):
+        # a tmp_ permutation is the kernel's own scratch: the kernel seeds and sorts it, so
+        # the allocating wrapper must only allocate it -- no init_perm, no sort, no f42_utils
+        body, text = self.bodies()
+        assert "init_perm" not in body
+        assert "sort_array_heapsort" not in body
+        assert "use f42_utils" not in text
+
+
 class TestKernelThatDeclaresIerr:
     def demo_ierr(self):
         from builders import project
