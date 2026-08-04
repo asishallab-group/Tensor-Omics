@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_shift_vectors(module)]]
-!| Module for computing the shift vector field for all genes.
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_shift_vectors_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
@@ -15,7 +15,7 @@ module tox_shift_vectors_c
 contains
 
     !> summary: C-wrapper for [[tox_shift_vectors(module):compute_shift_vector_field(subroutine)]]
-    !| Computes the shift vectors by substracting the corresponding family centroid from the expression vector.
+    !| Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
     subroutine compute_shift_vector_field_c(&
             n_tissues,&
             n_genes,&
@@ -40,10 +40,13 @@ contains
             !! Family centroid matrix
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_families`.
+            !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_tissues, 2, n_genes), intent(out), target :: shift_vectors
             !! Output, real matrix array, stores the centroid of the gene's family in `shift_vectors(:, 1, i_gene)` (zero vector if no family assigned) and the shift vectors in `shift_vectors(:, 2, i_gene)`
         integer(c_int), intent(out), target :: ierr
-            !! Error code: 0 - success, non-zero = error
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
