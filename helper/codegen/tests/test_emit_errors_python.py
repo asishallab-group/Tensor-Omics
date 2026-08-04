@@ -171,7 +171,7 @@ def real(tmp_path_factory):
     from conftest import REPO_ROOT
 
     bag = DiagnosticBag()
-    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/tox")), bag).parse()
+    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), bag).parse()
     catalogue = ErrorCatalogue.from_module(
         parsed.project.module("tox_errors"),
         bag,

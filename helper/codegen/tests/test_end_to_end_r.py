@@ -61,7 +61,7 @@ def _generate(out: Path) -> None:
         (out / f"{module.stripped_name}.R").write_text(r.module(module))
 
     errors = DiagnosticBag()
-    real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/tox")), errors).parse()
+    real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
     catalogue = ErrorCatalogue.from_module(
         real.project.module("tox_errors"), errors,
         real.project.constant_values(), arg_pos_factor=real.arg_pos_factor,
