@@ -104,7 +104,10 @@ from .tox_euclidean_distance import (
 )
 from .tox_gene_centroids import (
     mean_vector,
-    group_centroid,
+    group_centroid_orthologs_expert,
+    group_centroid_orthologs,
+    group_centroid_all_expert,
+    group_centroid_all,
 )
 from .tox_get_outliers import (
     compute_family_scaling_expert,
@@ -169,6 +172,7 @@ from .tox_trajectory_contribution_analysis import (
 from .tox_trajectory_normalization import (
     normalize_variable_timeseries,
     normalize_single_trajectory,
+    normalize_all_trajectories_expert,
     normalize_all_trajectories,
 )
 
@@ -234,7 +238,10 @@ __all__ = [
     "get_unassigned_mask",
     "gjct_permutation_test",
     "gjct_permutation_test_expert",
-    "group_centroid",
+    "group_centroid_all",
+    "group_centroid_all_expert",
+    "group_centroid_orthologs",
+    "group_centroid_orthologs_expert",
     "identify_outliers",
     "k_means_clustering",
     "linkage_clustering",
@@ -248,6 +255,7 @@ __all__ = [
     "mean_vector",
     "normalization_pipeline",
     "normalize_all_trajectories",
+    "normalize_all_trajectories_expert",
     "normalize_by_std_dev",
     "normalize_single_trajectory",
     "normalize_unit_length",

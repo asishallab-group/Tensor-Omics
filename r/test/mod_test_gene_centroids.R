@@ -8,9 +8,8 @@ test_basic_all_mode <- function() {
   n_axes <- 2; n_genes <- 5; n_families <- 2
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,2,1))
-  ortholog_set <- rep(FALSE, n_genes)
   expected <- matrix(c(3,3,15,15), nrow=n_axes, ncol=n_families)
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all')
+  centroids <- group_centroid_all(vectors, gene_to_family, n_families)
   assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
@@ -21,7 +20,7 @@ test_basic_ortho_mode <- function() {
   gene_to_family <- as.integer(c(1,1,2,2,1))
   ortholog_set <- c(TRUE, FALSE, TRUE, TRUE, TRUE)
   expected <- matrix(c(3,3,15,15), nrow=n_axes, ncol=n_families)
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_orthologs')
+  centroids <- group_centroid_orthologs(vectors, gene_to_family, n_families, ortholog_set)
   assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
@@ -30,10 +29,9 @@ test_empty_family <- function() {
   n_axes <- 3; n_genes <- 4; n_families <- 2
   vectors <- matrix(1.0, nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(rep(1, n_genes))
-  ortholog_set <- rep(TRUE, n_genes)
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
   expected[,1] <- 1.0
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all')
+  centroids <- group_centroid_all(vectors, gene_to_family, n_families)
   assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
@@ -44,7 +42,7 @@ test_no_matching_orthologs <- function() {
   gene_to_family <- as.integer(rep(1, n_genes))
   ortholog_set <- rep(FALSE, n_genes)
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_orthologs')
+  centroids <- group_centroid_orthologs(vectors, gene_to_family, n_families, ortholog_set)
   assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
@@ -53,8 +51,7 @@ test_single_gene_family <- function() {
   n_axes <- 3; n_genes <- 1; n_families <- 1
   vectors <- matrix(c(12.3, -4.5, 6.7), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(1)
-  ortholog_set <- TRUE
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all')
+  centroids <- group_centroid_all(vectors, gene_to_family, n_families)
   assert_true(all(abs(centroids - vectors) < 1e-12))
 }
 
@@ -67,9 +64,8 @@ test_extreme_values <- function() {
   vectors[,3] <- c(0, 5)
   vectors[,4] <- c(0, -5)
   gene_to_family <- as.integer(rep(1, n_genes))
-  ortholog_set <- rep(TRUE, n_genes)
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all')
+  centroids <- group_centroid_all(vectors, gene_to_family, n_families)
   assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
@@ -82,8 +78,7 @@ test_higher_dimensions <- function() {
     vectors[,i] <- i
     gene_to_family[i] <- as.integer(((i-1) %% n_families) + 1)
   }
-  ortholog_set <- rep(TRUE, n_genes)
-  centroids <- group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all')
+  centroids <- group_centroid_all(vectors, gene_to_family, n_families)
   # Only check family 1 centroid
   idxs <- which(gene_to_family == 1)
   expected <- apply(vectors[,idxs,drop=FALSE], 1, mean)
@@ -99,8 +94,8 @@ test_gene_order_invariance <- function() {
   vectors2 <- matrix(c(5,5,10,10,1,1,3,3,20,20), nrow=n_axes, ncol=n_genes)
   gene_to_family2 <- as.integer(c(1,2,1,1,2))
   ortholog_set2 <- c(TRUE, TRUE, TRUE, FALSE, TRUE)
-  centroids1 <- group_centroid(vectors1, gene_to_family1, n_families, ortholog_set1, mode='group_orthologs')
-  centroids2 <- group_centroid(vectors2, gene_to_family2, n_families, ortholog_set2, mode='group_orthologs')
+  centroids1 <- group_centroid_orthologs(vectors1, gene_to_family1, n_families, ortholog_set1)
+  centroids2 <- group_centroid_orthologs(vectors2, gene_to_family2, n_families, ortholog_set2)
   assert_true(all(abs(centroids1 - centroids2) < 1e-12))
 }
 
@@ -109,13 +104,12 @@ test_invalid_input_arguments <- function() {
   n_axes <- 2; n_genes <- 5; n_families <- 2
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,2,1))
-  ortholog_set <- rep(FALSE, n_genes)
   # Invalid n_axes
-  assert_error(group_centroid(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all'), "Expected error for invalid n_axes")
+  assert_error(group_centroid_all(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families), "Expected error for invalid n_axes")
   # Invalid n_genes
-  assert_error(group_centroid(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families, logical(0), mode='group_all'), "Expected error for invalid n_genes")
+  assert_error(group_centroid_all(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families), "Expected error for invalid n_genes")
   # Invalid n_families
-  assert_error(group_centroid(vectors, gene_to_family, 0, ortholog_set=ortholog_set, mode='group_all'), "Expected error for invalid n_families")
+  assert_error(group_centroid_all(vectors, gene_to_family, 0), "Expected error for invalid n_families")
 }
 
 # 10. Test for invalid family mapping
@@ -123,8 +117,7 @@ test_invalid_family_mapping <- function() {
   n_axes <- 2; n_genes <- 5; n_families <- 2
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,3,1)) # 3 is invalid
-  ortholog_set <- rep(FALSE, n_genes)
-  assert_error(group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='group_all'), "Expected error for invalid families")
+  assert_error(group_centroid_all(vectors, gene_to_family, n_families), "Expected error for invalid families")
 }
 
 run_all_tests()

@@ -98,7 +98,10 @@ SEXP validate_all_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP
 SEXP euclidean_distance_call(SEXP, SEXP);
 SEXP distance_to_centroid_call(SEXP, SEXP, SEXP);
 SEXP mean_vector_call(SEXP, SEXP);
-SEXP group_centroid_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP group_centroid_orthologs_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP group_centroid_orthologs_call(SEXP, SEXP, SEXP, SEXP);
+SEXP group_centroid_all_expert_call(SEXP, SEXP, SEXP);
+SEXP group_centroid_all_call(SEXP, SEXP, SEXP);
 SEXP compute_family_scaling_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_family_scaling_call(SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
@@ -205,7 +208,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"euclidean_distance_call", (DL_FUNC) &euclidean_distance_call, 2},
     {"distance_to_centroid_call", (DL_FUNC) &distance_to_centroid_call, 3},
     {"mean_vector_call", (DL_FUNC) &mean_vector_call, 2},
-    {"group_centroid_call", (DL_FUNC) &group_centroid_call, 5},
+    {"group_centroid_orthologs_expert_call", (DL_FUNC) &group_centroid_orthologs_expert_call, 4},
+    {"group_centroid_orthologs_call", (DL_FUNC) &group_centroid_orthologs_call, 4},
+    {"group_centroid_all_expert_call", (DL_FUNC) &group_centroid_all_expert_call, 3},
+    {"group_centroid_all_call", (DL_FUNC) &group_centroid_all_call, 3},
     {"compute_family_scaling_expert_call", (DL_FUNC) &compute_family_scaling_expert_call, 9},
     {"compute_family_scaling_call", (DL_FUNC) &compute_family_scaling_call, 3},
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},

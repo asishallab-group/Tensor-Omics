@@ -77,10 +77,7 @@ test_4_validation <- function() {
 
   force(validate_expression_data(kallisto_expr, check_non_negative = TRUE))
 
-  ortholog_set <- rep(TRUE, n_genes)
-  family_centroids <- group_centroid(kallisto_expr, gene_to_fam, n_families,
-                                     mode = 'group_all',
-                                     ortholog_set = rep(TRUE, length(gene_to_fam)))
+  family_centroids <- group_centroid_all(kallisto_expr, gene_to_fam, n_families)
 
   force(validate_family_centroids(family_centroids))
 

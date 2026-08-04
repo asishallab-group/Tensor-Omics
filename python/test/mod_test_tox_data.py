@@ -23,7 +23,7 @@ from tensor_omics import (
     save_tox_data,
     read_tox_data_into,
     create_zip_archive,
-    group_centroid,
+    group_centroid_all,
     compute_shift_vector_field,
     serialize_int_helper, serialize_real_helper, serialize_char_helper,
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
@@ -113,9 +113,7 @@ def test_calls():
     validate_string_array_uniqueness(family_ids)
     validate_expression_data(kallisto_expr, True)
 
-    ortholog_set = np.array([True for i in range(n_genes_kept)])
-
-    centroids = group_centroid(filtered_kallisto_expr, filtered_gene_to_fam, n_families, "group_all", ortholog_set)
+    centroids = group_centroid_all(filtered_kallisto_expr, filtered_gene_to_fam, n_families)
 
     validate_family_centroids(centroids)
 
