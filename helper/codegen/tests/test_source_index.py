@@ -233,7 +233,7 @@ DECLARATION_RE = re.compile(
 
 @pytest.fixture(scope="module")
 def errors_file():
-    return SourceFile(REPO_ROOT / "src/tox/tox_errors.F90")
+    return SourceFile(REPO_ROOT / "src/f42/tox_errors.F90")
 
 
 class TestAgainstRealSources:

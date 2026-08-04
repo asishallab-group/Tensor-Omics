@@ -20,7 +20,7 @@ from codegen.ir.errors import (
 import builders as b
 from conftest import REPO_ROOT
 
-TOX_ERRORS = REPO_ROOT / "src/tox/tox_errors.F90"
+TOX_ERRORS = REPO_ROOT / "src/f42/tox_errors.F90"
 
 
 @pytest.fixture(scope="module")
