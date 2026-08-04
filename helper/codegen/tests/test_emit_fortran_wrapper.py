@@ -57,6 +57,14 @@ class TestModuleShell:
     def test_the_wrapper_is_public(self):
         assert "public :: scale_vector" in demo()
 
+    def test_the_module_carries_a_generated_doc(self):
+        # a non-empty module doc avoids a Ford "module has no documentation" warning
+        assert "do not edit" in demo()
+
+    def test_the_synthesised_ierr_is_documented(self):
+        # ... and a doc on the synthesised ierr avoids the argument-level warning
+        assert "Error code; zero on success" in demo()
+
 
 class TestValidation:
     def test_sets_ierr_ok_first(self):

@@ -20,8 +20,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import CONVENTIONS, Conventions, Paths
+from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.types import BaseType, FortranType, Intent
+
+#: Documentation for the `ierr` a wrapper carries when the kernel declares none
+_ERROR_DOC = "Error code; zero on success, non-zero on failure."
+#: Documentation body of a generated wrapper module (the emitter adds the summary above it)
+_MODULE_DOC = "Generated from the kernel; do not edit -- regenerate instead."
 
 
 def generated_wrapper_paths(
@@ -139,7 +145,9 @@ def synthesize_wrappers(
         Module(
             name,
             procedures=procedures,
-            doc=sources[name].doc,
+            # a fresh doc rather than the kernel module's own, which describes the kernel and
+            # not this API; the emitter adds a "Wrappers for <kernel>" summary above it
+            doc=Doc.parse([_MODULE_DOC]),
             meta=Meta(),
             location=sources[name].location,
         )
@@ -206,5 +214,6 @@ def _append_error(
                 conventions.error_arg,
                 FortranType(BaseType.INTEGER, "int32"),
                 intent=Intent.OUT,
+                doc=Doc.parse([_ERROR_DOC]),
             )
         )
