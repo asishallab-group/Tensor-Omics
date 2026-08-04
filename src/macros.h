@@ -100,3 +100,21 @@
 #define DM_OUTPUT_FROM(ARGUMENT, PROCEDURE, MODULE, MODE) DM_OUTPUT_FROM_##MODE to compute this argument from the `ARGUMENT` output produced by [[MODULE(module):PROCEDURE]].
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_OUTPUT_FROM_JUST_INFO It is recommended
+
+! `DM_MIN` / `DM_MAX` document the inclusive valid range of a numeric argument; the
+! generator turns them into a `validate_in_range_*` call in the generated wrapper. `EXPR`
+! is Fortran source and may refer to other arguments or module constants; wrap it in
+! `above(...)` / `below(...)` for an exclusive bound.
+#define DM_MIN(EXPR) The minimum valid value is `EXPR`.
+#define DM_MAX(EXPR) The maximum valid value is `EXPR`.
+
+! A value accepted regardless of the range -- e.g. an "unassigned" marker that is not a
+! real datum. Passed through to the validator's `sentinel=` argument.
+#define DM_SENTINEL(EXPR) The value `EXPR` is additionally accepted.
+
+! Finiteness is the framework's default contract: the generated validation rejects NaN and
+! infinity for every real argument. These opt one argument out of that rejection, each
+! failure mode separately, so an argument that legitimately carries NaN (say a masked-out
+! mean) says so where the tolerance actually lives.
+#define DM_ALLOW_NAN NaN is permitted for this value.
+#define DM_ALLOW_INFINITE Infinite values are permitted for this value.

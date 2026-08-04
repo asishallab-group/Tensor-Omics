@@ -13,15 +13,20 @@ from codegen.frontend.macros import (
     build_directive_patterns,
 )
 from codegen.ir.directives import (
+    AllowInfinite,
+    AllowNan,
     Default,
     DirectiveError,
     DirectiveParser,
     Directives,
+    Maximum,
+    Minimum,
     OptionalOutput,
     OutputFrom,
     OutputFromMode,
     RequiredIfMode,
     ResultSizeIs,
+    Sentinel,
 )
 from codegen.ir.doc import Doc
 
@@ -53,7 +58,7 @@ class TestBuildDirectivePatterns:
         header = tmp_path / "macros.h"
         header.write_text("#define M_NAN nan\n")
 
-        with pytest.raises(MissingMacroError, match="does not define: DM_DEFAULT"):
+        with pytest.raises(MissingMacroError, match=r"does not define:.*\bDM_DEFAULT\b"):
             build_directive_patterns(MacroTable(header))
 
 
@@ -171,6 +176,83 @@ class TestOutputFrom:
 
         assert auto.output_from.mode is OutputFromMode.AUTO
         assert info.output_from.mode is OutputFromMode.JUST_INFO
+
+
+class TestRange:
+    @pytest.mark.parametrize(
+        "expression", ["0.0_real64", "n_values", "above(0.0_real64)", "PI", "1_int32"]
+    )
+    def test_minimum_is_captured(self, macros, parser, expression):
+        directives = parser.parse(documented(macros, f"DM_MIN({expression})"))
+
+        assert directives.minimum == Minimum(expression, line_number=None)
+        assert directives.has_range
+
+    @pytest.mark.parametrize(
+        "expression", ["100.0_real64", "n_genes", "below(1.0_real64)", "PI"]
+    )
+    def test_maximum_is_captured(self, macros, parser, expression):
+        directives = parser.parse(documented(macros, f"DM_MAX({expression})"))
+
+        assert directives.maximum == Maximum(expression, line_number=None)
+        assert directives.has_range
+
+    def test_minimum_and_maximum_together(self, macros, parser):
+        directives = parser.parse(
+            documented(macros, "DM_MIN(0.0_real64)", "DM_MAX(100.0_real64)")
+        )
+
+        assert directives.minimum.expression == "0.0_real64"
+        assert directives.maximum.expression == "100.0_real64"
+
+    def test_min_and_max_are_told_apart(self, macros, parser):
+        # both are "The <bound> valid value is `EXPR`." -- a lazy group must not let one
+        # sentence be read as the other
+        assert parser.parse(documented(macros, "DM_MIN(1_int32)")).maximum is None
+        assert parser.parse(documented(macros, "DM_MAX(1_int32)")).minimum is None
+
+    @pytest.mark.parametrize("expression", ["0_int32", "-1_int32"])
+    def test_sentinel_is_captured(self, macros, parser, expression):
+        directives = parser.parse(documented(macros, f"DM_SENTINEL({expression})"))
+
+        assert directives.sentinel == Sentinel(expression, line_number=None)
+        assert directives.has_range
+
+    def test_no_range_when_absent(self, parser):
+        directives = parser.parse(Doc.parse(["just prose"]))
+
+        assert not directives.has_range
+        assert directives.minimum is None
+        assert directives.maximum is None
+        assert directives.sentinel is None
+
+    def test_duplicate_minimum_is_rejected(self, macros, parser):
+        with pytest.raises(DirectiveError, match="duplicate DM_MIN directive"):
+            parser.parse(documented(macros, "DM_MIN(1)", "DM_MIN(2)"))
+
+
+class TestFiniteness:
+    def test_allow_nan_is_recognised(self, macros, parser):
+        directives = parser.parse(documented(macros, "DM_ALLOW_NAN"))
+
+        assert directives.allow_nan == AllowNan(line_number=None)
+        assert directives.allows_nan
+
+    def test_allow_infinite_is_recognised(self, macros, parser):
+        directives = parser.parse(documented(macros, "DM_ALLOW_INFINITE"))
+
+        assert directives.allow_infinite == AllowInfinite(line_number=None)
+        assert directives.allows_infinite
+
+    def test_the_two_are_told_apart(self, macros, parser):
+        assert parser.parse(documented(macros, "DM_ALLOW_NAN")).allow_infinite is None
+        assert parser.parse(documented(macros, "DM_ALLOW_INFINITE")).allow_nan is None
+
+    def test_absent_by_default(self, parser):
+        directives = parser.parse(Doc.parse(["prose"]))
+
+        assert not directives.allows_nan
+        assert not directives.allows_infinite
 
 
 class TestDirectivesTogether:

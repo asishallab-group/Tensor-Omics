@@ -174,6 +174,11 @@ class DocMacroNames:
     optional_output: str = "DM_OPTIONAL_OUTPUT"
     result_size_is: str = "DM_RESULT_SIZE_IS"
     output_from: str = "DM_OUTPUT_FROM"
+    minimum: str = "DM_MIN"
+    maximum: str = "DM_MAX"
+    sentinel: str = "DM_SENTINEL"
+    allow_nan: str = "DM_ALLOW_NAN"
+    allow_infinite: str = "DM_ALLOW_INFINITE"
 
     def all(self) -> tuple[str, ...]:
         return (
@@ -182,6 +187,11 @@ class DocMacroNames:
             self.optional_output,
             self.result_size_is,
             self.output_from,
+            self.minimum,
+            self.maximum,
+            self.sentinel,
+            self.allow_nan,
+            self.allow_infinite,
         )
 
 

@@ -95,7 +95,63 @@ class OutputFrom:
         return self.mode is OutputFromMode.AUTO
 
 
-Directive = Default | RequiredIfMode | OptionalOutput | ResultSizeIs | OutputFrom
+@dataclass(frozen=True)
+class Minimum:
+    """`DM_MIN(EXPR)` -- the inclusive lower bound of a numeric argument.
+
+    `expression` is Fortran source, evaluated where the constants it refers to are known.
+    Wrap it in `above(...)` for an exclusive bound.
+    """
+
+    expression: str
+    line_number: int | None = None
+
+
+@dataclass(frozen=True)
+class Maximum:
+    """`DM_MAX(EXPR)` -- the inclusive upper bound of a numeric argument.
+
+    Wrap `expression` in `below(...)` for an exclusive bound.
+    """
+
+    expression: str
+    line_number: int | None = None
+
+
+@dataclass(frozen=True)
+class Sentinel:
+    """`DM_SENTINEL(EXPR)` -- a value accepted regardless of the range (e.g. a marker)."""
+
+    expression: str
+    line_number: int | None = None
+
+
+@dataclass(frozen=True)
+class AllowNan:
+    """`DM_ALLOW_NAN` -- opt a real argument out of the default NaN rejection."""
+
+    line_number: int | None = None
+
+
+@dataclass(frozen=True)
+class AllowInfinite:
+    """`DM_ALLOW_INFINITE` -- opt a real argument out of the default infinity rejection."""
+
+    line_number: int | None = None
+
+
+Directive = (
+    Default
+    | RequiredIfMode
+    | OptionalOutput
+    | ResultSizeIs
+    | OutputFrom
+    | Minimum
+    | Maximum
+    | Sentinel
+    | AllowNan
+    | AllowInfinite
+)
 
 
 @dataclass(frozen=True)
@@ -107,6 +163,11 @@ class Directives:
     optional_output: OptionalOutput | None = None
     result_size_is: ResultSizeIs | None = None
     output_from: OutputFrom | None = None
+    minimum: Minimum | None = None
+    maximum: Maximum | None = None
+    sentinel: Sentinel | None = None
+    allow_nan: AllowNan | None = None
+    allow_infinite: AllowInfinite | None = None
 
     @property
     def all(self) -> tuple[Directive, ...]:
@@ -116,6 +177,11 @@ class Directives:
             self.optional_output,
             self.result_size_is,
             self.output_from,
+            self.minimum,
+            self.maximum,
+            self.sentinel,
+            self.allow_nan,
+            self.allow_infinite,
         )
         return tuple(directive for directive in found if directive is not None)
 
@@ -126,6 +192,23 @@ class Directives:
     @property
     def is_optional_output(self) -> bool:
         return self.optional_output is not None
+
+    @property
+    def has_range(self) -> bool:
+        """A `DM_MIN`/`DM_MAX`/`DM_SENTINEL` bound was documented."""
+        return (
+            self.minimum is not None
+            or self.maximum is not None
+            or self.sentinel is not None
+        )
+
+    @property
+    def allows_nan(self) -> bool:
+        return self.allow_nan is not None
+
+    @property
+    def allows_infinite(self) -> bool:
+        return self.allow_infinite is not None
 
     def __bool__(self) -> bool:
         return bool(self.all)
@@ -147,6 +230,11 @@ class DirectivePatterns:
     result_size_is: re.Pattern
     output_from_auto: re.Pattern
     output_from_just_info: re.Pattern
+    minimum: re.Pattern
+    maximum: re.Pattern
+    sentinel: re.Pattern
+    allow_nan: re.Pattern
+    allow_infinite: re.Pattern
 
     @staticmethod
     def templates() -> dict[str, str]:
@@ -167,6 +255,11 @@ class DirectivePatterns:
                 f"DM_OUTPUT_FROM({_group('argument')}, {_group('procedure')}, "
                 f"{_group('module')}, JUST_INFO)"
             ),
+            "minimum": f"DM_MIN({_group('expression')})",
+            "maximum": f"DM_MAX({_group('expression')})",
+            "sentinel": f"DM_SENTINEL({_group('expression')})",
+            "allow_nan": "DM_ALLOW_NAN",
+            "allow_infinite": "DM_ALLOW_INFINITE",
         }
 
 
@@ -227,6 +320,21 @@ class DirectiveParser:
                 )
                 break
 
+        if (match := self.patterns.minimum.search(text)) is not None:
+            yield "minimum", Minimum(match.group("expression").strip(), number)
+
+        if (match := self.patterns.maximum.search(text)) is not None:
+            yield "maximum", Maximum(match.group("expression").strip(), number)
+
+        if (match := self.patterns.sentinel.search(text)) is not None:
+            yield "sentinel", Sentinel(match.group("expression").strip(), number)
+
+        if self.patterns.allow_nan.search(text) is not None:
+            yield "allow_nan", AllowNan(number)
+
+        if self.patterns.allow_infinite.search(text) is not None:
+            yield "allow_infinite", AllowInfinite(number)
+
     @staticmethod
     def _reject_contradictions(found: dict[str, Directive]) -> None:
         default = found.get("default")
@@ -248,6 +356,11 @@ _MACRO_NAMES = {
     "optional_output": "DM_OPTIONAL_OUTPUT",
     "result_size_is": "DM_RESULT_SIZE_IS",
     "output_from": "DM_OUTPUT_FROM",
+    "minimum": "DM_MIN",
+    "maximum": "DM_MAX",
+    "sentinel": "DM_SENTINEL",
+    "allow_nan": "DM_ALLOW_NAN",
+    "allow_infinite": "DM_ALLOW_INFINITE",
 }
 
 
