@@ -2,8 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_clustering(module)]]
-!| Module for clustering routines used in tensor-omics: k-means for factor/trajectory
-!| grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_clustering_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
@@ -167,7 +166,7 @@ contains
             ierr&
         ) bind(C, name="linkage_clustering_c")
         use tox_clustering, only: linkage_clustering
-        use tox_clustering, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
+        use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
 
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
@@ -178,6 +177,11 @@ contains
             !! This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
             !! So there is no need to copy an existing distance matrix, just pass the original.
             !! @endnote
+            !!
+            !! The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
+            !! not by the finiteness contract, so this argument opts out of that.
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_i
             !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_j
@@ -188,12 +192,14 @@ contains
             !! size of cluster at iteration k
         character(len=1, kind=c_char), dimension(8), intent(in), target :: method
             !! used algorithm
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
             !!
-            !! | Method           | Value                                                |
-            !! |------------------|------------------------------------------------------|
-            !! | Average / UPGMA  | [[tox_clustering(module):METHOD_AVERAGE(variable)]]  |
-            !! | Weighted / WPGMA | [[tox_clustering(module):METHOD_WEIGHTED(variable)]] |
-            !! | Ward             | [[tox_clustering(module):METHOD_WARD(variable)]]     |
+            !! | Method           | Value                                                       |
+            !! |------------------|-------------------------------------------------------------|
+            !! | Average / UPGMA  | [[tox_clustering_kernel(module):METHOD_AVERAGE(variable)]]  |
+            !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
+            !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: method_mode_f

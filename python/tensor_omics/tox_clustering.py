@@ -1,4 +1,4 @@
-"""Python binding to Module for clustering routines used in tensor-omics: k-means for factor/trajectory
+"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
 
 Generated from tox_clustering. Do not edit.
 """
@@ -257,8 +257,15 @@ def linkage_clustering(
         This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
         So there is no need to copy an existing distance matrix, just pass the original.
         @endnote
+
+        The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
+        not by the finiteness contract, so this argument opts out of that.
+        NaN is permitted for this value.
+        Infinite values are permitted for this value.
     method : str, one of 'average' | 'weighted' | 'ward'
         used algorithm
+        The minimum valid value is `0_int32`.
+        The maximum valid value is `2_int32`.
 
     Returns
     -------
