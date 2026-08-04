@@ -382,7 +382,14 @@ class FortranWrapperEmitter:
         """The `tox_errors` validator this argument needs, or None."""
         if not argument.intent.is_input:
             return None  # an output carries no value to check
-        if argument.roles is not None and argument.roles.is_extent:
+        if (
+            argument.roles is not None
+            and argument.roles.is_extent
+            and not argument.directives.has_range
+        ):
+            # an extent is validated as a dimension by default, but a documented range wins:
+            # it lets an extent that is really a count permit zero (an empty selection), which
+            # validate_dimension_size rejects
             return "validate_dimension_size"
         base = argument.type.base
         if base is BaseType.REAL:

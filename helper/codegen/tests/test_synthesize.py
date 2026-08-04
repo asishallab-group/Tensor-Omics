@@ -7,6 +7,7 @@ injected wrapper, without going near Ford.
 
 from codegen.ir.directives import (
     Directives,
+    Maximum,
     Minimum,
     OutputFrom,
     OutputFromMode,
@@ -117,6 +118,37 @@ def ierr_kernel_module():
             real("result", Intent.OUT, "(n)", doc="the result"),
             ierr(),
             meta=Meta(summary="A fallible kernel", author="AUTHOR"),
+        ),
+    )
+
+
+def count_extent_kernel_module():
+    """A kernel whose extent is really a count: it carries a range that permits zero."""
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "pick_kernel",
+            real("values", Intent.IN, "(n_values)", doc="the data"),
+            integer("n_values", Intent.IN, doc="length of `values`"),
+            integer(
+                "n_selected",
+                Intent.IN,
+                directives=Directives(
+                    minimum=Minimum("0_int32"), maximum=Maximum("n_values")
+                ),
+                doc="how many are selected (may be zero)",
+            ),
+            integer(
+                "indices",
+                Intent.IN,
+                "(n_selected)",
+                directives=Directives(
+                    minimum=Minimum("1_int32"), maximum=Maximum("n_values")
+                ),
+                doc="selected indices",
+            ),
+            real("result", Intent.OUT, "(n_values)", doc="output"),
+            meta=Meta(summary="Pick", author="AUTHOR"),
         ),
     )
 

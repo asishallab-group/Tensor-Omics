@@ -103,6 +103,21 @@ class TestValidation:
             "call validate_all_in_range_real(vector, n, ierr, arg_pos=1_int32)" in demo()
         )
 
+    def test_an_extent_with_a_range_uses_the_range_not_the_dimension_check(self):
+        # n_selected is the extent of indices, but its DM_MIN(0)/DM_MAX permits an empty
+        # selection, which validate_dimension_size would reject
+        from builders import project
+        from test_synthesize import count_extent_kernel_module
+
+        text = emitted(project(count_extent_kernel_module()))
+        assert (
+            "call validate_in_range_int(n_selected, ierr, arg_pos=3_int32, min=0_int32, max=n_values)"
+            in text
+        )
+        assert "validate_dimension_size(n_selected" not in text
+        # a plain extent still uses the dimension check
+        assert "call validate_dimension_size(n_values, ierr, arg_pos=2_int32)" in text
+
     def test_bails_before_calling_the_kernel(self):
         text = demo()
         assert "if (is_err(ierr)) return" in text
