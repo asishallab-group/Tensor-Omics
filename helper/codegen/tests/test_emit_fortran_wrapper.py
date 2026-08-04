@@ -11,7 +11,7 @@ from codegen.emit.fortran_wrapper import FortranWrapperEmitter
 from codegen.ir.roles import analyse_project
 from codegen.synthesize import synthesize_wrappers
 
-from test_synthesize import kernel_module
+from test_synthesize import alloc_kernel_module, kernel_module
 
 
 def emitted(module_source):
@@ -25,6 +25,19 @@ def demo():
     from builders import project
 
     return emitted(project(kernel_module()))
+
+
+def demo_alloc():
+    from builders import project
+
+    return emitted(project(alloc_kernel_module()))
+
+
+def alloc_body():
+    """Just the crunch_alloc subroutine text."""
+    text = demo_alloc()
+    start = text.index("subroutine crunch_alloc(")
+    return text[start : text.index("end subroutine crunch_alloc")]
 
 
 class TestModuleShell:
@@ -83,3 +96,50 @@ class TestKernelCall:
         # the kernel has no ierr; the call must not invent one
         call = demo().split("call scale_vector_kernel(&", 1)[1]
         assert "ierr = ierr" not in call
+
+
+class TestAllocatingWrapper:
+    def test_the_module_imports_what_the_alloc_needs(self):
+        text = demo_alloc()
+        assert "use f42_utils, only: init_perm, sort_array_heapsort" in text
+        # the recommend routine lives in the kernel module, imported with the kernel
+        assert "work_size" in text.split("contains")[0]
+        assert "ERR_ALLOC_FAIL" in text
+
+    def test_the_taken_over_arguments_become_allocatable_locals(self):
+        body = alloc_body()
+        assert "integer(int32), dimension(:), allocatable :: values_perm" in body
+        assert "real(real64), dimension(:), allocatable :: tmp_scratch" in body
+        assert "real(real64), dimension(:), allocatable :: tmp_work" in body
+        assert "integer(int32) :: wsize" in body  # the computed size is a scalar local
+
+    def test_the_recommend_routine_is_called_into_the_size(self):
+        body = alloc_body()
+        assert "call work_size(&" in body
+        assert "n = n" in body
+        assert "wsize = wsize" in body
+
+    def test_the_work_arrays_are_allocated(self):
+        body = alloc_body()
+        assert "M_ALLOCATE(tmp_scratch(n))" in body
+        assert "M_ALLOCATE(tmp_work(wsize))" in body
+        assert "M_ALLOCATE(values_perm(n))" in body
+
+    def test_the_permutation_is_seeded_and_sorted(self):
+        body = alloc_body()
+        assert "call init_perm(values_perm)" in body
+        assert "call sort_array_heapsort(values, values_perm)" in body
+
+    def test_it_calls_the_kernel_with_every_argument(self):
+        body = alloc_body()
+        call = body.split("call crunch_kernel(&", 1)[1]
+        for name in ("values", "n", "values_perm", "tmp_scratch", "tmp_work", "wsize"):
+            assert f"{name} = {name}" in call
+        assert "ierr = ierr" not in call
+
+    def test_recommend_before_allocate_before_sort(self):
+        body = alloc_body()
+        assert body.index("call work_size(") < body.index("M_ALLOCATE(tmp_work(wsize))")
+        assert body.index("M_ALLOCATE(values_perm(n))") < body.index(
+            "call sort_array_heapsort(values, values_perm)"
+        )

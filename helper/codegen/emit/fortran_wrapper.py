@@ -1,19 +1,22 @@
 """Emitting the generated wrapper modules.
 
-One `tox_<name>.F90` per kernel module, holding the validating wrapper `foo` (and, later,
-the allocating wrapper `foo_alloc`) for every kernel. Unlike the C wrappers these are
-ordinary library sources -- no `bind(C)`, no `NO_C_BINDING` guard, no pointer marshalling.
+One `tox_<name>.F90` per kernel module, holding the validating wrapper `foo` and, when the
+kernel needs work arrays, the allocating wrapper `foo_alloc`, for every kernel. Unlike the
+C wrappers these are ordinary library sources -- no `bind(C)`, no `NO_C_BINDING` guard, no
+pointer marshalling.
 
-A validating wrapper's job, in order:
+A validating wrapper: set `ierr` ok (the kernel it calls has none and reports nothing),
+validate every input against its documented range -- and, for reals, the framework's
+default finiteness contract -- bail on error, then call the kernel unchanged.
 
-1. set `ierr` ok, because the kernel it calls has none and reports nothing
-2. validate every input against the range its documentation states -- and, for reals,
-   against the framework's default finiteness contract
-3. bail if anything failed
-4. call the kernel with the arguments unchanged
+An allocating wrapper takes over the work the caller should not do: it drops the kernel's
+work arrays, permutations and recommend-sized values from its signature, validates what is
+left, calls the recommend routines to size the work arrays, allocates them, seeds and sorts
+the permutations, then calls the kernel directly (it has just built the permutation, so
+there is nothing left for the validating wrapper to re-check).
 
-Finiteness is the default: a real input is checked for NaN/Inf whether or not it carries a
-`DM_MIN`/`DM_MAX`, unless it opts out with `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE`.
+The allocating wrapper reads the kernel's full picture -- every argument, its extents, and
+its `DM_OUTPUT_FROM` plan -- off its sibling validating wrapper, which carries them all.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from ..config import CONVENTIONS, Conventions
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
 from ..render import Writer
+from ..synthesize import is_computed, is_permutation, is_taken_over, is_temporary
 from .doc_ford import render_doc
 from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
@@ -36,7 +40,6 @@ class FortranWrapperEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: Module) -> str:
-        """Emit `module tox_<name>` with a wrapper per procedure it holds."""
         writer = Writer()
         writer.line(f"#include <{self.macros_header}>")
         writer.blank()
@@ -71,21 +74,31 @@ class FortranWrapperEmitter:
     def _kernel_module(self, module: Module) -> str:
         return f"{module.name}{self.conventions.kernel_suffix}"
 
-    def _kernel_name(self, procedure: Procedure) -> str:
-        return f"{procedure.name}{self.conventions.kernel_suffix}"
-
     def _module_uses(self, writer: Writer, module: Module) -> None:
         kernel_module = self._kernel_module(module)
-        kernel_names = sorted({self._kernel_name(p) for p in module})
-        for chunk in _chunks(kernel_names, 4):
+        producers = self._producers(module)
+
+        # the kernels, plus any recommend routine that lives in the kernel module
+        kernel_names = {self._kernel_name(p, module) for p in module}
+        kernel_names |= producers.get(kernel_module, set())
+        for chunk in _chunks(sorted(kernel_names), 4):
             writer.line(f"use {kernel_module}, only: {', '.join(chunk)}")
+
+        # recommend routines an allocating wrapper calls that live elsewhere
+        for producer_module, names in sorted(producers.items()):
+            if producer_module == kernel_module:
+                continue  # merged into the kernel import above
+            for chunk in _chunks(sorted(names), 4):
+                writer.line(f"use {producer_module}, only: {', '.join(chunk)}")
 
         kinds = sorted({a.type.kind for p in module for a in p.arguments if a.type.kind})
         for chunk in _chunks(kinds, 6):
             writer.line(f"use, intrinsic :: iso_fortran_env, only: {', '.join(chunk)}")
 
-        errors = self._error_imports(module)
-        for chunk in _chunks(errors, 4):
+        if self._has_permutations(module):
+            writer.line("use f42_utils, only: init_perm, sort_array_heapsort")
+
+        for chunk in _chunks(self._error_imports(module), 4):
             writer.line(f"use tox_errors, only: {', '.join(chunk)}")
 
     def _error_imports(self, module: Module) -> list[str]:
@@ -95,33 +108,104 @@ class FortranWrapperEmitter:
                 validator = self._validator_for(argument)
                 if validator is not None:
                     names.add(validator)
-        # a stable order, with the always-present two first
+        if any(p.is_alloc_variant for p in module):
+            # M_ALLOCATE reports through set_err / ERR_ALLOC_FAIL
+            names |= {"set_err", "ERR_ALLOC_FAIL"}
         ordered = ["set_ok", "is_err"]
-        ordered += sorted(names - set(ordered))
-        return ordered
+        return ordered + sorted(names - set(ordered))
+
+    def _producers(self, module: Module) -> dict[str, set[str]]:
+        producers: dict[str, set[str]] = {}
+        for alloc in module:
+            if not alloc.is_alloc_variant:
+                continue
+            foo = self._sibling(module, alloc)
+            for argument in self._kernel_arguments(foo):
+                if not is_computed(argument):
+                    continue
+                plan = foo.argument(argument.name).roles.computed_from
+                producers.setdefault(plan.producer.module.name, set()).add(
+                    plan.producer.name
+                )
+        return producers
+
+    def _has_permutations(self, module: Module) -> bool:
+        return any(
+            is_permutation(a, self.conventions) and not is_temporary(a, self.conventions)
+            for alloc in module
+            if alloc.is_alloc_variant
+            for a in self._kernel_arguments(self._sibling(module, alloc))
+        )
 
     # -- subroutine -------------------------------------------------------------
 
     def subroutine(self, procedure: Procedure, module: Module) -> str:
         writer = Writer()
-        kernel = self._kernel_name(procedure)
+        kernel = self._kernel_name(procedure, module)
         link = f"[[{self._kernel_module(module)}(module):{kernel}]]"
-        writer.block(
-            render_doc(
-                procedure.doc,
-                kind="procedure",
-                summary=f"Validates its inputs, then calls {link}.",
-            )
+        summary = (
+            f"Allocates its work arrays, then calls {link}."
+            if procedure.is_alloc_variant
+            else f"Validates its inputs, then calls {link}."
         )
+        writer.block(render_doc(procedure.doc, kind="procedure", summary=summary))
         self._signature(writer, procedure)
         with writer.indent():
-            self._declarations(writer, procedure)
-            writer.blank()
-            self._validation(writer, procedure)
-            writer.blank()
-            self._kernel_call(writer, procedure, kernel)
+            if procedure.is_alloc_variant:
+                self._allocating_body(writer, procedure, module)
+            else:
+                self._validating_body(writer, procedure, module)
         writer.line(f"end subroutine {procedure.name}")
         return writer.render()
+
+    def _validating_body(
+        self, writer: Writer, foo: Procedure, module: Module
+    ) -> None:
+        self._declarations(writer, foo.arguments)
+        writer.blank()
+        self._validation(writer, foo)
+        writer.blank()
+        self._kernel_call(writer, self._kernel_name(foo, module), self._kernel_arguments(foo))
+
+    def _allocating_body(
+        self, writer: Writer, alloc: Procedure, module: Module
+    ) -> None:
+        foo = self._sibling(module, alloc)
+        kernel_arguments = self._kernel_arguments(foo)
+        taken = [a for a in kernel_arguments if is_taken_over(a, self.conventions)]
+
+        self._declarations(writer, alloc.arguments)
+        self._locals(writer, taken)
+        writer.blank()
+        self._validation(writer, alloc)
+        writer.blank()
+        self._recommend_calls(writer, foo, alloc, taken)
+        self._allocations(writer, taken)
+        self._permutations(writer, taken)
+        writer.blank()
+        self._kernel_call(writer, self._kernel_name(foo, module), kernel_arguments)
+
+    # -- names ------------------------------------------------------------------
+
+    def _base(self, procedure: Procedure) -> str:
+        name = procedure.name
+        for suffix in (self.conventions.alloc_suffix, self.conventions.validating_suffix):
+            if suffix and name.lower().endswith(suffix):
+                return name[: -len(suffix)]
+        return name
+
+    def _kernel_name(self, procedure: Procedure, module: Module) -> str:
+        return f"{self._base(procedure)}{self.conventions.kernel_suffix}"
+
+    def _sibling(self, module: Module, alloc: Procedure) -> Procedure:
+        return module.procedure(self._base(alloc) + self.conventions.validating_suffix)
+
+    def _kernel_arguments(self, foo: Procedure) -> list[Argument]:
+        """The kernel's own arguments: everything the validating wrapper carries but ierr."""
+        error = self.conventions.error_arg.lower()
+        return [a for a in foo.arguments if a.name.lower() != error]
+
+    # -- declarations -----------------------------------------------------------
 
     def _signature(self, writer: Writer, procedure: Procedure) -> None:
         writer.line(f"subroutine {procedure.name}(&")
@@ -133,8 +217,8 @@ class FortranWrapperEmitter:
         with writer.indent():
             writer.line(")")
 
-    def _declarations(self, writer: Writer, procedure: Procedure) -> None:
-        for argument in self._declaration_order(procedure.arguments):
+    def _declarations(self, writer: Writer, arguments) -> None:
+        for argument in self._declaration_order(arguments):
             writer.line(self._declaration(argument))
             if argument.doc:
                 with writer.indent():
@@ -163,7 +247,18 @@ class FortranWrapperEmitter:
             attributes.append("optional")
         return f"{argument.type}, {', '.join(attributes)} :: {argument.name}"
 
-    # -- body -------------------------------------------------------------------
+    def _locals(self, writer: Writer, taken) -> None:
+        """The taken-over arguments, as locals the allocating wrapper prepares itself."""
+        for argument in taken:
+            if argument.is_array:
+                deferred = ", ".join(":" for _ in argument.dimension.extents)
+                writer.line(
+                    f"{argument.type}, dimension({deferred}), allocatable :: {argument.name}"
+                )
+            else:
+                writer.line(f"{argument.type} :: {argument.name}")
+
+    # -- validation -------------------------------------------------------------
 
     def _validation(self, writer: Writer, procedure: Procedure) -> None:
         error = self.conventions.error_arg
@@ -237,13 +332,103 @@ class FortranWrapperEmitter:
 
         return f"call {validator}({head}, {', '.join(keywords)})"
 
-    def _kernel_call(self, writer: Writer, procedure: Procedure, kernel: str) -> None:
-        # The kernel has no ierr (it does no reporting), so it is not passed on.
-        error = self.conventions.error_arg
-        actuals = [a for a in procedure.arguments if a.name.lower() != error.lower()]
-        writer.line(f"call {kernel}(&")
+    # -- allocation, recommend routines, permutations ---------------------------
+
+    def _recommend_calls(
+        self, writer: Writer, foo: Procedure, alloc: Procedure, taken
+    ) -> None:
+        """Call each recommend routine once, into the sizes it produces.
+
+        The routine is called directly (its Fortran, not a binding), so every one of its
+        dummies is supplied: its inputs from the `DM_OUTPUT_FROM` plan or by name from the
+        wrapper's own arguments, its outputs into the local sizes, its ierr as ierr.
+        """
+        computed = [a for a in taken if is_computed(a)]
+        if not computed:
+            return
+
+        groups: dict[str, list[Argument]] = {}
+        for argument in computed:
+            plan = foo.argument(argument.name).roles.computed_from
+            groups.setdefault(plan.producer.name, []).append(argument)
+
+        reports_error = False
+        for consumer_arguments in groups.values():
+            plan = foo.argument(consumer_arguments[0].name).roles.computed_from
+            producer = plan.producer
+            produced = {
+                foo.argument(a.name).roles.computed_from.output.name.lower(): a.name
+                for a in consumer_arguments
+            }
+            supplied = {pi.name.lower(): pi for pi in plan.inputs}
+
+            actuals = []
+            for dummy in producer.arguments:
+                lowered = dummy.name.lower()
+                if lowered == self.conventions.error_arg.lower():
+                    actuals.append((dummy.name, self.conventions.error_arg))
+                    reports_error = True
+                elif lowered in produced:
+                    actuals.append((dummy.name, produced[lowered]))
+                elif lowered in supplied:
+                    supply = supplied[lowered]
+                    value = (
+                        supply.argument
+                        if supply.argument is not None
+                        else _fortran_literal(supply.constant, dummy)
+                    )
+                    actuals.append((dummy.name, value))
+                elif alloc.argument(dummy.name) is not None:
+                    # a producer input the wrapper carries under the same name -- e.g. an
+                    # extent the producer's own binding would derive, which a direct call
+                    # must still supply
+                    actuals.append((dummy.name, dummy.name))
+            self._call(writer, producer.name, actuals)
+
+        if reports_error:
+            writer.line(f"if (is_err({self.conventions.error_arg})) return")
+
+    def _allocations(self, writer: Writer, taken) -> None:
+        for argument in taken:
+            if argument.is_array:
+                extents = ", ".join(argument.dimension.extents)
+                writer.line(f"M_ALLOCATE({argument.name}({extents}))")
+
+    def _permutations(self, writer: Writer, taken) -> None:
+        for argument in taken:
+            if is_permutation(argument, self.conventions) and not is_temporary(
+                argument, self.conventions
+            ):
+                base = argument.name[: -len(self.conventions.perm_suffix)]
+                writer.line(f"call init_perm({argument.name})")
+                writer.line(f"call sort_array_heapsort({base}, {argument.name})")
+
+    # -- the kernel call --------------------------------------------------------
+
+    def _kernel_call(self, writer: Writer, kernel: str, arguments) -> None:
+        # the kernel has no ierr (it does no reporting), so it is not passed on
+        self._call(writer, kernel, [(a.name, a.name) for a in arguments])
+
+    def _call(self, writer: Writer, name: str, actuals) -> None:
+        writer.line(f"call {name}(&")
         with writer.indent():
-            for index, argument in enumerate(actuals):
+            for index, (dummy, value) in enumerate(actuals):
                 separator = "&" if index == len(actuals) - 1 else ",&"
-                writer.line(f"{argument.name} = {argument.name}{separator}")
+                writer.line(f"{dummy} = {value}{separator}")
         writer.line(")")
+
+
+def _fortran_literal(value: object, argument: Argument) -> str:
+    """A constant producer input, rendered back as a kinded Fortran literal.
+
+    The kind is the producer dummy's own, so `1` handed to an `integer(int32)` input comes
+    out `1_int32` and `.false.` for a logical.
+    """
+    if isinstance(value, bool):
+        return ".true." if value else ".false."
+    kind = argument.type.kind
+    if isinstance(value, int):
+        return f"{value}_{kind}" if kind else str(value)
+    if isinstance(value, float):
+        return f"{value!r}_{kind}" if kind else repr(value)
+    return str(value)

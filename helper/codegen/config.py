@@ -45,6 +45,13 @@ class Conventions:
     #: turns `loess_fit_kernel` in module `tox_loess_kernel` into the validating wrapper
     #: `loess_fit` (and, when it needs work arrays, `loess_fit_alloc`) in module `tox_loess`.
     kernel_suffix: str = "_kernel"
+    #: Suffix of the third variant, the plain validating wrapper. Empty -- it takes the
+    #: bare name -- but named so the three variants (kernel, validating, alloc) are
+    #: symmetric and the naming lives in one place.
+    validating_suffix: str = ""
+    #: Suffix marking a permutation vector. In the allocating wrapper a `<base>_perm`
+    #: argument is seeded with `init_perm` and heapsorted against `<base>`.
+    perm_suffix: str = "_perm"
 
     #: Prefix marking a work array: allocated silently, never returned
     temporary_prefix: str = "tmp_"
