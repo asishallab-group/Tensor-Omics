@@ -84,7 +84,7 @@ def generate(
     # so the C / Python / R targets wrap them like any procedure read from source and the
     # single kernel parse is the one source of truth. Runs unconditionally -- a project with
     # no kernels comes back unchanged, so this is a no-op until the first kernel exists.
-    synthesis = synthesize_wrappers(parsed.project, conventions)
+    synthesis = synthesize_wrappers(parsed.project, conventions, diagnostics)
     project = synthesis.project
 
     analyse_project(project, diagnostics, conventions)

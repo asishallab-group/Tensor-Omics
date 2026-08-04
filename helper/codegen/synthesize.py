@@ -16,12 +16,14 @@ in the project but are inert -- nothing generates from an unexported procedure.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .config import CONVENTIONS, Conventions, Paths
+from .diagnostics import DiagnosticBag
 from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
+from .ir.roles import analyse
 from .ir.types import BaseType, FortranType, Intent
 
 #: Documentation for the `ierr` a wrapper carries when the kernel declares none
@@ -86,6 +88,18 @@ def is_taken_over(argument: Argument, conventions: Conventions = CONVENTIONS) ->
 
 
 @dataclass(frozen=True)
+class ModeFix:
+    """The mode a per-mode wrapper fixes: the argument dropped, and what it is set to."""
+
+    #: The kernel's mode argument, dropped from the wrapper's signature
+    argument: str
+    #: The parameter the mode is fixed to in the kernel call, e.g. `MODE_DOSAGE_PATTERN`
+    parameter: str
+    #: The module the parameter lives in, so the wrapper can import it
+    module: str
+
+
+@dataclass(frozen=True)
 class WrapperSpec:
     """A synthesised wrapper set and the kernel it came from."""
 
@@ -94,6 +108,8 @@ class WrapperSpec:
     module_name: str
     validating: Procedure
     allocating: Procedure | None = None
+    #: Set when this is one of a mode-split kernel's per-mode wrappers
+    mode_fix: ModeFix | None = None
 
 
 @dataclass(frozen=True)
@@ -103,14 +119,23 @@ class SynthesisResult:
 
 
 def synthesize_wrappers(
-    project: Project, conventions: Conventions = CONVENTIONS
+    project: Project,
+    conventions: Conventions = CONVENTIONS,
+    diagnostics: DiagnosticBag | None = None,
 ) -> SynthesisResult:
     """Build the wrappers every kernel implies and inject them into `project`.
 
     A kernel is a `<name>_kernel` procedure in a `<module>_kernel` module. Its wrappers go
     into a generated module named by dropping the module's `_kernel` suffix, so
     `tox_loess_kernel` yields `tox_loess`.
+
+    A kernel is analysed here, before its wrappers are built, so its mode table is known: a
+    mode argument whose table names a procedure per mode makes the kernel expand into one
+    wrapper (pair) per mode instead of a single procedure taking the mode. The kernel is not
+    exported, so the later project-wide pass leaves it alone; the wrappers, cloned from it,
+    are analysed there like any procedure.
     """
+    diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
     suffix = conventions.kernel_suffix
     by_module: dict[str, list[Procedure]] = {}
     sources: dict[str, Module] = {}
@@ -124,22 +149,23 @@ def synthesize_wrappers(
             if not kernel.name.lower().endswith(suffix):
                 continue  # a recommend routine or private helper, not a kernel
 
-            validating = _validating_wrapper(kernel, conventions)
-            wrappers = [validating]
-            allocating = _allocating_wrapper(kernel, conventions)
-            if allocating is not None:
-                wrappers.append(allocating)
+            analyse(kernel, diagnostics, conventions)
+            mode_argument = _split_mode_argument(kernel)
 
-            by_module.setdefault(generated_name, []).extend(wrappers)
-            sources[generated_name] = module
-            specs.append(
-                WrapperSpec(
-                    kernel=kernel,
-                    module_name=generated_name,
-                    validating=validating,
-                    allocating=allocating,
+            for base, arguments, mode_fix in _variants(kernel, mode_argument, conventions):
+                validating, allocating = _wrappers_for(base, arguments, kernel, conventions)
+                wrappers = [validating] + ([allocating] if allocating is not None else [])
+                by_module.setdefault(generated_name, []).extend(wrappers)
+                sources[generated_name] = module
+                specs.append(
+                    WrapperSpec(
+                        kernel=kernel,
+                        module_name=generated_name,
+                        validating=validating,
+                        allocating=allocating,
+                        mode_fix=mode_fix,
+                    )
                 )
-            )
 
     generated_modules = [
         Module(
@@ -162,29 +188,98 @@ def _base_name(kernel: Procedure, conventions: Conventions) -> str:
     return kernel.name[: -len(conventions.kernel_suffix)]
 
 
-def _validating_wrapper(kernel: Procedure, conventions: Conventions) -> Procedure:
-    """`foo`: the kernel's arguments plus `ierr`, validating then calling the kernel."""
-    name = _base_name(kernel, conventions) + conventions.validating_suffix
-    arguments = [argument.with_name(argument.name) for argument in kernel.arguments]
-    _append_error(arguments, kernel, conventions)
-    return _wrapper(name, arguments, kernel, conventions)
+def _split_mode_argument(kernel: Procedure) -> Argument | None:
+    """The kernel's mode argument whose table opts into per-mode splitting, or None.
 
-
-def _allocating_wrapper(kernel: Procedure, conventions: Conventions) -> Procedure | None:
-    """`foo_alloc`: the kernel's caller-facing arguments plus `ierr`.
-
-    The work arrays, permutations, and recommend-sized values are dropped -- the wrapper
-    prepares them itself. None when the kernel takes none of those, so there is nothing to
-    allocate and the validating wrapper is the only entry point.
+    Requires the kernel to have been analysed, so the mode table is on its roles.
     """
-    kept = [a for a in kernel.arguments if not is_taken_over(a, conventions)]
-    if len(kept) == len(kernel.arguments):
-        return None
+    for argument in kernel.arguments:
+        roles = argument.roles
+        if roles is not None and roles.mode is not None and roles.mode.is_split:
+            return argument
+    return None
 
-    name = _base_name(kernel, conventions) + conventions.alloc_suffix
-    arguments = [argument.with_name(argument.name) for argument in kept]
-    _append_error(arguments, kernel, conventions)
-    return _wrapper(name, arguments, kernel, conventions)
+
+def _variants(
+    kernel: Procedure, mode_argument: Argument | None, conventions: Conventions
+) -> list[tuple[str, list[Argument], ModeFix | None]]:
+    """The (base name, exposed kernel arguments, mode fix) of each wrapper to generate.
+
+    One entry for an ordinary kernel; one per mode value for a mode-split kernel.
+    """
+    if mode_argument is None:
+        return [(_base_name(kernel, conventions), list(kernel.arguments), None)]
+    return [
+        (
+            value.procedure_name,
+            _mode_kept_arguments(kernel, mode_argument, value, conventions),
+            ModeFix(mode_argument.name, value.parameter, value.module),
+        )
+        for value in mode_argument.roles.mode.values
+    ]
+
+
+def _mode_kept_arguments(
+    kernel: Procedure, mode_argument: Argument, value, conventions: Conventions
+) -> list[Argument]:
+    """The kernel arguments a per-mode wrapper exposes.
+
+    The mode argument is dropped (fixed to `value.parameter` in the call). An argument that
+    `DM_REQUIRED_IF_MODE` ties to this mode becomes a mandatory dummy; one tied to another
+    mode is dropped; everything else is carried through.
+    """
+    kept: list[Argument] = []
+    for argument in kernel.arguments:
+        if argument is mode_argument:
+            continue
+        required = argument.directives.required_if_mode
+        if required is not None and required.mode_arg.lower() == mode_argument.name.lower():
+            if required.mode_param.lower() == value.parameter.lower():
+                kept.append(_as_required(argument))
+            # otherwise it belongs to another mode and is absent here
+        else:
+            kept.append(argument.with_name(argument.name))
+    return kept
+
+
+def _as_required(argument: Argument) -> Argument:
+    """A copy of a required-in-this-mode optional as a mandatory argument.
+
+    Its `DM_REQUIRED_IF_MODE` directive is dropped: in this wrapper it is unconditionally
+    required, so the conditional-requirement relation no longer applies.
+    """
+    return Argument(
+        argument.name,
+        argument.type,
+        dimension=argument.dimension,
+        intent=argument.intent,
+        optional=False,
+        doc=argument.doc,
+        directives=replace(argument.directives, required_if_mode=None),
+        attributes=argument.attributes,
+        location=argument.location,
+    )
+
+
+def _wrappers_for(
+    base: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions
+) -> tuple[Procedure, Procedure | None]:
+    """The validating wrapper, and the allocating one when the exposed arguments need it."""
+    foo_arguments = [argument.with_name(argument.name) for argument in arguments]
+    _append_error(foo_arguments, kernel, conventions)
+    validating = _wrapper(
+        base + conventions.validating_suffix, foo_arguments, kernel, conventions
+    )
+
+    kept = [a for a in arguments if not is_taken_over(a, conventions)]
+    allocating = None
+    if len(kept) != len(arguments):
+        alloc_arguments = [argument.with_name(argument.name) for argument in kept]
+        _append_error(alloc_arguments, kernel, conventions)
+        allocating = _wrapper(
+            base + conventions.alloc_suffix, alloc_arguments, kernel, conventions
+        )
+    return validating, allocating
 
 
 def _wrapper(

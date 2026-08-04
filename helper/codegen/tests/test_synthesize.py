@@ -5,12 +5,51 @@ adds both and is the exported entry point. These tests hand-build a kernel and c
 injected wrapper, without going near Ford.
 """
 
-from codegen.ir.directives import Directives, Minimum, OutputFrom, OutputFromMode
+from codegen.ir.directives import (
+    Directives,
+    Minimum,
+    OutputFrom,
+    OutputFromMode,
+    RequiredIfMode,
+)
 from codegen.ir.entities import Meta
 from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
 
 from builders import ierr, integer, module, procedure, project, real
+
+
+def mode_split_kernel_module():
+    """A kernel with a mode argument whose table names a procedure per mode."""
+    mode_table = [
+        "Which pattern to detect.",
+        "| Mode | Value | Procedure |",
+        "|------|-------|-----------|",
+        "| dosage effect | [[tox_demo_kernel(module):MODE_DOSAGE(variable)]] | detect_dosage_effect |",
+        "| subfunctionalisation | [[tox_demo_kernel(module):MODE_SUBFUNC(variable)]] | detect_subfunctionalization |",
+    ]
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "detect_patterns_kernel",
+            real("genes", Intent.IN, "(n)", doc="gene values"),
+            integer("n", Intent.IN, doc="number of genes"),
+            integer("pattern_mode", Intent.IN, doc=mode_table),
+            real(
+                "threshold",
+                Intent.IN,
+                optional=True,
+                directives=Directives(
+                    required_if_mode=RequiredIfMode(
+                        "pattern_mode", "tox_demo_kernel", "MODE_DOSAGE"
+                    )
+                ),
+                doc="dosage threshold",
+            ),
+            real("result", Intent.OUT, "(n)", doc="pattern score per gene"),
+            meta=Meta(summary="Detect paralog patterns", author="AUTHOR"),
+        ),
+    )
 
 C_BINDING = Meta(summary="a summary", author="AUTHOR", category="C-binding")
 
@@ -193,3 +232,52 @@ class TestAllocatingSynthesis:
 
         assert result.project.procedure("tox_demo", "crunch").is_exported
         assert result.project.procedure("tox_demo", "crunch_alloc").is_exported
+
+
+class TestModeSplitSynthesis:
+    def result(self):
+        return synthesize_wrappers(project(mode_split_kernel_module()))
+
+    def test_one_procedure_per_mode_named_from_the_table(self):
+        project_ = self.result().project
+
+        assert project_.procedure("tox_demo", "detect_dosage_effect") is not None
+        assert project_.procedure("tox_demo", "detect_subfunctionalization") is not None
+        # the mode argument is gone, so there is no single runtime-mode procedure
+        assert project_.procedure("tox_demo", "detect_patterns") is None
+
+    def test_the_mode_argument_is_dropped(self):
+        dosage = self.result().project.procedure("tox_demo", "detect_dosage_effect")
+
+        assert "pattern_mode" not in [a.name for a in dosage.arguments]
+
+    def test_a_required_in_this_mode_argument_is_mandatory(self):
+        dosage = self.result().project.procedure("tox_demo", "detect_dosage_effect")
+
+        threshold = dosage.argument("threshold")
+        assert threshold is not None
+        assert not threshold.optional
+        # the now-unconditional requirement drops the directive
+        assert threshold.directives.required_if_mode is None
+
+    def test_a_required_in_another_mode_argument_is_absent(self):
+        subfunc = self.result().project.procedure(
+            "tox_demo", "detect_subfunctionalization"
+        )
+
+        assert subfunc.argument("threshold") is None
+        assert [a.name for a in subfunc.arguments] == ["genes", "n", "result", "ierr"]
+
+    def test_the_mode_fix_is_recorded_on_the_spec(self):
+        specs = self.result().specs
+        dosage = next(s for s in specs if s.validating.name == "detect_dosage_effect")
+
+        assert dosage.mode_fix.argument == "pattern_mode"
+        assert dosage.mode_fix.parameter == "MODE_DOSAGE"
+        assert dosage.mode_fix.module == "tox_demo_kernel"
+        assert dosage.kernel.name == "detect_patterns_kernel"
+
+    def test_an_ordinary_kernel_has_no_mode_fix(self):
+        (spec,) = synthesize_wrappers(project(kernel_module())).specs
+
+        assert spec.mode_fix is None
