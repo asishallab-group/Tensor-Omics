@@ -153,7 +153,7 @@ contains
         !! Work array: quicksort right-index stack (length n_genes)
 
         integer(int32) :: i_gene, i_sample, orig_idx
-        real(real64) :: gene_mean, log2_mean, log2_factor
+        real(real64) :: gene_mean, log2_mean, log2_factor, bessel
         logical :: use_log_transform
 
         sorted_data%n_genes = n_genes
@@ -161,6 +161,13 @@ contains
 
         use_log_transform = (norm_method /= 0)
         if (use_log_transform) log2_factor = 1.0_real64 / log(2.0_real64)
+
+        ! Bessel correction. Residuals x - xbar have variance sigma^2 (n-1)/n, so the
+        ! raw pool understates sigma (18% at n=3). Scale every residual by sqrt(n/(n-1))
+        ! once here, at construction, so every downstream null (bootstrap / exact) is
+        ! built from unbiased-variance residuals while the observed mean-difference
+        ! statistic is left untouched. prepare_sorted_data enforces n_samples >= 2.
+        bessel = sqrt(real(n_samples, real64) / real(max(n_samples - 1, 1), real64))
 
         do concurrent(i_gene=1:n_genes) shared(tmp_perm)
             tmp_perm(i_gene) = i_gene
@@ -184,14 +191,14 @@ contains
 
             do concurrent(i_sample=1:n_samples) &
                 shared(sorted_data, replicates, gene_mean, log2_mean, log2_factor, &
-                       use_log_transform, i_gene, orig_idx)
+                       use_log_transform, i_gene, orig_idx, bessel)
                 if (use_log_transform) then
-                    sorted_data%residuals_packed(i_sample, i_gene) = &
+                    sorted_data%residuals_packed(i_sample, i_gene) = bessel * ( &
                         log(max(replicates(i_sample, orig_idx), 0.0_real64) + NOISE_LOG_OFFSET) &
-                        * log2_factor - log2_mean
+                        * log2_factor - log2_mean)
                 else
-                    sorted_data%residuals_packed(i_sample, i_gene) = &
-                        replicates(i_sample, orig_idx) - gene_mean
+                    sorted_data%residuals_packed(i_sample, i_gene) = bessel * ( &
+                        replicates(i_sample, orig_idx) - gene_mean)
                 end if
             end do
         end do
@@ -224,6 +231,8 @@ contains
 
         call validate_dimension_size(n_genes, ierr)
         call validate_dimension_size(n_samples, ierr)
+        ! Need >= 2 replicates to form a residual variance (and the Bessel correction).
+        if (n_samples < 2) call set_err(ierr, ERR_INVALID_INPUT)
         call validate_all_in_range_real(means, n_genes, ierr)
         call validate_all_in_range_real(replicates, n_samples * n_genes, ierr)
         if (is_err(ierr)) return
@@ -1372,6 +1381,11 @@ contains
         chosen_n_bins_own_control = -1
         n_genes_with_pvalue = 0
 
+        ! This loop MUST stay sequential: the `own` mean-difference bootstrap
+        ! (compute_pvalue_bootstrap_mean_helper) draws from the global RNG stream
+        ! seeded once by init_random(42). Parallelising the gene loop would make the
+        ! draws order-dependent and break reproducibility -- use a per-gene
+        ! counter-based RNG (seeded by gene index) before ever doing so.
         do i_gene = 1, n_genes
             mean_case_val = means_case(i_gene)
             mean_control_val = means_control(i_gene)
@@ -1493,7 +1507,13 @@ contains
             end if
 
             neighborhood_size_case(i_gene) = n_pool_case
-            n_genes_with_pvalue = n_genes_with_pvalue + 1
+            ! Count genes that actually received at least one p-value, not merely those
+            ! that passed the gates -- the stratum gate can still skip the `own`
+            ! computation, and all three compute-flags can be 0.
+            if (pvalues_own(i_gene) >= 0.0_real64 .or. &
+                pvalues_family(i_gene) >= 0.0_real64 .or. &
+                pvalues_ortholog(i_gene) >= 0.0_real64) &
+                n_genes_with_pvalue = n_genes_with_pvalue + 1
         end do
     end subroutine compute_noise_pvalue_pipeline_helper
 
