@@ -28,7 +28,7 @@ _lib.cluster_factor_trajectories_k_means_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS = ("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "ierr", "max_iterations",)
+_CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS = ("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr",)
 
 _lib.k_means_clustering_c.restype = None
 _lib.k_means_clustering_c.argtypes = (
@@ -44,7 +44,7 @@ _lib.k_means_clustering_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_K_MEANS_CLUSTERING_ARGUMENTS = ("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "ierr", "max_iterations",)
+_K_MEANS_CLUSTERING_ARGUMENTS = ("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "max_iterations", "ierr",)
 
 _lib.linkage_clustering_c.restype = None
 _lib.linkage_clustering_c.argtypes = (
@@ -141,8 +141,8 @@ def cluster_factor_trajectories_k_means(
         centroids,
         labels,
         label_counts,
-        ctypes.byref(ierr),
         ctypes.byref(ctypes.c_int(max_iterations)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS)
@@ -231,8 +231,8 @@ def k_means_clustering(
         centroids,
         labels,
         label_counts,
-        ctypes.byref(ierr),
         ctypes.byref(ctypes.c_int(max_iterations)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS)
@@ -258,10 +258,8 @@ def linkage_clustering(
         So there is no need to copy an existing distance matrix, just pass the original.
         @endnote
 
-        The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
-        not by the finiteness contract, so this argument opts out of that.
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
+        Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+        distance-matrix naming convention in the generated wrapper.
     method : str, one of 'average' | 'weighted' | 'ward'
         used algorithm
         The minimum valid value is `0_int32`.

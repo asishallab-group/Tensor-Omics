@@ -3,11 +3,9 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 
-# The two selection counts are derived from the masks, but the Fortran takes them.
+# The binding now derives the two selection counts from the masks (n_selected_ convention).
 tissue_versatility <- function(expression_vectors, exp_vecs_selection_index, axes_selection) {
-  compute_tissue_versatility(expression_vectors, exp_vecs_selection_index,
-                             sum(exp_vecs_selection_index), axes_selection,
-                             sum(axes_selection))
+  compute_tissue_versatility(expression_vectors, exp_vecs_selection_index, axes_selection)
 }
 
 # 1. Uniform expression (should yield TV=0)
@@ -133,8 +131,8 @@ test_invalid_input_no_axes <- function() {
     tissue_versatility(expr, c(TRUE), c(FALSE,FALSE,FALSE))
   }, error = function(e) {
     error_caught <<- TRUE
-    # Check that the error message contains the expected text
-    assert_true(grepl("empty input", e$message, ignore.case = TRUE))
+    # No selected axes now fails the n_selected_axes >= 1 bound (DM_MIN) in the wrapper
+    assert_true(grepl("invalid input", e$message, ignore.case = TRUE))
   })
   assert_true(error_caught)  # Make sure an error was actually thrown
 }

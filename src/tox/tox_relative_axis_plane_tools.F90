@@ -6,7 +6,8 @@ module tox_relative_axis_plane_tools
     use tox_relative_axis_plane_tools_kernel, only: clock_hand_angle_between_vectors_kernel, clock_hand_angles_for_shift_vectors_kernel, omics_field_RAP_projection_kernel, omics_vector_RAP_projection_kernel
     use tox_relative_axis_plane_tools_kernel, only: relative_axes_changes_from_shift_vector_kernel, relative_axes_expression_from_expression_vector_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size
     M_IMPLICIT_NONE
     private
 
@@ -48,7 +49,7 @@ contains
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(out) :: projections
             !! projected vectors
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
@@ -56,6 +57,8 @@ contains
         call validate_dimension_size(n_selected_vecs, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_selected_axes, ierr, arg_pos=7_int32)
         call validate_all_in_range_real(vecs, n_axes * n_vecs, ierr, arg_pos=1_int32)
+        if (count(vecs_selection_mask, kind=int32) /= n_selected_vecs) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
 
         call omics_vector_RAP_projection_kernel(&
@@ -66,8 +69,7 @@ contains
             n_selected_vecs = n_selected_vecs,&
             axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
-            projections = projections,&
-            ierr = ierr&
+            projections = projections&
         )
     end subroutine omics_vector_RAP_projection
 
@@ -100,7 +102,7 @@ contains
         real(real64), dimension(n_selected_axes, n_selected_fields), intent(out) :: projections
             !! projected vectors
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
@@ -108,6 +110,8 @@ contains
         call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_selected_axes, ierr, arg_pos=7_int32)
         call validate_all_in_range_real(fields, n_axes * 2 * n_fields, ierr, arg_pos=1_int32)
+        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
 
         call omics_field_RAP_projection_kernel(&
@@ -118,8 +122,7 @@ contains
             n_selected_fields = n_selected_fields,&
             axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
-            projections = projections,&
-            ierr = ierr&
+            projections = projections&
         )
     end subroutine omics_field_RAP_projection
 
@@ -196,6 +199,7 @@ contains
         call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(fields, n_dims * 2 * n_fields, ierr, arg_pos=1_int32)
+        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         call clock_hand_angles_for_shift_vectors_kernel(&

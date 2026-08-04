@@ -5,8 +5,8 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, int*, int*, int*, const int*);
-void k_means_clustering_c(const int*, const double*, const int*, const int*, double*, int*, int*, int*, const int*);
+void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, int*, int*, const int*, int*);
+void k_means_clustering_c(const int*, const double*, const int*, const int*, double*, int*, int*, const int*, int*);
 void linkage_clustering_c(double*, const int*, int*, int*, double*, int*, const char*, int*);
 
 SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids, SEXP max_iterations) {
@@ -37,8 +37,8 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
         REAL(centroids_out),
         INTEGER(labels),
         INTEGER(label_counts),
-        &ierr,
-        &max_iterations_v
+        &max_iterations_v,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
@@ -82,8 +82,8 @@ SEXP k_means_clustering_call(SEXP data_points, SEXP centroids, SEXP max_iteratio
         REAL(centroids_out),
         INTEGER(labels),
         INTEGER(label_counts),
-        &ierr,
-        &max_iterations_v
+        &max_iterations_v,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;

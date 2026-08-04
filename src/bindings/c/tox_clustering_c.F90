@@ -27,13 +27,15 @@ contains
             centroids,&
             labels,&
             label_counts,&
-            ierr,&
-            max_iterations&
+            max_iterations,&
+            ierr&
         ) bind(C, name="cluster_factor_trajectories_k_means_c")
         use tox_clustering, only: cluster_factor_trajectories_k_means
 
         integer(c_int), intent(in), target :: n_clusters
             !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_samples*n_timepoints`.
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
@@ -53,10 +55,10 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -79,8 +81,8 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
-            max_iterations = max_iterations&
+            max_iterations = max_iterations,&
+            ierr = ierr&
         )
     end subroutine cluster_factor_trajectories_k_means_c
 
@@ -96,13 +98,15 @@ contains
             centroids,&
             labels,&
             label_counts,&
-            ierr,&
-            max_iterations&
+            max_iterations,&
+            ierr&
         ) bind(C, name="k_means_clustering_c")
         use tox_clustering, only: k_means_clustering
 
         integer(c_int), intent(in), target :: n_clusters
             !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
         integer(c_int), intent(in), target :: n_dims
@@ -120,11 +124,11 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering.
             !! The default value is `300_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -145,8 +149,8 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
-            max_iterations = max_iterations&
+            max_iterations = max_iterations,&
+            ierr = ierr&
         )
     end subroutine k_means_clustering_c
 
@@ -178,10 +182,8 @@ contains
             !! So there is no need to copy an existing distance matrix, just pass the original.
             !! @endnote
             !!
-            !! The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
-            !! not by the finiteness contract, so this argument opts out of that.
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
+            !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+            !! distance-matrix naming convention in the generated wrapper.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_i
             !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_j
@@ -201,7 +203,7 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
         integer(int32) :: method_mode_f
 
         M_CHECK_IERR_NON_NULL

@@ -28,14 +28,12 @@ _lib.compute_tissue_versatility_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_TISSUE_VERSATILITY_ARGUMENTS = ("n_axes", "n_vectors", "expression_vectors", "exp_vecs_selection_index", "n_selected_vectors", "axes_selection", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr",)
+_COMPUTE_TISSUE_VERSATILITY_ARGUMENTS = ("n_axes", "n_vectors", "expression_vectors", "vectors_selection_mask", "n_selected_vectors", "axes_selection_mask", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr",)
 
 def compute_tissue_versatility(
         expression_vectors,
-        exp_vecs_selection_index,
-        n_selected_vectors,
-        axes_selection,
-        n_selected_axes,
+        vectors_selection_mask,
+        axes_selection_mask,
 ):
     r"""Computes normalized tissue versatility for selected expression vectors.
 
@@ -43,14 +41,10 @@ def compute_tissue_versatility(
     ----------
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_vectors,), column-major (order='F')
         2D array (n_axes, n_vectors), each column is a gene expression vector
-    exp_vecs_selection_index : np.ndarray[np.bool_] of shape (n_vectors,)
+    vectors_selection_mask : np.ndarray[np.bool_] of shape (n_vectors,)
         Logical array (n_vectors), .TRUE. for vectors to process
-    n_selected_vectors : int
-        Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)
-    axes_selection : np.ndarray[np.bool_] of shape (n_axes,)
+    axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
         Logical array (n_axes), .TRUE. for axes to include in calculation
-    n_selected_axes : int
-        Number of selected axes (count of .TRUE. in axes_selection)
 
     Returns
     -------
@@ -79,29 +73,31 @@ def compute_tissue_versatility(
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        exp_vecs_selection_index = np.ascontiguousarray(exp_vecs_selection_index, dtype=np.bool_)
+        vectors_selection_mask = np.ascontiguousarray(vectors_selection_mask, dtype=np.bool_)
     except (TypeError, ValueError) as error:
-        raise TypeError(f"'exp_vecs_selection_index' must be an array of np.bool_: {error}") from None
-    if exp_vecs_selection_index.ndim != 1:
-        raise ValueError(f"'exp_vecs_selection_index' must have 1 dimension, but has {exp_vecs_selection_index.ndim}")
+        raise TypeError(f"'vectors_selection_mask' must be an array of np.bool_: {error}") from None
+    if vectors_selection_mask.ndim != 1:
+        raise ValueError(f"'vectors_selection_mask' must have 1 dimension, but has {vectors_selection_mask.ndim}")
     try:
-        axes_selection = np.ascontiguousarray(axes_selection, dtype=np.bool_)
+        axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.bool_)
     except (TypeError, ValueError) as error:
-        raise TypeError(f"'axes_selection' must be an array of np.bool_: {error}") from None
-    if axes_selection.ndim != 1:
-        raise ValueError(f"'axes_selection' must have 1 dimension, but has {axes_selection.ndim}")
+        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {error}") from None
+    if axes_selection_mask.ndim != 1:
+        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_vectors = expression_vectors.shape[1]
+    n_selected_vectors = int(vectors_selection_mask.sum())
+    n_selected_axes = int(axes_selection_mask.sum())
 
     # Fortran cannot check that shared extents agree; this can
-    if axes_selection.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection' has {axes_selection.shape[0]} along axis 0, but "
+    if axes_selection_mask.shape[0] != n_axes:
+        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
             f"'expression_vectors' implies n_axes == {n_axes}"
         )
-    if exp_vecs_selection_index.shape[0] != n_vectors:
-        raise ValueError(f"'exp_vecs_selection_index' has {exp_vecs_selection_index.shape[0]} along axis 0, but "
+    if vectors_selection_mask.shape[0] != n_vectors:
+        raise ValueError(f"'vectors_selection_mask' has {vectors_selection_mask.shape[0]} along axis 0, but "
             f"'expression_vectors' implies n_vectors == {n_vectors}"
         )
 
@@ -114,9 +110,9 @@ def compute_tissue_versatility(
         ctypes.byref(ctypes.c_int(n_axes)),
         ctypes.byref(ctypes.c_int(n_vectors)),
         expression_vectors,
-        exp_vecs_selection_index,
+        vectors_selection_mask,
         ctypes.byref(ctypes.c_int(n_selected_vectors)),
-        axes_selection,
+        axes_selection_mask,
         ctypes.byref(ctypes.c_int(n_selected_axes)),
         tissue_versatilities,
         tissue_angles_deg,

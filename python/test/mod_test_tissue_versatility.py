@@ -15,12 +15,9 @@ from test_helpers import run_all_tests, assert_error
 
 
 def compute_tissue_versatility(expression_vectors, exp_vecs_selection_index, axes_selection):
-    """The two selection counts are derived, but the Fortran takes them explicitly."""
+    """The binding now derives the two selection counts from the masks (n_selected_ convention)."""
     return _compute_tissue_versatility(
-        expression_vectors, exp_vecs_selection_index,
-        int(np.count_nonzero(exp_vecs_selection_index)),
-        axes_selection,
-        int(np.count_nonzero(axes_selection)),
+        expression_vectors, exp_vecs_selection_index, axes_selection,
     )
 
 

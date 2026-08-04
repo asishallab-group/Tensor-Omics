@@ -7,7 +7,6 @@
 !| module `tox_tissue_versatility`.
 module tox_tissue_versatility_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: ERR_INVALID_INPUT, set_err_once, validate_dimension_size, is_err
     use f42_utils, only: clamp, degrees
     M_IMPLICIT_NONE
 contains
@@ -17,42 +16,34 @@ contains
     !| The metric is based on the angle between each gene expression vector and the space diagonal.
     !| Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
     !|
-    !| The selection-consistency checks (`n_selected_axes` as a dimension, and each selection count
-    !| matching its claimed total) live here: they compare a `count(mask)` against a claimed size, which
-    !| the generated wrapper's per-argument validators cannot express.
-    pure subroutine compute_tissue_versatility_kernel(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, &
-                                               n_selected_vectors, axes_selection, n_selected_axes, &
-                                               tissue_versatilities, tissue_angles_deg, ierr)
+    !| The masks follow the `n_selected_` convention, so the generated wrapper validates that each
+    !| selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
+    pure subroutine compute_tissue_versatility_kernel(n_axes, n_vectors, expression_vectors, vectors_selection_mask, &
+                                               n_selected_vectors, axes_selection_mask, n_selected_axes, &
+                                               tissue_versatilities, tissue_angles_deg)
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions)
         integer(int32), intent(in) :: n_vectors
             !! Number of expression vectors (genes)
         integer(int32), intent(in) :: n_selected_axes
-            !! Number of selected axes (count of .TRUE. in axes_selection)
+            !! Number of selected axes (count of .TRUE. in axes_selection_mask)
+            !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_selected_vectors
-            !! Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)
+            !! Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)
         real(real64), dimension(n_axes, n_vectors), intent(in) :: expression_vectors
             !! 2D array (n_axes, n_vectors), each column is a gene expression vector
-        logical, dimension(n_vectors), intent(in) :: exp_vecs_selection_index
+        logical, dimension(n_vectors), intent(in) :: vectors_selection_mask
             !! Logical array (n_vectors), .TRUE. for vectors to process
-        logical, dimension(n_axes), intent(in) :: axes_selection
+        logical, dimension(n_axes), intent(in) :: axes_selection_mask
             !! Logical array (n_axes), .TRUE. for axes to include in calculation
         real(real64), dimension(n_selected_vectors), intent(out) :: tissue_versatilities
             !! Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities
         real(real64), dimension(n_selected_vectors), intent(out) :: tissue_angles_deg
             !! Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         ! Local variables
         integer(int32) :: i_vec, i_axis, out_idx
         real(real64) :: norm_diag, dot_prod, norm_v, cos_phi, angle_rad, norm_factor
-
-        ! Selection-consistency validation the generator cannot synthesise (count vs claimed size).
-        call validate_dimension_size(n_selected_axes, ierr, arg_pos=7_int32)
-        if (count(exp_vecs_selection_index, kind=int32) /= n_selected_vectors) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
-        if (count(axes_selection, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
-        if (is_err(ierr)) return
 
         ! Handle edge case: when only one axis is selected, tissue versatility is always 0
         if (n_selected_axes == 1) then
@@ -72,18 +63,18 @@ contains
         !TODO optimize: this per-gene loop is data-parallel (each i_vec is independent) but is forced sequential here only
         ! because out_idx is an accumulating compaction counter. Since n_selected_vectors is already known, this
         ! could be parallelized with `do concurrent` by precomputing an exclusive prefix sum of
-        ! exp_vecs_selection_index to get each vector's output slot directly, consistent with how other modules in
+        ! vectors_selection_mask to get each vector's output slot directly, consistent with how other modules in
         ! this codebase parallelize per-gene work.
         out_idx = 0
         do i_vec = 1, n_vectors
-            if (.not. exp_vecs_selection_index(i_vec)) cycle  ! Skip if not selected
+            if (.not. vectors_selection_mask(i_vec)) cycle  ! Skip if not selected
 
             ! Compute dot product and norm for the vector in active axes
             dot_prod = 0.0_real64
             norm_v = 0.0_real64
 
             do i_axis = 1, n_axes
-                if (axes_selection(i_axis)) then
+                if (axes_selection_mask(i_axis)) then
                     dot_prod = dot_prod + expression_vectors(i_axis, i_vec)
                     norm_v = norm_v + expression_vectors(i_axis, i_vec)**2
                 end if

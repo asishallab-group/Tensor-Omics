@@ -6,7 +6,7 @@ module tox_clustering
     use tox_clustering_kernel, only: cluster_factor_trajectories_k_means_kernel, k_means_clustering_kernel, linkage_clustering_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_in_range_int
+    use tox_errors, only: validate_distance_matrix, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -26,11 +26,13 @@ contains
             centroids,&
             labels,&
             label_counts,&
-            ierr,&
-            max_iterations&
+            max_iterations,&
+            ierr&
         )
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_samples*n_timepoints`.
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
@@ -50,13 +52,13 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(int32), intent(out) :: ierr
-            !! Error code
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
-        call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
+        call validate_in_range_int(n_clusters, ierr, arg_pos=1_int32, min=1_int32, max=n_samples*n_timepoints)
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
@@ -73,7 +75,6 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
             max_iterations = max_iterations&
         )
     end subroutine cluster_factor_trajectories_k_means
@@ -90,11 +91,13 @@ contains
             centroids,&
             labels,&
             label_counts,&
-            ierr,&
-            max_iterations&
+            max_iterations,&
+            ierr&
         )
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         integer(int32), intent(in) :: n_dims
@@ -112,14 +115,14 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(int32), intent(out) :: ierr
-            !! Error code
         integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering.
             !! The default value is `300_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
-        call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
+        call validate_in_range_int(n_clusters, ierr, arg_pos=1_int32, min=1_int32, max=n_points)
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(data_points, n_dims * n_points, ierr, arg_pos=2_int32)
@@ -134,7 +137,6 @@ contains
             centroids = centroids,&
             labels = labels,&
             label_counts = label_counts,&
-            ierr = ierr,&
             max_iterations = max_iterations&
         )
     end subroutine k_means_clustering
@@ -164,10 +166,8 @@ contains
             !! So there is no need to copy an existing distance matrix, just pass the original.
             !! @endnote
             !!
-            !! The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
-            !! not by the finiteness contract, so this argument opts out of that.
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
+            !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+            !! distance-matrix naming convention in the generated wrapper.
         integer(int32), dimension(n_points - 1), intent(out) :: merge_i
             !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
         integer(int32), dimension(n_points - 1), intent(out) :: merge_j
@@ -187,11 +187,12 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
         call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
         call validate_in_range_int(method, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
+        call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 
         call linkage_clustering_kernel(&
@@ -201,8 +202,7 @@ contains
             merge_j = merge_j,&
             heights = heights,&
             cluster_sizes = cluster_sizes,&
-            method = method,&
-            ierr = ierr&
+            method = method&
         )
     end subroutine linkage_clustering
 

@@ -4,13 +4,12 @@
 !| grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.
 !| The generator turns the `*_kernel` procedures into the validating wrappers
 !| cluster_factor_trajectories_k_means, k_means_clustering and linkage_clustering in module
-!| tox_clustering. The kernels keep only the checks a per-argument validator cannot express:
-!| the `n_clusters > n_points` relation (over a derived point count) and the distance-matrix
-!| structure check. The many compute helpers below carry no `_kernel` suffix and stay here untouched.
+!| tox_clustering. The kernels are pure: `n_clusters <= n_points` is an upper-bound annotation, and
+!| the distance-matrix structure check comes from the distance-matrix naming convention -- both emitted
+!| into the wrappers. The many compute helpers below carry no `_kernel` suffix and stay here untouched.
 module tox_clustering_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
-    use tox_errors, only: is_err, set_err, ERR_INVALID_INPUT, validate_distance_matrix
     M_IMPLICIT_NONE
 
 #define CM_METHOD_AVERAGE 0
@@ -29,9 +28,11 @@ contains
 
     !> summary: Performs k-means clustering on factor trajectories, so factor evolution over time
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine cluster_factor_trajectories_k_means_kernel(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)
+    pure subroutine cluster_factor_trajectories_k_means_kernel(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_samples*n_timepoints)
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_timepoints
@@ -51,15 +52,8 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(int32), intent(out) :: ierr
-            !! Error code
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
-
-        ! n_points is derived (n_samples*n_timepoints), so the "more clusters than points" check
-        ! cannot be synthesised into the wrapper.
-        if (n_clusters > n_samples*n_timepoints) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
-        if (is_err(ierr)) return
 
         call k_means_clustering_helper(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, max_iterations)
     end subroutine cluster_factor_trajectories_k_means_kernel
@@ -70,9 +64,11 @@ contains
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
-    pure subroutine k_means_clustering_kernel(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations)
+    pure subroutine k_means_clustering_kernel(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_points)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         integer(int32), intent(in) :: n_dims
@@ -90,15 +86,9 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(int32), intent(out) :: ierr
-            !! Error code
         integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering.
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
-
-        ! "more clusters than points" compares two arguments, which no per-argument validator expresses.
-        if (n_clusters > n_points) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
-        if (is_err(ierr)) return
 
         call k_means_clustering_helper(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
     end subroutine k_means_clustering_kernel
@@ -256,7 +246,7 @@ contains
     !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
     !| So there is no need to copy an existing distance matrix, just pass the original.
     !| @endnote
-    pure subroutine linkage_clustering_kernel(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
+    pure subroutine linkage_clustering_kernel(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -267,10 +257,8 @@ contains
             !! So there is no need to copy an existing distance matrix, just pass the original.
             !! @endnote
             !!
-            !! The distance-matrix structure (symmetry, non-negativity, zero diagonal) is checked below,
-            !! not by the finiteness contract, so this argument opts out of that.
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
+            !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+            !! distance-matrix naming convention in the generated wrapper.
         integer(int32), dimension(n_points - 1), intent(out) :: merge_i
             !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
         integer(int32), dimension(n_points - 1), intent(out) :: merge_j
@@ -289,13 +277,6 @@ contains
             !! | Average / UPGMA | [[tox_clustering_kernel(module):METHOD_AVERAGE(variable)]] |
             !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward | [[tox_clustering_kernel(module):METHOD_WARD(variable)]] |
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        ! Distance-matrix structure check (symmetry, non-negativity, zero diagonal): no per-argument
-        ! range validator expresses it, so it stays in the kernel.
-        call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)
-        if (is_err(ierr)) return
 
         call linkage_clustering_helper(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
     end subroutine linkage_clustering_kernel

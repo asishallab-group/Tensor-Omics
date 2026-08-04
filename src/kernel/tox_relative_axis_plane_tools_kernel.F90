@@ -10,7 +10,7 @@
 !| and are shared by several kernels, so they stay here untouched.
 module tox_relative_axis_plane_tools_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: ERR_INVALID_INPUT, set_ok, set_err, is_err, validate_all_in_range_int, set_err_once, ERR_DIVISION_BY_ZERO
+    use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, validate_all_in_range_int, set_err_once, ERR_DIVISION_BY_ZERO
     use f42_utils, only: operator(.isclose.)
     M_IMPLICIT_NONE
 
@@ -18,7 +18,7 @@ contains
 
     !> summary: Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine omics_vector_RAP_projection_kernel(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)
+    pure subroutine omics_vector_RAP_projection_kernel(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_vecs
@@ -35,14 +35,8 @@ contains
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(out) :: projections
             !! projected vectors
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         integer(int32) :: i_vec, i_axis, i_vec_proj, i_axis_proj
-
-        if (count(vecs_selection_mask, kind=int32) /= n_selected_vecs) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (is_err(ierr)) return
 
         i_vec_proj = 1
         do i_vec = 1, n_vecs
@@ -65,7 +59,7 @@ contains
 
     !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine omics_field_RAP_projection_kernel(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr)
+    pure subroutine omics_field_RAP_projection_kernel(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
         integer(int32), intent(in) :: n_axes
@@ -82,14 +76,8 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_selected_axes, n_selected_fields), intent(out) :: projections
             !! projected vectors
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         integer(int32) :: i_vec, i_axis, i_vec_proj, i_axis_proj
-
-        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (is_err(ierr)) return
 
         i_vec_proj = 1
         do i_vec = 1, n_fields
@@ -277,9 +265,9 @@ contains
 
         integer(int32) :: i_field, result_idx
 
-        ! Checks the generated wrapper cannot express: unique axes, and the selection count.
+        ! The count consistency is a convention check in the wrapper; the unique-axes check is not
+        ! expressible there, so it stays here (this argument's design is due for a rework).
         call validate_selected_axes_for_signed_helper(selected_axes_for_signed, ierr, n_dims, arg_pos=6_int32)
-        if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         result_idx = 1

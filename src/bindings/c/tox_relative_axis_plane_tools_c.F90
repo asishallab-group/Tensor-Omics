@@ -50,7 +50,7 @@ contains
         real(c_double), dimension(n_selected_axes, n_selected_vecs), intent(out), target :: projections
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_vecs) :: vecs_selection_mask_f
         logical, dimension(n_axes) :: axes_selection_mask_f
 
@@ -112,7 +112,7 @@ contains
         real(c_double), dimension(n_selected_axes, n_selected_fields), intent(out), target :: projections
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_fields) :: fields_selection_mask_f
         logical, dimension(n_axes) :: axes_selection_mask_f
 

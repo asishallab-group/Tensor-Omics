@@ -17,7 +17,7 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
         .tox_shape_error("centroids", dim(centroids)[1], "trajectories", dim(trajectories)[1])
 
     .result <- .Call("cluster_factor_trajectories_k_means_call", trajectories, centroids, max_iterations)
-    .arguments <- c("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "ierr", "max_iterations")
+    .arguments <- c("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
@@ -48,7 +48,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
         .tox_shape_error("centroids", dim(centroids)[1], "data_points", dim(data_points)[1])
 
     .result <- .Call("k_means_clustering_call", data_points, centroids, max_iterations)
-    .arguments <- c("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "ierr", "max_iterations")
+    .arguments <- c("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "max_iterations", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(

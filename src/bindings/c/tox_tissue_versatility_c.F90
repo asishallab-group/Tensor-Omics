@@ -18,16 +18,15 @@ contains
     !| The metric is based on the angle between each gene expression vector and the space diagonal.
     !| Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
     !|
-    !| The selection-consistency checks (`n_selected_axes` as a dimension, and each selection count
-    !| matching its claimed total) live here: they compare a `count(mask)` against a claimed size, which
-    !| the generated wrapper's per-argument validators cannot express.
+    !| The masks follow the `n_selected_` convention, so the generated wrapper validates that each
+    !| selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
     subroutine compute_tissue_versatility_c(&
             n_axes,&
             n_vectors,&
             expression_vectors,&
-            exp_vecs_selection_index,&
+            vectors_selection_mask,&
             n_selected_vectors,&
-            axes_selection,&
+            axes_selection_mask,&
             n_selected_axes,&
             tissue_versatilities,&
             tissue_angles_deg,&
@@ -40,23 +39,24 @@ contains
         integer(c_int), intent(in), target :: n_vectors
             !! Number of expression vectors (genes)
         integer(c_int), intent(in), target :: n_selected_vectors
-            !! Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)
+            !! Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)
         real(c_double), dimension(n_axes, n_vectors), intent(in), target :: expression_vectors
             !! 2D array (n_axes, n_vectors), each column is a gene expression vector
-        logical(c_bool), dimension(n_vectors), intent(in), target :: exp_vecs_selection_index
+        logical(c_bool), dimension(n_vectors), intent(in), target :: vectors_selection_mask
             !! Logical array (n_vectors), .TRUE. for vectors to process
-        logical(c_bool), dimension(n_axes), intent(in), target :: axes_selection
+        logical(c_bool), dimension(n_axes), intent(in), target :: axes_selection_mask
             !! Logical array (n_axes), .TRUE. for axes to include in calculation
         integer(c_int), intent(in), target :: n_selected_axes
-            !! Number of selected axes (count of .TRUE. in axes_selection)
+            !! Number of selected axes (count of .TRUE. in axes_selection_mask)
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_selected_vectors), intent(out), target :: tissue_versatilities
             !! Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities
         real(c_double), dimension(n_selected_vectors), intent(out), target :: tissue_angles_deg
             !! Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
         integer(c_int), intent(out), target :: ierr
-            !! Error code
-        logical, dimension(n_vectors) :: exp_vecs_selection_index_f
-        logical, dimension(n_axes) :: axes_selection_f
+            !! Error code; zero on success, non-zero on failure.
+        logical, dimension(n_vectors) :: vectors_selection_mask_f
+        logical, dimension(n_axes) :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -65,21 +65,21 @@ contains
         M_CHECK_NON_NULL(n_selected_vectors)
         M_CHECK_NON_NULL(n_selected_axes)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_vectors)
-        M_CHECK_ARRAY_NON_NULL(exp_vecs_selection_index, n_vectors)
-        M_CHECK_ARRAY_NON_NULL(axes_selection, n_axes)
+        M_CHECK_ARRAY_NON_NULL(vectors_selection_mask, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(axes_selection_mask, n_axes)
         M_CHECK_ARRAY_NON_NULL(tissue_versatilities, n_selected_vectors)
         M_CHECK_ARRAY_NON_NULL(tissue_angles_deg, n_selected_vectors)
 
-        exp_vecs_selection_index_f = exp_vecs_selection_index
-        axes_selection_f = axes_selection
+        vectors_selection_mask_f = vectors_selection_mask
+        axes_selection_mask_f = axes_selection_mask
 
         call compute_tissue_versatility(&
             n_axes = n_axes,&
             n_vectors = n_vectors,&
             expression_vectors = expression_vectors,&
-            exp_vecs_selection_index = exp_vecs_selection_index_f,&
+            vectors_selection_mask = vectors_selection_mask_f,&
             n_selected_vectors = n_selected_vectors,&
-            axes_selection = axes_selection_f,&
+            axes_selection_mask = axes_selection_mask_f,&
             n_selected_axes = n_selected_axes,&
             tissue_versatilities = tissue_versatilities,&
             tissue_angles_deg = tissue_angles_deg,&

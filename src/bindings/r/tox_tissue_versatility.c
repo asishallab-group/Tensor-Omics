@@ -7,33 +7,31 @@
 // the Fortran C-ABI symbols this module calls
 void compute_tissue_versatility_c(const int*, const int*, const double*, const unsigned char*, const int*, const unsigned char*, const int*, double*, double*, int*);
 
-SEXP compute_tissue_versatility_call(SEXP expression_vectors, SEXP exp_vecs_selection_index, SEXP n_selected_vectors, SEXP axes_selection, SEXP n_selected_axes) {
+SEXP compute_tissue_versatility_call(SEXP expression_vectors, SEXP vectors_selection_mask, SEXP axes_selection_mask) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_vectors = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
-
-    // scalar inputs, pulled from their length-1 vectors
-    int n_selected_vectors_v = Rf_asInteger(n_selected_vectors);
-    int n_selected_axes_v = Rf_asInteger(n_selected_axes);
+    int n_selected_vectors = tox_sum_true(vectors_selection_mask);
+    int n_selected_axes = tox_sum_true(axes_selection_mask);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* exp_vecs_selection_index_c = tox_bool_in(exp_vecs_selection_index);
-    unsigned char* axes_selection_c = tox_bool_in(axes_selection);
+    unsigned char* vectors_selection_mask_c = tox_bool_in(vectors_selection_mask);
+    unsigned char* axes_selection_mask_c = tox_bool_in(axes_selection_mask);
 
     // outputs and work space
-    SEXP tissue_versatilities = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors_v)); nprot++;
-    SEXP tissue_angles_deg = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors_v)); nprot++;
+    SEXP tissue_versatilities = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors)); nprot++;
+    SEXP tissue_angles_deg = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors)); nprot++;
     int ierr = 0;
 
     compute_tissue_versatility_c(
         &n_axes,
         &n_vectors,
         REAL(expression_vectors),
-        exp_vecs_selection_index_c,
-        &n_selected_vectors_v,
-        axes_selection_c,
-        &n_selected_axes_v,
+        vectors_selection_mask_c,
+        &n_selected_vectors,
+        axes_selection_mask_c,
+        &n_selected_axes,
         REAL(tissue_versatilities),
         REAL(tissue_angles_deg),
         &ierr
