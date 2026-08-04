@@ -303,7 +303,7 @@ contains
     !| To achieve exclusive bounds, us above/below from f42_utils,
     !| like: `validate_in_range_real(x, ierr, min=above(0.0_real64), max=below(100.0_real64))` for `0<x<100`
     !| @endnote
-    pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel)
+    pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)
         real(real64), intent(in), optional :: val
             !! value to be validated
         integer(int32), intent(inout) :: ierr
@@ -316,12 +316,21 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
+        logical, intent(in), optional :: allow_nan
+            !! Permit NaN, opting out of the default finiteness check. Default `.false.`
+        logical, intent(in), optional :: allow_infinite
+            !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         real(real64) :: actual_min, actual_max
+        logical :: nan_ok, inf_ok
+
+        M_DEFAULT_VAL(allow_nan, nan_ok, .false.)
+        M_DEFAULT_VAL(allow_infinite, inf_ok, .false.)
 
         if (present(val)) then
 
             if (ieee_is_nan(val)) then
+                if (nan_ok) return
                 if (present(sentinel)) then
                     if (ieee_is_nan(sentinel)) return
                 end if
@@ -329,6 +338,7 @@ contains
                 call set_err_once(ierr, ERR_NAN_INF, arg_pos)
 
             else if (.not. ieee_is_finite(val)) then
+                if (inf_ok) return
                 if (present(sentinel)) then
                     if (val == sentinel) return
                 end if
@@ -349,7 +359,8 @@ contains
     end subroutine validate_in_range_real
 
     !> Validates min<=e<=max AND e/=NaN for all elements e of an array
-    pure subroutine validate_all_in_range_real(array, n_elements, ierr, arg_pos, min, max, sentinel)
+    pure subroutine validate_all_in_range_real(array, n_elements, ierr, arg_pos, min, max, sentinel, &
+                                               allow_nan, allow_infinite)
         integer(int32), intent(in) :: n_elements
             !! Size of `array`
         real(real64), dimension(n_elements), intent(in), optional :: array
@@ -364,6 +375,10 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
+        logical, intent(in), optional :: allow_nan
+            !! Permit NaN, opting out of the default finiteness check. Default `.false.`
+        logical, intent(in), optional :: allow_infinite
+            !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         integer(int32) :: i_element
 
@@ -372,7 +387,8 @@ contains
             ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
             ! writing it from concurrent iterations would be an unsynchronized data race.
             do i_element = 1, n_elements
-                call validate_in_range_real(array(i_element), ierr, arg_pos, min, max, sentinel)
+                call validate_in_range_real(array(i_element), ierr, arg_pos, min, max, sentinel, &
+                                            allow_nan, allow_infinite)
             end do
         end if
     end subroutine validate_all_in_range_real
