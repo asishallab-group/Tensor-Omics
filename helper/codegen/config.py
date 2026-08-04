@@ -41,6 +41,11 @@ class Conventions:
     #: Suffix of every generated C symbol and of the modules holding them
     c_suffix: str = "_c"
 
+    #: Suffix marking a hand-written kernel procedure (and its module). The generator
+    #: turns `loess_fit_kernel` in module `tox_loess_kernel` into the validating wrapper
+    #: `loess_fit` (and, when it needs work arrays, `loess_fit_alloc`) in module `tox_loess`.
+    kernel_suffix: str = "_kernel"
+
     #: Prefix marking a work array: allocated silently, never returned
     temporary_prefix: str = "tmp_"
     #: Suffix marking the argument that carries another argument's shape
@@ -108,6 +113,10 @@ class Paths:
     macros_header: Path = Path("src/macros.h")
     c_binding_dir: Path = Path("src/bindings/c")
     r_binding_dir: Path = Path("src/bindings/r")
+    #: Hand-written kernels; the generated wrappers derived from them land in `tox_out_dir`
+    kernel_src_dir: Path = Path("src/kernel")
+    #: Where the generated `foo` / `foo_alloc` wrapper modules are written (generated-only)
+    tox_out_dir: Path = Path("src/tox")
     python_out_dir: Path = Path("python/tensor_omics")
     r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")
