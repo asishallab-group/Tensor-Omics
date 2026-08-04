@@ -19,6 +19,7 @@ from .diagnostics import DiagnosticBag
 from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
+from .emit.fortran_wrapper import FortranWrapperEmitter
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
@@ -27,6 +28,11 @@ from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
 from .ir.roles import analyse_project
 from .ir.validate import validate_project
+from .synthesize import (
+    SynthesisResult,
+    generated_wrapper_paths,
+    synthesize_wrappers,
+)
 
 #: The module the error catalogue is read from
 ERROR_MODULE = "tox_errors"
@@ -54,12 +60,12 @@ class Result:
 
 def generate(
     paths: Paths = Paths(),
-    targets: tuple[str, ...] = ("c", "python", "r", "snippets"),
+    targets: tuple[str, ...] = ("fortran", "c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
     parsed: ParsedProject | None = None,
 ) -> Result:
-    """Build the binding files, without writing them.
+    """Build the generated files, without writing them.
 
     Returns them in `Result.files` so a caller can inspect or diff before committing to
     disk. Diagnostics are collected throughout; `Result.ok` is false if any are errors,
@@ -74,28 +80,38 @@ def generate(
     if parsed is None:
         parsed = FordFrontend(paths, diagnostics, conventions).parse()
 
-    analyse_project(parsed.project, diagnostics, conventions)
-    validate_project(parsed.project, diagnostics, conventions)
+    # Synthesise the wrappers each kernel implies and inject them before the semantic pass,
+    # so the C / Python / R targets wrap them like any procedure read from source and the
+    # single kernel parse is the one source of truth. Runs unconditionally -- a project with
+    # no kernels comes back unchanged, so this is a no-op until the first kernel exists.
+    synthesis = synthesize_wrappers(parsed.project, conventions)
+    project = synthesis.project
 
-    binding = build_project(parsed.project, diagnostics, conventions)
-    catalogue = _catalogue(parsed, diagnostics, conventions)
+    analyse_project(project, diagnostics, conventions)
+    validate_project(project, diagnostics, conventions)
+
+    binding = build_project(project, diagnostics, conventions)
 
     files: list[GeneratedFile] = []
+    if "fortran" in targets:
+        files += _fortran_files(project, synthesis, paths, conventions)
     if "c" in targets:
         files += _c_files(binding, paths)
-    if "python" in targets:
-        files += _python_files(binding, catalogue, paths, library)
-    if "r" in targets:
-        files += _r_files(binding, catalogue, paths)
-    if "snippets" in targets:
-        files += _snippets_files(binding, catalogue, paths)
+    if any(target in targets for target in ("python", "r", "snippets")):
+        catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
+        if "python" in targets:
+            files += _python_files(binding, catalogue, paths, library)
+        if "r" in targets:
+            files += _r_files(binding, catalogue, paths)
+        if "snippets" in targets:
+            files += _snippets_files(binding, catalogue, paths)
 
     return Result(diagnostics=diagnostics, files=files)
 
 
 def generate_and_write(
     paths: Paths = Paths(),
-    targets: tuple[str, ...] = ("c", "python", "r", "snippets"),
+    targets: tuple[str, ...] = ("fortran", "c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
     library: str = "build/libtensor-omics.so",
     clean: bool = True,
@@ -103,22 +119,37 @@ def generate_and_write(
 ) -> Result:
     """Generate and, if there are no errors, write the files to disk.
 
-    `clean` removes each target's output directory first, so a routine that stops being
-    exported does not leave a stale wrapper behind. `parsed` is passed through to
-    `generate` to reuse an already-parsed project (see there).
+    `clean` removes each target's output first, so a routine that stops being exported does
+    not leave a stale wrapper behind. `parsed` is passed through to `generate` to reuse an
+    already-parsed project (see there).
     """
     result = generate(paths, targets, conventions, library, parsed=parsed)
     if not result.ok:
         return result
 
     if clean:
-        _clean(targets, paths)
+        _clean(targets, paths, conventions)
     for file in result.files:
         file.write()
     return result
 
 
 # -- per target -----------------------------------------------------------------
+
+
+def _fortran_files(
+    project, synthesis: SynthesisResult, paths: Paths, conventions: Conventions
+) -> list[GeneratedFile]:
+    emitter = FortranWrapperEmitter(
+        conventions, macros_header=str(paths.macros_header), project=project
+    )
+    out = paths.resolve(paths.tox_out_dir)
+    generated = {spec.module_name for spec in synthesis.specs}
+    return [
+        GeneratedFile(out / f"{module.name}.F90", emitter.module(module))
+        for module in project
+        if module.name in generated
+    ]
 
 
 def _c_files(binding: CBinding, paths: Paths) -> list[GeneratedFile]:
@@ -176,26 +207,28 @@ def _snippets_files(binding: CBinding, catalogue, paths: Paths) -> list[Generate
     return [GeneratedFile(out / name, content) for name, content in files.items()]
 
 
-def _catalogue(parsed: ParsedProject, diagnostics: DiagnosticBag,
+def _catalogue(project, arg_pos_factor: int, diagnostics: DiagnosticBag,
                conventions: Conventions) -> ErrorCatalogue:
-    module = parsed.project.module(ERROR_MODULE)
+    module = project.module(ERROR_MODULE)
     if module is None:
         diagnostics.error(
             f"no '{ERROR_MODULE}' module, so the error handling cannot be generated"
         )
-        return ErrorCatalogue((), conventions, parsed.arg_pos_factor)
+        return ErrorCatalogue((), conventions, arg_pos_factor)
     return ErrorCatalogue.from_module(
         module,
         diagnostics,
-        parsed.project.constant_values(),
+        project.constant_values(),
         conventions,
-        arg_pos_factor=parsed.arg_pos_factor,
+        arg_pos_factor=arg_pos_factor,
     )
 
 
-def _clean(targets: tuple[str, ...], paths: Paths) -> None:
+def _clean(targets: tuple[str, ...], paths: Paths,
+           conventions: Conventions = CONVENTIONS) -> None:
     directories = []
     globs = []
+    files = []
     if "c" in targets:
         directories.append(paths.resolve(paths.c_binding_dir))
     if "python" in targets:
@@ -205,9 +238,16 @@ def _clean(targets: tuple[str, ...], paths: Paths) -> None:
         # the R wrappers sit directly in r_out_dir; remove only the generated `.R` so a
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
         globs.append((paths.resolve(paths.r_out_dir), "*.R"))
+    if "fortran" in targets:
+        # src/tox holds hand-written modules during the migration, so remove only the
+        # files the generator owns (one per kernel), never the whole directory
+        files += generated_wrapper_paths(paths, conventions)
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)
     for directory, pattern in globs:
         for path in directory.glob(pattern):
+            path.unlink()
+    for path in files:
+        if path.exists():
             path.unlink()

@@ -17,10 +17,34 @@ in the project but are inert -- nothing generates from an unexported procedure.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
-from .config import CONVENTIONS, Conventions
+from .config import CONVENTIONS, Conventions, Paths
 from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.types import BaseType, FortranType, Intent
+
+
+def generated_wrapper_paths(
+    paths: Paths, conventions: Conventions = CONVENTIONS
+) -> list[Path]:
+    """The `src/tox` files the generator owns, one per kernel module found on disk.
+
+    Derived from the kernel tree so the Ford frontend (which excludes them from the parse)
+    and the cleaner (which removes them before rewriting) agree on the set without parsing
+    -- and so `src/tox` can hold hand-written modules during the migration without either
+    touching them.
+    """
+    kernel_dir = paths.resolve(paths.kernel_src_dir)
+    out_dir = paths.resolve(paths.tox_out_dir)
+    suffix = conventions.kernel_suffix
+    if not kernel_dir.is_dir():
+        return []
+    generated = []
+    for path in sorted(kernel_dir.rglob("*.[Ff]90")):
+        stem = path.stem
+        if stem.lower().endswith(suffix):
+            generated.append(out_dir / f"{stem[: -len(suffix)]}.F90")
+    return generated
 
 
 # -- what the allocating wrapper takes over from the caller ----------------------

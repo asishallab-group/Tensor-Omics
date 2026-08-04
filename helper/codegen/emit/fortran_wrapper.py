@@ -30,12 +30,22 @@ from .doc_ford import render_doc
 from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
 
+#: The exclusive-bound helpers a range expression may wrap a bound in, all from f42_utils.
+_BOUND_HELPERS = ("above", "below")
+
+
 class FortranWrapperEmitter:
     def __init__(
-        self, conventions: Conventions = CONVENTIONS, macros_header: str = "src/macros.h"
+        self,
+        conventions: Conventions = CONVENTIONS,
+        macros_header: str = "src/macros.h",
+        project=None,
     ):
         self.conventions = conventions
         self.macros_header = macros_header
+        #: used to resolve module constants named in a `DM_MIN`/`DM_MAX` expression, so
+        #: they can be imported; None in a unit test whose bounds use no constants
+        self.project = project
 
     # -- module -----------------------------------------------------------------
 
@@ -76,30 +86,70 @@ class FortranWrapperEmitter:
 
     def _module_uses(self, writer: Writer, module: Module) -> None:
         kernel_module = self._kernel_module(module)
-        producers = self._producers(module)
 
-        # the kernels, plus any recommend routine that lives in the kernel module
+        # everything imported besides the intrinsic kinds and tox_errors, keyed by module:
+        # the recommend routines, the f42_utils permutation/bound helpers, and any module
+        # constant a range expression names
+        extra: dict[str, set[str]] = {}
+        for producer_module, names in self._producers(module).items():
+            extra.setdefault(producer_module, set()).update(names)
+        f42 = set()
+        if self._has_permutations(module):
+            f42 |= {"init_perm", "sort_array_heapsort"}
+        for helper_module, names in self._bound_imports(module).items():
+            extra.setdefault(helper_module, set()).update(names)
+        if f42:
+            extra.setdefault("f42_utils", set()).update(f42)
+
+        # the kernels, plus any recommend routine / constant that lives in the kernel module
         kernel_names = {self._kernel_name(p, module) for p in module}
-        kernel_names |= producers.get(kernel_module, set())
+        kernel_names |= extra.pop(kernel_module, set())
         for chunk in _chunks(sorted(kernel_names), 4):
             writer.line(f"use {kernel_module}, only: {', '.join(chunk)}")
-
-        # recommend routines an allocating wrapper calls that live elsewhere
-        for producer_module, names in sorted(producers.items()):
-            if producer_module == kernel_module:
-                continue  # merged into the kernel import above
-            for chunk in _chunks(sorted(names), 4):
-                writer.line(f"use {producer_module}, only: {', '.join(chunk)}")
 
         kinds = sorted({a.type.kind for p in module for a in p.arguments if a.type.kind})
         for chunk in _chunks(kinds, 6):
             writer.line(f"use, intrinsic :: iso_fortran_env, only: {', '.join(chunk)}")
 
-        if self._has_permutations(module):
-            writer.line("use f42_utils, only: init_perm, sort_array_heapsort")
+        for other_module, names in sorted(extra.items()):
+            for chunk in _chunks(sorted(names), 4):
+                writer.line(f"use {other_module}, only: {', '.join(chunk)}")
 
         for chunk in _chunks(self._error_imports(module), 4):
             writer.line(f"use tox_errors, only: {', '.join(chunk)}")
+
+    def _bound_imports(self, module: Module) -> dict[str, set[str]]:
+        """Modules and names a range expression refers to and so must import.
+
+        A bound may be `above(0.0_real64)` (helpers from f42_utils) or name a module
+        constant like `PI`. Identifiers that are the wrapper's own arguments, or literals,
+        need nothing.
+        """
+        identifiers: set[str] = set()
+        for procedure in module:
+            for argument in procedure.arguments:
+                directives = argument.directives
+                for directive in (directives.minimum, directives.maximum, directives.sentinel):
+                    if directive is not None:
+                        identifiers.update(
+                            i.lower() for i in _EXTENT_IDENTIFIER_RE.findall(directive.expression)
+                        )
+        if not identifiers:
+            return {}
+
+        result: dict[str, set[str]] = {}
+        for helper in _BOUND_HELPERS:
+            if helper in identifiers:
+                result.setdefault("f42_utils", set()).add(helper)
+
+        dummies = {a.name.lower() for p in module for a in p.arguments}
+        if self.project is not None:
+            parameters = {p.name.lower(): p for p in self.project.parameters}
+            for identifier in identifiers - dummies:
+                parameter = parameters.get(identifier)
+                if parameter is not None and parameter.parent is not None:
+                    result.setdefault(parameter.parent.name, set()).add(parameter.name)
+        return result
 
     def _error_imports(self, module: Module) -> list[str]:
         names = {"set_ok", "is_err"}

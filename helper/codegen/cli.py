@@ -13,9 +13,13 @@ from pathlib import Path
 from .config import Paths
 from .generate import generate, generate_and_write
 
+#: the generated Fortran wrappers of the kernels (src/tox)
+SOURCE_TARGETS = ("fortran",)
 C_BINDING_TARGETS = ("c", "python", "r")
 SNIPPETS_TARGETS = ("snippets",)
-ALL_TARGETS = (*C_BINDING_TARGETS, *SNIPPETS_TARGETS)
+#: what a plain run generates: the wrappers and the bindings, but not the editor snippets
+DEFAULT_TARGETS = (*SOURCE_TARGETS, *C_BINDING_TARGETS)
+ALL_TARGETS = (*SOURCE_TARGETS, *C_BINDING_TARGETS, *SNIPPETS_TARGETS)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--target", choices=ALL_TARGETS, action="append", dest="targets",
-        help=f"a target to generate; repeatable, defaults to ({", ".join(C_BINDING_TARGETS)})",
+        help=f"a target to generate; repeatable, defaults to ({", ".join(DEFAULT_TARGETS)})",
     )
     parser.add_argument(
         "--library", default="build/libtensor-omics.so",
@@ -60,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     paths = Paths(root=args.root)
     if args.src is not None:
         paths = Paths(root=args.root, src_dir=args.src)
-    targets = tuple(args.targets) if args.targets else C_BINDING_TARGETS
+    targets = tuple(args.targets) if args.targets else DEFAULT_TARGETS
     color = not args.no_color and sys.stderr.isatty()
 
     if args.check:

@@ -24,6 +24,7 @@ from ..diagnostics import DiagnosticBag, SourceLocation
 from ..ir.directives import DirectiveError, DirectiveParser, Directives
 from ..ir.doc import Doc, DocParseError
 from ..ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
+from ..synthesize import generated_wrapper_paths
 from ..ir.types import (
     BaseType,
     CharacterLength,
@@ -133,6 +134,13 @@ class FordFrontend:
         settings.src_dir = [self.paths.resolve(self.paths.src_dir).resolve()]
         settings.exclude_dir = list(settings.exclude_dir) + [
             str(self.paths.resolve(self.paths.c_binding_dir).resolve())
+        ]
+        # The generated wrappers live in src/tox alongside hand-written modules, so they
+        # cannot be excluded by directory. Excluding them by name keeps Ford from re-reading
+        # the generator's own output and defining `tox_<name>` twice (once parsed, once
+        # synthesised). Only their basenames are needed -- Ford matches `**/<name>`.
+        settings.exclude = list(getattr(settings, "exclude", None) or []) + [
+            path.name for path in generated_wrapper_paths(self.paths, self.conventions)
         ]
 
         # fpm.toml configures `pcpp -D__GFORTRAN__ -I.`, whose include path is relative
