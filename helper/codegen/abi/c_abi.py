@@ -274,7 +274,7 @@ class _Builder:
         if directive is None:
             return None
         try:
-            return self.evaluator.evaluate(directive.expression)
+            value = self.evaluator.evaluate(directive.expression)
         except ConstantError as error:
             self.diagnostics.error(
                 f"the default of '{argument.name}' is not a constant: {error}",
@@ -285,6 +285,29 @@ class _Builder:
                 ),
             )
             return None
+
+        mode = argument.roles.mode if argument.roles else None
+        if mode is not None:
+            # A mode is a string to the bindings, so its default is the mode string whose
+            # parameter has this integer value -- not the integer, which would be passed
+            # through verbatim and rejected as an unknown mode.
+            return self._mode_string_for(value, mode, argument)
+        return value
+
+    def _mode_string_for(self, value, mode, argument: Argument):
+        """The mode string whose parameter evaluates to `value`, for a defaulted mode."""
+        for entry in mode.values:
+            try:
+                if self.evaluator.evaluate(entry.parameter) == value:
+                    return entry.string
+            except ConstantError:
+                continue
+        self.diagnostics.error(
+            f"the default of '{argument.name}' ({value!r}) matches no value in its mode table",
+            entity=argument,
+            note="a defaulted mode must default to one of its tabulated values",
+        )
+        return value
 
     @staticmethod
     def _is_nullable(argument: Argument) -> bool:

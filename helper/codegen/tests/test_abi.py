@@ -314,6 +314,27 @@ class TestModes:
 
         assert [v.string for v in mode.mode.values] == ["mean", "median"]
 
+    def test_a_defaulted_mode_defaults_to_its_string(self, bag):
+        # the binding passes the mode string, so a defaulted mode must default to the string
+        # whose parameter matches, not the raw integer -- which would reach C as an unknown mode
+        from codegen.ir.constants import ConstantEvaluator
+        from codegen.ir.directives import Default, Directives
+
+        procedure = b.procedure(
+            "p",
+            b.integer(
+                "mode", Intent.IN, doc=self._mode_doc("mean", "median"),
+                directives=Directives(default=Default("MODE_MEDIAN")),
+            ),
+        )
+        analyse(procedure, bag)
+        evaluator = ConstantEvaluator({"MODE_MEAN": 0, "MODE_MEDIAN": 1})
+
+        mode = build_wrapper(procedure, bag, evaluator=evaluator).argument("mode")
+
+        assert mode.has_default
+        assert mode.default == "median"
+
 
 class TestNameCollisions:
     def test_a_collision_with_a_synthesised_extent_is_reported(self, bag):
