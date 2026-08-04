@@ -1,4 +1,4 @@
-"""Python binding to Module with Euclidean distance computation routines for tensor omics.
+"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
 
 Generated from tox_euclidean_distance. Do not edit.
 """
@@ -121,6 +121,9 @@ def distance_to_centroid(
         Family centroid matrix (n_tissues × n_families), column-major, `-1.0_real64` for unassigned genes
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_families`.
+        The value `0_int32` is additionally accepted.
 
     Returns
     -------

@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_euclidean_distance(module)]]
-!| Module with Euclidean distance computation routines for tensor omics.
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_euclidean_distance_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
@@ -35,7 +35,7 @@ contains
         real(c_double), intent(out), target :: result
             !! Output scalar distance
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -79,10 +79,13 @@ contains
             !! Family centroid matrix (n_tissues × n_families), column-major, `-1.0_real64` for unassigned genes
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_families`.
+            !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_genes), intent(out), target :: distances
             !! Output distances array
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
