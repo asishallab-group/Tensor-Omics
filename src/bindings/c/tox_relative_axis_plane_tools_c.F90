@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_relative_axis_plane_tools(module)]]
-!| Module for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space
+!| Generated from the kernel; do not edit -- regenerate instead.
 module tox_relative_axis_plane_tools_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -203,7 +203,7 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! Dimension of each vector in RAP space
         integer(c_int), intent(in), target :: n_fields
-            !! Number of vector fields
+            !! Number of vector pairs
         integer(c_int), intent(in), target :: n_selected_fields
             !! Count of .true. values in fields_selection_mask
         real(c_double), dimension(n_dims, 2, n_fields), intent(in), target :: fields
