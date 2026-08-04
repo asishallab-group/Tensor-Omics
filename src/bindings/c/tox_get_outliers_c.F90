@@ -55,7 +55,7 @@ contains
             ierr&
         ) bind(C, name="compute_family_scaling_expert_c")
         use tox_get_outliers, only: compute_family_scaling
-        use tox_loess, only: MODE_PLAIN, MODE_ROBUST
+        use tox_loess_kernel, only: MODE_PLAIN, MODE_ROBUST
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -63,7 +63,7 @@ contains
             !! Total number of gene families
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -72,7 +72,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -124,10 +124,10 @@ contains
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
             !!
-            !! | Mode                 | Value                                       |
-            !! |----------------------|---------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                              |
+            !! |----------------------|----------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_loess_kernel(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_loess_kernel(module):MODE_ROBUST(variable)]] |
         integer(c_int), intent(in), target :: n_iters
             !! Number of iterations for robust LOESS fitting
         real(c_double), intent(out), target :: low_sd_cutoff

@@ -117,10 +117,14 @@ from .tox_get_outliers import (
     detect_outliers,
 )
 from .tox_loess import (
-    tox_loess_required_workspace,
+    loess_fit_plain_expert,
     loess_fit_plain,
+    loess_fit_robust_expert,
     loess_fit_robust,
     loess,
+)
+from .tox_loess_kernel import (
+    tox_loess_required_workspace,
 )
 from .tox_normalization import (
     normalize_unit_length,
@@ -247,7 +251,9 @@ __all__ = [
     "linkage_clustering",
     "loess",
     "loess_fit_plain",
+    "loess_fit_plain_expert",
     "loess_fit_robust",
+    "loess_fit_robust_expert",
     "loess_smooth_2d",
     "log2_transformation",
     "mask_check_state",

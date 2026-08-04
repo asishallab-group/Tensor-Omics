@@ -6,7 +6,8 @@ module tox_get_outliers
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_scaled_distance_quantile, init_perm
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
-    use tox_loess, only: tox_loess_required_workspace, loess_fit_robust, loess_fit_plain, EPS_LOESS, loess_evaluation
+    use tox_loess, only: loess_fit_robust, loess_fit_plain
+    use tox_loess_kernel, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation
     M_IMPLICIT_NONE
 
 contains
@@ -57,7 +58,7 @@ contains
         ! LOESS workspace
         integer(int32), intent(in)    :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|
@@ -68,7 +69,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in)    :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|
@@ -104,8 +105,8 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Plain LOESS fitting | [[tox_loess(module):MODE_PLAIN(variable)]] |
-            !! | Robust LOESS fitting | [[tox_loess(module):MODE_ROBUST(variable)]] |
+            !! | Plain LOESS fitting | [[tox_loess_kernel(module):MODE_PLAIN(variable)]] |
+            !! | Robust LOESS fitting | [[tox_loess_kernel(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in)   :: n_iters
             !! Number of iterations for robust LOESS fitting
         real(real64), intent(out) :: low_sd_cutoff

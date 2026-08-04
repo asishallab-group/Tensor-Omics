@@ -107,10 +107,12 @@ SEXP compute_family_scaling_call(SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
 SEXP identify_outliers_call(SEXP, SEXP, SEXP, SEXP);
 SEXP detect_outliers_call(SEXP, SEXP, SEXP, SEXP);
-SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
-SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP loess_fit_plain_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP loess_fit_robust_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP normalize_unit_length_call(SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalize_by_std_dev_call(SEXP, SEXP, SEXP);
@@ -217,10 +219,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},
     {"identify_outliers_call", (DL_FUNC) &identify_outliers_call, 4},
     {"detect_outliers_call", (DL_FUNC) &detect_outliers_call, 4},
-    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
-    {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 11},
-    {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 16},
+    {"loess_fit_plain_expert_call", (DL_FUNC) &loess_fit_plain_expert_call, 11},
+    {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},
+    {"loess_fit_robust_expert_call", (DL_FUNC) &loess_fit_robust_expert_call, 12},
+    {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
     {"loess_call", (DL_FUNC) &loess_call, 6},
+    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"normalize_unit_length_call", (DL_FUNC) &normalize_unit_length_call, 1},
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},
     {"normalize_by_std_dev_call", (DL_FUNC) &normalize_by_std_dev_call, 3},

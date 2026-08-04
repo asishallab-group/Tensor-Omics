@@ -198,10 +198,10 @@ def compute_family_scaling_expert(
     n_genes = distances.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_loess import tox_loess_required_workspace
+    from .tox_loess_kernel import tox_loess_required_workspace
     _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n_families, save_factorization=False)
     int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
-    from .tox_loess import tox_loess_required_workspace
+    from .tox_loess_kernel import tox_loess_required_workspace
     real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
 
     # Fortran cannot check that shared extents agree; this can

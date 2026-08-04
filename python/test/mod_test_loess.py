@@ -59,18 +59,13 @@ def test_loess_robust_functionality():
 
     w = np.ones(n)
     z = x.copy()
-    # Additional arrays required specifically for the robust version
-    rw = np.zeros(n, dtype=np.float64)
-    ww = np.zeros(n, dtype=np.float64)
-    res = np.zeros(n, dtype=np.float64)
-    pi = np.zeros(n, dtype=np.int32)
 
+    # The robust scratch arrays (robust/combined weights, residuals, permutation) are now
+    # allocated by the wrapper, so the friendly binding no longer takes them.
     yhat = loess_fit_robust(
         x=x, y=y, weights=w, eval_points=z.reshape(n, 1),
         span=0.5, degree=1, max_neighborhood_size=n,
-        compute_influence=False, save_factorization=False, n_iters=4,
-        robust_weights=rw, combined_weights=ww,
-        residuals=res, permutation_indices=pi
+        compute_influence=False, save_factorization=False, n_iters=4
     )
 
     assert yhat.shape == (n,), "Output shape mismatch"

@@ -47,17 +47,14 @@ test_loess_robust_functionality <- function() {
   
   w <- rep(1.0, n)
   z <- x
-  rw <- numeric(n)
-  ww <- numeric(n)
-  res <- numeric(n)
-  pi <- integer(n)
-  
+
+  # The robust scratch arrays (robust/combined weights, residuals, permutation) are now
+  # allocated by the wrapper, so the friendly binding no longer takes them.
   yhat <- loess_fit_robust(
     x=x, y=y, weights=w, eval_points=matrix(z, ncol=1),
     span=0.5, degree=1, max_neighborhood_size=n,
-    compute_influence=FALSE, save_factorization=FALSE, n_iters=4,
-    robust_weights=rw, combined_weights=ww, residuals=res, permutation_indices=pi
-  )$fitted_values
+    compute_influence=FALSE, save_factorization=FALSE, n_iters=4
+  )
   
   assert_true(length(yhat) == n)
   # If robustness works, the outlier at index 6 should be ignored
