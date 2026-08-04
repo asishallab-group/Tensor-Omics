@@ -103,9 +103,11 @@ SEXP group_centroid_orthologs_call(SEXP, SEXP, SEXP, SEXP);
 SEXP group_centroid_all_expert_call(SEXP, SEXP, SEXP);
 SEXP group_centroid_all_call(SEXP, SEXP, SEXP);
 SEXP compute_family_scaling_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP compute_family_scaling_call(SEXP, SEXP, SEXP);
+SEXP compute_family_scaling_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP compute_rdi_expert_call(SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
 SEXP identify_outliers_call(SEXP, SEXP, SEXP, SEXP);
+SEXP detect_outliers_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP detect_outliers_call(SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_plain_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -216,9 +218,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"group_centroid_all_expert_call", (DL_FUNC) &group_centroid_all_expert_call, 3},
     {"group_centroid_all_call", (DL_FUNC) &group_centroid_all_call, 3},
     {"compute_family_scaling_expert_call", (DL_FUNC) &compute_family_scaling_expert_call, 9},
-    {"compute_family_scaling_call", (DL_FUNC) &compute_family_scaling_call, 3},
+    {"compute_family_scaling_call", (DL_FUNC) &compute_family_scaling_call, 7},
+    {"compute_rdi_expert_call", (DL_FUNC) &compute_rdi_expert_call, 3},
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},
     {"identify_outliers_call", (DL_FUNC) &identify_outliers_call, 4},
+    {"detect_outliers_expert_call", (DL_FUNC) &detect_outliers_expert_call, 6},
     {"detect_outliers_call", (DL_FUNC) &detect_outliers_call, 4},
     {"loess_fit_plain_expert_call", (DL_FUNC) &loess_fit_plain_expert_call, 11},
     {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},

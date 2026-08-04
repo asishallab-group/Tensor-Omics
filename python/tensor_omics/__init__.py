@@ -112,8 +112,10 @@ from .tox_gene_centroids import (
 from .tox_get_outliers import (
     compute_family_scaling_expert,
     compute_family_scaling,
+    compute_rdi_expert,
     compute_rdi,
     identify_outliers,
+    detect_outliers_expert,
     detect_outliers,
 )
 from .tox_loess import (
@@ -209,6 +211,7 @@ __all__ = [
     "compute_gene_means",
     "compute_p_values",
     "compute_rdi",
+    "compute_rdi_expert",
     "compute_residuals",
     "compute_scaled_distance_quantile",
     "compute_shift_vector_field",
@@ -228,6 +231,7 @@ __all__ = [
     "detect_dosage_effect",
     "detect_neofunctionalization",
     "detect_outliers",
+    "detect_outliers_expert",
     "detect_subfunctionalization",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
