@@ -66,6 +66,11 @@ class Conventions:
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).
     mode_aliases: tuple[str, ...] = ("mode", "method")
 
+    #: Header of the optional third mode-table column. Its presence opts a mode argument
+    #: into per-mode wrapper generation: one procedure per mode, named in that column
+    #: (e.g. `detect_dosage_effect`), instead of a single procedure taking the mode.
+    mode_procedure_header: str = "procedure"
+
     #: Header of the first column of the table that maps a DM_OUTPUT_FROM producer's
     #: input names onto the consumer's arguments, where the two differ
     producer_input_header: str = "producer input"

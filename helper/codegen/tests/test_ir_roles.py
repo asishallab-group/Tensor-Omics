@@ -20,8 +20,9 @@ def analysed(procedure, bag):
 
 
 def mode_doc(*rows, header=("Mode", "Value"), preamble=("How to link.",)):
-    lines = [*preamble, f"| {header[0]} | {header[1]} |", "|------|-------|"]
-    lines.extend(f"| {description} | {value} |" for description, value in rows)
+    divider = "|" + "|".join("------" for _ in header) + "|"
+    lines = [*preamble, "| " + " | ".join(header) + " |", divider]
+    lines.extend("| " + " | ".join(str(cell) for cell in row) + " |" for row in rows)
     return lines
 
 
@@ -314,6 +315,69 @@ class TestModeTable:
 
         assert procedure.argument("n_dims").roles.mode is None
         assert bag.errors == ()
+
+
+class TestModeTableSplit:
+    def split_doc(self):
+        return mode_doc(
+            ("dosage effect", "[[m(module):MODE_DOSAGE(variable)]]", "detect_dosage_effect"),
+            ("subfunctionalisation", "[[m(module):MODE_SUBFUNC(variable)]]", "detect_subfunc"),
+            header=("Mode", "Value", "Procedure"),
+        )
+
+    def test_the_procedure_column_is_read(self, bag):
+        procedure = analysed(
+            b.procedure("p", b.character("mode", Intent.IN, doc=self.split_doc())), bag
+        )
+
+        mode = procedure.argument("mode").roles.mode
+        assert bag.errors == ()
+        assert mode.is_split
+        assert [v.procedure_name for v in mode.values] == [
+            "detect_dosage_effect", "detect_subfunc"
+        ]
+        # the parameter, module and string are still read
+        assert mode.values[0].parameter == "MODE_DOSAGE"
+        assert mode.values[0].string == "dosage"
+
+    def test_a_two_column_table_is_not_split(self, bag):
+        procedure = analysed(
+            b.procedure(
+                "p",
+                b.character("mode", Intent.IN, doc=mode_doc(
+                    ("dosage", "[[m(module):MODE_DOSAGE(variable)]]"))),
+            ),
+            bag,
+        )
+
+        assert not procedure.argument("mode").roles.mode.is_split
+
+    def test_an_empty_procedure_cell_is_rejected(self, bag):
+        analyse(
+            b.procedure(
+                "p",
+                b.character("mode", Intent.IN, doc=mode_doc(
+                    ("dosage", "[[m(module):MODE_DOSAGE(variable)]]", ""),
+                    header=("Mode", "Value", "Procedure"))),
+            ),
+            bag,
+        )
+
+        assert any("procedure name" in error.message for error in bag.errors)
+
+    def test_duplicate_procedure_names_are_rejected(self, bag):
+        analyse(
+            b.procedure(
+                "p",
+                b.character("mode", Intent.IN, doc=mode_doc(
+                    ("dosage", "[[m(module):MODE_DOSAGE(variable)]]", "same"),
+                    ("subfunc", "[[m(module):MODE_SUBFUNC(variable)]]", "same"),
+                    header=("Mode", "Value", "Procedure"))),
+            ),
+            bag,
+        )
+
+        assert any("more than once" in error.message for error in bag.errors)
 
 
 class TestModeTableErrors:

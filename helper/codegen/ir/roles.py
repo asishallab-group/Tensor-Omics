@@ -25,6 +25,9 @@ from .doc import DocTable, FordLink
 from .entities import Argument, Procedure
 from .types import BaseType, Intent
 
+#: A generated procedure name in a mode table's third column: a Fortran identifier.
+_PROCEDURE_NAME_RE = re.compile(r"[A-Za-z]\w*\Z")
+
 
 @dataclass(frozen=True)
 class ModeValue:
@@ -38,6 +41,9 @@ class ModeValue:
     string: str
     #: The prose from the first column
     description: str = ""
+    #: The per-mode procedure name from the optional third column; set only when the mode
+    #: table opts into per-mode splitting
+    procedure_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,15 @@ class ModeTable:
     def max_string_length(self) -> int:
         """The longest mode string, which sets the character length in the C wrapper."""
         return max((len(value.string) for value in self.values), default=0)
+
+    @property
+    def is_split(self) -> bool:
+        """Whether the table names a procedure per mode, opting into per-mode wrappers.
+
+        The third column is all-or-nothing (the reader rejects a partial one), so any value
+        carrying a procedure name means every one does.
+        """
+        return any(value.procedure_name for value in self.values)
 
     def value_for(self, string: str) -> ModeValue | None:
         for value in self.values:
@@ -511,24 +526,31 @@ class _Analyser:
         return ModeTable(alias=alias, values=tuple(values), source=table)
 
     def _looks_like_a_mode_table(self, table: DocTable) -> bool:
-        """A two-column table headed by a mode alias and `Value`.
+        """A mode table: headed by a mode alias and `Value`, and optionally `Procedure`.
 
         Recognition is deliberately shallow. Whether the *rows* are well formed is
         checked afterwards and reported, rather than quietly disqualifying the table --
         the old parser bailed out of mode detection on a malformed row, and the author
-        then got 'no mode table' pointing away from the actual mistake.
+        then got 'no mode table' pointing away from the actual mistake. The optional third
+        column opts the argument into per-mode splitting.
         """
-        if table.n_columns != 2:
+        if table.n_columns not in (2, 3):
             return False
         header = [text.strip().lower() for text in table.header_text]
-        return header[0] in self.conventions.mode_aliases and header[1] == "value"
+        if header[0] not in self.conventions.mode_aliases or header[1] != "value":
+            return False
+        if table.n_columns == 3 and header[2] != self.conventions.mode_procedure_header:
+            return False
+        return True
 
     def _mode_values(self, argument, table: DocTable, header_alias: str):
         expected_prefix = f"{header_alias.upper()}_"
         pattern = re.compile(rf"{expected_prefix}(?P<name>[A-Z_0-9]+)\Z")
+        has_procedure = table.n_columns == 3
         values: list[ModeValue] = []
 
-        for row_index, (description, value) in enumerate(table.rows, start=1):
+        for row_index, row in enumerate(table.rows, start=1):
+            description, value = row[0], row[1]
             # An empty Value cell documents a mode that has no parameter yet
             if not value.text.strip():
                 continue
@@ -568,12 +590,29 @@ class _Analyser:
                 )
                 return None
 
+            procedure_name = ""
+            if has_procedure:
+                procedure_name = row[2].text.strip()
+                if not _PROCEDURE_NAME_RE.match(procedure_name):
+                    self.diagnostics.error(
+                        f"row {row_index} of the {header_alias} table of '{argument.name}' "
+                        f"has no valid procedure name in its third column",
+                        entity=argument,
+                        location=_location_of(argument, value.line_number),
+                        note=(
+                            "the third column names the generated procedure for that mode, "
+                            "an identifier such as `detect_dosage_effect`"
+                        ),
+                    )
+                    return None
+
             values.append(
                 ModeValue(
                     parameter=link.item,
                     module=link.component,
                     string=match.group("name").lower(),
                     description=description.text.strip(),
+                    procedure_name=procedure_name,
                 )
             )
 
@@ -586,6 +625,17 @@ class _Analyser:
                 note="each mode string must identify exactly one parameter",
             )
             return None
+
+        if has_procedure:
+            repeated = _duplicates(v.procedure_name for v in values)
+            if repeated:
+                self.diagnostics.error(
+                    f"the {header_alias} table of '{argument.name}' names procedure(s) "
+                    f"{', '.join(sorted(repeated))} more than once",
+                    entity=argument,
+                    note="each mode's procedure name must be unique",
+                )
+                return None
 
         return values
 
