@@ -131,6 +131,36 @@ before it may take `c_loc` of the arrays they size. `ir/validate.py` enforces it
 
 ---
 
+## Decision: an argument position always numbers the Fortran dummy list
+
+`ierr` packs the position of the argument it blames. The C wrapper's argument list is *not*
+the Fortran one — it inserts an `n_<name>_elements[_dim_k]` per assumed-shape extent and a
+`<name>_strlen` per `len=*` character, so `compute_rdi_expert_c` carries `n_dscale_elements`
+at C position 5 that the Fortran procedure does not have. The obvious conclusion is that the C
+layer should renumber. It should not.
+
+**The position numbers the wrapped Fortran procedure's dummy arguments, at every layer. The
+size and string-length arguments the C wrapper inserts are not counted. A direct C caller reads
+positions against the Fortran signature.**
+
+Renumbering in C would break the two languages that consume the position. Python and R both
+build their argument-name tuple from the *Fortran* procedure (`emit/python_ctypes.py`,
+`emit/r_wrapper.py`) and index it with `arg_pos` when they turn an `ierr` into an exception or
+a condition — `_COMPUTE_RDI_EXPERT_ARGUMENTS` is the ten Fortran names, with no
+`n_dscale_elements` among them. Renumber, and every position from the insertion point onward
+names the wrong argument in both. Renumber *and* fix both emitters, and their error messages
+start naming arguments no Python or R caller ever passes.
+
+The C layer packs no position of its own, so there is nothing for it to reconcile: neither
+`M_CHECK_NON_NULL` nor the unmatched-mode `case default` supplies `arg_pos`. And it never drops
+a Fortran argument it can map — an argument it cannot map is a hard generator diagnostic, not a
+silently renumbered signature.
+
+`map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
+known to correspond. What a *generated* wrapper does with an inherited position is the opposite
+and is decided elsewhere: see "The argument position an `ierr` carries" in
+[`kernel-layer.md`](kernel-layer.md).
+
 ## Decision: nullable optionals are `OPTIONAL`, not pointers
 
 An `OPTIONAL` dummy of a `bind(C)` procedure is absent exactly when C passes a null

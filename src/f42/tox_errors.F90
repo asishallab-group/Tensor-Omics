@@ -102,6 +102,10 @@ module tox_errors
 contains
 
     !> Creates the error code for an error and a specific argument position (if argument related)
+    !|
+    !| The position numbers the dummy arguments of the Fortran procedure that reports it. The C
+    !| binding inserts array-size and string-length arguments of its own; those are not counted,
+    !| so a position always reads against the Fortran signature at every layer.
     pure integer(int32) function create_err_code(error, arg_pos) result(ierr)
         integer(int32), intent(in)    :: error
             !! `ERR_*` error code from module constants
@@ -124,6 +128,10 @@ contains
     end function get_err_code
 
     !> Extracts the argument position from the error code
+    !|
+    !| Zero means the error is not argument related -- either it never was, or it crossed out of
+    !| the procedure that raised it into one whose dummy list cannot express it. See
+    !| [[tox_errors(module):clear_err_arg_pos(subroutine)]].
     pure integer(int32) function get_err_arg_pos(ierr) result(arg_pos)
         integer(int32), intent(in) :: ierr
             !! Error code
