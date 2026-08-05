@@ -1,12 +1,17 @@
 # Writing code the generator can wrap
 
-TensorOmics generates its public API. You write one annotated **kernel** in Fortran; the
-generator writes the validating wrapper, the allocating wrapper, the C binding, the Python
-function and the R function — with the documentation, the input validation and the error
-handling derived from your kernel rather than restated four times by hand.
+TensorOmics generates its public API. There are two ways in, and the guide is split along them:
 
-This guide is the author's side of that contract: **what to write so the generator can do its
-half**, case by case, with a real example for each. Every snippet here is taken from the
+- **The kernel path** (Part I) — for a numeric procedure of the pipeline. You write one annotated
+  kernel; the generator writes the validating wrapper, the allocating wrapper, and the C, Python
+  and R bindings, with the documentation, input validation and error handling derived from your
+  kernel rather than restated four times by hand.
+- **The export path** (Part II) — for IO, infrastructure, and everything that is not a kernel. You
+  write the whole procedure, validation included, and mark it `M_EXPORT_C`; the generator writes
+  the three bindings.
+
+Either way this guide is the author's side of the contract: **what to write so the generator can
+do its half**, case by case, with a real example for each. Every snippet here is taken from the
 current `src/` tree.
 
 Related reading, once this is not enough:
@@ -24,7 +29,10 @@ Related reading, once this is not enough:
 ## Contents
 
 - [1. The one rule](#1-the-one-rule)
-- [2. Where code lives](#2-where-code-lives)
+- [2. Where code lives, and which path you are on](#2-where-code-lives-and-which-path-you-are-on)
+
+**Part I — the kernel path** (a numeric procedure of the TOX pipeline)
+
 - [3. A kernel end to end](#3-a-kernel-end-to-end)
 - [4. What every kernel must have](#4-what-every-kernel-must-have)
 - [5. Case by case](#5-case-by-case)
@@ -42,11 +50,24 @@ Related reading, once this is not enough:
   - [5.12 Work that must happen before the kernel](#512-work-that-must-happen-before-the-kernel)
   - [5.13 A genuine runtime error](#513-a-genuine-runtime-error)
   - [5.14 A family too big for one file](#514-a-family-too-big-for-one-file)
-  - [5.15 Something that is not a kernel](#515-something-that-is-not-a-kernel)
-- [6. Documentation that survives four languages](#6-documentation-that-survives-four-languages)
-- [7. What the generator refuses](#7-what-the-generator-refuses)
-- [8. The workflow](#8-the-workflow)
-- [9. Before you commit](#9-before-you-commit)
+
+**Part II — the export path** (IO, infrastructure, and everything that is not a kernel)
+
+- [6. Exporting a hand-written procedure](#6-exporting-a-hand-written-procedure)
+  - [6.1 When this is the right path](#61-when-this-is-the-right-path)
+  - [6.2 What you write: `M_EXPORT_C`](#62-what-you-write-m_export_c)
+  - [6.3 What you now do yourself: validate](#63-what-you-now-do-yourself-validate)
+  - [6.4 What works exactly as in Part I](#64-what-works-exactly-as-in-part-i)
+  - [6.5 An `_alloc` pair by hand](#65-an-_alloc-pair-by-hand)
+  - [6.6 An array of any rank through one signature](#66-an-array-of-any-rank-through-one-signature)
+  - [6.7 Never export a `_kernel` procedure](#67-never-export-a-_kernel-procedure)
+
+**Both paths**
+
+- [7. Documentation that survives four languages](#7-documentation-that-survives-four-languages)
+- [8. What the generator refuses](#8-what-the-generator-refuses)
+- [9. The workflow](#9-the-workflow)
+- [10. Before you commit](#10-before-you-commit)
 
 ---
 
@@ -72,7 +93,7 @@ kernel that qualifies using it — never a per-procedure escape hatch.
 
 ---
 
-## 2. Where code lives
+## 2. Where code lives, and which path you are on
 
 ```
 src/
@@ -116,6 +137,28 @@ matters, because calling a raw kernel means calling something with no input vali
 The generated wrapper takes the clean name: `compute_shift_vector_field_kernel` in
 `tox_shift_vectors_kernel` becomes `compute_shift_vector_field` in `tox_shift_vectors`. **That
 clean name is the public API** — in Fortran, C, Python and R alike.
+
+### Which path is yours
+
+Not everything is a kernel, and a third of the public API is not — 44 hand-written exports
+against 85 generated wrappers today. File and archive IO, the f42 trees and statistics, the whole
+serde family, and the sizing routines the kernels themselves call are all **hand-written and
+exported**: the generator wraps them to C, Python and R, but does not write their Fortran.
+
+| Your procedure | Path | Where | Marker |
+|---|---|---|---|
+| a numeric procedure of the TOX pipeline | **Part I — kernel** | `src/kernel/` | the `_kernel` name |
+| file / archive IO, external-library glue | **Part II — export** | `src/io/` | `M_EXPORT_C` |
+| library-agnostic infrastructure | **Part II — export** | `src/f42/` | `M_EXPORT_C` |
+| a sizing / utility routine a kernel or a caller needs | **Part II — export** | the kernel module, `public` | `M_EXPORT_C` |
+
+The two paths share everything about the *bindings* — naming conventions, documentation, type
+rules, the refusals in §8. They differ in exactly one thing: **who writes the validation.** On
+the kernel path the generator does. On the export path you do (§6.3).
+
+---
+
+# Part I — the kernel path
 
 ---
 
@@ -631,24 +674,171 @@ Only children that actually generate something are re-exported, and a parent may
 parent. **Do not use `submodule`s** — they force every signature to be written twice (once in
 the parent's `interface`, once in the implementation) for encapsulation this already provides.
 
-### 5.15 Something that is not a kernel
+---
 
-Not everything belongs in `src/kernel/`. Three other shapes exist, and each keeps the old
-explicit `M_EXPORT_C` marker:
-
-| What | Where | How it is exported |
-|---|---|---|
-| file/archive IO, external-library glue | `src/io/` | hand-written procedure with `!> M_EXPORT_C` |
-| generic infrastructure | `src/f42/` | per-case judgement, explicit `M_EXPORT_C` |
-| a recommend/sizing routine for a kernel | `src/kernel/`, public in the kernel module | explicit `M_EXPORT_C` (§5.8 needs a wrapper to call) |
-
-An exported hand-written procedure gets the C, Python and R bindings exactly as a generated
-wrapper does — it just does not get the *wrappers* generated, so it validates its own inputs and
-carries its own `ierr`. Everything in §4 still applies to it, and so does §7.
+# Part II — the export path
 
 ---
 
-## 6. Documentation that survives four languages
+## 6. Exporting a hand-written procedure
+
+The generator wraps any procedure marked `M_EXPORT_C` to C, Python and R, wherever it lives. It
+just does not write its Fortran — so the validating wrapper the kernel path gives you for free
+is, here, your own procedure's job.
+
+### 6.1 When this is the right path
+
+Because the procedure is not a numeric kernel of the pipeline:
+
+- **`src/io/`** — file and archive IO, external libraries (`libzip`, netlib readers).
+  `tox_data_archive`, `tox_data_tools`, `tox_data_validation` live here.
+- **`src/f42/`** — library-agnostic infrastructure: `f42_kd_tree`, `f42_binary_search_tree`,
+  `f42_stats`, the serde family. Whether an f42 procedure is exported at all is a per-case
+  judgement, which is exactly why the marker stays explicit here.
+- **inside a kernel module** — a recommend/sizing routine (`tox_loess_required_workspace`,
+  `calc_neighborhood_size`) or a utility a caller genuinely needs (`mask_chunk_count`). These
+  *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a wrapper to call (§5.8).
+
+If your procedure is a numeric kernel, take Part I instead. "It was easier to export it directly"
+is how an unvalidated API gets shipped.
+
+### 6.2 What you write: `M_EXPORT_C`
+
+The marker goes in the procedure's Ford pre-comment, and that is the whole of it:
+
+```fortran
+!> M_EXPORT_C
+!| summary: Compute the Empirical Distribution Function (EDF) from pre-sorted permutation
+!| AUTHOR_JITU_DABA
+!| Returns the sorted unique values and their cumulative frequencies in [0,1].
+!| Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
+pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
+```
+
+`M_EXPORT_C` expands to a Ford `category` tag, and the generator reads the category from that
+same macro — so the marker and what the generator recognises cannot drift.
+
+**Everything in §4 still applies**: explicit intents, kinded types, a `summary:`, an author, a
+`!!` on every argument, `M_IMPLICIT_NONE`, `#include <src/macros.h>`. Those are binding
+requirements, not kernel requirements. Untagged procedures are held to none of it.
+
+### 6.3 What you now do yourself: validate
+
+This is the one real difference, and the one that bites.
+
+> **The range macros generate checks only in generated wrappers.** On a hand-written procedure,
+> `DM_MIN`, `DM_MAX`, `DM_SENTINEL`, `DM_ALLOW_NAN` and `DM_ALLOW_INFINITE` are **documentation
+> only** — they render into the Ford, Python and R docs and validate nothing. There is likewise
+> **no default finiteness contract**: a real argument here is checked only if you check it.
+
+So the procedure declares its own `ierr`, opens with `set_ok`, and calls the `tox_errors`
+validators itself — the same ones the generator would have used, with `arg_pos=` counted in its
+own dummy list:
+
+```fortran
+subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
+    ...
+    call set_ok(ierr)
+    call validate_in_range_int(n_elements, ierr, min=0_int32, arg_pos=1_int32)
+    if (is_err(ierr)) return
+```
+
+Because you own the numbering, `arg_pos` here is *correct* and stays — nothing clears it (contrast
+§5.13). Use `set_err_once` so the first failure is the one reported, and end validation with
+`if (is_err(ierr)) return` before touching the data.
+
+An exported procedure with no `ierr` gets one synthesised, because the binding languages always
+need a channel to raise on. A procedure that can fail and does not declare one simply cannot
+report — give it one.
+
+### 6.4 What works exactly as in Part I
+
+Everything that is a *binding* rule rather than a wrapper rule, which is most of the contract:
+
+| Convention | Effect here |
+|---|---|
+| extents (`vec(n_dims)`) | derived by the binding from the array; never asked of a Python or R caller |
+| `<arg>_mask` / `n_selected_<arg>` | the count is computed from the mask at the call |
+| `tmp_<name>` | a work array: allocated by the binding language, never returned |
+| `<arg>_shape` | a serialized array (§6.6) |
+| `DM_DEFAULT` | the binding passes the evaluated default — `tox_data_tools` uses `DM_DEFAULT(char(9))` for a tab separator |
+| `DM_OUTPUT_FROM(..., AUTO)` | the *language layer* calls the producer for the caller — `tox_data_archive` sizes eleven arguments this way from `get_tox_data_dims` |
+| `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
+| `DM_OPTIONAL_OUTPUT`, `DM_RESULT_SIZE_IS` | as in Part I |
+| a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
+| `<p>_alloc` / `<p>` | the same pairing, written by hand (§6.5) |
+
+What is *not* available: the generated validation block, `foo_alloc`'s automatic allocation and
+sorting, the prologue hook, and the mode split. Those are things the generator writes into a
+wrapper, and here there is no wrapper for it to write into.
+
+### 6.5 An `_alloc` pair by hand
+
+The `_alloc` ↔ `_expert` convention is a binding rule, so it works for hand-written procedures
+too: write both procedures in one module, name them `<p>_alloc` and `<p>`, and export what you
+want callers to have.
+
+```fortran
+!> M_EXPORT_C
+!| summary: Build a k-d tree index using a stack-based, non-recursive approach
+pure subroutine build_kd_index_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
+
+! not exported: the expert form, for a Fortran caller that owns the buffers
+pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                               tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)
+```
+
+Export **both** and the C symbols are `build_kd_index_c` (from `_alloc`) and
+`build_kd_index_expert_c` (from the plain one), exactly as on the kernel path. Export only the
+`_alloc`, as `f42_kd_tree` does, and the buffer-managing form stays a Fortran-only entry point —
+a deliberate choice, not an oversight: there is no sensible way for a Python caller to own those
+buffers.
+
+### 6.6 An array of any rank through one signature
+
+**When** a procedure must accept an array of any rank — serialization is the standing case.
+
+**Write** a flat array plus a `<arg>_shape` companion that carries its extents:
+
+```fortran
+integer(int32), dimension(n_elements), intent(in) :: arr
+    !! Array to be serialized
+integer(int32), dimension(:), intent(in) :: arr_shape
+    !! Extents of `arr`, one per dimension
+```
+
+`<arg>_shape` must be `intent(in)`, rank-1 integer, and **not optional** — the C wrapper reads it
+to size `arr` before it may take `c_loc` of anything.
+
+**You get** a Python caller who passes an array of any rank and never writes the shape out:
+
+```python
+serialize_int_helper(np.arange(12).reshape(3, 4), path)   # shape derived, flattened Fortran-order
+```
+
+Characters work the same way, with the length carried as a leading extent.
+
+### 6.7 Never export a `_kernel` procedure
+
+`M_EXPORT_C` on a `_kernel` procedure does **not** replace wrapper generation — it adds to it.
+The kernel still gets its validating wrapper, *and* the raw kernel is exported alongside, so
+Python and R end up offering an unvalidated twin of the same call, one `_kernel` suffix apart.
+
+That is never what you want. If a kernel's functionality should be reachable, it is reachable
+through its wrapper; if some *other* procedure in a kernel module should be exported (a recommend
+routine, a utility), that one is not a `_kernel` and §6.1 already covers it.
+
+> Present state: `tox_trajectory_contribution_analysis_kernel` still carries five such tags, left
+> over from its conversion. They generate `compute_all_contributions_kernel` and four siblings in
+> the Python and R packages, beside the wrappers that validate. Nothing calls them.
+
+---
+
+# Both paths
+
+---
+
+## 7. Documentation that survives four languages
 
 Your `!!` and `!|` text is not just Ford docs. It is the C wrapper's comment, the Python
 docstring and the R `.Rd` help page. So:
@@ -678,7 +868,7 @@ You get that for free, from the extent/mask/shape roles — nothing to annotate.
 
 ---
 
-## 7. What the generator refuses
+## 8. What the generator refuses
 
 Errors. Nothing is written until they are fixed. Each diagnostic points at the line in *your*
 source and carries a note saying what to write instead.
@@ -710,7 +900,7 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 
 ---
 
-## 8. The workflow
+## 9. The workflow
 
 ```sh
 ./build.sh                          # regenerates, then compiles -- this is the normal loop
@@ -754,17 +944,32 @@ Two things that will bite when you convert an existing procedure to a kernel:
 
 ---
 
-## 9. Before you commit
+## 10. Before you commit
 
-- [ ] The kernel is in `src/kernel/`, module `tox_*_kernel`, procedure `*_kernel`, `public`.
-- [ ] `#include <src/macros.h>`, `M_IMPLICIT_NONE`, `private`.
+**Both paths**
+
+- [ ] `#include <src/macros.h>`, `M_IMPLICIT_NONE`, `private` + an explicit `public ::`.
 - [ ] Every dummy has an `intent`, a kind, and a `!!` doc; the procedure has a `summary:` and an
       author.
-- [ ] Every bounded value carries `DM_MIN` / `DM_MAX` / `DM_SENTINEL`. Every real that may be
-      non-finite carries the matching `DM_ALLOW_*` — and no other real does.
-- [ ] No validation in the kernel; no `ierr` unless it reports a genuine runtime failure.
 - [ ] No optional dummy forwarded into a mandatory one (`M_DEFAULT_VAL` first).
 - [ ] `python helper/generate_code.py` — **0 warnings** — then `--check` is clean.
 - [ ] `./build.sh` green; Fortran, Python, R and codegen suites green.
-- [ ] Nothing under `src/generated/` was edited by hand; the regenerated diff is committed with
-      the source change.
+- [ ] Nothing generated was edited by hand (`src/generated/`, `python/tensor_omics/`,
+      `r/tensor_omics/`, `snippets/`); the regenerated diff is committed with the source change.
+
+**Part I — a kernel**
+
+- [ ] In `src/kernel/`, module `tox_*_kernel`, procedure `*_kernel`, and **not** `M_EXPORT_C`.
+- [ ] Every bounded value carries `DM_MIN` / `DM_MAX` / `DM_SENTINEL`. Every real that may be
+      non-finite carries the matching `DM_ALLOW_*` — and no other real does.
+- [ ] No validation in the kernel; no `ierr` unless it reports a genuine runtime failure.
+- [ ] The generated wrapper was read once, and validates what you expected it to.
+
+**Part II — a hand-written export**
+
+- [ ] `!> M_EXPORT_C`, and the procedure is genuinely not a kernel (§6.1).
+- [ ] It declares `ierr`, opens with `set_ok`, **validates every argument itself**, and ends
+      validation with `if (is_err(ierr)) return`.
+- [ ] `arg_pos=` on each validator matches this procedure's own dummy list.
+- [ ] Any `DM_MIN`/`DM_MAX`/`DM_ALLOW_*` it documents is backed by a check it actually makes —
+      here they are prose, not code (§6.3).
