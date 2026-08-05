@@ -141,9 +141,11 @@ SEXP relative_axes_changes_from_shift_vector_call(SEXP);
 SEXP relative_axes_expression_from_expression_vector_call(SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
+SEXP perform_permutation_test_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_p_values_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_contributions_call(SEXP, SEXP, SEXP);
+SEXP compute_all_contributions_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_all_contributions_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_baselines_factor_dependent_call(SEXP, SEXP, SEXP);
 SEXP compute_velocity_trajectory_call(SEXP);
@@ -152,6 +154,11 @@ SEXP compute_velocity_trajectories_call(SEXP);
 SEXP compute_acceleration_from_velocity_call(SEXP, SEXP);
 SEXP compute_velocity_acceleration_contributions_expert_call(SEXP, SEXP);
 SEXP compute_velocity_acceleration_contributions_call(SEXP, SEXP);
+SEXP compute_all_contributions_kernel_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_baselines_factor_dependent_kernel_call(SEXP, SEXP, SEXP);
+SEXP compute_velocity_trajectory_kernel_call(SEXP);
+SEXP compute_acceleration_from_velocity_trajectory_kernel_call(SEXP, SEXP);
+SEXP compute_velocity_acceleration_contributions_kernel_call(SEXP, SEXP);
 SEXP normalize_variable_timeseries_call(SEXP);
 SEXP normalize_single_trajectory_call(SEXP);
 SEXP normalize_all_trajectories_expert_call(SEXP);
@@ -257,9 +264,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"relative_axes_expression_from_expression_vector_call", (DL_FUNC) &relative_axes_expression_from_expression_vector_call, 1},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
+    {"perform_permutation_test_expert_call", (DL_FUNC) &perform_permutation_test_expert_call, 7},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},
     {"compute_p_values_call", (DL_FUNC) &compute_p_values_call, 4},
     {"compute_contributions_call", (DL_FUNC) &compute_contributions_call, 3},
+    {"compute_all_contributions_expert_call", (DL_FUNC) &compute_all_contributions_expert_call, 4},
     {"compute_all_contributions_call", (DL_FUNC) &compute_all_contributions_call, 4},
     {"compute_baselines_factor_dependent_call", (DL_FUNC) &compute_baselines_factor_dependent_call, 3},
     {"compute_velocity_trajectory_call", (DL_FUNC) &compute_velocity_trajectory_call, 1},
@@ -268,6 +277,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_acceleration_from_velocity_call", (DL_FUNC) &compute_acceleration_from_velocity_call, 2},
     {"compute_velocity_acceleration_contributions_expert_call", (DL_FUNC) &compute_velocity_acceleration_contributions_expert_call, 2},
     {"compute_velocity_acceleration_contributions_call", (DL_FUNC) &compute_velocity_acceleration_contributions_call, 2},
+    {"compute_all_contributions_kernel_call", (DL_FUNC) &compute_all_contributions_kernel_call, 4},
+    {"compute_baselines_factor_dependent_kernel_call", (DL_FUNC) &compute_baselines_factor_dependent_kernel_call, 3},
+    {"compute_velocity_trajectory_kernel_call", (DL_FUNC) &compute_velocity_trajectory_kernel_call, 1},
+    {"compute_acceleration_from_velocity_trajectory_kernel_call", (DL_FUNC) &compute_acceleration_from_velocity_trajectory_kernel_call, 2},
+    {"compute_velocity_acceleration_contributions_kernel_call", (DL_FUNC) &compute_velocity_acceleration_contributions_kernel_call, 2},
     {"normalize_variable_timeseries_call", (DL_FUNC) &normalize_variable_timeseries_call, 1},
     {"normalize_single_trajectory_call", (DL_FUNC) &normalize_single_trajectory_call, 1},
     {"normalize_all_trajectories_expert_call", (DL_FUNC) &normalize_all_trajectories_expert_call, 1},

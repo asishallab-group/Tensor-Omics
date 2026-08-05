@@ -1,4 +1,4 @@
-"""Python binding to Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
 
 Generated from tox_trajectory_contribution_analysis. Do not edit.
 """
@@ -13,8 +13,8 @@ from .library import load_library, nullable
 
 _lib = load_library()
 
-_lib.perform_permutation_test_c.restype = None
-_lib.perform_permutation_test_c.argtypes = (
+_lib.perform_permutation_test_expert_c.restype = None
+_lib.perform_permutation_test_expert_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
@@ -28,12 +28,32 @@ _lib.perform_permutation_test_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
     nullable(ctypes.POINTER(ctypes.c_int)),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_PERFORM_PERMUTATION_TEST_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "tmp_factor", "tmp_dependent", "ierr", "random_seed",)
+_PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "tmp_factor", "tmp_dependent", "random_seed", "ierr",)
+
+_lib.perform_permutation_test_c.restype = None
+_lib.perform_permutation_test_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    nullable(ctypes.POINTER(ctypes.c_int)),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_PERFORM_PERMUTATION_TEST_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr",)
 
 _lib.compute_p_values_c.restype = None
 _lib.compute_p_values_c.argtypes = (
@@ -65,8 +85,8 @@ _lib.compute_contributions_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_CONTRIBUTIONS_ARGUMENTS = ("factor", "dependent", "n_dims", "baseline_mode", "local_contributions", "total_contribution", "ierr",)
 
-_lib.compute_all_contributions_c.restype = None
-_lib.compute_all_contributions_c.argtypes = (
+_lib.compute_all_contributions_expert_c.restype = None
+_lib.compute_all_contributions_expert_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
@@ -84,7 +104,26 @@ _lib.compute_all_contributions_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr",)
+_COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr",)
+
+_lib.compute_all_contributions_c.restype = None
+_lib.compute_all_contributions_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "ierr",)
 
 _lib.compute_baselines_factor_dependent_c.restype = None
 _lib.compute_baselines_factor_dependent_c.argtypes = (
@@ -185,7 +224,7 @@ _lib.compute_velocity_acceleration_contributions_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr",)
 
-def perform_permutation_test(
+def perform_permutation_test_expert(
         trajectories,
         factor_idx,
         dependent_idx,
@@ -194,7 +233,7 @@ def perform_permutation_test(
         n_permutations,
         random_seed=None,
 ):
-    r"""Permutation test for a factor-dependent pair using a random different sample's dependent
+    r"""For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 
     Parameters
     ----------
@@ -202,13 +241,17 @@ def perform_permutation_test(
         expression vectors across different samples over time
     factor_idx : int
         index of factor to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
     dependent_idx : int
         index of dependent to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
     sample_idx : int
         index of sample to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_samples`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
-        Used mode for baseline calculation (see [[tox_trajectory_contribution_analysis(module):compute_baselines_factor_dependent(subroutine)]])
-
     n_permutations : int
         number of permutations to perform
     random_seed : int, optional
@@ -254,7 +297,7 @@ def perform_permutation_test(
     tmp_dependent = np.empty((n_timepoints,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
-    _lib.perform_permutation_test_c(
+    _lib.perform_permutation_test_expert_c(
         trajectories,
         ctypes.byref(ctypes.c_int(n_factors)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -268,8 +311,102 @@ def perform_permutation_test(
         total_contributions,
         tmp_factor,
         tmp_dependent,
-        ctypes.byref(ierr),
         None if random_seed is None else ctypes.byref(ctypes.c_int(random_seed)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS)
+
+    return {
+        "local_contributions": local_contributions,
+        "total_contributions": total_contributions,
+    }
+
+def perform_permutation_test(
+        trajectories,
+        factor_idx,
+        dependent_idx,
+        sample_idx,
+        baseline_mode,
+        n_permutations,
+        random_seed=None,
+):
+    r"""For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
+
+    Parameters
+    ----------
+    trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
+        expression vectors across different samples over time
+    factor_idx : int
+        index of factor to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
+    dependent_idx : int
+        index of dependent to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
+    sample_idx : int
+        index of sample to compute the permutation contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_samples`.
+    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    n_permutations : int
+        number of permutations to perform
+    random_seed : int, optional
+        Seed to use for random number generation.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
+            Per-timepoint contributions per permutation
+        total_contributions : np.ndarray[np.float64] of shape (n_permutations,)
+            Total contribution (`sum(local_contributions)`) per permutation
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test_alloc`.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+    if trajectories.ndim != 3:
+        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+
+    # what the inputs already say, rather than asking for it again
+    n_factors = trajectories.shape[0]
+    n_samples = trajectories.shape[1]
+    n_timepoints = trajectories.shape[2]
+
+    # outputs and work arrays, which the caller never sees
+    local_contributions = np.empty((n_timepoints, n_permutations,), dtype=np.float64, order='F')
+    total_contributions = np.empty((n_permutations,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.perform_permutation_test_c(
+        trajectories,
+        ctypes.byref(ctypes.c_int(n_factors)),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_timepoints)),
+        ctypes.byref(ctypes.c_int(factor_idx)),
+        ctypes.byref(ctypes.c_int(dependent_idx)),
+        ctypes.byref(ctypes.c_int(sample_idx)),
+        baseline_mode,
+        ctypes.byref(ctypes.c_int(n_permutations)),
+        local_contributions,
+        total_contributions,
+        None if random_seed is None else ctypes.byref(ctypes.c_int(random_seed)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS)
@@ -285,7 +422,7 @@ def compute_p_values(
         local_contributions_perm_test,
         total_contributions_perm_test,
 ):
-    r"""Computes empirical p-values from the permutation-test contributions
+    r"""Calculates the p values for the contributions once the permutation tests are done
 
     Parameters
     ----------
@@ -294,9 +431,9 @@ def compute_p_values(
     total_contribution_observed : float
         Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
     local_contributions_perm_test : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
-        Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis(module):perform_permutation_test(subroutine)]]
+        Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
     total_contributions_perm_test : np.ndarray[np.float64] of shape (n_permutations,)
-        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis(module):perform_permutation_test(subroutine)]]
+        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
 
     Returns
     -------
@@ -380,7 +517,7 @@ def compute_contributions(
         dependent,
         baseline_mode,
 ):
-    r"""Contribution analysis for a specific factor-dependent pair
+    r"""Performs contribution analysis for a specific factor-dependent pair
 
     Parameters
     ----------
@@ -455,7 +592,7 @@ def compute_contributions(
         "total_contribution": total_contribution.value,
     }
 
-def compute_all_contributions(
+def compute_all_contributions_expert(
         trajectories,
         factor_indices,
         dependent_indices,
@@ -469,8 +606,12 @@ def compute_all_contributions(
         expression vectors across different samples over time
     factor_indices : np.ndarray[np.int32] of shape (n_selected_factors,)
         indices of factors to compute the contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
     dependent_indices : np.ndarray[np.int32] of shape (n_selected_dependents,)
         indices of dependents to compute the contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
 
     Returns
@@ -527,7 +668,7 @@ def compute_all_contributions(
     tmp_dependent = np.empty((n_timepoints,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
-    _lib.compute_all_contributions_c(
+    _lib.compute_all_contributions_expert_c(
         trajectories,
         ctypes.byref(ctypes.c_int(n_factors)),
         ctypes.byref(ctypes.c_int(n_samples)),
@@ -541,6 +682,102 @@ def compute_all_contributions(
         total_contributions,
         tmp_factors,
         tmp_dependent,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS)
+
+    return {
+        "local_contributions": local_contributions,
+        "total_contributions": total_contributions,
+    }
+
+def compute_all_contributions(
+        trajectories,
+        factor_indices,
+        dependent_indices,
+        baseline_mode,
+):
+    r"""Contribution analysis for every selected factor-dependent pair
+
+    Parameters
+    ----------
+    trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
+        expression vectors across different samples over time
+    factor_indices : np.ndarray[np.int32] of shape (n_selected_factors,)
+        indices of factors to compute the contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
+    dependent_indices : np.ndarray[np.int32] of shape (n_selected_dependents,)
+        indices of dependents to compute the contributions for
+        The minimum valid value is `1_int32`.
+        The maximum valid value is `n_factors`.
+    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+            Per-timepoint contributions per sample-dependent-factor combination
+        total_contributions : np.ndarray[np.float64] of shape (n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+            Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions_alloc`.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+    if trajectories.ndim != 3:
+        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+    try:
+        factor_indices = np.ascontiguousarray(factor_indices, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'factor_indices' must be an array of np.int32: {error}") from None
+    if factor_indices.ndim != 1:
+        raise ValueError(f"'factor_indices' must have 1 dimension, but has {factor_indices.ndim}")
+    try:
+        dependent_indices = np.ascontiguousarray(dependent_indices, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'dependent_indices' must be an array of np.int32: {error}") from None
+    if dependent_indices.ndim != 1:
+        raise ValueError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}")
+    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+
+    # what the inputs already say, rather than asking for it again
+    n_factors = trajectories.shape[0]
+    n_samples = trajectories.shape[1]
+    n_timepoints = trajectories.shape[2]
+    n_selected_factors = factor_indices.shape[0]
+    n_selected_dependents = dependent_indices.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    local_contributions = np.empty((n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), dtype=np.float64, order='F')
+    total_contributions = np.empty((n_selected_factors, n_selected_dependents, n_samples,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.compute_all_contributions_c(
+        trajectories,
+        ctypes.byref(ctypes.c_int(n_factors)),
+        ctypes.byref(ctypes.c_int(n_samples)),
+        ctypes.byref(ctypes.c_int(n_timepoints)),
+        factor_indices,
+        ctypes.byref(ctypes.c_int(n_selected_factors)),
+        dependent_indices,
+        ctypes.byref(ctypes.c_int(n_selected_dependents)),
+        baseline_mode,
+        local_contributions,
+        total_contributions,
         ctypes.byref(ierr),
     )
 
@@ -734,7 +971,7 @@ def compute_acceleration_from_velocity_trajectory(
 def compute_velocity_trajectories(
         trajectories,
 ):
-    r"""Compute velocity trajectories for all factors and samples
+    r"""Computes velocity trajectories from position trajectories
 
     Parameters
     ----------
@@ -789,7 +1026,7 @@ def compute_acceleration_from_velocity(
         velocity,
         n_timepoints,
 ):
-    r"""Compute acceleration trajectories from velocity trajectories
+    r"""Computes acceleration trajectories from velocity trajectories
 
     Parameters
     ----------
@@ -929,7 +1166,7 @@ def compute_velocity_acceleration_contributions(
         trajectories,
         baseline_mode,
 ):
-    r"""Compute velocity and acceleration contributions for all variable pairs (allocating entry point)
+    r"""Compute velocity and acceleration contributions for all variable pairs (expert entry point)
 
     Parameters
     ----------
@@ -945,11 +1182,11 @@ def compute_velocity_acceleration_contributions(
         contrib_velocity : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
             output velocity contributions
         velocity_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
-            output acceleration contributions
+            output velocity contribution series
         contrib_acceleration : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
             output acceleration contributions
         acceleration_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
-            output acceleration contributions
+            output acceleration contribution series
 
     Raises
     ------

@@ -167,9 +167,11 @@ from .tox_tissue_versatility import (
     compute_tissue_versatility,
 )
 from .tox_trajectory_contribution_analysis import (
+    perform_permutation_test_expert,
     perform_permutation_test,
     compute_p_values,
     compute_contributions,
+    compute_all_contributions_expert,
     compute_all_contributions,
     compute_baselines_factor_dependent,
     compute_velocity_trajectory,
@@ -178,6 +180,13 @@ from .tox_trajectory_contribution_analysis import (
     compute_acceleration_from_velocity,
     compute_velocity_acceleration_contributions_expert,
     compute_velocity_acceleration_contributions,
+)
+from .tox_trajectory_contribution_analysis_kernel import (
+    compute_all_contributions_kernel,
+    compute_baselines_factor_dependent_kernel,
+    compute_velocity_trajectory_kernel,
+    compute_acceleration_from_velocity_trajectory_kernel,
+    compute_velocity_acceleration_contributions_kernel,
 )
 from .tox_trajectory_normalization import (
     normalize_variable_timeseries,
@@ -203,8 +212,12 @@ __all__ = [
     "cluster_factor_trajectories_k_means",
     "compute_acceleration_from_velocity",
     "compute_acceleration_from_velocity_trajectory",
+    "compute_acceleration_from_velocity_trajectory_kernel",
     "compute_all_contributions",
+    "compute_all_contributions_expert",
+    "compute_all_contributions_kernel",
     "compute_baselines_factor_dependent",
+    "compute_baselines_factor_dependent_kernel",
     "compute_contributions",
     "compute_divergence_per_reference_point",
     "compute_edf",
@@ -221,8 +234,10 @@ __all__ = [
     "compute_tissue_versatility",
     "compute_velocity_acceleration_contributions",
     "compute_velocity_acceleration_contributions_expert",
+    "compute_velocity_acceleration_contributions_kernel",
     "compute_velocity_trajectories",
     "compute_velocity_trajectory",
+    "compute_velocity_trajectory_kernel",
     "compute_weighted_global_divergence",
     "construct_neighborhoods",
     "create_zip_archive",
@@ -278,6 +293,7 @@ __all__ = [
     "omics_field_RAP_projection",
     "omics_vector_RAP_projection",
     "perform_permutation_test",
+    "perform_permutation_test_expert",
     "pool_means",
     "pool_means_expert",
     "quantile_normalization",

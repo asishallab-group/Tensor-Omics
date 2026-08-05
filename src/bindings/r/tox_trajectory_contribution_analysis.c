@@ -5,10 +5,12 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void perform_permutation_test_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, const int*, double*, double*, double*, double*, int*, const int*);
+void perform_permutation_test_expert_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, const int*, double*, double*, double*, double*, const int*, int*);
+void perform_permutation_test_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, const int*, double*, double*, const int*, int*);
 void compute_p_values_c(const double*, const double*, const double*, const double*, const int*, const int*, double*, double*, int*);
 void compute_contributions_c(const double*, const double*, const int*, const char*, double*, double*, int*);
-void compute_all_contributions_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, double*, double*, double*, double*, int*);
+void compute_all_contributions_expert_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, double*, double*, double*, double*, int*);
+void compute_all_contributions_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, double*, double*, int*);
 void compute_baselines_factor_dependent_c(const int*, const double*, const double*, const char*, double*, double*, int*);
 void compute_velocity_trajectory_c(const double*, double*, const int*, int*);
 void compute_acceleration_from_velocity_trajectory_c(const double*, double*, const int*, int*);
@@ -17,7 +19,7 @@ void compute_acceleration_from_velocity_c(const double*, double*, const int*, co
 void compute_velocity_acceleration_contributions_expert_c(const double*, const int*, const int*, const int*, const char*, double*, double*, double*, double*, double*, double*, double*, int*);
 void compute_velocity_acceleration_contributions_c(const double*, const int*, const int*, const int*, const char*, double*, double*, double*, double*, int*);
 
-SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP dependent_idx, SEXP sample_idx, SEXP baseline_mode, SEXP n_permutations, SEXP random_seed) {
+SEXP perform_permutation_test_expert_call(SEXP trajectories, SEXP factor_idx, SEXP dependent_idx, SEXP sample_idx, SEXP baseline_mode, SEXP n_permutations, SEXP random_seed) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
     const int* random_seed_p = NULL;
@@ -49,7 +51,7 @@ SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP depe
     double* tmp_dependent = (double*) R_alloc(n_timepoints, sizeof(double));
     int ierr = 0;
 
-    perform_permutation_test_c(
+    perform_permutation_test_expert_c(
         REAL(trajectories),
         &n_factors,
         &n_samples,
@@ -63,8 +65,67 @@ SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP depe
         REAL(total_contributions),
         tmp_factor,
         tmp_dependent,
-        &ierr,
-        random_seed_p
+        random_seed_p,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SET_VECTOR_ELT(_out, 0, local_contributions);
+    SET_VECTOR_ELT(_out, 1, total_contributions);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("local_contributions"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("total_contributions"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP dependent_idx, SEXP sample_idx, SEXP baseline_mode, SEXP n_permutations, SEXP random_seed) {
+    int nprot = 0;
+    // optionals: a null pointer and size 0 when the caller omits them
+    const int* random_seed_p = NULL;
+    int random_seed_size = 0;
+    if (random_seed != R_NilValue) {
+        random_seed_size = (int) Rf_length(random_seed);
+        random_seed_p = INTEGER(random_seed);
+    }
+
+    // derived from the inputs, not asked of the caller
+    int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
+    int n_samples = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[1];
+    int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int factor_idx_v = Rf_asInteger(factor_idx);
+    int dependent_idx_v = Rf_asInteger(dependent_idx);
+    int sample_idx_v = Rf_asInteger(sample_idx);
+    int n_permutations_v = Rf_asInteger(n_permutations);
+
+    // convert what Fortran cannot take from R directly
+    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+
+    // outputs and work space
+    SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_permutations_v)); nprot++;
+    { SEXP local_contributions_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(local_contributions_dim)[0] = n_timepoints; INTEGER(local_contributions_dim)[1] = n_permutations_v; Rf_setAttrib(local_contributions, R_DimSymbol, local_contributions_dim); UNPROTECT(1); }
+    SEXP total_contributions = PROTECT(Rf_allocVector(REALSXP, n_permutations_v)); nprot++;
+    int ierr = 0;
+
+    perform_permutation_test_c(
+        REAL(trajectories),
+        &n_factors,
+        &n_samples,
+        &n_timepoints,
+        &factor_idx_v,
+        &dependent_idx_v,
+        &sample_idx_v,
+        baseline_mode_c,
+        &n_permutations_v,
+        REAL(local_contributions),
+        REAL(total_contributions),
+        random_seed_p,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
@@ -155,7 +216,7 @@ SEXP compute_contributions_call(SEXP factor, SEXP dependent, SEXP baseline_mode)
     return _out;
 }
 
-SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP dependent_indices, SEXP baseline_mode) {
+SEXP compute_all_contributions_expert_call(SEXP trajectories, SEXP factor_indices, SEXP dependent_indices, SEXP baseline_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
@@ -176,7 +237,7 @@ SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP
     double* tmp_dependent = (double*) R_alloc(n_timepoints, sizeof(double));
     int ierr = 0;
 
-    compute_all_contributions_c(
+    compute_all_contributions_expert_c(
         REAL(trajectories),
         &n_factors,
         &n_samples,
@@ -190,6 +251,53 @@ SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP
         REAL(total_contributions),
         tmp_factors,
         tmp_dependent,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SET_VECTOR_ELT(_out, 0, local_contributions);
+    SET_VECTOR_ELT(_out, 1, total_contributions);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("local_contributions"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("total_contributions"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP dependent_indices, SEXP baseline_mode) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
+    int n_samples = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[1];
+    int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
+    int n_selected_factors = (int) Rf_length(factor_indices);
+    int n_selected_dependents = (int) Rf_length(dependent_indices);
+
+    // convert what Fortran cannot take from R directly
+    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+
+    // outputs and work space
+    SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_selected_factors * n_selected_dependents * n_samples)); nprot++;
+    { SEXP local_contributions_dim = PROTECT(Rf_allocVector(INTSXP, 4)); INTEGER(local_contributions_dim)[0] = n_timepoints; INTEGER(local_contributions_dim)[1] = n_selected_factors; INTEGER(local_contributions_dim)[2] = n_selected_dependents; INTEGER(local_contributions_dim)[3] = n_samples; Rf_setAttrib(local_contributions, R_DimSymbol, local_contributions_dim); UNPROTECT(1); }
+    SEXP total_contributions = PROTECT(Rf_allocVector(REALSXP, n_selected_factors * n_selected_dependents * n_samples)); nprot++;
+    { SEXP total_contributions_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(total_contributions_dim)[0] = n_selected_factors; INTEGER(total_contributions_dim)[1] = n_selected_dependents; INTEGER(total_contributions_dim)[2] = n_samples; Rf_setAttrib(total_contributions, R_DimSymbol, total_contributions_dim); UNPROTECT(1); }
+    int ierr = 0;
+
+    compute_all_contributions_c(
+        REAL(trajectories),
+        &n_factors,
+        &n_samples,
+        &n_timepoints,
+        INTEGER(factor_indices),
+        &n_selected_factors,
+        INTEGER(dependent_indices),
+        &n_selected_dependents,
+        baseline_mode_c,
+        REAL(local_contributions),
+        REAL(total_contributions),
         &ierr
     );
 
