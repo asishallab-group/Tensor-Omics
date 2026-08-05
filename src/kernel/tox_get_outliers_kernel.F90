@@ -169,12 +169,6 @@ contains
         tmp_robust_weights = 0.0_real64
         tmp_permutation_indices = 0
 
-        ! netlib reads iv and wv as workspace it has already seeded, so they are
-        ! initialised here rather than by the caller: this routine is exported, and an
-        ! binding language hands it freshly allocated -- uninitialised -- memory.
-        tmp_int_workspace = 1_int32
-        tmp_real_workspace = 0.0_real64
-
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
             dist_val = abs(distances(i_gene))
@@ -292,8 +286,10 @@ contains
         end if
 
         ! Fallback: for constant prediction or not enough points for loess
-        ! we use the global median for all families.
-        if (xmax == xmin) then
+        ! we use the global median for all families. Closeness is judged on LOESS's own terms
+        ! -- EPS_LOESS, the smoothing floor -- since a spread finer than that is no spread to
+        ! fit a curve through, however different the two ends are as floating point numbers.
+        if (is_close(xmax, xmin, EPS_LOESS)) then
             do concurrent (i_family = 1:n_families) shared(dscale, std_median)
                 if (tmp_means_aux(i_family) >= 0.0_real64) then
                     dscale(i_family) = std_median

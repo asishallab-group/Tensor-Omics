@@ -62,39 +62,50 @@ test_loess_robust_functionality <- function() {
   
 }
 
-# 4. Test High-level Wrapper (loess)
-test_tox_loess_wrapper <- function() {
-  
+# 4. The plain and robust fits are separate entry points
+test_plain_and_robust_are_separate_entry_points <- function() {
+
   n <- 30
   x <- seq(0, 2*pi, length.out = n)
   y <- sin(x)
-  
-  # Test Plain mode (mode="plain")
-  yhat_plain <- loess(x, y, span=0.4, degree=1, mode="plain")
+  y[8] <- y[8] + 5.0  # an outlier for the robust iterations to down-weight
+
+  # the self-allocating entry points still take what the fit is *of*: uniform weights,
+  # evaluated at the training x, is the common case
+  w <- rep(1.0, n)
+  z <- matrix(x, ncol=1)
+
+  yhat_plain <- loess_fit_plain(x=x, y=y, weights=w, eval_points=z,
+                                span=0.4, degree=1, max_neighborhood_size=n)
   assert_true(length(yhat_plain) == n)
-  
-  # Test Robust mode (mode=1)
-  yhat_robust <- loess(x, y, span=0.4, degree=1, mode="robust", n_iters=2)
+
+  yhat_robust <- loess_fit_robust(x=x, y=y, weights=w, eval_points=z,
+                                  span=0.4, degree=1, max_neighborhood_size=n, n_iters=2)
   assert_true(length(yhat_robust) == n)
-  
-  # Verify that results are not identical due to re-weighting
+
+  # the robust fit suppresses the outlier, so the two cannot agree
   assert_true(!all(yhat_plain == yhat_robust))
-  
+
 }
 
 # 5. Test Error Handling
 test_invalid_inputs <- function() {
-  
-  x <- 1:10
-  y <- 1:5 # Mismatched length
-  
+
+  n <- 10
+  x <- seq(1, 10, length.out = n)
+  y <- x
+  w <- rep(1.0, n)
+  z <- matrix(x, ncol=1)
+
   error_caught <- FALSE
   tryCatch({
-    loess(x, y)
+    # a span outside (0, 1] is rejected by the generated wrapper
+    loess_fit_plain(x=x, y=y, weights=w, eval_points=z,
+                    span=2.0, degree=1, max_neighborhood_size=n)
   }, error = function(e) {
     error_caught <<- TRUE
   })
-  
+
   assert_true(error_caught)
 }
 

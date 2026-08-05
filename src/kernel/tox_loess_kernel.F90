@@ -2,14 +2,19 @@
 
 !> Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 !| The generator turns `loess_fit_plain_kernel` / `loess_fit_robust_kernel` into the expert fitting
-!| wrappers `loess_fit_plain` / `loess_fit_robust` (each with an allocating sibling), and the
-!| self-allocating `loess_alloc_kernel` into `loess_alloc`, all in module `tox_loess`. The netlib
+!| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
+!| `tox_loess`. Both name `loess_degenerate_fit` as their prologue, so data too degenerate to fit is
+!| answered there and the netlib call is skipped -- the kernels themselves fit, and assume they were
+!| given something fittable. There is no combined entry point that dispatches on a mode: a caller
+!| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
+!| The netlib
 !| interface blocks, the mode/iteration constants, `EPS_LOESS` and the workspace-sizing routine
 !| `tox_loess_required_workspace` live here for callers (and the generated wrappers) to use; the
 !| netlib routines themselves are not re-documented beyond their calling convention.
 module tox_loess_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_io_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
+    use f42_utils, only: is_close
     M_IMPLICIT_NONE
 
 #define CM_MODE_PLAIN 0_int32
@@ -20,9 +25,9 @@ module tox_loess_kernel
         !! Robust iterations used when the caller does not say, matching the count
         !! [[tox_get_outliers(module)]] and [[tox_normalization(module)]] use
     integer(int32), parameter, public :: MODE_PLAIN = CM_MODE_PLAIN
-        !! Mode code for plain LOESS fitting in [[tox_loess(module):loess_alloc(subroutine)]]
+        !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
     integer(int32), parameter, public :: MODE_ROBUST = CM_MODE_ROBUST
-        !! Mode code for robust LOESS fitting in [[tox_loess(module):loess_alloc(subroutine)]]
+        !! Mode code selecting a robust LOESS fit, for callers that carry the choice as a value
 
     ! ---- LOESS netlib externals ----
     ! ============================================================
@@ -67,10 +72,10 @@ module tox_loess_kernel
                 !! Smoothing parameter for LOESS
             logical, intent(in) :: save_factorization
                 !! Save matrix factorization flag
-            integer(int32), intent(inout) :: int_workspace(int_workspace_size)
-                !! Integer workspace array
-            real(real64), intent(inout) :: real_workspace(real_workspace_size)
-                !! Real workspace array
+            integer(int32), intent(out) :: int_workspace(int_workspace_size)
+                !! Integer workspace array, laid out and populated here; nothing in it is read
+            real(real64), intent(out) :: real_workspace(real_workspace_size)
+                !! Real workspace array, whose first entries are set here; nothing in it is read
         end subroutine lowesd
     end interface loess_decomposition
 
@@ -119,10 +124,10 @@ module tox_loess_kernel
                 !! Length of the real workspace array
             integer(int32), intent(in) :: n
                 !! Number of data points
-            integer(int32), intent(inout) :: int_workspace(int_workspace_size)
-                !! Integer workspace array
-            real(real64), intent(inout) :: real_workspace(real_workspace_size)
-                !! Real workspace array
+            integer(int32), intent(in) :: int_workspace(int_workspace_size)
+                !! Integer workspace array, read as laid out by the decomposition and the fit
+            real(real64), intent(in) :: real_workspace(real_workspace_size)
+                !! Real workspace array, read as left by the fit
             real(real64), intent(in) :: eval_points(n, 1)
                 !! x-values at which to evaluate the fitted LOESS curve (evaluation points)
             real(real64), intent(out) :: fitted_values(n)
@@ -159,6 +164,86 @@ module tox_loess_kernel
         !! guard against division/log by (near-)zero.
 
 contains
+
+    !> summary: Decides whether the data is too degenerate to fit, and answers it directly if so
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| The prologue of both LOESS fitting kernels. A single point, an `x` range below
+    !| `EPS_LOESS`, or fewer distinct `x` values than the polynomial degree needs cannot
+    !| produce a meaningful fit; rather than hand netlib an input it cannot answer, the fitted
+    !| values are the observations themselves and the call reports `handled`, so the kernel is
+    !| skipped. This is policy, not validation, which is why it lives here and not in the
+    !| kernels: they fit, and assume they were given something fittable.
+    pure subroutine loess_degenerate_fit(n, x, y, degree, fitted_values, handled, ierr)
+        integer(int32), intent(in) :: n
+            !! Total number of data points
+        real(real64), dimension(n), intent(in) :: x
+            !! Predictor variable array
+        real(real64), dimension(n), intent(in) :: y
+            !! Response variable array
+        integer(int32), intent(in) :: degree
+            !! Degree of the LOESS polynomial
+        real(real64), dimension(n), intent(out) :: fitted_values
+            !! Fitted values, written only when the fit was answered here
+        logical, intent(out) :: handled
+            !! `.true.` when the data was degenerate and `fitted_values` already holds the answer
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        real(real64) :: tol
+        real(real64) :: uniq_x(4)
+        integer(int32) :: uniq_count, need_uniq, i, j
+        logical :: found
+
+        call set_ok(ierr)
+        handled = .true.
+
+        ! A single point carries no trend to smooth
+        if (n == 1) then
+            fitted_values(1) = y(1)
+            return
+        end if
+
+        ! Near-constant x: every neighbourhood is the whole sample, so the fit is the data.
+        ! Closeness is judged on LOESS's own terms -- EPS_LOESS, the smoothing floor -- rather
+        ! than on what the arithmetic can resolve.
+        if (is_close(maxval(x), minval(x), EPS_LOESS)) then
+            fitted_values = y
+            return
+        end if
+
+        ! A degree-d local polynomial needs at least d+1 distinct x-support points to be well-defined;
+        ! capped at 4 (the fixed size of uniq_x below) since degree never exceeds 2 in this codebase.
+        need_uniq = min(4_int32, degree + 2_int32)
+        uniq_count = 0_int32
+        uniq_x = 0.0_real64
+
+        do i = 1, n
+            ! Scale-relative tolerance (not a fixed epsilon) so comparisons remain meaningful
+            ! for x-values far from zero.
+            tol = EPS_LOESS*max(1.0_real64, abs(x(i)))
+
+            found = .false.
+            do j = 1, uniq_count
+                if (abs(x(i) - uniq_x(j)) <= tol) then
+                    found = .true.
+                    exit
+                end if
+            end do
+
+            if (.not. found) then
+                uniq_count = uniq_count + 1_int32
+                uniq_x(uniq_count) = x(i)
+                if (uniq_count >= need_uniq) exit
+            end if
+        end do
+
+        if (uniq_count < need_uniq) then
+            fitted_values = y
+            return
+        end if
+
+        handled = .false.
+    end subroutine loess_degenerate_fit
 
     ! ============================================================
     ! Recommend workspace sizes based on Netlib exact formulas
@@ -202,6 +287,7 @@ contains
     ! ============================================================
     !> summary: Perform plain LOESS fitting
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array. Caller-provided workspace must already be sized via
     !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
@@ -251,10 +337,12 @@ contains
             !! DM_MIN(EPS_LOESS)
             !! DM_MAX(1.0_real64)
 
-        logical, intent(in) :: compute_influence
+        logical, intent(in), optional :: compute_influence
             !! Influence calculation flag
-        logical, intent(in) :: save_factorization
+            !! DM_DEFAULT(.false.)
+        logical, intent(in), optional :: save_factorization
             !! Save matrix factorization flag
+            !! DM_DEFAULT(.false.)
 
         integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
             !! Integer workspace array
@@ -270,23 +358,12 @@ contains
         integer(int32) :: neighborhood_size
             !! Size of the local neighborhood used at the current span (points per local fit)
 
-        real(real64) :: range_x
+        logical :: actual_compute_influence, actual_save_factorization
 
         call set_ok(ierr)
 
-        if (n == 1) then
-            write (*, '(A)') "LOESS: Single point detected. Skipping adjustment (fitted_values = y)."
-            fitted_values(1) = y(1)
-            return
-        end if
-
-        range_x = maxval(x) - minval(x)
-        if (range_x <= EPS_LOESS) then
-            write (*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
-            fitted_values = y
-            call set_ok(ierr)
-            return
-        end if
+        M_DEFAULT_VAL(compute_influence, actual_compute_influence, .false.)
+        M_DEFAULT_VAL(save_factorization, actual_save_factorization, .false.)
 
         ! `span` is a fraction of `n` points included in each local neighborhood; neighborhood_size is that
         ! neighborhood size. Require at least degree+3 points per neighborhood so the local
@@ -302,8 +379,8 @@ contains
         ! `106` is netlib's packed `iv(19)` model-selection code (family/surface/statistics digits);
         ! it selects the netlib default (Gaussian family, direct surface, exact statistics) and is not
         ! meant to be tuned per call.
-        call loess_decomposition(106, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, 1_int32, n, span, degree, max_neighborhood_size, save_factorization)
-        call loess_fitting(x, y, weights, tmp_hat_diag, compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
+        call loess_decomposition(106, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, 1_int32, n, span, degree, max_neighborhood_size, actual_save_factorization)
+        call loess_fitting(x, y, weights, tmp_hat_diag, actual_compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
         call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n, eval_points, fitted_values)
     end subroutine loess_fit_plain_kernel
 
@@ -312,6 +389,7 @@ contains
     ! ============================================================
     !> summary: Perform robust LOESS fitting with bisquare reweighting
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !|  - Combines original weights with robust weights (down-weights from previous iteration)
@@ -370,10 +448,12 @@ contains
             !! DM_MIN(EPS_LOESS)
             !! DM_MAX(1.0_real64)
 
-        logical, intent(in) :: compute_influence
+        logical, intent(in), optional :: compute_influence
             !! Influence calculation flag
-        logical, intent(in) :: save_factorization
+            !! DM_DEFAULT(.false.)
+        logical, intent(in), optional :: save_factorization
             !! Save matrix factorization flag
+            !! DM_DEFAULT(.false.)
 
         integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
             !! Integer workspace array
@@ -399,24 +479,13 @@ contains
 
         integer(int32) :: iter, i, predictor_dim
         integer(int32) :: actual_n_iters
+        logical :: actual_compute_influence, actual_save_factorization
 
         call set_ok(ierr)
 
         M_DEFAULT_VAL(n_iters, actual_n_iters, CM_DEFAULT_LOESS_ITERS)
-
-        if (n == 1) then
-            write (*, '(A)') "LOESS: Single point detected. Skipping adjustment (fitted_values = y)."
-            fitted_values(1) = y(1)
-            return
-        end if
-
-        range_x = maxval(x) - minval(x)
-        if (range_x <= EPS_LOESS) then
-            write (*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
-            fitted_values = y
-            call set_ok(ierr)
-            return
-        end if
+        M_DEFAULT_VAL(compute_influence, actual_compute_influence, .false.)
+        M_DEFAULT_VAL(save_factorization, actual_save_factorization, .false.)
 
         ! `span` is a fraction of `n` points included in each local neighborhood; neighborhood_size is that
         ! neighborhood size. Require at least degree+3 points per neighborhood so the local
@@ -430,11 +499,7 @@ contains
         predictor_dim = 1_int32
 
         ! Perform robust iterative refinement
-        do iter = 1, n_iters
-            ! Reset workspace arrays for this iteration
-            tmp_int_workspace = 0_int32
-            tmp_real_workspace = 0.0_real64
-
+        do iter = 1, actual_n_iters
             do concurrent (i = 1:n) shared(tmp_combined_weights, weights, tmp_robust_weights)
                 tmp_combined_weights(i) = weights(i)*tmp_robust_weights(i)
             end do
@@ -454,159 +519,5 @@ contains
             call loess_robust_weights(tmp_residuals, n, tmp_robust_weights, tmp_permutation_indices)
         end do
     end subroutine loess_fit_robust_kernel
-
-    ! ============================================================
-    ! Self-allocating LOESS fitting (plain or robust)
-    ! ============================================================
-    !> summary: Self-allocating LOESS fit selecting between plain and robust
-    !| AUTHOR_FRANZ_ERIC_SILL
-    !| This kernel selects between plain and robust LOESS fitting based on the mode. It dynamically
-    !| allocates the required arrays and computes workspace sizes, and handles degenerate inputs (single
-    !| point, near-constant `x`, or fewer unique `x` values than the polynomial degree requires) by
-    !| falling back to an identity/copy mapping instead of calling into netlib. As a self-allocating
-    !| pipeline it validates its own inputs, so the generated wrapper adds only the binding surface.
-    !|
-    !| Parameters:
-    !| - mode: Specifies the type of LOESS fitting to perform.
-    !|   - 0: Plain LOESS fitting. This mode performs a single pass of LOESS fitting without any additional weighting or iterations. It is suitable for datasets without significant outliers.
-    !|   - 1: Robust LOESS fitting. This mode applies bisquare reweighting over multiple iterations to reduce the influence of outliers. The number of iterations is controlled by the `n_iters` parameter.
-    subroutine loess_alloc_kernel(x, y, span, degree, fitted_values, mode, n_iters, ierr)
-        ! Input parameters
-        real(real64), intent(in) :: x(:)
-            !! Predictor variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
-        real(real64), intent(in) :: y(:)
-            !! Response variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
-        real(real64), intent(in) :: span
-            !! Smoothing parameter for LOESS
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
-        integer(int32), intent(in) :: degree
-            !! Degree of the LOESS polynomial
-        integer(int32), intent(in) :: mode
-            !! Mode of operation
-            !!
-            !! | Mode | Value |
-            !! |------|-------|
-            !! | Plain LOESS fitting | [[tox_loess_kernel(module):MODE_PLAIN(variable)]] |
-            !! | Robust LOESS fitting | [[tox_loess_kernel(module):MODE_ROBUST(variable)]] |
-        integer(int32), intent(in), optional :: n_iters
-            !! Number of robust iterations, ignored in [[tox_loess_kernel(module):MODE_PLAIN(variable)]].
-            !! DM_DEFAULT(CM_DEFAULT_LOESS_ITERS)
-
-        ! Output parameters
-        real(real64), intent(out) :: fitted_values(size(y))
-            !! Fitted (smoothed) values of y
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        ! Local variables
-        integer(int32) :: n, int_workspace_size, real_workspace_size, istat
-        integer(int32), allocatable :: int_workspace(:), permutation_indices(:)
-        real(real64), allocatable :: real_workspace(:), hat_diag(:), robust_weights(:), combined_weights(:), residuals(:), initial_weights(:), eval_points_mat(:, :)
-        real(real64) :: range_x
-        integer(int32) :: uniq_count, need_uniq
-        real(real64) :: uniq_x(4)
-        logical :: found
-        integer(int32) :: i, j
-        real(real64) :: tol
-        integer(int32) :: actual_n_iters
-
-        ! Initialize variables
-        n = size(y)
-        call set_ok(ierr)
-        call set_ok(istat)
-
-        if (size(x) /= size(y)) then
-            call set_err(ierr, ERR_SIZE_MISMATCH)
-            return
-        end if
-
-        range_x = maxval(x) - minval(x)
-        if (range_x <= EPS_LOESS) then
-            write (*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
-            fitted_values = y
-            call set_ok(ierr)
-            return
-        end if
-
-        ! A degree-d local polynomial needs at least d+1 distinct x-support points to be well-defined;
-        ! capped at 4 (the fixed size of uniq_x below) since degree never exceeds 2 in this codebase.
-        need_uniq = min(4_int32, degree + 2_int32)
-        uniq_count = 0_int32
-        uniq_x = 0.0_real64
-
-        do i = 1, n
-            ! Scale-relative tolerance (not a fixed epsilon) so comparisons remain meaningful
-            ! for x-values far from zero.
-            tol = EPS_LOESS*max(1.0_real64, abs(x(i)))
-
-            found = .false.
-            do j = 1, uniq_count
-                if (abs(x(i) - uniq_x(j)) <= tol) then
-                    found = .true.
-                    exit
-                end if
-            end do
-
-            if (.not. found) then
-                uniq_count = uniq_count + 1_int32
-                uniq_x(uniq_count) = x(i)
-                if (uniq_count >= need_uniq) exit
-            end if
-        end do
-
-        if (uniq_count < need_uniq) then
-            ! a lot of same values to adjust
-            write (*, '(A, I2, A, I2, A)') "LOESS: Insufficient unique points (Found ", uniq_count, &
-                " but need ", need_uniq, "). Using identity mapping."
-            fitted_values = y
-            return
-        end if
-
-        call tox_loess_required_workspace(1_int32, n, int_workspace_size, real_workspace_size, .false.)
-
-        ! Allocate workspace arrays
-        allocate (int_workspace(int_workspace_size), real_workspace(real_workspace_size), hat_diag(n), initial_weights(n), eval_points_mat(n, 1), stat=istat)
-        call check_io_stat(istat, ierr)
-        if (is_err(ierr)) return
-
-        ! Initialize arrays
-        int_workspace = 0_int32
-        initial_weights = 1.0_real64  ! Uniform weights initially
-        hat_diag = 0.0_real64
-        eval_points_mat(:, 1) = x  ! Evaluate at training x-values to obtain in-sample fitted values
-        real_workspace = 0.0_real64
-
-        ! Allocate additional arrays for robust mode
-        if (mode == 1_int32) then
-            allocate (robust_weights(n), combined_weights(n), residuals(n), permutation_indices(n), stat=istat)
-            call check_io_stat(istat, ierr)
-            if (is_err(ierr)) then
-                deallocate (int_workspace, real_workspace, hat_diag, initial_weights, eval_points_mat)
-                return
-            end if
-        end if
-
-        ! Call the appropriate LOESS fitting kernel based on mode
-        ! Mode 0: Plain fitting (single pass, no robust iterations)
-        ! Mode 1: Robust fitting (multiple iterations with reweighting)
-        if (mode == 0_int32) then
-            call loess_fit_plain_kernel(n, x, y, initial_weights, eval_points_mat, span, degree, n, &
-                                        .false., .false., int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)
-        else
-            call loess_fit_robust_kernel(n, x, y, initial_weights, eval_points_mat, span, degree, n, &
-                                         .false., .false., actual_n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, &
-                                         hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)
-        end if
-
-        ! Deallocate workspace arrays
-        deallocate (int_workspace, real_workspace, hat_diag, initial_weights, eval_points_mat)
-        if (allocated(robust_weights)) deallocate (robust_weights, combined_weights, residuals, permutation_indices)
-
-    end subroutine loess_alloc_kernel
 
 end module tox_loess_kernel

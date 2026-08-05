@@ -105,23 +105,6 @@ _lib.loess_fit_robust_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_FIT_ROBUST_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "fitted_values", "ierr",)
 
-_lib.loess_c.restype = None
-_lib.loess_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_LOESS_ARGUMENTS = ("x", "y", "span", "degree", "fitted_values", "mode", "n_iters", "ierr",)
-
 def loess_fit_plain_expert(
         x,
         y,
@@ -130,8 +113,8 @@ def loess_fit_plain_expert(
         span,
         degree,
         max_neighborhood_size,
-        compute_influence,
-        save_factorization,
+        compute_influence=False,
+        save_factorization=False,
 ):
     r"""Perform plain LOESS fitting
 
@@ -163,10 +146,12 @@ def loess_fit_plain_expert(
         The maximum valid value is `2_int32`.
     max_neighborhood_size : int
         Maximum neighborhood size
-    compute_influence : bool
+    compute_influence : bool, optional, default False
         Influence calculation flag
-    save_factorization : bool
+        The default value is `.false.`.
+    save_factorization : bool, optional, default False
         Save matrix factorization flag
+        The default value is `.false.`.
 
     Returns
     -------
@@ -271,8 +256,8 @@ def loess_fit_plain(
         span,
         degree,
         max_neighborhood_size,
-        compute_influence,
-        save_factorization,
+        compute_influence=False,
+        save_factorization=False,
 ):
     r"""Perform plain LOESS fitting
 
@@ -304,10 +289,12 @@ def loess_fit_plain(
         The maximum valid value is `2_int32`.
     max_neighborhood_size : int
         Maximum neighborhood size
-    compute_influence : bool
+    compute_influence : bool, optional, default False
         Influence calculation flag
-    save_factorization : bool
+        The default value is `.false.`.
+    save_factorization : bool, optional, default False
         Save matrix factorization flag
+        The default value is `.false.`.
 
     Returns
     -------
@@ -397,8 +384,8 @@ def loess_fit_robust_expert(
         span,
         degree,
         max_neighborhood_size,
-        compute_influence,
-        save_factorization,
+        compute_influence=False,
+        save_factorization=False,
         n_iters=3,
 ):
     r"""Perform robust LOESS fitting with bisquare reweighting
@@ -431,10 +418,12 @@ def loess_fit_robust_expert(
         The maximum valid value is `2_int32`.
     max_neighborhood_size : int
         Maximum neighborhood size
-    compute_influence : bool
+    compute_influence : bool, optional, default False
         Influence calculation flag
-    save_factorization : bool
+        The default value is `.false.`.
+    save_factorization : bool, optional, default False
         Save matrix factorization flag
+        The default value is `.false.`.
     n_iters : int, optional, default 3
         Number of robust iterations
         The minimum valid value is `1_int32`.
@@ -552,8 +541,8 @@ def loess_fit_robust(
         span,
         degree,
         max_neighborhood_size,
-        compute_influence,
-        save_factorization,
+        compute_influence=False,
+        save_factorization=False,
         n_iters=3,
 ):
     r"""Perform robust LOESS fitting with bisquare reweighting
@@ -586,10 +575,12 @@ def loess_fit_robust(
         The maximum valid value is `2_int32`.
     max_neighborhood_size : int
         Maximum neighborhood size
-    compute_influence : bool
+    compute_influence : bool, optional, default False
         Influence calculation flag
-    save_factorization : bool
+        The default value is `.false.`.
+    save_factorization : bool, optional, default False
         Save matrix factorization flag
+        The default value is `.false.`.
     n_iters : int, optional, default 3
         Number of robust iterations
         The minimum valid value is `1_int32`.
@@ -673,92 +664,5 @@ def loess_fit_robust(
     )
 
     check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS)
-
-    return fitted_values
-
-def loess(
-        x,
-        y,
-        span,
-        degree,
-        mode,
-        n_iters=3,
-):
-    r"""Self-allocating LOESS fit selecting between plain and robust
-
-    Parameters
-    ----------
-    x : np.ndarray[np.float64] of shape (n_x_elements,)
-        Predictor variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
-    y : np.ndarray[np.float64] of shape (n_y_elements,)
-        Response variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
-    span : float
-        Smoothing parameter for LOESS
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
-    degree : int
-        Degree of the LOESS polynomial
-    mode : str, one of 'plain' | 'robust'
-        Mode of operation
-
-    n_iters : int, optional, default 3
-        Number of robust iterations, ignored in [[tox_loess_kernel(module):MODE_PLAIN(variable)]].
-        The default value is `3_int32`.
-
-    Returns
-    -------
-    fitted_values : np.ndarray[np.float64] of shape (size(y),)
-        Fitted (smoothed) values of y
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_loess::loess_alloc`.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x = np.ascontiguousarray(x, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x' must be an array of np.float64: {error}") from None
-    if x.ndim != 1:
-        raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
-    try:
-        y = np.ascontiguousarray(y, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y' must be an array of np.float64: {error}") from None
-    if y.ndim != 1:
-        raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S6")
-
-    # what the inputs already say, rather than asking for it again
-    n_x_elements = x.shape[0]
-    n_y_elements = y.shape[0]
-
-    # outputs and work arrays, which the caller never sees
-    fitted_values = np.empty((y.size,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
-
-    _lib.loess_c(
-        x,
-        ctypes.byref(ctypes.c_int(n_x_elements)),
-        y,
-        ctypes.byref(ctypes.c_int(n_y_elements)),
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        fitted_values,
-        mode,
-        ctypes.byref(ctypes.c_int(n_iters)),
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _LOESS_ARGUMENTS)
 
     return fitted_values

@@ -113,7 +113,6 @@ SEXP loess_fit_plain_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_robust_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP loess_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP normalize_unit_length_call(SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -230,7 +229,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},
     {"loess_fit_robust_expert_call", (DL_FUNC) &loess_fit_robust_expert_call, 12},
     {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
-    {"loess_call", (DL_FUNC) &loess_call, 6},
     {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"normalize_unit_length_call", (DL_FUNC) &normalize_unit_length_call, 1},
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},

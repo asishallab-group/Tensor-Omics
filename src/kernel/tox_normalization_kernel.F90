@@ -11,10 +11,11 @@ module tox_normalization_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
-    use tox_loess_kernel, only: loess_alloc_kernel
+    use tox_loess_kernel, only: loess_degenerate_fit, loess_fit_robust_kernel, tox_loess_required_workspace
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
 #define CM_LOESS_DEGREE_DEFAULT 2_int32
+#define CM_LOESS_ROBUST_ITERS 3_int32
 
 contains
 
@@ -231,6 +232,14 @@ contains
         integer(int32) :: i_gene, i_valid, i_tissue, n_valid, gene_idx, actual_degree
         real(real64) :: mean_val, fitted_sd, actual_span
 
+        ! The LOESS fit below is driven at the expert tier, so its workspace lives here
+        logical :: loess_handled
+        integer(int32) :: int_workspace_size, real_workspace_size
+        integer(int32), allocatable :: tmp_int_workspace(:), tmp_permutation_indices(:)
+        real(real64), allocatable :: tmp_real_workspace(:), tmp_hat_diag(:), tmp_loess_weights(:)
+        real(real64), allocatable :: tmp_robust_weights(:), tmp_combined_weights(:), tmp_residuals(:)
+        real(real64), allocatable :: tmp_eval_points(:, :)
+
         M_DEFAULT_VAL(span, actual_span, CM_LOESS_SPAN_DEFAULT)
         M_DEFAULT_VAL(degree, actual_degree, CM_LOESS_DEGREE_DEFAULT)
 
@@ -264,10 +273,40 @@ contains
             return
         end if
 
-        call loess_alloc_kernel(x=tmp_loess_x(1:n_valid), y=tmp_loess_y(1:n_valid), &
-                         span=actual_span, degree=actual_degree, fitted_values=tmp_yhat_global(1:n_valid), &
-                         mode=1, n_iters=3, ierr=ierr)
+        ! Fit the mean-vs-sd trend robustly. This is the expert tier of the LOESS API, so the
+        ! workspace, the uniform weights and the evaluation points are prepared here: the fit
+        ! is evaluated at its own training points, every point weighted equally, and the
+        ! neighbourhood may span the whole sample. The degenerate cases (too few points, a
+        ! near-constant x) answer the fit directly, exactly as they do for a wrapper caller.
+        call loess_degenerate_fit(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
+                                  actual_degree, tmp_yhat_global(1:n_valid), loess_handled, ierr)
         if (is_err(ierr)) return
+
+        if (.not. loess_handled) then
+            call tox_loess_required_workspace(1_int32, n_valid, int_workspace_size, real_workspace_size, .false.)
+
+            M_ALLOCATE(tmp_int_workspace(int_workspace_size))
+            M_ALLOCATE(tmp_real_workspace(real_workspace_size))
+            M_ALLOCATE(tmp_hat_diag(n_valid))
+            M_ALLOCATE(tmp_loess_weights(n_valid))
+            M_ALLOCATE(tmp_eval_points(n_valid, 1))
+            M_ALLOCATE(tmp_robust_weights(n_valid))
+            M_ALLOCATE(tmp_combined_weights(n_valid))
+            M_ALLOCATE(tmp_residuals(n_valid))
+            M_ALLOCATE(tmp_permutation_indices(n_valid))
+
+            tmp_loess_weights = 1.0_real64
+            tmp_eval_points(:, 1) = tmp_loess_x(1:n_valid)
+
+            call loess_fit_robust_kernel(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
+                                         tmp_loess_weights, tmp_eval_points, actual_span, actual_degree, &
+                                         n_valid, .false., .false., CM_LOESS_ROBUST_ITERS, &
+                                         tmp_int_workspace, int_workspace_size, &
+                                         tmp_real_workspace, real_workspace_size, tmp_hat_diag, &
+                                         tmp_robust_weights, tmp_combined_weights, tmp_residuals, &
+                                         tmp_permutation_indices, tmp_yhat_global(1:n_valid), ierr)
+            if (is_err(ierr)) return
+        end if
 
         ! Step 3: apply normalization
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)

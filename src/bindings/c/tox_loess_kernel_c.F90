@@ -4,8 +4,12 @@
 !> summary: C-wrappers for [[tox_loess_kernel(module)]]
 !| Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 !| The generator turns `loess_fit_plain_kernel` / `loess_fit_robust_kernel` into the expert fitting
-!| wrappers `loess_fit_plain` / `loess_fit_robust` (each with an allocating sibling), and the
-!| self-allocating `loess_alloc_kernel` into `loess_alloc`, all in module `tox_loess`. The netlib
+!| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
+!| `tox_loess`. Both name `loess_degenerate_fit` as their prologue, so data too degenerate to fit is
+!| answered there and the netlib call is skipped -- the kernels themselves fit, and assume they were
+!| given something fittable. There is no combined entry point that dispatches on a mode: a caller
+!| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
+!| The netlib
 !| interface blocks, the mode/iteration constants, `EPS_LOESS` and the workspace-sizing routine
 !| `tox_loess_required_workspace` live here for callers (and the generated wrappers) to use; the
 !| netlib routines themselves are not re-documented beyond their calling convention.

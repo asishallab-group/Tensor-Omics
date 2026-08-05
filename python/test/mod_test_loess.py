@@ -15,7 +15,6 @@ from tensor_omics import (
     tox_loess_required_workspace,
     loess_fit_plain,
     loess_fit_robust,
-    loess
 )
 from test_helpers import run_all_tests
 
@@ -74,21 +73,31 @@ def test_loess_robust_functionality():
     assert yhat[5] < 50.0, f"Robust LOESS failed to suppress outlier: got {yhat[5]}"
 
 
-def test_tox_loess_wrapper():
-    """Tests the high-level wrapper that selects between plain and robust modes."""
+def test_plain_and_robust_are_separate_entry_points():
+    """The plain and robust fits are separate entry points, and disagree on noisy data."""
     n = 30
     x = np.arange(n, dtype=np.float64)
     y = np.sin(x / 5.0)
+    y[7] += 5.0  # an outlier for the robust iterations to down-weight
 
-    # Test Plain mode (mode="plain", n_iters=0)
-    yhat_plain = loess(x, y, span=0.4, degree=1, mode="plain", n_iters=0)
-    assert yhat_plain.shape == (n,), "Plain mode shape mismatch"
+    # the self-allocating entry points still take what the fit is *of*: the weights and the
+    # points to evaluate at. Uniform weights, evaluated at the training x, is the common case.
+    weights = np.ones(n)
+    eval_points = x.reshape(n, 1)
 
-    # Test Robust mode (mode=1)
-    yhat_robust = loess(x, y, span=0.4, degree=1, mode="robust", n_iters=2)
-    assert yhat_robust.shape == (n,), "Robust mode shape mismatch"
+    yhat_plain = loess_fit_plain(
+        x=x, y=y, weights=weights, eval_points=eval_points,
+        span=0.4, degree=1, max_neighborhood_size=n,
+    )
+    assert yhat_plain.shape == (n,), "Plain shape mismatch"
 
-    # Verify that results differ due to robust iterations
+    yhat_robust = loess_fit_robust(
+        x=x, y=y, weights=weights, eval_points=eval_points,
+        span=0.4, degree=1, max_neighborhood_size=n, n_iters=2,
+    )
+    assert yhat_robust.shape == (n,), "Robust shape mismatch"
+
+    # the robust fit suppresses the outlier, so the two cannot agree
     assert not np.array_equal(yhat_plain, yhat_robust), "Plain and Robust results should not be identical"
 
 

@@ -123,7 +123,6 @@ from .tox_loess import (
     loess_fit_plain,
     loess_fit_robust_expert,
     loess_fit_robust,
-    loess,
 )
 from .tox_loess_kernel import (
     tox_loess_required_workspace,
@@ -260,7 +259,6 @@ __all__ = [
     "identify_outliers",
     "k_means_clustering",
     "linkage_clustering",
-    "loess",
     "loess_fit_plain",
     "loess_fit_plain_expert",
     "loess_fit_robust",
