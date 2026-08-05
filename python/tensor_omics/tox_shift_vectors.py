@@ -53,8 +53,9 @@ def compute_shift_vector_field(
 
     Returns
     -------
-    shift_vectors : np.ndarray[np.float64] of shape (n_tissues, 2, n_genes,), column-major (order='F')
+    shift_vectors : np.ndarray[np.float64] of shape (n_tissues, 2, n_genes,), column-major (order='F'), read-only
         Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -117,5 +118,8 @@ def compute_shift_vector_field(
     )
 
     check_err_code(ierr.value, _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENTS, _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    shift_vectors.flags.writeable = False
 
     return shift_vectors

@@ -288,10 +288,12 @@ def perform_permutation_test_expert(
     dict
         with keys:
 
-        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F'), read-only
             Per-timepoint contributions per permutation
-        total_contributions : np.ndarray[np.float64] of shape (n_permutations,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        total_contributions : np.ndarray[np.float64] of shape (n_permutations,), read-only
             Total contribution (`sum(local_contributions)`) per permutation
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -344,6 +346,10 @@ def perform_permutation_test_expert(
 
     check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    local_contributions.flags.writeable = False
+    total_contributions.flags.writeable = False
+
     return {
         "local_contributions": local_contributions,
         "total_contributions": total_contributions,
@@ -387,10 +393,12 @@ def perform_permutation_test(
     dict
         with keys:
 
-        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F'), read-only
             Per-timepoint contributions per permutation
-        total_contributions : np.ndarray[np.float64] of shape (n_permutations,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        total_contributions : np.ndarray[np.float64] of shape (n_permutations,), read-only
             Total contribution (`sum(local_contributions)`) per permutation
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -439,6 +447,10 @@ def perform_permutation_test(
 
     check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS, _PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    local_contributions.flags.writeable = False
+    total_contributions.flags.writeable = False
+
     return {
         "local_contributions": local_contributions,
         "total_contributions": total_contributions,
@@ -468,8 +480,9 @@ def compute_p_values(
     dict
         with keys:
 
-        local_p_values : np.ndarray[np.float64] of shape (n_timepoints,)
+        local_p_values : np.ndarray[np.float64] of shape (n_timepoints,), read-only
             calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_p_value : float
             calculated p values for total contributions, like: `(total_contributions_perm_test >= total_contribution_observed)/n_permutations`
 
@@ -536,6 +549,9 @@ def compute_p_values(
 
     check_err_code(ierr.value, _COMPUTE_P_VALUES_ARGUMENTS, _COMPUTE_P_VALUES_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    local_p_values.flags.writeable = False
+
     return {
         "local_p_values": local_p_values,
         "total_p_value": total_p_value.value,
@@ -561,8 +577,9 @@ def compute_contributions(
     dict
         with keys:
 
-        local_contributions : np.ndarray[np.float64] of shape (n_dims,)
+        local_contributions : np.ndarray[np.float64] of shape (n_dims,), read-only
             Per-element contributions
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_contribution : float
             Total contribution (`sum(local_contributions)`)
 
@@ -617,6 +634,9 @@ def compute_contributions(
 
     check_err_code(ierr.value, _COMPUTE_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    local_contributions.flags.writeable = False
+
     return {
         "local_contributions": local_contributions,
         "total_contribution": total_contribution.value,
@@ -649,10 +669,12 @@ def compute_all_contributions_expert(
     dict
         with keys:
 
-        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F'), read-only
             Per-timepoint contributions per sample-dependent-factor combination
-        total_contributions : np.ndarray[np.float64] of shape (n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        total_contributions : np.ndarray[np.float64] of shape (n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F'), read-only
             Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -718,6 +740,10 @@ def compute_all_contributions_expert(
 
     check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    local_contributions.flags.writeable = False
+    total_contributions.flags.writeable = False
+
     return {
         "local_contributions": local_contributions,
         "total_contributions": total_contributions,
@@ -750,10 +776,12 @@ def compute_all_contributions(
     dict
         with keys:
 
-        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+        local_contributions : np.ndarray[np.float64] of shape (n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F'), read-only
             Per-timepoint contributions per sample-dependent-factor combination
-        total_contributions : np.ndarray[np.float64] of shape (n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        total_contributions : np.ndarray[np.float64] of shape (n_selected_factors, n_selected_dependents, n_samples,), column-major (order='F'), read-only
             Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -814,6 +842,10 @@ def compute_all_contributions(
     )
 
     check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    local_contributions.flags.writeable = False
+    total_contributions.flags.writeable = False
 
     return {
         "local_contributions": local_contributions,
@@ -913,8 +945,9 @@ def compute_velocity_trajectory(
 
     Returns
     -------
-    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),)
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),), read-only
         output velocity trajectory
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -950,6 +983,9 @@ def compute_velocity_trajectory(
 
     check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    velocity.flags.writeable = False
+
     return velocity
 
 def compute_acceleration_from_velocity_trajectory(
@@ -967,8 +1003,9 @@ def compute_acceleration_from_velocity_trajectory(
 
     Returns
     -------
-    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2),)
+    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2),), read-only
         acceleration trajectory
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1001,6 +1038,9 @@ def compute_acceleration_from_velocity_trajectory(
 
     check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS)
 
+    # a result is a value: modify a copy, not this
+    acceleration.flags.writeable = False
+
     return acceleration
 
 def compute_velocity_trajectories(
@@ -1015,8 +1055,9 @@ def compute_velocity_trajectories(
 
     Returns
     -------
-    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1), n_factors, n_samples,), column-major (order='F')
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1), n_factors, n_samples,), column-major (order='F'), read-only
         output velocity trajectories
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1056,6 +1097,9 @@ def compute_velocity_trajectories(
 
     check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    velocity.flags.writeable = False
+
     return velocity
 
 def compute_acceleration_from_velocity(
@@ -1073,8 +1117,9 @@ def compute_acceleration_from_velocity(
 
     Returns
     -------
-    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2), n_factors, n_samples,), column-major (order='F')
+    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2), n_factors, n_samples,), column-major (order='F'), read-only
         output acceleration trajectories
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1113,6 +1158,9 @@ def compute_acceleration_from_velocity(
 
     check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    acceleration.flags.writeable = False
+
     return acceleration
 
 def compute_velocity_acceleration_contributions_expert(
@@ -1132,14 +1180,18 @@ def compute_velocity_acceleration_contributions_expert(
     dict
         with keys:
 
-        contrib_velocity : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
+        contrib_velocity : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output velocity contributions
-        velocity_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        velocity_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output velocity contribution series
-        contrib_acceleration : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        contrib_acceleration : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output acceleration contributions
-        acceleration_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        acceleration_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output acceleration contribution series
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1193,6 +1245,12 @@ def compute_velocity_acceleration_contributions_expert(
 
     check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    contrib_velocity.flags.writeable = False
+    velocity_contribution_series.flags.writeable = False
+    contrib_acceleration.flags.writeable = False
+    acceleration_contribution_series.flags.writeable = False
+
     return {
         "contrib_velocity": contrib_velocity,
         "velocity_contribution_series": velocity_contribution_series,
@@ -1217,14 +1275,18 @@ def compute_velocity_acceleration_contributions(
     dict
         with keys:
 
-        contrib_velocity : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
+        contrib_velocity : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output velocity contributions
-        velocity_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        velocity_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output velocity contribution series
-        contrib_acceleration : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        contrib_acceleration : np.ndarray[np.float64] of shape (n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output acceleration contributions
-        acceleration_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        acceleration_contribution_series : np.ndarray[np.float64] of shape (n_timepoints, n_factors, n_factors, n_samples,), column-major (order='F'), read-only
             output acceleration contribution series
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1271,6 +1333,12 @@ def compute_velocity_acceleration_contributions(
     )
 
     check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    contrib_velocity.flags.writeable = False
+    velocity_contribution_series.flags.writeable = False
+    contrib_acceleration.flags.writeable = False
+    acceleration_contribution_series.flags.writeable = False
 
     return {
         "contrib_velocity": contrib_velocity,

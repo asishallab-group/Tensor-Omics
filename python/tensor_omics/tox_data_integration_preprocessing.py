@@ -165,8 +165,9 @@ def compute_gene_means(
 
     Returns
     -------
-    means : np.ndarray[np.float64] of shape (n_genes,)
+    means : np.ndarray[np.float64] of shape (n_genes,), read-only
         Per-gene mean expression values
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -204,6 +205,9 @@ def compute_gene_means(
 
     check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    means.flags.writeable = False
+
     return means
 
 def compute_residuals(
@@ -224,8 +228,9 @@ def compute_residuals(
 
     Returns
     -------
-    resid : np.ndarray[np.float64] of shape (n_reps, n_genes,), column-major (order='F')
+    resid : np.ndarray[np.float64] of shape (n_reps, n_genes,), column-major (order='F'), read-only
         Matrix of signed residuals
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -276,6 +281,9 @@ def compute_residuals(
 
     check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    resid.flags.writeable = False
+
     return resid
 
 def pool_means_expert(
@@ -302,8 +310,9 @@ def pool_means_expert(
 
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
-        x_star : np.ndarray[np.float64] of shape (n_points,)
+        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
             Mean-expression reference points
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -355,6 +364,9 @@ def pool_means_expert(
 
     check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+
     return {
         "n_pool": n_pool.value,
         "x_star": x_star,
@@ -381,8 +393,9 @@ def pool_means(
 
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
-        x_star : np.ndarray[np.float64] of shape (n_points,)
+        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
             Mean-expression reference points
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -421,6 +434,9 @@ def pool_means(
 
     check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+
     return {
         "n_pool": n_pool.value,
         "x_star": x_star,
@@ -451,8 +467,9 @@ def pool_study_means_expert(
 
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
-        x_star : np.ndarray[np.float64] of shape (n_points,)
+        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
             Mean-expression reference points
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -504,6 +521,9 @@ def pool_study_means_expert(
 
     check_err_code(ierr.value, _POOL_STUDY_MEANS_EXPERT_ARGUMENTS, _POOL_STUDY_MEANS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+
     return {
         "n_pool": n_pool.value,
         "x_star": x_star,
@@ -534,8 +554,9 @@ def pool_study_means(
 
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
-        x_star : np.ndarray[np.float64] of shape (n_points,)
+        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
             Mean-expression reference points
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -583,6 +604,9 @@ def pool_study_means(
 
     check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+
     return {
         "n_pool": n_pool.value,
         "x_star": x_star,
@@ -620,10 +644,12 @@ def construct_neighborhoods_expert(
     dict
         with keys:
 
-        neighborhood_residuals : np.ndarray[np.float64] of shape (n_reps_S, n_neighbors, n_points,), column-major (order='F')
+        neighborhood_residuals : np.ndarray[np.float64] of shape (n_reps_S, n_neighbors, n_points,), column-major (order='F'), read-only
             Collection of residual vectors for each neighborhood
-        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F'), read-only
             Indices of selected neighborhood genes
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -690,6 +716,10 @@ def construct_neighborhoods_expert(
 
     check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    neighborhood_residuals.flags.writeable = False
+    neighborhood_indices.flags.writeable = False
+
     return {
         "neighborhood_residuals": neighborhood_residuals,
         "neighborhood_indices": neighborhood_indices,
@@ -727,10 +757,12 @@ def construct_neighborhoods(
     dict
         with keys:
 
-        neighborhood_residuals : np.ndarray[np.float64] of shape (n_reps_S, n_neighbors, n_points,), column-major (order='F')
+        neighborhood_residuals : np.ndarray[np.float64] of shape (n_reps_S, n_neighbors, n_points,), column-major (order='F'), read-only
             Collection of residual vectors for each neighborhood
-        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F'), read-only
             Indices of selected neighborhood genes
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -792,6 +824,10 @@ def construct_neighborhoods(
     )
 
     check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    neighborhood_residuals.flags.writeable = False
+    neighborhood_indices.flags.writeable = False
 
     return {
         "neighborhood_residuals": neighborhood_residuals,

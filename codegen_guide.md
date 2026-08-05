@@ -866,6 +866,12 @@ invalid input arguments (argument 'vec1', via 'n_elements')
 
 You get that for free, from the extent/mask/shape roles — nothing to annotate.
 
+One thing worth knowing when you write a Python test or example against a procedure you
+authored: **an array a Python binding returns is read-only.** A result is a value, so
+modifying one in place raises, and `.copy()` is the way to a modifiable array. An
+`intent(inout)` argument is untouched by this — it is the caller's array and is still modified
+in place. R needs no equivalent, being copy-on-modify.
+
 ---
 
 ## 8. What the generator refuses

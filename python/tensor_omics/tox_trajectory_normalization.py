@@ -93,8 +93,9 @@ def normalize_variable_timeseries(
     dict
         with keys:
 
-        v_norm : np.ndarray[np.float64] of shape (n_points,)
+        v_norm : np.ndarray[np.float64] of shape (n_points,), read-only
             Normalized time series
+            A result is a value; call `.copy()` to obtain a modifiable array.
         status : int
             Status code for specific warnings
 
@@ -134,6 +135,9 @@ def normalize_variable_timeseries(
 
     check_err_code(ierr.value, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    v_norm.flags.writeable = False
+
     return {
         "v_norm": v_norm,
         "status": status.value,
@@ -154,10 +158,12 @@ def normalize_single_trajectory(
     dict
         with keys:
 
-        trajectory_norm : np.ndarray[np.float64] of shape (n_timepoints, n_factors,), column-major (order='F')
+        trajectory_norm : np.ndarray[np.float64] of shape (n_timepoints, n_factors,), column-major (order='F'), read-only
             Normalized trajectory for one sample
-        status : np.ndarray[np.int32] of shape (n_factors,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        status : np.ndarray[np.int32] of shape (n_factors,), read-only
             Status code for specific warnings, one per factor
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -197,6 +203,10 @@ def normalize_single_trajectory(
 
     check_err_code(ierr.value, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    trajectory_norm.flags.writeable = False
+    status.flags.writeable = False
+
     return {
         "trajectory_norm": trajectory_norm,
         "status": status,
@@ -217,10 +227,12 @@ def normalize_all_trajectories_expert(
     dict
         with keys:
 
-        trajectories_norm : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
+        trajectories_norm : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F'), read-only
             Normalized trajectories
-        status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F'), read-only
             Status code for specific warnings, one per factor per sample
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -266,6 +278,10 @@ def normalize_all_trajectories_expert(
 
     check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    trajectories_norm.flags.writeable = False
+    status.flags.writeable = False
+
     return {
         "trajectories_norm": trajectories_norm,
         "status": status,
@@ -286,10 +302,12 @@ def normalize_all_trajectories(
     dict
         with keys:
 
-        trajectories_norm : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
+        trajectories_norm : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F'), read-only
             Normalized trajectories
-        status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F'), read-only
             Status code for specific warnings, one per factor per sample
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -330,6 +348,10 @@ def normalize_all_trajectories(
     )
 
     check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    trajectories_norm.flags.writeable = False
+    status.flags.writeable = False
 
     return {
         "trajectories_norm": trajectories_norm,

@@ -57,8 +57,9 @@ def build_bst_index(
 
     Returns
     -------
-    sorted_indices : np.ndarray[np.int32] of shape (n_values,)
+    sorted_indices : np.ndarray[np.int32] of shape (n_values,), read-only
         Output permutation index
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -94,6 +95,9 @@ def build_bst_index(
 
     check_err_code(ierr.value, _BUILD_BST_INDEX_ARGUMENTS, _BUILD_BST_INDEX_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    sorted_indices.flags.writeable = False
+
     return sorted_indices
 
 def bst_range_query(
@@ -117,9 +121,10 @@ def bst_range_query(
 
     Returns
     -------
-    output_indices : np.ndarray[np.int32] of shape (n_values,)
+    output_indices : np.ndarray[np.int32] of shape (n_values,), read-only
         Output array of matching indices.
         The first `n_matches` elements will hold the results.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -171,5 +176,8 @@ def bst_range_query(
     )
 
     check_err_code(ierr.value, _BST_RANGE_QUERY_ARGUMENTS, _BST_RANGE_QUERY_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    output_indices.flags.writeable = False
 
     return output_indices[..., :n_matches.value]

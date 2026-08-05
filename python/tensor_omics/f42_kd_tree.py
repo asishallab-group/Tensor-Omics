@@ -60,8 +60,9 @@ def build_kd_index(
 
     Returns
     -------
-    kd_indices : np.ndarray[np.int32] of shape (n_points,)
+    kd_indices : np.ndarray[np.int32] of shape (n_points,), read-only
         Output index array (k-d tree order)
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -112,6 +113,9 @@ def build_kd_index(
 
     check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    kd_indices.flags.writeable = False
+
     return kd_indices
 
 def build_spherical_kd(
@@ -129,8 +133,9 @@ def build_spherical_kd(
 
     Returns
     -------
-    kd_indices : np.ndarray[np.int32] of shape (n_points,)
+    kd_indices : np.ndarray[np.int32] of shape (n_points,), read-only
         Output index array (k-d tree order)
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -180,5 +185,8 @@ def build_spherical_kd(
     )
 
     check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    kd_indices.flags.writeable = False
 
     return kd_indices

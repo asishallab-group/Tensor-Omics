@@ -49,9 +49,10 @@ def get_array_metadata(
     dict
         with keys:
 
-        dims_out : np.ndarray[np.int32] of shape (dims_out_capacity,)
+        dims_out : np.ndarray[np.int32] of shape (dims_out_capacity,), read-only
             Array to store output dimensions
             The first `ndims` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
         type_code : int
             Type code of the serialized array
 
@@ -88,6 +89,9 @@ def get_array_metadata(
     )
 
     check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS, _GET_ARRAY_METADATA_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    dims_out.flags.writeable = False
 
     return {
         "dims_out": dims_out[..., :ndims.value],

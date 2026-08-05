@@ -282,8 +282,9 @@ def read_orthofinder_file(
 
         family_ids : sequence of str, of length n_family_ids_elements
             family ids array
-        gene_to_fam : np.ndarray[np.int32] of shape (n_gene_to_fam_elements,)
+        gene_to_fam : np.ndarray[np.int32] of shape (n_gene_to_fam_elements,), read-only
             gene to family mapping
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -330,6 +331,9 @@ def read_orthofinder_file(
 
     check_err_code(ierr.value, _READ_ORTHOFINDER_FILE_ARGUMENTS)
 
+    # a result is a value: modify a copy, not this
+    gene_to_fam.flags.writeable = False
+
     return {
         "family_ids": [_s.decode() for _s in family_ids],
         "gene_to_fam": gene_to_fam,
@@ -350,8 +354,9 @@ def get_unassigned_mask(
     dict
         with keys:
 
-        mask : np.ndarray[np.bool_] of shape (size(gene_to_fam),)
+        mask : np.ndarray[np.bool_] of shape (size(gene_to_fam),), read-only
             mask for mapping
+            A result is a value; call `.copy()` to obtain a modifiable array.
         n_genes_kept : int
             number of genes kept
 
@@ -390,6 +395,9 @@ def get_unassigned_mask(
     )
 
     check_err_code(ierr.value, _GET_UNASSIGNED_MASK_ARGUMENTS)
+
+    # a result is a value: modify a copy, not this
+    mask.flags.writeable = False
 
     return {
         "mask": mask,

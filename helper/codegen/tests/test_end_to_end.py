@@ -229,6 +229,38 @@ class TestResultsAreRight:
         assert averaged.shape == (2, 2)
         assert np.allclose(averaged, [[3.0, 6.0], [5.0, 10.0]])
 
+    def test_a_returned_array_is_read_only(self, tox, np):
+        # a result is a value; mutating it in place is a mistake worth catching where it
+        # happens rather than wherever the stale array is read next
+        averaged = tox.fx_grouped_output(
+            np.array([1.0, 2.0]), np.array([3, 5], dtype=np.int32))
+
+        assert not averaged.flags.writeable
+        with pytest.raises(ValueError):
+            averaged[0, 0] = 0.0
+
+    def test_a_copy_of_a_returned_array_is_writeable(self, tox, np):
+        # the escape hatch the docstring names, so freezing costs the caller one call
+        averaged = tox.fx_grouped_output(
+            np.array([1.0, 2.0]), np.array([3, 5], dtype=np.int32)).copy()
+
+        averaged[0, 0] = 0.0
+        assert averaged[0, 0] == 0.0
+
+    def test_an_inout_array_is_left_writeable(self, tox, np):
+        # it is the caller's own array, modified in place -- freezing it would break the
+        # very thing an intent(inout) is for
+        vector = np.array([3.0, 4.0], dtype=np.float64)
+
+        tox.fx_normalize(vector)
+
+        assert vector.flags.writeable
+        vector[0] = 1.0
+
+    def test_the_docstring_says_a_result_is_read_only(self, tox):
+        assert ", read-only" in tox.fx_grouped_output.__doc__
+        assert "`.copy()`" in tox.fx_grouped_output.__doc__
+
     def test_a_list_is_accepted_as_an_input_array(self, tox, np):
         assert tox.fx_count_positive([-1.0, 2.0, 3.0]) == 2
 

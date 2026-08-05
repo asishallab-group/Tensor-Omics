@@ -55,10 +55,12 @@ def compute_tissue_versatility(
     dict
         with keys:
 
-        tissue_versatilities : np.ndarray[np.float64] of shape (n_selected_vectors,)
+        tissue_versatilities : np.ndarray[np.float64] of shape (n_selected_vectors,), read-only
             Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities
-        tissue_angles_deg : np.ndarray[np.float64] of shape (n_selected_vectors,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        tissue_angles_deg : np.ndarray[np.float64] of shape (n_selected_vectors,), read-only
             Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -125,6 +127,10 @@ def compute_tissue_versatility(
     )
 
     check_err_code(ierr.value, _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS, _COMPUTE_TISSUE_VERSATILITY_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    tissue_versatilities.flags.writeable = False
+    tissue_angles_deg.flags.writeable = False
 
     return {
         "tissue_versatilities": tissue_versatilities,

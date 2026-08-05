@@ -109,9 +109,16 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
 
 
 def _result(writer: Writer, argument: CArgument, emitter=None) -> None:
-    writer.line(f"{argument.name} : {python_type_of(argument)}")
+    annotation = ""
+    # said here rather than left for the caller to discover from a ValueError. Only the
+    # arrays: a scalar and a decoded string are immutable in Python anyway
+    if argument.is_array and not argument.type.is_character:
+        annotation = ", read-only"
+    writer.line(f"{argument.name} : {python_type_of(argument)}{annotation}")
     with writer.indent():
         _description(writer, argument.doc, emitter)
+        if annotation:
+            writer.line("A result is a value; call `.copy()` to obtain a modifiable array.")
 
 
 def _resolver(emitter):

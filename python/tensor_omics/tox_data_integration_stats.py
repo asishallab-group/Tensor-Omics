@@ -117,8 +117,9 @@ def gjct_permutation_test_expert(
     dict
         with keys:
 
-        jsd_null : np.ndarray[np.float64] of shape (n_permutations,)
+        jsd_null : np.ndarray[np.float64] of shape (n_permutations,), read-only
             Vector of global divergence values obtained under the null hypothesis
+            A result is a value; call `.copy()` to obtain a modifiable array.
         p_value : float
             Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
 
@@ -222,6 +223,9 @@ def gjct_permutation_test_expert(
 
     check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENTS, _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    jsd_null.flags.writeable = False
+
     return {
         "jsd_null": jsd_null,
         "p_value": p_value.value,
@@ -269,8 +273,9 @@ def gjct_permutation_test(
     dict
         with keys:
 
-        jsd_null : np.ndarray[np.float64] of shape (n_permutations,)
+        jsd_null : np.ndarray[np.float64] of shape (n_permutations,), read-only
             Vector of global divergence values obtained under the null hypothesis
+            A result is a value; call `.copy()` to obtain a modifiable array.
         p_value : float
             Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
 
@@ -353,6 +358,9 @@ def gjct_permutation_test(
     )
 
     check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_ARGUMENTS, _GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    jsd_null.flags.writeable = False
 
     return {
         "jsd_null": jsd_null,

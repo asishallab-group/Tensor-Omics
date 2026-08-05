@@ -187,6 +187,7 @@ other's outputs and a module-level import would be circular.
 | **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements, where *n* is the argument named |
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |
+| **result mutability** | freeze it if the host can. Python sets `flags.writeable = False` on the allocated buffer after the call — O(1), and it propagates into the reshape and slice views the return builds, which then cannot be unfrozen at all. R has no counterpart and needs none: it is copy-on-modify, so a returned vector cannot be aliased. Freeze only what the wrapper allocated — never an `intent(inout)` array, which is the caller's — and say so in the docs with the host's escape hatch (`.copy()`) |
 | **`intent(inout)` in the return** | see §4.2 — it depends on whether you mutate |
 
 ### 4.7 Errors

@@ -134,8 +134,9 @@ def distance_to_centroid(
 
     Returns
     -------
-    distances : np.ndarray[np.float64] of shape (n_genes,)
+    distances : np.ndarray[np.float64] of shape (n_genes,), read-only
         Output distances array
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -198,5 +199,8 @@ def distance_to_centroid(
     )
 
     check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    distances.flags.writeable = False
 
     return distances

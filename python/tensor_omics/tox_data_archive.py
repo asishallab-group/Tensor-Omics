@@ -488,16 +488,20 @@ def read_tox_data_into(
 
         gene_ids : sequence of str, of length n_gene_ids
             Gene ids
-        expression : np.ndarray[np.float64] of shape (n_expression_rows, n_expression_cols,), column-major (order='F')
+        expression : np.ndarray[np.float64] of shape (n_expression_rows, n_expression_cols,), column-major (order='F'), read-only
             Expression vectors
-        gene_to_family : np.ndarray[np.int32] of shape (n_gene_to_family,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        gene_to_family : np.ndarray[np.int32] of shape (n_gene_to_family,), read-only
             Gene to family mapping
+            A result is a value; call `.copy()` to obtain a modifiable array.
         family_ids : sequence of str, of length n_family_ids
             Family ids
-        family_centroids : np.ndarray[np.float64] of shape (n_family_centroids_rows, n_family_centroids_cols,), column-major (order='F')
+        family_centroids : np.ndarray[np.float64] of shape (n_family_centroids_rows, n_family_centroids_cols,), column-major (order='F'), read-only
             Family centroids
-        shift_vectors : np.ndarray[np.float64] of shape (n_shift_vectors_rows, n_shift_vectors_cols,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shift_vectors : np.ndarray[np.float64] of shape (n_shift_vectors_rows, n_shift_vectors_cols,), column-major (order='F'), read-only
             Shift vectors
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -565,6 +569,12 @@ def read_tox_data_into(
     )
 
     check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS, _READ_TOX_DATA_INTO_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    expression.flags.writeable = False
+    gene_to_family.flags.writeable = False
+    family_centroids.flags.writeable = False
+    shift_vectors.flags.writeable = False
 
     return {
         "gene_ids": [_s.decode() for _s in gene_ids],

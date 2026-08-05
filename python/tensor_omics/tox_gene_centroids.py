@@ -116,8 +116,9 @@ def mean_vector(
 
     Returns
     -------
-    centroid : np.ndarray[np.float64] of shape (n_axes,)
+    centroid : np.ndarray[np.float64] of shape (n_axes,), read-only
         The output vector representing the computed centroid.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -164,6 +165,9 @@ def mean_vector(
 
     check_err_code(ierr.value, _MEAN_VECTOR_ARGUMENTS, _MEAN_VECTOR_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    centroid.flags.writeable = False
+
     return centroid
 
 def group_centroid_orthologs_expert(
@@ -190,8 +194,9 @@ def group_centroid_orthologs_expert(
 
     Returns
     -------
-    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F')
+    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F'), read-only
         The output matrix (n_axes x n_families) to store the computed centroids.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -256,6 +261,9 @@ def group_centroid_orthologs_expert(
 
     check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    centroid_matrix.flags.writeable = False
+
     return centroid_matrix
 
 def group_centroid_orthologs(
@@ -282,8 +290,9 @@ def group_centroid_orthologs(
 
     Returns
     -------
-    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F')
+    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F'), read-only
         The output matrix (n_axes x n_families) to store the computed centroids.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -346,6 +355,9 @@ def group_centroid_orthologs(
 
     check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    centroid_matrix.flags.writeable = False
+
     return centroid_matrix
 
 def group_centroid_all_expert(
@@ -369,8 +381,9 @@ def group_centroid_all_expert(
 
     Returns
     -------
-    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F')
+    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F'), read-only
         The output matrix (n_axes x n_families) to store the computed centroids.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -424,6 +437,9 @@ def group_centroid_all_expert(
 
     check_err_code(ierr.value, _GROUP_CENTROID_ALL_EXPERT_ARGUMENTS, _GROUP_CENTROID_ALL_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    centroid_matrix.flags.writeable = False
+
     return centroid_matrix
 
 def group_centroid_all(
@@ -447,8 +463,9 @@ def group_centroid_all(
 
     Returns
     -------
-    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F')
+    centroid_matrix : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F'), read-only
         The output matrix (n_axes x n_families) to store the computed centroids.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -499,5 +516,8 @@ def group_centroid_all(
     )
 
     check_err_code(ierr.value, _GROUP_CENTROID_ALL_ARGUMENTS, _GROUP_CENTROID_ALL_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    centroid_matrix.flags.writeable = False
 
     return centroid_matrix

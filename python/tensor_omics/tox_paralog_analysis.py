@@ -192,8 +192,9 @@ def detect_neofunctionalization(
 
     Returns
     -------
-    neofunc : np.ndarray[np.bool_] of shape (n_genes, n_axes,), column-major (order='F')
+    neofunc : np.ndarray[np.bool_] of shape (n_genes, n_axes,), column-major (order='F'), read-only
         `True` if neofunctionalization has been detected for the respective axes, always `False` for unassigned genes
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -268,6 +269,9 @@ def detect_neofunctionalization(
 
     check_err_code(ierr.value, _DETECT_NEOFUNCTIONALIZATION_ARGUMENTS, _DETECT_NEOFUNCTIONALIZATION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    neofunc.flags.writeable = False
+
     return neofunc
 
 def detect_dosage_effect_expert(
@@ -315,9 +319,10 @@ def detect_dosage_effect_expert(
 
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -393,6 +398,9 @@ def detect_dosage_effect_expert(
 
     check_err_code(ierr.value, _DETECT_DOSAGE_EFFECT_EXPERT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    work_arr_paralog_subsets.flags.writeable = False
+
     return {
         "n_results": n_results.value,
         "work_arr_paralog_subsets": work_arr_paralog_subsets,
@@ -443,9 +451,10 @@ def detect_dosage_effect(
 
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -517,6 +526,9 @@ def detect_dosage_effect(
 
     check_err_code(ierr.value, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    work_arr_paralog_subsets.flags.writeable = False
+
     return {
         "n_results": n_results.value,
         "work_arr_paralog_subsets": work_arr_paralog_subsets,
@@ -569,9 +581,10 @@ def detect_subfunctionalization_expert(
 
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -670,6 +683,9 @@ def detect_subfunctionalization_expert(
 
     check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    work_arr_paralog_subsets.flags.writeable = False
+
     return {
         "n_results": n_results.value,
         "work_arr_paralog_subsets": work_arr_paralog_subsets,
@@ -722,9 +738,10 @@ def detect_subfunctionalization(
 
         n_results : int
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
-        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
+        work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -817,6 +834,9 @@ def detect_subfunctionalization(
 
     check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    work_arr_paralog_subsets.flags.writeable = False
+
     return {
         "n_results": n_results.value,
         "work_arr_paralog_subsets": work_arr_paralog_subsets,
@@ -853,8 +873,9 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     Returns
     -------
-    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F')
+    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F'), read-only
         bit mask that will have the indices of genes kept by this pattern set to 1, else 0
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -906,6 +927,9 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    masks.flags.writeable = False
+
     return masks
 
 def filter_paralogs_by_pattern_subfunctionalization(
@@ -939,8 +963,9 @@ def filter_paralogs_by_pattern_subfunctionalization(
 
     Returns
     -------
-    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F')
+    masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F'), read-only
         bit mask that will have the indices of genes kept by this pattern set to 1, else 0
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -991,5 +1016,8 @@ def filter_paralogs_by_pattern_subfunctionalization(
     )
 
     check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    masks.flags.writeable = False
 
     return masks

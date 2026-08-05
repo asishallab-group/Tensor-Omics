@@ -203,18 +203,22 @@ def fjct_compute_jsd_expert(
     dict
         with keys:
 
-        js_divergences : np.ndarray[np.float64] of shape (n_points,)
+        js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
             Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 1
-        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_included_n_reps : int
             Total number of included replicates from both studies (\( \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) \))
         global_js_divergence : float
             Weighted global Jensen-Shannon divergence
-        weights : np.ndarray[np.float64] of shape (n_points,)
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
             Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -344,6 +348,12 @@ def fjct_compute_jsd_expert(
 
     check_err_code(ierr.value, _FJCT_COMPUTE_JSD_EXPERT_ARGUMENTS, _FJCT_COMPUTE_JSD_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+    included_n_reps_S1.flags.writeable = False
+    included_n_reps_S2.flags.writeable = False
+    weights.flags.writeable = False
+
     return {
         "js_divergences": js_divergences,
         "included_n_reps_S1": included_n_reps_S1,
@@ -402,18 +412,22 @@ def fjct_compute_jsd(
     dict
         with keys:
 
-        js_divergences : np.ndarray[np.float64] of shape (n_points,)
+        js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
             Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 1
-        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_included_n_reps : int
             Total number of included replicates from both studies (\( \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) \))
         global_js_divergence : float
             Weighted global Jensen-Shannon divergence
-        weights : np.ndarray[np.float64] of shape (n_points,)
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
             Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -533,6 +547,12 @@ def fjct_compute_jsd(
 
     check_err_code(ierr.value, _FJCT_COMPUTE_JSD_ARGUMENTS, _FJCT_COMPUTE_JSD_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+    included_n_reps_S1.flags.writeable = False
+    included_n_reps_S2.flags.writeable = False
+    weights.flags.writeable = False
+
     return {
         "js_divergences": js_divergences,
         "included_n_reps_S1": included_n_reps_S1,
@@ -575,22 +595,28 @@ def fjct_compute_masked_jsd_expert(
     dict
         with keys:
 
-        js_divergences : np.ndarray[np.float64] of shape (n_points,)
+        js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
             Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 1
-        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_included_n_reps : int
             Total number of included replicates from both studies (\( \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) \))
         global_js_divergence : float
             Weighted global Jensen-Shannon divergence
-        weights : np.ndarray[np.float64] of shape (n_points,)
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
             Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-        pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Normalized histogram counts for study 1
-        pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Normalized histogram counts for study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -697,6 +723,14 @@ def fjct_compute_masked_jsd_expert(
 
     check_err_code(ierr.value, _FJCT_COMPUTE_MASKED_JSD_EXPERT_ARGUMENTS, _FJCT_COMPUTE_MASKED_JSD_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+    included_n_reps_S1.flags.writeable = False
+    included_n_reps_S2.flags.writeable = False
+    weights.flags.writeable = False
+    pmf_S1.flags.writeable = False
+    pmf_S2.flags.writeable = False
+
     return {
         "js_divergences": js_divergences,
         "included_n_reps_S1": included_n_reps_S1,
@@ -741,22 +775,28 @@ def fjct_compute_masked_jsd(
     dict
         with keys:
 
-        js_divergences : np.ndarray[np.float64] of shape (n_points,)
+        js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
             Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 1
-        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals (included ones) in study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
         total_included_n_reps : int
             Total number of included replicates from both studies (\( \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) \))
         global_js_divergence : float
             Weighted global Jensen-Shannon divergence
-        weights : np.ndarray[np.float64] of shape (n_points,)
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
             Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-        pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Normalized histogram counts for study 1
-        pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Normalized histogram counts for study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -861,6 +901,14 @@ def fjct_compute_masked_jsd(
 
     check_err_code(ierr.value, _FJCT_COMPUTE_MASKED_JSD_ARGUMENTS, _FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+    included_n_reps_S1.flags.writeable = False
+    included_n_reps_S2.flags.writeable = False
+    weights.flags.writeable = False
+    pmf_S1.flags.writeable = False
+    pmf_S2.flags.writeable = False
+
     return {
         "js_divergences": js_divergences,
         "included_n_reps_S1": included_n_reps_S1,
@@ -892,10 +940,12 @@ def fjct_compute_contribution_scores(
     dict
         with keys:
 
-        support_weights : np.ndarray[np.float64] of shape (k_families,)
+        support_weights : np.ndarray[np.float64] of shape (k_families,), read-only
             Per-sub-neighborhood calculated support weight (ratio between its `total_included_n_reps` and `sum(total_included_n_reps_per_f)`, zero if there were no replicates included at all)
-        contribution_scores : np.ndarray[np.float64] of shape (k_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        contribution_scores : np.ndarray[np.float64] of shape (k_families,), read-only
             Per-sub-neighborhood calculated contribution ( \( support\_weights_i * global\_js\_divergences_i \) )
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -945,6 +995,10 @@ def fjct_compute_contribution_scores(
     )
 
     check_err_code(ierr.value, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENTS, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    support_weights.flags.writeable = False
+    contribution_scores.flags.writeable = False
 
     return {
         "support_weights": support_weights,

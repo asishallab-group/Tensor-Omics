@@ -109,8 +109,9 @@ def loess_smooth_2d(
 
     Returns
     -------
-    y_out : np.ndarray[np.float64] of shape (n_target,)
+    y_out : np.ndarray[np.float64] of shape (n_target,), read-only
         Output smoothed values (length n_target).
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -179,6 +180,9 @@ def loess_smooth_2d(
 
     check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    y_out.flags.writeable = False
+
     return y_out
 
 def compute_edf_expert(
@@ -199,12 +203,14 @@ def compute_edf_expert(
     dict
         with keys:
 
-        unique_values : np.ndarray[np.float64] of shape (n_values,)
+        unique_values : np.ndarray[np.float64] of shape (n_values,), read-only
             Sorted unique data values.
             The first `n_unique` elements will hold the results.
-        cdf_values : np.ndarray[np.float64] of shape (n_values,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        cdf_values : np.ndarray[np.float64] of shape (n_values,), read-only
             Corresponding cumulative frequencies between 0 and 1.
             The first `n_unique` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -257,6 +263,10 @@ def compute_edf_expert(
 
     check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    unique_values.flags.writeable = False
+    cdf_values.flags.writeable = False
+
     return {
         "unique_values": unique_values[..., :n_unique.value],
         "cdf_values": cdf_values[..., :n_unique.value],
@@ -277,12 +287,14 @@ def compute_edf(
     dict
         with keys:
 
-        unique_values : np.ndarray[np.float64] of shape (n_values,)
+        unique_values : np.ndarray[np.float64] of shape (n_values,), read-only
             Sorted unique data values.
             The first `n_unique` elements will hold the results.
-        cdf_values : np.ndarray[np.float64] of shape (n_values,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        cdf_values : np.ndarray[np.float64] of shape (n_values,), read-only
             Corresponding cumulative frequencies between 0 and 1.
             The first `n_unique` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -322,6 +334,10 @@ def compute_edf(
 
     check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    unique_values.flags.writeable = False
+    cdf_values.flags.writeable = False
+
     return {
         "unique_values": unique_values[..., :n_unique.value],
         "cdf_values": cdf_values[..., :n_unique.value],
@@ -348,8 +364,9 @@ def compute_scaled_distance_quantile(
 
     Returns
     -------
-    quantile : np.ndarray[np.float64] of shape (n_genes,)
+    quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
         Output array to store the computed quantile for each gene.
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -409,5 +426,8 @@ def compute_scaled_distance_quantile(
     )
 
     check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    quantile.flags.writeable = False
 
     return quantile

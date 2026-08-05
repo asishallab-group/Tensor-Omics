@@ -93,12 +93,14 @@ def cluster_factor_trajectories_k_means(
     dict
         with keys:
 
-        labels : np.ndarray[np.int32] of shape (n_samples*n_timepoints,)
+        labels : np.ndarray[np.int32] of shape (n_samples*n_timepoints,), read-only
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.
 
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`
-        label_counts : np.ndarray[np.int32] of shape (n_clusters,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        label_counts : np.ndarray[np.int32] of shape (n_clusters,), read-only
             holds the number of points having the respective label assigned
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -156,6 +158,10 @@ def cluster_factor_trajectories_k_means(
 
     check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    labels.flags.writeable = False
+    label_counts.flags.writeable = False
+
     return {
         "labels": labels,
         "label_counts": label_counts,
@@ -186,12 +192,14 @@ def k_means_clustering(
     dict
         with keys:
 
-        labels : np.ndarray[np.int32] of shape (n_points,)
+        labels : np.ndarray[np.int32] of shape (n_points,), read-only
             array of labels, each index corresponds to the respective point's index, so first label is first point's label.
 
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`
-        label_counts : np.ndarray[np.int32] of shape (n_clusters,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        label_counts : np.ndarray[np.int32] of shape (n_clusters,), read-only
             holds the number of points having the respective label assigned
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -247,6 +255,10 @@ def k_means_clustering(
 
     check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS, _K_MEANS_CLUSTERING_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    labels.flags.writeable = False
+    label_counts.flags.writeable = False
+
     return {
         "labels": labels,
         "label_counts": label_counts,
@@ -279,14 +291,18 @@ def linkage_clustering(
     dict
         with keys:
 
-        merge_i : np.ndarray[np.int32] of shape (n_points - 1,)
+        merge_i : np.ndarray[np.int32] of shape (n_points - 1,), read-only
             holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-        merge_j : np.ndarray[np.int32] of shape (n_points - 1,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        merge_j : np.ndarray[np.int32] of shape (n_points - 1,), read-only
             holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-        heights : np.ndarray[np.float64] of shape (n_points - 1,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        heights : np.ndarray[np.float64] of shape (n_points - 1,), read-only
             height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
-        cluster_sizes : np.ndarray[np.int32] of shape (n_points - 1,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        cluster_sizes : np.ndarray[np.int32] of shape (n_points - 1,), read-only
             size of cluster at iteration k
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -329,6 +345,12 @@ def linkage_clustering(
     )
 
     check_err_code(ierr.value, _LINKAGE_CLUSTERING_ARGUMENTS, _LINKAGE_CLUSTERING_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    merge_i.flags.writeable = False
+    merge_j.flags.writeable = False
+    heights.flags.writeable = False
+    cluster_sizes.flags.writeable = False
 
     return {
         "merge_i": merge_i,

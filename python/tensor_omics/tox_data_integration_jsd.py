@@ -471,12 +471,15 @@ def build_residual_histograms(
     dict
         with keys:
 
-        counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
+        counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Absolute counts of a residual per bin
-        pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
-        included_n_reps : np.ndarray[np.int32] of shape (n_points,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
             Stores the count of non-NaN replicates (included ones)
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -530,6 +533,11 @@ def build_residual_histograms(
 
     check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    counts.flags.writeable = False
+    pmf.flags.writeable = False
+    included_n_reps.flags.writeable = False
+
     return {
         "counts": counts,
         "pmf": pmf,
@@ -555,8 +563,9 @@ def compute_divergence_per_reference_point(
 
     Returns
     -------
-    js_divergences : np.ndarray[np.float64] of shape (n_points,)
+    js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
         Jensen-Shannon divergence per reference point
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -611,6 +620,9 @@ def compute_divergence_per_reference_point(
 
     check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+
     return js_divergences
 
 def compute_weighted_global_divergence(
@@ -639,8 +651,9 @@ def compute_weighted_global_divergence(
 
         global_js_divergence : float
             Weighted global Jensen-Shannon divergence
-        weights : np.ndarray[np.float64] of shape (n_points,)
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
             Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -701,6 +714,9 @@ def compute_weighted_global_divergence(
     )
 
     check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    weights.flags.writeable = False
 
     return {
         "global_js_divergence": global_js_divergence.value,

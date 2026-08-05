@@ -239,18 +239,23 @@ def compute_family_scaling_expert(
     dict
         with keys:
 
-        dscale : np.ndarray[np.float64] of shape (n_families,)
+        dscale : np.ndarray[np.float64] of shape (n_families,), read-only
             Array of scaling factors per family (output)
-        loess_x : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference x-coordinates for LOESS smoothing
-        loess_y : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference y-coordinates for LOESS smoothing
-        indices_used : np.ndarray[np.int32] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        indices_used : np.ndarray[np.int32] of shape (n_families,), read-only
             Indices of reference points used for smoothing
+            A result is a value; call `.copy()` to obtain a modifiable array.
         low_sd_cutoff : float
             cutoff used to filter families with low std
-        excluded_low_sd : np.ndarray[np.int32] of shape (n_families,)
+        excluded_low_sd : np.ndarray[np.int32] of shape (n_families,), read-only
             Mask to save those families that have low sd
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -352,6 +357,13 @@ def compute_family_scaling_expert(
 
     check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS, _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    dscale.flags.writeable = False
+    loess_x.flags.writeable = False
+    loess_y.flags.writeable = False
+    indices_used.flags.writeable = False
+    excluded_low_sd.flags.writeable = False
+
     return {
         "dscale": dscale,
         "loess_x": loess_x,
@@ -403,18 +415,23 @@ def compute_family_scaling(
     dict
         with keys:
 
-        dscale : np.ndarray[np.float64] of shape (n_families,)
+        dscale : np.ndarray[np.float64] of shape (n_families,), read-only
             Array of scaling factors per family (output)
-        loess_x : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference x-coordinates for LOESS smoothing
-        loess_y : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference y-coordinates for LOESS smoothing
-        indices_used : np.ndarray[np.int32] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        indices_used : np.ndarray[np.int32] of shape (n_families,), read-only
             Indices of reference points used for smoothing
+            A result is a value; call `.copy()` to obtain a modifiable array.
         low_sd_cutoff : float
             cutoff used to filter families with low std
-        excluded_low_sd : np.ndarray[np.int32] of shape (n_families,)
+        excluded_low_sd : np.ndarray[np.int32] of shape (n_families,), read-only
             Mask to save those families that have low sd
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -479,6 +496,13 @@ def compute_family_scaling(
 
     check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    dscale.flags.writeable = False
+    loess_x.flags.writeable = False
+    loess_y.flags.writeable = False
+    indices_used.flags.writeable = False
+    excluded_low_sd.flags.writeable = False
+
     return {
         "dscale": dscale,
         "loess_x": loess_x,
@@ -513,12 +537,15 @@ def compute_rdi_expert(
     dict
         with keys:
 
-        rdi : np.ndarray[np.float64] of shape (n_genes,)
+        rdi : np.ndarray[np.float64] of shape (n_genes,), read-only
             Output array of RDI values for each gene
-        sorted_rdi : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        sorted_rdi : np.ndarray[np.float64] of shape (n_genes,), read-only
             Work array for sorting (dimension n_genes)
-        perm : np.ndarray[np.int32] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        perm : np.ndarray[np.int32] of shape (n_genes,), read-only
             Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -584,6 +611,11 @@ def compute_rdi_expert(
 
     check_err_code(ierr.value, _COMPUTE_RDI_EXPERT_ARGUMENTS, _COMPUTE_RDI_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    rdi.flags.writeable = False
+    sorted_rdi.flags.writeable = False
+    perm.flags.writeable = False
+
     return {
         "rdi": rdi,
         "sorted_rdi": sorted_rdi,
@@ -615,12 +647,15 @@ def compute_rdi(
     dict
         with keys:
 
-        rdi : np.ndarray[np.float64] of shape (n_genes,)
+        rdi : np.ndarray[np.float64] of shape (n_genes,), read-only
             Output array of RDI values for each gene
-        sorted_rdi : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        sorted_rdi : np.ndarray[np.float64] of shape (n_genes,), read-only
             Work array for sorting (dimension n_genes)
-        perm : np.ndarray[np.int32] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        perm : np.ndarray[np.int32] of shape (n_genes,), read-only
             Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -682,6 +717,11 @@ def compute_rdi(
 
     check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    rdi.flags.writeable = False
+    sorted_rdi.flags.writeable = False
+    perm.flags.writeable = False
+
     return {
         "rdi": rdi,
         "sorted_rdi": sorted_rdi,
@@ -717,15 +757,17 @@ def identify_outliers(
     dict
         with keys:
 
-        is_outlier : np.ndarray[np.bool_] of shape (n_genes,)
+        is_outlier : np.ndarray[np.bool_] of shape (n_genes,), read-only
             Output boolean array indicating outliers
+            A result is a value; call `.copy()` to obtain a modifiable array.
         threshold : float
             Output threshold value used for detection
-        quantile : np.ndarray[np.float64] of shape (n_genes,)
+        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
             Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             upper-tail quantile is used.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -790,6 +832,10 @@ def identify_outliers(
 
     check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    is_outlier.flags.writeable = False
+    quantile.flags.writeable = False
+
     return {
         "is_outlier": is_outlier,
         "threshold": threshold.value,
@@ -823,19 +869,24 @@ def detect_outliers_expert(
     dict
         with keys:
 
-        is_outlier : np.ndarray[np.bool_] of shape (n_genes,)
+        is_outlier : np.ndarray[np.bool_] of shape (n_genes,), read-only
             Output boolean array indicating outliers
-        loess_x : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference x-coordinates.
-        loess_y : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference y-coordinates (length n_total).
-        loess_n : np.ndarray[np.int32] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
             Indices of reference points used for smoothing.
-        quantile : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
             Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             upper-tail quantile is used.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -943,6 +994,13 @@ def detect_outliers_expert(
 
     check_err_code(ierr.value, _DETECT_OUTLIERS_EXPERT_ARGUMENTS, _DETECT_OUTLIERS_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    is_outlier.flags.writeable = False
+    loess_x.flags.writeable = False
+    loess_y.flags.writeable = False
+    loess_n.flags.writeable = False
+    quantile.flags.writeable = False
+
     return {
         "is_outlier": is_outlier,
         "loess_x": loess_x,
@@ -978,19 +1036,24 @@ def detect_outliers(
     dict
         with keys:
 
-        is_outlier : np.ndarray[np.bool_] of shape (n_genes,)
+        is_outlier : np.ndarray[np.bool_] of shape (n_genes,), read-only
             Output boolean array indicating outliers
-        loess_x : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference x-coordinates.
-        loess_y : np.ndarray[np.float64] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
             Reference y-coordinates (length n_total).
-        loess_n : np.ndarray[np.int32] of shape (n_families,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
             Indices of reference points used for smoothing.
-        quantile : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
             Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             upper-tail quantile is used.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1048,6 +1111,13 @@ def detect_outliers(
     )
 
     check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    is_outlier.flags.writeable = False
+    loess_x.flags.writeable = False
+    loess_y.flags.writeable = False
+    loess_n.flags.writeable = False
+    quantile.flags.writeable = False
 
     return {
         "is_outlier": is_outlier,

@@ -161,6 +161,37 @@ Numeric is the former, character the latter.
 
 ---
 
+## Decision: a returned array is read-only in Python, and unfrozen in R
+
+A result is a value, not a scratch buffer. Python marks every array it allocated
+`flags.writeable = False` after the call, so modifying one in place raises where the mistake
+is rather than wherever the stale array is read next. It costs O(1) and no copy, and the flag
+propagates into the views the return builds -- the reshape of a serialized output, the slice
+of a partially filled one -- which then cannot be unfrozen at all.
+
+Freezing happens **after** the call: `ctypes` is handed the raw data pointer, so a flag set
+earlier would not stop Fortran writing, only misdescribe it.
+
+Three things stay writeable, because there is nothing to protect: an `intent(inout)` array is
+the *caller's*, modified in place, and freezing it would break exactly what it is for; scalars
+come back as immutable Python numbers; a character buffer is never returned, only the strings
+decoded out of it, which are fresh per call.
+
+**R gets no counterpart, and that is not an omission.** R has no read-only vector, and it does
+not need one: copy-on-modify means a returned vector cannot be aliased by anything else, so the
+class of bug this guards against does not exist there. The three near-misses were all rejected.
+`lockBinding` locks a *name in an environment*, not a value. `MARK_NOT_MUTABLE` in the shim
+makes later modifications copy **silently** -- a hidden allocation rather than an error, which
+teaches the caller nothing. An S3 class with `[<-` methods that `stop()` would raise, but costs
+`Ops`, printing and every idiom besides. Same shape as `intent(inout)` (in-place in Python,
+copy-return in R): the idiomatic answer in each host, not one convention forced on both.
+
+*Consequence:* `result += 1`, `np.add(..., out=result)` and anything demanding a writeable
+buffer (`torch.from_numpy`) now fail on a result. `.copy()` is the escape hatch, and the
+generated `Returns` section names it.
+
+---
+
 ## Decision: errors are raised by the binding language, not by C
 
 `ierr` never reaches a caller. `check_err_code` decodes it and raises, in Python and in R

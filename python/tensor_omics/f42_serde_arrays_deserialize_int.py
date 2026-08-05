@@ -43,8 +43,9 @@ def deserialize_int_helper(
 
     Returns
     -------
-    arr : np.ndarray[np.int32] of shape (*,)
+    arr : np.ndarray[np.int32] of shape (*,), read-only
         Pre-allocated array to read the data into
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -89,5 +90,8 @@ def deserialize_int_helper(
     )
 
     check_err_code(ierr.value, _DESERIALIZE_INT_HELPER_ARGUMENTS, _DESERIALIZE_INT_HELPER_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    arr.flags.writeable = False
 
     return arr.reshape(tuple(arr_shape), order='F')

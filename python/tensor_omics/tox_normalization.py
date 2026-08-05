@@ -232,8 +232,9 @@ def normalization_pipeline(
 
     Returns
     -------
-    log_transformed_expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
+    log_transformed_expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F'), read-only
         Log-transformed grouped `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -283,6 +284,9 @@ def normalization_pipeline(
 
     check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    log_transformed_expr.flags.writeable = False
+
     return log_transformed_expr
 
 def normalize_by_std_dev(
@@ -307,8 +311,9 @@ def normalize_by_std_dev(
 
     Returns
     -------
-    normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+    normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F'), read-only
         Normalized `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -348,6 +353,9 @@ def normalize_by_std_dev(
 
     check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_ARGUMENTS, _NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    normalized_expr.flags.writeable = False
+
     return normalized_expr
 
 def root_mean_sq_normalization(
@@ -364,8 +372,9 @@ def root_mean_sq_normalization(
 
     Returns
     -------
-    normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+    normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F'), read-only
         Normalized `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -403,6 +412,9 @@ def root_mean_sq_normalization(
 
     check_err_code(ierr.value, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    normalized_expr.flags.writeable = False
+
     return normalized_expr
 
 def quantile_normalization_expert(
@@ -422,10 +434,12 @@ def quantile_normalization_expert(
     dict
         with keys:
 
-        normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+        normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F'), read-only
             Normalized `expr`
-        rank_means : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        rank_means : np.ndarray[np.float64] of shape (n_genes,), read-only
             The mean of each rank across tissues, one per gene
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -469,6 +483,10 @@ def quantile_normalization_expert(
 
     check_err_code(ierr.value, _QUANTILE_NORMALIZATION_EXPERT_ARGUMENTS, _QUANTILE_NORMALIZATION_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    normalized_expr.flags.writeable = False
+    rank_means.flags.writeable = False
+
     return {
         "normalized_expr": normalized_expr,
         "rank_means": rank_means,
@@ -491,10 +509,12 @@ def quantile_normalization(
     dict
         with keys:
 
-        normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+        normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F'), read-only
             Normalized `expr`
-        rank_means : np.ndarray[np.float64] of shape (n_genes,)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        rank_means : np.ndarray[np.float64] of shape (n_genes,), read-only
             The mean of each rank across tissues, one per gene
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -534,6 +554,10 @@ def quantile_normalization(
 
     check_err_code(ierr.value, _QUANTILE_NORMALIZATION_ARGUMENTS, _QUANTILE_NORMALIZATION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    normalized_expr.flags.writeable = False
+    rank_means.flags.writeable = False
+
     return {
         "normalized_expr": normalized_expr,
         "rank_means": rank_means,
@@ -553,8 +577,9 @@ def log2_transformation(
 
     Returns
     -------
-    transformed_expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
+    transformed_expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F'), read-only
         Log-transformed `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -592,6 +617,9 @@ def log2_transformation(
 
     check_err_code(ierr.value, _LOG2_TRANSFORMATION_ARGUMENTS, _LOG2_TRANSFORMATION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    transformed_expr.flags.writeable = False
+
     return transformed_expr
 
 def calc_tiss_avg(
@@ -613,8 +641,9 @@ def calc_tiss_avg(
 
     Returns
     -------
-    tissue_averages : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
+    tissue_averages : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F'), read-only
         Tissue averages per gene
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -659,6 +688,9 @@ def calc_tiss_avg(
 
     check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    tissue_averages.flags.writeable = False
+
     return tissue_averages
 
 def calc_fchange(
@@ -685,8 +717,9 @@ def calc_fchange(
 
     Returns
     -------
-    fold_changes : np.ndarray[np.float64] of shape (n_pairs, n_genes,), column-major (order='F')
+    fold_changes : np.ndarray[np.float64] of shape (n_pairs, n_genes,), column-major (order='F'), read-only
         Output matrix for fold changes
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -745,5 +778,8 @@ def calc_fchange(
     )
 
     check_err_code(ierr.value, _CALC_FCHANGE_ARGUMENTS, _CALC_FCHANGE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    fold_changes.flags.writeable = False
 
     return fold_changes

@@ -140,8 +140,9 @@ def omics_vector_RAP_projection(
 
     Returns
     -------
-    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs,), column-major (order='F')
+    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_vecs,), column-major (order='F'), read-only
         projected vectors
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -207,6 +208,9 @@ def omics_vector_RAP_projection(
 
     check_err_code(ierr.value, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    projections.flags.writeable = False
+
     return projections
 
 def omics_field_RAP_projection(
@@ -227,8 +231,9 @@ def omics_field_RAP_projection(
 
     Returns
     -------
-    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_fields,), column-major (order='F')
+    projections : np.ndarray[np.float64] of shape (n_selected_axes, n_selected_fields,), column-major (order='F'), read-only
         projected vectors
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -293,6 +298,9 @@ def omics_field_RAP_projection(
     )
 
     check_err_code(ierr.value, _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS, _OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    projections.flags.writeable = False
 
     return projections
 
@@ -403,8 +411,9 @@ def clock_hand_angles_for_shift_vectors(
 
     Returns
     -------
-    signed_angles : np.ndarray[np.float64] of shape (n_selected_fields,)
+    signed_angles : np.ndarray[np.float64] of shape (n_selected_fields,), read-only
         Signed rotation angles between vector pairs in radians [-π, π]
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -468,6 +477,9 @@ def clock_hand_angles_for_shift_vectors(
 
     check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    signed_angles.flags.writeable = False
+
     return signed_angles
 
 def compute_relative_axis_contributions(
@@ -482,8 +494,9 @@ def compute_relative_axis_contributions(
 
     Returns
     -------
-    contributions : np.ndarray[np.float64] of shape (n_axes,)
+    contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
         Fractional contribution of each axis (output), values in [0,1], sum to 1
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -519,6 +532,9 @@ def compute_relative_axis_contributions(
 
     check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    contributions.flags.writeable = False
+
     return contributions
 
 def relative_axes_changes_from_shift_vector(
@@ -533,8 +549,9 @@ def relative_axes_changes_from_shift_vector(
 
     Returns
     -------
-    contributions : np.ndarray[np.float64] of shape (n_axes,)
+    contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
         Fractional contribution of each axis (output), values in [0,1], sum to 1
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -570,6 +587,9 @@ def relative_axes_changes_from_shift_vector(
 
     check_err_code(ierr.value, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    contributions.flags.writeable = False
+
     return contributions
 
 def relative_axes_expression_from_expression_vector(
@@ -584,8 +604,9 @@ def relative_axes_expression_from_expression_vector(
 
     Returns
     -------
-    contributions : np.ndarray[np.float64] of shape (n_axes,)
+    contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
         Fractional contribution of each axis (output), values in [0,1], sum to 1
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -620,5 +641,8 @@ def relative_axes_expression_from_expression_vector(
     )
 
     check_err_code(ierr.value, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    contributions.flags.writeable = False
 
     return contributions

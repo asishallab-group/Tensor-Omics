@@ -370,6 +370,7 @@ class PythonEmitter:
             self._allocate(writer, wrapper)
             self._call(writer, wrapper)
             self._check_error(writer, wrapper)
+            self._freeze_outputs(writer, wrapper)
             self._return(writer, wrapper)
 
         return writer.render()
@@ -965,6 +966,37 @@ class PythonEmitter:
             writer.line(f"check_err_code({error.name}.value, {arguments}, {sources})")
         else:
             writer.line(f"check_err_code({error.name}.value, {arguments})")
+        writer.blank()
+
+    def _freeze_outputs(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Hand back results the caller cannot modify by accident.
+
+        A result is a value, not a scratch buffer. Setting the flag is O(1) -- no copy --
+        and it propagates into the views `_result_expression` builds, so freezing the
+        buffer freezes the reshape of a serialized output and the slice of a partially
+        filled one along with it.
+
+        Only what this wrapper allocated. An `intent(inout)` array belongs to the caller
+        and is modified in place, so freezing it would break the very thing it exists for;
+        scalars and decoded strings are immutable in Python already, and a character buffer
+        is never returned -- only the strings decoded out of it, which are fresh objects
+        per call and so have nothing to protect.
+
+        After the call rather than before: `ctypes` is handed the raw data pointer, so a
+        flag set earlier would not stop Fortran writing -- it would only misdescribe it.
+
+        R needs no counterpart. It is copy-on-modify, so a returned vector cannot be
+        aliased by anything else, and there the risk this guards against does not exist.
+        """
+        frozen = [
+            argument for argument in self._outputs(wrapper)
+            if argument.is_array and not argument.type.is_character
+        ]
+        if not frozen:
+            return
+        writer.line("# a result is a value: modify a copy, not this")
+        for argument in frozen:
+            writer.line(f"{argument.name}.flags.writeable = False")
         writer.blank()
 
     def _return(self, writer: Writer, wrapper: CWrapper) -> None:

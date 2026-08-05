@@ -157,8 +157,9 @@ def loess_fit_plain_expert(
 
     Returns
     -------
-    fitted_values : np.ndarray[np.float64] of shape (n,)
+    fitted_values : np.ndarray[np.float64] of shape (n,), read-only
         Fitted (smoothed) values of y at the evaluation points
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -249,6 +250,9 @@ def loess_fit_plain_expert(
 
     check_err_code(ierr.value, _LOESS_FIT_PLAIN_EXPERT_ARGUMENTS, _LOESS_FIT_PLAIN_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    fitted_values.flags.writeable = False
+
     return fitted_values
 
 def loess_fit_plain(
@@ -293,8 +297,9 @@ def loess_fit_plain(
 
     Returns
     -------
-    fitted_values : np.ndarray[np.float64] of shape (n,)
+    fitted_values : np.ndarray[np.float64] of shape (n,), read-only
         Fitted (smoothed) values of y at the evaluation points
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -370,6 +375,9 @@ def loess_fit_plain(
 
     check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    fitted_values.flags.writeable = False
+
     return fitted_values
 
 def loess_fit_robust_expert(
@@ -419,8 +427,9 @@ def loess_fit_robust_expert(
 
     Returns
     -------
-    fitted_values : np.ndarray[np.float64] of shape (n,)
+    fitted_values : np.ndarray[np.float64] of shape (n,), read-only
         Fitted (smoothed) values of y at the evaluation points
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -520,6 +529,9 @@ def loess_fit_robust_expert(
 
     check_err_code(ierr.value, _LOESS_FIT_ROBUST_EXPERT_ARGUMENTS, _LOESS_FIT_ROBUST_EXPERT_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    fitted_values.flags.writeable = False
+
     return fitted_values
 
 def loess_fit_robust(
@@ -569,8 +581,9 @@ def loess_fit_robust(
 
     Returns
     -------
-    fitted_values : np.ndarray[np.float64] of shape (n,)
+    fitted_values : np.ndarray[np.float64] of shape (n,), read-only
         Fitted (smoothed) values of y at the evaluation points
+        A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -646,5 +659,8 @@ def loess_fit_robust(
     )
 
     check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    fitted_values.flags.writeable = False
 
     return fitted_values
