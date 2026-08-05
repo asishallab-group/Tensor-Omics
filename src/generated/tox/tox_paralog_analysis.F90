@@ -6,7 +6,8 @@ module tox_paralog_analysis
     use tox_paralog_analysis_kernel, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, detect_neofunctionalization_kernel, detect_patterns_kernel
     use tox_paralog_analysis_kernel, only: filter_paralogs_by_pattern_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: PI, above, init_perm, sort_array_heapsort
+    use f42_math, only: PI, above
+    use f42_sort, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
     use tox_errors, only: validate_in_range_real

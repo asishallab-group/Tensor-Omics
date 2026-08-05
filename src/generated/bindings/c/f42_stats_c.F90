@@ -1,10 +1,11 @@
 #ifndef NO_C_BINDING
 #include <src/macros.h>
 
-!> summary: C-wrappers for [[f42_utils(module)]]
-!| Utility module for data analysis.
-!| This module provides general-purpose utility functions for data analysis, to be used as needed.
-module f42_utils_c
+!> summary: C-wrappers for [[f42_stats(module)]]
+!| Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+!|
+!| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
+module f42_stats_c
     use safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
@@ -18,7 +19,7 @@ module f42_utils_c
 
 contains
 
-    !> summary: C-wrapper for [[f42_utils(module):loess_smooth_2d(subroutine)]]
+    !> summary: C-wrapper for [[f42_stats(module):loess_smooth_2d(subroutine)]]
     !| Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
     !| The user must pre-filter data and provide only valid indices in indices_used.
     subroutine loess_smooth_2d_c(&
@@ -34,7 +35,7 @@ contains
             y_out,&
             ierr&
         ) bind(C, name="loess_smooth_2d_c")
-        use f42_utils, only: loess_smooth_2d
+        use f42_stats, only: loess_smooth_2d
 
         integer(c_int), intent(in), target :: n_total
             !! Total number of reference points.
@@ -87,7 +88,7 @@ contains
         )
     end subroutine loess_smooth_2d_c
 
-    !> summary: C-wrapper for [[f42_utils(module):compute_edf(subroutine)]]
+    !> summary: C-wrapper for [[f42_stats(module):compute_edf(subroutine)]]
     !| Returns the sorted unique values and their cumulative frequencies in [0,1].
     !| Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
     !| The number of unique values can be determined by finding the last non-zero cdf_value.
@@ -100,7 +101,7 @@ contains
             n_unique,&
             ierr&
         ) bind(C, name="compute_edf_expert_c")
-        use f42_utils, only: compute_edf
+        use f42_stats, only: compute_edf
 
         integer(c_int), intent(in), target :: n_values
             !! Number of values in the input array.
@@ -139,7 +140,7 @@ contains
         )
     end subroutine compute_edf_expert_c
 
-    !> summary: C-wrapper for [[f42_utils(module):compute_edf_alloc(subroutine)]]
+    !> summary: C-wrapper for [[f42_stats(module):compute_edf_alloc(subroutine)]]
     !| Allocates workspace internally and performs sorting before computing EDF.
     !| Use this for convenience; use compute_edf directly for custom sorting.
     subroutine compute_edf_c(&
@@ -150,7 +151,7 @@ contains
             n_unique,&
             ierr&
         ) bind(C, name="compute_edf_c")
-        use f42_utils, only: compute_edf_alloc
+        use f42_stats, only: compute_edf_alloc
 
         integer(c_int), intent(in), target :: n_values
             !! Number of values in the input array.
@@ -185,7 +186,7 @@ contains
         )
     end subroutine compute_edf_c
 
-    !> summary: C-wrapper for [[f42_utils(module):compute_scaled_distance_quantile(subroutine)]]
+    !> summary: C-wrapper for [[f42_stats(module):compute_scaled_distance_quantile(subroutine)]]
     !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     !| observed distribution it was drawn from, not an independently generated null distribution.
     !| It instead measures how extreme an observed distance is relative to all observed distances.
@@ -207,7 +208,7 @@ contains
             c_const,&
             ierr&
         ) bind(C, name="compute_scaled_distance_quantile_c")
-        use f42_utils, only: compute_scaled_distance_quantile
+        use f42_stats, only: compute_scaled_distance_quantile
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes being processed.
@@ -243,5 +244,5 @@ contains
         )
     end subroutine compute_scaled_distance_quantile_c
 
-end module f42_utils_c
+end module f42_stats_c
 #endif

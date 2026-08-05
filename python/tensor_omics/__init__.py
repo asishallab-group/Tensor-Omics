@@ -48,7 +48,7 @@ from .f42_serde_arrays_serialize_real import (
 from .f42_serde_arrays_utils import (
     get_array_metadata,
 )
-from .f42_utils import (
+from .f42_stats import (
     loess_smooth_2d,
     compute_edf_expert,
     compute_edf,

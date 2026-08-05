@@ -38,8 +38,13 @@ from .doc_ford import render_doc
 from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
 
-#: The exclusive-bound helpers a range expression may wrap a bound in, all from f42_utils.
-_BOUND_HELPERS = ("above", "below")
+#: The exclusive-bound helpers a range expression may wrap a bound in, and where they live.
+#: Named by their own module rather than by the `f42_utils` parent that re-exports them, so
+#: the import says where the thing is defined -- as a resolved module constant already does.
+_BOUND_HELPERS = {"above": "f42_math", "below": "f42_math"}
+
+#: What seeding and sorting a permutation needs, and where those live
+_PERMUTATION_HELPERS = {"init_perm": "f42_sort", "sort_array_heapsort": "f42_sort"}
 
 #: The intrinsic-module functions a range expression may call, and where they come from.
 #: A bound is often "how many of these values are usable", which is a NaN test away.
@@ -149,17 +154,15 @@ class FortranWrapperEmitter:
             extra.setdefault(producer_module, set()).update(names)
         for prologue_module, names in self._prologues(module).items():
             extra.setdefault(prologue_module, set()).update(names)
-        f42 = set()
         if self._has_permutations(module):
-            f42 |= {"init_perm", "sort_array_heapsort"}
+            for name, source in _PERMUTATION_HELPERS.items():
+                extra.setdefault(source, set()).add(name)
         for helper_module, names in self._bound_imports(module).items():
             extra.setdefault(helper_module, set()).update(names)
         for procedure in module:
             fix = self._mode_fix(procedure)
             if fix is not None:  # the parameter a per-mode wrapper fixes the mode to
                 extra.setdefault(fix.module, set()).add(fix.parameter)
-        if f42:
-            extra.setdefault("f42_utils", set()).update(f42)
 
         # the kernels, plus any recommend routine / constant that lives in the kernel module
         kernel_names = {self._kernel_name(p, module) for p in module}
@@ -200,9 +203,9 @@ class FortranWrapperEmitter:
             return {}
 
         result: dict[str, set[str]] = {}
-        for helper in _BOUND_HELPERS:
+        for helper, source in _BOUND_HELPERS.items():
             if helper in identifiers:
-                result.setdefault("f42_utils", set()).add(helper)
+                result.setdefault(source, set()).add(helper)
         for name, source in _BOUND_INTRINSICS.items():
             if name in identifiers:
                 result.setdefault(source, set()).add(name)

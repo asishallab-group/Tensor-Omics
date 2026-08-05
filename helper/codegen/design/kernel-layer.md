@@ -96,6 +96,8 @@ kernel-generation feature is tox-scoped; it reads only `src/kernel/`.
 src/
   macros.h            included by every source, by this path
   f42/                infrastructure, library-agnostic
+    utils/              f42_utils re-exports f42_math, _sort, _random, _vector, _stats
+    serde/              likewise, per element type
   kernel/             the kernels -- the API's source of truth, hand-written
   io/                 file and archive IO, hand-written
   generated/          NOTHING here is hand-written
@@ -103,6 +105,11 @@ src/
     bindings/c/         the Fortran C wrappers
     bindings/r/         the R `.Call` shims
 ```
+
+A family gets a directory once it is more than one module, and its parent re-exports the
+rest — the shape `f42/serde/` established, that `f42/utils/` now follows, and that the
+generator mirrors for a split kernel family (above). A directory holding one family's single
+module would name nothing the module name does not.
 
 The rule a reader needs is one line: **edit anything outside `src/generated/`.** That is also
 what `.gitattributes` marks, what a review can collapse, and what an editor can be told to

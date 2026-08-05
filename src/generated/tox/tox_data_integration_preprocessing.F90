@@ -6,7 +6,7 @@ module tox_data_integration_preprocessing
     use tox_data_integration_preprocessing_kernel, only: compute_gene_means_kernel, compute_residuals_kernel, construct_neighborhoods_kernel, pool_means_kernel
     use tox_data_integration_preprocessing_kernel, only: pool_study_means_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: init_perm, sort_array_heapsort
+    use f42_sort, only: init_perm, sort_array_heapsort
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int

@@ -1,6 +1,6 @@
-"""Python binding to Utility module for data analysis.
+"""Python binding to Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
 
-Generated from f42_utils. Do not edit.
+Generated from f42_stats. Do not edit.
 """
 
 import ctypes
@@ -109,7 +109,7 @@ def loess_smooth_2d(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_utils::loess_smooth_2d`.
+    Generated from the Fortran procedure `f42_stats::loess_smooth_2d`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -202,7 +202,7 @@ def compute_edf_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_utils::compute_edf`.
+    Generated from the Fortran procedure `f42_stats::compute_edf`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -279,7 +279,7 @@ def compute_edf(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_utils::compute_edf_alloc`.
+    Generated from the Fortran procedure `f42_stats::compute_edf_alloc`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -345,7 +345,7 @@ def compute_scaled_distance_quantile(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_utils::compute_scaled_distance_quantile`.
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile`.
     """
     # accept anything array-like, converting only when C needs it
     try:

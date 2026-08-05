@@ -6,7 +6,7 @@ module tox_data_integration_jsd
     use tox_data_integration_jsd_kernel, only: build_residual_histograms_kernel, compute_divergence_per_reference_point_kernel, compute_weighted_global_divergence_kernel, determine_shared_residual_range_kernel
     use tox_data_integration_jsd_kernel, only: determine_study_shared_residual_range_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: init_perm, sort_array_heapsort
+    use f42_sort, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_real
     M_IMPLICIT_NONE

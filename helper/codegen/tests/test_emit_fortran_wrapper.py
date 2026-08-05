@@ -153,11 +153,11 @@ class TestTmpPermutation:
 
     def test_it_is_not_seeded_or_sorted_by_the_wrapper(self):
         # a tmp_ permutation is the kernel's own scratch: the kernel seeds and sorts it, so
-        # the allocating wrapper must only allocate it -- no init_perm, no sort, no f42_utils
+        # the allocating wrapper must only allocate it -- no init_perm, no sort, no f42_sort
         body, text = self.bodies()
         assert "init_perm" not in body
         assert "sort_array_heapsort" not in body
-        assert "use f42_utils" not in text
+        assert "use f42_sort" not in text
 
 
 class TestSuffixCollisions:
@@ -183,7 +183,7 @@ class TestSuffixCollisions:
     def test_no_seeding_or_perm_helpers(self):
         body, text = self.bodies()
         assert "init_perm" not in body
-        assert "use f42_utils" not in text
+        assert "use f42_sort" not in text
 
 
 class TestKernelThatDeclaresIerr:
@@ -292,7 +292,7 @@ class TestDistanceMatrixConvention:
 class TestAllocatingWrapper:
     def test_the_module_imports_what_the_alloc_needs(self):
         text = demo_alloc()
-        assert "use f42_utils, only: init_perm, sort_array_heapsort" in text
+        assert "use f42_sort, only: init_perm, sort_array_heapsort" in text
         # the recommend routine lives in the kernel module, imported with the kernel
         assert "work_size" in text.split("contains")[0]
         assert "ERR_ALLOC_FAIL" in text
