@@ -380,6 +380,57 @@ class TestModeTableSplit:
         assert any("more than once" in error.message for error in bag.errors)
 
 
+class TestUnreadModeTable:
+    """A table of accepted values on an argument whose name does not make it a mode.
+
+    Detection goes by the name, so such a table is never read -- silently. That silence is
+    what the warning is for.
+    """
+
+    def _value_table(self, header):
+        return [
+            "used pattern for detection",
+            "",
+            f"| {header} | Value |",
+            "|---------|-------|",
+            "| dosage | [[m(module):MODE_DOSAGE(variable)]] |",
+        ]
+
+    def test_a_value_table_on_a_non_mode_argument_warns(self, bag):
+        # exactly the tox_paralog_analysis case: an argument called 'pattern'
+        analyse(b.procedure("p", b.integer("pattern", Intent.IN, doc=self._value_table("Pattern"))), bag)
+
+        assert bag.errors == ()
+        assert len(bag.warnings) == 1
+        assert "is not a mode argument" in bag.warnings[0].message
+        assert "pattern" in bag.warnings[0].message
+
+    def test_even_a_mode_headed_table_warns_when_the_name_does_not_match(self, bag):
+        analyse(b.procedure("p", b.integer("pattern", Intent.IN, doc=self._value_table("Mode"))), bag)
+
+        assert len(bag.warnings) == 1
+
+    def test_a_properly_named_mode_argument_does_not_warn(self, bag):
+        analyse(
+            b.procedure("p", b.integer("pattern_mode", Intent.IN, doc=self._value_table("Mode"))),
+            bag,
+        )
+
+        assert bag.warnings == ()
+
+    def test_an_unrelated_table_does_not_warn(self, bag):
+        doc = [
+            "how the producer is fed",
+            "",
+            "| Producer input | Supplied by |",
+            "|----------------|-------------|",
+            "| n_dim | 1_int32 |",
+        ]
+        analyse(b.procedure("p", b.integer("size", Intent.IN, doc=doc)), bag)
+
+        assert bag.warnings == ()
+
+
 class TestModeTableErrors:
     def test_a_mode_argument_without_a_table_is_an_error(self, bag):
         analyse(b.procedure("p", b.character("link_method", Intent.IN, doc="Just prose.")), bag)

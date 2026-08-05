@@ -476,6 +476,7 @@ class _Analyser:
     def _mode_table(self, argument: Argument) -> ModeTable | None:
         alias = self.conventions.mode_alias_of(argument.name)
         if alias is None:
+            self._warn_unread_mode_table(argument)
             return None
 
         tables = [t for t in argument.doc.tables if self._looks_like_a_mode_table(t)]
@@ -524,6 +525,34 @@ class _Analyser:
             return None
 
         return ModeTable(alias=alias, values=tuple(values), source=table)
+
+    def _warn_unread_mode_table(self, argument: Argument) -> None:
+        """Warn where a table of accepted values sits on an argument that is not a mode.
+
+        Mode detection goes by the argument's *name*, so a table like this is never read: the
+        binding passes the raw integer instead of the mode string, and a `Procedure` column
+        splits nothing. Both are silent -- the same silence that makes an unexpanded `DM_`
+        macro an error -- but a table with a `Value` column need not be a mode table at all,
+        so this stays a warning rather than an error.
+        """
+        for table in argument.doc.tables:
+            if table.n_columns not in (2, 3):
+                continue
+            header = [text.strip().lower() for text in table.header_text]
+            if header[1] != "value" and header[0] not in self.conventions.mode_aliases:
+                continue
+            aliases = " / ".join(f"<name>_{a}" for a in self.conventions.mode_aliases)
+            self.diagnostics.warn(
+                f"'{argument.name}' documents a table of values but is not a mode argument",
+                entity=argument,
+                location=_location_of(argument, table.line_number),
+                note=(
+                    f"a mode argument is named for what it selects ({aliases}, or the alias "
+                    "alone); named otherwise the table is documentation only, and the value "
+                    "crosses the binding as an integer rather than its name"
+                ),
+            )
+            return
 
     def _looks_like_a_mode_table(self, table: DocTable) -> bool:
         """A mode table: headed by a mode alias and `Value`, and optionally `Procedure`.
