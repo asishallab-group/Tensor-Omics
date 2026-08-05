@@ -10,7 +10,7 @@ module f42_kd_tree
     use tox_errors, only: ERR_INVALID_INPUT, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok, validate_dimension_size
     implicit none
     private
-    public :: build_kd_index, build_spherical_kd, get_kd_point, vicinity_vectors
+    public :: build_kd_index, build_spherical_kd, get_kd_point, vicinity_vectors, vicinity_vectors_count
 
 contains
 
@@ -257,11 +257,10 @@ contains
         point_values = points(:, kd_indices(position))
     end subroutine get_kd_point
 
-    !> Finds all reference points within a given radius around a query coordinate vector.
-    !! Returns a logical mask mapping matching reference positions.
+    !> Finds reference points within a given radius around a query coordinate vector.
+    !! Sets elements in a logical mask to .true. for points inside the search sphere.
     pure subroutine vicinity_vectors(query_point, points, num_dimensions, num_points, r, &
                                      dimension_order, kd_indices, tmp_stack, vicinity_mask)
-        use tox_euclidean_distance, only: euclidean_distance
 
         integer(int32), intent(in) :: num_dimensions
         !! Number of dimensions
@@ -280,7 +279,7 @@ contains
         integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
         !! Preallocated private workspace stack for tracking tree-walking frames
         logical, intent(out) :: vicinity_mask(num_points)
-        !! Output logical mask marking points within the search radius boundary
+        !! Output logical mask flagging points within the search radius boundary
 
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, node_point_idx
         real(real64)   :: dist, axis_delta
@@ -302,12 +301,11 @@ contains
 
             if (right_idx < left_idx) cycle
 
-            ! Look up the split dimension mapped to the active depth tier
             current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)
             mid_idx = left_idx + (right_idx - left_idx)/2
             node_point_idx = kd_indices(mid_idx)
 
-            ! Compute the exact spatial distance to the candidate point
+            ! Compute exact spatial distance to candidate point
             call euclidean_distance(query_point, points(:, node_point_idx), num_dimensions, dist)
             if (dist <= r) then
                 vicinity_mask(node_point_idx) = .true.
@@ -338,6 +336,86 @@ contains
         end do
 
     end subroutine vicinity_vectors
+
+    !> Finds the number of reference points within a given radius around a query coordinate vector.
+    !! Returns a scalar count of matching points inside the sphere.
+    pure subroutine vicinity_vectors_count(query_point, points, num_dimensions, num_points, r, &
+                                           dimension_order, kd_indices, tmp_stack, neighbor_count)
+
+        integer(int32), intent(in) :: num_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: num_points
+        !! Total number of points organized in the K-D tree
+        real(real64), intent(in) :: query_point(num_dimensions)
+        !! The coordinate vector used as the center point of the search window
+        real(real64), intent(in) :: points(num_dimensions, num_points)
+        !! Ambient data points matrix used to construct the tree layout
+        real(real64), intent(in) :: r
+        !! Spatial neighborhood search radius threshold
+        integer(int32), intent(in) :: dimension_order(num_dimensions)
+        !! Sequence array tracking tree split axes by variance
+        integer(int32), intent(in) :: kd_indices(num_points)
+        !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
+        !! Preallocated private workspace stack for tracking tree-walking frames
+        integer(int32), intent(out) :: neighbor_count
+        !! Output scalar count of points within the search radius boundary
+
+        integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, node_point_idx
+        real(real64)   :: dist, axis_delta
+
+        neighbor_count = 0_int32
+        stack_top = 1
+
+        ! Push implicit root boundaries onto the stack frame
+        tmp_stack(1, 1) = 1
+        tmp_stack(2, 1) = num_points
+        tmp_stack(3, 1) = 0
+
+        ! Walk the spatial index tree structure
+        do while (stack_top > 0)
+            left_idx = tmp_stack(1, stack_top)
+            right_idx = tmp_stack(2, stack_top)
+            current_depth = tmp_stack(3, stack_top)
+            stack_top = stack_top - 1
+
+            if (right_idx < left_idx) cycle
+
+            current_dim = dimension_order(mod(current_depth, num_dimensions) + 1)
+            mid_idx = left_idx + (right_idx - left_idx)/2
+            node_point_idx = kd_indices(mid_idx)
+
+            ! Compute exact spatial distance to candidate point
+            call euclidean_distance(query_point, points(:, node_point_idx), num_dimensions, dist)
+            if (dist <= r) then
+                neighbor_count = neighbor_count + 1_int32
+            end if
+
+            ! Calculate coordinate plane delta on the split axis for bounding box checks
+            axis_delta = query_point(current_dim) - points(current_dim, node_point_idx)
+
+            ! Assess left-hand child branch viability
+            if (axis_delta - r <= 0.0_real64) then
+                if (left_idx <= mid_idx - 1) then
+                    stack_top = stack_top + 1
+                    tmp_stack(1, stack_top) = left_idx
+                    tmp_stack(2, stack_top) = mid_idx - 1
+                    tmp_stack(3, stack_top) = current_depth + 1
+                end if
+            end if
+
+            ! Assess right-hand child branch viability
+            if (axis_delta + r >= 0.0_real64) then
+                if (mid_idx + 1 <= right_idx) then
+                    stack_top = stack_top + 1
+                    tmp_stack(1, stack_top) = mid_idx + 1
+                    tmp_stack(2, stack_top) = right_idx
+                    tmp_stack(3, stack_top) = current_depth + 1
+                end if
+            end if
+        end do
+
+    end subroutine vicinity_vectors_count
 
 end module f42_kd_tree
 
