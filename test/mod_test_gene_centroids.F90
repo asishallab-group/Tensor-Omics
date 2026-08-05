@@ -43,7 +43,7 @@ contains
 
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ierr=ierr)
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_all_mode")
+        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_all_mode", n_rows=n_axes)
     end subroutine test_basic_all_mode
 
     ! Test case 2: Basic functionality in 'ortho' mode.
@@ -62,7 +62,7 @@ contains
         call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ortholog_set, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_ortho_mode")
+        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_ortho_mode", n_rows=n_axes)
     end subroutine test_basic_ortho_mode
 
     ! Test case 3: A family exists but has no genes assigned to it.
@@ -79,7 +79,7 @@ contains
 
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ierr=ierr)
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_empty_family")
+        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_empty_family", n_rows=n_axes)
     end subroutine test_empty_family
 
     ! Test case 4: 'ortho' mode is selected, but a family has no orthologs.
@@ -98,7 +98,7 @@ contains
         call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ortholog_set, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_no_matching_orthologs")
+        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_no_matching_orthologs", n_rows=n_axes)
     end subroutine test_no_matching_orthologs
 
     ! Test case 5: A family contains only a single gene.
@@ -113,7 +113,7 @@ contains
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
-        call assert_allclose_array_real(centroids, vectors, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_single_gene_family")
+        call assert_allclose_array_real(centroids, vectors, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_single_gene_family", n_rows=n_axes)
     end subroutine test_single_gene_family
 
     ! Test case 6: Input vectors with extreme values.
@@ -133,7 +133,7 @@ contains
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
                             centroids, selected_indices, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_extreme_values")
+        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_extreme_values", n_rows=n_axes)
     end subroutine test_extreme_values
 
     ! Test case 7: Higher dimensional data.

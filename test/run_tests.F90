@@ -92,6 +92,8 @@ program main
         stop 1
     end select
 
+    call report_and_exit()
+
 contains
     !> Print usage information.
     subroutine print_usage()

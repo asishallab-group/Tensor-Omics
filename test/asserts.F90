@@ -4,6 +4,7 @@
 module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use test_suite, only: record_assertion_failure
     use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
     use tox_errors, only: get_err_code, get_err_arg_pos, ERR_OK
     implicit none
@@ -13,7 +14,7 @@ module asserts
     public :: assert_equal_real, assert_not_equal_real, assert_equal_array_int
     public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
     public :: assert_in_range_real, assert_in_range_int, assert_contains_int, assert_sorted_int
-    public :: assert_sorted_real, assert_same_shape, assert_string_equal
+    public :: assert_sorted_real, assert_string_equal
     public :: assert_string_contains, assert_allclose_array_real
     public :: assert_sum_equal, assert_unique_int, assert_permutation
     public :: assert_equal_array_char, assert_equal_array_logical
@@ -72,7 +73,8 @@ contains
             write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
         end if
 
-        stop 1
+        ! Fails the test case, not the process: see `failures_in_case` in test_suite for why.
+        call record_assertion_failure()
     end subroutine assertion_error
 
     !> Assert that two complex numbers are equal within a tolerance.
@@ -113,10 +115,14 @@ contains
     end subroutine
 
     !> Assert that two logical arrays are equal within a tolerance.
-    subroutine assert_equal_array_logical(a, b, n, msg)
+    subroutine assert_equal_array_logical(a, b, n, msg, n_rows)
         logical, intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(a .neqv. b)
         if (n_diff > 0) then
@@ -124,7 +130,7 @@ contains
                 if (a(i) .neqv. b(i)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=logical_to_str(a(i)), expected=logical_to_str(b(i)), at=""//i)
+                got=logical_to_str(a(i)), expected=logical_to_str(b(i)), at=position_text(i, n_rows))
         end if
     end subroutine
 
@@ -209,9 +215,13 @@ contains
     end subroutine
 
     !> Assert that two integer arrays are equal.
-    subroutine assert_equal_array_int(a, b, n, msg)
+    subroutine assert_equal_array_int(a, b, n, msg, n_rows)
         integer(int32), intent(in) :: a(n), b(n), n
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(a /= b)
         if (n_diff > 0) then
@@ -219,15 +229,19 @@ contains
                 if (a(i) /= b(i)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=""//a(i), expected=""//b(i), at=""//i)
+                got=""//a(i), expected=""//b(i), at=position_text(i, n_rows))
         end if
     end subroutine
 
     !> Assert that two real arrays are equal within a tolerance.
-    subroutine assert_equal_array_real(a, b, n, tol, msg)
+    subroutine assert_equal_array_real(a, b, n, tol, msg, n_rows)
         real(real64), intent(in) :: a(n), b(n), tol
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(abs(a - b) > tol)
         if (n_diff > 0) then
@@ -235,7 +249,7 @@ contains
                 if (abs(a(i) - b(i)) > tol) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=""//a(i), expected=""//b(i), tol=""//tol, at=""//i)
+                got=""//a(i), expected=""//b(i), tol=""//tol, at=position_text(i, n_rows))
         end if
     end subroutine
 
@@ -320,6 +334,7 @@ contains
             if (arr(i) < arr(i - 1)) then
                 call assertion_error(msg, additional_msg="not sorted", &
                     got=arr(i - 1) // " > " // arr(i), at=""//i)
+                return
             end if
         end do
     end subroutine
@@ -334,17 +349,9 @@ contains
             if (arr(i) < arr(i - 1)) then
                 call assertion_error(msg, additional_msg="not sorted", &
                     got=arr(i - 1) // " > " // arr(i), at=""//i)
+                return
             end if
         end do
-    end subroutine
-
-    !> Assert that two arrays have the same shape (1D only).
-    subroutine assert_same_shape(n1, n2, msg)
-        integer(int32), intent(in) :: n1, n2
-        character(*), intent(in) :: msg
-        if (n1 /= n2) then
-            call assertion_error(msg, additional_msg="shapes differ", got=n1 // " and " // n2)
-        end if
     end subroutine
 
     !> Assert that two strings are equal.
@@ -375,30 +382,45 @@ contains
     end subroutine
 
     !> Assert that two real arrays are close within relative and absolute tolerance.
-    subroutine assert_allclose_array_real(a, b, n, rtol, atol, msg)
+    subroutine assert_allclose_array_real(a, b, n, rtol, atol, msg, n_rows)
         real(real64), intent(in) :: a(n), b(n), rtol, atol
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
-        integer :: i
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
+        integer :: i, n_diff
         real(real64) :: thresh
+
+        n_diff = count(abs(a - b) > atol + rtol*abs(b))
+        if (n_diff == 0) return
+
         do i = 1, n
             thresh = atol + rtol*abs(b(i))
-            if (abs(a(i) - b(i)) > thresh) then
-                call assertion_error(msg, additional_msg="|got - expected| = " // abs(a(i) - b(i)) // &
-                    " exceeds atol + rtol*|expected| = " // thresh, got=""//a(i), expected=""//b(i), at=""//i)
-            end if
+            if (abs(a(i) - b(i)) > thresh) exit
         end do
+        call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ, " // &
+            "|got - expected| = " // abs(a(i) - b(i)) // " exceeds atol + rtol*|expected| = " // thresh, &
+            got=""//a(i), expected=""//b(i), at=position_text(i, n_rows))
     end subroutine
 
     !> Assert that the sum of an array equals an expected value.
-    subroutine assert_sum_equal(arr, n, expected, msg)
+    subroutine assert_sum_equal(arr, n, expected, msg, tol)
         real(real64), intent(in) :: arr(n), expected
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
-        real(real64) :: s
+        real(real64), intent(in), optional :: tol
+            !! Defaults to 1e-12, which suits a sum of a handful of terms and is far too tight
+            !! for a long one, where the rounding error grows with the number of additions.
+        real(real64) :: s, actual_tol
+
+        actual_tol = 1e-12_real64
+        if (present(tol)) actual_tol = tol
+
         s = sum(arr)
-        if (abs(s - expected) > 1e-12_real64) then
-            call assertion_error(msg, got="sum=" // s, expected=""//expected)
+        if (abs(s - expected) > actual_tol) then
+            call assertion_error(msg, got="sum=" // s, expected=""//expected, tol=""//actual_tol)
         end if
     end subroutine
 
@@ -411,6 +433,7 @@ contains
             do j = i + 1, n
                 if (arr(i) == arr(j)) then
                     call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=i // " and " // j)
+                    return
                 end if
             end do
         end do
@@ -427,13 +450,31 @@ contains
             if (arr(i) < 1 .or. arr(i) > n) then
                 call assertion_error(msg, additional_msg="value out of range for permutation", &
                     got=""//arr(i), expected="value in [1, " // n // "]", at=""//i)
+                return  ! `found` is indexed by the value below, so it has to be in range first
             end if
             if (found(arr(i))) then
                 call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=""//i)
+                return
             end if
             found(arr(i)) = .true.
         end do
     end subroutine
+
+    !> Where in an array a mismatch is, as `(row, column)` when the caller says how the flat
+    !| array is shaped and as a plain index otherwise. Column-major, as Fortran stores it.
+    function position_text(i, n_rows) result(text)
+        integer(int32), intent(in) :: i
+        integer(int32), intent(in), optional :: n_rows
+        character(len=:), allocatable :: text
+
+        if (present(n_rows)) then
+            if (n_rows > 0) then
+                text = "(" // (mod(i - 1, n_rows) + 1) // ", " // ((i - 1)/n_rows + 1) // ")"
+                return
+            end if
+        end if
+        text = ""//i
+    end function position_text
 
     !> Renders a logical as ".true."/".false." for use in assertion diagnostics.
     pure function logical_to_str(l) result(str_out)

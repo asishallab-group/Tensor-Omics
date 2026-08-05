@@ -31,6 +31,19 @@ module test_suite
 
     type(suite_entry), allocatable :: available_suites(:)
 
+    !> Failed assertions in the test case currently running, and what the run has seen so far.
+    !|
+    !| A failed assertion used to end the process, so a run reported the first broken test and
+    !| nothing about the rest -- which turns fixing a batch of related breakage into one
+    !| rebuild per failure. It now fails the *case*: `run_test_case` checks this after the
+    !| test returns, and the run keeps going. The remaining assertions of a broken test still
+    !| execute, so a test that asserts a precondition and then relies on it can still crash the
+    !| process -- but everything learned before that point is already on screen.
+    integer, private :: failures_in_case = 0
+    integer :: cases_run = 0
+    integer :: cases_failed = 0
+    integer :: suites_failed = 0
+
 #ifndef NO_COLORS
     character(len=*), parameter :: COLOR_GREEN = achar(27) // "[38;5;154m"
     character(len=*), parameter :: COLOR_COPPER = achar(27) // "[38;5;214m"
@@ -54,8 +67,49 @@ module test_suite
 #endif
 
     character(len=3) :: CHECK_MARK = char(int(z"E2")) // char(int(z"9C")) // char(int(z"93"))
+    character(len=3) :: CROSS_MARK = char(int(z"E2")) // char(int(z"9C")) // char(int(z"97"))
 
 contains
+
+    !> Record a failed assertion against the test case currently running.
+    !|
+    !| Called by the assertion module, which cannot hold this state itself: it already `use`s
+    !| this module for the colours, so the dependency only goes one way.
+    subroutine record_assertion_failure()
+        failures_in_case = failures_in_case + 1
+    end subroutine record_assertion_failure
+
+    !> Whether anything has failed so far.
+    logical function any_failures()
+        any_failures = cases_failed > 0
+    end function any_failures
+
+    !> Summarise the run and end the process with a status that reflects it.
+    subroutine report_and_exit()
+        character(len=:), allocatable :: counts
+
+        if (cases_failed == 0) then
+            print "(A)", COLOR_GREEN // "All " // COLOR_CREAM // itoa(cases_run) // &
+                COLOR_GREEN // " test cases passed." // COLOR_RESET
+            return
+        end if
+
+        counts = itoa(cases_failed) // " of " // itoa(cases_run) // " test cases failed"
+        print "(A)", ""
+        print "(A)", COLOR_RED // counts // COLOR_CREAM // &
+            " (across " // itoa(suites_failed) // " suite(s))." // COLOR_RESET
+        stop 1
+    end subroutine report_and_exit
+
+    !> An integer as a trimmed string, for the counts above.
+    function itoa(value) result(text)
+        integer, intent(in) :: value
+        character(len=:), allocatable :: text
+        character(len=32) :: buffer
+
+        write (buffer, "(I0)") value
+        text = trim(buffer)
+    end function itoa
 
     !> Register all test suites here.
     subroutine initialize_suites()
@@ -88,19 +142,38 @@ contains
         type(test_case), intent(in) :: all_tests(:)
         integer :: i
 
+        integer :: failed_before
+
+        failed_before = cases_failed
         do i = 1, size(all_tests)
             call run_test_case(all_tests(i))
         end do
 
-        print "(A)", COLOR_CREAM // "All '" // COLOR_LIGHT_GRAY // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
+        if (cases_failed == failed_before) then
+            print "(A)", COLOR_CREAM // "All '" // COLOR_LIGHT_GRAY // trim(suite_name) // COLOR_CREAM // "' tests passed successfully." // COLOR_RESET
+        else
+            suites_failed = suites_failed + 1
+            print "(A)", COLOR_RED // itoa(cases_failed - failed_before) // COLOR_CREAM // " test(s) in '" // &
+                COLOR_LIGHT_GRAY // trim(suite_name) // COLOR_CREAM // "' failed." // COLOR_RESET
+        end if
     end subroutine run_all_tests
 
     !> Run test for specific test case
     subroutine run_test_case(case)
         type(test_case), intent(in) :: case
 
+        failures_in_case = 0
+        cases_run = cases_run + 1
+
         call case%test_proc()
-        print "(A)", COLOR_GREEN // CHECK_MARK // COLOR_COPPER // " " // trim(case%name) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
+
+        if (failures_in_case == 0) then
+            print "(A)", COLOR_GREEN // CHECK_MARK // COLOR_COPPER // " " // trim(case%name) // COLOR_GREEN // " passed" // COLOR_CREAM // "." // COLOR_RESET
+        else
+            cases_failed = cases_failed + 1
+            print "(A)", COLOR_RED // CROSS_MARK // COLOR_COPPER // " " // trim(case%name) // COLOR_RED // " failed" // &
+                COLOR_CREAM // " (" // itoa(failures_in_case) // " assertion(s))." // COLOR_RESET
+        end if
     end subroutine run_test_case
 
     !> Run selected tests by name from a given suite.
