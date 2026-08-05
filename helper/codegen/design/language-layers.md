@@ -256,22 +256,27 @@ so its validation, error checking and result handling all come for free, and the
 passed in is the consumer's already-prepared input, making the producer's conversions
 no-ops rather than a second copy.
 
-The producer's inputs are matched to the consumer's arguments **by name**. That is all the
-real cases need: `mask_chunk_count(n_genes, count)` is called from a consumer that also has
-`n_genes`. A producer input with no same-named consumer argument is an **error** for now; a
-markdown table for renamed inputs (the same shape as the mode table) is the eventual
-override, deferred until a case needs it.
+The producer's inputs are matched to the consumer's arguments **by name**, which is what most
+cases need: `mask_chunk_count(n_genes, count)` is called from a consumer that also has
+`n_genes`. Where the two spell a quantity differently, or where a producer input is a
+*constant* the consumer has no argument for, the consumer's argument carries a markdown table
+mapping them (the same shape as the mode table) -- `tox_loess_required_workspace` is supplied
+`n_dim = 1_int32` and `save_factorization = .false.` that way. A producer input that is neither
+name-matched nor in the table is an **error** naming it.
 
 Python computes it inline, since the whole wrapper is one function. R computes it in the R
 wrapper and passes it to the C `.Call` shim, because the shim cannot call an R wrapper. So
 an AUTO argument is a *parameter* of the `.Call` shim (R fills it) but never a parameter of
-the user-facing R or Python function. Two constraints, enforced with
-diagnostics: the producer must be exported (else there is no wrapper), and in the same
-module (a cross-module call would need an import).
+the user-facing R or Python function. The producer must be exported, else there is no wrapper
+to call; it may live in **any** module, and Python imports it inside the calling function
+rather than at the top of the file, because two modules may size each other's outputs and a
+module-level import would then be circular.
 
 ## Open
 
-- **AUTO across modules**, and **AUTO with renamed producer inputs** (the markdown table),
-  are the two deferred pieces of `DM_OUTPUT_FROM`. Both error clearly until implemented.
 - **ifx** — `optional` in `bind(C)` and `implicit none (type, external)` are verified with
   gfortran only. Both are F2018; ifx is expected to agree.
+- **A mode argument's `DM_DEFAULT` renders its raw integer in the prose line** while the
+  signature line renders the mode string, so a Python docstring reads `mode : str, one of
+  'plain' | 'robust', optional, default 'robust'` and then `The default value is 1.` The
+  signature is right; the prose line should render the string too.
