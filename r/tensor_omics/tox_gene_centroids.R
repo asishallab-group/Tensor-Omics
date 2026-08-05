@@ -21,7 +21,7 @@ mean_vector <- function(expression_vectors, gene_indices) {
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
-#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @param ortholog_set a logical vector. A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
 #' @return The output matrix (n_axes x n_families) to store the computed centroids.
@@ -48,7 +48,7 @@ group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
-#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @param ortholog_set a logical vector. A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
 #' @return The output matrix (n_axes x n_families) to store the computed centroids.
@@ -75,7 +75,7 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
-#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @return The output matrix (n_axes x n_families) to store the computed centroids.
 #'
@@ -98,7 +98,7 @@ group_centroid_all_expert <- function(expression_vectors, gene_to_family, n_fami
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
-#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+#' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @return The output matrix (n_axes x n_families) to store the computed centroids.
 #'

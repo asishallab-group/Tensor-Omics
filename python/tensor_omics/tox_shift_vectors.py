@@ -42,10 +42,10 @@ def compute_shift_vector_field(
     family_centroids : np.ndarray[np.float64] of shape (n_tissues, n_families,), column-major (order='F')
         Family centroid matrix
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
 
     Returns
     -------

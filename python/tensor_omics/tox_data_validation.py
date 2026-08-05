@@ -597,10 +597,10 @@ def validate_all_data(
         shift vectors
     check_uniqueness : bool, optional, default True
         Check ID arrays for uniqueness.
-        The default value is `.true.`.
+        The default value is `True`.
     check_shift_consistency : bool, optional, default True
         Check consitency of shift array.
-        The default value is `.true.`.
+        The default value is `True`.
 
     Returns
     -------

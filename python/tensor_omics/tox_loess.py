@@ -131,19 +131,19 @@ def loess_fit_plain_expert(
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
-        The maximum valid value is `1.0_real64`.
+        The maximum valid value is `1.0`.
     degree : int
         Degree of the LOESS polynomial
-        The minimum valid value is `0_int32`.
-        The maximum valid value is `2_int32`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     max_neighborhood_size : int
         Maximum neighborhood size
     compute_influence : bool, optional, default False
         Influence calculation flag
-        The default value is `.false.`.
+        The default value is `False`.
     save_factorization : bool, optional, default False
         Save matrix factorization flag
-        The default value is `.false.`.
+        The default value is `False`.
 
     Returns
     -------
@@ -266,19 +266,19 @@ def loess_fit_plain(
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
-        The maximum valid value is `1.0_real64`.
+        The maximum valid value is `1.0`.
     degree : int
         Degree of the LOESS polynomial
-        The minimum valid value is `0_int32`.
-        The maximum valid value is `2_int32`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     max_neighborhood_size : int
         Maximum neighborhood size
     compute_influence : bool, optional, default False
         Influence calculation flag
-        The default value is `.false.`.
+        The default value is `False`.
     save_factorization : bool, optional, default False
         Save matrix factorization flag
-        The default value is `.false.`.
+        The default value is `False`.
 
     Returns
     -------
@@ -387,23 +387,23 @@ def loess_fit_robust_expert(
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
-        The maximum valid value is `1.0_real64`.
+        The maximum valid value is `1.0`.
     degree : int
         Degree of the LOESS polynomial
-        The minimum valid value is `0_int32`.
-        The maximum valid value is `2_int32`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     max_neighborhood_size : int
         Maximum neighborhood size
     compute_influence : bool, optional, default False
         Influence calculation flag
-        The default value is `.false.`.
+        The default value is `False`.
     save_factorization : bool, optional, default False
         Save matrix factorization flag
-        The default value is `.false.`.
+        The default value is `False`.
     n_iters : int, optional, default 3
         Number of robust iterations
-        The minimum valid value is `1_int32`.
-        The default value is `3_int32`.
+        The minimum valid value is `1`.
+        The default value is `3`.
 
     Returns
     -------
@@ -536,23 +536,23 @@ def loess_fit_robust(
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
-        The maximum valid value is `1.0_real64`.
+        The maximum valid value is `1.0`.
     degree : int
         Degree of the LOESS polynomial
-        The minimum valid value is `0_int32`.
-        The maximum valid value is `2_int32`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     max_neighborhood_size : int
         Maximum neighborhood size
     compute_influence : bool, optional, default False
         Influence calculation flag
-        The default value is `.false.`.
+        The default value is `False`.
     save_factorization : bool, optional, default False
         Save matrix factorization flag
-        The default value is `.false.`.
+        The default value is `False`.
     n_iters : int, optional, default 3
         Number of robust iterations
-        The minimum valid value is `1_int32`.
-        The default value is `3_int32`.
+        The minimum valid value is `1`.
+        The default value is `3`.
 
     Returns
     -------

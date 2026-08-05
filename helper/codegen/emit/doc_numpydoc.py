@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_literals import render as _render
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
@@ -38,7 +39,7 @@ def python_type_of(argument: CArgument) -> str:
 
     shape = ", ".join(argument.dimension.extents)
     order = ", column-major (order='F')" if argument.rank > 1 else ""
-    return f"np.ndarray[{dtype_of(argument)}] of shape ({shape},){order}"
+    return _render(f"np.ndarray[{dtype_of(argument)}] of shape ({shape},){order}", "python")
 
 
 def render_docstring(wrapper: CWrapper) -> str:
@@ -50,7 +51,7 @@ def render_docstring(wrapper: CWrapper) -> str:
     # A raw docstring: the argument descriptions carry LaTeX (`\(`, `\frac`), which is an
     # invalid escape sequence in a plain string and warns (a hard error in a future Python).
     # The closing `"""` is always on its own line, so no trailing backslash can abut it.
-    writer.line('r"""' + (wrapper.procedure.meta.summary or wrapper.stripped_name))
+    writer.line('r"""' + _render(wrapper.procedure.meta.summary or wrapper.stripped_name, "python"))
 
     inputs = emitter._inputs(wrapper)
     outputs = emitter._outputs(wrapper)
@@ -113,7 +114,7 @@ def _description(writer: Writer, doc: Doc) -> None:
         if isinstance(block, DocTable):
             # A mode table is already stated as the accepted values in the type line
             continue
-        writer.line(block.text)
+        writer.line(_render(block.text, "python"))
 
 
 def _raises(writer: Writer, wrapper: CWrapper) -> None:

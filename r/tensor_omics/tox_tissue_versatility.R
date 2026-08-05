@@ -9,8 +9,8 @@
 #' selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
 #'
 #' @param expression_vectors a numeric matrix. 2D array (n_axes, n_vectors), each column is a gene expression vector
-#' @param vectors_selection_mask a logical vector. Logical array (n_vectors), .TRUE. for vectors to process
-#' @param axes_selection_mask a logical vector. Logical array (n_axes), .TRUE. for axes to include in calculation
+#' @param vectors_selection_mask a logical vector. Logical array (n_vectors), TRUE for vectors to process
+#' @param axes_selection_mask a logical vector. Logical array (n_axes), TRUE for axes to include in calculation
 #' @return a named list with elements `tissue_versatilities`, `tissue_angles_deg`.
 #'
 #' Generated from the Fortran procedure \code{tox_tissue_versatility::compute_tissue_versatility}.

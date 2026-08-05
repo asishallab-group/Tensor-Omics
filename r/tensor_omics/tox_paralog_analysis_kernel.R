@@ -1,6 +1,6 @@
 # Generated. Do not edit.
 
-#' Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
+#' Checks the state of a bit/paralog in `bit_mask` -> TRUE if 1 else FALSE
 #'
 #' @param bit_mask a integer vector. chunked mask to mark active paralogs
 #' @param i_gene a integer scalar. index of paralog to be marked active

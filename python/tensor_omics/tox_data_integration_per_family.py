@@ -159,13 +159,13 @@ def fjct_compute_jsd_expert(
     ----------
     family_idx : int
         Index of the family that should be analyzed
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
     gene_to_family_S1 : np.ndarray[np.int32] of shape (n_genes_S1,)
         Mapping for study 1: Each index (gene) holds the index of its family
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     gene_to_family_S2 : np.ndarray[np.int32] of shape (n_genes_S2,)
         Mapping for study 2: Each index (gene) holds the index of its family
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
@@ -174,17 +174,17 @@ def fjct_compute_jsd_expert(
         NaN is permitted for this value.
     neighborhood_genes_S1 : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
         Indices of the selected neighborhood genes of study 1
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes_S1`.
     neighborhood_genes_S2 : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
         Indices of the selected neighborhood genes of study 2
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes_S2`.
     n_bins : int
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -357,13 +357,13 @@ def fjct_compute_jsd(
     ----------
     family_idx : int
         Index of the family that should be analyzed
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
     gene_to_family_S1 : np.ndarray[np.int32] of shape (n_genes_S1,)
         Mapping for study 1: Each index (gene) holds the index of its family
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     gene_to_family_S2 : np.ndarray[np.int32] of shape (n_genes_S2,)
         Mapping for study 2: Each index (gene) holds the index of its family
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
@@ -372,17 +372,17 @@ def fjct_compute_jsd(
         NaN is permitted for this value.
     neighborhood_genes_S1 : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
         Indices of the selected neighborhood genes of study 1
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes_S1`.
     neighborhood_genes_S2 : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F')
         Indices of the selected neighborhood genes of study 2
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes_S2`.
     n_bins : int
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -554,7 +554,7 @@ def fjct_compute_masked_jsd_expert(
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -719,7 +719,7 @@ def fjct_compute_masked_jsd(
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -866,10 +866,10 @@ def fjct_compute_contribution_scores(
     ----------
     global_js_divergences : np.ndarray[np.float64] of shape (k_families,)
         Per-sub-neighborhood weighted global JSD
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     total_included_n_reps_per_f : np.ndarray[np.int32] of shape (k_families,)
         Per-sub-neighborhood `total_included_n_reps`
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
 
     Returns
     -------

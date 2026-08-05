@@ -118,12 +118,12 @@ def distance_to_centroid(
     genes : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene expression matrix (n_tissues × n_genes), column-major
     centroids : np.ndarray[np.float64] of shape (n_tissues, n_families,), column-major (order='F')
-        Family centroid matrix (n_tissues × n_families), column-major, `-1.0_real64` for unassigned genes
+        Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
 
     Returns
     -------

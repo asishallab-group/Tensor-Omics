@@ -28,8 +28,8 @@ euclidean_distance <- function(vec1, vec2) {
 #' For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
 #'
 #' @param genes a numeric matrix. Gene expression matrix (n_tissues × n_genes), column-major
-#' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0_real64` for unassigned genes
-#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
+#' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
 #' @return Output distances array
 #'
 #' Generated from the Fortran procedure \code{tox_euclidean_distance::distance_to_centroid}.

@@ -42,9 +42,9 @@ def compute_tissue_versatility(
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_vectors,), column-major (order='F')
         2D array (n_axes, n_vectors), each column is a gene expression vector
     vectors_selection_mask : np.ndarray[np.bool_] of shape (n_vectors,)
-        Logical array (n_vectors), .TRUE. for vectors to process
+        Logical array (n_vectors), True for vectors to process
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
-        Logical array (n_axes), .TRUE. for axes to include in calculation
+        Logical array (n_axes), True for axes to include in calculation
 
     Returns
     -------

@@ -586,7 +586,7 @@ def construct_neighborhoods_expert(
     n_neighbors : int
         Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
         cannot exceed the number of genes with a defined mean
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
         It is recommended to compute this with
         [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
@@ -692,7 +692,7 @@ def construct_neighborhoods(
     n_neighbors : int
         Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
         cannot exceed the number of genes with a defined mean
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
         It is recommended to compute this with
         [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].

@@ -52,7 +52,7 @@ def mask_check_state(
         bit_mask,
         i_gene,
 ):
-    r"""Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
+    r"""Checks the state of a bit/paralog in `bit_mask` -> True if 1 else False
 
     Parameters
     ----------
@@ -117,7 +117,7 @@ def mask_chunk_count(
     count : int
         number of 32 bit chunks a mask needs to encode `n_genes` genes
 
-        Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+        Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
 
     Raises
     ------
@@ -154,7 +154,7 @@ def calc_work_arr_paralog_subsets_size(
     max_subset_size : int, modified in place
         maximum size that a subset must not exceed. Zero is in range and means there is
         nothing to size a work array for, which is reported back as a size of zero.
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
         @warning
         If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 
@@ -173,7 +173,7 @@ def calc_work_arr_paralog_subsets_size(
         max_subset_size : int
             maximum size that a subset must not exceed. Zero is in range and means there is
             nothing to size a work array for, which is reported back as a size of zero.
-            The minimum valid value is `0_int32`.
+            The minimum valid value is `0`.
             @warning
             If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 

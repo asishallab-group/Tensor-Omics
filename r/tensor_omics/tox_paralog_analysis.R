@@ -4,9 +4,9 @@
 #'
 #' @param ancestors a numeric matrix. RAP projected unit length expression vector of ancestral ortholog
 #' @param genes a numeric matrix. RAP projected unit length expression vectors of genes
-#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
 #' @param thresholds a numeric vector. threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
-#' @return `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
+#' @return `TRUE` if neofunctionalization has been detected for the respective axes, always `FALSE` for unassigned genes
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_neofunctionalization}.
 #' @export

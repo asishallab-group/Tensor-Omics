@@ -170,7 +170,7 @@ def k_means_clustering(
         The final values will be the final centroids of the clusters
     max_iterations : int, optional, default 300
         number of maximum iterations of the clustering.
-        The default value is `300_int32`.
+        The default value is `300`.
 
     Returns
     -------
@@ -262,8 +262,8 @@ def linkage_clustering(
         distance-matrix naming convention in the generated wrapper.
     method : str, one of 'average' | 'weighted' | 'ward'
         used algorithm
-        The minimum valid value is `0_int32`.
-        The maximum valid value is `2_int32`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
 
     Returns
     -------

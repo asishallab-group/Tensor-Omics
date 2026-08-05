@@ -241,15 +241,15 @@ def perform_permutation_test_expert(
         expression vectors across different samples over time
     factor_idx : int
         index of factor to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     dependent_idx : int
         index of dependent to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     sample_idx : int
         index of sample to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_samples`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
     n_permutations : int
@@ -339,15 +339,15 @@ def perform_permutation_test(
         expression vectors across different samples over time
     factor_idx : int
         index of factor to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     dependent_idx : int
         index of dependent to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     sample_idx : int
         index of sample to compute the permutation contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_samples`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
     n_permutations : int
@@ -606,11 +606,11 @@ def compute_all_contributions_expert(
         expression vectors across different samples over time
     factor_indices : np.ndarray[np.int32] of shape (n_selected_factors,)
         indices of factors to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     dependent_indices : np.ndarray[np.int32] of shape (n_selected_dependents,)
         indices of dependents to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
 
@@ -706,11 +706,11 @@ def compute_all_contributions(
         expression vectors across different samples over time
     factor_indices : np.ndarray[np.int32] of shape (n_selected_factors,)
         indices of factors to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     dependent_indices : np.ndarray[np.int32] of shape (n_selected_dependents,)
         indices of dependents to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
 
@@ -880,7 +880,7 @@ def compute_velocity_trajectory(
 
     Returns
     -------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1),)
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),)
         output velocity trajectory
 
     Raises
@@ -926,14 +926,14 @@ def compute_acceleration_from_velocity_trajectory(
 
     Parameters
     ----------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1),)
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),)
         velocity trajectory
     n_timepoints : int
         number of timepoints
 
     Returns
     -------
-    acceleration : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 2),)
+    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2),)
         acceleration trajectory
 
     Raises
@@ -980,7 +980,7 @@ def compute_velocity_trajectories(
 
     Returns
     -------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1), n_factors, n_samples,), column-major (order='F')
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1), n_factors, n_samples,), column-major (order='F')
         output velocity trajectories
 
     Raises
@@ -1030,14 +1030,14 @@ def compute_acceleration_from_velocity(
 
     Parameters
     ----------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1), n_factors, n_samples,), column-major (order='F')
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1), n_factors, n_samples,), column-major (order='F')
         input velocity trajectories
     n_timepoints : int
         number of timepoints
 
     Returns
     -------
-    acceleration : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 2), n_factors, n_samples,), column-major (order='F')
+    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2), n_factors, n_samples,), column-major (order='F')
         output acceleration trajectories
 
     Raises

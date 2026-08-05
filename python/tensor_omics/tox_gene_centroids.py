@@ -99,7 +99,7 @@ def mean_vector(
         The input matrix of all gene expression vectors (n_axes x n_genes).
     gene_indices : np.ndarray[np.int32] of shape (n_selected_genes,)
         An array containing the column indices of the selected genes in 'expression_vectors'.
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 
     Returns
@@ -166,10 +166,10 @@ def group_centroid_orthologs_expert(
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
     gene_to_family : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
     n_families : int
         Total number of gene families to compute centroids for.
     ortholog_set : np.ndarray[np.bool_] of shape (n_genes,)
@@ -257,10 +257,10 @@ def group_centroid_orthologs(
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
     gene_to_family : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
     n_families : int
         Total number of gene families to compute centroids for.
     ortholog_set : np.ndarray[np.bool_] of shape (n_genes,)
@@ -345,10 +345,10 @@ def group_centroid_all_expert(
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
     gene_to_family : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
     n_families : int
         Total number of gene families to compute centroids for.
 
@@ -422,10 +422,10 @@ def group_centroid_all(
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
     gene_to_family : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
     n_families : int
         Total number of gene families to compute centroids for.
 

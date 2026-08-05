@@ -104,11 +104,11 @@ def compute_all_contributions_kernel(
         expression vectors across different samples over time
     factor_indices : np.ndarray[np.int32] of shape (n_selected_factors,)
         indices of factors to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     dependent_indices : np.ndarray[np.int32] of shape (n_selected_dependents,)
         indices of dependents to compute the contributions for
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     baseline_mode : str, one of 'raw' | 'mean' | 'min'
 
@@ -282,7 +282,7 @@ def compute_velocity_trajectory_kernel(
 
     Returns
     -------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1),)
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),)
         output velocity trajectory
 
     Raises
@@ -328,14 +328,14 @@ def compute_acceleration_from_velocity_trajectory_kernel(
 
     Parameters
     ----------
-    velocity : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 1),)
+    velocity : np.ndarray[np.float64] of shape (max(0, n_timepoints - 1),)
         velocity trajectory
     n_timepoints : int
         number of timepoints
 
     Returns
     -------
-    acceleration : np.ndarray[np.float64] of shape (max(0_int32, n_timepoints - 2),)
+    acceleration : np.ndarray[np.float64] of shape (max(0, n_timepoints - 2),)
         acceleration trajectory
 
     Raises

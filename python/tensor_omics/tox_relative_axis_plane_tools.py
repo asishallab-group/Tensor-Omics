@@ -118,9 +118,9 @@ def omics_vector_RAP_projection(
     vecs : np.ndarray[np.float64] of shape (n_axes, n_vecs,), column-major (order='F')
         matrix with expression vectors
     vecs_selection_mask : np.ndarray[np.bool_] of shape (n_vecs,)
-        `.true.` for vectors where projection is to be computed
+        `True` for vectors where projection is to be computed
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
-        `.true.` for axes to be included in RAP
+        `True` for axes to be included in RAP
 
     Returns
     -------
@@ -204,9 +204,9 @@ def omics_field_RAP_projection(
     fields : np.ndarray[np.float64] of shape (n_axes, 2, n_fields,), column-major (order='F')
         matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
-        `.true.` for vectors where projection is to be computed
+        `True` for vectors where projection is to be computed
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
-        `.true.` for axes to be included in RAP
+        `True` for axes to be included in RAP
 
     Returns
     -------
@@ -366,7 +366,7 @@ def clock_hand_angles_for_shift_vectors(
     fields : np.ndarray[np.float64] of shape (n_dims, 2, n_fields,), column-major (order='F')
         matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
-        .true. for vector pairs where angle should be computed
+        True for vector pairs where angle should be computed
     selected_axes_for_signed : np.ndarray[np.int32] of shape (3,)
         Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
 

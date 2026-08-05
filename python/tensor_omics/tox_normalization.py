@@ -201,13 +201,13 @@ def normalization_pipeline(
         e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
     span : float, optional, default 0.7
         LOESS span parameter.
-        The default value is `0.7_real64`.
+        The default value is `0.7`.
     degree : int, optional, default 2
         LOESS degree parameter.
-        The default value is `2_int32`.
+        The default value is `2`.
     use_quantile : bool, optional, default False
         Use quantile normalization.
-        The default value is `.false.`.
+        The default value is `False`.
 
     Returns
     -------
@@ -278,10 +278,10 @@ def normalize_by_std_dev(
         Infinite values are permitted for this value.
     span : float, optional, default 0.7
         LOESS span parameter.
-        The default value is `0.7_real64`.
+        The default value is `0.7`.
     degree : int, optional, default 2
         LOESS degree parameter.
-        The default value is `2_int32`.
+        The default value is `2`.
 
     Returns
     -------
@@ -578,7 +578,7 @@ def calc_tiss_avg(
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
         e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
     expr : np.ndarray[np.float64] of shape (sum(reps_per_tissue), n_genes,), column-major (order='F')
         Gene Expression matrix
         NaN is permitted for this value.
@@ -644,11 +644,11 @@ def calc_fchange(
     ----------
     control_tissues : np.ndarray[np.int32] of shape (n_pairs,)
         Control tissue indices
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_tissues`.
     condition_tissues : np.ndarray[np.int32] of shape (n_pairs,)
         Condition tissue indices
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_tissues`.
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]

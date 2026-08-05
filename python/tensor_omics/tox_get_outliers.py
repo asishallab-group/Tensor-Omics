@@ -204,19 +204,19 @@ def compute_family_scaling_expert(
         Mapping of each gene to its family (1-based)
     span : float, optional, default 0.7
         Span parameter for LOESS smoothing
-        The default value is `0.7_real64`.
+        The default value is `0.7`.
         NaN is permitted for this value.
         Infinite values are permitted for this value.
     degree : int, optional, default 2
         Degree of the LOESS polynomial
-        The default value is `2_int32`.
+        The default value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
-        The default value is `1_int32`.
+        The default value is `1`.
 
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting
-        The default value is `3_int32`.
+        The default value is `3`.
 
     Returns
     -------
@@ -367,19 +367,19 @@ def compute_family_scaling(
         Mapping of each gene to its family (1-based)
     span : float, optional, default 0.7
         Span parameter for LOESS smoothing
-        The default value is `0.7_real64`.
+        The default value is `0.7`.
         NaN is permitted for this value.
         Infinite values are permitted for this value.
     degree : int, optional, default 2
         Degree of the LOESS polynomial
-        The default value is `2_int32`.
+        The default value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
-        The default value is `1_int32`.
+        The default value is `1`.
 
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting
-        The default value is `3_int32`.
+        The default value is `3`.
 
     Returns
     -------
@@ -690,7 +690,7 @@ def identify_outliers(
         Permutation array with sorted indices
     percentile : float, optional, default 95.0
         Percentile threshold (top 5% for the default).
-        The default value is `95.0_real64`.
+        The default value is `95.0`.
 
     Returns
     -------
@@ -795,7 +795,7 @@ def detect_outliers_expert(
         Gene-to-family mapping (1-based indexing)
     percentile : float, optional, default 95.0
         Percentile threshold for outlier detection.
-        The default value is `95.0_real64`.
+        The default value is `95.0`.
 
     Returns
     -------
@@ -949,7 +949,7 @@ def detect_outliers(
         Gene-to-family mapping (1-based indexing)
     percentile : float, optional, default 95.0
         Percentile threshold for outlier detection.
-        The default value is `95.0_real64`.
+        The default value is `95.0`.
 
     Returns
     -------

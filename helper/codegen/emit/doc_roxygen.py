@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_literals import render as _render
 from ..ir.types import BaseType
 from ..render import Writer
 
@@ -43,7 +44,7 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     writer = Writer()
     procedure = wrapper.procedure
 
-    title = procedure.meta.summary or wrapper.stripped_name
+    title = _render(procedure.meta.summary or wrapper.stripped_name, "r")
     writer.line(f"#' {title}")
     writer.line("#'")
 
@@ -89,7 +90,7 @@ def _notes(doc: Doc) -> list[str]:
     for block in doc:
         if isinstance(block, DocTable):
             continue
-        lines.append(block.text)
+        lines.append(_render(block.text, "r"))
     while lines and not lines[-1]:
         lines.pop()
     return lines
@@ -98,5 +99,5 @@ def _notes(doc: Doc) -> list[str]:
 def _first_line(doc: Doc) -> str:
     for block in doc:
         if not isinstance(block, DocTable) and block.text.strip():
-            return block.text
+            return _render(block.text, "r")
     return ""

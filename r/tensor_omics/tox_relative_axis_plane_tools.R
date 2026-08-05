@@ -3,8 +3,8 @@
 #' Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
 #'
 #' @param vecs a numeric matrix. matrix with expression vectors
-#' @param vecs_selection_mask a logical vector. `.true.` for vectors where projection is to be computed
-#' @param axes_selection_mask a logical vector. `.true.` for axes to be included in RAP
+#' @param vecs_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
+#' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return projected vectors
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_vector_RAP_projection}.
@@ -28,8 +28,8 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 #' Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
-#' @param fields_selection_mask a logical vector. `.true.` for vectors where projection is to be computed
-#' @param axes_selection_mask a logical vector. `.true.` for axes to be included in RAP
+#' @param fields_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
+#' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return projected vectors
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_field_RAP_projection}.
@@ -79,7 +79,7 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
 #' Compute signed rotation angles between for shift vectors, so between their origin and target
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
-#' @param fields_selection_mask a logical vector. .true. for vector pairs where angle should be computed
+#' @param fields_selection_mask a logical vector. TRUE for vector pairs where angle should be computed
 #' @param selected_axes_for_signed a integer vector. Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
 #' @return Signed rotation angles between vector pairs in radians [-π, π]
 #'

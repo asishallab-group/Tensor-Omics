@@ -158,26 +158,26 @@ def detect_neofunctionalization(
     ----------
     ancestors : np.ndarray[np.float64] of shape (n_axes, n_families,), column-major (order='F')
         RAP projected unit length expression vector of ancestral ortholog
-        The minimum valid value is `-1.0_real64`.
-        The maximum valid value is `1.0_real64`.
+        The minimum valid value is `-1.0`.
+        The maximum valid value is `1.0`.
     genes : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         RAP projected unit length expression vectors of genes
-        The minimum valid value is `-1.0_real64`.
-        The maximum valid value is `1.0_real64`.
+        The minimum valid value is `-1.0`.
+        The maximum valid value is `1.0`.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
-        The minimum valid value is `1_int32`.
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
-        The value `0_int32` is additionally accepted.
+        The value `0` is additionally accepted.
     thresholds : np.ndarray[np.float64] of shape (n_axes,)
         threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
-        The minimum valid value is `-1.0_real64`.
-        The maximum valid value is `1.0_real64`.
+        The minimum valid value is `-1.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
     neofunc : np.ndarray[np.bool_] of shape (n_genes, n_axes,), column-major (order='F')
-        `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
+        `True` if neofunctionalization has been detected for the respective axes, always `False` for unassigned genes
 
     Raises
     ------
@@ -280,16 +280,16 @@ def detect_dosage_effect_expert(
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
         gets zero back has nothing to detect and should not call here at all.
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     max_angle : float, optional, default 3.141592653589793
         maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        The default value is `4.0_real64*atan(1.0_real64)`.
-        The minimum valid value is `0.0_real64`.
+        The default value is `4.0*atan(1.0)`.
+        The minimum valid value is `0.0`.
         The maximum valid value is `PI`.
     gain_gamma : float, optional, default 0.1
         positive magnitude gain for dosage effect
-        The default value is `0.1_real64`.
-        The minimum valid value is `above(0.0_real64)`.
+        The default value is `0.1`.
+        The minimum valid value is `above(0.0)`.
 
     Returns
     -------
@@ -301,7 +301,7 @@ def detect_dosage_effect_expert(
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
             @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
             @endnote
 
     Raises
@@ -409,16 +409,16 @@ def detect_dosage_effect(
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
         gets zero back has nothing to detect and should not call here at all.
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     max_angle : float, optional, default 3.141592653589793
         maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        The default value is `4.0_real64*atan(1.0_real64)`.
-        The minimum valid value is `0.0_real64`.
+        The default value is `4.0*atan(1.0)`.
+        The minimum valid value is `0.0`.
         The maximum valid value is `PI`.
     gain_gamma : float, optional, default 0.1
         positive magnitude gain for dosage effect
-        The default value is `0.1_real64`.
-        The minimum valid value is `above(0.0_real64)`.
+        The default value is `0.1`.
+        The minimum valid value is `above(0.0)`.
 
     Returns
     -------
@@ -430,7 +430,7 @@ def detect_dosage_effect(
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
             @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
             @endnote
 
     Raises
@@ -535,16 +535,16 @@ def detect_subfunctionalization_expert(
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
         gets zero back has nothing to detect and should not call here at all.
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
         euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 
     Returns
@@ -557,7 +557,7 @@ def detect_subfunctionalization_expert(
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
             @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
             @endnote
 
     Raises
@@ -689,16 +689,16 @@ def detect_subfunctionalization(
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
         gets zero back has nothing to detect and should not call here at all.
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
         euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 
     Returns
@@ -711,7 +711,7 @@ def detect_subfunctionalization(
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
             @note
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
             @endnote
 
     Raises
@@ -822,17 +822,17 @@ def filter_paralogs_by_pattern_dosage_effect(
     ----------
     gene_angles : np.ndarray[np.float64] of shape (n_genes,)
         vector, holding the angles between ancestor and genes (0<=angle<=Pi)
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
         The maximum valid value is `PI`.
     threshold : float
         filter threshold
     n_families : int
         number of families
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
     n_mask_chunks : int
         number of 32 bit chunks a mask needs to encode `n_genes` genes
@@ -907,17 +907,17 @@ def filter_paralogs_by_pattern_subfunctionalization(
     ----------
     gene_angles : np.ndarray[np.float64] of shape (n_genes,)
         vector, holding the angles between ancestor and genes (0<=angle<=Pi)
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
         The maximum valid value is `PI`.
     threshold : float
         filter threshold
     n_families : int
         number of families
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `n_families`.
     n_mask_chunks : int
         number of 32 bit chunks a mask needs to encode `n_genes` genes

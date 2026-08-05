@@ -131,12 +131,12 @@ def determine_shared_residual_range_expert(
         NaN is permitted for this value.
     abs_residual_pool_perm : np.ndarray[np.int32] of shape (pool_size,)
         The permutation vector that sorts `abs_residual_pool`
-        The minimum valid value is `1_int32`.
+        The minimum valid value is `1`.
         The maximum valid value is `pool_size`.
     residual_range_quantile : float, optional, default 95.0
         Quantile for determining the residual range
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `100.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
         The default value is `95.0`.
 
     Returns
@@ -206,8 +206,8 @@ def determine_shared_residual_range(
         NaN is permitted for this value.
     residual_range_quantile : float, optional, default 95.0
         Quantile for determining the residual range
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `100.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
         The default value is `95.0`.
 
     Returns
@@ -268,8 +268,8 @@ def determine_study_shared_residual_range_expert(
         NaN is permitted for this value.
     residual_range_quantile : float, optional, default 95.0
         Quantile for determining the residual range
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `100.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
         The default value is `95.0`.
 
     Returns
@@ -357,8 +357,8 @@ def determine_study_shared_residual_range(
         NaN is permitted for this value.
     residual_range_quantile : float, optional, default 95.0
         Quantile for determining the residual range
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `100.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
         The default value is `95.0`.
 
     Returns
@@ -440,7 +440,7 @@ def build_residual_histograms(
         NaN is permitted for this value.
     shared_residual_range : float
         Computed residual range (R)
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     n_bins : int
         Number of equally sized histogram bins in range [-R,R]
     neighbor_mask : np.ndarray[np.bool_] of shape (n_neighbors, n_points,), column-major (order='F'), optional
@@ -525,12 +525,12 @@ def compute_divergence_per_reference_point(
     ----------
     pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
         Computed normalized histogram counts for study 1
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `1.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
     pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
         Computed normalized histogram counts for study 2
-        The minimum valid value is `0.0_real64`.
-        The maximum valid value is `1.0_real64`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
@@ -602,13 +602,13 @@ def compute_weighted_global_divergence(
     ----------
     js_divergences : np.ndarray[np.float64] of shape (n_points,)
         Jensen-Shannon divergence per reference point, computed for studies S1 and S2
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,)
         Count of non-NaN residuals (included ones) in study 1
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
     included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,)
         Count of non-NaN residuals (included ones) in study 2
-        The minimum valid value is `0_int32`.
+        The minimum valid value is `0`.
 
     Returns
     -------

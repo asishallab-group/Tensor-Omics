@@ -96,7 +96,7 @@ def gjct_permutation_test_expert(
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     n_permutations : int
         Number of permutations to perform
     random_seed : int, optional
@@ -247,7 +247,7 @@ def gjct_permutation_test(
         Number of equally sized histogram bins used for the studies
     shared_residual_range : float
         Computed residual range for both studies
-        The minimum valid value is `0.0_real64`.
+        The minimum valid value is `0.0`.
     n_permutations : int
         Number of permutations to perform
     random_seed : int, optional
