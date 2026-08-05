@@ -48,9 +48,9 @@ convert, call, convert back.
 
 Not in the source files they wrap. From issue #131:
 
-1. `safeguard` is needed only by C-facing code, so only these modules use it
+1. `f42_safeguard` is needed only by C-facing code, so only these modules use it
 2. the whole C binding can be compiled out with one directive — the wrappers are wrapped
-   in `#ifndef NO_C_BINDING`, and with them goes the `safeguard` dependency
+   in `#ifndef NO_C_BINDING`, and with them goes the `f42_safeguard` dependency
 3. the source files are not bloated with wrapper definitions
 4. the generator never touches hand-written source
 

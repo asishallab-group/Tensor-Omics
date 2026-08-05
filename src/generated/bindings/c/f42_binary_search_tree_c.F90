@@ -6,7 +6,7 @@
 !| This module provides routines to build a BST index (via sorting), access sorted values,
 !| and perform range queries over a real-valued array using the sorted index.
 module f42_binary_search_tree_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE

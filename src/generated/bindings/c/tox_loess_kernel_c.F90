@@ -14,7 +14,7 @@
 !| `tox_loess_required_workspace` live here for callers (and the generated wrappers) to use; the
 !| netlib routines themselves are not re-documented beyond their calling convention.
 module tox_loess_kernel_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE

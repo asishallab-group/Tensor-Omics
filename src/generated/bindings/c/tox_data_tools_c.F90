@@ -9,7 +9,7 @@
 !| [[tox_data_archive(module):save_tox_data(subroutine)]] later persists; unlike the archive/serde
 !| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL

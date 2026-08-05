@@ -10,7 +10,7 @@
 !| be assessed via a permutation test that recomputes the same contribution against a randomly chosen
 !| other sample.
 module tox_trajectory_contribution_analysis_kernel_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT

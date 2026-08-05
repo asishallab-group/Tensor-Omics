@@ -4,7 +4,7 @@
 !> summary: C-wrappers for [[tox_trajectory_normalization(module)]]
 !| Generated from the kernel; do not edit -- regenerate instead.
 module tox_trajectory_normalization_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE

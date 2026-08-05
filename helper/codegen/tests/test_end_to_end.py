@@ -74,7 +74,7 @@ def _build(out: Path) -> Path:
     sources = [
         REPO_ROOT / "src/f42/tox_errors.F90",
         REPO_ROOT / "src/f42/tox_conversions.F90",
-        REPO_ROOT / "src/safeguard.F90",
+        REPO_ROOT / "src/f42/f42_safeguard.F90",
         out / "fx_basics.F90",
         out / "fx_edges.F90",
         out / "fx_basics_c.F90",

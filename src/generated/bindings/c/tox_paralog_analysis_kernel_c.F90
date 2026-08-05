@@ -17,7 +17,7 @@
 !| each generated wrapper validates its own arguments at their own positions. The kernels keep `ierr`
 !| only for their runtime paths (bit-mask writes, the subset-search bookkeeping).
 module tox_paralog_analysis_kernel_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE

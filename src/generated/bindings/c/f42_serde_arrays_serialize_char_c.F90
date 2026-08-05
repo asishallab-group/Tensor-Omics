@@ -4,7 +4,7 @@
 !> summary: C-wrappers for [[f42_serde_arrays_serialize_char(module)]]
 !| Module for serializing character arrays into files
 module f42_serde_arrays_serialize_char_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL

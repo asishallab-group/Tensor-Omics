@@ -304,7 +304,7 @@ class TestModule:
 
     def test_safeguard_is_used_only_here(self, bag, emitter):
         # the reason the wrappers get their own modules
-        assert "use safeguard" in emit_module(b.module("fx_basics", normalize()), bag, emitter)
+        assert "use f42_safeguard" in emit_module(b.module("fx_basics", normalize()), bag, emitter)
 
     def test_implicit_none_forbids_implicit_externals(self, bag, emitter):
         # a bare 'implicit none' constrains only variables, so a call to a procedure
@@ -377,7 +377,7 @@ def built(tmp_path_factory):
         shutil.copy(fixture, out / fixture.name)
 
     # the wrappers depend on these, so they have to be compiled first
-    for source in ("src/f42/tox_errors.F90", "src/f42/tox_conversions.F90", "src/safeguard.F90"):
+    for source in ("src/f42/tox_errors.F90", "src/f42/tox_conversions.F90", "src/f42/f42_safeguard.F90"):
         must_compile(REPO_ROOT / source, out)
     for name in ("fx_basics", "fx_edges"):
         must_compile(out / f"{name}.F90", out)
@@ -394,7 +394,7 @@ class TestItCompiles:
 
     def test_no_c_binding_compiles_the_whole_thing_out(self, built):
         # the point of the #ifndef: one directive removes the C binding, and with it
-        # the need for safeguard
+        # the need for f42_safeguard
         must_compile(built / "fx_basics_c.F90", built, extra=["-DNO_C_BINDING"])
 
     def test_an_undeclared_procedure_would_not_slip_through(self, built, tmp_path):

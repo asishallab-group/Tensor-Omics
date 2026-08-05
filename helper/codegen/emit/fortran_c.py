@@ -1,7 +1,7 @@
 """Emitting the Fortran C wrapper modules.
 
 One `<module>_c.F90` per module that exports anything, wrapped in `#ifndef
-NO_C_BINDING` so the whole C binding -- and with it the `safeguard` module -- can be
+NO_C_BINDING` so the whole C binding -- and with it the `f42_safeguard` module -- can be
 compiled out with a single directive.
 
 The wrapper's job, in order:
@@ -91,9 +91,9 @@ class FortranCEmitter:
         return writer.render(trailing_newline=True)
 
     def _module_uses(self, writer: Writer, module: CWrapperModule) -> None:
-        # safeguard lives only here: nothing outside the generated C binding needs it,
+        # f42_safeguard lives only here: nothing outside the generated C binding needs it,
         # which is the point of giving the wrappers their own modules
-        writer.line("use safeguard")
+        writer.line("use f42_safeguard")
 
         kinds = sorted({a.type.kind for w in module for a in w if a.type.kind})
         kinds = sorted(set(kinds) | {"c_loc", "c_associated"})

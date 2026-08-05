@@ -16,7 +16,7 @@ module tox_data_archive
     use tox_errors, only: ERR_FILE_CLOSE, ERR_FILE_EXTRACT, ERR_INVALID_INPUT
     use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA
     use iso_fortran_env, only: real64, int32, iostat_end
-    use config, only: DEBUG
+    use f42_config, only: DEBUG
     M_IMPLICIT_NONE
 
     ! libzip constants

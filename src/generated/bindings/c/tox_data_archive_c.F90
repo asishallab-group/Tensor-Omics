@@ -12,7 +12,7 @@
 !| fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` and the
 !| `*_manifest*` routines below are the generic key/filename building blocks they are built on.
 module tox_data_archive_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL

@@ -8,7 +8,7 @@
 !| is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
 !| index array rather than as linked nodes.
 module f42_kd_tree_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE

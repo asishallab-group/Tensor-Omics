@@ -12,7 +12,7 @@ SOURCE = """\
 
 !> Module with normalization routines.
 module tox_normalization
-    use safeguard
+    use f42_safeguard
     implicit none
 
 contains

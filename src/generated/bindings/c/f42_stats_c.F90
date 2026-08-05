@@ -6,7 +6,7 @@
 !|
 !| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
 module f42_stats_c
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
