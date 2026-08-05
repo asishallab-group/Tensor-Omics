@@ -99,7 +99,7 @@ src/
     utils/              f42_utils re-exports f42_math, _sort, _random, _vector, _stats
     serde/              likewise, per element type
   kernel/             the kernels -- the API's source of truth, hand-written
-  io/                 file and archive IO, hand-written
+  data/               the hand-written data-set API (tox_data_*)
   generated/          NOTHING here is hand-written
     tox/                the wrappers
     bindings/c/         the Fortran C wrappers
@@ -122,7 +122,7 @@ directory, which meant relocating what used to sit in `src/tox` beside them:
 |---|---|---|
 | `tox_errors` | `src/f42/` | no exports; `use`d by f42 itself (72 sites) — it always sat *below* f42 in the dependency stack, so it was never tox application code |
 | `tox_conversions` | `src/f42/` | no exports; C-interop glue for the binding layer (27 sites) |
-| `tox_data_archive`, `tox_data_tools`, `tox_data_read_write` | `src/io/` | hand-written, exported, but file-I/O and external-library (`libzip`, netlib) code — not numeric kernels. Their bindings still auto-generate from `M_EXPORT_C` wherever they live |
+| the `tox_data_*` family | `src/data/` | hand-written, exported, but not numeric kernels: the data-set API — archive, readers, validation, accessors. Their bindings still auto-generate from `M_EXPORT_C` wherever they live |
 | recommend routines (`*_required_workspace`, `calc_*_size`, `calc_neighborhood_size`) | `src/kernel/` (public in the kernel module) | called by the generated allocs and by the `_expert` bindings |
 | mode/enum params (`MODE_*`, `METHOD_*`, `*_PATTERN`) | `src/kernel/` (kernel module) | referenced by kernel signatures and `DM_REQUIRED_IF_MODE` |
 

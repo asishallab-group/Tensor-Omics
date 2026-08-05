@@ -103,7 +103,7 @@ src/
     utils/              f42_utils re-exports f42_math, _sort, _random, _vector, _stats
     serde/              likewise, per element type
   kernel/             the kernels -- the API's source of truth, hand-written
-  io/                 file and archive IO, hand-written
+  data/               the hand-written data-set API (tox_data_*), incl. the zip archive
   generated/          NOTHING here is hand-written
     tox/                the wrappers
     bindings/c/         the Fortran C wrappers
@@ -149,7 +149,7 @@ exported**: the generator wraps them to C, Python and R, but does not write thei
 | Your procedure | Path | Where | Marker |
 |---|---|---|---|
 | a numeric procedure of the TOX pipeline | **Part I — kernel** | `src/kernel/` | the `_kernel` name |
-| file / archive IO, external-library glue | **Part II — export** | `src/io/` | `M_EXPORT_C` |
+| the data-set API: archive, CSV/TSV, validation, accessors | **Part II — export** | `src/data/` | `M_EXPORT_C` |
 | library-agnostic infrastructure | **Part II — export** | `src/f42/` | `M_EXPORT_C` |
 | a sizing / utility routine a kernel or a caller needs | **Part II — export** | the kernel module, `public` | `M_EXPORT_C` |
 
@@ -727,8 +727,10 @@ is, here, your own procedure's job.
 
 Because the procedure is not a numeric kernel of the pipeline:
 
-- **`src/io/`** — file and archive IO, external libraries (`libzip`, netlib readers).
-  `tox_data_archive`, `tox_data_tools`, `tox_data_validation` live here.
+- **`src/data/`** — the `tox_data_*` family: the zip archive (`libzip`), the CSV/TSV and
+  OrthoFinder readers, the data-set validation and the accessors. One family, one directory,
+  named for what the modules are rather than for the one mechanism only `tox_data_archive`
+  performs.
 - **`src/f42/`** — library-agnostic infrastructure: `f42_kd_tree`, `f42_binary_search_tree`,
   `f42_stats`, the serde family. Whether an f42 procedure is exported at all is a per-case
   judgement, which is exactly why the marker stays explicit here.
