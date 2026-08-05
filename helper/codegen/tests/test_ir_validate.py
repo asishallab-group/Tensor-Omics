@@ -184,6 +184,43 @@ class TestModeArguments:
 
         assert "is not a scalar integer" in only_error(bag).message
 
+    def _split_mode_doc(self):
+        return [
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| x | [[m(module):MODE_X(variable)]] | p_x |",
+        ]
+
+    def _scoped_optional(self, mode_doc):
+        from codegen.ir.directives import Default, Directives, RequiredIfMode
+
+        return b.procedure(
+            "p",
+            b.integer("mode", Intent.IN, doc=mode_doc),
+            b.real(
+                "tuning",
+                Intent.IN,
+                optional=True,
+                doc="a tuning knob",
+                directives=Directives(
+                    default=Default("1.0_real64"),
+                    required_if_mode=RequiredIfMode("mode", "m", "MODE_X"),
+                ),
+            ),
+        )
+
+    def test_a_default_with_a_required_if_mode_is_rejected_for_a_runtime_mode(self, bag):
+        # the argument is always passed on, so "required in that mode" says nothing
+        checked(self._scoped_optional(self._mode_doc()), bag)
+
+        assert "both a default and a mode it is required in" in only_error(bag).message
+
+    def test_a_default_with_a_required_if_mode_is_accepted_when_the_mode_splits(self, bag):
+        # there the directive scopes the argument to its mode, and the default applies within it
+        checked(self._scoped_optional(self._split_mode_doc()), bag)
+
+        assert bag.errors == ()
+
 
 class TestShapeArguments:
     def _shape_procedure(self, shape_argument, data=None):

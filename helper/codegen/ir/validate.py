@@ -78,6 +78,7 @@ class _Validator:
         self._check_type(argument)
         self._check_temporary(argument)
         self._check_mode(argument)
+        self._check_required_if_mode(argument)
         self._check_shape_argument(argument)
         self._check_extent(argument)
         self._check_error_argument(argument)
@@ -179,6 +180,31 @@ class _Validator:
                     "parameters; the C wrapper is what receives it as a string"
                 ),
             )
+
+    def _check_required_if_mode(self, argument: Argument) -> None:
+        """A default and a required-in mode contradict, unless the kernel splits per mode.
+
+        Where the mode is resolved at runtime the argument is always passed on -- the binding
+        supplies the default -- so "required in that mode" says nothing. Where the mode table
+        names a procedure per value, the same pairing is meaningful: the directive scopes the
+        argument to its mode (absent from the others) and the default applies within it.
+        """
+        required = argument.directives.required_if_mode
+        if required is None or not argument.directives.has_default:
+            return
+        mode = self.procedure.argument(required.mode_arg)
+        roles = mode.roles if mode is not None else None
+        if roles is not None and roles.mode is not None and roles.mode.is_split:
+            return
+        self.error(
+            f"argument '{argument.name}' has both a default and a mode it is required in",
+            argument,
+            note=(
+                "DM_REQUIRED_IF_MODE is for optionals that have no default; an argument "
+                "with a default is always passed on -- unless the mode table names a "
+                "procedure per value, where the directive scopes the argument to its mode"
+            ),
+        )
 
     def _check_shape_argument(self, argument: Argument) -> None:
         roles = argument.roles

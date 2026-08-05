@@ -337,17 +337,13 @@ class DirectiveParser:
 
     @staticmethod
     def _reject_contradictions(found: dict[str, Directive]) -> None:
-        default = found.get("default")
-        required_if_mode = found.get("required_if_mode")
-        if default is not None and required_if_mode is not None:
-            raise DirectiveError(
-                "an argument cannot have both a default and a mode it is required in",
-                default.line_number,
-                note=(
-                    "DM_REQUIRED_IF_MODE is for optionals that have no default; "
-                    "an argument with a default is always passed on"
-                ),
-            )
+        # `DM_DEFAULT` together with `DM_REQUIRED_IF_MODE` is contradictory only where the
+        # mode is resolved at runtime: there the argument is always passed on, so "required
+        # in that mode" says nothing. In a mode-*split* kernel the same pairing is meaningful
+        # -- the directive scopes the argument to its mode, and the default applies within it
+        # -- and whether the kernel splits is not knowable from the documentation alone. The
+        # rule therefore lives in the semantic pass, which has the mode table.
+        return
 
 
 _MACRO_NAMES = {
