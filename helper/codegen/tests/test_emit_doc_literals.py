@@ -44,3 +44,18 @@ class TestProseIsNotRewritten:
 
     def test_a_bare_number_is_left_alone(self):
         assert render("at most 32 chunks", "python") == "at most 32 chunks"
+
+
+class TestFordBlockTags:
+    @pytest.mark.parametrize("tag", ["@note", "@endnote", "@warning", "@endwarning", "  @note  "])
+    def test_a_delimiter_is_recognised(self, tag):
+        from codegen.emit.doc_literals import is_ford_block_tag
+
+        assert is_ford_block_tag(tag)
+
+    @pytest.mark.parametrize("text", ["@note the caller owns this", "note that", "", "a @note here"])
+    def test_prose_is_not(self, text):
+        from codegen.emit.doc_literals import is_ford_block_tag
+
+        # only a line that is the delimiter and nothing else -- prose keeps its words
+        assert not is_ford_block_tag(text)

@@ -255,10 +255,8 @@ def linkage_clustering(
     distances : np.ndarray[np.float64] of shape (n_points, n_points,), column-major (order='F'), modified in place
         symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
 
-        @note
         This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
         So there is no need to copy an existing distance matrix, just pass the original.
-        @endnote
 
         Its structure (symmetry, non-negativity, zero diagonal) is validated by the
         distance-matrix naming convention in the generated wrapper.

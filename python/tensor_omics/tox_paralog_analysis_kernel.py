@@ -157,11 +157,9 @@ def calc_work_arr_paralog_subsets_size(
         maximum size that a subset must not exceed. Zero is in range and means there is
         nothing to size a work array for, which is reported back as a size of zero.
         The minimum valid value is `0`.
-        @warning
         If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 
         Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
-        @endwarning
     n_genes : int
         number of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
@@ -176,11 +174,9 @@ def calc_work_arr_paralog_subsets_size(
             maximum size that a subset must not exceed. Zero is in range and means there is
             nothing to size a work array for, which is reported back as a size of zero.
             The minimum valid value is `0`.
-            @warning
             If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 
             Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
-            @endwarning
         work_array_size : int
             The calculated needed work array size in absolute worst case scenario. Look into source for details.
 

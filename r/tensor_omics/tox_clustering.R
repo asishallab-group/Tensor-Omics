@@ -67,17 +67,13 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 
 #' Perform linkage clustering on a distance matrix.
 #'
-#' @note
 #' This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
 #' So there is no need to copy an existing distance matrix, just pass the original.
-#' @endnote
 #'
 #' @param distances a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
 #'
-#'   @note
 #'   This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
 #'   So there is no need to copy an existing distance matrix, just pass the original.
-#'   @endnote
 #'
 #'   Its structure (symmetry, non-negativity, zero diagonal) is validated by the
 #'   distance-matrix naming convention in the generated wrapper.

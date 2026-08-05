@@ -30,3 +30,16 @@ def render(text: str, language: str) -> str:
     for fortran, native in _LOGICALS[language].items():
         text = re.sub(re.escape(fortran), native, text, flags=re.IGNORECASE)
     return text
+
+
+#: Ford's block delimiters. They mark a note or a warning in the Fortran documentation and
+#: mean nothing to numpydoc or roxygen -- `@endnote` is not even a roxygen tag. The prose
+#: between them is the author's and is kept; only the delimiters go.
+_FORD_BLOCK_TAGS = frozenset(
+    {"@note", "@endnote", "@warning", "@endwarning", "@bug", "@endbug", "@todo", "@endtodo"}
+)
+
+
+def is_ford_block_tag(text: str) -> bool:
+    """Whether a doc line is one of Ford's block delimiters and nothing else."""
+    return text.strip().lower() in _FORD_BLOCK_TAGS

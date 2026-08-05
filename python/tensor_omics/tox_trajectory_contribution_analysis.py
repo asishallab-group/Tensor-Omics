@@ -1084,7 +1084,7 @@ def compute_velocity_acceleration_contributions_expert(
         trajectories,
         baseline_mode,
 ):
-    r"""Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+    r"""Compute velocity and acceleration contributions for all variable pairs
 
     Parameters
     ----------
@@ -1168,7 +1168,7 @@ def compute_velocity_acceleration_contributions(
         trajectories,
         baseline_mode,
 ):
-    r"""Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+    r"""Compute velocity and acceleration contributions for all variable pairs
 
     Parameters
     ----------

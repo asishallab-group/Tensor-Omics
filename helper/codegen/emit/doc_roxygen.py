@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
-from .doc_literals import render as _render
+from .doc_literals import is_ford_block_tag, render as _render
 from ..ir.types import BaseType
 from ..render import Writer
 
@@ -89,7 +89,7 @@ def _prose_lines(doc: Doc) -> list[str]:
     lines = [
         _render(block.text, "r")
         for block in doc
-        if not isinstance(block, DocTable)
+        if not isinstance(block, DocTable) and not is_ford_block_tag(block.text)
     ]
     while lines and not lines[0].strip():
         lines.pop(0)
@@ -113,7 +113,7 @@ def _notes(doc: Doc) -> list[str]:
     """Prose from the procedure doc, tables dropped (values are stated on the @param)."""
     lines = []
     for block in doc:
-        if isinstance(block, DocTable):
+        if isinstance(block, DocTable) or is_ford_block_tag(block.text):
             continue
         lines.append(_render(block.text, "r"))
     while lines and not lines[-1]:

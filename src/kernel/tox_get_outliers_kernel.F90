@@ -25,7 +25,7 @@ module tox_get_outliers_kernel
 
 contains
 
-    !> summary: Compute family scaling factors (dscale) to normalize distances (expert entry point)
+    !> summary: Compute family scaling factors (dscale) to normalize distances
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling_kernel( &

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
-from .doc_literals import render as _render
+from .doc_literals import is_ford_block_tag, render as _render
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
@@ -115,6 +115,8 @@ def _description(writer: Writer, doc: Doc) -> None:
     for block in doc:
         if isinstance(block, DocTable):
             # A mode table is already stated as the accepted values in the type line
+            continue
+        if is_ford_block_tag(block.text):
             continue
         writer.line(_render(block.text, "python"))
 

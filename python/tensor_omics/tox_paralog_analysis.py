@@ -302,9 +302,7 @@ def detect_dosage_effect_expert(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
-            @note
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
-            @endnote
 
     Raises
     ------
@@ -431,9 +429,7 @@ def detect_dosage_effect(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
-            @note
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
-            @endnote
 
     Raises
     ------
@@ -558,9 +554,7 @@ def detect_subfunctionalization_expert(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
-            @note
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
-            @endnote
 
     Raises
     ------
@@ -712,9 +706,7 @@ def detect_subfunctionalization(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F')
             working array to hold bitmask encoded subsets for detection.
-            @note
             Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
-            @endnote
 
     Raises
     ------

@@ -523,7 +523,7 @@ contains
 
 
     !> M_EXPORT_C
-    !| summary: Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+    !| summary: Compute velocity and acceleration contributions for all variable pairs
     !| AUTHOR_JITU_DABA
     !| @note
     !| Performance layout:

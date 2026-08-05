@@ -287,9 +287,8 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     .result$acceleration
 }
 
-#' Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+#' Compute velocity and acceleration contributions for all variable pairs
 #'
-#' @note
 #' Performance layout:
 #'
 #' `trajectories` uses `(n_factors, n_samples, n_timepoints)`.
@@ -300,7 +299,6 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #'
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
-#' @endnote
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"
@@ -323,9 +321,8 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
     )
 }
 
-#' Compute velocity and acceleration contributions for all variable pairs (expert entry point)
+#' Compute velocity and acceleration contributions for all variable pairs
 #'
-#' @note
 #' Performance layout:
 #'
 #' `trajectories` uses `(n_factors, n_samples, n_timepoints)`.
@@ -336,7 +333,6 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
 #'
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
-#' @endnote
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"

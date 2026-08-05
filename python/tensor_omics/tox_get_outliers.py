@@ -192,7 +192,7 @@ def compute_family_scaling_expert(
         mode='robust',
         n_iters=3,
 ):
-    r"""Compute family scaling factors (dscale) to normalize distances (expert entry point)
+    r"""Compute family scaling factors (dscale) to normalize distances
 
     Parameters
     ----------
@@ -355,7 +355,7 @@ def compute_family_scaling(
         mode='robust',
         n_iters=3,
 ):
-    r"""Compute family scaling factors (dscale) to normalize distances (expert entry point)
+    r"""Compute family scaling factors (dscale) to normalize distances
 
     Parameters
     ----------
